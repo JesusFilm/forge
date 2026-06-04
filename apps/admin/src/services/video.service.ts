@@ -110,6 +110,31 @@ const LOCALE_STATUS_SEARCH_TOKENS = {
   ARCHIVED: ["archived", "archive"],
 } satisfies Record<LocaleStatus, readonly string[]>
 
+type VideoListCategory =
+  | "all"
+  | "collections"
+  | "features"
+  | "shortFilms"
+  | "series"
+type VideoListSort = "recent" | "oldest" | "created" | "createdOldest"
+
+type VideoListInput = {
+  category?: VideoListCategory
+  collection?: string
+  language?: string
+  limit?: number
+  offset?: number
+  search?: string
+  sort?: VideoListSort
+}
+
+const VIDEO_CATEGORY_LABELS = {
+  collections: ["COLLECTION"],
+  features: ["FEATURE_FILM"],
+  shortFilms: ["SHORT_FILM"],
+  series: ["SERIES"],
+} satisfies Record<Exclude<VideoListCategory, "all">, readonly VideoLabel[]>
+
 function normalizeSearchValue(value: string | null | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? ""
 }
@@ -382,27 +407,113 @@ function videoSearchWhere(rawSearch: string | null | undefined) {
   } satisfies Prisma.VideoWhereInput
 }
 
+function videoCategoryWhere(
+  category: VideoListCategory | null | undefined,
+): Prisma.VideoWhereInput | null {
+  if (!category || category === "all") return null
+  const labels = VIDEO_CATEGORY_LABELS[category]
+  return labels ? { label: { in: [...labels] } } : null
+}
+
+function videoLanguageWhere(
+  rawLanguage: string | null | undefined,
+): Prisma.VideoWhereInput | null {
+  const language = normalizeSearchValue(rawLanguage)
+  if (!language) return null
+
+  return {
+    dubs: {
+      some: {
+        deletedAt: null,
+        language: { is: languageSearchWhere(language) },
+      },
+    },
+  } satisfies Prisma.VideoWhereInput
+}
+
+function videoIdentifierWhere(identifier: string): Prisma.VideoWhereInput {
+  return {
+    OR: [{ id: identifier }, { coreId: identifier }, { slug: identifier }],
+  } satisfies Prisma.VideoWhereInput
+}
+
+function videoCollectionWhere(
+  rawCollection: string | null | undefined,
+): Prisma.VideoWhereInput | null {
+  const collection = normalizeSearchValue(rawCollection)
+  if (!collection) return null
+
+  return {
+    parents: {
+      some: {
+        parent: {
+          deletedAt: null,
+          ...videoIdentifierWhere(collection),
+        },
+      },
+    },
+  } satisfies Prisma.VideoWhereInput
+}
+
+function videoListWhere(
+  input: Pick<
+    VideoListInput,
+    "category" | "collection" | "language" | "search"
+  >,
+) {
+  const filters = [
+    videoSearchWhere(input.search),
+    videoCategoryWhere(input.category),
+    videoCollectionWhere(input.collection),
+    videoLanguageWhere(input.language),
+  ].filter((filter): filter is Prisma.VideoWhereInput => filter != null)
+
+  return filters.length === 1
+    ? filters[0]
+    : ({ AND: filters } satisfies Prisma.VideoWhereInput)
+}
+
+function videoListOrderBy(
+  sort: VideoListSort | null | undefined,
+):
+  | Prisma.VideoOrderByWithRelationInput
+  | Prisma.VideoOrderByWithRelationInput[] {
+  if (sort === "oldest") {
+    return [{ updatedAt: "asc" }, { createdAt: "asc" }]
+  }
+
+  if (sort === "created") {
+    return [{ createdAt: "desc" }, { updatedAt: "desc" }]
+  }
+
+  if (sort === "createdOldest") {
+    return [{ createdAt: "asc" }, { updatedAt: "asc" }]
+  }
+
+  return { updatedAt: "desc" }
+}
+
 export class VideoService {
   constructor(private prisma: PrismaClient) {}
 
-  async list({
-    input: raw,
-    query,
-  }: {
-    input: { limit?: number; offset?: number; search?: string }
-    query: object
-  }) {
+  async list({ input: raw, query }: { input: VideoListInput; query: object }) {
     return this.prisma.video.findMany({
       ...query,
-      where: videoSearchWhere(raw.search),
-      orderBy: { updatedAt: "desc" },
+      where: videoListWhere(raw),
+      orderBy: videoListOrderBy(raw.sort),
       take: Math.min(raw.limit ?? 50, 200),
       skip: raw.offset ?? 0,
     })
   }
 
-  async countActive(search?: string) {
-    return this.prisma.video.count({ where: videoSearchWhere(search) })
+  async countActive(
+    input?:
+      | string
+      | Pick<VideoListInput, "category" | "collection" | "language" | "search">,
+  ) {
+    const normalizedInput =
+      typeof input === "string" ? { search: input } : (input ?? {})
+    return this.prisma.video.count({ where: videoListWhere(normalizedInput) })
   }
 
   async getById({ id, query }: { id: string; query: object }) {

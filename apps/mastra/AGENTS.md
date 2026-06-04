@@ -22,6 +22,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   summaries without moving leaf logic into one mega-workflow.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
+- AI Gateway content embeddings request the normal OpenAI-compatible
+  embedding response, require the expected 4096 native dimensions, then
+  truncate gateway-native vectors to 1536 dimensions and re-normalize them in
+  Mastra before Admin ingest. Do not send `dimensions` through LiteLLM.
 - All embedding workflows use the shared Admin ingest client behavior but keep
   separate transcript, scene, and experience endpoints and payload schemas.
 - Generation modes are consistent across embedding workflows: omitted means
@@ -64,3 +68,4 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - `pnpm --filter @forge/mastra test`
 - `pnpm --filter @forge/mastra typecheck`
 - `pnpm --filter @forge/mastra lint`
+- `pnpm --filter @forge/mastra eval:content-embedding-gate -- --baseline-name=<baseline>`

@@ -3,8 +3,15 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import { useRef, useState, useSyncExternalStore, type FormEvent } from "react"
 import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react"
+import {
+  isLoginProviderId,
   providerLabels,
   type LoginMethodId,
   type LoginProviderId,
@@ -14,23 +21,23 @@ import { WatchFilmCollageBackground } from "./watch-film-collage-background"
 export type LoginErrorCode = "account_not_linked" | "credentials" | "forbidden"
 
 type LoginStep = "email" | "password"
+type PendingSocialSignIn = {
+  email: string
+  provider: LoginProviderId
+}
 
 const providerIds = Object.keys(providerLabels) as LoginProviderId[]
 const lastLoginMethodCookieName = "forge_auth_last_login_method"
+const pendingSocialSignInKey = "forge_auth_pending_social_sign_in"
 
 const loginErrors = {
-  account_not_linked: {
-    title: "This login method is not linked yet.",
-    detail:
-      "Log in with the method you used before, then connect this provider from your account settings.",
-  },
   forbidden: {
     title: "Access has not been approved.",
     detail:
       "Your account signed in successfully, but it is not approved for this application.",
   },
 } satisfies Record<
-  Exclude<LoginErrorCode, "credentials">,
+  Exclude<LoginErrorCode, "account_not_linked" | "credentials">,
   { title: string; detail: string }
 >
 
@@ -60,6 +67,8 @@ export function LoginPageClient({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [pendingSocialSignIn, setPendingSocialSignIn] =
+    useState<PendingSocialSignIn | null>(null)
   const isRedirectingRef = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
   const lastLoginMethod = useSyncExternalStore(
@@ -67,6 +76,16 @@ export function LoginPageClient({
     readLastLoginMethod,
     getServerLastLoginMethod,
   )
+
+  useEffect(() => {
+    if (initialError !== "account_not_linked") return
+
+    const attempt = readPendingSocialSignIn()
+    if (!attempt) return
+
+    setPendingSocialSignIn(attempt)
+    setEmail((current) => current || attempt.email)
+  }, [initialError])
 
   const alert =
     error === "credentials"
@@ -81,12 +100,18 @@ export function LoginPageClient({
           }
         : error === "lookup"
           ? {
-              title: "We could not check that email.",
-              detail: "Refresh the page and try again.",
+              title: "We could not route this sign-in automatically.",
+              detail:
+                "Try Continue again, or use a sign-in option below if you know which one belongs to this account.",
             }
-          : error
-            ? loginErrors[error]
-            : null
+          : error === "account_not_linked"
+            ? accountNotLinkedError({
+                email,
+                provider: pendingSocialSignIn?.provider,
+              })
+            : error
+              ? loginErrors[error]
+              : null
   const isBusy = isSubmitting || isRedirecting
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -159,6 +184,11 @@ export function LoginPageClient({
 
   async function startSocialSignIn(providerId: LoginProviderId) {
     setIsSubmitting(true)
+    rememberPendingSocialSignIn({
+      email,
+      provider: providerId,
+    })
+
     try {
       const res = await fetch("/api/auth/sign-in/social", {
         method: "POST",
@@ -182,6 +212,7 @@ export function LoginPageClient({
     } catch {
       setError("start")
     }
+    forgetPendingSocialSignIn()
     isRedirectingRef.current = false
     setIsRedirecting(false)
     setIsSubmitting(false)
@@ -242,36 +273,6 @@ export function LoginPageClient({
                 .
               </p>
             ) : null}
-
-            <div className="mt-5 grid gap-3">
-              {providerIds.map((providerId) => {
-                const enabled = enabledProviders.includes(providerId)
-
-                return (
-                  <button
-                    key={providerId}
-                    className="relative flex h-[46px] w-full cursor-pointer items-center justify-start gap-3 rounded border border-white/10 bg-transparent px-4 text-left font-medium leading-none text-[#f5f5f4] transition-[background-color,border-color,box-shadow] duration-150 hover:border-white/25 hover:bg-white/[0.04] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04)] focus-visible:border-[#ef3340] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.18)] disabled:cursor-not-allowed disabled:border-white/5 disabled:text-[#78716c] disabled:opacity-70"
-                    disabled={!enabled || isBusy}
-                    type="button"
-                    onClick={() => void startSocialSignIn(providerId)}
-                  >
-                    <span className="flex size-5 shrink-0 items-center justify-center leading-none">
-                      <ProviderLogo providerId={providerId} />
-                    </span>
-                    <span className="leading-none">
-                      Continue with {providerLabels[providerId]}
-                    </span>
-                    {lastLoginMethod === providerId ? <LastUsedBadge /> : null}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="my-7 flex items-center gap-4 text-xs font-bold uppercase tracking-[0.08em] text-[#a8a29e]">
-              <span className="h-px flex-1 bg-white/10" />
-              <span>OR</span>
-              <span className="h-px flex-1 bg-white/10" />
-            </div>
 
             <form
               ref={formRef}
@@ -356,6 +357,36 @@ export function LoginPageClient({
                 {lastLoginMethod === "email" ? <LastUsedBadge /> : null}
               </button>
             </form>
+
+            <div className="my-7 flex items-center gap-4 text-xs font-bold uppercase tracking-[0.08em] text-[#a8a29e]">
+              <span className="h-px flex-1 bg-white/10" />
+              <span>OR</span>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+
+            <div className="grid gap-3">
+              {providerIds.map((providerId) => {
+                const enabled = enabledProviders.includes(providerId)
+
+                return (
+                  <button
+                    key={providerId}
+                    className="relative flex h-[46px] w-full cursor-pointer items-center justify-start gap-3 rounded border border-white/10 bg-transparent px-4 text-left font-medium leading-none text-[#f5f5f4] transition-[background-color,border-color,box-shadow] duration-150 hover:border-white/25 hover:bg-white/[0.04] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04)] focus-visible:border-[#ef3340] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.18)] disabled:cursor-not-allowed disabled:border-white/5 disabled:text-[#78716c] disabled:opacity-70"
+                    disabled={!enabled || isBusy}
+                    type="button"
+                    onClick={() => void startSocialSignIn(providerId)}
+                  >
+                    <span className="flex size-5 shrink-0 items-center justify-center leading-none">
+                      <ProviderLogo providerId={providerId} />
+                    </span>
+                    <span className="leading-none">
+                      Continue with {providerLabels[providerId]}
+                    </span>
+                    {lastLoginMethod === providerId ? <LastUsedBadge /> : null}
+                  </button>
+                )
+              })}
+            </div>
 
             {callbackURL && flow === "login" ? null : (
               <p className="font-noto-serif mb-0 mt-6 text-center text-[13px] leading-5 text-[#a8a29e]">
@@ -494,6 +525,72 @@ function buildModeSwitchHref({
 
   const path = flow === "signup" ? "/login" : "/signup"
   return `${path}${oauthQuery ? `?${oauthQuery}` : ""}` as Route
+}
+
+function accountNotLinkedError({
+  email,
+  provider,
+}: {
+  email: string
+  provider?: LoginProviderId
+}) {
+  if (!provider) {
+    return {
+      title: "Use the login method for this account.",
+      detail:
+        "Enter your email and press Continue. We will send you to the right sign-in method.",
+    }
+  }
+
+  const providerName = providerLabels[provider]
+  const accountTarget = email ? email : "the matching account"
+
+  return {
+    title: `Use the same ${providerName} account.`,
+    detail: `${providerName} did not return the account expected for this sign-in. Try again and choose ${accountTarget} in the ${providerName} account picker.`,
+  }
+}
+
+function rememberPendingSocialSignIn(attempt: PendingSocialSignIn) {
+  if (typeof window === "undefined") return
+
+  window.sessionStorage.setItem(
+    pendingSocialSignInKey,
+    JSON.stringify({
+      email: attempt.email.trim().toLowerCase(),
+      provider: attempt.provider,
+    }),
+  )
+}
+
+function readPendingSocialSignIn(): PendingSocialSignIn | null {
+  if (typeof window === "undefined") return null
+
+  const value = window.sessionStorage.getItem(pendingSocialSignInKey)
+  window.sessionStorage.removeItem(pendingSocialSignInKey)
+  if (!value) return null
+
+  try {
+    const parsed = JSON.parse(value) as {
+      email?: unknown
+      provider?: unknown
+    }
+    const email = typeof parsed.email === "string" ? parsed.email : ""
+    const provider =
+      typeof parsed.provider === "string" && isLoginProviderId(parsed.provider)
+        ? parsed.provider
+        : null
+
+    return provider ? { email, provider } : null
+  } catch {
+    return null
+  }
+}
+
+function forgetPendingSocialSignIn() {
+  if (typeof window === "undefined") return
+
+  window.sessionStorage.removeItem(pendingSocialSignInKey)
 }
 
 function readLastLoginMethod(): LoginMethodId | null {

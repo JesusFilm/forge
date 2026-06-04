@@ -477,13 +477,13 @@ async function calibrateJudge(
 }
 
 async function compareBaselineCases({
-  baseline,
+  baselineCases,
   input,
   judge,
   options,
   timing,
 }: {
-  baseline: BaselineArtifact
+  baselineCases: readonly BaselineCase[]
   input: OfflineSearchEvalInput
   judge: OfflineSearchEvalJudge
   options: RunnerOptions
@@ -500,7 +500,7 @@ async function compareBaselineCases({
   const tokens = { input: 0, output: 0 }
   const judgeFailures: SearchFailure[] = []
 
-  for (const entry of baseline.cases) {
+  for (const entry of baselineCases) {
     const current = await searchAdmin(
       { queryText: entry.queryText, locale: entry.locale },
       input,
@@ -616,6 +616,15 @@ function hasUnsupportedSeedLocales(locales: readonly string[] | undefined) {
   if (locales == null || locales.length === 0) return false
   const supported = new Set<string>(SEARCH_EVAL_SEED_PROMPT_LOCALES)
   return locales.some((locale) => !supported.has(locale))
+}
+
+function baselineCasesForLocales(
+  cases: readonly BaselineCase[],
+  locales: readonly string[] | undefined,
+): BaselineCase[] {
+  if (locales == null || locales.length === 0) return [...cases]
+  const allowed = new Set(locales)
+  return cases.filter((entry) => allowed.has(entry.locale))
 }
 
 export async function runOfflineSearchEval(
@@ -761,8 +770,12 @@ export async function runOfflineSearchEval(
     options,
     searchTiming,
   )
+  const baselineCases = baselineCasesForLocales(baseline.cases, input.locales)
+  if (baselineCases.length === 0) {
+    return failure("invalid_input", { retryable: false })
+  }
   const compared = await compareBaselineCases({
-    baseline,
+    baselineCases,
     input,
     judge,
     options,
@@ -795,7 +808,7 @@ export async function runOfflineSearchEval(
     baseline: {
       name: baseline.name,
       capturedAt: baseline.capturedAt,
-      caseCount: baseline.cases.length,
+      caseCount: baselineCases.length,
       search: baseline.metadata.search,
       searchConfigMismatch: searchConfigMismatch(
         baseline.metadata.search,

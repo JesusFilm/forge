@@ -16,9 +16,11 @@ function payload(): AdminTranscriptEmbeddingIngestPayload {
       contentHash: "sha256:test",
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
       dimensions: 1536,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     },
     chunking: {
       type: "plain-text",
@@ -52,7 +54,7 @@ const adminResult = {
     language: "en",
   },
   chunks: 1,
-  model: "openai/text-embedding-3-small",
+  model: "embeddings",
   dimensions: 1536,
   mastraRunId: "run-1",
 }

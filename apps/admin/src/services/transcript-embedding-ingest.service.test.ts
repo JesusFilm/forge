@@ -73,9 +73,11 @@ function payload(overrides?: Record<string, unknown>) {
       generatedAt: "2026-05-25T00:00:00.000Z",
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
       dimensions: 1536,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     },
     chunking: {
       type: "segment-aware",
@@ -161,6 +163,9 @@ describe("ingestTranscriptEmbeddings", () => {
           expect.objectContaining({ chunkIndex: 0, chunkId: "chunk-0" }),
         ]),
         provenance: expect.objectContaining({
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           sourceArtifactKey: "42/transcript.json",
           generationMode: "idempotent",
           mastraRunId: "run-1",
@@ -180,8 +185,11 @@ describe("ingestTranscriptEmbeddings", () => {
         {
           id: "transcript-1",
           sourceContentHash: hash,
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: 1536,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           maxChunkTokens: 500,
           overlapTokens: 100,
@@ -201,6 +209,51 @@ describe("ingestTranscriptEmbeddings", () => {
     const result = await ingestTranscriptEmbeddings(
       prisma as never,
       bodyWithHash,
+    )
+
+    expect(result.status).toBe("unchanged")
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps migrated legacy OpenAI rows idempotent when provider was previously null", async () => {
+    const prisma = buildPrisma()
+    const body = payload({
+      model: {
+        name: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+      },
+    })
+    const hash = hashFor(body)
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "transcript-legacy",
+          sourceContentHash: hash,
+          model: "openai/text-embedding-3-small",
+          dimensions: 1536,
+          embeddingProvider: null,
+          embeddingNativeDimensions: 1536,
+          embeddingTransformVersion: null,
+          chunkingType: "segment-aware",
+          maxChunkTokens: 500,
+          overlapTokens: 100,
+          totalChunks: 1,
+          totalTokens: 6,
+        },
+      ])
+      .mockResolvedValueOnce([{ count: 1 }])
+
+    const result = await ingestTranscriptEmbeddings(
+      prisma as never,
+      payload({
+        model: body.model as Record<string, unknown>,
+        source: {
+          ...(body.source as object),
+          contentHash: hash,
+        },
+      }),
     )
 
     expect(result.status).toBe("unchanged")
@@ -228,8 +281,11 @@ describe("ingestTranscriptEmbeddings", () => {
         {
           id: "transcript-1",
           sourceContentHash: hash,
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: 1536,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           maxChunkTokens: 500,
           overlapTokens: 100,
@@ -266,8 +322,11 @@ describe("ingestTranscriptEmbeddings", () => {
         {
           id: "transcript-1",
           sourceContentHash: hash,
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: 1536,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           maxChunkTokens: 500,
           overlapTokens: 100,
@@ -304,8 +363,11 @@ describe("ingestTranscriptEmbeddings", () => {
         {
           id: "transcript-1",
           sourceContentHash: hash,
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: 1536,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           maxChunkTokens: 500,
           overlapTokens: 100,
@@ -342,8 +404,11 @@ describe("ingestTranscriptEmbeddings", () => {
         {
           id: "transcript-1",
           sourceContentHash: hash,
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: 1536,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           maxChunkTokens: 500,
           overlapTokens: 100,
@@ -367,8 +432,11 @@ describe("ingestTranscriptEmbeddings", () => {
         {
           id: "transcript-1",
           sourceContentHash: "sha256:old",
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: 1536,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           maxChunkTokens: 500,
           overlapTokens: 100,
@@ -393,8 +461,11 @@ describe("ingestTranscriptEmbeddings", () => {
         prisma as never,
         payload({
           model: {
-            name: "openai/text-embedding-3-small",
+            name: "embeddings",
+            provider: "jesus-film-ai-gateway",
             dimensions: 768,
+            nativeDimensions: 4096,
+            transformVersion: "matryoshka-truncate-1536-v1",
           },
         }),
       ),

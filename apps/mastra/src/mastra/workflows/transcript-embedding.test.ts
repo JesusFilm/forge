@@ -36,6 +36,10 @@ function input(
       provider: "mux",
       generatedAt: "2026-05-25T00:00:00.000Z",
     },
+    model: {
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
+    },
     mode: "idempotent",
   }
 
@@ -47,9 +51,11 @@ function embeddingResult(inputs: string[]): EmbeddingProviderResult {
     embeddings: inputs.map((_, index) => vector(index + 1)),
     dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
     tokenCount: inputs.length * 3,
-    model: "openai/text-embedding-3-small",
-    provider: "openai",
-    requestModel: "text-embedding-3-small",
+    model: "embeddings",
+    provider: "jesus-film-ai-gateway",
+    requestModel: "embeddings",
+    nativeDimensions: 4096,
+    transformVersion: "matryoshka-truncate-1536-v1",
   }
 }
 
@@ -88,6 +94,8 @@ describe("transcript embedding workflow", () => {
       chunks: 1,
       totalTokens: 8,
       mastraRunId: "run-segment",
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     })
     expect(embeddingRequester).toHaveBeenCalledWith(
       ["Hello there. This is a transcript."],
@@ -103,6 +111,13 @@ describe("transcript embedding workflow", () => {
           artifactKey: "asset-1/transcript.json",
           contentHash: expect.stringMatching(/^sha256:/),
         }),
+        model: {
+          name: "embeddings",
+          provider: "jesus-film-ai-gateway",
+          dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+          nativeDimensions: 4096,
+          transformVersion: "matryoshka-truncate-1536-v1",
+        },
         chunking: expect.objectContaining({
           type: "segment-aware",
           version: _internals.CHUNKING_VERSION,
@@ -233,7 +248,7 @@ describe("transcript embedding workflow", () => {
               language: "en",
             },
             chunks: 1,
-            model: "openai/text-embedding-3-small",
+            model: "embeddings",
             dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
             mastraRunId: "run-admin",
           },
@@ -276,9 +291,11 @@ describe("transcript embedding workflow", () => {
         },
         chunks: 1,
         totalTokens: 8,
-        model: "openai/text-embedding-3-small",
-        provider: "openai",
+        model: "embeddings",
+        provider: "jesus-film-ai-gateway",
         dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+        nativeDimensions: 4096,
+        transformVersion: "matryoshka-truncate-1536-v1",
         mastraRunId: runId,
         sourceContentHash: "sha256:test",
         chunking: {

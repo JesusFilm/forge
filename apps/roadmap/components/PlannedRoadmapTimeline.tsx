@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 
 import {
-  PLANNED_MILESTONES,
   PLANNED_PHASES,
   PLANNED_START_ISO,
   PLANNED_TIMELINE_ROWS,
@@ -11,7 +10,6 @@ import {
   PLANNED_TRACKS,
   PLANNED_WEEK_COUNT,
   PLANNED_WEEKS,
-  type PlannedMilestone,
   type PlannedPhase,
   type PlannedTrackId,
   type PlannedTimelineRow,
@@ -29,6 +27,7 @@ const TRACK_ROW_VERTICAL_INSET_PX = 10
 const TRACK_SUBLANE_GAP_PX = 8
 const TRACK_ROW_HEIGHT_PX = 116
 const STACKED_TRACK_ROW_HEIGHT_PX = 168
+const ACTUAL_DELIVERY_ROW_HEIGHT_PX = 144
 
 const TONE_STYLES: Record<
   PlannedTone,
@@ -97,14 +96,6 @@ const TONE_STYLES: Record<
     card: "border-red-500/30 bg-red-500/8",
     accent: "text-red-200",
   },
-}
-
-function dateToPct(date: string): number {
-  const start = new Date(`${PLANNED_START_ISO}T00:00:00`)
-  const target = new Date(`${date}T00:00:00`)
-  const totalDays = PLANNED_WEEK_COUNT * 7
-  const offsetDays = (target.getTime() - start.getTime()) / DAY_MS
-  return (offsetDays / totalDays) * 100
 }
 
 function weekLeftPct(startWeek: number): number {
@@ -180,6 +171,16 @@ function getTimelineTargetId(item: PlannedPhase | PlannedTrackBar) {
     : getTrackSectionId(item.id)
 }
 
+function getOverdueLeftPct(item: PlannedPhase | PlannedTrackBar) {
+  if (!("overdueStartWeek" in item) || item.overdueStartWeek === undefined) {
+    return null
+  }
+
+  const overdueOffsetWeeks = item.overdueStartWeek - item.startWeek
+
+  return Math.max(0, Math.min(100, (overdueOffsetWeeks / item.spanWeeks) * 100))
+}
+
 function TimelineBar({
   item,
   topPx,
@@ -193,6 +194,8 @@ function TimelineBar({
   const leftPct = weekLeftPct(item.startWeek)
   const widthPct = Math.max(weekWidthPct(item.spanWeeks), 8)
   const isCompact = heightPx <= 52
+  const isActualDelivery = item.track.startsWith("actual-")
+  const overdueLeftPct = getOverdueLeftPct(item)
   const showBadge = Boolean(item.badge) && !isCompact
   const targetId = getTimelineTargetId(item)
   return (
@@ -200,7 +203,7 @@ function TimelineBar({
       href={`#${targetId}`}
       className={`absolute overflow-hidden rounded-xl shadow-[0_10px_24px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm transition-[transform,filter,box-shadow] duration-150 hover:-translate-y-0.5 hover:brightness-125 hover:saturate-140 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.1)] focus:outline-none focus:ring-2 focus:ring-white/30 ${tone.bar} ${
         isCompact ? "px-4 py-1.5" : "px-3 py-2"
-      }`}
+      } ${isActualDelivery ? "flex items-center" : ""}`}
       style={{
         left: `calc(${leftPct}% + ${TIMELINE_BAR_GAP_PX / 2}px)`,
         width: `calc(${widthPct}% - ${TIMELINE_BAR_GAP_PX}px)`,
@@ -210,6 +213,20 @@ function TimelineBar({
       aria-label={`Jump to ${item.title} details`}
     >
       <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-white/6" />
+      {overdueLeftPct !== null && (
+        <div
+          className="pointer-events-none absolute top-0 right-0 bottom-0"
+          style={{
+            left: `${overdueLeftPct}%`,
+            backgroundImage:
+              "repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 5px)",
+          }}
+        >
+          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-semibold tracking-[0.18em] whitespace-nowrap text-white/45">
+            DELAYED
+          </span>
+        </div>
+      )}
       {showBadge && (
         <div className="flex items-center gap-2">
           <span
@@ -220,61 +237,26 @@ function TimelineBar({
         </div>
       )}
       <div
-        className={`truncate font-semibold text-white ${
-          isCompact ? "text-[13px] leading-4" : "mt-1 text-sm leading-5"
+        className={`relative z-10 truncate font-semibold text-white ${
+          isCompact || isActualDelivery
+            ? "text-[13px] leading-4"
+            : "mt-1 text-sm leading-5"
         }`}
       >
         {item.title}
       </div>
-      <div
-        className={`text-stone-300 ${
-          isCompact
-            ? "mt-0.5 line-clamp-2 text-[10px] leading-3.5"
-            : "line-clamp-2 text-[11px] leading-4"
-        }`}
-      >
-        {item.summary}
-      </div>
+      {!isActualDelivery && (
+        <div
+          className={`relative z-10 text-stone-300 ${
+            isCompact
+              ? "mt-0.5 line-clamp-2 text-[10px] leading-3.5"
+              : "line-clamp-2 text-[11px] leading-4"
+          }`}
+        >
+          {item.summary}
+        </div>
+      )}
     </a>
-  )
-}
-
-function MilestoneMarker({ milestone }: { milestone: PlannedMilestone }) {
-  return (
-    <div className="group relative">
-      <div
-        className="pointer-events-auto whitespace-nowrap rounded bg-red-500 px-1 py-px text-[9px] font-medium text-white"
-        tabIndex={0}
-      >
-        {milestone.label}
-      </div>
-      <div className="pointer-events-none absolute left-1/2 top-14 z-40 hidden w-72 -translate-x-1/2 rounded-xl border border-stone-700 bg-stone-950/96 p-3 text-left shadow-2xl group-hover:block group-focus-within:block">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">
-          {milestone.dateLabel}
-        </div>
-        <div className="mt-2 text-sm font-semibold text-white">
-          {milestone.label}
-        </div>
-        <p className="mt-2 text-sm leading-relaxed text-stone-300">
-          {milestone.description}
-        </p>
-        {milestone.items && milestone.items.length > 0 && (
-          <>
-            <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
-              Show only
-            </div>
-            <ul className="mt-2 space-y-1.5 text-sm text-stone-300">
-              {milestone.items.map((item) => (
-                <li key={`${milestone.id}-${item}`}>- {item}</li>
-              ))}
-            </ul>
-          </>
-        )}
-        {milestone.quote && (
-          <div className="mt-3 text-sm text-rose-100">"{milestone.quote}"</div>
-        )}
-      </div>
-    </div>
   )
 }
 
@@ -298,8 +280,13 @@ function TrackRow({
         bars: getBarsForTrackIds(sublane.trackIds),
       }))
     : [{ id: row.id, bars: getBarsForTrackIds(row.trackIds) }]
+  const isActualDeliveryRow = row.id === "delivery-actual"
   const rowHeightPx =
-    lanes.length > 1 ? STACKED_TRACK_ROW_HEIGHT_PX : TRACK_ROW_HEIGHT_PX
+    lanes.length > 1
+      ? isActualDeliveryRow
+        ? ACTUAL_DELIVERY_ROW_HEIGHT_PX
+        : STACKED_TRACK_ROW_HEIGHT_PX
+      : TRACK_ROW_HEIGHT_PX
   const laneHeightPx =
     (rowHeightPx -
       TRACK_ROW_VERTICAL_INSET_PX * 2 -
@@ -316,13 +303,16 @@ function TrackRow({
       <div className="flex items-center gap-3 px-4 py-4">
         <div>
           <div className="text-sm font-semibold text-white">{row.label}</div>
-          <div className="text-xs text-stone-500">{row.description}</div>
+          {row.description && (
+            <div className="text-xs text-stone-500">{row.description}</div>
+          )}
         </div>
       </div>
       <div className="relative" style={{ height: `${rowHeightPx}px` }}>
         <div className="absolute inset-0">{renderWeekGuides()}</div>
         <div className="absolute top-0 right-0 bottom-0 border-r border-stone-800" />
         {lanes.length > 1 &&
+          !isActualDeliveryRow &&
           lanes.slice(0, -1).map((lane, index) => (
             <div
               key={`${row.id}-${lane.id}-divider`}
@@ -479,24 +469,6 @@ export default function PlannedRoadmapTimeline() {
                     />
                   </div>
                 )}
-                {PLANNED_MILESTONES.map((milestone) => (
-                  <div
-                    key={`header-${milestone.id}`}
-                    className="absolute inset-y-0 z-20 w-px"
-                    style={{ left: `${dateToPct(milestone.date)}%` }}
-                  >
-                    <div
-                      className="absolute left-1/2 w-px -translate-x-1/2 bg-red-500/70"
-                      style={{
-                        top: `${TIMELINE_HEADER_MARKER_BAND_PX - 2}px`,
-                        bottom: "0px",
-                      }}
-                    />
-                    <div className="absolute left-1/2 top-0 -translate-x-1/2">
-                      <MilestoneMarker milestone={milestone} />
-                    </div>
-                  </div>
-                ))}
               </div>
 
               <div

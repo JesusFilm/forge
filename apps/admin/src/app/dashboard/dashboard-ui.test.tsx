@@ -117,11 +117,17 @@ vi.mock("@/app/dashboard/live-data", () => ({
         slug: "neon-genesis-the-digital-divide",
         label: "COLLECTION",
         labelLabel: "Collection",
+        childCount: 2,
+        isCollectionTarget: true,
         sourceLabel: "Mux",
         sourceTone: "info",
         dubs: "3 dubs · EN, ES, FR",
         dubCount: 3,
-        dubLanguages: ["EN", "ES", "FR"],
+        dubLanguages: [
+          { code: "EN", flagUrl: "https://flags.example.com/us.webp" },
+          { code: "ES", flagUrl: "https://flags.example.com/es.webp" },
+          { code: "FR", flagUrl: null },
+        ],
         dubOverflowCount: 0,
         dubCoveragePercent: 1,
         updated: "10/24/2023, 14:02",
@@ -140,6 +146,8 @@ vi.mock("@/app/dashboard/live-data", () => ({
         slug: "no-public-link",
         label: null,
         labelLabel: null,
+        childCount: 0,
+        isCollectionTarget: false,
         sourceLabel: "Internal",
         sourceTone: "muted",
         dubs: "No dubs",
@@ -167,7 +175,13 @@ vi.mock("@/app/dashboard/live-data", () => ({
       rangeStart: 31,
       rangeEnd: 60,
     },
+    languageOptions: [
+      { label: "English", value: "english" },
+      { label: "Spanish", value: "spanish" },
+    ],
+    collectionSummary: null,
   })),
+  loadVideoLibraryDetail: vi.fn(async () => null),
 }))
 
 vi.mock("@/app/dashboard/ops-data", () => ({
@@ -373,16 +387,82 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       { label: "Countries", value: "2", footer: "ISO_MAPPED" },
       { label: "Locales In Use", value: "2", footer: "CONTENT_ROWS" },
     ],
-    rows: [
+    diagnosticRows: [
       {
-        key: "lang1",
-        title: "en",
-        detail: "slug en",
-        statusLabel: "Reference",
-        statusTone: "muted",
-        meta: "10/24/2023, 14:02",
+        id: "lang1",
+        coreId: "529",
+        source: "CORE",
+        title: "English",
+        subtitle: "en / eng / english",
+        codeLabel: "en / eng / english",
+        bcp47: "en",
+        iso3: "eng",
+        slug: "english",
+        statusLabel: "Linked",
+        statusTone: "success",
+        syncLabel: "Core synced",
+        syncTone: "success",
+        names: [{ locale: "en", value: "English", primary: true }],
+        countryPreviews: [
+          {
+            id: "cl1",
+            coreId: "US",
+            label: "United States",
+            speakers: "270M",
+            primary: true,
+            suggested: true,
+            order: 1,
+          },
+        ],
+        counts: {
+          countryLanguages: 1,
+          videoDubs: 2,
+          videoSubtitles: 4,
+          studyQuestions: 5,
+          primaryVideos: 6,
+          totalContentLinks: 17,
+        },
+        audioPreview: {
+          available: true,
+          value: "https://cdn.example.com/en.mp3",
+          duration: "12s",
+          size: "2.0 KB",
+          bitrate: "128 kbps",
+          codec: "mp3",
+        },
+        timestamps: {
+          createdAt: "10/23/2023, 14:02",
+          createdAtIso: "2023-10-23T14:02:00.000Z",
+          updatedAt: "10/24/2023, 14:02",
+          updatedAtIso: "2023-10-24T14:02:00.000Z",
+          syncedAt: "10/24/2023, 14:02",
+          syncedAtIso: "2023-10-24T14:02:00.000Z",
+        },
+        flags: {
+          linked: true,
+          referenceOnly: false,
+          missingMetadata: false,
+          countryLinked: true,
+          hasDubs: true,
+          hasSubtitles: true,
+          hasStudyQuestions: true,
+          primaryVideoLanguage: true,
+          hasAudioPreview: true,
+          coreSynced: true,
+          syncMissing: false,
+          updatedAfterSync: false,
+          nonCoreSource: false,
+        },
+        searchText:
+          "lang1 529 core english en eng english linked core synced united states",
       },
     ],
+    diagnostics: {
+      softDeletedLanguages: 0,
+      lastSyncedAt: "10/24/2023, 14:02",
+      lastSyncedAtIso: "2023-10-24T14:02:00.000Z",
+      lastSyncStats: [{ key: "updated", value: "1" }],
+    },
     insights: [
       { label: "Locale Footprint", value: "2", detail: "detail" },
       { label: "Language Rows", value: "2", detail: "detail" },
@@ -462,7 +542,10 @@ vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
 }))
 
 import DashboardPage from "./page"
-import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
+import {
+  loadVideoLibraryDetail,
+  loadVideoLibraryPage,
+} from "@/app/dashboard/live-data"
 import SystemStatusPage from "./system-status/page"
 import ExperiencesPage from "./experiences/page"
 import VideosPage from "./videos/page"
@@ -567,6 +650,7 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("95")
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
     expect(html).toContain(uiMessages.pages.videos.actions.primaryUnavailable)
+    expect(html).toContain("grid-cols-[minmax(0,1fr)_auto]")
     expect(html).toMatch(
       /<button(?=[^>]*aria-disabled="true")(?=[^>]*title="Manual video creation is not available yet.")/,
     )
@@ -579,25 +663,54 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain(uiMessages.pages.videos.infoStrip.items[0])
     expect(html).not.toContain(uiMessages.pages.videos.summary.total)
     expect(html).not.toContain(uiMessages.pages.videos.signals.title)
+    expect(html).toContain("overflow-x-auto")
+    expect(html).not.toContain("max-w-[1720px]")
+    expect(html).not.toContain("h-[62px]")
+    expect(html).not.toContain("minmax(430px")
     expect(html).not.toContain(uiMessages.common.operatorNotes)
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
-      { page: 2, query: "mux" },
+      {
+        category: "all",
+        collection: "",
+        language: "",
+        page: 2,
+        query: "mux",
+        sort: "recent",
+      },
     )
     expect(html).toContain(uiMessages.pages.videos.search.label)
     expect(html).toContain(uiMessages.pages.videos.search.placeholder)
     expect(html).toContain('name="q"')
+    expect(html).toContain('name="type"')
+    expect(html).toContain('name="language"')
+    expect(html).toContain('name="sort"')
     expect(html).toContain('value="mux"')
     expect(html).toContain("Filtered by &quot;mux&quot;")
+    expect(html).toContain("All languages")
+    expect(html).toContain('role="combobox"')
+    expect(html).toContain('aria-label="Filter by dubbed language"')
+    expect(html).toContain(uiMessages.pages.videos.filters.ready)
+    expect(html).toContain(uiMessages.pages.videos.sort.options.recent)
+    expect(html).toContain(uiMessages.pages.videos.sort.options.oldest)
     expect(html).toContain('href="/dashboard/videos?q=mux"')
     expect(html).toContain('href="/dashboard/videos?page=3&amp;q=mux"')
+    expect(html).toContain(
+      'href="/dashboard/videos?q=mux&amp;collection=neon-genesis-the-digital-divide"',
+    )
+    expect(html).toContain(
+      'href="/dashboard/videos?page=2&amp;q=mux&amp;video=no-public-link"',
+    )
     expect(html).toContain("COLLECTION")
     expect(html).toContain("Mux source")
     expect(html).toContain("Internal source")
     expect(html).toContain("languages dubbed")
+    expect(html).toContain("text-[18px] font-semibold leading-6")
     expect(html).toContain("EN")
     expect(html).toContain("ES")
     expect(html).toContain("FR")
+    expect(html).toContain("https://flags.example.com/us.webp")
+    expect(html).toContain("https://flags.example.com/es.webp")
     expect(html).toContain("https://images.example.com/neon.jpg")
     expect(html).toContain("3 years ago")
     expect(html).toContain("10/24/2023")
@@ -636,6 +749,8 @@ describe("dashboard UI routes", () => {
         rangeStart: 0,
         rangeEnd: 0,
       },
+      languageOptions: [],
+      collectionSummary: null,
     })
 
     const html = await htmlFrom(
@@ -644,11 +759,270 @@ describe("dashboard UI routes", () => {
 
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
-      { page: 1, query: "does-not-exist" },
+      {
+        category: "all",
+        collection: "",
+        language: "",
+        page: 1,
+        query: "does-not-exist",
+        sort: "recent",
+      },
     )
     expect(html).toContain(uiMessages.pages.videos.table.emptySearch)
     expect(html).not.toContain(uiMessages.pages.videos.table.empty)
     expect(html).toContain('href="/dashboard/videos"')
+  })
+
+  it("preserves video type, language, and sort state in loader calls and links", async () => {
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          language: "english",
+          page: "2",
+          q: "Jesus",
+          sort: "created",
+          type: "features",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      {
+        category: "features",
+        collection: "",
+        language: "english",
+        page: 2,
+        query: "Jesus",
+        sort: "created",
+      },
+    )
+    expect(html).toContain('value="features" selected=""')
+    expect(html).toContain('type="hidden" name="language" value="english"')
+    expect(html).toContain("English")
+    expect(html).toContain('value="created" selected=""')
+    expect(html).toContain(
+      'href="/dashboard/videos?type=features&amp;language=english&amp;sort=created"',
+    )
+    expect(html).toContain(
+      'href="/dashboard/videos?page=3&amp;q=Jesus&amp;type=features&amp;language=english&amp;sort=created"',
+    )
+  })
+
+  it("resets type state when drilling into a collection row", async () => {
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          q: "Jesus",
+          type: "collections",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      {
+        category: "collections",
+        collection: "",
+        language: "",
+        page: 1,
+        query: "Jesus",
+        sort: "recent",
+      },
+    )
+    expect(html).toContain(
+      'href="/dashboard/videos?q=Jesus&amp;collection=neon-genesis-the-digital-divide"',
+    )
+    expect(html).not.toContain(
+      'href="/dashboard/videos?q=Jesus&amp;type=collections&amp;collection=neon-genesis-the-digital-divide"',
+    )
+  })
+
+  it("renders URL-backed selected video as a standalone detail page", async () => {
+    vi.mocked(loadVideoLibraryPage).mockClear()
+    vi.mocked(loadVideoLibraryDetail).mockClear()
+    vi.mocked(loadVideoLibraryDetail).mockResolvedValueOnce({
+      key: "vid_2",
+      title: "No Public Link",
+      description: "Known metadata for this video",
+      previewImageUrl: "https://images.example.com/preview.jpg",
+      label: "Video",
+      source: "Internal",
+      duration: "--:--",
+      muxPlayerUrl: "https://player.mux.com/playback-123",
+      visitorUrl: null,
+      identity: [{ label: "Slug", value: "no-public-link" }],
+      status: [{ label: "Locked", value: "No" }],
+      timestamps: [{ label: "Updated at", value: "10/24/2023, 14:03" }],
+      localizedContent: {
+        title: "Localized Content",
+        count: 1,
+        empty: "No localized metadata",
+        items: [
+          {
+            key: "locale-1",
+            title: "No Public Link",
+            meta: "en / DRAFT",
+            detail: "Known metadata for this video",
+          },
+        ],
+      },
+      dubs: {
+        title: "Dubs",
+        count: 1,
+        empty: "No dubs",
+        items: [
+          {
+            key: "dub-1",
+            title: "French",
+            meta: "Published / Burned in",
+            detail: "core-dub-1 / https://stream.mux.com/playback-123.m3u8",
+            detailHref: "https://stream.mux.com/playback-123.m3u8",
+            flagUrl: "https://flags.example.com/fr.webp",
+          },
+        ],
+      },
+      images: {
+        title: "Images",
+        count: 1,
+        empty: "No images",
+        items: [
+          {
+            key: "image-1",
+            title: "Image",
+            meta: "hd",
+            detail: "https://images.example.com/detail.jpg",
+            imageUrl: "https://images.example.com/detail.jpg",
+          },
+        ],
+      },
+      subtitles: {
+        title: "Subtitles",
+        count: 0,
+        empty: "No subtitles",
+        items: [],
+      },
+      studyQuestions: {
+        title: "Study Questions",
+        count: 0,
+        empty: "No study questions",
+        items: [],
+      },
+      bibleCitations: {
+        title: "Bible Citations",
+        count: 1,
+        empty: "No Bible citations",
+        items: [
+          {
+            key: "citation-1",
+            title: "Romans 5:8",
+            meta: "Rom / Order 1",
+            detail: null,
+            titleHref: "https://www.bible.com/bible/1/ROM.5.8.KJV",
+          },
+        ],
+      },
+      keywords: {
+        title: "Keywords",
+        count: 0,
+        empty: "No keywords",
+        items: [],
+      },
+      parents: {
+        title: "Parent Collections",
+        count: 1,
+        empty: "No parent collections",
+        items: [
+          {
+            key: "parent-1",
+            title: "The Story",
+            meta: "the-story / Collection",
+            detail: "core-parent",
+            href: "/dashboard/videos?collection=the-story",
+          },
+        ],
+      },
+      children: {
+        title: "Child Videos",
+        count: 0,
+        empty: "No child videos",
+        items: [],
+      },
+      technical: {
+        title: "Technical Summaries",
+        count: 0,
+        empty: "No scene or transcript summaries",
+        items: [],
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          collection: "the-story",
+          q: "Jesus",
+          video: "no-public-link",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryDetail)).toHaveBeenCalledWith(
+      "no-public-link",
+    )
+    expect(vi.mocked(loadVideoLibraryPage)).not.toHaveBeenCalled()
+    expect(html).not.toContain('role="dialog"')
+    expect(html).not.toContain(uiMessages.pages.videos.collection.title)
+    expect(html).toContain(uiMessages.pages.videos.detail.eyebrow)
+    expect(html).toContain(uiMessages.pages.videos.detail.close)
+    expect(html).toContain("Known metadata for this video")
+    expect(html).toContain("https://images.example.com/preview.jpg")
+    expect(html).toContain('href="https://player.mux.com/playback-123"')
+    expect(html).toContain('title="Open Mux player"')
+    expect(html).toContain('href="https://stream.mux.com/playback-123.m3u8"')
+    expect(html).toContain('title="Open stream URL"')
+    expect(html).toContain('href="https://www.bible.com/bible/1/ROM.5.8.KJV"')
+    expect(html).toContain(
+      'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
+    )
+    expect(html).toContain('href="/dashboard/videos?collection=the-story"')
+    expect(html).toContain("https://flags.example.com/fr.webp")
+    expect(html).toContain("https://images.example.com/detail.jpg")
+    expect(html).toMatch(
+      /<img(?=[^>]*src="https:\/\/images\.example\.com\/detail\.jpg")(?=[^>]*loading="lazy")(?=[^>]*decoding="async")/,
+    )
+  })
+
+  it("falls back to the list when selected video detail is stale", async () => {
+    vi.mocked(loadVideoLibraryPage).mockClear()
+    vi.mocked(loadVideoLibraryDetail).mockClear()
+    vi.mocked(loadVideoLibraryDetail).mockResolvedValueOnce(null)
+
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          collection: "the-story",
+          q: "Jesus",
+          video: "missing-video",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryDetail)).toHaveBeenCalledWith(
+      "missing-video",
+    )
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      {
+        category: "all",
+        collection: "the-story",
+        language: "",
+        page: 1,
+        query: "Jesus",
+        sort: "recent",
+      },
+    )
+    expect(html).toContain(uiMessages.pages.videos.title)
+    expect(html).not.toContain('role="dialog"')
   })
 
   it("renders first-page pagination with previous disabled and next linked", async () => {
@@ -665,6 +1039,8 @@ describe("dashboard UI routes", () => {
         rangeStart: 1,
         rangeEnd: 30,
       },
+      languageOptions: [],
+      collectionSummary: null,
     })
 
     const html = await htmlFrom(
@@ -694,6 +1070,8 @@ describe("dashboard UI routes", () => {
         rangeStart: 91,
         rangeEnd: 95,
       },
+      languageOptions: [],
+      collectionSummary: null,
     })
 
     const html = await htmlFrom(

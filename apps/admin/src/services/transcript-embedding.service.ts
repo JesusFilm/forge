@@ -49,15 +49,16 @@ import {
 export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS = 1536
 
 /**
- * Admin's expected embedding model. Mastra may report the
- * provider-prefixed name (`openai/text-embedding-3-small`) or the bare
- * OpenAI name; both are accepted. A mismatch is logged as a warning but
- * does not reject the payload here; intentional model replacement must
- * use the ingest service's explicit generation modes.
+ * Admin's expected embedding model. Mastra may report the legacy
+ * provider-prefixed OpenAI name, the bare OpenAI name, or the AI Gateway
+ * request model. A mismatch is logged as a warning but does not reject
+ * the payload here; intentional model replacement must use the ingest
+ * service's explicit generation modes.
  */
 const ACCEPTED_MODEL_STAMPS = new Set<string>([
   "openai/text-embedding-3-small",
   "text-embedding-3-small",
+  "embeddings",
 ])
 
 // Precomputed list form for the drift-warning log payload. Avoids
@@ -95,6 +96,9 @@ export type TranscriptEmbeddingGenerationMode =
   | "model-upgrade"
 
 export type TranscriptEmbeddingProvenance = {
+  embeddingProvider?: string
+  embeddingNativeDimensions?: number
+  embeddingTransformVersion?: string
   sourceArtifactKey?: string
   sourceContentHash?: string
   sourceProvider?: string
@@ -398,6 +402,21 @@ export async function indexEditionTranscript(
             language: input.language,
             model: artifact.model,
             dimensions: artifact.dimensions,
+            ...(input.provenance?.embeddingProvider
+              ? { embeddingProvider: input.provenance.embeddingProvider }
+              : {}),
+            ...(input.provenance?.embeddingNativeDimensions
+              ? {
+                  embeddingNativeDimensions:
+                    input.provenance.embeddingNativeDimensions,
+                }
+              : {}),
+            ...(input.provenance?.embeddingTransformVersion
+              ? {
+                  embeddingTransformVersion:
+                    input.provenance.embeddingTransformVersion,
+                }
+              : {}),
             chunkingType: artifact.metadata.chunkingStrategy.type,
             maxChunkTokens: artifact.metadata.chunkingStrategy.maxChunkTokens,
             overlapTokens: artifact.metadata.chunkingStrategy.overlapTokens,
@@ -438,6 +457,11 @@ export async function indexEditionTranscript(
             videoId: input.videoId,
             model: artifact.model,
             dimensions: artifact.dimensions,
+            embeddingProvider: input.provenance?.embeddingProvider ?? null,
+            embeddingNativeDimensions:
+              input.provenance?.embeddingNativeDimensions ?? null,
+            embeddingTransformVersion:
+              input.provenance?.embeddingTransformVersion ?? null,
             chunkingType: artifact.metadata.chunkingStrategy.type,
             maxChunkTokens: artifact.metadata.chunkingStrategy.maxChunkTokens,
             overlapTokens: artifact.metadata.chunkingStrategy.overlapTokens,

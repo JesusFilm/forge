@@ -1442,35 +1442,38 @@ model VideoScene {
 /// `schema.test.ts` asserts no embed/vector/similarity field leaks). Search
 /// uses raw SQL with `<=>` cosine distance + the partial HNSW index.
 model VideoSceneLocale {
-  id                    String                       @id @default(cuid())
-  videoSceneId          String                       @map("video_scene_id")
-  videoScene            VideoScene                   @relation(fields: [videoSceneId], references: [id], onDelete: Cascade)
+  id                        String                       @id @default(cuid())
+  videoSceneId              String                       @map("video_scene_id")
+  videoScene                VideoScene                   @relation(fields: [videoSceneId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
-  locale                String
+  locale                    String
   /// The exact text that was embedded. Stored so a future model upgrade can
   /// re-embed without re-reading manager's S3 artifact.
-  sourceText            String                       @map("source_text")
+  sourceText                String                       @map("source_text")
   /// Scene description from manager's multimodal pipeline (per-language).
-  description           String
-  themes                String[]                     @default([])
-  bibleVerses           String[]                     @default([]) @map("bible_verses")
-  demographics          String[]                     @default([])
-  spiritualContext      String[]                     @default([]) @map("spiritual_context")
-  embedding             Unsupported("vector(1536)")?
-  model                 String                       @default("text-embedding-3-small")
-  dimensions            Int                          @default(1536)
+  description               String
+  themes                    String[]                     @default([])
+  bibleVerses               String[]                     @default([]) @map("bible_verses")
+  demographics              String[]                     @default([])
+  spiritualContext          String[]                     @default([]) @map("spiritual_context")
+  embedding                 Unsupported("vector(1536)")?
+  model                     String                       @default("text-embedding-3-small")
+  dimensions                Int                          @default(1536)
+  embeddingProvider         String?                      @map("embedding_provider")
+  embeddingNativeDimensions Int?                         @map("embedding_native_dimensions")
+  embeddingTransformVersion String?                      @map("embedding_transform_version")
   /// Compact provenance for Mastra-written scene embeddings. Nullable so
   /// legacy rows written before the Mastra migration remain searchable.
-  sourceArtifactKey     String?                      @map("source_artifact_key")
-  sourceArtifactVersion String?                      @map("source_artifact_version")
-  sourceContentHash     String?                      @map("source_content_hash")
-  sourceProvider        String?                      @map("source_provider")
-  sourceGeneratedAt     DateTime?                    @map("source_generated_at")
-  generationMode        String?                      @map("generation_mode")
-  mastraRunId           String?                      @map("mastra_run_id")
-  generatedAt           DateTime?                    @map("generated_at")
-  createdAt             DateTime                     @default(now()) @map("created_at")
-  updatedAt             DateTime                     @updatedAt @map("updated_at")
+  sourceArtifactKey         String?                      @map("source_artifact_key")
+  sourceArtifactVersion     String?                      @map("source_artifact_version")
+  sourceContentHash         String?                      @map("source_content_hash")
+  sourceProvider            String?                      @map("source_provider")
+  sourceGeneratedAt         DateTime?                    @map("source_generated_at")
+  generationMode            String?                      @map("generation_mode")
+  mastraRunId               String?                      @map("mastra_run_id")
+  generatedAt               DateTime?                    @map("generated_at")
+  createdAt                 DateTime                     @default(now()) @map("created_at")
+  updatedAt                 DateTime                     @updatedAt @map("updated_at")
 
   @@unique([videoSceneId, locale])
   @@index([locale])
@@ -1549,6 +1552,8 @@ model ExperienceLocale {
   embeddingModel             String?                      @map("embedding_model")
   embeddingDimensions        Int?                         @map("embedding_dimensions")
   embeddingProvider          String?                      @map("embedding_provider")
+  embeddingNativeDimensions  Int?                         @map("embedding_native_dimensions")
+  embeddingTransformVersion  String?                      @map("embedding_transform_version")
   embeddingGenerationMode    String?                      @map("embedding_generation_mode")
   embeddingMastraRunId       String?                      @map("embedding_mastra_run_id")
   embeddingGeneratedAt       DateTime?                    @map("embedding_generated_at")
@@ -1575,39 +1580,42 @@ model ExperienceLocale {
 /// compact provenance so model upgrades and repair runs can be audited without
 /// reading manager transcript source artifacts back from S3.
 model VideoTranscript {
-  id                String       @id @default(cuid())
-  videoEditionId    String       @map("video_edition_id")
-  videoEdition      VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
+  id                        String       @id @default(cuid())
+  videoEditionId            String       @map("video_edition_id")
+  videoEdition              VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
   /// Denormalized from the edition's parent video for convenience joins.
-  videoId           String       @map("video_id")
-  video             Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId                   String       @map("video_id")
+  video                     Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 language tag of the source transcript.
-  language          String
+  language                  String
   /// Embedding model string as reported by the producing workflow (e.g.
   /// `openai/text-embedding-3-small`). Admin logs a warning on drift;
   /// intentional model replacement must use an explicit ingest mode.
-  model             String
+  model                     String
   /// Dimension count. Hard-guarded to 1536 at read time.
-  dimensions        Int
+  dimensions                Int
+  embeddingProvider         String?      @map("embedding_provider")
+  embeddingNativeDimensions Int?         @map("embedding_native_dimensions")
+  embeddingTransformVersion String?      @map("embedding_transform_version")
   /// Chunking strategy metadata from the producing pipeline.
-  chunkingType      String       @map("chunking_type")
-  maxChunkTokens    Int          @map("max_chunk_tokens")
-  overlapTokens     Int          @map("overlap_tokens")
-  totalChunks       Int          @map("total_chunks")
-  totalTokens       Int          @map("total_tokens")
+  chunkingType              String       @map("chunking_type")
+  maxChunkTokens            Int          @map("max_chunk_tokens")
+  overlapTokens             Int          @map("overlap_tokens")
+  totalChunks               Int          @map("total_chunks")
+  totalTokens               Int          @map("total_tokens")
   /// Artifact's own `generatedAt` timestamp — NOT admin's insert time.
-  generatedAt       DateTime     @map("generated_at")
+  generatedAt               DateTime     @map("generated_at")
   /// Compact provenance for Mastra-written transcript embeddings. Nullable so
   /// legacy rows from the pre-Mastra producer remain readable.
-  sourceArtifactKey String?      @map("source_artifact_key")
-  sourceContentHash String?      @map("source_content_hash")
-  sourceProvider    String?      @map("source_provider")
-  sourceGeneratedAt DateTime?    @map("source_generated_at")
-  generationMode    String?      @map("generation_mode")
-  mastraRunId       String?      @map("mastra_run_id")
-  chunkingVersion   String?      @map("chunking_version")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
+  sourceArtifactKey         String?      @map("source_artifact_key")
+  sourceContentHash         String?      @map("source_content_hash")
+  sourceProvider            String?      @map("source_provider")
+  sourceGeneratedAt         DateTime?    @map("source_generated_at")
+  generationMode            String?      @map("generation_mode")
+  mastraRunId               String?      @map("mastra_run_id")
+  chunkingVersion           String?      @map("chunking_version")
+  createdAt                 DateTime     @default(now()) @map("created_at")
+  updatedAt                 DateTime     @updatedAt @map("updated_at")
 
   chunks VideoTranscriptChunk[]
 
