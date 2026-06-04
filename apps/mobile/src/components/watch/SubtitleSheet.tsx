@@ -215,6 +215,11 @@ export function SubtitleSheetContent({
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
+          // Off by intent: FlashList v2 enables maintainVisibleContentPosition by
+          // default (for chat-like prepend/append lists). Here the data swaps
+          // wholesale as the user types/clears the search, so anchoring makes the
+          // list jump (scroll up, then settle) when the X clears the query.
+          maintainVisibleContentPosition={{ disabled: true }}
           ListHeaderComponent={header}
           contentContainerStyle={{
             paddingHorizontal: HORIZONTAL_PADDING,
