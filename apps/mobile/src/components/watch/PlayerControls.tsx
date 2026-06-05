@@ -94,6 +94,19 @@ export function PlayerControls({
     if (isPlaying) setEnded(false)
   }, [isPlaying])
 
+  // Seed from the live player on (re)mount. The controls unmount when the
+  // chrome hides; without this, re-showing them resets to 0:00 / play because
+  // the fresh component starts at 0 and the poll only runs while playing — so a
+  // paused or ended video would lose its position and the replay state.
+  useEffect(() => {
+    const d = player.duration
+    if (!Number.isFinite(d) || d <= 0) return
+    const t = player.currentTime
+    setCurrentTime(t)
+    setDuration(d)
+    setEnded(!player.playing && t >= d - 0.5)
+  }, [player])
+
   const togglePlayPause = useCallback(() => {
     onInteract?.()
     // Read the live player state, NOT the React `isPlaying` snapshot. A source
