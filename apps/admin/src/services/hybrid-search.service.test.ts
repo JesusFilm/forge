@@ -105,11 +105,14 @@ describe("HybridSearchService", () => {
       locale: "en",
     })
 
-    // All 4 retrievers were invoked with overfetch = DEFAULT_LIMIT * 3 = 60
+    // All 4 retrievers were invoked with overfetch = DEFAULT_LIMIT * 3 = 60.
+    // The default path resolves embeddingSource to "openai" (→ `embedding`
+    // column in the retriever).
     expect(searchVideoSemantic).toHaveBeenCalledWith(mockPrisma, {
       queryEmbedding: "[0.1,0.2,0.3]",
       locale: "en",
       limit: 60,
+      embeddingSource: "openai",
     })
     expect(searchVideoKeyword).toHaveBeenCalledWith(mockPrisma, {
       query: "forgiveness",
@@ -282,6 +285,47 @@ describe("HybridSearchService", () => {
     expect(traced.trace.traceClass).toBe("retrieval_failure")
     expect(traced.trace.failedRetrievers).toEqual(["keyword-video"])
     expect(traced.trace.contributingRetrievers).toEqual(["semantic-video"])
+  })
+
+  describe("embeddingSource threading (U3)", () => {
+    it("defaults to 'openai' for the embedder and semantic retriever when unset", async () => {
+      const embedder = successEmbedder()
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder,
+        logger,
+      })
+
+      await service.search({ query: "test", locale: "en" })
+
+      // Embedder receives the resolved source as its 2nd arg.
+      expect(embedder).toHaveBeenCalledWith("test", "openai")
+      expect(searchVideoSemantic).toHaveBeenCalledWith(
+        mockPrisma,
+        expect.objectContaining({ embeddingSource: "openai" }),
+      )
+    })
+
+    it("threads 'gateway' to both the embedder and the semantic retriever", async () => {
+      const embedder = successEmbedder()
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder,
+        logger,
+      })
+
+      await service.search({
+        query: "test",
+        locale: "en",
+        embeddingSource: "gateway",
+      })
+
+      expect(embedder).toHaveBeenCalledWith("test", "gateway")
+      expect(searchVideoSemantic).toHaveBeenCalledWith(
+        mockPrisma,
+        expect.objectContaining({ embeddingSource: "gateway" }),
+      )
+    })
   })
 
   it("restricts to video corpus when contentTypes=['video']", async () => {

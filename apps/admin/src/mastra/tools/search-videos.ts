@@ -68,6 +68,13 @@ export const searchVideosTool = createTool({
       locale: inputData.locale,
       limit: inputData.limit,
       contentTypes: ["video"],
+      // AI experience-gen searches the Qwen vector space: the query is
+      // embedded via the gateway (Qwen 1536) and matched against the
+      // `embedding_qwen` column — no paid-API dependency. U3 of the
+      // content-embeddings-gateway-migration pilot. Public search omits
+      // this arg and stays on OpenAI + `embedding`. See
+      // docs/plans/2026-06-05-001-feat-content-embeddings-gateway-migration-plan.md.
+      embeddingSource: "gateway",
     })
 
     const videos = response.results

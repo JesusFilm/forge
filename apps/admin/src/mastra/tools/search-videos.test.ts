@@ -82,6 +82,8 @@ describe("searchVideosTool", () => {
       locale: "en",
       limit: 5,
       contentTypes: ["video"],
+      // AI experience-gen opts into the Qwen vector space (U3).
+      embeddingSource: "gateway",
     })
     expect(result.videos).toEqual([
       {
