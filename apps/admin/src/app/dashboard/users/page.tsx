@@ -1,5 +1,4 @@
 import { Shield } from "lucide-react"
-import { revalidatePath } from "next/cache"
 import {
   DashboardPageHeader,
   DataTable,
@@ -9,62 +8,15 @@ import {
 } from "@/components/admin-ui"
 import { requireAdminSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
-import { loadUsersData } from "@/app/dashboard/ops-data"
-import { NotFoundError } from "@/services/errors"
 import {
-  approveUserRole,
-  grantManagerAccess as grantManagerAccessForUser,
-  revokeManagerAccess as revokeManagerAccessForUser,
-} from "@/services/user-access.service"
-
-async function approveUser(formData: FormData) {
-  "use server"
-
-  const user = await requireAdminSession()
-  const id = formData.get("id")
-  const role = formData.get("role")
-
-  if (typeof id !== "string" || (role !== "EDITOR" && role !== "ADMIN")) {
-    return
-  }
-
-  await approveUserRole({ user, targetUserId: id, role })
-  revalidatePath("/dashboard/users")
-}
-
-async function grantManagerAccess(formData: FormData) {
-  "use server"
-
-  const user = await requireAdminSession()
-  const id = formData.get("id")
-  if (typeof id !== "string") return
-
-  try {
-    await grantManagerAccessForUser({ user, targetUserId: id })
-  } catch (error) {
-    if (!(error instanceof NotFoundError)) {
-      throw error
-    }
-  }
-  revalidatePath("/dashboard/users")
-}
-
-async function revokeManagerAccess(formData: FormData) {
-  "use server"
-
-  const user = await requireAdminSession()
-  const id = formData.get("id")
-  if (typeof id !== "string") return
-
-  try {
-    await revokeManagerAccessForUser({ user, targetUserId: id })
-  } catch (error) {
-    if (!(error instanceof NotFoundError)) {
-      throw error
-    }
-  }
-  revalidatePath("/dashboard/users")
-}
+  loadUsersData,
+  type DashboardStatusTone,
+} from "@/app/dashboard/ops-data"
+import {
+  approveUser,
+  grantManagerAccess,
+  revokeManagerAccess,
+} from "@/app/dashboard/users/actions"
 
 export default async function UsersPage() {
   await requireAdminSession()
@@ -143,7 +95,7 @@ export default async function UsersPage() {
                   key={`${row.key}-products`}
                   className="flex min-w-[180px] flex-wrap gap-2"
                 >
-                  {(row.productAccess ?? []).map((access) => (
+                  {row.productAccess.map((access) => (
                     <div
                       key={access.key}
                       className="flex flex-wrap items-center gap-2"
@@ -217,7 +169,7 @@ export default async function UsersPage() {
   )
 }
 
-function statusToneClass(tone: string) {
+function statusToneClass(tone: DashboardStatusTone) {
   if (tone === "success") {
     return "border-[var(--color-success-border)] text-[var(--color-success)]"
   }
@@ -226,6 +178,9 @@ function statusToneClass(tone: string) {
   }
   if (tone === "danger") {
     return "border-[var(--color-danger-border)] text-[var(--color-danger)]"
+  }
+  if (tone === "info") {
+    return "border-[var(--color-info-border)] text-[var(--color-info)]"
   }
   return "border-[var(--color-hairline-strong)] text-[var(--color-text-muted)]"
 }
