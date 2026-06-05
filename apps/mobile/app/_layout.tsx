@@ -19,6 +19,7 @@ let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesPro
 let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCachePersistenceEnabled
 let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
 let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
+let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -45,6 +46,7 @@ try {
   isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
   restoreApolloCache = cachePersistence.restoreApolloCache
   startCachePersistence = cachePersistence.startCachePersistence
+  lockPortrait = require("../src/lib/orientation").lockPortrait
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -164,6 +166,13 @@ export default function RootLayout() {
 
   const clientRef = useRef(getApolloClient())
   const router = useRouter()
+
+  // Lock the whole app to portrait; only the fullscreen video player rotates
+  // (it relaxes the lock on entry and re-asserts it on exit). Fired as early as
+  // the root effect allows so a cold launch held in landscape snaps to portrait.
+  useEffect(() => {
+    void lockPortrait()
+  }, [])
 
   // Opt-in cache persistence: when enabled, restore the persisted snapshot into
   // the cache BEFORE ApolloProvider mounts (so no query races the restore),
