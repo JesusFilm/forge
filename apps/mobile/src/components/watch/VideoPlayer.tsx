@@ -212,6 +212,14 @@ export function VideoPlayer({
     side: SeekSide
     delta: number
   } | null>(null)
+  // A monotonically-bumped signal so PlayerControls can reflect a double-tap
+  // seek in its time label/scrubber immediately — even while paused, when its
+  // own 500ms poll is idle.
+  const [seekSignal, setSeekSignal] = useState<{
+    time: number
+    n: number
+  } | null>(null)
+  const seekNonceRef = useRef(0)
 
   useEffect(() => {
     return () => {
@@ -237,6 +245,8 @@ export function VideoPlayer({
       const target = applySkip(player.currentTime, delta, player.duration)
       if (target == null) return
       player.currentTime = target
+      seekNonceRef.current += 1
+      setSeekSignal({ time: target, n: seekNonceRef.current })
       const side = seekSideForTap(locationX, tapWidthRef.current)
       if (side) showSeekFlash(side, delta)
     },
@@ -372,6 +382,7 @@ export function VideoPlayer({
             fullscreen={fullscreen}
             onFullscreen={onToggleFullscreen}
             onInteract={controls.noteInteraction}
+            seekSignal={seekSignal}
           />
         </Animated.View>
       )}

@@ -18,6 +18,9 @@ type PlayerControlsProps = {
   onFullscreen?: () => void
   /** Called when any control is used, so the auto-hide timer resets (R4). */
   onInteract?: () => void
+  /** A seek performed outside this component (double-tap-the-sides). The bumped
+   *  nonce updates the displayed time immediately, even while paused. */
+  seekSignal?: { time: number; n: number } | null
 }
 
 function formatTime(seconds: number): string {
@@ -31,6 +34,7 @@ export function PlayerControls({
   fullscreen = false,
   onFullscreen,
   onInteract,
+  seekSignal,
 }: PlayerControlsProps) {
   const typography = useTypography()
   const [currentTime, setCurrentTime] = useState(0)
@@ -64,6 +68,12 @@ export function PlayerControls({
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [isPlaying, player])
+
+  // Reflect an external seek (double-tap-the-sides) in the label/scrubber at
+  // once — the poll is idle while paused, so without this the time would lag.
+  useEffect(() => {
+    if (seekSignal) setCurrentTime(seekSignal.time)
+  }, [seekSignal])
 
   const togglePlayPause = useCallback(() => {
     onInteract?.()
