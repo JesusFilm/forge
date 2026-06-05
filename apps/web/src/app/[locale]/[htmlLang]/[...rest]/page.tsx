@@ -8,6 +8,7 @@ import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
+import { WatchHomePage } from "@/components/watch-home/WatchHomePage"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -18,6 +19,7 @@ import {
   resolveWatchPage,
   resolveWatchVideoBySlug,
 } from "@/lib/content"
+import { resolveWatchHomeCarousel } from "@/lib/watch-home-carousel"
 import {
   generateSeriesMetadata,
   getWatchPageMetadata,
@@ -187,6 +189,18 @@ async function getQuestionPanelEnabled(route: string): Promise<boolean> {
   })
 }
 
+async function resolveOptionalWatchHomeCarousel(
+  locale: UiLocale,
+  languageSlug: string,
+) {
+  try {
+    return await resolveWatchHomeCarousel(locale, languageSlug)
+  } catch (error) {
+    console.error("[watch-home] failed to resolve localized carousel", error)
+    return null
+  }
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -276,11 +290,16 @@ async function renderOneSegment(shape: {
   isLanguageHome: boolean
 }) {
   const { slug, locale, isLanguageHome } = shape
-  const result = isLanguageHome
-    ? await resolveWatchPage(locale)
-    : await resolveWatchExperiencePage(locale, slug)
+  const [result, carousel] = await Promise.all([
+    isLanguageHome
+      ? resolveWatchPage(locale)
+      : resolveWatchExperiencePage(locale, slug),
+    isLanguageHome
+      ? resolveOptionalWatchHomeCarousel(locale, slug)
+      : Promise.resolve(null),
+  ])
 
-  if (result.error) {
+  if (result.error && !carousel?.slides.length) {
     if (isWatchPageMissingError(result.error)) {
       if (isLanguageHome) return <ExperienceEmpty />
       notFound()
@@ -295,8 +314,18 @@ async function renderOneSegment(shape: {
   const blocks = (experience?.blocks ?? []).filter(
     (b): b is Section => b !== null,
   )
-  if (!blocks.length) {
+  if (!carousel?.slides.length && !blocks.length) {
     return <ExperienceEmpty />
+  }
+
+  if (carousel?.slides.length) {
+    return (
+      <WatchHomePage
+        carousel={carousel}
+        blocks={blocks}
+        routeVideo={routeVideo}
+      />
+    )
   }
 
   return (

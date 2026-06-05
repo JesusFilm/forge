@@ -144,6 +144,93 @@ const VideoSourceEnum = builder.enumType("VideoSourceHost", {
   } as const,
 })
 
+const VideoListCategoryEnum = builder.enumType("VideoListCategory", {
+  description: "Category filter for the public video list.",
+  values: {
+    ALL: { value: "all" },
+    COLLECTIONS: { value: "collections" },
+    FEATURES: { value: "features" },
+    SHORT_FILMS: { value: "shortFilms" },
+    SERIES: { value: "series" },
+  } as const,
+})
+
+const VideoListSortEnum = builder.enumType("VideoListSort", {
+  description: "Sort order for the public video list.",
+  values: {
+    RECENT: { value: "recent" },
+    OLDEST: { value: "oldest" },
+    CREATED: { value: "created" },
+    CREATED_OLDEST: { value: "createdOldest" },
+  } as const,
+})
+
+function normalizeLanguageFilter(value: string | null | undefined) {
+  return value?.replace(/\s+/g, " ").trim() ?? ""
+}
+
+function containsLanguageFilter(value: string) {
+  return { contains: value, mode: "insensitive" as const }
+}
+
+function videoDubLanguageFilter(
+  rawLanguage: string | null | undefined,
+): Prisma.VideoDubWhereInput | null {
+  const language = normalizeLanguageFilter(rawLanguage)
+  if (!language) return null
+  const text = containsLanguageFilter(language)
+
+  return {
+    language: {
+      is: {
+        deletedAt: null,
+        OR: [
+          { id: text },
+          { coreId: text },
+          { bcp47: text },
+          { iso3: text },
+          { slug: text },
+        ],
+      },
+    },
+  } satisfies Prisma.VideoDubWhereInput
+}
+
+function videoDubsRelationQuery(args: {
+  language?: string | null
+  limit?: number | null
+  playableOnly?: boolean | null
+}) {
+  const filters: Prisma.VideoDubWhereInput[] = [{ deletedAt: null }]
+  const languageFilter = videoDubLanguageFilter(args.language)
+  if (languageFilter) filters.push(languageFilter)
+  if (args.playableOnly === true) {
+    filters.push({
+      published: true,
+      AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+    })
+  }
+
+  const limit =
+    args.limit == null ? null : Math.min(Math.max(args.limit, 0), 50)
+  return {
+    where:
+      filters.length === 1
+        ? filters[0]
+        : ({ AND: filters } satisfies Prisma.VideoDubWhereInput),
+    ...(limit != null ? { take: limit } : {}),
+    ...(limit != null || languageFilter || args.playableOnly === true
+      ? {
+          orderBy: [
+            { duration: "desc" as const },
+            { createdAt: "asc" as const },
+            { id: "asc" as const },
+          ],
+        }
+      : {}),
+  }
+}
+
 /** @classification public-shape */
 builder.prismaObject("VideoOrigin", {
   fields: (t) => ({
@@ -163,7 +250,25 @@ builder.prismaObject("VideoEdition", {
     coreId: t.exposeString("coreId"),
     name: t.exposeString("name"),
     dubs: t.relation("dubs", {
-      query: { where: { deletedAt: null } },
+      args: {
+        language: t.arg.string({
+          required: false,
+          description:
+            "Language identifier matched against dub language id, coreId, slug, bcp47, or iso3.",
+        }),
+        limit: t.arg.int({
+          required: false,
+          description:
+            "Optional upper bound for callers that need one selected playable dub rather than every dub on the video.",
+        }),
+        playableOnly: t.arg.boolean({
+          required: false,
+          defaultValue: false,
+          description:
+            "When true, returns only published dubs with a non-empty HLS URL.",
+        }),
+      },
+      query: (args) => videoDubsRelationQuery(args),
     }),
     subtitles: t.relation("subtitles", {
       query: { where: { deletedAt: null } },
@@ -433,7 +538,25 @@ builder.prismaObject("Video", {
       query: (args, ctx) => videoLocalesFilter(args, ctx.user),
     }),
     dubs: t.relation("dubs", {
-      query: { where: { deletedAt: null } },
+      args: {
+        language: t.arg.string({
+          required: false,
+          description:
+            "Language identifier matched against dub language id, coreId, slug, bcp47, or iso3.",
+        }),
+        limit: t.arg.int({
+          required: false,
+          description:
+            "Optional upper bound for callers that need one selected playable dub rather than every dub on the video.",
+        }),
+        playableOnly: t.arg.boolean({
+          required: false,
+          defaultValue: false,
+          description:
+            "When true, returns only published dubs with a non-empty HLS URL.",
+        }),
+      },
+      query: (args) => videoDubsRelationQuery(args),
     }),
     images: t.relation("images", {
       query: { where: { deletedAt: null } },
@@ -575,14 +698,36 @@ builder.queryFields((t) => ({
   videos: t.prismaField({
     type: ["Video"],
     authScopes: { public: true },
-    description: "List active Videos ordered by most recent Core update.",
+    description:
+      "List active Videos ordered by most recent Core update. Optional filters mirror VideoService.list and are public so consumer apps can assemble admin-backed watch surfaces without privileged endpoints.",
     args: {
+      category: t.arg({ type: VideoListCategoryEnum, required: false }),
+      collection: t.arg.string({
+        required: false,
+        description:
+          "Collection identifier matched against parent video id, coreId, or slug.",
+      }),
+      language: t.arg.string({
+        required: false,
+        description:
+          "Language identifier matched against playable dub language id, coreId, slug, bcp47, or name.",
+      }),
       limit: t.arg.int({ required: false, defaultValue: 50 }),
       offset: t.arg.int({ required: false, defaultValue: 0 }),
+      search: t.arg.string({ required: false }),
+      sort: t.arg({ type: VideoListSortEnum, required: false }),
     },
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.list({
-        input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
+        input: {
+          ...(args.category != null ? { category: args.category } : {}),
+          ...(args.collection != null ? { collection: args.collection } : {}),
+          ...(args.language != null ? { language: args.language } : {}),
+          limit: args.limit ?? 50,
+          offset: args.offset ?? 0,
+          ...(args.search != null ? { search: args.search } : {}),
+          ...(args.sort != null ? { sort: args.sort } : {}),
+        },
         query,
       }),
   }),

@@ -1010,8 +1010,24 @@ type Query {
   Fetch a single VideoDub by id. Lets consumers lazily load one dub's downloads + subtitles (via `videoEdition { subtitles }`) without projecting every dub — mobile's watch screen uses this so switching language/opening the download or subtitle sheet fetches just the active dub, not all ~2,200. Visibility mirrors `videoBySlug { dubs }`: the dub and its parent video must both be non-deleted.
   """
   videoDub(id: ID!): VideoDub
-  """List active Videos ordered by most recent Core update."""
-  videos(limit: Int = 50, offset: Int = 0): [Video!]
+  """
+  List active Videos ordered by most recent Core update. Optional filters mirror VideoService.list and are public so consumer apps can assemble admin-backed watch surfaces without privileged endpoints.
+  """
+  videos(
+    category: VideoListCategory
+    """
+    Collection identifier matched against parent video id, coreId, or slug.
+    """
+    collection: String
+    """
+    Language identifier matched against playable dub language id, coreId, slug, bcp47, or name.
+    """
+    language: String
+    limit: Int = 50
+    offset: Int = 0
+    search: String
+    sort: VideoListSort
+  ): [Video!]
   """
   Batched coreId → dispatch-fields lookup for manager's admin-trigger enrichment endpoints (feat-125). Replaces the Strapi `videos(filters: { coreId: { in } })` call. Gated by `read:video-metadata`; manager's `ADMIN_EMBED_TRIGGER_API_KEY` bearer satisfies it via the WORKFLOW_TRIGGER allowlist. Max 100 coreIds per call (matches manager's receiver-side cap).
   """
@@ -1152,7 +1168,18 @@ type Video {
   """
   children: [VideoRelation!]
   coreId: String
-  dubs: [VideoDub!]
+  dubs(
+    """
+    Language identifier matched against dub language id, coreId, slug, bcp47, or iso3.
+    """
+    language: String
+    """
+    Optional upper bound for callers that need one selected playable dub rather than every dub on the video.
+    """
+    limit: Int
+    """When true, returns only published dubs with a non-empty HLS URL."""
+    playableOnly: Boolean = false
+  ): [VideoDub!]
   """
   Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Mirrors HybridSearchResult.durationSeconds — picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.
   """
@@ -1265,7 +1292,18 @@ A specific cut of a Video. Subtitles + dubs attach here because timecodes and au
 """
 type VideoEdition {
   coreId: String
-  dubs: [VideoDub!]
+  dubs(
+    """
+    Language identifier matched against dub language id, coreId, slug, bcp47, or iso3.
+    """
+    language: String
+    """
+    Optional upper bound for callers that need one selected playable dub rather than every dub on the video.
+    """
+    limit: Int
+    """When true, returns only published dubs with a non-empty HLS URL."""
+    playableOnly: Boolean = false
+  ): [VideoDub!]
   id: ID
   name: String
   subtitles: [VideoSubtitle!]
@@ -1359,6 +1397,23 @@ enum VideoLabel {
   SERIES
   SHORT_FILM
   TRAILER
+}
+
+"""Category filter for the public video list."""
+enum VideoListCategory {
+  ALL
+  COLLECTIONS
+  FEATURES
+  SERIES
+  SHORT_FILMS
+}
+
+"""Sort order for the public video list."""
+enum VideoListSort {
+  CREATED
+  CREATED_OLDEST
+  OLDEST
+  RECENT
 }
 
 """Per-locale title/description/snippet/imageAlt for a Video."""
