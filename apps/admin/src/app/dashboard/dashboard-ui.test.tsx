@@ -347,6 +347,33 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         statusLabel: "ADMIN",
         statusTone: "success",
         meta: "10/24/2023, 14:02",
+        productAccess: [
+          {
+            key: "manager",
+            label: "Manager",
+            active: true,
+            statusLabel: "Enabled",
+            statusTone: "success",
+            roleLabel: "OPERATOR",
+          },
+        ],
+      },
+      {
+        key: "user2",
+        title: "viewer@example.com",
+        detail: "auth_user_456",
+        statusLabel: "VIEWER",
+        statusTone: "warning",
+        meta: "10/24/2023, 14:03",
+        productAccess: [
+          {
+            key: "manager",
+            label: "Manager",
+            active: false,
+            statusLabel: "Disabled",
+            statusTone: "muted",
+          },
+        ],
       },
     ],
     insights: [
@@ -1268,5 +1295,15 @@ describe("dashboard UI routes", () => {
     expect(pages[6].html).toContain("Media Library")
     expect(pages[6].html).toContain("Library")
     expect(pages[6].html).toContain("Campaigns")
+  })
+
+  it("renders user product access controls", async () => {
+    const html = await htmlFrom(UsersPage())
+
+    expect(html).toContain("Product Access")
+    expect(html).toContain("Manager: Enabled / OPERATOR")
+    expect(html).toContain("Revoke Manager")
+    expect(html).toContain("Manager: Disabled")
+    expect(html).toContain("Enable Manager")
   })
 })

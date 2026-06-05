@@ -48,6 +48,16 @@ type TableRow = {
   statusLabel: string
   statusTone: "success" | "warning" | "danger" | "info" | "muted"
   meta: string
+  productAccess?: ProductAccess[]
+}
+
+type ProductAccess = {
+  key: "manager"
+  label: string
+  active: boolean
+  statusLabel: string
+  statusTone: "success" | "warning" | "danger" | "info" | "muted"
+  roleLabel?: string
 }
 
 export type LanguageDiagnosticTone =
@@ -1978,6 +1988,12 @@ export async function loadUsersData(): Promise<UsersData> {
             role: true,
             emailVerified: true,
             updatedAt: true,
+            managerMembership: {
+              select: {
+                role: true,
+                revokedAt: true,
+              },
+            },
           },
           orderBy: { updatedAt: "desc" },
           take: 8,
@@ -1988,6 +2004,10 @@ export async function loadUsersData(): Promise<UsersData> {
         role: string
         emailVerified: boolean
         updatedAt: Date
+        managerMembership: {
+          role: "OPERATOR"
+          revokedAt: Date | null
+        } | null
       }>,
     ),
   ])
@@ -2010,15 +2030,33 @@ export async function loadUsersData(): Promise<UsersData> {
         footer: "PENDING_APPROVAL",
       },
     ],
-    rows: rows.map((row) => ({
-      key: row.id,
-      title: row.email,
-      detail: row.id,
-      statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
-      statusTone:
-        !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
-      meta: formatDateTime(row.updatedAt),
-    })),
+    rows: rows.map((row) => {
+      const hasManagerAccess = Boolean(
+        row.managerMembership && !row.managerMembership.revokedAt,
+      )
+
+      return {
+        key: row.id,
+        title: row.email,
+        detail: row.id,
+        statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
+        statusTone:
+          !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
+        meta: formatDateTime(row.updatedAt),
+        productAccess: [
+          {
+            key: "manager",
+            label: "Manager",
+            active: hasManagerAccess,
+            statusLabel: hasManagerAccess ? "Enabled" : "Disabled",
+            statusTone: hasManagerAccess ? "success" : "muted",
+            roleLabel: hasManagerAccess
+              ? row.managerMembership?.role
+              : undefined,
+          },
+        ],
+      }
+    }),
     insights: [
       {
         label: "Role Mappings",

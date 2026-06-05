@@ -8,14 +8,19 @@ import {
   PageSection,
 } from "@/components/admin-ui"
 import { requireAdminSession } from "@/auth/session"
-import { prisma } from "@/db/client"
 import { getAdminMessages } from "@/i18n/server"
 import { loadUsersData } from "@/app/dashboard/ops-data"
+import { NotFoundError } from "@/services/errors"
+import {
+  approveUserRole,
+  grantManagerAccess as grantManagerAccessForUser,
+  revokeManagerAccess as revokeManagerAccessForUser,
+} from "@/services/user-access.service"
 
 async function approveUser(formData: FormData) {
   "use server"
 
-  await requireAdminSession()
+  const user = await requireAdminSession()
   const id = formData.get("id")
   const role = formData.get("role")
 
@@ -23,11 +28,41 @@ async function approveUser(formData: FormData) {
     return
   }
 
-  await prisma.user.update({
-    where: { id },
-    data: { role },
-    select: { id: true },
-  })
+  await approveUserRole({ user, targetUserId: id, role })
+  revalidatePath("/dashboard/users")
+}
+
+async function grantManagerAccess(formData: FormData) {
+  "use server"
+
+  const user = await requireAdminSession()
+  const id = formData.get("id")
+  if (typeof id !== "string") return
+
+  try {
+    await grantManagerAccessForUser({ user, targetUserId: id })
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error
+    }
+  }
+  revalidatePath("/dashboard/users")
+}
+
+async function revokeManagerAccess(formData: FormData) {
+  "use server"
+
+  const user = await requireAdminSession()
+  const id = formData.get("id")
+  if (typeof id !== "string") return
+
+  try {
+    await revokeManagerAccessForUser({ user, targetUserId: id })
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error
+    }
+  }
   revalidatePath("/dashboard/users")
 }
 
@@ -61,7 +96,7 @@ export default async function UsersPage() {
         <div className="flex flex-col gap-6">
           <PageSection title="User Directory" meta="AUTH_SSO / ROLES">
             <DataTable
-              columns={["Principal", "Status", "Updated"]}
+              columns={["Principal", "Status", "Product Access", "Updated"]}
               rows={data.rows.map((row) => [
                 <div key={`${row.key}-title`}>
                   <div className="text-[13px] font-medium">{row.title}</div>
@@ -104,6 +139,47 @@ export default async function UsersPage() {
                     </>
                   ) : null}
                 </div>,
+                <div
+                  key={`${row.key}-products`}
+                  className="flex min-w-[180px] flex-wrap gap-2"
+                >
+                  {(row.productAccess ?? []).map((access) => (
+                    <div
+                      key={access.key}
+                      className="flex flex-wrap items-center gap-2"
+                    >
+                      <span
+                        className={`status-pill ${statusToneClass(access.statusTone)}`}
+                      >
+                        {access.label}: {access.statusLabel}
+                        {access.roleLabel ? ` / ${access.roleLabel}` : ""}
+                      </span>
+                      {access.key === "manager" ? (
+                        access.active ? (
+                          <form action={revokeManagerAccess}>
+                            <input type="hidden" name="id" value={row.key} />
+                            <button
+                              type="submit"
+                              className="status-pill border-[var(--color-warning-border)] text-[var(--color-warning)]"
+                            >
+                              Revoke Manager
+                            </button>
+                          </form>
+                        ) : (
+                          <form action={grantManagerAccess}>
+                            <input type="hidden" name="id" value={row.key} />
+                            <button
+                              type="submit"
+                              className="status-pill border-[var(--color-success-border)] text-[var(--color-success)]"
+                            >
+                              Enable Manager
+                            </button>
+                          </form>
+                        )
+                      ) : null}
+                    </div>
+                  ))}
+                </div>,
                 <span
                   key={`${row.key}-meta`}
                   className="mono-meta text-[var(--color-text-muted)]"
@@ -129,7 +205,7 @@ export default async function UsersPage() {
         <OperatorRail
           title={messages.common.operatorNotes}
           meta={messages.common.fieldGuide}
-          notes="This route reflects persisted admin user roles mapped from Auth SSO callbacks instead of a future-state permissions mockup."
+          notes="This route reflects persisted admin user roles and product grants mapped from Auth SSO identities. Manager access is explicit and does not inherit from Admin roles."
           chips={[
             { label: "Source", value: "ADMIN_DB" },
             { label: "Model", value: "ROLE_PLUS_ABAC" },
@@ -139,4 +215,17 @@ export default async function UsersPage() {
       </div>
     </div>
   )
+}
+
+function statusToneClass(tone: string) {
+  if (tone === "success") {
+    return "border-[var(--color-success-border)] text-[var(--color-success)]"
+  }
+  if (tone === "warning") {
+    return "border-[var(--color-warning-border)] text-[var(--color-warning)]"
+  }
+  if (tone === "danger") {
+    return "border-[var(--color-danger-border)] text-[var(--color-danger)]"
+  }
+  return "border-[var(--color-hairline-strong)] text-[var(--color-text-muted)]"
 }
