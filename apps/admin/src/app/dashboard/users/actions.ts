@@ -22,32 +22,22 @@ export async function approveUser(formData: FormData) {
   revalidatePath("/dashboard/users")
 }
 
-export async function grantManagerAccess(formData: FormData) {
+export async function updateManagerAccess(formData: FormData) {
   "use server"
 
   const user = await requireAdminSession()
   const id = formData.get("id")
-  if (typeof id !== "string") return
-
-  try {
-    await grantManagerAccessForUser({ user, targetUserId: id })
-  } catch (error) {
-    if (!(error instanceof NotFoundError)) {
-      throw error
-    }
+  const role = formData.get("role")
+  if (typeof id !== "string" || (role !== "OPERATOR" && role !== "NO_ACCESS")) {
+    return
   }
-  revalidatePath("/dashboard/users")
-}
-
-export async function revokeManagerAccess(formData: FormData) {
-  "use server"
-
-  const user = await requireAdminSession()
-  const id = formData.get("id")
-  if (typeof id !== "string") return
 
   try {
-    await revokeManagerAccessForUser({ user, targetUserId: id })
+    if (role === "OPERATOR") {
+      await grantManagerAccessForUser({ user, targetUserId: id })
+    } else {
+      await revokeManagerAccessForUser({ user, targetUserId: id })
+    }
   } catch (error) {
     if (!(error instanceof NotFoundError)) {
       throw error

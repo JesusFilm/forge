@@ -183,31 +183,96 @@ describe("loadUsersData", () => {
         revokedAt: true,
       },
     })
-    expect(data.rows.map((row) => row.productAccess[0])).toEqual([
-      {
-        key: "manager",
-        label: "Manager",
-        active: true,
-        statusLabel: "Enabled",
-        statusTone: "success",
-        roleLabel: "OPERATOR",
-      },
-      {
-        key: "manager",
-        label: "Manager",
-        active: false,
-        statusLabel: "Disabled",
-        statusTone: "muted",
-        roleLabel: undefined,
-      },
-      {
-        key: "manager",
-        label: "Manager",
-        active: false,
-        statusLabel: "Disabled",
-        statusTone: "muted",
-        roleLabel: undefined,
-      },
+    expect(
+      data.rows.map((row) =>
+        row.productAccess.map((access) => ({
+          key: access.key,
+          selectedRole: access.selectedRole,
+          statusTone: access.statusTone,
+          disabled: access.disabled,
+          backed: access.backed,
+          helperText: access.helperText,
+        })),
+      ),
+    ).toEqual([
+      [
+        {
+          key: "admin",
+          selectedRole: "ADMIN",
+          statusTone: "success",
+          disabled: true,
+          backed: false,
+          helperText: "Status role",
+        },
+        {
+          key: "manager",
+          selectedRole: "OPERATOR",
+          statusTone: "success",
+          disabled: false,
+          backed: true,
+          helperText: "Backed",
+        },
+        {
+          key: "mastra-studio",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: true,
+          backed: false,
+          helperText: "Mock only",
+        },
+      ],
+      [
+        {
+          key: "admin",
+          selectedRole: "VIEWER",
+          statusTone: "warning",
+          disabled: true,
+          backed: false,
+          helperText: "Status role",
+        },
+        {
+          key: "manager",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: false,
+          backed: true,
+          helperText: "Backed",
+        },
+        {
+          key: "mastra-studio",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: true,
+          backed: false,
+          helperText: "Mock only",
+        },
+      ],
+      [
+        {
+          key: "admin",
+          selectedRole: "VIEWER",
+          statusTone: "warning",
+          disabled: true,
+          backed: false,
+          helperText: "Status role",
+        },
+        {
+          key: "manager",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: false,
+          backed: true,
+          helperText: "Backed",
+        },
+        {
+          key: "mastra-studio",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: true,
+          backed: false,
+          helperText: "Mock only",
+        },
+      ],
     ])
   })
 
@@ -227,11 +292,17 @@ describe("loadUsersData", () => {
     const data = await loadUsersData()
 
     expect(data.rows).toHaveLength(1)
-    expect(data.rows[0]?.productAccess[0]).toMatchObject({
+    expect(data.rows[0]?.productAccess.map((access) => access.key)).toEqual([
+      "admin",
+      "manager",
+      "mastra-studio",
+    ])
+    expect(data.rows[0]?.productAccess[1]).toMatchObject({
       key: "manager",
-      active: false,
-      statusLabel: "Disabled",
+      selectedRole: "NO_ACCESS",
       statusTone: "muted",
+      disabled: false,
+      backed: true,
     })
   })
 })
@@ -247,14 +318,27 @@ describe("buildUserTableRow", () => {
           },
         }),
       ).productAccess,
-    ).toEqual([
+    ).toMatchObject([
+      {
+        key: "admin",
+        selectedRole: "VIEWER",
+        statusTone: "warning",
+        disabled: true,
+        backed: false,
+      },
       {
         key: "manager",
-        label: "Manager",
-        active: true,
-        statusLabel: "Enabled",
+        selectedRole: "OPERATOR",
         statusTone: "success",
-        roleLabel: "OPERATOR",
+        disabled: false,
+        backed: true,
+      },
+      {
+        key: "mastra-studio",
+        selectedRole: "NO_ACCESS",
+        statusTone: "muted",
+        disabled: true,
+        backed: false,
       },
     ])
   })

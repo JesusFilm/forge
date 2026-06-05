@@ -221,7 +221,7 @@ export function DataTable({
   selectedRow?: number
 }) {
   return (
-    <div className="app-card overflow-hidden">
+    <div className="app-card overflow-x-auto">
       <table className="w-full border-collapse text-left">
         <thead className="hairline-strong-b">
           <tr className="h-10">
