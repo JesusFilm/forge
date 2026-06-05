@@ -26,7 +26,11 @@ afterEach(() => {
   Intl.DateTimeFormat = realDateTimeFormat
 })
 
-const opt = (slug: string, bcp47: string | null) => ({ slug, bcp47 })
+const opt = (slug: string, bcp47: string | null) => ({
+  slug,
+  bcp47,
+  languageSlug: null,
+})
 // For preference tests: an option carrying its unique language-entity slug.
 // `variantSlug` is what resolution returns; `languageSlug` is what a persisted
 // preference is matched against.

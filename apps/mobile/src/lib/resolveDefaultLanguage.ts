@@ -4,9 +4,11 @@ type LanguageOption = {
   /**
    * Unique, stable language-entity slug (e.g. "korean", "english-north-american-
    * indigenous"). Used for EXACT preference matching — unlike bcp47, it never
-   * collides across distinct languages.
+   * collides across distinct languages. Required (nullable) so a caller that
+   * passes a `preferredLanguageSlug` can't silently forget to populate it and
+   * get a never-matching preference.
    */
-  languageSlug?: string | null
+  languageSlug: string | null
 }
 
 function getDeviceLanguageCode(): string | null {

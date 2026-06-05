@@ -59,16 +59,23 @@ export function WatchPreferencesProvider({
   prefsRef.current = prefs
 
   useEffect(() => {
+    // Guard against a stale read settling into a remounted instance (e.g. an
+    // error-boundary reset at the root) — without it, the first mount's pending
+    // getItem would setState on the second mount.
+    let cancelled = false
     AsyncStorage.getItem(WATCH_PREFERENCES_STORAGE_KEY)
       .then((stored) => {
-        setPrefs(parseStoredPreferences(stored))
+        if (!cancelled) setPrefs(parseStoredPreferences(stored))
       })
       .catch(() => {
         // Treat read failure as first launch — defaults already applied.
       })
       .finally(() => {
-        setIsReady(true)
+        if (!cancelled) setIsReady(true)
       })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const persist = useCallback((patch: Partial<WatchPreferences>) => {
