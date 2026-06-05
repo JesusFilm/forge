@@ -29,7 +29,7 @@ import { ACCENT } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
 import {
-  enterLandscapeFollowDevice,
+  enterFullscreenLandscape,
   exitToPortrait,
 } from "../../src/lib/orientation"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
@@ -68,14 +68,21 @@ export default function WatchVideoPage() {
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
 
   // Fullscreen side-effects: hide the native header + disable the iOS edge-swipe
-  // back (so it can't pop the route mid-fullscreen), and drive orientation —
-  // landscape-follow-device on enter, re-lock portrait on exit.
+  // back (so it can't pop the route mid-fullscreen), and drive orientation.
+  //
+  // Orientation is driven TWO ways because react-native-screens (which
+  // expo-router's native Stack uses) owns the view controller's
+  // supportedInterfaceOrientations and overrides expo-screen-orientation's
+  // lockAsync. Setting the screen's `orientation` option is what actually
+  // rotates the view; the expo-screen-orientation calls re-assert the lock and
+  // cover the global/non-screen paths.
   useEffect(() => {
     navigation.setOptions({
       headerShown: !isFullscreen,
       gestureEnabled: !isFullscreen,
+      orientation: isFullscreen ? "landscape" : "portrait",
     })
-    if (isFullscreen) void enterLandscapeFollowDevice()
+    if (isFullscreen) void enterFullscreenLandscape()
     else void exitToPortrait()
   }, [isFullscreen, navigation])
 
@@ -89,7 +96,7 @@ export default function WatchVideoPage() {
       return true
     })
     const app = AppState.addEventListener("change", (s) => {
-      if (s === "active") void enterLandscapeFollowDevice()
+      if (s === "active") void enterFullscreenLandscape()
     })
     return () => {
       back.remove()

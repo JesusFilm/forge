@@ -31,19 +31,23 @@ export async function lockPortrait(): Promise<void> {
 }
 
 /**
- * Enter the fullscreen orientation: force landscape so the OS rotates
- * immediately, then relax to DEFAULT so the view follows the device
- * afterwards (landscape or portrait, excluding upside-down).
+ * Enter the fullscreen orientation: lock to landscape so the view rotates and
+ * stays landscape (either landscape-left or -right as the device turns).
+ *
+ * We deliberately do NOT unlock to "follow the device" afterwards: on iOS
+ * `unlockAsync()` immediately re-applies the device's current physical
+ * orientation, which snaps a portrait-held phone straight back to portrait —
+ * so the landscape nudge never takes (verified in the simulator). Locking to
+ * LANDSCAPE is the robust, standard fullscreen behavior. Portrait fullscreen
+ * is intentionally not offered while in this mode.
  */
-export async function enterLandscapeFollowDevice(): Promise<void> {
+export async function enterFullscreenLandscape(): Promise<void> {
   const SO = load()
   if (!SO) return
   try {
     await SO.lockAsync(SO.OrientationLock.LANDSCAPE)
-    await SO.unlockAsync()
   } catch {
-    // A partial failure (e.g. unlock rejects) is swallowed; exitToPortrait()
-    // can always re-assert portrait independently.
+    // Non-fatal — orientation unavailable in this context.
   }
 }
 

@@ -1,6 +1,6 @@
 import {
   lockPortrait,
-  enterLandscapeFollowDevice,
+  enterFullscreenLandscape,
   exitToPortrait,
 } from "../orientation"
 
@@ -28,18 +28,12 @@ describe("orientation helper", () => {
     expect(mockLockAsync).toHaveBeenCalledWith(PORTRAIT_UP)
   })
 
-  it("enterLandscapeFollowDevice locks LANDSCAPE then unlocks, in order", async () => {
-    const order: string[] = []
-    mockLockAsync.mockImplementation(async (lock) => {
-      order.push(`lock:${lock}`)
-    })
-    mockUnlockAsync.mockImplementation(async () => {
-      order.push("unlock")
-    })
-
-    await enterLandscapeFollowDevice()
-
-    expect(order).toEqual([`lock:${LANDSCAPE}`, "unlock"])
+  it("enterFullscreenLandscape locks LANDSCAPE and does NOT unlock", async () => {
+    // Unlock would immediately follow the device back to portrait on iOS, so
+    // the lock must stand on its own.
+    await enterFullscreenLandscape()
+    expect(mockLockAsync).toHaveBeenCalledWith(LANDSCAPE)
+    expect(mockUnlockAsync).not.toHaveBeenCalled()
   })
 
   it("exitToPortrait re-locks to PORTRAIT_UP", async () => {
@@ -50,14 +44,13 @@ describe("orientation helper", () => {
   it("swallows a rejected lock without throwing", async () => {
     mockLockAsync.mockRejectedValueOnce(new Error("unsupported"))
     await expect(lockPortrait()).resolves.toBeUndefined()
+    mockLockAsync.mockRejectedValueOnce(new Error("unsupported"))
+    await expect(enterFullscreenLandscape()).resolves.toBeUndefined()
   })
 
-  it("recovers to portrait when unlock rejects mid-enter (R16: only fullscreen rotates)", async () => {
-    // lock(LANDSCAPE) succeeds, unlock rejects — the partial failure is swallowed.
-    mockUnlockAsync.mockRejectedValueOnce(new Error("unlock failed"))
-    await expect(enterLandscapeFollowDevice()).resolves.toBeUndefined()
-
-    // A subsequent exit must still re-lock portrait — no stranded landscape state.
+  it("exitToPortrait still recovers after a failed enter (R16: only fullscreen rotates)", async () => {
+    mockLockAsync.mockRejectedValueOnce(new Error("enter failed"))
+    await expect(enterFullscreenLandscape()).resolves.toBeUndefined()
     mockLockAsync.mockClear()
     await exitToPortrait()
     expect(mockLockAsync).toHaveBeenCalledWith(PORTRAIT_UP)
