@@ -280,14 +280,17 @@ export function VideoPlayer({
   )
 
   // Captions sit FIXED on the button row, layered over the chrome (they never
-  // reposition as the chrome shows/hides and never fade with it). Horizontal
-  // padding keeps them clear of the mute/fullscreen icons (and the landscape
-  // notch in fullscreen).
+  // reposition as the chrome shows/hides and never fade with it). The bottom
+  // offset matches the mute/fullscreen icons (which sit at the bar's bottom
+  // without safe-area insets), horizontal padding keeps them clear of those
+  // icons (and the landscape side-notch), and the text enlarges in fullscreen
+  // where the video fills the screen.
   const insets = useSafeAreaInsets()
-  const subtitleBottomOffset = fullscreen ? insets.bottom + 14 : 14
+  const subtitleBottomOffset = fullscreen ? 12 : 14
   const subtitleHorizontalInset = fullscreen
     ? Math.max(insets.left, insets.right, 56)
     : 56
+  const subtitleFontSize = fullscreen ? 22 : 16
 
   return (
     <View
@@ -384,6 +387,7 @@ export function VideoPlayer({
         vttSrc={subtitleVttSrc}
         bottomOffset={subtitleBottomOffset}
         horizontalInset={subtitleHorizontalInset}
+        fontSize={subtitleFontSize}
       />
     </View>
   )

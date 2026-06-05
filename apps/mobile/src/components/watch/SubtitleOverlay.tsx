@@ -13,6 +13,8 @@ type SubtitleOverlayProps = {
   /** Horizontal padding so captions clear the notch / home-indicator in
    *  landscape fullscreen. Defaults to the inline value. */
   horizontalInset?: number
+  /** Caption text size — larger in fullscreen where the video fills the screen. */
+  fontSize?: number
 }
 
 // Cues are sorted by start time. Binary-search the last cue whose start is <= t,
@@ -51,6 +53,7 @@ export function SubtitleOverlay({
   vttSrc,
   bottomOffset = 16,
   horizontalInset = 16,
+  fontSize = 16,
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
@@ -134,7 +137,19 @@ export function SubtitleOverlay({
         { bottom: bottomOffset, paddingHorizontal: horizontalInset },
       ]}
     >
-      <Text style={styles.text}>{activeText}</Text>
+      <Text
+        style={[
+          styles.text,
+          {
+            fontSize,
+            lineHeight: Math.round(fontSize * 1.3),
+            paddingVertical: Math.round(fontSize * 0.3),
+            paddingHorizontal: Math.round(fontSize * 0.65),
+          },
+        ]}
+      >
+        {activeText}
+      </Text>
     </View>
   )
 }
