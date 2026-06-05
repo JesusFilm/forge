@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/carousel"
 import { Button } from "@/components/ui/button"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
+import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
 import {
   useWatchHomeTvCarousel,
@@ -21,6 +22,7 @@ import {
 
 type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
+  sequence?: WatchHomeCarouselSequenceData | null
 }
 
 function muxStreamUrl(playbackId: string | null) {
@@ -41,7 +43,8 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
     const posterUrl = slide.imageUrl ?? muxThumbnail
 
     return {
-      id: slide.id,
+      kind: "video",
+      id: slide.coreId,
       title: slide.title,
       description: slide.description,
       label: slide.eyebrow || slide.label,
@@ -52,18 +55,28 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
       imageAlt: slide.imageAlt,
       src: slide.hls ?? muxStreamUrl(slide.playbackId),
       playbackId: slide.playbackId,
+      durationSeconds: slide.durationSeconds,
     }
   })
 }
 
 function PrimaryAction({ slide }: { slide: WatchHomeTvCarouselSlide }) {
+  const className =
+    "inline-flex h-14 max-w-full items-center gap-3 rounded-full bg-brand-red px-5 text-lg font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-16 sm:px-7 sm:text-xl"
+
+  if (slide.kind === "mux" && slide.action) {
+    return (
+      <a href={slide.action.url} className={className}>
+        <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
+        <span className="truncate">{slide.action.label}</span>
+      </a>
+    )
+  }
+
   if (!slide.href) return null
 
   return (
-    <Link
-      href={slide.href as Route}
-      className="inline-flex h-14 max-w-full items-center gap-3 rounded-full bg-brand-red px-5 text-lg font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-16 sm:px-7 sm:text-xl"
-    >
+    <Link href={slide.href as Route} className={className}>
       <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
       <span className="truncate">Watch Now</span>
     </Link>
@@ -285,7 +298,10 @@ function WatchHomeTvRail({
   )
 }
 
-export function WatchHomeTvCarousel({ slides }: WatchHomeTvCarouselProps) {
+export function WatchHomeTvCarousel({
+  sequence = null,
+  slides,
+}: WatchHomeTvCarouselProps) {
   const carouselSlides = useMemo(
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
@@ -300,9 +316,10 @@ export function WatchHomeTvCarousel({ slides }: WatchHomeTvCarouselProps) {
     isMuted,
     progress,
     selectSlide,
+    slides: displaySlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides)
+  } = useWatchHomeTvCarousel(carouselSlides, sequence)
 
   if (!activeSlide) return null
 
@@ -355,7 +372,7 @@ export function WatchHomeTvCarousel({ slides }: WatchHomeTvCarouselProps) {
           </Button>
         </div>
         <WatchHomeTvRail
-          slides={carouselSlides}
+          slides={displaySlides}
           activeSlideId={activeSlide.id}
           progress={progress}
           onSelect={selectSlide}

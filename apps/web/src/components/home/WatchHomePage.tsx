@@ -56,7 +56,10 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
         </div>
 
         <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px] overflow-hidden">
-          <WatchHomeTvCarousel slides={model.heroSlides} />
+          <WatchHomeTvCarousel
+            slides={model.heroSlides}
+            sequence={model.carousel}
+          />
           {model.sections.map((section) => (
             <WatchHomeSection key={section.id} section={section} />
           ))}
