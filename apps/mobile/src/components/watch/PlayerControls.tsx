@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { LinearGradient } from "expo-linear-gradient"
 import type { VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
-import { TEXT_ON_OVERLAY } from "../../lib/color"
+import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import { applySkip } from "../../lib/scrubber"
 import { Scrubber } from "./Scrubber"
@@ -129,6 +130,20 @@ export function PlayerControls({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
+      {/* Scrim behind the bottom controls: dark at the very bottom fading to
+          transparent upward, so the timeline + buttons stay legible over bright
+          video. Rendered first → sits behind the rows. */}
+      <LinearGradient
+        colors={[
+          hexToRgba(BLACK, 0),
+          hexToRgba(BLACK, 0.2),
+          hexToRgba(BLACK, 0.7),
+        ]}
+        locations={[0, 0.5, 1]}
+        style={styles.bottomScrim}
+        pointerEvents="none"
+      />
+
       <View style={styles.controlsRow}>
         <Pressable
           onPress={() => skip(-SKIP_SECONDS)}
@@ -219,6 +234,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+  },
+  bottomScrim: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 160,
   },
   controlsRow: {
     flex: 1,

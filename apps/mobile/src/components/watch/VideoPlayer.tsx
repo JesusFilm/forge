@@ -279,19 +279,15 @@ export function VideoPlayer({
     [controls, doSideSeek],
   )
 
-  // Caption position: above the control bar when chrome is visible, lower when
-  // hidden (instant — captions are a separate layer and never fade with the
-  // chrome). In fullscreen, add the safe-area insets so text clears the notch /
-  // home indicator in landscape.
+  // Captions sit FIXED on the button row, layered over the chrome (they never
+  // reposition as the chrome shows/hides and never fade with it). Horizontal
+  // padding keeps them clear of the mute/fullscreen icons (and the landscape
+  // notch in fullscreen).
   const insets = useSafeAreaInsets()
-  const subtitleBottomOffset = fullscreen
-    ? insets.bottom + (controls.controlsVisible ? 64 : 16)
-    : controls.controlsVisible
-      ? 56
-      : 16
+  const subtitleBottomOffset = fullscreen ? insets.bottom + 14 : 14
   const subtitleHorizontalInset = fullscreen
-    ? Math.max(insets.left, insets.right, 16)
-    : 16
+    ? Math.max(insets.left, insets.right, 56)
+    : 56
 
   return (
     <View
@@ -365,13 +361,6 @@ export function VideoPlayer({
         </View>
       )}
 
-      <SubtitleOverlay
-        player={player}
-        vttSrc={subtitleVttSrc}
-        bottomOffset={subtitleBottomOffset}
-        horizontalInset={subtitleHorizontalInset}
-      />
-
       {controls.mounted && (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
@@ -386,6 +375,16 @@ export function VideoPlayer({
           />
         </Animated.View>
       )}
+
+      {/* Captions render LAST so they layer over the chrome, fixed on the
+          button row. Kept outside the chrome's fade wrapper so they stay
+          visible when the controls auto-hide. */}
+      <SubtitleOverlay
+        player={player}
+        vttSrc={subtitleVttSrc}
+        bottomOffset={subtitleBottomOffset}
+        horizontalInset={subtitleHorizontalInset}
+      />
     </View>
   )
 }

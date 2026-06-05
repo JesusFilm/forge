@@ -1,11 +1,5 @@
-import { useEffect, useRef, useState } from "react"
-import {
-  AccessibilityInfo,
-  Animated,
-  Easing,
-  StyleSheet,
-  Text,
-} from "react-native"
+import { useEffect, useState } from "react"
+import { StyleSheet, Text, View } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
@@ -60,43 +54,6 @@ export function SubtitleOverlay({
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
-
-  // Animate the vertical offset so captions glide (not blink) up/down as the
-  // chrome shows/hides. Driven via translateY (native-driver friendly on
-  // Fabric, unlike animating the `bottom` layout prop). The container sits at
-  // bottom:0 and is lifted by -bottomOffset.
-  const translateY = useRef(new Animated.Value(-bottomOffset)).current
-  const reduceMotionRef = useRef(false)
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
-      reduceMotionRef.current = v
-    })
-    const sub = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      (v) => {
-        reduceMotionRef.current = v
-      },
-    )
-    return () => {
-      try {
-        sub.remove()
-      } catch {
-        // noop
-      }
-    }
-  }, [])
-  useEffect(() => {
-    if (reduceMotionRef.current) {
-      translateY.setValue(-bottomOffset)
-      return
-    }
-    Animated.timing(translateY, {
-      toValue: -bottomOffset,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-  }, [bottomOffset, translateY])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -170,18 +127,15 @@ export function SubtitleOverlay({
   if (!activeText) return null
 
   return (
-    <Animated.View
+    <View
       pointerEvents="none"
       style={[
         styles.container,
-        {
-          paddingHorizontal: horizontalInset,
-          transform: [{ translateY }],
-        },
+        { bottom: bottomOffset, paddingHorizontal: horizontalInset },
       ]}
     >
       <Text style={styles.text}>{activeText}</Text>
-    </Animated.View>
+    </View>
   )
 }
 
@@ -190,7 +144,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
     alignItems: "center",
     paddingHorizontal: 16,
   },
