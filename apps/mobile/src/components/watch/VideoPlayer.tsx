@@ -4,18 +4,31 @@ import {
   AppState,
   Pressable,
   StyleSheet,
+  Text,
   View,
   useWindowDimensions,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
 } from "react-native"
 import { Image } from "expo-image"
+import Ionicons from "@expo/vector-icons/Ionicons"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useEvent } from "expo"
-import { BLACK } from "../../lib/color"
+import { BLACK, TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
+import { applySkip } from "../../lib/scrubber"
+import {
+  DOUBLE_TAP_MS,
+  seekDeltaForTap,
+  seekSideForTap,
+  type SeekSide,
+} from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { PlayerControls } from "./PlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
+
+const SKIP_SECONDS = 10
 
 type VideoPlayerProps = {
   streamingUrl: string | null
@@ -178,6 +191,75 @@ export function VideoPlayer({
 
   const controls = useControlsVisibility(player)
 
+  // ── Tap disambiguation (U4) ─────────────────────────────────────────
+  // Single tap toggles chrome (reveal is immediate on press-in so it never
+  // lags, KTD3); a second tap within DOUBLE_TAP_MS seeks the tapped half ±10s
+  // and shows a brief indicator independent of chrome visibility.
+  const tapWidthRef = useRef(0)
+  const wasVisibleRef = useRef(true)
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [seekFlash, setSeekFlash] = useState<{
+    side: SeekSide
+    delta: number
+  } | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current)
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    }
+  }, [])
+
+  const showSeekFlash = useCallback((side: SeekSide, delta: number) => {
+    setSeekFlash({ side, delta })
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => setSeekFlash(null), 600)
+  }, [])
+
+  const doSideSeek = useCallback(
+    (locationX: number) => {
+      const delta = seekDeltaForTap(
+        locationX,
+        tapWidthRef.current,
+        SKIP_SECONDS,
+      )
+      if (delta === 0) return
+      const target = applySkip(player.currentTime, delta, player.duration)
+      if (target == null) return
+      player.currentTime = target
+      const side = seekSideForTap(locationX, tapWidthRef.current)
+      if (side) showSeekFlash(side, delta)
+    },
+    [player, showSeekFlash],
+  )
+
+  const handleTapPressIn = useCallback(() => {
+    wasVisibleRef.current = controls.controlsVisible
+    controls.revealIfHidden()
+  }, [controls])
+
+  const handleTapPress = useCallback(
+    (e: GestureResponderEvent) => {
+      const { locationX } = e.nativeEvent
+      if (singleTapTimerRef.current != null) {
+        // Second tap → double tap: seek and cancel the pending single-tap.
+        clearTimeout(singleTapTimerRef.current)
+        singleTapTimerRef.current = null
+        doSideSeek(locationX)
+        return
+      }
+      const wasVisible = wasVisibleRef.current
+      singleTapTimerRef.current = setTimeout(() => {
+        singleTapTimerRef.current = null
+        // Single tap resolved: hide if chrome was already up. If it was hidden
+        // it was just revealed on press-in, so leave it visible.
+        if (wasVisible) controls.hide()
+      }, DOUBLE_TAP_MS)
+    },
+    [controls, doSideSeek],
+  )
+
   const videoViewRef = useRef<React.ComponentRef<typeof VideoView>>(null)
 
   const handleFullscreen = useCallback(() => {
@@ -209,13 +291,36 @@ export function VideoPlayer({
       {/* Full-bleed tap target behind the chrome. A tap on the video body
           toggles the controls (the controls layer is box-none and the
           subtitle overlay is pointerEvents none, so empty-area taps fall
-          through to here). */}
+          through to here); a double tap on a side seeks ±10s. */}
       <Pressable
         style={StyleSheet.absoluteFill}
-        onPress={controls.toggle}
+        onLayout={(e: LayoutChangeEvent) => {
+          tapWidthRef.current = e.nativeEvent.layout.width
+        }}
+        onPressIn={handleTapPressIn}
+        onPress={handleTapPress}
         accessibilityRole="button"
         accessibilityLabel="Toggle player controls"
       />
+
+      {seekFlash != null && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.seekFlash,
+            seekFlash.side === "left"
+              ? styles.seekFlashLeft
+              : styles.seekFlashRight,
+          ]}
+        >
+          <Ionicons
+            name={seekFlash.delta < 0 ? "play-back" : "play-forward"}
+            size={22}
+            color={TEXT_ON_OVERLAY}
+          />
+          <Text style={styles.seekFlashText}>{Math.abs(seekFlash.delta)}s</Text>
+        </View>
+      )}
 
       <SubtitleOverlay player={player} vttSrc={subtitleVttSrc} />
 
@@ -239,5 +344,29 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     backgroundColor: BLACK,
+  },
+  seekFlash: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -28,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+  },
+  seekFlashLeft: {
+    left: "14%",
+  },
+  seekFlashRight: {
+    right: "14%",
+  },
+  seekFlashText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 2,
   },
 })

@@ -19,6 +19,8 @@ export type ControlsVisibility = {
   opacityAnim: Animated.Value
   /** Tap on the video body: hide if visible, reveal if hidden. */
   toggle: () => void
+  /** Hide chrome if currently visible (no-op if already hidden). */
+  hide: () => void
   /** Reveal only if currently hidden (immediate, e.g. on press-in). */
   revealIfHidden: () => void
   /** A control was used — keep chrome up and restart the idle timer. */
@@ -139,6 +141,12 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
       reveal()
     }
   }, [hideNow, reveal])
+
+  const hide = useCallback(() => {
+    if (!controlsVisibleRef.current) return
+    controlsVisibleRef.current = false
+    hideNow()
+  }, [hideNow])
 
   const revealIfHidden = useCallback(() => {
     if (!controlsVisibleRef.current) reveal()
@@ -281,6 +289,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     mounted,
     opacityAnim,
     toggle,
+    hide,
     revealIfHidden,
     noteInteraction,
     isPlaying,
