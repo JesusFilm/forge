@@ -57,6 +57,7 @@ export type WatchHomeCard = {
   href: string | null
   imageUrl: string | null
   imageAlt: string
+  hls: string | null
   playbackId: string | null
   durationSeconds: number | null
   childCount: number
@@ -290,8 +291,10 @@ function normalizeCard(args: {
     href,
     imageUrl,
     imageAlt: locale?.imageAlt ?? title,
+    hls: selectedVariant?.hls ?? null,
     playbackId,
-    durationSeconds: args.video.durationSeconds ?? null,
+    durationSeconds:
+      selectedVariant?.duration ?? args.video.durationSeconds ?? null,
     childCount,
     parentCoreId: args.parent?.coreId ?? null,
     parentSlug: args.parent?.slug ?? null,

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { act } from "react"
+import { act, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeModel } from "@/lib/watch-home"
@@ -12,6 +12,41 @@ vi.mock("next/image", () => ({
   default: ({ alt, src }: { alt: string; src: string }) => (
     <span role="img" aria-label={alt} data-src={src} />
   ),
+}))
+
+vi.mock("@forge/video-player/mux-video", async () => {
+  const React = await vi.importActual<typeof import("react")>("react")
+  return {
+    default: React.forwardRef<HTMLVideoElement, { src?: string }>(
+      function MockMuxVideo({ src }, ref) {
+        return <video ref={ref} data-testid="watch-home-tv-video" src={src} />
+      },
+    ),
+  }
+})
+
+vi.mock("@/components/ui/carousel", () => ({
+  Carousel: ({
+    children,
+    className,
+  }: {
+    children: ReactNode
+    className?: string
+  }) => <div className={className}>{children}</div>,
+  CarouselContent: ({
+    children,
+    className,
+  }: {
+    children: ReactNode
+    className?: string
+  }) => <div className={className}>{children}</div>,
+  CarouselItem: ({
+    children,
+    className,
+  }: {
+    children: ReactNode
+    className?: string
+  }) => <div className={className}>{children}</div>,
 }))
 
 function makeCard(overrides: Record<string, unknown> = {}) {
@@ -26,6 +61,7 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     href: "/jesus.html/english.html",
     imageUrl: "https://cdn.example/jesus.jpg",
     imageAlt: "Jesus still",
+    hls: "https://stream.example/jesus.m3u8",
     playbackId: "mux-1",
     durationSeconds: 123,
     childCount: 0,
@@ -81,12 +117,22 @@ describe("WatchHomePage", () => {
     })
 
     expect(
-      container.querySelector('[data-testid="watch-home-hero"]'),
+      container.querySelector('[data-testid="watch-home-tv-carousel"]'),
     ).not.toBeNull()
     expect(container.textContent).toContain("Jesus")
+    expect(container.textContent).toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
     expect(container.textContent).toContain("Built for global missions")
     expect(container.textContent).toContain("Sign Up For Our Newsletter")
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelectorAll('button[aria-label="Next video"]'),
+    ).toHaveLength(2)
+    expect(
+      container.querySelectorAll('button[aria-label="Unmute preview"]'),
+    ).toHaveLength(2)
     expect(
       container.querySelectorAll("a[href='/jesus.html/english.html']"),
     ).toHaveLength(4)
