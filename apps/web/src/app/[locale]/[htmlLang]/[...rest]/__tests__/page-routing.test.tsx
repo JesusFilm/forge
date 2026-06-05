@@ -145,7 +145,12 @@ beforeEach(() => {
     error: new Error("No experience found"),
   })
   resolveWatchHomeMock.mockResolvedValue({
-    data: { heroSlides: [], sections: [], missingData: [] },
+    data: {
+      heroSlides: [],
+      sections: [],
+      carousel: { pools: [], muxInserts: [] },
+      missingData: [],
+    },
     error: null,
   })
   resolveWatchExperiencePageMock.mockResolvedValue({
@@ -367,6 +372,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       data: {
         heroSlides: [{ id: "hero-es" }],
         sections: [],
+        carousel: { pools: [], muxInserts: [] },
         missingData: [],
       },
       error: null,

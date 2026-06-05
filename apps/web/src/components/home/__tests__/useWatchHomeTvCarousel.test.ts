@@ -16,6 +16,7 @@ const currentMonth = new Date().toISOString().slice(0, 7)
 
 function slide(id: string, src = `${id}.m3u8`): WatchHomeTvCarouselSlide {
   return {
+    kind: "video",
     id,
     title: id,
     description: null,
@@ -26,6 +27,7 @@ function slide(id: string, src = `${id}.m3u8`): WatchHomeTvCarouselSlide {
     imageAlt: id,
     src,
     playbackId: id,
+    durationSeconds: 10,
   }
 }
 
