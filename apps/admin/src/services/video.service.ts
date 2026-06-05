@@ -543,6 +543,36 @@ export class VideoService {
     })
   }
 
+  async getWatchHomeVideos({
+    coreIds,
+    query,
+  }: {
+    coreIds: readonly string[]
+    query: object
+  }) {
+    if (coreIds.length === 0) return []
+    if (coreIds.length > VIDEOS_BY_CORE_IDS_MAX) {
+      throw new VideoLookupValidationError(
+        `coreIds.length=${coreIds.length} exceeds max ${VIDEOS_BY_CORE_IDS_MAX}`,
+      )
+    }
+
+    const uniqueCoreIds = [...new Set(coreIds)]
+    const rows = await this.prisma.video.findMany({
+      ...withVideoCoreIdForOrdering(query),
+      where: {
+        coreId: { in: uniqueCoreIds },
+        deletedAt: null,
+      },
+    })
+    const rowByCoreId = new Map(rows.map((row) => [row.coreId, row]))
+
+    return coreIds.flatMap((coreId) => {
+      const row = rowByCoreId.get(coreId)
+      return row == null ? [] : [row]
+    })
+  }
+
   async getByCoreId({
     coreId,
     user,
@@ -782,6 +812,18 @@ export class VideoService {
 }
 
 type VideoForEnrichmentRow = VideoForEnrichment
+
+function withVideoCoreIdForOrdering(query: object): object {
+  const prismaQuery = query as { select?: Record<string, unknown> }
+  if (!prismaQuery.select) return query
+  return {
+    ...prismaQuery,
+    select: {
+      ...prismaQuery.select,
+      coreId: true,
+    },
+  }
+}
 
 function normalizeOptionalLocale(locale: string | null | undefined) {
   const normalized = locale?.trim()

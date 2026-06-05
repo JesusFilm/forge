@@ -586,6 +586,21 @@ builder.queryFields((t) => ({
         query,
       }),
   }),
+  watchHomeVideos: t.prismaField({
+    type: ["Video"],
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.",
+    args: {
+      coreIds: t.arg.stringList({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.services.video.getWatchHomeVideos({
+        coreIds: args.coreIds,
+        query,
+      }),
+  }),
   videosByCoreIds: t.field({
     type: [VideoForEnrichmentRef],
     authScopes: { hasPermission: "read:video-metadata" },
