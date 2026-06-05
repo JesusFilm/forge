@@ -84,9 +84,16 @@ export function PlayerControls({
     // wedging the controls so the video can never be resumed without a remount.
     if (player.playing) {
       player.pause()
-    } else {
-      player.play()
+      return
     }
+    // Replay from the start if the video has reached the end — otherwise
+    // play() is a no-op on a finished video and nothing happens.
+    const dur = player.duration
+    if (Number.isFinite(dur) && dur > 0 && player.currentTime >= dur - 0.5) {
+      player.currentTime = 0
+      setCurrentTime(0)
+    }
+    player.play()
   }, [player, onInteract])
 
   const toggleMute = useCallback(() => {
