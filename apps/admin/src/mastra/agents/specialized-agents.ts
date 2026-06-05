@@ -90,7 +90,14 @@ function resolveAgentModel(): any {
         "User-Agent": AI_GATEWAY_USER_AGENT,
       },
     })
-    return gateway(env.AI_GATEWAY_CHAT_MODEL ?? "coding")
+    // `.chat()` pins the OpenAI chat-completions endpoint
+    // (`/v1/chat/completions`). The bare callable `gateway(id)` defaults
+    // to the Responses API (`/v1/responses`) in @ai-sdk/openai v3, and
+    // the gateway's vLLM backend crashes converting multi-turn tool
+    // conversations on that endpoint (`KeyError: 'role'` in
+    // `_parse_chat_message_content` — confirmed in vllm-coder logs
+    // 2026-06-05). Chat-completions handles the same tool history fine.
+    return gateway.chat(env.AI_GATEWAY_CHAT_MODEL ?? "coding")
   }
   if (env.GOOGLE_GENERATIVE_AI_API_KEY) {
     const { createGoogleGenerativeAI } =
