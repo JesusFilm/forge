@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AppState, StyleSheet, View, useWindowDimensions } from "react-native"
+import {
+  Animated,
+  AppState,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native"
 import { Image } from "expo-image"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useEvent } from "expo"
 import { BLACK } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
+import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { PlayerControls } from "./PlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
@@ -168,6 +176,8 @@ export function VideoPlayer({
     }
   }, [player])
 
+  const controls = useControlsVisibility(player)
+
   const videoViewRef = useRef<React.ComponentRef<typeof VideoView>>(null)
 
   const handleFullscreen = useCallback(() => {
@@ -196,9 +206,31 @@ export function VideoPlayer({
         />
       )}
 
+      {/* Full-bleed tap target behind the chrome. A tap on the video body
+          toggles the controls (the controls layer is box-none and the
+          subtitle overlay is pointerEvents none, so empty-area taps fall
+          through to here). */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={controls.toggle}
+        accessibilityRole="button"
+        accessibilityLabel="Toggle player controls"
+      />
+
       <SubtitleOverlay player={player} vttSrc={subtitleVttSrc} />
 
-      <PlayerControls player={player} onFullscreen={handleFullscreen} />
+      {controls.mounted && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
+          pointerEvents="box-none"
+        >
+          <PlayerControls
+            player={player}
+            onFullscreen={handleFullscreen}
+            onInteract={controls.noteInteraction}
+          />
+        </Animated.View>
+      )}
     </View>
   )
 }

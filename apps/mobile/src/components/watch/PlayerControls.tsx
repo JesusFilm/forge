@@ -10,6 +10,8 @@ import { useTypography } from "../../hooks/useTypography"
 type PlayerControlsProps = {
   player: VideoPlayer
   onFullscreen: () => void
+  /** Called when any control is used, so the auto-hide timer resets (R4). */
+  onInteract?: () => void
 }
 
 function formatTime(seconds: number): string {
@@ -18,7 +20,11 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
+export function PlayerControls({
+  player,
+  onFullscreen,
+  onInteract,
+}: PlayerControlsProps) {
   const typography = useTypography()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -47,6 +53,7 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
   }, [isPlaying, player])
 
   const togglePlayPause = useCallback(() => {
+    onInteract?.()
     // Read the live player state, NOT the React `isPlaying` snapshot. A source
     // swap (e.g. switching language mid-play) can leave expo-video paused
     // without emitting a playingChange, so the snapshot goes stale-true.
@@ -57,13 +64,14 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
     } else {
       player.play()
     }
-  }, [player])
+  }, [player, onInteract])
 
   const toggleMute = useCallback(() => {
+    onInteract?.()
     const newMuted = !isMuted
     player.muted = newMuted
     setIsMuted(newMuted)
-  }, [player, isMuted])
+  }, [player, isMuted, onInteract])
 
   const progress = duration > 0 ? currentTime / duration : 0
 
@@ -114,7 +122,10 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
           </Pressable>
           <View style={styles.rightIconGroup}>
             <Pressable
-              onPress={onFullscreen}
+              onPress={() => {
+                onInteract?.()
+                onFullscreen()
+              }}
               style={styles.iconButton}
               accessibilityRole="button"
               accessibilityLabel="Fullscreen"
