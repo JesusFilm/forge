@@ -69,10 +69,13 @@ describe("generateSeriesMetadata", () => {
   it("constructs the canonical URL in the .html shape via the route builder", () => {
     const meta = generateSeriesMetadata("en", {
       series: makeSeries(),
-      pathLocale: "en",
+      pathLocale: "english",
     })
     expect(meta.alternates?.canonical).toBe(
-      "http://localhost:3000/watch/storyclubs.html/en.html",
+      "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+    )
+    expect(meta.openGraph?.url).toBe(
+      "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
     )
   })
 

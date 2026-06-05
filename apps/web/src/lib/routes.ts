@@ -225,12 +225,15 @@ export function parseWatchPath(
   return { kind: "unknown", raw: pathname }
 }
 
-// Consolidates SITE_BASE (lib/experience-metadata.ts) and
-// PUBLIC_SHARE_FALLBACK_ORIGIN (lib/share.ts). Single source of truth lives
-// in env.ts (Zod schema + soft host-allowlist + default). Reading the validated
-// env value here keeps the default-of-default consistent across the codebase
-// and preserves the boot-time misconfig warning the schema emits.
+// Environment-specific absolute origin for share/copy/embed links. Single
+// source of truth lives in env.ts (Zod schema + soft host-allowlist + default).
+// Public SEO/social metadata uses WATCH_PUBLIC_METADATA_ORIGIN instead.
 export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
+
+// SEO/social metadata should always name the indexed public website host, even
+// when the web app is served from a local, preview, or watch-only deployment
+// origin. Keep share/copy/embed builders on WATCH_CANONICAL_ORIGIN.
+export const WATCH_PUBLIC_METADATA_ORIGIN = "https://www.jesusfilm.org"
 
 // Re-exported from the shared watch-base-path.mjs module that
 // next.config.mjs also imports. Single source of truth so a basePath
@@ -238,7 +241,7 @@ export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
 export { WATCH_BASE_PATH }
 
-/** Build the absolute canonical URL for a watch video (origin + basePath + 2-segment path). For share / OG / canonical metadata. */
+/** Build an environment-specific absolute URL for a watch video (origin + basePath + 2-segment path). */
 export function watchVideoAbsolute(
   slug: ContentSlug,
   lang: LocaleSlug,
@@ -246,7 +249,7 @@ export function watchVideoAbsolute(
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
 }
 
-/** Build the absolute canonical URL for a series episode (origin + basePath + 3-segment path). */
+/** Build an environment-specific absolute URL for a series episode (origin + basePath + 3-segment path). */
 export function watchEpisodeAbsolute(
   series: ContentSlug,
   episode: ContentSlug,
@@ -255,7 +258,7 @@ export function watchEpisodeAbsolute(
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchEpisodePath(series, episode, lang)}`
 }
 
-/** Build the absolute canonical URL for a localized home (origin + basePath + 1-segment path). */
+/** Build an environment-specific absolute URL for a localized home (origin + basePath + 1-segment path). */
 export function localizedHomeAbsolute(lang: LocaleSlug): string {
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${localizedHomePath(lang)}`
 }
