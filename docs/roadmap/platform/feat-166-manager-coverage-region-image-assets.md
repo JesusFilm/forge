@@ -80,3 +80,7 @@ route-backed shell assets such as `/jesusfilm-sign.svg`.
 - Local Helium smoke in mock mode confirmed the open language picker renders
   region artwork and browser image `src` values reference
   `/_next/static/media/region-*.png`.
+- Follow-up Helium debugging found the deployed static image URLs were valid,
+  but Chromium could keep the visible picker card images pending because
+  `next/image` rendered them as lazy-loaded images. Region card images now use
+  eager loading so the browser requests them as soon as the picker opens.

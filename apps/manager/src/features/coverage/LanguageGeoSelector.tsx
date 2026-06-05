@@ -983,6 +983,7 @@ export function LanguageGeoSelector({
             src={theme.image}
             alt=""
             fill
+            loading="eager"
             sizes="(max-width: 767px) calc((100vw - 5.5rem) / 2), (max-width: 900px) 18rem, 22vw"
             className="object-cover transition-transform duration-200 group-hover:scale-[1.025]"
           />
