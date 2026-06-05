@@ -349,12 +349,45 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         meta: "10/24/2023, 14:02",
         productAccess: [
           {
+            key: "admin",
+            label: "Admin",
+            selectedRole: "ADMIN",
+            roleOptions: [
+              { value: "NO_ACCESS", label: "No access" },
+              { value: "VIEWER", label: "Viewer" },
+              { value: "EDITOR", label: "Editor" },
+              { value: "ADMIN", label: "Admin" },
+            ],
+            statusTone: "success",
+            disabled: true,
+            backed: false,
+            helperText: "Status role",
+          },
+          {
             key: "manager",
             label: "Manager",
-            active: true,
-            statusLabel: "Enabled",
+            selectedRole: "OPERATOR",
+            roleOptions: [
+              { value: "NO_ACCESS", label: "No access" },
+              { value: "OPERATOR", label: "Operator" },
+            ],
             statusTone: "success",
-            roleLabel: "OPERATOR",
+            disabled: false,
+            backed: true,
+            helperText: "Backed",
+          },
+          {
+            key: "mastra-studio",
+            label: "Mastra Studio",
+            selectedRole: "NO_ACCESS",
+            roleOptions: [
+              { value: "NO_ACCESS", label: "No access" },
+              { value: "STUDIO_ACCESS", label: "Studio access" },
+            ],
+            statusTone: "muted",
+            disabled: true,
+            backed: false,
+            helperText: "Mock only",
           },
         ],
       },
@@ -367,11 +400,45 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         meta: "10/24/2023, 14:03",
         productAccess: [
           {
+            key: "admin",
+            label: "Admin",
+            selectedRole: "VIEWER",
+            roleOptions: [
+              { value: "NO_ACCESS", label: "No access" },
+              { value: "VIEWER", label: "Viewer" },
+              { value: "EDITOR", label: "Editor" },
+              { value: "ADMIN", label: "Admin" },
+            ],
+            statusTone: "warning",
+            disabled: true,
+            backed: false,
+            helperText: "Status role",
+          },
+          {
             key: "manager",
             label: "Manager",
-            active: false,
-            statusLabel: "Disabled",
+            selectedRole: "NO_ACCESS",
+            roleOptions: [
+              { value: "NO_ACCESS", label: "No access" },
+              { value: "OPERATOR", label: "Operator" },
+            ],
             statusTone: "muted",
+            disabled: false,
+            backed: true,
+            helperText: "Backed",
+          },
+          {
+            key: "mastra-studio",
+            label: "Mastra Studio",
+            selectedRole: "NO_ACCESS",
+            roleOptions: [
+              { value: "NO_ACCESS", label: "No access" },
+              { value: "STUDIO_ACCESS", label: "Studio access" },
+            ],
+            statusTone: "muted",
+            disabled: true,
+            backed: false,
+            helperText: "Mock only",
           },
         ],
       },
@@ -1301,9 +1368,25 @@ describe("dashboard UI routes", () => {
     const html = await htmlFrom(UsersPage())
 
     expect(html).toContain("Product Access")
-    expect(html).toContain("Manager: Enabled / OPERATOR")
-    expect(html).toContain("Revoke Manager")
-    expect(html).toContain("Manager: Disabled")
-    expect(html).toContain("Enable Manager")
+    expect(html).toContain("Admin app access role for admin@example.com")
+    expect(html).toContain("Manager app access role for admin@example.com")
+    expect(html).toContain(
+      "Mastra Studio app access role for admin@example.com",
+    )
+    expect(html).toContain("Apply Manager role")
+    expect(html).toContain("Status role")
+    expect(html).toContain("Mock only")
+    expect(html).toContain('<option value="OPERATOR" selected="">Operator')
+    expect(html).toContain('<option value="NO_ACCESS" selected="">No access')
+    expect(html).toMatch(
+      /aria-label="Admin app access role for admin@example\.com"[^>]*disabled=""/,
+    )
+    expect(html).toMatch(
+      /aria-label="Mastra Studio app access role for admin@example\.com"[^>]*disabled=""/,
+    )
+    expect(html).not.toContain("Revoke Manager")
+    expect(html).not.toContain("Enable Manager")
+    expect(html).toContain("Approve Editor")
+    expect(html).toContain("Approve Admin")
   })
 })

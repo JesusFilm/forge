@@ -1,4 +1,4 @@
-import { Shield } from "lucide-react"
+import { Check, Shield } from "lucide-react"
 import { revalidatePath } from "next/cache"
 import {
   DashboardPageHeader,
@@ -17,6 +17,9 @@ import {
   revokeManagerAccess as revokeManagerAccessForUser,
 } from "@/services/user-access.service"
 
+type UsersRow = Awaited<ReturnType<typeof loadUsersData>>["rows"][number]
+type ProductAccessItem = NonNullable<UsersRow["productAccess"]>[number]
+
 async function approveUser(formData: FormData) {
   "use server"
 
@@ -32,32 +35,22 @@ async function approveUser(formData: FormData) {
   revalidatePath("/dashboard/users")
 }
 
-async function grantManagerAccess(formData: FormData) {
+async function updateManagerAccess(formData: FormData) {
   "use server"
 
   const user = await requireAdminSession()
   const id = formData.get("id")
-  if (typeof id !== "string") return
-
-  try {
-    await grantManagerAccessForUser({ user, targetUserId: id })
-  } catch (error) {
-    if (!(error instanceof NotFoundError)) {
-      throw error
-    }
+  const role = formData.get("role")
+  if (typeof id !== "string" || (role !== "OPERATOR" && role !== "NO_ACCESS")) {
+    return
   }
-  revalidatePath("/dashboard/users")
-}
-
-async function revokeManagerAccess(formData: FormData) {
-  "use server"
-
-  const user = await requireAdminSession()
-  const id = formData.get("id")
-  if (typeof id !== "string") return
 
   try {
-    await revokeManagerAccessForUser({ user, targetUserId: id })
+    if (role === "OPERATOR") {
+      await grantManagerAccessForUser({ user, targetUserId: id })
+    } else {
+      await revokeManagerAccessForUser({ user, targetUserId: id })
+    }
   } catch (error) {
     if (!(error instanceof NotFoundError)) {
       throw error
@@ -141,43 +134,15 @@ export default async function UsersPage() {
                 </div>,
                 <div
                   key={`${row.key}-products`}
-                  className="flex min-w-[180px] flex-wrap gap-2"
+                  className="flex min-w-[320px] flex-col gap-2"
                 >
                   {(row.productAccess ?? []).map((access) => (
-                    <div
+                    <ProductAccessControl
                       key={access.key}
-                      className="flex flex-wrap items-center gap-2"
-                    >
-                      <span
-                        className={`status-pill ${statusToneClass(access.statusTone)}`}
-                      >
-                        {access.label}: {access.statusLabel}
-                        {access.roleLabel ? ` / ${access.roleLabel}` : ""}
-                      </span>
-                      {access.key === "manager" ? (
-                        access.active ? (
-                          <form action={revokeManagerAccess}>
-                            <input type="hidden" name="id" value={row.key} />
-                            <button
-                              type="submit"
-                              className="status-pill border-[var(--color-warning-border)] text-[var(--color-warning)]"
-                            >
-                              Revoke Manager
-                            </button>
-                          </form>
-                        ) : (
-                          <form action={grantManagerAccess}>
-                            <input type="hidden" name="id" value={row.key} />
-                            <button
-                              type="submit"
-                              className="status-pill border-[var(--color-success-border)] text-[var(--color-success)]"
-                            >
-                              Enable Manager
-                            </button>
-                          </form>
-                        )
-                      ) : null}
-                    </div>
+                      access={access}
+                      userId={row.key}
+                      userTitle={row.title}
+                    />
                   ))}
                 </div>,
                 <span
@@ -213,6 +178,63 @@ export default async function UsersPage() {
           ]}
         />
       </div>
+    </div>
+  )
+}
+
+function ProductAccessControl({
+  access,
+  userId,
+  userTitle,
+}: {
+  access: ProductAccessItem
+  userId: string
+  userTitle: string
+}) {
+  const select = (
+    <select
+      name="role"
+      aria-label={`${access.label} app access role for ${userTitle}`}
+      defaultValue={access.selectedRole}
+      disabled={access.disabled}
+      className={`h-8 min-w-[142px] rounded-sm border bg-[var(--color-surface-raised)] px-2 font-mono text-[11px] outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] disabled:cursor-not-allowed disabled:bg-[var(--color-surface)] disabled:opacity-60 ${statusToneClass(access.statusTone)}`}
+    >
+      {access.roleOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  )
+
+  if (access.key === "manager" && access.backed && !access.disabled) {
+    return (
+      <form
+        action={updateManagerAccess}
+        className="grid grid-cols-[86px_minmax(142px,1fr)_32px] items-center gap-2"
+      >
+        <input type="hidden" name="id" value={userId} />
+        <span className="label-text text-[10px]">{access.label}</span>
+        {select}
+        <button
+          type="submit"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+          title={`Apply ${access.label} role`}
+          aria-label={`Apply ${access.label} role`}
+        >
+          <Check className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+      </form>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-[86px_minmax(142px,1fr)_70px] items-center gap-2">
+      <span className="label-text text-[10px]">{access.label}</span>
+      {select}
+      <span className="mono-meta text-[10px] text-[var(--color-text-muted)]">
+        {access.helperText}
+      </span>
     </div>
   )
 }

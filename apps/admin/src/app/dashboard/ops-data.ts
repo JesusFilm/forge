@@ -5,6 +5,7 @@ import {
   type MediaImageEnrichmentStatus,
   type MediaAssetStatus,
   type SourceTier,
+  type UserRole,
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
@@ -52,13 +53,43 @@ type TableRow = {
 }
 
 type ProductAccess = {
-  key: "manager"
+  key: "admin" | "manager" | "mastra-studio"
   label: string
-  active: boolean
-  statusLabel: string
+  selectedRole: ProductAccessRoleValue
+  roleOptions: ProductAccessRoleOption[]
   statusTone: "success" | "warning" | "danger" | "info" | "muted"
-  roleLabel?: string
+  disabled: boolean
+  backed: boolean
+  helperText: string
 }
+
+type ProductAccessRoleValue =
+  | "NO_ACCESS"
+  | "OPERATOR"
+  | "STUDIO_ACCESS"
+  | UserRole
+
+type ProductAccessRoleOption = {
+  value: ProductAccessRoleValue
+  label: string
+}
+
+const ADMIN_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "VIEWER", label: "Viewer" },
+  { value: "EDITOR", label: "Editor" },
+  { value: "ADMIN", label: "Admin" },
+] satisfies ProductAccessRoleOption[]
+
+const MANAGER_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "OPERATOR", label: "Operator" },
+] satisfies ProductAccessRoleOption[]
+
+const MASTRA_STUDIO_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "STUDIO_ACCESS", label: "Studio access" },
+] satisfies ProductAccessRoleOption[]
 
 export type LanguageDiagnosticTone =
   | "success"
@@ -2001,7 +2032,7 @@ export async function loadUsersData(): Promise<UsersData> {
       [] as Array<{
         id: string
         email: string
-        role: string
+        role: UserRole
         emailVerified: boolean
         updatedAt: Date
         managerMembership: {
@@ -2045,14 +2076,37 @@ export async function loadUsersData(): Promise<UsersData> {
         meta: formatDateTime(row.updatedAt),
         productAccess: [
           {
+            key: "admin",
+            label: "Admin",
+            selectedRole: row.emailVerified ? row.role : "NO_ACCESS",
+            roleOptions: ADMIN_ROLE_OPTIONS,
+            statusTone:
+              !row.emailVerified || row.role === "VIEWER"
+                ? "warning"
+                : "success",
+            disabled: true,
+            backed: false,
+            helperText: "Status role",
+          },
+          {
             key: "manager",
             label: "Manager",
-            active: hasManagerAccess,
-            statusLabel: hasManagerAccess ? "Enabled" : "Disabled",
+            selectedRole: hasManagerAccess ? "OPERATOR" : "NO_ACCESS",
+            roleOptions: MANAGER_ROLE_OPTIONS,
             statusTone: hasManagerAccess ? "success" : "muted",
-            roleLabel: hasManagerAccess
-              ? row.managerMembership?.role
-              : undefined,
+            disabled: false,
+            backed: true,
+            helperText: "Backed",
+          },
+          {
+            key: "mastra-studio",
+            label: "Mastra Studio",
+            selectedRole: "NO_ACCESS",
+            roleOptions: MASTRA_STUDIO_ROLE_OPTIONS,
+            statusTone: "muted",
+            disabled: true,
+            backed: false,
+            helperText: "Mock only",
           },
         ],
       }
