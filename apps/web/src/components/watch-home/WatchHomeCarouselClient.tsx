@@ -66,7 +66,7 @@ function WatchHomeMedia({
   videoRef: RefObject<HTMLVideoElement | null>
 }) {
   return (
-    <div className="absolute inset-x-0 top-0 bottom-[132px] overflow-hidden bg-black sm:bottom-[150px] md:bottom-[164px]">
+    <div className="absolute inset-x-0 top-0 bottom-[var(--watch-home-rail-height)] overflow-hidden bg-black">
       {activeSlide.posterUrl ? (
         <Image
           key={`${activeSlide.id}-poster`}
@@ -111,7 +111,7 @@ function WatchHomeOverlay({
   onToggleMuted: () => void
 }) {
   return (
-    <div className="absolute inset-x-0 bottom-[132px] z-10 flex items-end justify-between gap-4 px-5 pb-6 sm:bottom-[150px] sm:px-10 sm:pb-8 md:bottom-[164px] md:px-12">
+    <div className="absolute inset-x-0 bottom-[var(--watch-home-rail-height)] z-10 flex items-end justify-between gap-4 px-5 pb-6 sm:px-10 sm:pb-8 md:px-12">
       <div className="flex min-w-0 max-w-[min(58rem,calc(100vw-2.5rem))] flex-col items-start gap-4 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
         <div className="min-w-0">
           <p className="text-xs font-bold tracking-[0.24em] text-amber-300 uppercase sm:text-sm">
@@ -174,7 +174,7 @@ function WatchHomeCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "group relative block aspect-video w-[72vw] max-w-[420px] min-w-[236px] overflow-hidden rounded-lg bg-stone-950 text-left shadow-[0_8px_22px_rgba(0,0,0,0.42)] ring-1 ring-white/10 transition focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:w-[30rem]",
+        "group relative block aspect-video w-[clamp(14.75rem,72vw,min(26.25rem,50svh))] overflow-hidden rounded-lg bg-stone-950 text-left shadow-[0_8px_22px_rgba(0,0,0,0.42)] ring-1 ring-white/10 transition focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:w-[clamp(14.75rem,30vw,min(26.25rem,50svh))]",
         isActive
           ? "opacity-100 ring-2 ring-white"
           : "opacity-62 hover:opacity-95 hover:ring-white/45",
@@ -188,7 +188,7 @@ function WatchHomeCard({
           src={slide.thumbnailUrl}
           alt=""
           fill
-          sizes="(max-width: 640px) 72vw, 30rem"
+          sizes="(max-width: 640px) 72vw, min(30vw, 26.25rem)"
           className="object-cover transition duration-500 group-hover:scale-[1.03]"
         />
       ) : null}
@@ -225,7 +225,7 @@ function WatchHomeRail({
   slides: readonly WatchHomeCarouselSlide[]
 }) {
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 h-[132px] bg-black/45 px-5 pt-4 backdrop-blur-sm sm:h-[150px] sm:px-10 md:h-[164px] md:px-12">
+    <div className="absolute inset-x-0 bottom-0 z-20 h-[var(--watch-home-rail-height)] bg-black/45 px-5 pt-4 backdrop-blur-sm sm:px-10 md:px-12">
       <Carousel
         opts={{
           align: "start",
@@ -272,10 +272,10 @@ export function WatchHomeCarouselClient({
 
   return (
     <section
-      className="relative bg-black pt-[calc(6rem+env(safe-area-inset-top,0px))] md:pt-[calc(8rem+env(safe-area-inset-top,0px))]"
+      className="relative bg-black [--watch-home-rail-height:clamp(9.25rem,31svh,15.75rem)] pt-[calc(6rem+env(safe-area-inset-top,0px))] md:pt-[calc(8rem+env(safe-area-inset-top,0px))]"
       data-testid="watch-home-carousel"
     >
-      <div className="relative mx-auto h-[calc(100svh_-_6rem_-_env(safe-area-inset-top,0px))] min-h-[600px] w-full max-w-[1920px] overflow-hidden bg-black sm:min-h-[680px] md:h-[calc(100svh_-_8rem_-_env(safe-area-inset-top,0px))]">
+      <div className="relative mx-auto h-[calc(100svh_-_6rem_-_env(safe-area-inset-top,0px))] w-full max-w-[1920px] overflow-hidden bg-black md:h-[calc(100svh_-_8rem_-_env(safe-area-inset-top,0px))]">
         <WatchHomeMedia
           activeSlide={activeSlide}
           isMuted={isMuted}
@@ -291,7 +291,7 @@ export function WatchHomeCarouselClient({
           onNext={advance}
           onToggleMuted={toggleMuted}
         />
-        <div className="absolute right-5 bottom-[148px] z-30 flex gap-2 sm:hidden">
+        <div className="absolute right-5 bottom-[calc(var(--watch-home-rail-height)+1rem)] z-30 flex gap-2 sm:hidden">
           <Button
             type="button"
             variant="ghost"
