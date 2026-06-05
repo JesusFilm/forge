@@ -7,11 +7,11 @@ import {
 } from "@/lib/content"
 import {
   WATCH_BASE_PATH,
-  WATCH_CANONICAL_ORIGIN,
-  localizedHomeAbsolute,
+  WATCH_PUBLIC_METADATA_ORIGIN,
+  localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchVideoAbsolute,
+  watchVideoPath,
 } from "@/lib/routes"
 import { getSocialConfig } from "@/lib/social-config"
 import { resolvePosterUrl } from "@/lib/url"
@@ -22,9 +22,9 @@ const TITLE_SUFFIX = "| Jesus Film Project"
 /**
  * Build the canonical absolute URL for a watch page in the `.html` shape,
  * keyed off the (slug, pathLocale) the route resolved. Routes through the
- * `lib/routes.ts` absolute builders so the canonical `<link>` matches the
- * production URL contract exactly (origin from `WATCH_CANONICAL_ORIGIN`,
- * `.html` per segment).
+ * `lib/routes.ts` path builders so the canonical `<link>` matches the public
+ * website URL contract exactly (origin from `WATCH_PUBLIC_METADATA_ORIGIN`,
+ * `.html` per segment), independent of local/preview deployment origins.
  *
  * Shapes:
  * - slug + pathLocale → 2-segment `/{slug}.html/{locale}.html`
@@ -42,25 +42,25 @@ const TITLE_SUFFIX = "| Jesus Film Project"
  * href attribute, so a slug with quotes/brackets can't break out.
  */
 function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
-  const root = `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}`
+  const root = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}`
   const s = slug ? stripHtmlSuffix(slug) : undefined
   const l = pathLocale ? stripHtmlSuffix(pathLocale) : undefined
 
   if (s && l) {
     const cs = tryAsContentSlug(s)
     const ls = tryAsLocaleSlug(l)
-    if (cs && ls) return watchVideoAbsolute(cs, ls)
+    if (cs && ls) return `${root}${watchVideoPath(cs, ls)}`
     return `${root}/${s}/${l}`
   }
 
   const single = s ?? l
   if (single) {
     const ls = tryAsLocaleSlug(single)
-    // localizedHomeAbsolute emits `${origin}/watch/{seg}.html` — the correct
-    // 1-segment canonical for both a localized home (seg is a language) and a
-    // single-segment collection landing (seg is content); the URL shape is
-    // identical, so the nominal LocaleSlug brand is fine here.
-    if (ls) return localizedHomeAbsolute(ls)
+    // localizedHomePath emits `/{seg}.html` — the correct 1-segment canonical
+    // for both a localized home (seg is a language) and a single-segment
+    // collection landing (seg is content); the URL shape is identical, so the
+    // nominal LocaleSlug brand is fine here.
+    if (ls) return `${root}${localizedHomePath(ls)}`
     return `${root}/${single}`
   }
 

@@ -16,3 +16,21 @@ export class NotFoundError extends Error {
     this.name = "NotFoundError"
   }
 }
+
+/**
+ * Thrown when an optimistic-concurrency guard detects that a row was
+ * modified by another writer between read and write (the conditional
+ * `updateMany` matched zero rows because the pre-image `updatedAt` no
+ * longer matches). Callers should surface this as a "reload and retry"
+ * signal rather than silently clobbering the concurrent change.
+ */
+export class ConcurrentModificationError extends Error {
+  constructor(entity: string, id?: string) {
+    super(
+      id
+        ? `${entity} was modified concurrently: ${id}`
+        : `${entity} was modified concurrently`,
+    )
+    this.name = "ConcurrentModificationError"
+  }
+}

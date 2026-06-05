@@ -16,7 +16,9 @@ describe("/videos route", () => {
   })
 
   it("declares canonical URL with .html-free /videos shape", () => {
-    expect(metadata.alternates?.canonical).toMatch(/\/watch\/videos$/)
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/videos",
+    )
   })
 
   it("does not include .html suffix in canonical (production contract)", () => {

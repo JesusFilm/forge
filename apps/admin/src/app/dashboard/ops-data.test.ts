@@ -1,7 +1,38 @@
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const { userCount, userFindMany, managerMembershipFindMany } = vi.hoisted(
+  () => ({
+    userCount: vi.fn(),
+    userFindMany: vi.fn(),
+    managerMembershipFindMany: vi.fn(),
+  }),
+)
+
+vi.mock("@/db/client", () => ({
+  prisma: {
+    user: {
+      count: (...args: unknown[]) => userCount(...args),
+      findMany: (...args: unknown[]) => userFindMany(...args),
+    },
+    managerMembership: {
+      findMany: (...args: unknown[]) => managerMembershipFindMany(...args),
+    },
+  },
+}))
+
+vi.mock("@/config/env", () => ({
+  env: {
+    AUTH_ISSUER_URL: "https://auth.example",
+    CORS_ALLOWED_ORIGINS: "",
+  },
+}))
+
 import {
+  buildUserTableRow,
   buildLanguageDiagnosticRow,
+  loadUsersData,
   type LanguageDiagnosticSourceRow,
+  type UserAccessSourceRow,
 } from "@/app/dashboard/ops-data"
 
 function sourceRow(
@@ -71,6 +102,247 @@ function sourceRow(
     ...overrides,
   }
 }
+
+function userSourceRow(
+  overrides: Partial<UserAccessSourceRow> = {},
+): UserAccessSourceRow {
+  return {
+    id: "user-1",
+    email: "viewer@example.com",
+    role: "VIEWER",
+    emailVerified: true,
+    updatedAt: new Date("2026-01-02T03:04:00.000Z"),
+    managerMembership: null,
+    ...overrides,
+  }
+}
+
+describe("loadUsersData", () => {
+  beforeEach(() => {
+    userCount.mockReset()
+    userFindMany.mockReset()
+    managerMembershipFindMany.mockReset()
+  })
+
+  it("selects Manager membership state and maps active, revoked, and missing product access", async () => {
+    userCount
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(3)
+    userFindMany.mockResolvedValueOnce([
+      userSourceRow({
+        id: "active-user",
+        email: "active@example.com",
+        role: "ADMIN",
+      }),
+      userSourceRow({
+        id: "revoked-user",
+        email: "revoked@example.com",
+      }),
+      userSourceRow({
+        id: "plain-user",
+        email: "plain@example.com",
+      }),
+    ])
+    managerMembershipFindMany.mockResolvedValueOnce([
+      {
+        userId: "active-user",
+        role: "OPERATOR",
+        revokedAt: null,
+      },
+      {
+        userId: "revoked-user",
+        role: "OPERATOR",
+        revokedAt: new Date("2026-01-03T00:00:00.000Z"),
+      },
+    ])
+
+    const data = await loadUsersData()
+
+    expect(userCount).toHaveBeenNthCalledWith(1, { where: { role: "ADMIN" } })
+    expect(userCount).toHaveBeenNthCalledWith(2, { where: { role: "EDITOR" } })
+    expect(userCount).toHaveBeenNthCalledWith(3, { where: { role: "VIEWER" } })
+    expect(userFindMany).toHaveBeenCalledWith({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        emailVerified: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 8,
+    })
+    expect(managerMembershipFindMany).toHaveBeenCalledWith({
+      where: {
+        userId: { in: ["active-user", "revoked-user", "plain-user"] },
+      },
+      select: {
+        userId: true,
+        role: true,
+        revokedAt: true,
+      },
+    })
+    expect(
+      data.rows.map((row) =>
+        row.productAccess.map((access) => ({
+          key: access.key,
+          selectedRole: access.selectedRole,
+          statusTone: access.statusTone,
+          disabled: access.disabled,
+          backed: access.backed,
+          helperText: access.helperText,
+        })),
+      ),
+    ).toEqual([
+      [
+        {
+          key: "admin",
+          selectedRole: "ADMIN",
+          statusTone: "success",
+          disabled: true,
+          backed: false,
+          helperText: "Status role",
+        },
+        {
+          key: "manager",
+          selectedRole: "OPERATOR",
+          statusTone: "success",
+          disabled: false,
+          backed: true,
+          helperText: "Backed",
+        },
+        {
+          key: "mastra-studio",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: true,
+          backed: false,
+          helperText: "Mock only",
+        },
+      ],
+      [
+        {
+          key: "admin",
+          selectedRole: "VIEWER",
+          statusTone: "warning",
+          disabled: true,
+          backed: false,
+          helperText: "Status role",
+        },
+        {
+          key: "manager",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: false,
+          backed: true,
+          helperText: "Backed",
+        },
+        {
+          key: "mastra-studio",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: true,
+          backed: false,
+          helperText: "Mock only",
+        },
+      ],
+      [
+        {
+          key: "admin",
+          selectedRole: "VIEWER",
+          statusTone: "warning",
+          disabled: true,
+          backed: false,
+          helperText: "Status role",
+        },
+        {
+          key: "manager",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: false,
+          backed: true,
+          helperText: "Backed",
+        },
+        {
+          key: "mastra-studio",
+          selectedRole: "NO_ACCESS",
+          statusTone: "muted",
+          disabled: true,
+          backed: false,
+          helperText: "Mock only",
+        },
+      ],
+    ])
+  })
+
+  it("keeps user rows visible with Manager disabled when the Manager membership table is absent", async () => {
+    userCount
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(1)
+    userFindMany.mockResolvedValueOnce([
+      userSourceRow({
+        id: "viewer-user",
+        email: "viewer@example.com",
+      }),
+    ])
+    managerMembershipFindMany.mockRejectedValueOnce({ code: "P2021" })
+
+    const data = await loadUsersData()
+
+    expect(data.rows).toHaveLength(1)
+    expect(data.rows[0]?.productAccess.map((access) => access.key)).toEqual([
+      "admin",
+      "manager",
+      "mastra-studio",
+    ])
+    expect(data.rows[0]?.productAccess[1]).toMatchObject({
+      key: "manager",
+      selectedRole: "NO_ACCESS",
+      statusTone: "muted",
+      disabled: false,
+      backed: true,
+    })
+  })
+})
+
+describe("buildUserTableRow", () => {
+  it("requires product access on every Users row", () => {
+    expect(
+      buildUserTableRow(
+        userSourceRow({
+          managerMembership: {
+            role: "OPERATOR",
+            revokedAt: null,
+          },
+        }),
+      ).productAccess,
+    ).toMatchObject([
+      {
+        key: "admin",
+        selectedRole: "VIEWER",
+        statusTone: "warning",
+        disabled: true,
+        backed: false,
+      },
+      {
+        key: "manager",
+        selectedRole: "OPERATOR",
+        statusTone: "success",
+        disabled: false,
+        backed: true,
+      },
+      {
+        key: "mastra-studio",
+        selectedRole: "NO_ACCESS",
+        statusTone: "muted",
+        disabled: true,
+        backed: false,
+      },
+    ])
+  })
+})
 
 describe("buildLanguageDiagnosticRow", () => {
   it("maps active Core language metadata into a serializable diagnostics row", () => {

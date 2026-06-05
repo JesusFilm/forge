@@ -34,6 +34,15 @@ Users page does not show which products a user can open.
 4. `apps/admin/src/app/api/manager/session/route.ts` - production Manager
    access validation path.
 
+## Grep These
+
+- `loadUsersData` - Users page data shaping.
+- `ManagerMembership` - persisted Manager product grant model.
+- `managerMembership` - runtime access checks and Prisma relation reads.
+- `grantManagerAccess` - Admin Users page grant action.
+- `revokeManagerAccess` - Admin Users page revoke action.
+- `manager:grant-operator` - existing script this UI replaces for operators.
+
 ## What To Build
 
 1. Add product-access controls to the Users page.

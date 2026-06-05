@@ -1,5 +1,4 @@
 import { Check, Shield } from "lucide-react"
-import { revalidatePath } from "next/cache"
 import {
   DashboardPageHeader,
   DataTable,
@@ -9,55 +8,14 @@ import {
 } from "@/components/admin-ui"
 import { requireAdminSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
-import { loadUsersData } from "@/app/dashboard/ops-data"
-import { NotFoundError } from "@/services/errors"
 import {
-  approveUserRole,
-  grantManagerAccess as grantManagerAccessForUser,
-  revokeManagerAccess as revokeManagerAccessForUser,
-} from "@/services/user-access.service"
+  loadUsersData,
+  type DashboardStatusTone,
+} from "@/app/dashboard/ops-data"
+import { approveUser, updateManagerAccess } from "@/app/dashboard/users/actions"
 
 type UsersRow = Awaited<ReturnType<typeof loadUsersData>>["rows"][number]
-type ProductAccessItem = NonNullable<UsersRow["productAccess"]>[number]
-
-async function approveUser(formData: FormData) {
-  "use server"
-
-  const user = await requireAdminSession()
-  const id = formData.get("id")
-  const role = formData.get("role")
-
-  if (typeof id !== "string" || (role !== "EDITOR" && role !== "ADMIN")) {
-    return
-  }
-
-  await approveUserRole({ user, targetUserId: id, role })
-  revalidatePath("/dashboard/users")
-}
-
-async function updateManagerAccess(formData: FormData) {
-  "use server"
-
-  const user = await requireAdminSession()
-  const id = formData.get("id")
-  const role = formData.get("role")
-  if (typeof id !== "string" || (role !== "OPERATOR" && role !== "NO_ACCESS")) {
-    return
-  }
-
-  try {
-    if (role === "OPERATOR") {
-      await grantManagerAccessForUser({ user, targetUserId: id })
-    } else {
-      await revokeManagerAccessForUser({ user, targetUserId: id })
-    }
-  } catch (error) {
-    if (!(error instanceof NotFoundError)) {
-      throw error
-    }
-  }
-  revalidatePath("/dashboard/users")
-}
+type ProductAccessItem = UsersRow["productAccess"][number]
 
 export default async function UsersPage() {
   await requireAdminSession()
@@ -136,7 +94,7 @@ export default async function UsersPage() {
                   key={`${row.key}-products`}
                   className="flex min-w-[320px] flex-col gap-2"
                 >
-                  {(row.productAccess ?? []).map((access) => (
+                  {row.productAccess.map((access) => (
                     <ProductAccessControl
                       key={access.key}
                       access={access}
@@ -239,7 +197,7 @@ function ProductAccessControl({
   )
 }
 
-function statusToneClass(tone: string) {
+function statusToneClass(tone: DashboardStatusTone) {
   if (tone === "success") {
     return "border-[var(--color-success-border)] text-[var(--color-success)]"
   }
@@ -248,6 +206,9 @@ function statusToneClass(tone: string) {
   }
   if (tone === "danger") {
     return "border-[var(--color-danger-border)] text-[var(--color-danger)]"
+  }
+  if (tone === "info") {
+    return "border-[var(--color-info-border)] text-[var(--color-info)]"
   }
   return "border-[var(--color-hairline-strong)] text-[var(--color-text-muted)]"
 }

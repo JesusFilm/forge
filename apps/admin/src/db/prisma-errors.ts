@@ -2,7 +2,7 @@
 //
 // Prisma raw SQL errors (especially `$executeRaw` failures on vector
 // writes) can surface the full statement text and parameter values in
-// `error.message`. A 1536-element float vector literal embedded in
+// `error.message`. A large float vector literal embedded in
 // `error.message` would round-trip into per-target outcomes and out the
 // GraphQL mutation response if a service rethrew the raw error. These
 // helpers let services remap a Prisma runtime error to a typed,

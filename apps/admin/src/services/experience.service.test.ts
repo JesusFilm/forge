@@ -20,6 +20,7 @@ function mockPrisma() {
     findMany: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   }
   const experience = {
     create: vi.fn(),
@@ -507,6 +508,120 @@ describe("ExperienceService", () => {
           user: EDITOR_ALICE,
         }),
       ).rejects.toThrow("Forbidden")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // applyChatMutation (experience-AI chat write path)
+  // ---------------------------------------------------------------------------
+
+  describe("applyChatMutation", () => {
+    const baseRow = {
+      id: "loc-1",
+      experienceId: "exp-1",
+      locale: "en",
+      slug: "test-locale",
+      isHomepage: false,
+      pathSegment: null,
+      status: "DRAFT",
+      title: "Before",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      ogImageUrl: null,
+      blocks: [],
+      publishedAt: null,
+      createdAt: new Date("2026-04-15T12:00:00.000Z"),
+      updatedAt: new Date("2026-04-15T12:00:00.000Z"),
+      experience: { ownerId: "alice", archivedAt: null, isTemplate: false },
+    }
+
+    it("creates a HISTORICAL contentRevision + updates the locale in one $transaction (happy path)", async () => {
+      prisma.experienceLocale.findUniqueOrThrow
+        .mockResolvedValueOnce(baseRow) // pre-image read
+        .mockResolvedValueOnce({ ...baseRow, title: "Chat Title" }) // re-fetch
+      prisma.experienceLocale.updateMany.mockResolvedValueOnce({ count: 1 })
+
+      const result = await service.applyChatMutation({
+        input: { id: "loc-1", title: "Chat Title" },
+        user: EDITOR_ALICE,
+        reason: "Chat-driven mutation",
+      })
+
+      expect(result.after.title).toBe("Chat Title")
+      // Revision is the AI-stamped HISTORICAL snapshot.
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            entityType: "ExperienceLocale",
+            entityId: "loc-1",
+            status: "HISTORICAL",
+            revisedByKind: "AI",
+          }),
+        }),
+      )
+      // The write went through the conditional updateMany (concurrency
+      // guard), keyed on the pre-image updatedAt.
+      expect(prisma.experienceLocale.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "loc-1", updatedAt: baseRow.updatedAt },
+        }),
+      )
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+    })
+
+    it("throws ForbiddenError when the principal cannot edit the locale", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(baseRow)
+
+      await expect(
+        service.applyChatMutation({
+          input: { id: "loc-1", title: "Hijack" },
+          user: EDITOR_BOB,
+          reason: "Chat-driven mutation",
+        }),
+      ).rejects.toThrow("Forbidden")
+      // No write attempted on a forbidden mutation.
+      expect(prisma.experienceLocale.updateMany).not.toHaveBeenCalled()
+    })
+
+    it("strips slug from the update payload (slug is not chat-writable)", async () => {
+      prisma.experienceLocale.findUniqueOrThrow
+        .mockResolvedValueOnce(baseRow)
+        .mockResolvedValueOnce(baseRow)
+      prisma.experienceLocale.updateMany.mockResolvedValueOnce({ count: 1 })
+
+      await service.applyChatMutation({
+        // `slug` is not on ChatMutationInput; the Zod parse must strip it
+        // so it never reaches the update payload.
+        input: { id: "loc-1", title: "Keep slug", slug: "evil-slug" } as never,
+        user: EDITOR_ALICE,
+        reason: "Chat-driven mutation",
+      })
+
+      const call = prisma.experienceLocale.updateMany.mock.calls[0][0] as {
+        data: Record<string, unknown>
+      }
+      expect(call.data).not.toHaveProperty("slug")
+      expect(call.data).toHaveProperty("title", "Keep slug")
+    })
+
+    it("throws ConcurrentModificationError when the row was modified concurrently (no orphan revision)", async () => {
+      // Pre-image read succeeds, but the conditional updateMany matches 0
+      // rows because updatedAt no longer matches → lost-update guard fires.
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(baseRow)
+      prisma.experienceLocale.updateMany.mockResolvedValueOnce({ count: 0 })
+
+      await expect(
+        service.applyChatMutation({
+          input: { id: "loc-1", title: "Stale write" },
+          user: EDITOR_ALICE,
+          reason: "Chat-driven mutation",
+        }),
+      ).rejects.toMatchObject({ name: "ConcurrentModificationError" })
+
+      // The throw rolls back the $transaction, so the re-fetch never runs.
+      // (findUniqueOrThrow called once for the pre-image only.)
+      expect(prisma.experienceLocale.findUniqueOrThrow).toHaveBeenCalledTimes(1)
     })
   })
 

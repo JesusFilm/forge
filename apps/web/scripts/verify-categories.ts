@@ -9,7 +9,7 @@
  * letting the grid ship with weak categories.
  *
  * Run: GRAPHQL_URL=https://... pnpm -F @forge/web verify:categories
- * Or:  NEXT_PUBLIC_GRAPHQL_URL already set in the shell
+ * Or:  NEXT_PUBLIC_ADMIN_GRAPHQL_URL already set in the shell
  *
  * Intentionally avoids importing @/lib/client or @/lib/search so the script
  * does not drag apps/web's client-only module graph (env-schema validation,
@@ -21,19 +21,14 @@ import { CATEGORIES } from "../src/lib/search-categories"
 const MIN_RESULTS = 6
 const LOCALE = "en"
 
-const SEMANTIC_SEARCH_QUERY = /* GraphQL */ `
+const SEARCH_QUERY = /* GraphQL */ `
   query VerifyCategorySearch(
-    $query: String!
+    $q: String!
     $locale: String!
     $limit: Int
     $offset: Int
   ) {
-    semanticSearch(
-      query: $query
-      locale: $locale
-      limit: $limit
-      offset: $offset
-    ) {
+    search(q: $q, locale: $locale, limit: $limit, offset: $offset) {
       results {
         id
       }
@@ -43,8 +38,8 @@ const SEMANTIC_SEARCH_QUERY = /* GraphQL */ `
 
 type SemanticSearchResponse = {
   data?: {
-    semanticSearch?: {
-      results?: { id: number }[]
+    search?: {
+      results?: { id: string }[]
     }
   }
   errors?: { message: string }[]
@@ -59,8 +54,8 @@ async function runSearch(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        query: SEMANTIC_SEARCH_QUERY,
-        variables: { query: term, locale: LOCALE, limit: 20, offset: 0 },
+        query: SEARCH_QUERY,
+        variables: { q: term, locale: LOCALE, limit: 20, offset: 0 },
       }),
     })
     if (!res.ok) {
@@ -70,7 +65,7 @@ async function runSearch(
     if (body.errors && body.errors.length > 0) {
       return new Error(body.errors.map((e) => e.message).join("; "))
     }
-    return body.data?.semanticSearch?.results?.length ?? 0
+    return body.data?.search?.results?.length ?? 0
   } catch (err) {
     return err instanceof Error ? err : new Error(String(err))
   }
@@ -79,11 +74,11 @@ async function runSearch(
 async function main() {
   const endpoint =
     process.env.GRAPHQL_URL ??
-    process.env.NEXT_PUBLIC_GRAPHQL_URL ??
-    process.env.INTERNAL_GRAPHQL_URL
+    process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL ??
+    process.env.INTERNAL_ADMIN_GRAPHQL_URL
   if (!endpoint) {
     console.error(
-      "Missing GraphQL endpoint. Set GRAPHQL_URL, NEXT_PUBLIC_GRAPHQL_URL, or INTERNAL_GRAPHQL_URL.",
+      "Missing GraphQL endpoint. Set GRAPHQL_URL, NEXT_PUBLIC_ADMIN_GRAPHQL_URL, or INTERNAL_ADMIN_GRAPHQL_URL.",
     )
     process.exit(2)
   }
