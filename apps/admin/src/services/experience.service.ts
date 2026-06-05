@@ -13,7 +13,11 @@ import {
   canArchiveExperience,
 } from "@/auth/permissions"
 import { start } from "workflow/api"
-import { ForbiddenError, NotFoundError } from "./errors"
+import {
+  ConcurrentModificationError,
+  ForbiddenError,
+  NotFoundError,
+} from "./errors"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
@@ -24,6 +28,7 @@ import {
   PublishExperienceLocaleInput,
   RestoreExperienceLocaleRevisionInput,
   ArchiveExperienceInput,
+  ChatMutationInput,
 } from "./experience.schemas"
 
 export class ExperienceEmbeddingEligibilityError extends Error {
@@ -600,5 +605,106 @@ export class ExperienceService {
     // See docs/solutions/best-practices/workflow-dispatch-test-mode-divergence-20260421.md.
     const run = await start(runExperienceEmbedding, [{ localeId }])
     return run.returnValue
+  }
+  /**
+   * Apply a validated AI chat-mutation envelope to an experience locale
+   * (experience-AI chat; additive port from the chat branch).
+   *
+   * Slug is intentionally NOT writable from this method — the chat
+   * panel is barred from changing slugs. `ChatMutationInput` omits
+   * `slug` entirely so a `.strict()` envelope can never sneak it in.
+   */
+  async applyChatMutation({
+    input,
+    user,
+    reason,
+  }: {
+    input: {
+      id: string
+      title?: string
+      metaDescription?: string | null
+      ogImageUrl?: string | null
+      blocks?: unknown[]
+    }
+    user: Principal | null
+    reason: string
+  }) {
+    const parsed = ChatMutationInput.parse(input)
+
+    const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
+      where: { id: parsed.id },
+      select: {
+        id: true,
+        experienceId: true,
+        locale: true,
+        slug: true,
+        isHomepage: true,
+        pathSegment: true,
+        title: true,
+        metaDescription: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImageUrl: true,
+        blocks: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        experience: {
+          select: { ownerId: true, archivedAt: true, isTemplate: true },
+        },
+      },
+    })
+
+    if (!canEditExperienceLocale(user, existing)) {
+      throw new ForbiddenError()
+    }
+
+    const { id, ...data } = parsed
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.contentRevision.create({
+        data: {
+          entityType: "ExperienceLocale",
+          entityId: existing.id,
+          snapshot: snapshotExperienceLocale(existing),
+          status: "HISTORICAL",
+          revisedBy: user?.id ?? null,
+          revisedByKind: "AI",
+          reason,
+        },
+      })
+
+      // Optimistic-concurrency guard: the write only lands if the row's
+      // `updatedAt` still matches the pre-image we snapshotted above. A
+      // concurrent manual save (or another chat turn) between read and
+      // write bumps `updatedAt`, the conditional match returns count 0,
+      // and we throw so the chat turn surfaces "reload and retry" instead
+      // of silently clobbering the other writer's change (lost update).
+      // Throwing rolls back the transaction, so no orphan HISTORICAL
+      // revision row is left behind.
+      const { count } = await tx.experienceLocale.updateMany({
+        where: { id, updatedAt: existing.updatedAt },
+        data: data as Prisma.ExperienceLocaleUncheckedUpdateInput,
+      })
+      if (count === 0) {
+        throw new ConcurrentModificationError("ExperienceLocale", id)
+      }
+
+      // Re-fetch the freshly-updated row for the return value
+      // (`updateMany` returns a count, not the row).
+      const updated = await tx.experienceLocale.findUniqueOrThrow({
+        where: { id },
+      })
+
+      return { before: existing, after: updated }
+    })
+
+    // Fire-and-forget web revalidation, mirroring update/publish above.
+    void emitRevalidateWebhook({
+      model: "experience",
+      slug: result.after.slug,
+      locale: result.after.locale,
+    })
+    return result
   }
 }

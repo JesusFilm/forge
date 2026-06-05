@@ -234,6 +234,7 @@ enum SearchEvalCandidateSanitizationStatus {
 // -----------------------------------------------------------------------------
 
 model User {
+  chatThreadsCreated ExperienceChatThread[] // experience-AI chat (additive)
   id            String   @id
   name          String
   email         String
@@ -1517,6 +1518,7 @@ model Experience {
 /// discriminated union in `src/domain/blocks.ts` (Unit 4e). Reads return the
 /// JSONB column directly; mutations validate before write.
 model ExperienceLocale {
+  chatThreads ExperienceChatThread[] // experience-AI chat (additive)
   id                         String                       @id @default(cuid())
   experienceId               String                       @map("experience_id")
   experience                 Experience                   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
@@ -1665,4 +1667,62 @@ model VideoTranscriptChunk {
   @@unique([transcriptId, chunkIndex])
   @@index([language])
   @@map("video_transcript_chunk")
+}
+
+// -----------------------------------------------------------------------------
+// Experience-AI chat (in-admin Mastra runtime) — additive block from the
+// feat/admin-ai-chat-thumb-rating branch. Tables created by migrations
+// 0029_experience_chat + 0031_chat_message_produced_by.
+// -----------------------------------------------------------------------------
+enum ExperienceChatMessageRole {
+  USER      @map("user")
+  ASSISTANT @map("assistant")
+  SYSTEM    @map("system")
+}
+model ExperienceChatThread {
+  id                 String           @id @default(cuid())
+  experienceLocaleId String           @map("experience_locale_id")
+  experienceLocale   ExperienceLocale @relation(fields: [experienceLocaleId], references: [id], onDelete: Cascade)
+  title              String
+  createdByUserId    String           @map("created_by_user_id")
+  createdBy          User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  lastMessageAt      DateTime         @default(now()) @map("last_message_at")
+  archivedAt         DateTime?        @map("archived_at")
+
+  messages ExperienceChatMessage[]
+
+  @@index([experienceLocaleId, lastMessageAt(sort: Desc)], map: "experience_chat_thread_locale_last_message_idx")
+  @@index([createdByUserId], map: "experience_chat_thread_created_by_idx")
+  @@map("experience_chat_thread")
+}
+
+/// One turn in a chat thread. Assistant turns may carry a snapshot_diff
+/// (hybrid RFC-6902 + scalar before/after envelope) and mutations_applied
+/// (the validated AI envelope).
+model ExperienceChatMessage {
+  id               String                    @id @default(cuid())
+  threadId         String                    @map("thread_id")
+  thread           ExperienceChatThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role             ExperienceChatMessageRole
+  content          String
+  providerKind     String?                   @map("provider_kind")
+  // Producer id (agent or workflow) that emitted this assistant turn.
+  // Free-form string instead of a Prisma enum so adding a new agent
+  // doesn't require a migration. The closed ratable set lives in
+  // src/services/chat-rating.constants.ts; the chat-rating service
+  // refuses to rate messages whose producedBy is outside that set.
+  // Nullable for historic rows (the column landed in migration
+  // 0031_chat_message_produced_by) and for non-assistant turns where it
+  // has no meaning.
+  producedBy       String?                   @map("produced_by")
+  promptTokens     Int?                      @map("prompt_tokens")
+  completionTokens Int?                      @map("completion_tokens")
+  snapshotDiff     Json?                     @map("snapshot_diff")
+  mutationsApplied Json?                     @map("mutations_applied")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+
+  @@index([threadId, createdAt(sort: Asc)], map: "experience_chat_message_thread_created_idx")
+  @@map("experience_chat_message")
 }

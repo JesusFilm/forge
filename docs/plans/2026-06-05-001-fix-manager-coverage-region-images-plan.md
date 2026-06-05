@@ -5,7 +5,7 @@ status: completed
 date: 2026-06-05
 branch: fix/manager-coverage-region-images
 roadmap:
-  - docs/roadmap/platform/feat-160-manager-coverage-region-image-assets.md
+  - docs/roadmap/platform/feat-166-manager-coverage-region-image-assets.md
 related_docs:
   - docs/roadmap/platform/feat-114-manager-tailwind-design-system-migration.md
 ---

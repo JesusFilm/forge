@@ -1,5 +1,5 @@
 ---
-id: "feat-160"
+id: "feat-166"
 title: "Manager coverage region image assets"
 owner: "vlad"
 priority: "P1"
