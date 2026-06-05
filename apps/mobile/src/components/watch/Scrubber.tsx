@@ -41,6 +41,9 @@ export function Scrubber({
 }: ScrubberProps) {
   const containerRef = useRef<View>(null)
   const trackRef = useRef({ x: 0, width: 0 })
+  // Last fraction from grant/move. Release seeks to THIS, not a fresh read of
+  // gestureState.moveX — on a tap (no move) moveX is 0, which would seek to 0.
+  const lastFractionRef = useRef(0)
   const [dragging, setDragging] = useState(false)
   const [dragFraction, setDragFraction] = useState(0)
 
@@ -81,6 +84,7 @@ export function Scrubber({
         // fresh onLayout, then map from the initial touch X.
         measure()
         const f = fractionFromAbsX(g.x0)
+        lastFractionRef.current = f
         setDragging(true)
         setDragFraction(f)
         onScrubChangeRef.current?.(true, fractionToTime(f, durationRef.current))
@@ -90,15 +94,14 @@ export function Scrubber({
         g: PanResponderGestureState,
       ) => {
         const f = fractionFromAbsX(g.moveX)
+        lastFractionRef.current = f
         setDragFraction(f)
         onScrubChangeRef.current?.(true, fractionToTime(f, durationRef.current))
       },
-      onPanResponderRelease: (
-        _e: GestureResponderEvent,
-        g: PanResponderGestureState,
-      ) => {
-        const f = fractionFromAbsX(g.moveX)
-        const t = fractionToTime(f, durationRef.current)
+      onPanResponderRelease: () => {
+        // Seek to the last grant/move fraction — NOT a fresh moveX read, which
+        // is 0 on a tap and would reset to the start.
+        const t = fractionToTime(lastFractionRef.current, durationRef.current)
         setDragging(false)
         onScrubChangeRef.current?.(false, null)
         if (t != null) onSeekRef.current(t)
