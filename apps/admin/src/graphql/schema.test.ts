@@ -47,6 +47,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "video",
         "videoBySlug",
         "videos",
+        "watchHomeVideos",
         "videosByCoreIds",
         // Experience
         "experience",

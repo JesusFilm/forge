@@ -35,6 +35,8 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "video",
   "videoBySlug",
   "videos",
+  // Forge /watch home showcase lookup: public consumer read, normal Video shape.
+  "watchHomeVideos",
   // Lazy per-dub downloads/subtitles fetch for mobile's lean watch screen —
   // same public posture + visibility as videoBySlug{ dubs }.
   "videoDub",
