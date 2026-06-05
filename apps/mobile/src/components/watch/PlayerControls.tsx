@@ -7,9 +7,8 @@ import { useEvent } from "expo"
 import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import { applySkip } from "../../lib/scrubber"
+import { SKIP_SECONDS } from "../../lib/tapSeek"
 import { Scrubber } from "./Scrubber"
-
-const SKIP_SECONDS = 10
 
 type PlayerControlsProps = {
   player: VideoPlayer
@@ -99,6 +98,11 @@ export function PlayerControls({
   // the fresh component starts at 0 and the poll only runs while playing — so a
   // paused or ended video would lose its position and the replay state.
   useEffect(() => {
+    // Mute is read first and unconditionally: it persists on the player across
+    // a chrome hide/show, but this fresh mount's useState(false) would otherwise
+    // show an un-muted icon while audio stays muted. (Duration may still be 0
+    // here on HLS, so the time/ended seed stays behind the guard below.)
+    setIsMuted(player.muted)
     const d = player.duration
     if (!Number.isFinite(d) || d <= 0) return
     const t = player.currentTime

@@ -23,6 +23,7 @@ import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
 import { applySkip } from "../../lib/scrubber"
 import {
   DOUBLE_TAP_MS,
+  SKIP_SECONDS,
   seekDeltaForTap,
   seekSideForTap,
   type SeekSide,
@@ -30,8 +31,6 @@ import {
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { PlayerControls } from "./PlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
-
-const SKIP_SECONDS = 10
 
 type VideoPlayerProps = {
   streamingUrl: string | null
@@ -255,7 +254,10 @@ export function VideoPlayer({
   )
 
   const handleTapPressIn = useCallback(() => {
-    wasVisibleRef.current = controls.controlsVisible
+    // Read ground-truth visibility (the ref), NOT controls.controlsVisible —
+    // the render state lags by one fade, so mid-auto-hide it still reads true
+    // and the pending single-tap would hide the chrome this press just revealed.
+    wasVisibleRef.current = controls.isVisibleNow()
     controls.revealIfHidden()
   }, [controls])
 

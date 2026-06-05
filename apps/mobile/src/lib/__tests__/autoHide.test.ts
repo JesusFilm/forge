@@ -1,4 +1,4 @@
-import { shouldArmHideTimer } from "../autoHide"
+import { shouldArmHideTimer, type AutoHideGate } from "../autoHide"
 
 // The useControlsVisibility hook wires Animated, AppState, AccessibilityInfo,
 // and expo-video listeners together — that orchestration is verified in the
@@ -7,7 +7,7 @@ import { shouldArmHideTimer } from "../autoHide"
 // plus the buffering / ended / screen-reader gates.
 
 describe("shouldArmHideTimer", () => {
-  const playing = {
+  const playing: AutoHideGate = {
     isPaused: false,
     status: "readyToPlay",
     screenReaderEnabled: false,

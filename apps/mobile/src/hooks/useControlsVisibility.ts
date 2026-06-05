@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AccessibilityInfo, Animated, AppState, Easing } from "react-native"
 import { useEvent } from "expo"
-import type { VideoPlayer } from "expo-video"
+import type { VideoPlayer, VideoPlayerStatus } from "expo-video"
 import { shouldArmHideTimer } from "../lib/autoHide"
 
 const HIDE_DELAY_MS = 3000
@@ -17,12 +17,13 @@ export type ControlsVisibility = {
    *  chrome stops intercepting touches. */
   mounted: boolean
   opacityAnim: Animated.Value
-  /** Tap on the video body: hide if visible, reveal if hidden. */
-  toggle: () => void
   /** Hide chrome if currently visible (no-op if already hidden). */
   hide: () => void
   /** Reveal only if currently hidden (immediate, e.g. on press-in). */
   revealIfHidden: () => void
+  /** Ground-truth visibility (the ref, not the lagging render state) so a tap
+   *  landing mid-fade reads "hiding" and is routed to reveal, not hide. */
+  isVisibleNow: () => boolean
   /** A control was used — keep chrome up and restart the idle timer. */
   noteInteraction: () => void
   isPlaying: boolean
@@ -46,7 +47,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   const opacityAnim = useRef(new Animated.Value(1)).current
 
   const isPausedRef = useRef(false)
-  const statusRef = useRef<string>("idle")
+  const statusRef = useRef<VideoPlayerStatus>("idle")
   const screenReaderRef = useRef(false)
   const reduceMotionRef = useRef(false)
   const controlsVisibleRef = useRef(true)
@@ -69,6 +70,12 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
 
   const hideNow = useCallback(() => {
     clearTimer()
+    // Flip the ground-truth ref immediately, BEFORE the fade resolves. The
+    // timer-driven path calls hideNow directly (explicit toggle/hide set this
+    // themselves), so without this the ref stays "visible" through the whole
+    // fade — making revealIfHidden() a no-op and letting a mid-fade tap fall
+    // through and complete the hide instead of bringing chrome back.
+    controlsVisibleRef.current = false
     if (hideAnimRef.current != null) {
       hideAnimRef.current.stop()
       hideAnimRef.current = null
@@ -133,15 +140,6 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     scheduleHide()
   }, [clearTimer, opacityAnim, scheduleHide])
 
-  const toggle = useCallback(() => {
-    if (controlsVisibleRef.current) {
-      controlsVisibleRef.current = false
-      hideNow()
-    } else {
-      reveal()
-    }
-  }, [hideNow, reveal])
-
   const hide = useCallback(() => {
     if (!controlsVisibleRef.current) return
     controlsVisibleRef.current = false
@@ -152,12 +150,21 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     if (!controlsVisibleRef.current) reveal()
   }, [reveal])
 
+  const isVisibleNow = useCallback(() => controlsVisibleRef.current, [])
+
   const noteInteraction = useCallback(() => {
+    // Stop any in-flight hide fade — a control pressed during the ~150ms fade
+    // must keep chrome up, not let the hide's completion callback unmount it.
+    if (hideAnimRef.current != null) {
+      hideAnimRef.current.stop()
+      hideAnimRef.current = null
+    }
     controlsVisibleRef.current = true
     setMounted(true)
     setControlsVisible(true)
+    opacityAnim.setValue(1)
     scheduleHide()
-  }, [scheduleHide])
+  }, [opacityAnim, scheduleHide])
 
   scheduleHideRef.current = scheduleHide
   revealRef.current = reveal
@@ -177,7 +184,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   useEffect(() => {
     const sub = player.addListener(
       "statusChange",
-      (payload: { status: string }) => {
+      (payload: { status: VideoPlayerStatus }) => {
         if (!isMountedRef.current) return
         const next = payload.status
         statusRef.current = next
@@ -288,9 +295,9 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     controlsVisible,
     mounted,
     opacityAnim,
-    toggle,
     hide,
     revealIfHidden,
+    isVisibleNow,
     noteInteraction,
     isPlaying,
   }

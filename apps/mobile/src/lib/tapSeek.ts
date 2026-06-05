@@ -8,6 +8,10 @@
  *  on slower devices misfire as two single taps. */
 export const DOUBLE_TAP_MS = 300
 
+/** Seek step (seconds) shared by the ±skip buttons and the double-tap-the-sides
+ *  gesture, so the two surfaces can never drift apart. Matches YouTube's 10s. */
+export const SKIP_SECONDS = 10
+
 export type SeekSide = "left" | "right"
 
 /** Which half of the player was tapped. Null when the width isn't known yet. */
