@@ -49,6 +49,12 @@ export type ManagerCoverageSnapshot = {
   languageCoverage: unknown
 }
 
+type CoverageAggregateRow = {
+  videoId: string | null
+  aiGenerated: boolean
+  _count: { _all: number }
+}
+
 function assertManagerReadAccess(user: Principal | null) {
   if (!hasPermission(user, "read:manager-read-models")) {
     throw new ForbiddenError()
@@ -72,21 +78,31 @@ function nameFrom(
   return first ?? ""
 }
 
-function countByAiGenerated(
-  rows: Array<{ languageId?: string | null; aiGenerated: boolean }>,
-  languageIds: string[],
-): ManagerCoverageCounts {
-  const selected = new Set(languageIds)
-  const scoped =
-    selected.size === 0
-      ? rows
-      : rows.filter(
-          (row) => row.languageId != null && selected.has(row.languageId),
-        )
-  return {
-    human: scoped.filter((row) => !row.aiGenerated).length,
-    ai: scoped.filter((row) => row.aiGenerated).length,
+function buildCoverageCountMap(
+  rows: CoverageAggregateRow[],
+): Map<string, ManagerCoverageCounts> {
+  const countsByVideoId = new Map<string, ManagerCoverageCounts>()
+
+  for (const row of rows) {
+    if (row.videoId == null) continue
+
+    const counts = countsByVideoId.get(row.videoId) ?? { human: 0, ai: 0 }
+    if (row.aiGenerated) {
+      counts.ai += row._count._all
+    } else {
+      counts.human += row._count._all
+    }
+    countsByVideoId.set(row.videoId, counts)
   }
+
+  return countsByVideoId
+}
+
+function countsForVideo(
+  countsByVideoId: Map<string, ManagerCoverageCounts>,
+  videoId: string,
+): ManagerCoverageCounts {
+  return countsByVideoId.get(videoId) ?? { human: 0, ai: 0 }
 }
 
 export class ManagerReadModelService {
@@ -193,11 +209,40 @@ export class ManagerReadModelService {
           take: 1,
         },
         parents: true,
-        subtitles: { where: { deletedAt: null } },
-        dubs: { where: { deletedAt: null } },
       },
       orderBy: { updatedAt: "desc" },
     })
+
+    const videoIds = videos.map((video) => video.id)
+    const languageFilter =
+      languageIds.length > 0 ? { languageId: { in: languageIds } } : {}
+
+    const [subtitleCounts, dubCounts] =
+      videoIds.length === 0
+        ? [[], []]
+        : await Promise.all([
+            this.prisma.videoSubtitle.groupBy({
+              by: ["videoId", "aiGenerated"],
+              where: {
+                deletedAt: null,
+                videoId: { in: videoIds },
+                ...languageFilter,
+              },
+              _count: { _all: true },
+            }),
+            this.prisma.videoDub.groupBy({
+              by: ["videoId", "aiGenerated"],
+              where: {
+                deletedAt: null,
+                videoId: { in: videoIds },
+                ...languageFilter,
+              },
+              _count: { _all: true },
+            }),
+          ])
+
+    const subtitleCountsByVideoId = buildCoverageCountMap(subtitleCounts)
+    const dubCountsByVideoId = buildCoverageCountMap(dubCounts)
 
     return videos.map((video) => ({
       documentId: video.id,
@@ -209,8 +254,8 @@ export class ManagerReadModelService {
       imageUrl: video.images[0]?.url ?? null,
       parentDocumentIds: video.parents.map((parent) => parent.parentId),
       coverage: {
-        subtitles: countByAiGenerated(video.subtitles, languageIds),
-        audio: countByAiGenerated(video.dubs, languageIds),
+        subtitles: countsForVideo(subtitleCountsByVideoId, video.id),
+        audio: countsForVideo(dubCountsByVideoId, video.id),
       },
     }))
   }

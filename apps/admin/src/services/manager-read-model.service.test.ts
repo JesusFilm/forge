@@ -8,6 +8,8 @@ function mockPrisma() {
     country: { findMany: vi.fn() },
     language: { findMany: vi.fn() },
     video: { findMany: vi.fn() },
+    videoSubtitle: { groupBy: vi.fn() },
+    videoDub: { groupBy: vi.fn() },
     managerCoverageSnapshot: { findMany: vi.fn() },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
@@ -96,14 +98,20 @@ describe("ManagerReadModelService", () => {
         locales: [{ title: "Video One" }],
         images: [{ url: "https://example.test/image.jpg" }],
         parents: [{ parentId: "parent-1" }],
-        subtitles: [
-          { languageId: "lang-a", aiGenerated: false },
-          { languageId: "lang-b", aiGenerated: true },
-        ],
-        dubs: [
-          { languageId: "lang-a", aiGenerated: false },
-          { languageId: "lang-b", aiGenerated: true },
-        ],
+      },
+    ])
+    prisma.videoSubtitle.groupBy.mockResolvedValueOnce([
+      {
+        videoId: "video-1",
+        aiGenerated: false,
+        _count: { _all: 1 },
+      },
+    ])
+    prisma.videoDub.groupBy.mockResolvedValueOnce([
+      {
+        videoId: "video-1",
+        aiGenerated: false,
+        _count: { _all: 1 },
       },
     ])
 
@@ -128,5 +136,31 @@ describe("ManagerReadModelService", () => {
         },
       },
     ])
+    expect(prisma.video.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.not.objectContaining({
+          subtitles: expect.anything(),
+          dubs: expect.anything(),
+        }),
+      }),
+    )
+    expect(prisma.videoSubtitle.groupBy).toHaveBeenCalledWith({
+      by: ["videoId", "aiGenerated"],
+      where: {
+        deletedAt: null,
+        videoId: { in: ["video-1"] },
+        languageId: { in: ["lang-a"] },
+      },
+      _count: { _all: true },
+    })
+    expect(prisma.videoDub.groupBy).toHaveBeenCalledWith({
+      by: ["videoId", "aiGenerated"],
+      where: {
+        deletedAt: null,
+        videoId: { in: ["video-1"] },
+        languageId: { in: ["lang-a"] },
+      },
+      _count: { _all: true },
+    })
   })
 })
