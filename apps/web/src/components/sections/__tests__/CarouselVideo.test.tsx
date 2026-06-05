@@ -31,19 +31,20 @@ vi.mock("next/image", () => ({
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
 
 const baseFragment = {
-  id: "cv-1",
+  t: "videoCarousel",
   sectionKey: "carousel",
   title: "Series",
-  subtitle: null,
-  carouselDescription: null,
+  subtitle: undefined,
+  description: undefined,
+  itemsSource: "manual",
   items: [
     {
-      id: "item-1",
       streamingUrl: "https://example.com/one.m3u8",
-      imageUrl: null,
+      imageUrl: undefined,
+      imageOverrideUrl: undefined,
       titleOverride: "First",
-      backgroundColor: null,
-      video: null,
+      backgroundColor: undefined,
+      videoId: undefined,
     },
   ],
 } as Parameters<typeof CarouselVideo>[0]["data"]

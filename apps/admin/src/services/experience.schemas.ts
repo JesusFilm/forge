@@ -63,6 +63,27 @@ export type RestoreExperienceLocaleRevisionInput = z.infer<
   typeof RestoreExperienceLocaleRevisionInput
 >
 
+/**
+ * Chat-driven mutation input. Mirrors {@link UpdateExperienceLocaleInput}
+ * but with slug + isHomepage + pathSegment + ogTitle + ogDescription +
+ * isTemplate intentionally OMITTED — the chat panel may only touch the
+ * core editable surface (title, metaDescription, blocks, ogImageUrl).
+ * Slug specifically is barred per U6/U7 of the experience-ai-chat plan.
+ *
+ * Validated at the top of `ExperienceService.applyChatMutation`. The
+ * upstream Codex envelope is also `.strict()`-validated so unknown keys
+ * never reach this schema, but this acts as a defense-in-depth boundary
+ * for any future caller of `applyChatMutation`.
+ */
+export const ChatMutationInput = z.object({
+  id: z.string().min(1),
+  title: z.string().max(500).optional(),
+  metaDescription: z.string().max(1000).nullable().optional(),
+  ogImageUrl: z.string().url().nullable().optional(),
+  blocks: BlocksSchema.optional(),
+})
+export type ChatMutationInput = z.infer<typeof ChatMutationInput>
+
 export const ArchiveExperienceInput = z.object({
   id: z.string().min(1),
 })
