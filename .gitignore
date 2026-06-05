@@ -43,3 +43,6 @@ todos/*.md
 output/
 forge.code-workspace
 .worktrees
+
+# ce-plan HTML explainers (present-html) — disposable, regenerated per plan
+*.explainer.html
