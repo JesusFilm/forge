@@ -6,16 +6,33 @@ import { ForbiddenError, NotFoundError } from "@/services/errors"
 
 export type AdminAssignableRole = "EDITOR" | "ADMIN"
 
-type PrismaLike = Pick<PrismaClient, "user" | "managerMembership">
+export type UserAccessStore = {
+  user: Pick<PrismaClient["user"], "findUnique" | "update">
+  managerMembership: Pick<
+    PrismaClient["managerMembership"],
+    "upsert" | "updateMany"
+  >
+}
 
-function assertAdmin(user: Principal | null) {
-  if (!hasPermission(user, "admin:all")) {
+async function assertCurrentAdmin(
+  prisma: UserAccessStore,
+  user: Principal | null,
+) {
+  if (!hasPermission(user, "admin:all") || !user?.id) {
+    throw new ForbiddenError()
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  })
+  if (currentUser?.role !== "ADMIN") {
     throw new ForbiddenError()
   }
 }
 
 async function assertTargetUserExists(
-  prisma: PrismaLike,
+  prisma: UserAccessStore,
   userId: string,
 ): Promise<void> {
   const user = await prisma.user.findUnique({
@@ -38,9 +55,9 @@ export async function approveUserRole(
     targetUserId: string
     role: AdminAssignableRole
   },
-  prisma: PrismaLike = defaultPrisma,
+  prisma: UserAccessStore = defaultPrisma,
 ) {
-  assertAdmin(user)
+  await assertCurrentAdmin(prisma, user)
 
   return prisma.user.update({
     where: { id: targetUserId },
@@ -57,9 +74,9 @@ export async function grantManagerAccess(
     user: Principal | null
     targetUserId: string
   },
-  prisma: PrismaLike = defaultPrisma,
+  prisma: UserAccessStore = defaultPrisma,
 ) {
-  assertAdmin(user)
+  await assertCurrentAdmin(prisma, user)
   await assertTargetUserExists(prisma, targetUserId)
 
   return prisma.managerMembership.upsert({
@@ -84,9 +101,9 @@ export async function revokeManagerAccess(
     user: Principal | null
     targetUserId: string
   },
-  prisma: PrismaLike = defaultPrisma,
+  prisma: UserAccessStore = defaultPrisma,
 ) {
-  assertAdmin(user)
+  await assertCurrentAdmin(prisma, user)
   await assertTargetUserExists(prisma, targetUserId)
 
   return prisma.managerMembership.updateMany({
