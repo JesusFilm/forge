@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "./errors"
@@ -55,6 +55,12 @@ type CoverageAggregateRow = {
   _count: { _all: number }
 }
 
+type VideoTitleLocale = {
+  locale: string | null
+  languageId: string | null
+  title: string | null
+}
+
 function assertManagerReadAccess(user: Principal | null) {
   if (!hasPermission(user, "read:manager-read-models")) {
     throw new ForbiddenError()
@@ -103,6 +109,31 @@ function countsForVideo(
   videoId: string,
 ): ManagerCoverageCounts {
   return countsByVideoId.get(videoId) ?? { human: 0, ai: 0 }
+}
+
+function titleFrom(
+  locales: VideoTitleLocale[],
+  selectedLanguageIds: string[],
+): string | null {
+  const titledLocales = locales.filter(
+    (
+      locale,
+    ): locale is VideoTitleLocale & {
+      title: string
+    } => typeof locale.title === "string" && locale.title.trim().length > 0,
+  )
+
+  const englishLocale = titledLocales.find((locale) => locale.locale === "en")
+  if (englishLocale) return englishLocale.title
+
+  for (const selectedLanguageId of selectedLanguageIds) {
+    const selectedLocale = titledLocales.find(
+      (locale) => locale.languageId === selectedLanguageId,
+    )
+    if (selectedLocale) return selectedLocale.title
+  }
+
+  return null
 }
 
 export class ManagerReadModelService {
@@ -199,10 +230,29 @@ export class ManagerReadModelService {
   }): Promise<ManagerVideoCoverage[]> {
     assertManagerReadAccess(user)
 
+    const titleLocaleFilters: Prisma.VideoLocaleWhereInput[] = [
+      { locale: "en" },
+    ]
+    if (languageIds.length > 0) {
+      titleLocaleFilters.push({ languageId: { in: languageIds } })
+    }
+
     const videos = await this.prisma.video.findMany({
       where: { deletedAt: null },
       include: {
-        locales: { orderBy: { updatedAt: "desc" }, take: 1 },
+        locales: {
+          where: {
+            deletedAt: null,
+            title: { not: null },
+            OR: titleLocaleFilters,
+          },
+          select: {
+            locale: true,
+            languageId: true,
+            title: true,
+          },
+          orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+        },
         images: {
           where: { deletedAt: null },
           orderBy: { updatedAt: "desc" },
@@ -247,7 +297,7 @@ export class ManagerReadModelService {
     return videos.map((video) => ({
       documentId: video.id,
       coreId: video.coreId ?? null,
-      title: video.locales[0]?.title ?? null,
+      title: titleFrom(video.locales, languageIds),
       label: video.label ?? null,
       slug: video.slug ?? null,
       aiMetadata: video.aiMetadata ?? null,

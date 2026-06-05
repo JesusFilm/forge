@@ -99,4 +99,28 @@ describe("GET /api/videos in mock mode", () => {
       await frenchResponse.json(),
     )
   })
+
+  it("falls back to the slug when Admin omits a preferred localized title", async () => {
+    const standalone = DEFAULT_MOCK_CMS_SEED.readModels.videoCoverage[3]
+
+    getCmsGatewayMock.mockReturnValue({
+      mode: "mock",
+      getVideoCoverage: getVideoCoverageMock.mockResolvedValue([
+        {
+          ...standalone,
+          title: null,
+          slug: "stable-video-slug",
+        },
+      ]),
+    })
+
+    const response = await GET(
+      new Request("http://example.test/api/videos?languageIds=slug-fallback"),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      standalone: [{ title: "stable-video-slug" }],
+    })
+  })
 })
