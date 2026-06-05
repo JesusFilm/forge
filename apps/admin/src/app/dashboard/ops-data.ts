@@ -58,18 +58,48 @@ export type DashboardStatusTone =
   | "info"
   | "muted"
 
-export type UserProductAccess = {
-  key: "manager"
+type UserProductAccessRoleValue =
+  | "NO_ACCESS"
+  | "OPERATOR"
+  | "STUDIO_ACCESS"
+  | UserRole
+
+type UserProductAccessRoleOption = {
+  value: UserProductAccessRoleValue
   label: string
-  active: boolean
-  statusLabel: string
+}
+
+export type UserProductAccess = {
+  key: "admin" | "manager" | "mastra-studio"
+  label: string
+  selectedRole: UserProductAccessRoleValue
+  roleOptions: UserProductAccessRoleOption[]
   statusTone: DashboardStatusTone
-  roleLabel?: "OPERATOR"
+  disabled: boolean
+  backed: boolean
+  helperText: string
 }
 
 export type UserTableRow = TableRow & {
   productAccess: UserProductAccess[]
 }
+
+const ADMIN_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "VIEWER", label: "Viewer" },
+  { value: "EDITOR", label: "Editor" },
+  { value: "ADMIN", label: "Admin" },
+] satisfies UserProductAccessRoleOption[]
+
+const MANAGER_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "OPERATOR", label: "Operator" },
+] satisfies UserProductAccessRoleOption[]
+
+const MASTRA_STUDIO_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "STUDIO_ACCESS", label: "Studio access" },
+] satisfies UserProductAccessRoleOption[]
 
 export type UserAccessSourceRow = {
   id: string
@@ -2108,12 +2138,35 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
     meta: formatDateTime(row.updatedAt),
     productAccess: [
       {
+        key: "admin",
+        label: "Admin",
+        selectedRole: row.emailVerified ? row.role : "NO_ACCESS",
+        roleOptions: ADMIN_ROLE_OPTIONS,
+        statusTone:
+          !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
+        disabled: true,
+        backed: false,
+        helperText: "Status role",
+      },
+      {
         key: "manager",
         label: "Manager",
-        active: hasManagerAccess,
-        statusLabel: hasManagerAccess ? "Enabled" : "Disabled",
+        selectedRole: hasManagerAccess ? "OPERATOR" : "NO_ACCESS",
+        roleOptions: MANAGER_ROLE_OPTIONS,
         statusTone: hasManagerAccess ? "success" : "muted",
-        roleLabel: hasManagerAccess ? row.managerMembership?.role : undefined,
+        disabled: false,
+        backed: true,
+        helperText: "Backed",
+      },
+      {
+        key: "mastra-studio",
+        label: "Mastra Studio",
+        selectedRole: "NO_ACCESS",
+        roleOptions: MASTRA_STUDIO_ROLE_OPTIONS,
+        statusTone: "muted",
+        disabled: true,
+        backed: false,
+        helperText: "Mock only",
       },
     ],
   }

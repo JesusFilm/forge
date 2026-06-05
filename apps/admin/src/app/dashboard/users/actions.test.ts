@@ -23,11 +23,7 @@ vi.mock("@/services/user-access.service", () => ({
     revokeManagerAccessForUser(...args),
 }))
 
-import {
-  approveUser,
-  grantManagerAccess,
-  revokeManagerAccess,
-} from "@/app/dashboard/users/actions"
+import { approveUser, updateManagerAccess } from "@/app/dashboard/users/actions"
 
 const adminUser = { id: "admin-user-1", role: "ADMIN" }
 
@@ -67,8 +63,8 @@ describe("dashboard users server actions", () => {
     expect(revalidatePath).not.toHaveBeenCalled()
   })
 
-  it("grants Manager access for a valid row and revalidates", async () => {
-    await grantManagerAccess(form({ id: "target-user-1" }))
+  it("grants Manager access when the Operator role is selected", async () => {
+    await updateManagerAccess(form({ id: "target-user-1", role: "OPERATOR" }))
 
     expect(grantManagerAccessForUser).toHaveBeenCalledWith({
       user: adminUser,
@@ -77,8 +73,8 @@ describe("dashboard users server actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/users")
   })
 
-  it("revokes Manager access for a valid row and revalidates", async () => {
-    await revokeManagerAccess(form({ id: "target-user-1" }))
+  it("revokes Manager access when No access is selected", async () => {
+    await updateManagerAccess(form({ id: "target-user-1", role: "NO_ACCESS" }))
 
     expect(revokeManagerAccessForUser).toHaveBeenCalledWith({
       user: adminUser,
@@ -87,9 +83,9 @@ describe("dashboard users server actions", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/users")
   })
 
-  it("does not write or revalidate Manager access when id is missing", async () => {
-    await grantManagerAccess(new FormData())
-    await revokeManagerAccess(new FormData())
+  it("does not write or revalidate Manager access for invalid form values", async () => {
+    await updateManagerAccess(new FormData())
+    await updateManagerAccess(form({ id: "target-user-1", role: "ADMIN" }))
 
     expect(grantManagerAccessForUser).not.toHaveBeenCalled()
     expect(revokeManagerAccessForUser).not.toHaveBeenCalled()
@@ -101,7 +97,7 @@ describe("dashboard users server actions", () => {
       new NotFoundError("User", "missing-user"),
     )
 
-    await grantManagerAccess(form({ id: "missing-user" }))
+    await updateManagerAccess(form({ id: "missing-user", role: "OPERATOR" }))
 
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/users")
   })
@@ -110,7 +106,7 @@ describe("dashboard users server actions", () => {
     revokeManagerAccessForUser.mockRejectedValueOnce(new Error("db failed"))
 
     await expect(
-      revokeManagerAccess(form({ id: "target-user-1" })),
+      updateManagerAccess(form({ id: "target-user-1", role: "NO_ACCESS" })),
     ).rejects.toThrow("db failed")
 
     expect(revalidatePath).not.toHaveBeenCalled()
