@@ -1,4 +1,17 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+// The workflow reads the gateway gate (AI_GATEWAY_CHAT_*) at call time
+// to decide whether draft/revise request provider-native structured
+// output. Default both to undefined so every pre-existing test runs the
+// plain text → parse-ladder path; structured-path tests flip them.
+const mockEnv = vi.hoisted(() => ({
+  env: {
+    AI_GATEWAY_CHAT_API_KEY: undefined as string | undefined,
+    AI_GATEWAY_CHAT_ENABLED: undefined as string | undefined,
+  },
+}))
+
+vi.mock("@/config/env", () => mockEnv)
 
 import {
   executeCritiqueStep,
@@ -39,8 +52,10 @@ const VALID_DRAFT: DraftExperience = {
   ],
 }
 
+type MockAgentResponse = { text: string; object?: unknown }
+
 function makeMockAgent(
-  responses: { text: string },
+  responses: MockAgentResponse,
   spy?: { calls: Array<{ prompt: string; opts: unknown }> },
 ) {
   return {
@@ -51,7 +66,7 @@ function makeMockAgent(
   }
 }
 
-function makeMockMastra(agentResponses: Record<string, { text: string }>) {
+function makeMockMastra(agentResponses: Record<string, MockAgentResponse>) {
   const callLog: Record<string, Array<{ prompt: string; opts: unknown }>> = {}
   const agentLookups: string[] = []
   const mastra = {
@@ -65,6 +80,11 @@ function makeMockMastra(agentResponses: Record<string, { text: string }>) {
 }
 
 describe("multiStepDraftWorkflow (U4 — real step bodies)", () => {
+  beforeEach(() => {
+    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = undefined
+    mockEnv.env.AI_GATEWAY_CHAT_ENABLED = undefined
+  })
+
   describe("structural invariants", () => {
     it("exposes a stable workflow id", () => {
       expect(multiStepDraftWorkflow.id).toBe("multi-step-draft")
@@ -258,6 +278,87 @@ describe("multiStepDraftWorkflow (U4 — real step bodies)", () => {
         title: VALID_DRAFT.title,
         metaDescription: VALID_DRAFT.metaDescription,
       })
+    })
+  })
+
+  describe("structured output (gateway path)", () => {
+    const baseInput = {
+      prompt: "Hope page",
+      locale: "en",
+      candidates: [],
+      plan: "1. hero 2. text 3. cta",
+    }
+
+    function enableGateway() {
+      mockEnv.env.AI_GATEWAY_CHAT_API_KEY = "sk-test"
+      mockEnv.env.AI_GATEWAY_CHAT_ENABLED = "true"
+    }
+
+    it("requests structuredOutput + toolChoice none when the gateway is enabled", async () => {
+      enableGateway()
+      const { mastra, callLog } = makeMockMastra({
+        "draft-experience": { text: "", object: VALID_DRAFT },
+      })
+      await executeDraftStep({ inputData: baseInput, mastra })
+      const opts = callLog["draft-experience"][0].opts as {
+        toolChoice?: string
+        structuredOutput?: { schema?: unknown }
+      }
+      expect(opts.toolChoice).toBe("none")
+      expect(opts.structuredOutput?.schema).toBeDefined()
+    })
+
+    it("prefers the provider-validated object over text parsing", async () => {
+      enableGateway()
+      const { mastra } = makeMockMastra({
+        // text deliberately unparseable — only the object path can pass
+        "draft-experience": { text: "not json at all", object: VALID_DRAFT },
+      })
+      const result = await executeDraftStep({ inputData: baseInput, mastra })
+      expect(result.draft).toEqual(VALID_DRAFT)
+    })
+
+    it("falls back to the text ladder when the structured object misses the schema", async () => {
+      enableGateway()
+      const { mastra } = makeMockMastra({
+        "draft-experience": {
+          text: JSON.stringify(VALID_DRAFT),
+          object: { definitely: "not a draft" },
+        },
+      })
+      const result = await executeDraftStep({ inputData: baseInput, mastra })
+      expect(result.draft).toEqual(VALID_DRAFT)
+    })
+
+    it("does NOT request structured output when the gateway is disabled", async () => {
+      const { mastra, callLog } = makeMockMastra({
+        "draft-experience": { text: JSON.stringify(VALID_DRAFT) },
+      })
+      await executeDraftStep({ inputData: baseInput, mastra })
+      const opts = callLog["draft-experience"][0].opts as {
+        toolChoice?: string
+        structuredOutput?: unknown
+      }
+      expect(opts.toolChoice).toBeUndefined()
+      expect(opts.structuredOutput).toBeUndefined()
+    })
+
+    it("applies the same structured options on the revise step", async () => {
+      enableGateway()
+      const { mastra, callLog } = makeMockMastra({
+        "experience-reviser": { text: "", object: VALID_DRAFT },
+      })
+      const result = await executeReviseStep({
+        inputData: { draft: VALID_DRAFT, notes: "tighten the cta" },
+        mastra,
+      })
+      expect(result.draft).toEqual(VALID_DRAFT)
+      const opts = callLog["experience-reviser"][0].opts as {
+        toolChoice?: string
+        structuredOutput?: { schema?: unknown }
+      }
+      expect(opts.toolChoice).toBe("none")
+      expect(opts.structuredOutput?.schema).toBeDefined()
     })
   })
 
