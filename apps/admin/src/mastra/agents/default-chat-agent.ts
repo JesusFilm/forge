@@ -102,7 +102,13 @@ export function buildDefaultChatAgent(): Agent {
         "User-Agent": AI_GATEWAY_USER_AGENT,
       },
     })
-    model = gateway(
+    // `.chat()` pins the chat-completions endpoint. The bare callable
+    // `gateway(id)` defaults to the Responses API (`/v1/responses`) in
+    // @ai-sdk/openai v3, which crashes the gateway's vLLM backend on
+    // multi-turn tool conversations (`KeyError: 'role'` in vLLM's
+    // `_parse_chat_message_content` — confirmed in vllm-coder logs
+    // 2026-06-05). Chat-completions handles the same tool history fine.
+    model = gateway.chat(
       env.AI_GATEWAY_CHAT_MODEL ?? "coding",
     ) as unknown as LanguageModel
   } else if (env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -126,7 +132,10 @@ export function buildDefaultChatAgent(): Agent {
       baseURL: "https://openrouter.ai/api/v1",
       name: "openrouter",
     })
-    model = openrouter(OPENROUTER_MODEL) as unknown as LanguageModel
+    // `.chat()` pins chat-completions; the bare callable defaults to the
+    // Responses API in @ai-sdk/openai v3, which OpenRouter does not
+    // implement consistently. Same rationale as the gateway branch above.
+    model = openrouter.chat(OPENROUTER_MODEL) as unknown as LanguageModel
   } else {
     const { createOllama } =
       require("ollama-ai-provider-v2") as typeof import("ollama-ai-provider-v2")

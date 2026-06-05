@@ -27,6 +27,7 @@ import { createStep, createWorkflow } from "@mastra/core/workflows"
 import type { Mastra } from "@mastra/core"
 import { z } from "zod"
 
+import { env } from "@/config/env"
 import { TOKEN_CAPS } from "../budgets"
 import { DraftExperienceSchema } from "@/services/experience-ai/experience-ai.schemas"
 import type { DraftExperience } from "@/services/experience-ai/experience-ai.schemas"
@@ -120,8 +121,13 @@ type RevisedStepOutput = z.infer<typeof revisedSchema>
 type MastraAgent = {
   generate: (
     prompt: string,
-    opts: { abortSignal?: AbortSignal; maxOutputTokens: number },
-  ) => Promise<{ text: string }>
+    opts: {
+      abortSignal?: AbortSignal
+      maxOutputTokens: number
+      toolChoice?: "auto" | "none" | "required"
+      structuredOutput?: { schema: typeof DraftExperienceSchema }
+    },
+  ) => Promise<{ text: string; object?: unknown }>
 }
 
 type MastraSurface = {
@@ -145,6 +151,31 @@ function isAbortError(err: unknown): boolean {
   )
 }
 
+/**
+ * Whether the draft/revise steps should request provider-native
+ * structured output. Gated to the JesusFilm gateway path
+ * (same gate `resolveAgentModel` uses): vLLM guided decoding
+ * (`response_format: json_schema`) makes schema-invalid drafts
+ * impossible at the decoder level, AND `toolChoice: "none"` keeps the
+ * model out of tool round-trips — the gateway's LiteLLM translation
+ * 500s with a `'role'` KeyError on multi-tool conversations, which was
+ * failing the draft step before any output existed (smoke gate 0/8 on
+ * 2026-06-05, every failure `[draft] agent_error … "'role'"`). The
+ * workflow gets video candidates pre-loaded in its input, so the
+ * drafter does not need the search tools here. Google/OpenRouter keep
+ * the text → parse-ladder path that already works for them.
+ */
+function structuredDraftOutputEnabled(): boolean {
+  return Boolean(
+    env.AI_GATEWAY_CHAT_API_KEY && env.AI_GATEWAY_CHAT_ENABLED === "true",
+  )
+}
+
+const STRUCTURED_DRAFT_OPTS = {
+  toolChoice: "none",
+  structuredOutput: { schema: DraftExperienceSchema },
+} as const
+
 async function callAgent(
   mastra: MastraSurface,
   step: WorkflowStepName,
@@ -152,14 +183,18 @@ async function callAgent(
   prompt: string,
   maxOutputTokens: number,
   abortSignal: AbortSignal | undefined,
-): Promise<string> {
+  extraOpts: {
+    toolChoice?: "auto" | "none" | "required"
+    structuredOutput?: { schema: typeof DraftExperienceSchema }
+  } = {},
+): Promise<{ text: string; object?: unknown }> {
   const agent = mastra.getAgentById(agentId)
   try {
-    const result = await agent.generate(prompt, {
+    return await agent.generate(prompt, {
       abortSignal,
       maxOutputTokens,
+      ...extraOpts,
     })
-    return result.text
   } catch (err) {
     if (isAbortError(err)) {
       throw new WorkflowStepError(
@@ -348,6 +383,31 @@ function buildRevisePrompt(input: CritiqueStepOutput): string {
   ].join("\n")
 }
 
+/**
+ * Resolve a draft-producing step's result to a validated
+ * DraftExperience. Prefers the provider-validated `object` from
+ * structured output (already schema-enforced at decode time on the
+ * gateway path); falls back to the text → extract → jsonrepair ladder
+ * for providers that answered with plain text, or in the unexpected
+ * case where the structured object still misses the Zod schema.
+ */
+async function resolveDraft(
+  step: WorkflowStepName,
+  result: { text: string; object?: unknown },
+): Promise<DraftExperience> {
+  if (result.object !== undefined) {
+    const parsed = DraftExperienceSchema.safeParse(
+      liftToDraftExperienceShape(result.object),
+    )
+    if (parsed.success) return parsed.data
+  }
+  const text =
+    result.text.length > 0 || result.object === undefined
+      ? result.text
+      : JSON.stringify(result.object)
+  return parseDraftEnvelope(step, text)
+}
+
 // ---------------------------------------------------------------------------
 // Step executors — exported for unit-testing without a real Mastra runtime
 // ---------------------------------------------------------------------------
@@ -355,7 +415,7 @@ function buildRevisePrompt(input: CritiqueStepOutput): string {
 export async function executePlanStep(
   ctx: StepContext<WorkflowInput>,
 ): Promise<PlanStepOutput> {
-  const text = await callAgent(
+  const { text } = await callAgent(
     ctx.mastra,
     "plan",
     "experience-planner",
@@ -369,22 +429,23 @@ export async function executePlanStep(
 export async function executeDraftStep(
   ctx: StepContext<PlanStepOutput>,
 ): Promise<DraftStepOutput> {
-  const text = await callAgent(
+  const result = await callAgent(
     ctx.mastra,
     "draft",
     "draft-experience",
     buildDraftPrompt(ctx.inputData),
     TOKEN_CAPS.multiStepDraftDraft,
     ctx.abortSignal,
+    structuredDraftOutputEnabled() ? STRUCTURED_DRAFT_OPTS : {},
   )
-  const draft = await parseDraftEnvelope("draft", text)
+  const draft = await resolveDraft("draft", result)
   return { ...ctx.inputData, draft }
 }
 
 export async function executeCritiqueStep(
   ctx: StepContext<DraftStepOutput>,
 ): Promise<CritiqueStepOutput> {
-  const text = await callAgent(
+  const { text } = await callAgent(
     ctx.mastra,
     "critique",
     "experience-critic",
@@ -398,15 +459,16 @@ export async function executeCritiqueStep(
 export async function executeReviseStep(
   ctx: StepContext<CritiqueStepOutput>,
 ): Promise<RevisedStepOutput> {
-  const text = await callAgent(
+  const result = await callAgent(
     ctx.mastra,
     "revise",
     "experience-reviser",
     buildRevisePrompt(ctx.inputData),
     TOKEN_CAPS.multiStepDraftRevise,
     ctx.abortSignal,
+    structuredDraftOutputEnabled() ? STRUCTURED_DRAFT_OPTS : {},
   )
-  const draft = await parseDraftEnvelope("revise", text)
+  const draft = await resolveDraft("revise", result)
   return { draft }
 }
 
