@@ -72,9 +72,13 @@ export function PlayerControls({
 
   // Reflect an external seek (double-tap-the-sides) in the label/scrubber at
   // once — the poll is idle while paused, so without this the time would lag.
+  // Clear `ended` when the seek lands before the end (mirrors skip/handleSeek),
+  // else a double-tap-rewind from the end leaves the center stuck on Replay.
   useEffect(() => {
-    if (seekSignal) setCurrentTime(seekSignal.time)
-  }, [seekSignal])
+    if (!seekSignal) return
+    setCurrentTime(seekSignal.time)
+    if (seekSignal.time < player.duration - 0.5) setEnded(false)
+  }, [seekSignal, player])
 
   // Mark ended on playToEnd (the reliable end signal — the time poll stops
   // before the last frame, so currentTime alone can't detect it). Resuming

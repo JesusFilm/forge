@@ -34,6 +34,13 @@ import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { PlayerControls } from "./PlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
+// Caption distance above the bottom edge (px). In fullscreen the caption lifts
+// clear of the control bar while the chrome is visible and drops to the button
+// row when it hides; inline it sits just above the button row.
+const SUBTITLE_OFFSET_FS_CHROME_VISIBLE = 92
+const SUBTITLE_OFFSET_FS_CHROME_HIDDEN = 12
+const SUBTITLE_OFFSET_INLINE = 14
+
 type VideoPlayerProps = {
   streamingUrl: string | null
   posterUrl: string | null
@@ -298,9 +305,9 @@ export function VideoPlayer({
   const insets = useSafeAreaInsets()
   const subtitleBottomOffset = fullscreen
     ? controls.controlsVisible
-      ? 92
-      : 12
-    : 14
+      ? SUBTITLE_OFFSET_FS_CHROME_VISIBLE
+      : SUBTITLE_OFFSET_FS_CHROME_HIDDEN
+    : SUBTITLE_OFFSET_INLINE
   const subtitleHorizontalInset = fullscreen
     ? Math.max(insets.left, insets.right, 56)
     : 56

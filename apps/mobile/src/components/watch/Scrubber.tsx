@@ -8,7 +8,13 @@ import {
 } from "react-native"
 
 import { ACCENT } from "../../lib/color"
-import { clamp, fractionToTime, progressFraction } from "../../lib/scrubber"
+import {
+  applySkip,
+  clamp,
+  fractionToTime,
+  progressFraction,
+} from "../../lib/scrubber"
+import { SKIP_SECONDS } from "../../lib/tapSeek"
 
 type ScrubberProps = {
   currentTime: number
@@ -125,6 +131,18 @@ export function Scrubber({
       onLayout={measure}
       accessibilityRole="adjustable"
       accessibilityLabel="Seek bar"
+      // The seek bar is drag-only by touch; expose increment/decrement so
+      // VoiceOver/Switch Control (and idb automation) can operate it without a
+      // drag gesture. Swipe up/down → ±10s, matching the skip buttons.
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(fraction * 100) }}
+      onAccessibilityAction={(e) => {
+        const delta =
+          e.nativeEvent.actionName === "increment"
+            ? SKIP_SECONDS
+            : -SKIP_SECONDS
+        const target = applySkip(currentTime, delta, duration)
+        if (target != null) onSeek(target)
+      }}
       {...pan.panHandlers}
     >
       <View style={styles.track}>

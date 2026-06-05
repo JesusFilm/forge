@@ -239,6 +239,9 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     const sr = AccessibilityInfo.addEventListener(
       "screenReaderChanged",
       (v) => {
+        // Guard the setState-causing reveal/scheduleHide against a late event
+        // after unmount (mirrors the statusChange listener's isMountedRef gate).
+        if (!isMountedRef.current) return
         screenReaderRef.current = v
         if (v) {
           if (!controlsVisibleRef.current) revealRef.current()
@@ -264,7 +267,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   // Foreground resume: snap controls visible and re-arm.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
-      if (next !== "active") return
+      if (!isMountedRef.current || next !== "active") return
       if (hideAnimRef.current != null) {
         hideAnimRef.current.stop()
         hideAnimRef.current = null
