@@ -47,12 +47,17 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
   }, [isPlaying, player])
 
   const togglePlayPause = useCallback(() => {
-    if (isPlaying) {
+    // Read the live player state, NOT the React `isPlaying` snapshot. A source
+    // swap (e.g. switching language mid-play) can leave expo-video paused
+    // without emitting a playingChange, so the snapshot goes stale-true.
+    // Trusting it would call pause() on an already-paused player every press —
+    // wedging the controls so the video can never be resumed without a remount.
+    if (player.playing) {
       player.pause()
     } else {
       player.play()
     }
-  }, [isPlaying, player])
+  }, [player])
 
   const toggleMute = useCallback(() => {
     const newMuted = !isMuted

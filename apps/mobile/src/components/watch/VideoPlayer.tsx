@@ -29,8 +29,14 @@ export function VideoPlayer({
   const resolvedPoster = resolveImageUrl(posterUrl)
   const playerHeight = Math.round(screenWidth * (9 / 16))
 
-  const initialUrl = useRef(streamingUrl)
-  const player = useVideoPlayer(initialUrl.current, (p) => {
+  // The source passed to useVideoPlayer must be FROZEN. useVideoPlayer recreates
+  // (and releases) the player whenever this value changes — its dependency is
+  // JSON.stringify(source). Source swaps must go through replaceAsync on the
+  // SAME player instead; a changing creation source would release the player
+  // mid-replace (FunctionCallException) and strand a fresh, paused player on the
+  // new asset — the "black screen, stuck on language switch" bug.
+  const creationSource = useRef(streamingUrl).current
+  const player = useVideoPlayer(creationSource, (p) => {
     p.muted = false
     p.loop = false
     // Favor a fast first frame on cellular over a deep prebuffer — JFP's
@@ -43,28 +49,50 @@ export function VideoPlayer({
     }
   })
 
+  // The source currently loaded into the player, tracked separately from the
+  // frozen creationSource so swap decisions can compare against it.
+  const loadedUrlRef = useRef(streamingUrl)
+
   useEffect(() => {
-    if (!streamingUrl || streamingUrl === initialUrl.current) return
+    if (!streamingUrl || streamingUrl === loadedUrlRef.current) return
 
     // Decide swap vs no-swap by Mux playback ID, not raw URL string: the
     // optimistic seed URL is rebuilt from a playbackId while the resolved
     // variant carries the stored `hls`, so the same asset can have two
     // different URL strings. Reloading the same asset would needlessly
     // restart playback.
-    const currentId = extractMuxPlaybackId(initialUrl.current)
+    const currentId = extractMuxPlaybackId(loadedUrlRef.current)
     const nextId = extractMuxPlaybackId(streamingUrl)
-    initialUrl.current = streamingUrl
+    loadedUrlRef.current = streamingUrl
     if (currentId != null && nextId != null && currentId === nextId) return
 
-    // replaceAsync loads off the main thread (replace() blocks the UI thread
-    // for HLS on iOS). Fall back to the synchronous path if it rejects.
-    void player.replaceAsync(streamingUrl).catch(() => {
+    // Preserve playback across the swap: replace() does not carry the playing
+    // state to the new source, so a language switch mid-play would otherwise
+    // strand a paused frame. Resume once the new source has loaded if we were
+    // playing before.
+    const wasPlaying = player.playing
+    const resume = () => {
+      if (!wasPlaying) return
       try {
-        player.replace(streamingUrl, true)
+        player.play()
       } catch {
         // Player already released.
       }
-    })
+    }
+
+    // replaceAsync loads off the main thread (replace() blocks the UI thread
+    // for HLS on iOS). Fall back to the synchronous path if it rejects.
+    void player
+      .replaceAsync(streamingUrl)
+      .then(resume)
+      .catch(() => {
+        try {
+          player.replace(streamingUrl, true)
+          resume()
+        } catch {
+          // Player already released.
+        }
+      })
   }, [streamingUrl, player])
 
   // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
