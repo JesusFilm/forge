@@ -13,6 +13,7 @@ import {
   type LocaleStatus,
   type PrismaClient,
   type SourceTier,
+  type Video as PrismaVideo,
   type VideoLabel,
   type VideoSource,
 } from "@prisma/client"
@@ -71,12 +72,21 @@ export type ChildDubLanguageRow = {
   bcp47: string | null
 }
 
+export type WatchHomeCarouselPoolSource = {
+  coreId: string
+  source: PrismaVideo | null
+  playableCount: number
+  videos: PrismaVideo[]
+}
+
 /**
  * Maximum coreIds accepted in a single `getByCoreIds` call. Mirrors
  * the receiver-side cap in manager's `admin-trigger-route.ts` so the
  * contract is double-locked.
  */
 export const VIDEOS_BY_CORE_IDS_MAX = 100
+export const WATCH_HOME_CAROUSEL_POOL_LIMIT_DEFAULT = 12
+export const WATCH_HOME_CAROUSEL_POOL_LIMIT_MAX = 20
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS = 8_000
 const VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS = 9_000
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS}ms'`
@@ -573,6 +583,151 @@ export class VideoService {
     })
   }
 
+  async getWatchHomeCarouselPools({
+    coreIds,
+    user,
+    languageSlug,
+    limit = WATCH_HOME_CAROUSEL_POOL_LIMIT_DEFAULT,
+  }: {
+    coreIds: readonly string[]
+    user: Principal | null
+    languageSlug?: string | null
+    limit?: number | null
+  }): Promise<WatchHomeCarouselPoolSource[]> {
+    if (coreIds.length === 0) return []
+    if (coreIds.length > VIDEOS_BY_CORE_IDS_MAX) {
+      throw new VideoLookupValidationError(
+        `coreIds.length=${coreIds.length} exceeds max ${VIDEOS_BY_CORE_IDS_MAX}`,
+      )
+    }
+
+    const take = clampWatchHomeCarouselPoolLimit(limit)
+    const requestedLanguageSlug = normalizeOptionalLocale(languageSlug)
+    const uniqueCoreIds = [...new Set(coreIds)]
+    const sources = await this.prisma.video.findMany({
+      where: {
+        coreId: { in: uniqueCoreIds },
+        deletedAt: null,
+      },
+    })
+    const sourceByCoreId = new Map(
+      sources.map((source) => [source.coreId, source]),
+    )
+
+    const rows: WatchHomeCarouselPoolSource[] = []
+    for (const coreId of coreIds) {
+      const source = sourceByCoreId.get(coreId) ?? null
+      if (!source) {
+        rows.push({ coreId, source: null, playableCount: 0, videos: [] })
+        continue
+      }
+
+      const childWhere = watchHomeCarouselPlayableVideoWhere({ user })
+      const playableCount = await this.prisma.videoRelation.count({
+        where: {
+          parentId: source.id,
+          child: childWhere,
+        },
+      })
+
+      if (playableCount > 0) {
+        const videos = await this.getWatchHomeCarouselChildVideos({
+          sourceId: source.id,
+          user,
+          languageSlug: requestedLanguageSlug,
+          take,
+        })
+        rows.push({ coreId, source, playableCount, videos })
+        continue
+      }
+
+      const sourcePlayableCount = await this.prisma.video.count({
+        where: {
+          id: source.id,
+          ...watchHomeCarouselPlayableVideoWhere({ user }),
+        },
+      })
+
+      rows.push({
+        coreId,
+        source,
+        playableCount: sourcePlayableCount,
+        videos: sourcePlayableCount > 0 ? [source] : [],
+      })
+    }
+
+    return rows
+  }
+
+  private async getWatchHomeCarouselChildVideos({
+    sourceId,
+    user,
+    languageSlug,
+    take,
+  }: {
+    sourceId: string
+    user: Principal | null
+    languageSlug: string | null
+    take: number
+  }): Promise<PrismaVideo[]> {
+    const selected: PrismaVideo[] = []
+    const selectedIds: string[] = []
+
+    if (languageSlug != null) {
+      const exactRelations = await this.findWatchHomeCarouselChildRelations({
+        sourceId,
+        where: watchHomeCarouselPlayableVideoWhere({ user, languageSlug }),
+        take,
+      })
+      for (const relation of exactRelations) {
+        if (!relation.child) continue
+        selected.push(relation.child)
+        selectedIds.push(relation.child.id)
+      }
+    }
+
+    if (selected.length < take) {
+      const fallbackWhere = watchHomeCarouselPlayableVideoWhere({ user })
+      const fallbackRelations = await this.findWatchHomeCarouselChildRelations({
+        sourceId,
+        where:
+          selectedIds.length > 0
+            ? {
+                ...fallbackWhere,
+                id: { notIn: selectedIds },
+              }
+            : fallbackWhere,
+        take: take - selected.length,
+      })
+      for (const relation of fallbackRelations) {
+        if (!relation.child) continue
+        selected.push(relation.child)
+      }
+    }
+
+    return selected
+  }
+
+  private async findWatchHomeCarouselChildRelations({
+    sourceId,
+    where,
+    take,
+  }: {
+    sourceId: string
+    where: Prisma.VideoWhereInput
+    take: number
+  }) {
+    return this.prisma.videoRelation.findMany({
+      where: {
+        parentId: sourceId,
+        child: where,
+      },
+      orderBy: [{ order: "asc" }, { childId: "asc" }],
+      take,
+      include: { child: true },
+    })
+  }
+
   async getByCoreId({
     coreId,
     user,
@@ -812,6 +967,55 @@ export class VideoService {
 }
 
 type VideoForEnrichmentRow = VideoForEnrichment
+
+function clampWatchHomeCarouselPoolLimit(
+  value: number | null | undefined,
+): number {
+  if (value == null || !Number.isFinite(value)) {
+    return WATCH_HOME_CAROUSEL_POOL_LIMIT_DEFAULT
+  }
+  return Math.max(
+    1,
+    Math.min(Math.trunc(value), WATCH_HOME_CAROUSEL_POOL_LIMIT_MAX),
+  )
+}
+
+function watchHomeCarouselPlayableDubWhere(
+  languageSlug?: string | null,
+): Prisma.VideoDubWhereInput {
+  return {
+    deletedAt: null,
+    published: true,
+    hls: { not: null },
+    language: {
+      deletedAt: null,
+      slug: languageSlug != null ? languageSlug : { not: null },
+    },
+  }
+}
+
+function watchHomeCarouselPlayableVideoWhere({
+  user,
+  languageSlug,
+}: {
+  user: Principal | null
+  languageSlug?: string | null
+}): Prisma.VideoWhereInput {
+  return {
+    deletedAt: null,
+    dubs: { some: watchHomeCarouselPlayableDubWhere(languageSlug) },
+    ...(isEditorOrAdmin(user)
+      ? {}
+      : {
+          locales: {
+            some: {
+              status: "PUBLISHED",
+              deletedAt: null,
+            },
+          },
+        }),
+  }
+}
 
 function withVideoCoreIdForOrdering(query: object): object {
   const prismaQuery = query as { select?: Record<string, unknown> }

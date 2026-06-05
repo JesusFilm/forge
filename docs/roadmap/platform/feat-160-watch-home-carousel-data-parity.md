@@ -34,9 +34,15 @@ tags:
 - Full admin-backed below-the-fold `CollectionsRail` parity.
 - Stronger language fallback rules when an active language has too few playable videos.
 
+## Completed Slices
+
+- Bounded admin carousel pool/count endpoint and web integration plan:
+  `docs/plans/2026-06-05-003-feat-watch-home-carousel-bounded-pools-plan.md`
+
 ## Starting Points
 
 - Implementation plan: `docs/plans/2026-06-05-002-feat-watch-home-carousel-sequence-parity-plan.md`
+- Bounded pool endpoint plan: `docs/plans/2026-06-05-003-feat-watch-home-carousel-bounded-pools-plan.md`
 - Static Forge config from `feat-159`: `apps/web/src/lib/watch-home-config.ts`
 - Resolver gap reporting from `feat-159`: `apps/web/src/lib/watch-home.ts`
 - Admin video service filters: `apps/admin/src/services/video.service.ts`

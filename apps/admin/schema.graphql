@@ -1017,6 +1017,10 @@ type Query {
   """
   videosByCoreIds(coreIds: [String!]!, targetLocale: String): [VideoForEnrichment!]
   """
+  Fetch ordered, bounded playable candidate windows for Forge's public /watch home carousel playlist pools. Max 100 source Core ids per call; per-source limit is clamped server-side.
+  """
+  watchHomeCarouselPools(coreIds: [String!]!, languageSlug: String, limit: Int = 12): [WatchHomeCarouselPoolSource!]!
+  """
   Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
   """
   watchHomeVideos(coreIds: [String!]!): [Video!]!
@@ -1522,6 +1526,16 @@ type VideoTranscriptChunk {
   tokenCount: Int
   transcriptId: ID
   updatedAt: String
+}
+
+"""
+Bounded, service-mediated source row for Forge's /watch home carousel. `playableCount` reports the full playable pool size while `videos` returns only the requested candidate window so consumers do not fetch every child dub through the broad home query.
+"""
+type WatchHomeCarouselPoolSource {
+  coreId: String!
+  playableCount: Int!
+  source: Video
+  videos: [Video!]!
 }
 
 """Per-locale homepage configuration for PUBLIC consumer apps."""

@@ -47,6 +47,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "video",
         "videoBySlug",
         "videos",
+        "watchHomeCarouselPools",
         "watchHomeVideos",
         "videosByCoreIds",
         // Experience
@@ -95,6 +96,12 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "steps",
         "errors",
       ]),
+    )
+  })
+
+  it("WatchHomeCarouselPoolSource exposes bounded carousel source fields", () => {
+    expect(Object.keys(fieldsOf("WatchHomeCarouselPoolSource"))).toEqual(
+      expect.arrayContaining(["coreId", "source", "playableCount", "videos"]),
     )
   })
 
