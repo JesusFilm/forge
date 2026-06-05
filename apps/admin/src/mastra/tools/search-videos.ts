@@ -21,6 +21,7 @@
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
 
+import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { HybridSearchService } from "@/services/hybrid-search.service"
 
@@ -68,13 +69,15 @@ export const searchVideosTool = createTool({
       locale: inputData.locale,
       limit: inputData.limit,
       contentTypes: ["video"],
-      // AI experience-gen searches the Qwen vector space: the query is
-      // embedded via the gateway (Qwen 1536) and matched against the
-      // `embedding_qwen` column — no paid-API dependency. U3 of the
-      // content-embeddings-gateway-migration pilot. Public search omits
-      // this arg and stays on OpenAI + `embedding`. See
+      // AI experience-gen video search source, operator-controlled via
+      // AI_VIDEO_SEARCH_EMBEDDING_SOURCE (default "openai"). Flip to
+      // "gateway" — Qwen 1536 query + `embedding_qwen` column, no paid-API
+      // dependency — only AFTER the embedding_qwen backfill exists, else the
+      // search hits an empty column. One-line reversible switch. Public
+      // search omits this arg entirely and stays on OpenAI + `embedding`.
+      // U3 of the content-embeddings-gateway-migration pilot; see
       // docs/plans/2026-06-05-001-feat-content-embeddings-gateway-migration-plan.md.
-      embeddingSource: "gateway",
+      embeddingSource: env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE,
     })
 
     const videos = response.results

@@ -260,6 +260,17 @@ export const env = createEnv({
     AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
     AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
+    // Embedding source for the admin AI experience generator's video search
+    // (the Mastra `searchVideos` tool). "openai" (default) keeps that search
+    // on the OpenAI `embedding` column; "gateway" routes it to Qwen + the
+    // `embedding_qwen` column. Default "openai" so this PR is behavior-neutral
+    // until the `embedding_qwen` backfill exists — the operator flips it to
+    // "gateway" only after the backfill completes (one-line reversible switch).
+    // Enum-of-strings (not boolean) so a stray value can't silently flip it.
+    AI_VIDEO_SEARCH_EMBEDDING_SOURCE: z
+      .enum(["openai", "gateway"])
+      .optional()
+      .default("openai"),
     MASTRA_STORAGE_URL: z.string().url().optional(),
     MASTRA_DEFAULT_PROVIDER: z
       .enum([
@@ -441,6 +452,9 @@ export const env = createEnv({
     ),
     AI_GATEWAY_EMBEDDINGS_MODEL: emptyToUndefined(
       process.env.AI_GATEWAY_EMBEDDINGS_MODEL,
+    ),
+    AI_VIDEO_SEARCH_EMBEDDING_SOURCE: emptyToUndefined(
+      process.env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE,
     ),
     MASTRA_STORAGE_URL: emptyToUndefined(process.env.MASTRA_STORAGE_URL),
     MASTRA_DEFAULT_PROVIDER: emptyToUndefined(
