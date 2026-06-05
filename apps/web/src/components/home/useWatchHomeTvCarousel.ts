@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 
 export type WatchHomeTvCarouselSlide = {
   id: string
@@ -16,7 +23,25 @@ export type WatchHomeTvCarouselSlide = {
 }
 
 export const WATCH_HOME_TV_ADVANCE_THRESHOLD = 95
+export const WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY = "carousel-played-ids"
 const IMAGE_SLIDE_ADVANCE_MS = 7000
+
+type PlayedIdsStorageValue = {
+  month?: unknown
+  ids?: unknown
+}
+
+function subscribeToHydrationStore() {
+  return () => undefined
+}
+
+function getClientHydrationSnapshot() {
+  return true
+}
+
+function getServerHydrationSnapshot() {
+  return false
+}
 
 export function nextWatchHomeTvCarouselIndex(
   currentIndex: number,
@@ -42,17 +67,124 @@ export function shouldAdvanceWatchHomeTvCarousel(
   return previousProgress < threshold && currentProgress >= threshold
 }
 
+function currentStorageMonth() {
+  return new Date().toISOString().slice(0, 7)
+}
+
+export function readWatchHomeTvPlayedIds(): string[] {
+  if (typeof window === "undefined") return []
+
+  try {
+    const stored = localStorage.getItem(WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY)
+    if (!stored) return []
+
+    const data = JSON.parse(stored) as PlayedIdsStorageValue
+    if (data.month !== currentStorageMonth()) {
+      localStorage.removeItem(WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY)
+      return []
+    }
+
+    return Array.isArray(data.ids)
+      ? data.ids.filter((id): id is string => typeof id === "string")
+      : []
+  } catch {
+    return []
+  }
+}
+
+export function resetWatchHomeTvPlayedIds() {
+  if (typeof window === "undefined") return
+
+  try {
+    localStorage.removeItem(WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY)
+  } catch {
+    // Ignore storage errors from private browsing or disabled storage.
+  }
+}
+
+export function addWatchHomeTvPlayedId(slideId: string) {
+  if (typeof window === "undefined") return
+
+  try {
+    const current = readWatchHomeTvPlayedIds()
+    const ids = current.includes(slideId) ? current : [...current, slideId]
+    localStorage.setItem(
+      WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
+      JSON.stringify({
+        month: currentStorageMonth(),
+        ids,
+      }),
+    )
+  } catch {
+    // Ignore storage errors from private browsing or disabled storage.
+  }
+}
+
 function firstPlayableIndex(slides: readonly WatchHomeTvCarouselSlide[]) {
   const index = slides.findIndex((slide) => Boolean(slide.src))
   return index >= 0 ? index : 0
 }
 
+function playableSlideIndexes(slides: readonly WatchHomeTvCarouselSlide[]) {
+  const indexes = slides
+    .map((slide, index) => (slide.src ? index : -1))
+    .filter((index) => index >= 0)
+
+  return indexes.length > 0 ? indexes : slides.map((_, index) => index)
+}
+
+export function firstUnplayedWatchHomeTvCarouselIndex(
+  slides: readonly WatchHomeTvCarouselSlide[],
+) {
+  if (slides.length === 0) return 0
+
+  const played = new Set(readWatchHomeTvPlayedIds())
+  const candidateIndexes = playableSlideIndexes(slides)
+  const unplayedIndex = candidateIndexes.find(
+    (index) => !played.has(slides[index].id),
+  )
+
+  if (unplayedIndex != null) return unplayedIndex
+
+  resetWatchHomeTvPlayedIds()
+  return candidateIndexes[0] ?? 0
+}
+
+export function nextUnplayedWatchHomeTvCarouselIndex(
+  currentIndex: number,
+  slides: readonly WatchHomeTvCarouselSlide[],
+) {
+  if (slides.length <= 0) return 0
+
+  const candidateIndexes = playableSlideIndexes(slides)
+  const candidateSet = new Set(candidateIndexes)
+  const played = new Set(readWatchHomeTvPlayedIds())
+
+  for (let offset = 1; offset <= slides.length; offset++) {
+    const index = (currentIndex + offset) % slides.length
+    if (!candidateSet.has(index)) continue
+    if (!played.has(slides[index].id)) return index
+  }
+
+  resetWatchHomeTvPlayedIds()
+
+  for (let offset = 1; offset <= slides.length; offset++) {
+    const index = (currentIndex + offset) % slides.length
+    if (candidateSet.has(index)) return index
+  }
+
+  return nextWatchHomeTvCarouselIndex(currentIndex, slides.length)
+}
+
 export function useWatchHomeTvCarousel(
   slides: readonly WatchHomeTvCarouselSlide[],
 ) {
-  const [activeIndex, setActiveIndex] = useState(() =>
-    firstPlayableIndex(slides),
+  const hasHydrated = useSyncExternalStore(
+    subscribeToHydrationStore,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
   )
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [isMuted, setIsMuted] = useState(true)
   const [progress, setProgress] = useState(0)
   const isMutedRef = useRef(isMuted)
@@ -60,8 +192,13 @@ export function useWatchHomeTvCarousel(
   const imageSlideStartedAtRef = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
+  const defaultActiveIndex = hasHydrated
+    ? firstUnplayedWatchHomeTvCarouselIndex(slides)
+    : firstPlayableIndex(slides)
   const safeActiveIndex =
-    activeIndex < slides.length ? activeIndex : firstPlayableIndex(slides)
+    activeIndex != null && activeIndex < slides.length
+      ? activeIndex
+      : defaultActiveIndex
   const activeSlide = slides[safeActiveIndex] ?? slides[0] ?? null
 
   const selectIndex = useCallback(
@@ -84,8 +221,8 @@ export function useWatchHomeTvCarousel(
   )
 
   const advance = useCallback(() => {
-    selectIndex(nextWatchHomeTvCarouselIndex(safeActiveIndex, slides.length))
-  }, [safeActiveIndex, selectIndex, slides.length])
+    selectIndex(nextUnplayedWatchHomeTvCarouselIndex(safeActiveIndex, slides))
+  }, [safeActiveIndex, selectIndex, slides])
 
   const toggleMuted = useCallback(() => {
     setIsMuted((current) => {
@@ -138,11 +275,12 @@ export function useWatchHomeTvCarousel(
   useEffect(() => {
     imageSlideStartedAtRef.current = null
     previousProgressRef.current = 0
+    if (hasHydrated && activeSlide?.id) addWatchHomeTvPlayedId(activeSlide.id)
     const video = videoRef.current
     if (!video) return
     video.muted = isMutedRef.current
     video.currentTime = 0
-  }, [activeSlide?.id])
+  }, [activeSlide?.id, hasHydrated])
 
   useEffect(() => {
     if (!activeSlide || activeSlide.src) return
