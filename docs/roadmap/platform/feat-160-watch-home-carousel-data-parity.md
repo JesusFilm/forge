@@ -31,6 +31,11 @@ tags:
 - Blurhash or dominant-color placeholders for cards while images load.
 - Collection count and pool endpoints so the carousel can preserve upstream daily/random selection without broad overfetch.
 - Full admin-backed below-the-fold `CollectionsRail` parity.
+- Public admin `watchSetting(locale: "en").homepageExperience` currently returns
+  null, and the local restored video DB used for this PR has zero
+  `experience` / `experience_locale` rows. `feat-159` therefore uses a
+  temporary admin-video fallback rail below the carousel until homepage
+  sections are migrated into admin.
 - Stronger language fallback rules when an active language has too few playable videos.
 
 ## Starting Points

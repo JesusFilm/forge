@@ -2,6 +2,7 @@ import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import type { RouteVideo } from "@/lib/content"
 import type { WatchHomeCarouselData } from "@/lib/watch-home-carousel"
 import { WatchHomeCarouselClient } from "./WatchHomeCarouselClient"
+import { WatchHomeFallbackSections } from "./WatchHomeFallbackSections"
 import { filterWatchHomeBelowFoldBlocks } from "./watch-home-blocks"
 
 type WatchHomePageProps = {
@@ -36,7 +37,9 @@ export function WatchHomePage({
             )
           })}
         </div>
-      ) : null}
+      ) : (
+        <WatchHomeFallbackSections slides={carousel.slides} />
+      )}
     </main>
   )
 }

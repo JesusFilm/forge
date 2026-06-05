@@ -7,20 +7,23 @@ function block(kind: string, id: string): Section {
 }
 
 describe("filterWatchHomeBelowFoldBlocks", () => {
-  it("removes leading legacy hero and navigation blocks", () => {
+  it("removes only the leading legacy hero block", () => {
     const blocks = [
       block("VideoHeroBlock", "hero"),
       block("NavigationCarouselBlock", "nav"),
       block("MediaCollectionBlock", "collection"),
     ]
 
-    expect(filterWatchHomeBelowFoldBlocks(blocks)).toEqual([blocks[2]])
+    expect(filterWatchHomeBelowFoldBlocks(blocks)).toEqual([
+      blocks[1],
+      blocks[2],
+    ])
   })
 
-  it("keeps later navigation blocks once body content has started", () => {
+  it("keeps navigation blocks when there is no legacy hero", () => {
     const blocks = [
-      block("MediaCollectionBlock", "collection"),
       block("NavigationCarouselBlock", "nav"),
+      block("MediaCollectionBlock", "collection"),
     ]
 
     expect(filterWatchHomeBelowFoldBlocks(blocks)).toEqual(blocks)
