@@ -32,6 +32,7 @@ const WATCH_HOME_VIDEO_FRAGMENT = adminGraphql(`
       documentId: id
       languageSlug
       title
+      description
       snippet
       imageAlt
     }
@@ -39,6 +40,7 @@ const WATCH_HOME_VIDEO_FRAGMENT = adminGraphql(`
       documentId: id
       languageSlug
       title
+      description
       snippet
       imageAlt
     }
@@ -46,6 +48,7 @@ const WATCH_HOME_VIDEO_FRAGMENT = adminGraphql(`
       documentId: id
       languageSlug
       title
+      description
       snippet
       imageAlt
     }
@@ -224,6 +227,10 @@ function selectedLocaleRow(video: AdminWatchHomeVideo) {
   return rows.find((row) => row?.title?.trim()) ?? null
 }
 
+function localeDescription(localeRow: AdminWatchHomeLocale | null | undefined) {
+  return localeRow?.description?.trim() || localeRow?.snippet?.trim() || null
+}
+
 export function normalizeWatchHomeVideoSlide(
   video: AdminWatchHomeVideo,
   requestedLanguageSlug: string,
@@ -286,7 +293,7 @@ export function normalizeWatchHomeVideoSlide(
       title,
       label: displayLabel(video.label),
       collectionTitle: null,
-      description: localeRow?.snippet ?? null,
+      description: localeDescription(localeRow),
       posterUrl,
       thumbnailUrl: firstThumbnailUrl(image, muxPlaybackId) ?? posterUrl,
       src: variant.hls,

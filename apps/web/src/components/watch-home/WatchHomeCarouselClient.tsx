@@ -112,16 +112,21 @@ function WatchHomeOverlay({
 }) {
   return (
     <div className="absolute inset-x-0 bottom-[132px] z-10 flex items-end justify-between gap-4 px-5 pb-6 sm:bottom-[150px] sm:px-10 sm:pb-8 md:bottom-[164px] md:px-12">
-      <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-end sm:gap-5">
-        <PrimaryAction slide={activeSlide} />
-        <div className="min-w-0 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
+      <div className="flex min-w-0 max-w-[min(58rem,calc(100vw-2.5rem))] flex-col items-start gap-4 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
+        <div className="min-w-0">
           <p className="text-xs font-bold tracking-[0.24em] text-amber-300 uppercase sm:text-sm">
             {activeSlide.label}
           </p>
-          <h1 className="line-clamp-2 max-w-[calc(100vw-9rem)] text-3xl leading-tight font-extrabold sm:max-w-[min(44rem,calc(100vw-2.5rem))] sm:text-4xl md:text-5xl">
+          <h1 className="line-clamp-2 text-3xl leading-tight font-extrabold sm:text-4xl md:text-5xl">
             {activeSlide.title}
           </h1>
+          {activeSlide.description ? (
+            <p className="mt-3 line-clamp-3 max-w-[min(52rem,calc(100vw-2.5rem))] text-base leading-7 font-semibold text-white/78 sm:text-lg md:text-xl">
+              {activeSlide.description}
+            </p>
+          ) : null}
         </div>
+        <PrimaryAction slide={activeSlide} />
       </div>
       <div className="hidden shrink-0 items-center gap-4 text-white sm:flex">
         <Button
