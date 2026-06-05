@@ -10,7 +10,7 @@ origin: docs/brainstorms/2026-06-05-mobile-watch-player-controls-requirements.md
 
 ## Summary
 
-Overhaul the `apps/mobile` watch player controls to behave like YouTube: an auto-hiding controls overlay ("chrome"), a draggable seek scrubber with ±10s skip buttons and double-tap-the-sides seeking, and a custom in-tree fullscreen that opens landscape, follows device rotation, exits cleanly, and renders subtitles. The unifying change replaces expo-video's native `enterFullscreen()` with an in-tree fullscreen that keeps the same player and `VideoView` mounted, so the custom controls and the custom `SubtitleOverlay` work identically inline and fullscreen.
+Overhaul the `apps/mobile` watch player controls to behave like YouTube: an auto-hiding controls overlay ("chrome"), a draggable seek scrubber with ±10s skip buttons and double-tap-the-sides seeking, and a custom in-tree fullscreen that opens (and stays) landscape, exits cleanly, and renders subtitles. The unifying change replaces expo-video's native `enterFullscreen()` with an in-tree fullscreen that keeps the same player and `VideoView` mounted, so the custom controls and the custom `SubtitleOverlay` work identically inline and fullscreen.
 
 ---
 
@@ -47,7 +47,7 @@ Carried from origin (`docs/brainstorms/2026-06-05-mobile-watch-player-controls-r
 ### Fullscreen
 
 - R11. The fullscreen control enters an in-tree fullscreen that fills the screen, opening in landscape.
-- R12. In fullscreen the player follows device orientation (rotate to portrait → portrait fullscreen).
+- R12. Fullscreen is landscape-only — it opens in landscape and stays landscape; portrait fullscreen is not offered. _(Revised during implementation: iOS `unlockAsync()` snaps a portrait-held device straight back to portrait, so the planned follow-device behavior never took. Landscape-lock is the robust standard behavior — see `apps/mobile/src/lib/orientation.ts`.)_
 - R13. Fullscreen exposes an exit control returning to inline layout and re-locking the app to portrait.
 - R14. The Android hardware back gesture exits fullscreen rather than leaving the screen.
 - R15. Entering/exiting fullscreen preserves playback state and position.
@@ -70,7 +70,7 @@ Carried from origin (`docs/brainstorms/2026-06-05-mobile-watch-player-controls-r
   - **Inline:** the player is pinned at the top of the screen; the `ScrollView` content (episode info, Up Next, etc.) gets `paddingTop = playerHeight` and scrolls beneath it. **This changes today's behavior where the video scrolls away with content** — it now stays pinned (the standard watch-screen layout). Flagged in System-Wide Impact.
   - **Fullscreen:** the same container expands to an absolute-fill window overlay (sized from `useWindowDimensions()`, reactive to rotation) above the `ScrollView`, with the native stack header and status bar hidden.
 
-- KTD2. **Orientation via `expo-screen-orientation` (Expo SDK module).** Global `lockAsync(PORTRAIT_UP)` so every screen is portrait by default. Enter fullscreen = `lockAsync(LANDSCAPE)` then `unlockAsync()` (DEFAULT = follow device, excludes upside-down); exit = `lockAsync(PORTRAIT_UP)`. `app.json` `orientation` flips `"portrait"` → `"default"` so standalone/production builds permit landscape at the OS level.
+- KTD2. **Orientation via `expo-screen-orientation` (Expo SDK module).** Global `lockAsync(PORTRAIT_UP)` so every screen is portrait by default. Enter fullscreen = `lockAsync(LANDSCAPE)` — **landscape-only** (the originally-planned follow-device `unlockAsync()` was dropped: on iOS it immediately re-applies the device's physical orientation, snapping a portrait-held phone back to portrait, so the landscape nudge never took — see R12); exit = `lockAsync(PORTRAIT_UP)`. `app.json` `orientation` flips `"portrait"` → `"default"` so standalone/production builds permit landscape at the OS level.
   - **Launch-race mitigation:** flipping `app.json` to `"default"` removes the OS-level portrait guarantee that exists today, so a cold launch held in landscape could briefly render a portrait-only screen in landscape before the async `lockAsync` resolves. Fire `lockPortrait()` as early as possible (root layout, before first paint isn't guaranteed) and add a cold-launch-in-landscape verification step (Risks).
   - **iPad:** do **not** add `ios.requireFullScreen: true` by default — it disables split-view app-wide and traces to no requirement. First validate whether `lockAsync(PORTRAIT_UP)` alone holds on an iPad simulator; only add `requireFullScreen` if it provably fails, as a separately-flagged decision.
   - **Expo Go vs dev client:** `expo-screen-orientation` is bundled in Expo Go, so runtime lock/unlock is verifiable there without a rebuild, and the `app.json` change is a no-op under Expo Go. This project also has committed `ios/`/`android/` dirs and `expo run:*` scripts — on that dev-client path, adding the module needs a `pod install`/rebuild. And the standalone Info.plist `"default"` broadening is **not** exercised by Expo Go (Expo Go always permits all orientations), so the portrait-lock-on-every-screen guarantee must be smoke-tested once in a dev-client/preview build before ship.
@@ -123,9 +123,8 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     A[Tap fullscreen control] --> B[setFullscreen true]
-    B --> C[lockAsync LANDSCAPE]
-    C --> D[unlockAsync → follow device, no upside-down]
-    D --> E[Root-level player container → absolute-fill window\nuseWindowDimensions]
+    B --> C[lockAsync LANDSCAPE — landscape-only, no unlock]
+    C --> E[Root-level player container → absolute-fill window\nuseWindowDimensions]
     E --> F[headerShown false + hide status bar + gestureEnabled false]
     F --> G[Arm Android BackHandler]
     G --> H{Exit: tap exit / Android back}
@@ -154,19 +153,19 @@ Both diagrams render authoritative content; the per-unit prose is the source of 
 - `apps/mobile/package.json` — add `expo-screen-orientation` via `npx expo install` (resolves the SDK-54 pin, ~9.0.9).
 - `apps/mobile/app.json` — `orientation: "portrait"` → `"default"`; add `ios.infoPlist.UISupportedInterfaceOrientations` (portrait + both landscapes). Do **not** add `ios.requireFullScreen` yet (see KTD2 / Risks).
 - `apps/mobile/app/_layout.tsx` — call `lockPortrait()` as early as possible on mount.
-- `apps/mobile/src/lib/orientation.ts` (new) — `lockPortrait()`, `enterLandscapeFollowDevice()`, `exitToPortrait()`.
+- `apps/mobile/src/lib/orientation.ts` (new) — `lockPortrait()`, `enterFullscreenLandscape()`, `exitToPortrait()`.
 - `apps/mobile/src/lib/__tests__/orientation.test.ts` (new).
 
-**Approach:** A thin helper isolates the three transitions (KTD2) and is unit-testable with a mocked `ScreenOrientation`. `enterLandscapeFollowDevice` does the two-step `lockAsync(LANDSCAPE)` → `unlockAsync()`. **Lazy-require to respect the root-layout defensive pattern:** `app/_layout.tsx` deliberately lazy-`require()`s native deps inside a `try/catch` to avoid module-eval white-screens (`_layout.tsx:23-52`). Either lazy-`require` `expo-screen-orientation` inside `orientation.ts`, or add the helper to the existing require block — so a static import never pulls the native module into the eager graph. Wrap calls so a rejection never crashes navigation, and ensure a swallowed `unlockAsync` rejection cannot strand the device landscape (`exitToPortrait` must still recover).
+**Approach:** A thin helper isolates the three transitions (KTD2) and is unit-testable with a mocked `ScreenOrientation`. `enterFullscreenLandscape` locks `lockAsync(LANDSCAPE)` only — the originally-planned follow-device `unlockAsync()` step was dropped (see R12/KTD2). **Lazy-require to respect the root-layout defensive pattern:** `app/_layout.tsx` deliberately lazy-`require()`s native deps inside a `try/catch` to avoid module-eval white-screens (`_layout.tsx:23-52`). Either lazy-`require` `expo-screen-orientation` inside `orientation.ts`, or add the helper to the existing require block — so a static import never pulls the native module into the eager graph. Wrap calls so a rejection never crashes navigation, and ensure a swallowed `unlockAsync` rejection cannot strand the device landscape (`exitToPortrait` must still recover).
 
 **Patterns to follow:** lazy-require block in `apps/mobile/app/_layout.tsx:23-52`.
 
 **Test scenarios:**
 
 - `lockPortrait()` calls `lockAsync(PORTRAIT_UP)`.
-- `enterLandscapeFollowDevice()` calls `lockAsync(LANDSCAPE)` then `unlockAsync()`, in order.
+- `enterFullscreenLandscape()` calls `lockAsync(LANDSCAPE)` and does NOT call `unlockAsync()` (landscape-only — R12).
 - `exitToPortrait()` calls `lockAsync(PORTRAIT_UP)`.
-- `lockAsync` succeeds but `unlockAsync` rejects → rejection swallowed AND a subsequent `exitToPortrait()` still re-locks portrait (no stranded-landscape state — R16).
+- A `lockAsync` rejection in any helper is swallowed AND a subsequent `exitToPortrait()` still re-locks portrait (no stranded-landscape state — R16).
 - `Test expectation:` `app.json`/dependency changes are config — no unit test; covered by manual verification.
 
 **Verification:** App launches portrait-locked on every screen in Expo Go. Cold-launch the app **held in landscape** and confirm no landscape flash on the feed. Once before ship, smoke-test the portrait lock in a dev-client/preview build (Expo Go can't exercise the standalone Info.plist).
@@ -281,10 +280,10 @@ Both diagrams render authoritative content; the per-unit prose is the source of 
 **Files:**
 
 - `apps/mobile/app/watch/[slug].tsx` — mount `VideoPlayer` at the route root, outside the `ScrollView`; add `paddingTop = playerHeight` to the scroll content (pinned inline player, KTD1); lift `isFullscreen` here; on fullscreen, set `navigation.setOptions({ headerShown: false })` and `gestureEnabled: false`, restoring on exit.
-- `apps/mobile/src/components/watch/VideoPlayer.tsx` — replace `handleFullscreen`/`enterFullscreen()` (`:173-175`) with the `isFullscreen`-driven container-style toggle (inline 16:9 ↔ absolute-fill window from `useWindowDimensions()`); call the U1 helper on enter/exit; register/remove the Android `BackHandler`; hide the status bar in fullscreen; re-assert `enterLandscapeFollowDevice()` on AppState `active` while fullscreen.
+- `apps/mobile/src/components/watch/VideoPlayer.tsx` — replace `handleFullscreen`/`enterFullscreen()` (`:173-175`) with the `isFullscreen`-driven container-style toggle (inline 16:9 ↔ absolute-fill window from `useWindowDimensions()`); call the U1 helper on enter/exit; register/remove the Android `BackHandler`; hide the status bar in fullscreen; re-assert `enterFullscreenLandscape()` on AppState `active` while fullscreen.
 - `apps/mobile/src/components/watch/PlayerControls.tsx` — the fullscreen icon reflects enter vs exit (`expand` ↔ `contract`).
 
-**Approach:** KTD1 + KTD2. Same player/`VideoView` mounted at the route root throughout; only the wrapping `<View>` style changes — never relocated. Enter: `setFullscreen(true)` → `enterLandscapeFollowDevice()` → `headerShown:false` + hide status bar + `gestureEnabled:false` (so the iOS edge-swipe can't pop the route mid-fullscreen) → arm `BackHandler` (return `true`, R14). Exit (control or back): `setFullscreen(false)` → `exitToPortrait()` → restore header/status bar/gesture → `sub.remove()` (RN 0.81 subscription `.remove()`, not `removeEventListener`). `contentFit` stays `"contain"` (letterbox 16:9). On Android, set `surfaceType="textureView"` on `VideoView` so RN overlays/captions composite above the video; verify. Read `useSafeAreaInsets()` live for landscape insets.
+**Approach:** KTD1 + KTD2. Same player/`VideoView` mounted at the route root throughout; only the wrapping `<View>` style changes — never relocated. Enter: `setFullscreen(true)` → `enterFullscreenLandscape()` → `headerShown:false` + hide status bar + `gestureEnabled:false` (so the iOS edge-swipe can't pop the route mid-fullscreen) → arm `BackHandler` (return `true`, R14). Exit (control or back): `setFullscreen(false)` → `exitToPortrait()` → restore header/status bar/gesture → `sub.remove()` (RN 0.81 subscription `.remove()`, not `removeEventListener`). `contentFit` stays `"contain"` (letterbox 16:9). On Android, set `surfaceType="textureView"` on `VideoView` so RN overlays/captions composite above the video; verify. Read `useSafeAreaInsets()` live for landscape insets.
 
 **Execution note:** This unit defines the route-root mount; build U2–U4 against that mount location (they are independent of fullscreen but live in the same component).
 
@@ -292,14 +291,14 @@ Both diagrams render authoritative content; the per-unit prose is the source of 
 
 **Test scenarios:**
 
-- Entering calls `enterLandscapeFollowDevice()` + sets `headerShown:false`/`gestureEnabled:false`; exiting calls `exitToPortrait()` + restores both.
+- Entering calls `enterFullscreenLandscape()` + sets `headerShown:false`/`gestureEnabled:false`; exiting calls `exitToPortrait()` + restores both.
 - The `BackHandler` returns `true` while fullscreen and is removed (`.remove()`) on exit.
 - The fullscreen icon shows the exit affordance when `isFullscreen`.
 - Toggling fullscreen does not change the `useVideoPlayer` creation source and does not relocate the player in the tree (player not remounted) — guard R15.
 - AppState `active` while fullscreen re-asserts the landscape lock.
 - `Test expectation:` actual rotation + playback continuity is native — manual sim/device verification.
 
-**Verification:** Expo Go: tap fullscreen → landscape, video keeps playing, **no native header bar showing**; rotate to portrait → follows (R12); exit control + Android back → inline, app re-locks portrait (R13/R14); enter fullscreen while paused → exit control reachable; background→resume in fullscreen → orientation + layout consistent. Screenshot landscape + portrait fullscreen.
+**Verification:** Expo Go: tap fullscreen → landscape, video keeps playing, **no native header bar showing**; stays landscape, no follow-to-portrait (R12); exit control + Android back → inline, app re-locks portrait (R13/R14); enter fullscreen while paused → exit control reachable; background→resume in fullscreen → orientation + layout consistent. Screenshot landscape fullscreen.
 
 ---
 

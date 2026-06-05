@@ -10,7 +10,7 @@ tags:
 
 ## Summary
 
-Overhaul the controls overlay ("Chrome") on the mobile watch player so it behaves like YouTube: it appears when playback starts, auto-hides after a few idle seconds, and reappears on tap. Add full seek control (drag the scrubber plus tap-to-skip forward/back). Replace the dead-end native fullscreen with an in-tree fullscreen that opens in landscape, follows device rotation, exposes an exit control, and renders subtitles. Every change is verified on the iOS simulator.
+Overhaul the controls overlay ("Chrome") on the mobile watch player so it behaves like YouTube: it appears when playback starts, auto-hides after a few idle seconds, and reappears on tap. Add full seek control (drag the scrubber plus tap-to-skip forward/back). Replace the dead-end native fullscreen with an in-tree fullscreen that opens (and stays) in landscape, exposes an exit control, and renders subtitles. Every change is verified on the iOS simulator.
 
 ## Problem Frame
 
@@ -23,7 +23,7 @@ The seek experience is also thin: the progress bar is display-only, computed fro
 ## Key Decisions
 
 - **In-tree fullscreen, not native.** Stop calling `expo-video`'s `enterFullscreen()`. Instead expand the existing player container (VideoView + SubtitleOverlay + PlayerControls) to fill the screen within the React tree. This is the single change that makes the exit control, auto-hide Chrome, drag/skip seeking, and subtitles all work identically inline and in fullscreen, because they are the same components in both modes.
-- **Fullscreen unlocks orientation; the rest of the app stays portrait.** Entering fullscreen requests landscape and then follows the device, so a user who rotates back to portrait gets portrait fullscreen. Exiting re-locks to portrait. The app is portrait-locked today (`apps/mobile/app.json` → `orientation: "portrait"`), so this requires a new orientation capability and a broadening of the app's declared supported orientations — scoped so that only the fullscreen player ever rotates.
+- **Fullscreen locks landscape; the rest of the app stays portrait.** Entering fullscreen requests landscape and stays landscape (it does not follow the device back to portrait — see R12's revision note). Exiting re-locks to portrait. The app is portrait-locked today (`apps/mobile/app.json` → `orientation: "portrait"`), so this requires a new orientation capability and a broadening of the app's declared supported orientations — scoped so that only the fullscreen player ever rotates.
 - **Auto-hide is play-state-aware.** Chrome auto-hides only while playing. While paused it stays visible (YouTube behavior). Captions remain visible even when Chrome fades, repositioning to use the freed space at the bottom.
 - **Tap toggles.** A tap on the video shows Chrome if hidden (and restarts the idle timer) or hides it if visible. Interacting with a control resets the idle timer rather than hiding.
 - **Skip is 10 seconds each way.** Symmetric −10s / +10s skip controls flank the center play/pause, matching YouTube's double-tap convention. (15s was floated; 10s chosen as the default.)
@@ -50,7 +50,7 @@ The seek experience is also thin: the progress bar is display-only, computed fro
 ### Fullscreen
 
 - R11. Tapping the fullscreen control enters an in-tree fullscreen that fills the screen, opening in landscape.
-- R12. In fullscreen the player follows device orientation — rotating the device to portrait yields portrait fullscreen, and back to landscape yields landscape.
+- R12. Fullscreen is landscape-only: it opens in landscape and stays landscape (landscape-left or landscape-right as the device turns); it does not offer portrait fullscreen. _(Revised 2026-06-05 during implementation: the original "follow the device back to portrait" behavior was dropped. On iOS `unlockAsync()` immediately re-applies the device's current physical orientation, snapping a portrait-held phone straight back to portrait so the landscape nudge never takes. Locking to landscape is the robust, standard fullscreen behavior — see `apps/mobile/src/lib/orientation.ts`.)_
 - R13. Fullscreen exposes an exit control (the fullscreen icon reflects the exit affordance) that returns to the inline layout and re-locks the app to portrait.
 - R14. The Android hardware back gesture/button exits fullscreen rather than leaving the screen, when in fullscreen.
 - R15. Entering fullscreen preserves playback state (a video playing inline keeps playing; position is unchanged); exiting likewise preserves state.
@@ -82,9 +82,9 @@ The seek experience is also thin: the progress bar is display-only, computed fro
   - **Steps:** Drag → position follows finger, Chrome stays up, release seeks. Skip control → jump ±10s clamped. Double-tap side → jump ∓/±10s.
   - **Covers:** R7, R8, R9, R10.
 
-- F4. Enter / rotate / exit fullscreen
+- F4. Enter / exit fullscreen
   - **Trigger:** User taps the fullscreen control.
-  - **Steps:** Player expands in-tree to landscape fullscreen, playback continues → user rotates device to portrait → fullscreen follows to portrait → user taps exit (or Android back) → returns inline, app re-locks portrait.
+  - **Steps:** Player expands in-tree to landscape fullscreen, playback continues and stays landscape → user taps exit (or Android back) → returns inline, app re-locks portrait.
   - **Covers:** R11, R12, R13, R14, R15, R16.
 
 ## Acceptance Examples
@@ -106,7 +106,7 @@ The seek experience is also thin: the progress bar is display-only, computed fro
   - **Covers R17, R18.**
 
 - AE5. Exit always available.
-  - **Given** the player is in fullscreen (landscape or portrait), **when** the user taps the exit control or uses Android back, **then** the player returns to the inline layout and the app re-locks to portrait.
+  - **Given** the player is in fullscreen (always landscape), **when** the user taps the exit control or uses Android back, **then** the player returns to the inline layout and the app re-locks to portrait.
   - **Covers R13, R14, R16.**
 
 ## Scope Boundaries
