@@ -13,10 +13,11 @@ import {
 } from "react-native"
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { BLACK, TEXT_ON_OVERLAY } from "../../lib/color"
+import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
 import { applySkip } from "../../lib/scrubber"
@@ -364,6 +365,40 @@ export function VideoPlayer({
         </View>
       )}
 
+      {/* Chrome scrim — fades with the chrome and sits BELOW the subtitle so it
+          never dims the caption. */}
+      {controls.mounted && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.chromeScrim, { opacity: controls.opacityAnim }]}
+        >
+          <LinearGradient
+            colors={[
+              hexToRgba(BLACK, 0),
+              hexToRgba(BLACK, 0.2),
+              hexToRgba(BLACK, 0.7),
+            ]}
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      )}
+
+      {/* Captions sit on the button row, ABOVE the scrim but BELOW the controls
+          so the timeline always draws over a tall (2-line) caption and the
+          progress stays visible. Kept outside the fade wrapper so they stay
+          visible when the controls auto-hide. */}
+      <SubtitleOverlay
+        player={player}
+        vttSrc={subtitleVttSrc}
+        bottomOffset={subtitleBottomOffset}
+        horizontalInset={subtitleHorizontalInset}
+        fontSize={subtitleFontSize}
+      />
+
+      {/* Chrome controls — fade with the chrome and layer OVER the subtitle, so
+          the timeline/buttons are always on top of the captions (R: timeline
+          must stay visible). */}
       {controls.mounted && (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
@@ -378,17 +413,6 @@ export function VideoPlayer({
           />
         </Animated.View>
       )}
-
-      {/* Captions render LAST so they layer over the chrome, fixed on the
-          button row. Kept outside the chrome's fade wrapper so they stay
-          visible when the controls auto-hide. */}
-      <SubtitleOverlay
-        player={player}
-        vttSrc={subtitleVttSrc}
-        bottomOffset={subtitleBottomOffset}
-        horizontalInset={subtitleHorizontalInset}
-        fontSize={subtitleFontSize}
-      />
     </View>
   )
 }
@@ -397,6 +421,13 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     backgroundColor: BLACK,
+  },
+  chromeScrim: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 160,
   },
   seekFlash: {
     position: "absolute",
