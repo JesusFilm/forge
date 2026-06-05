@@ -41,6 +41,8 @@ export function PlayerControls({
   const [duration, setDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [scrubPreview, setScrubPreview] = useState<number | null>(null)
+  // True once playback reaches the end — the center control becomes Replay.
+  const [ended, setEnded] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // Mirror scrubbing into a ref so the poll closure (set up on [isPlaying])
   // reads the live value without re-subscribing.
@@ -74,6 +76,23 @@ export function PlayerControls({
   useEffect(() => {
     if (seekSignal) setCurrentTime(seekSignal.time)
   }, [seekSignal])
+
+  // Mark ended on playToEnd (the reliable end signal — the time poll stops
+  // before the last frame, so currentTime alone can't detect it). Resuming
+  // playback clears it.
+  useEffect(() => {
+    const sub = player.addListener("playToEnd", () => setEnded(true))
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // player already released
+      }
+    }
+  }, [player])
+  useEffect(() => {
+    if (isPlaying) setEnded(false)
+  }, [isPlaying])
 
   const togglePlayPause = useCallback(() => {
     onInteract?.()
@@ -110,6 +129,7 @@ export function PlayerControls({
       if (target == null) return
       player.currentTime = target
       setCurrentTime(target)
+      if (target < player.duration - 0.5) setEnded(false)
     },
     [player, onInteract],
   )
@@ -119,6 +139,7 @@ export function PlayerControls({
       onInteract?.()
       player.currentTime = time
       setCurrentTime(time)
+      if (time < player.duration - 0.5) setEnded(false)
     },
     [player, onInteract],
   )
@@ -150,13 +171,13 @@ export function PlayerControls({
           onPress={togglePlayPause}
           style={styles.playButton}
           accessibilityRole="button"
-          accessibilityLabel={isPlaying ? "Pause" : "Play"}
+          accessibilityLabel={ended ? "Replay" : isPlaying ? "Pause" : "Play"}
         >
           <Ionicons
-            name={isPlaying ? "pause" : "play"}
+            name={ended ? "reload" : isPlaying ? "pause" : "play"}
             size={24}
             color={TEXT_ON_OVERLAY}
-            style={isPlaying ? undefined : { marginLeft: 3 }}
+            style={!ended && !isPlaying ? { marginLeft: 3 } : undefined}
           />
         </Pressable>
 
