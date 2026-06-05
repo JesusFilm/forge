@@ -15,6 +15,7 @@ import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useEvent } from "expo"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
@@ -268,6 +269,20 @@ export function VideoPlayer({
     [controls, doSideSeek],
   )
 
+  // Caption position: above the control bar when chrome is visible, lower when
+  // hidden (instant — captions are a separate layer and never fade with the
+  // chrome). In fullscreen, add the safe-area insets so text clears the notch /
+  // home indicator in landscape.
+  const insets = useSafeAreaInsets()
+  const subtitleBottomOffset = fullscreen
+    ? insets.bottom + (controls.controlsVisible ? 64 : 16)
+    : controls.controlsVisible
+      ? 56
+      : 16
+  const subtitleHorizontalInset = fullscreen
+    ? Math.max(insets.left, insets.right, 16)
+    : 16
+
   return (
     <View
       style={[
@@ -340,7 +355,12 @@ export function VideoPlayer({
         </View>
       )}
 
-      <SubtitleOverlay player={player} vttSrc={subtitleVttSrc} />
+      <SubtitleOverlay
+        player={player}
+        vttSrc={subtitleVttSrc}
+        bottomOffset={subtitleBottomOffset}
+        horizontalInset={subtitleHorizontalInset}
+      />
 
       {controls.mounted && (
         <Animated.View

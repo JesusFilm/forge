@@ -10,6 +10,9 @@ type SubtitleOverlayProps = {
   player: ExpoVideoPlayer
   vttSrc: string | null
   bottomOffset?: number
+  /** Horizontal padding so captions clear the notch / home-indicator in
+   *  landscape fullscreen. Defaults to the inline value. */
+  horizontalInset?: number
 }
 
 // Cues are sorted by start time. Binary-search the last cue whose start is <= t,
@@ -47,6 +50,7 @@ export function SubtitleOverlay({
   player,
   vttSrc,
   bottomOffset = 16,
+  horizontalInset = 16,
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
@@ -125,7 +129,10 @@ export function SubtitleOverlay({
   return (
     <View
       pointerEvents="none"
-      style={[styles.container, { bottom: bottomOffset }]}
+      style={[
+        styles.container,
+        { bottom: bottomOffset, paddingHorizontal: horizontalInset },
+      ]}
     >
       <Text style={styles.text}>{activeText}</Text>
     </View>
