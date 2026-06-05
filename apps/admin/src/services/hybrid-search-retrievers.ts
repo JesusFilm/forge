@@ -30,6 +30,29 @@ import {
   EXPERIENCE_LOCALE_TSVECTOR_QUERY_EXPR,
 } from "./hybrid-search-sql"
 import type { RankedItem } from "./hybrid-search-fusion"
+import type { EmbeddingSource } from "./embeddings.service"
+
+/**
+ * Closed allowlist mapping an embedding source to the physical pgvector
+ * COLUMN the semantic-video retriever reads. This is the SQL-injection
+ * guard for the `Prisma.raw(column)` interpolation below: the column
+ * name NEVER comes from caller input directly — it is always one of
+ * these two compile-time string literals, selected by the source.
+ *
+ * - `"gateway"` → `"embedding_qwen"` (Qwen 1536-dim vectors, U2 column;
+ *   read by the admin AI experience-gen path only).
+ * - anything else (including `"openai"`) → `"embedding"` (the existing
+ *   OpenAI column; the public default, byte-identical to today).
+ *
+ * The matching per-locale partial HNSW index on the chosen column is
+ * selected by the planner automatically — the WHERE locale predicate
+ * in the query is unchanged.
+ */
+export function resolveSemanticEmbeddingColumn(
+  source: EmbeddingSource | undefined,
+): "embedding" | "embedding_qwen" {
+  return source === "gateway" ? "embedding_qwen" : "embedding"
+}
 
 // -----------------------------------------------------------------------------
 // Shared parameter shapes
@@ -42,6 +65,15 @@ export type SemanticSearchParams = {
   queryEmbedding: string
   locale: string
   limit: number
+  /**
+   * Per-call embedding source. Selects which stored vector COLUMN the
+   * video semantic retriever reads via the `resolveSemanticEmbeddingColumn`
+   * closed allowlist (`"gateway"` → `embedding_qwen`, else `embedding`).
+   * Absent / unknown → `embedding` (the public default). Consumed only by
+   * `searchVideoSemantic`; the experience retriever ignores it (experience
+   * vectors are out of the U3 pilot and always read `embedding`).
+   */
+  embeddingSource?: EmbeddingSource
 }
 
 export const VIDEO_SEMANTIC_MAX_AGREEMENT_BONUS = 0.01
@@ -308,6 +340,14 @@ export async function searchVideoSemantic(
   const { queryEmbedding, locale, limit } = params
   const candidateLimit = Math.max(limit * 2, limit)
 
+  // Resolve the read column from the CLOSED two-literal allowlist BEFORE
+  // touching Prisma.raw — the source value never reaches raw SQL
+  // unvalidated (SQL-injection guard). `vsl.<col>` is the scene column,
+  // `vtc.<col>` the transcript column; both move together per call.
+  const column = resolveSemanticEmbeddingColumn(params.embeddingSource)
+  const sceneEmbeddingCol = Prisma.raw(`vsl.${column}`)
+  const transcriptEmbeddingCol = Prisma.raw(`vtc.${column}`)
+
   const evidenceRows = await prisma.$queryRaw<VideoSemanticEvidenceRow[]>`
     WITH scene_source AS (
       SELECT * FROM (
@@ -322,8 +362,8 @@ export async function searchVideoSemantic(
           vsl.description                   AS scene_description,
           vs.start_seconds                  AS start_seconds,
           dub_mux.playback_id               AS playback_id,
-          1 - (vsl.embedding <=> ${queryEmbedding}::vector) AS source_score,
-          vsl.embedding::text               AS embedding_text
+          1 - (${sceneEmbeddingCol} <=> ${queryEmbedding}::vector) AS source_score,
+          ${sceneEmbeddingCol}::text        AS embedding_text
         FROM video_scene_locale vsl
         JOIN video_scene vs ON vs.id = vsl.video_scene_id
         JOIN video v ON v.id = vs.video_id
@@ -353,11 +393,11 @@ export async function searchVideoSemantic(
           ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
           LIMIT 1
         ) vi ON true
-        WHERE vsl.embedding IS NOT NULL
+        WHERE ${sceneEmbeddingCol} IS NOT NULL
           AND vsl.locale = ${locale}
         ORDER BY
           vs.video_id,
-          vsl.embedding <=> ${queryEmbedding}::vector,
+          ${sceneEmbeddingCol} <=> ${queryEmbedding}::vector,
           vs.start_seconds ASC,
           vsl.id ASC
       ) best_scene_per_video
@@ -377,8 +417,8 @@ export async function searchVideoSemantic(
           vtc.text                          AS scene_description,
           vtc.start_seconds                 AS start_seconds,
           dub_mux.playback_id               AS playback_id,
-          1 - (vtc.embedding <=> ${queryEmbedding}::vector) AS source_score,
-          vtc.embedding::text               AS embedding_text
+          1 - (${transcriptEmbeddingCol} <=> ${queryEmbedding}::vector) AS source_score,
+          ${transcriptEmbeddingCol}::text   AS embedding_text
         FROM video_transcript_chunk vtc
         JOIN video_transcript vt ON vt.id = vtc.transcript_id
         JOIN video v ON v.id = vt.video_id
@@ -408,12 +448,12 @@ export async function searchVideoSemantic(
           ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
           LIMIT 1
         ) vi ON true
-        WHERE vtc.embedding IS NOT NULL
+        WHERE ${transcriptEmbeddingCol} IS NOT NULL
           AND vtc.language = ${locale}
           AND vt.language = ${locale}
         ORDER BY
           vt.video_id,
-          vtc.embedding <=> ${queryEmbedding}::vector,
+          ${transcriptEmbeddingCol} <=> ${queryEmbedding}::vector,
           vtc.start_seconds ASC NULLS LAST,
           vtc.id ASC
       ) best_transcript_per_video

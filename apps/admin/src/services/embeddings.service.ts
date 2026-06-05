@@ -6,10 +6,26 @@ import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { BlockSchema } from "@/domain/blocks"
 import { toPgVector } from "@/db/pgvector"
+import {
+  AI_GATEWAY_USER_AGENT,
+  DEFAULT_AI_GATEWAY_CHAT_BASE_URL,
+} from "@/mastra/gateway-constants"
 
 export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
 export const OPENROUTER_EMBEDDING_MODEL = "openai/text-embedding-3-small"
 export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+export const GATEWAY_EMBEDDING_MODEL = "embeddings"
+
+/**
+ * Per-call embedding source. `"openai"` (the default) keeps the existing
+ * OpenRouter → OpenAI precedence byte-identical to today. `"gateway"`
+ * routes through the self-hosted JesusFilm AI gateway (Qwen → 1536-dim)
+ * so the admin AI experience generator can search Qwen-embedded video
+ * vectors without a paid-API dependency. Selected per call — public
+ * search / recommendations never pass it, so they are structurally
+ * incapable of being affected.
+ */
+export type EmbeddingSource = "openai" | "gateway"
 
 /**
  * Hard timeout for provider requests. Node's default fetch has no
@@ -203,9 +219,32 @@ type EmbeddingProvider = {
   apiKey: string
   model: string
   url: string
+  /**
+   * Extra request headers merged into the fetch call alongside the
+   * standard authorization + content-type. The gateway provider sets a
+   * descriptive User-Agent here because Cloudflare fronts the gateway and
+   * 403s on missing/odd UAs.
+   */
+  headers?: Record<string, string>
 }
 
-function selectProvider(): EmbeddingProvider {
+function selectProvider(source: EmbeddingSource = "openai"): EmbeddingProvider {
+  if (source === "gateway") {
+    if (!env.AI_GATEWAY_EMBEDDINGS_API_KEY) {
+      throw new EmbeddingsBatchError(
+        "missing_credentials",
+        "AI_GATEWAY_EMBEDDINGS_API_KEY is required for gateway embedding generation",
+      )
+    }
+    return {
+      apiKey: env.AI_GATEWAY_EMBEDDINGS_API_KEY,
+      model: env.AI_GATEWAY_EMBEDDINGS_MODEL ?? GATEWAY_EMBEDDING_MODEL,
+      url: embeddingEndpointFromBase(
+        env.AI_GATEWAY_EMBEDDINGS_BASE_URL ?? DEFAULT_AI_GATEWAY_CHAT_BASE_URL,
+      ),
+      headers: { "User-Agent": AI_GATEWAY_USER_AGENT },
+    }
+  }
   if (env.OPENROUTER_API_KEY) {
     return {
       apiKey: env.OPENROUTER_API_KEY,
@@ -244,6 +283,7 @@ function selectProvider(): EmbeddingProvider {
  */
 export async function generateExperienceEmbeddings(
   inputs: readonly string[],
+  opts?: { source?: EmbeddingSource },
 ): Promise<GeneratedEmbeddings> {
   if (inputs.length === 0) {
     throw new EmbeddingsBatchError(
@@ -264,7 +304,7 @@ export async function generateExperienceEmbeddings(
     normalized.push(line)
   }
 
-  const provider = selectProvider()
+  const provider = selectProvider(opts?.source)
 
   const controller = new AbortController()
   const timeoutHandle = setTimeout(
@@ -278,6 +318,7 @@ export async function generateExperienceEmbeddings(
       headers: {
         authorization: `Bearer ${provider.apiKey}`,
         "content-type": "application/json",
+        ...provider.headers,
       },
       body: JSON.stringify({
         model: provider.model,
@@ -355,12 +396,15 @@ export async function generateExperienceEmbeddings(
  */
 export async function generateExperienceEmbedding(
   text: string,
+  opts?: { source?: EmbeddingSource },
 ): Promise<GeneratedEmbedding> {
   const normalizedText = normalizeLine(text)
   if (!normalizedText) {
     throw new Error("Embedding input must not be empty")
   }
-  const result = await generateExperienceEmbeddings([normalizedText])
+  const result = await generateExperienceEmbeddings([normalizedText], {
+    source: opts?.source,
+  })
   return {
     model: result.model,
     dimensions: result.dimensions,

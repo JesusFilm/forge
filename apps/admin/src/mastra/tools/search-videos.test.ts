@@ -11,6 +11,15 @@ function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
 
 const searchMock = vi.hoisted(() => vi.fn())
 
+// AI_VIDEO_SEARCH_EMBEDDING_SOURCE controls which embedding source the tool
+// passes; defaults to "openai" (behavior-neutral until the embedding_qwen
+// backfill exists). Tests flip it to exercise both paths.
+const mockEnv = vi.hoisted(() => ({
+  env: { AI_VIDEO_SEARCH_EMBEDDING_SOURCE: "openai" as "openai" | "gateway" },
+}))
+
+vi.mock("@/config/env", () => mockEnv)
+
 vi.mock("@/services/hybrid-search.service", () => ({
   HybridSearchService: class {
     search = searchMock
@@ -24,6 +33,7 @@ vi.mock("@/db/client", () => ({
 describe("searchVideosTool", () => {
   beforeEach(() => {
     searchMock.mockReset()
+    mockEnv.env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE = "openai"
     vi.resetModules()
   })
 
@@ -82,6 +92,8 @@ describe("searchVideosTool", () => {
       locale: "en",
       limit: 5,
       contentTypes: ["video"],
+      // Default flag → OpenAI source (behavior-neutral until backfill).
+      embeddingSource: "openai",
     })
     expect(result.videos).toEqual([
       {
@@ -99,6 +111,24 @@ describe("searchVideosTool", () => {
         imageUrl: null,
       },
     ])
+  })
+
+  it("passes embeddingSource=gateway when AI_VIDEO_SEARCH_EMBEDDING_SOURCE is set", async () => {
+    mockEnv.env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE = "gateway"
+    searchMock.mockResolvedValue({
+      results: [],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "hybrid",
+    })
+    const { searchVideosTool } = await import("./search-videos")
+    await searchVideosTool.execute!(
+      { q: "jesus", locale: "en", limit: 5 },
+      undefined as never,
+    )
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ embeddingSource: "gateway" }),
+    )
   })
 
   it("returns an empty array when the service returns no video results", async () => {

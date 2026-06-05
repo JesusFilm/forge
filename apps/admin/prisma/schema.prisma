@@ -1458,6 +1458,7 @@ model VideoSceneLocale {
   demographics              String[]                     @default([])
   spiritualContext          String[]                     @default([]) @map("spiritual_context")
   embedding                 Unsupported("vector(1536)")?
+  embedding_qwen            Unsupported("vector(1536)")?
   model                     String                       @default("text-embedding-3-small")
   dimensions                Int                          @default(1536)
   embeddingProvider         String?                      @map("embedding_provider")
@@ -1659,6 +1660,7 @@ model VideoTranscriptChunk {
   startSeconds Float?                       @map("start_seconds")
   endSeconds   Float?                       @map("end_seconds")
   embedding    Unsupported("vector(1536)")?
+  embedding_qwen Unsupported("vector(1536)")?
   model        String                       @default("text-embedding-3-small")
   dimensions   Int                          @default(1536)
   createdAt    DateTime                     @default(now()) @map("created_at")
