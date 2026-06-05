@@ -280,14 +280,20 @@ export function VideoPlayer({
     [controls, doSideSeek],
   )
 
-  // Captions sit FIXED on the button row, layered over the chrome (they never
-  // reposition as the chrome shows/hides and never fade with it). The bottom
-  // offset matches the mute/fullscreen icons (which sit at the bar's bottom
-  // without safe-area insets), horizontal padding keeps them clear of those
-  // icons (and the landscape side-notch), and the text enlarges in fullscreen
-  // where the video fills the screen.
+  // Caption vertical offset:
+  //  - Inline: FIXED on the button row (never moves; the timeline z-layers over
+  //    it via the render order below).
+  //  - Fullscreen: lifts above the control bar when the chrome is visible (so a
+  //    tall 2-line caption never covers the timeline) and drops back to the
+  //    button row when the chrome hides — animated (only in fullscreen).
+  // Horizontal padding clears the mute/fullscreen icons (and the landscape
+  // side-notch); the text enlarges in fullscreen where the video fills the screen.
   const insets = useSafeAreaInsets()
-  const subtitleBottomOffset = fullscreen ? 12 : 14
+  const subtitleBottomOffset = fullscreen
+    ? controls.controlsVisible
+      ? 92
+      : 12
+    : 14
   const subtitleHorizontalInset = fullscreen
     ? Math.max(insets.left, insets.right, 56)
     : 56
@@ -394,6 +400,7 @@ export function VideoPlayer({
         bottomOffset={subtitleBottomOffset}
         horizontalInset={subtitleHorizontalInset}
         fontSize={subtitleFontSize}
+        animate={fullscreen}
       />
 
       {/* Chrome controls — fade with the chrome and layer OVER the subtitle, so
