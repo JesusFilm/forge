@@ -3,6 +3,7 @@ import { AccessibilityInfo, Animated, AppState, Easing } from "react-native"
 import { useEvent } from "expo"
 import type { VideoPlayer, VideoPlayerStatus } from "expo-video"
 import { shouldArmHideTimer } from "../lib/autoHide"
+import { nextControlsState } from "../lib/controlsVisibility"
 
 const HIDE_DELAY_MS = 3000
 const FADE_OUT_MS = 150
@@ -70,20 +71,32 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
 
   const hideNow = useCallback(() => {
     clearTimer()
-    // Flip the ground-truth ref immediately, BEFORE the fade resolves. The
-    // timer-driven path calls hideNow directly (explicit toggle/hide set this
-    // themselves), so without this the ref stays "visible" through the whole
-    // fade — making revealIfHidden() a no-op and letting a mid-fade tap fall
-    // through and complete the hide instead of bringing chrome back.
-    controlsVisibleRef.current = false
+    // hideStart: logically hidden NOW, before the fade resolves. The
+    // timer-driven path calls hideNow directly, so without this the ref would
+    // stay "visible" through the fade — making revealIfHidden() a no-op and
+    // letting a mid-fade tap complete the hide instead of bringing chrome back.
+    controlsVisibleRef.current = nextControlsState(
+      { visible: controlsVisibleRef.current, mounted: true },
+      "hideStart",
+    ).visible
     if (hideAnimRef.current != null) {
       hideAnimRef.current.stop()
       hideAnimRef.current = null
     }
+    // hideDone: unmount only if still logically hidden. A reveal/interaction
+    // during the fade flips the ref back true, making this completion stale —
+    // it then keeps the chrome mounted (mount-after-fade, mirrors MiniPlayerBar).
+    const finishHide = () => {
+      const next = nextControlsState(
+        { visible: controlsVisibleRef.current, mounted: true },
+        "hideDone",
+      )
+      setControlsVisible(next.visible)
+      setMounted(next.mounted)
+    }
     if (reduceMotionRef.current) {
       opacityAnim.setValue(0)
-      setControlsVisible(false)
-      setMounted(false)
+      finishHide()
       return
     }
     const anim = Animated.timing(opacityAnim, {
@@ -94,12 +107,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     })
     hideAnimRef.current = anim
     anim.start(({ finished }) => {
-      if (finished) {
-        setControlsVisible(false)
-        // Unmount only after the fade completes so hidden chrome stops
-        // intercepting drags/taps (mirrors MiniPlayerBar's mount-after-fade).
-        setMounted(false)
-      }
+      if (finished) finishHide()
       hideAnimRef.current = null
     })
   }, [clearTimer, opacityAnim])
@@ -124,9 +132,13 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
       hideAnimRef.current.stop()
       hideAnimRef.current = null
     }
-    controlsVisibleRef.current = true
-    setMounted(true)
-    setControlsVisible(true)
+    const next = nextControlsState(
+      { visible: controlsVisibleRef.current, mounted: true },
+      "reveal",
+    )
+    controlsVisibleRef.current = next.visible
+    setMounted(next.mounted)
+    setControlsVisible(next.visible)
     if (reduceMotionRef.current) {
       opacityAnim.setValue(1)
     } else {
@@ -159,9 +171,13 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
       hideAnimRef.current.stop()
       hideAnimRef.current = null
     }
-    controlsVisibleRef.current = true
-    setMounted(true)
-    setControlsVisible(true)
+    const next = nextControlsState(
+      { visible: controlsVisibleRef.current, mounted: true },
+      "reveal",
+    )
+    controlsVisibleRef.current = next.visible
+    setMounted(next.mounted)
+    setControlsVisible(next.visible)
     opacityAnim.setValue(1)
     scheduleHide()
   }, [opacityAnim, scheduleHide])

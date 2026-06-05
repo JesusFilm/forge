@@ -33,3 +33,18 @@ export function seekDeltaForTap(
   if (side == null) return 0
   return side === "left" ? -skipSeconds : skipSeconds
 }
+
+/** A tap is a double-tap (→ seek) when a single-tap is already pending its
+ *  DOUBLE_TAP_MS window; otherwise it starts a pending single-tap. The caller
+ *  must cancel the pending single-tap when this returns "double", else the
+ *  stale single-tap fires after the seek and hides the chrome unexpectedly. */
+export function classifyTap(singleTapPending: boolean): "double" | "single" {
+  return singleTapPending ? "double" : "single"
+}
+
+/** What a resolved single-tap does once its window elapses with no second tap:
+ *  hide only if the chrome was already visible when the press began. If it was
+ *  hidden it was just revealed on press-in, so keep it up (R3). */
+export function singleTapAction(wasVisible: boolean): "hide" | "keep" {
+  return wasVisible ? "hide" : "keep"
+}

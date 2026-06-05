@@ -1,4 +1,10 @@
-import { seekSideForTap, seekDeltaForTap, DOUBLE_TAP_MS } from "../tapSeek"
+import {
+  seekSideForTap,
+  seekDeltaForTap,
+  classifyTap,
+  singleTapAction,
+  DOUBLE_TAP_MS,
+} from "../tapSeek"
 
 describe("seekSideForTap", () => {
   it("routes the left half to 'left'", () => {
@@ -26,5 +32,24 @@ describe("seekDeltaForTap", () => {
 describe("DOUBLE_TAP_MS", () => {
   it("is at least the platform double-tap threshold (~300ms)", () => {
     expect(DOUBLE_TAP_MS).toBeGreaterThanOrEqual(300)
+  })
+})
+
+describe("classifyTap", () => {
+  it("is a double-tap when a single-tap is already pending", () => {
+    expect(classifyTap(true)).toBe("double")
+  })
+  it("starts a single-tap when none is pending", () => {
+    expect(classifyTap(false)).toBe("single")
+  })
+})
+
+describe("singleTapAction", () => {
+  it("hides when the chrome was already visible at press-in", () => {
+    expect(singleTapAction(true)).toBe("hide")
+  })
+  it("keeps the chrome up when it was hidden (just revealed on press-in)", () => {
+    // Guards R3: a tap-to-reveal must not be undone by its own single-tap timer.
+    expect(singleTapAction(false)).toBe("keep")
   })
 })

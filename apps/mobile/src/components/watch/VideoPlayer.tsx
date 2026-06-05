@@ -24,8 +24,10 @@ import { applySkip } from "../../lib/scrubber"
 import {
   DOUBLE_TAP_MS,
   SKIP_SECONDS,
+  classifyTap,
   seekDeltaForTap,
   seekSideForTap,
+  singleTapAction,
   type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
@@ -264,19 +266,22 @@ export function VideoPlayer({
   const handleTapPress = useCallback(
     (e: GestureResponderEvent) => {
       const { locationX } = e.nativeEvent
-      if (singleTapTimerRef.current != null) {
-        // Second tap → double tap: seek and cancel the pending single-tap.
-        clearTimeout(singleTapTimerRef.current)
-        singleTapTimerRef.current = null
+      if (classifyTap(singleTapTimerRef.current != null) === "double") {
+        // Second tap within the window → seek. Cancel the pending single-tap
+        // FIRST, else the stale timer fires after the seek and hides chrome.
+        if (singleTapTimerRef.current != null) {
+          clearTimeout(singleTapTimerRef.current)
+          singleTapTimerRef.current = null
+        }
         doSideSeek(locationX)
         return
       }
       const wasVisible = wasVisibleRef.current
       singleTapTimerRef.current = setTimeout(() => {
         singleTapTimerRef.current = null
-        // Single tap resolved: hide if chrome was already up. If it was hidden
-        // it was just revealed on press-in, so leave it visible.
-        if (wasVisible) controls.hide()
+        // Single tap resolved: hide only if chrome was already up; if it was
+        // hidden it was just revealed on press-in, so leave it visible (R3).
+        if (singleTapAction(wasVisible) === "hide") controls.hide()
       }, DOUBLE_TAP_MS)
     },
     [controls, doSideSeek],
