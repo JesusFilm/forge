@@ -93,6 +93,8 @@ type LoadVideoRowSliceOptions = {
   search?: string
   sort?: VideoLibrarySort
   includeVisitorUrls?: boolean
+  /** Fetch exactly these video ids instead of a catalog page (additive). */
+  videoIds?: readonly string[]
 }
 
 export type VideoLibraryLanguageOption = {
@@ -462,6 +464,17 @@ function videoIdsFromBlocks(blocks: readonly Block[]) {
     collectVideoIdsFromBlock(block, ids)
   }
   return Array.from(ids)
+}
+
+/**
+ * Video ids referenced by an experience locale's raw `blocks` JSON.
+ * Used by the experience editor to top-up the video library with
+ * AI-referenced videos that fall outside the first library page
+ * (experience-AI chat; additive).
+ */
+export function videoIdsFromExperienceBlocks(blocks: unknown) {
+  const parsed = BlocksSchema.safeParse(blocks)
+  return parsed.success ? videoIdsFromBlocks(parsed.data) : []
 }
 
 function parsedExperienceBlocks(locale: Pick<ExperienceLocaleRow, "blocks">) {
@@ -1731,17 +1744,51 @@ async function loadVideoRowSlice({
   search,
   sort,
   includeVisitorUrls = false,
+  videoIds,
 }: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
   const locale = await getAdminLocale()
-  let videos: Awaited<ReturnType<typeof services.video.list>>
+  // The downstream locale/dub/image mapping reads only these scalar
+  // fields off each video row. Typing `videos` to exactly that subset
+  // (Pick'd off the service-list row) lets the `videoIds` top-up branch
+  // use an honest `select` of the same fields — no `as typeof videos`
+  // cast — while the full-row `services.video.list()` result stays
+  // structurally assignable.
+  type VideoRowForSlice = Pick<
+    Awaited<ReturnType<typeof services.video.list>>[number],
+    "id" | "coreId" | "slug" | "label" | "videoSource" | "updatedAt"
+  >
+  let videos: VideoRowForSlice[]
   try {
     // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
-    videos = await services.video.list({
-      input: { category, collection, language, limit, offset, search, sort },
-      query: {},
-    })
+    if (videoIds && videoIds.length > 0) {
+      // Targeted fetch for the experience editor's AI-referenced videos.
+      // Raw rows feed the same locale/dub/image mapping below, which reads
+      // only these scalar fields — so select exactly them rather than
+      // casting a default-shape findMany onto the service-list row type.
+      // Intentional visibility bypass: this top-up path returns
+      // AI-referenced videos regardless of the list-visibility gating
+      // VideoService.list applies, so an AI-referenced id outside the
+      // first library page still resolves.
+      videos = await prisma.video.findMany({
+        where: { id: { in: [...videoIds] }, deletedAt: null },
+        orderBy: { updatedAt: "desc" },
+        select: {
+          id: true,
+          coreId: true,
+          slug: true,
+          label: true,
+          videoSource: true,
+          updatedAt: true,
+        },
+      })
+    } else {
+      videos = await services.video.list({
+        input: { category, collection, language, limit, offset, search, sort },
+        query: {},
+      })
+    }
   } catch (error) {
     if (isMissingTableError(error)) {
       return []
@@ -1905,12 +1952,29 @@ async function loadVideoRowSlice({
   })
 }
 
-export async function loadVideoRows(principal: Principal) {
-  return loadVideoRowSlice({
+export async function loadVideoRows(
+  principal: Principal,
+  options: { includeVideoIds?: readonly string[] } = {},
+) {
+  const rows = await loadVideoRowSlice({
     principal,
     limit: VIDEO_LIBRARY_PAGE_SIZE,
     offset: 0,
   })
+  const have = new Set(rows.map((row) => row.key))
+  const missing = Array.from(new Set(options.includeVideoIds ?? [])).filter(
+    (id) => id && !have.has(id),
+  )
+  if (missing.length === 0) return rows
+  // Top-up with AI-referenced videos outside the first library page
+  // (experience-AI chat; additive).
+  const extras = await loadVideoRowSlice({
+    principal,
+    limit: missing.length,
+    offset: 0,
+    videoIds: missing,
+  })
+  return [...rows, ...extras]
 }
 
 export async function loadVideoLibraryPage(

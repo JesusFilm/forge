@@ -298,7 +298,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     metrics: [
       { label: "Embedded Rows", value: "10", footer: "EXPERIENCE_LOCALES" },
       { label: "Missing", value: "2", footer: "NULL_VECTORS" },
-      { label: "Index Dim", value: "1536", footer: "PGVECTOR_HNSW" },
+      { label: "Index Dim", value: "2048", footer: "PGVECTOR_EXACT" },
     ],
     rows: [
       {
@@ -325,7 +325,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     ],
     insights: [
       { label: "Locale", value: "en", detail: "detail" },
-      { label: "Vector Dimension", value: "1536", detail: "detail" },
+      { label: "Vector Dimension", value: "2048", detail: "detail" },
       { label: "Input", value: "Idle", detail: "detail" },
     ],
     results: [],
