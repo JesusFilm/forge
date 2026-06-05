@@ -4,7 +4,6 @@ import {
   StyleSheet,
   View,
   type GestureResponderEvent,
-  type LayoutChangeEvent,
   type PanResponderGestureState,
 } from "react-native"
 
@@ -25,12 +24,14 @@ type ScrubberProps = {
 const THUMB = 14
 
 /**
- * Draggable seek bar. Uses the built-in PanResponder (react-native-gesture-
- * handler is forbidden under Expo Go) with a horizontal-intent capture gate so
- * vertical scrolls fall through to the page while horizontal drags scrub. The
- * scrub-vs-scroll arbitration is verified in the simulator (R19); once the
- * player is pinned outside the ScrollView (U5) the contention largely
- * disappears.
+ * Draggable seek bar (built-in PanResponder — react-native-gesture-handler is
+ * forbidden under Expo Go).
+ *
+ * The fraction is computed from the gesture's ABSOLUTE screen X minus the
+ * track's measured left edge — NOT `nativeEvent.locationX`, which is relative
+ * to whichever child view (thumb/fill) is under the finger and under-reports as
+ * the thumb moves, making the thumb lag behind the finger. `measureInWindow`
+ * keeps the track origin/width current across layout + rotation changes.
  */
 export function Scrubber({
   currentTime,
@@ -38,7 +39,8 @@ export function Scrubber({
   onSeek,
   onScrubChange,
 }: ScrubberProps) {
-  const widthRef = useRef(0)
+  const containerRef = useRef<View>(null)
+  const trackRef = useRef({ x: 0, width: 0 })
   const [dragging, setDragging] = useState(false)
   const [dragFraction, setDragFraction] = useState(0)
 
@@ -51,8 +53,16 @@ export function Scrubber({
   const onScrubChangeRef = useRef(onScrubChange)
   onScrubChangeRef.current = onScrubChange
 
-  const fractionFromX = (x: number) =>
-    clamp(widthRef.current > 0 ? x / widthRef.current : 0, 0, 1)
+  const measure = () => {
+    containerRef.current?.measureInWindow((x, _y, width) => {
+      trackRef.current = { x, width }
+    })
+  }
+
+  const fractionFromAbsX = (absX: number) => {
+    const { x, width } = trackRef.current
+    return clamp(width > 0 ? (absX - x) / width : 0, 0, 1)
+  }
 
   const pan = useRef(
     PanResponder.create({
@@ -63,19 +73,31 @@ export function Scrubber({
         _e: GestureResponderEvent,
         g: PanResponderGestureState,
       ) => Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 2,
-      onPanResponderGrant: (e: GestureResponderEvent) => {
-        const f = fractionFromX(e.nativeEvent.locationX)
+      onPanResponderGrant: (
+        _e: GestureResponderEvent,
+        g: PanResponderGestureState,
+      ) => {
+        // Re-measure in case the layout changed (fullscreen/rotation) without a
+        // fresh onLayout, then map from the initial touch X.
+        measure()
+        const f = fractionFromAbsX(g.x0)
         setDragging(true)
         setDragFraction(f)
         onScrubChangeRef.current?.(true, fractionToTime(f, durationRef.current))
       },
-      onPanResponderMove: (e: GestureResponderEvent) => {
-        const f = fractionFromX(e.nativeEvent.locationX)
+      onPanResponderMove: (
+        _e: GestureResponderEvent,
+        g: PanResponderGestureState,
+      ) => {
+        const f = fractionFromAbsX(g.moveX)
         setDragFraction(f)
         onScrubChangeRef.current?.(true, fractionToTime(f, durationRef.current))
       },
-      onPanResponderRelease: (e: GestureResponderEvent) => {
-        const f = fractionFromX(e.nativeEvent.locationX)
+      onPanResponderRelease: (
+        _e: GestureResponderEvent,
+        g: PanResponderGestureState,
+      ) => {
+        const f = fractionFromAbsX(g.moveX)
         const t = fractionToTime(f, durationRef.current)
         setDragging(false)
         onScrubChangeRef.current?.(false, null)
@@ -95,10 +117,9 @@ export function Scrubber({
 
   return (
     <View
+      ref={containerRef}
       style={styles.hitArea}
-      onLayout={(e: LayoutChangeEvent) => {
-        widthRef.current = e.nativeEvent.layout.width
-      }}
+      onLayout={measure}
       accessibilityRole="adjustable"
       accessibilityLabel="Seek bar"
       {...pan.panHandlers}
