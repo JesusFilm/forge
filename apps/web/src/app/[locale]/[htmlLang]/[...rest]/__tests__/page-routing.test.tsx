@@ -396,7 +396,10 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     })
 
     expect(metadata.alternates?.canonical).toBe(
-      "http://localhost:3000/watch/german-standard.html",
+      "https://www.jesusfilm.org/watch/german-standard.html",
+    )
+    expect(metadata.openGraph?.url).toBe(
+      "https://www.jesusfilm.org/watch/german-standard.html",
     )
     expect(resolveWatchPageMock).toHaveBeenCalledWith("de", undefined)
   })

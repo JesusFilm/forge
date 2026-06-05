@@ -182,12 +182,13 @@ export const env = createEnv({
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
-    // U10 — Canonical absolute origin used by the watch-page Share modal to
-    // build sharable Copy Link / Copy Embed Code values that DO include
-    // `/watch/` (the Next.js basePath). Defaults to `http://localhost:3000`
-    // for safer dev / CI experience — `z.url()` would otherwise hard-fail
-    // boot on environments where the value isn't set explicitly. Production
-    // and preview must override to `https://jesusfilm.org` (or equivalent).
+    // U10 — Environment-specific absolute origin used by the watch-page Share
+    // modal to build sharable Copy Link / Copy Embed Code values that DO
+    // include `/watch/` (the Next.js basePath). Defaults to
+    // `http://localhost:3000` for safer dev / CI experience — `z.url()` would
+    // otherwise hard-fail boot on environments where the value isn't set
+    // explicitly. Public SEO/social metadata intentionally does not read this
+    // value; it emits the indexed www host from routes.ts.
     //
     // F21: refine with a soft allowlist of known-good host shapes. When a
     // value falls outside the allowlist we WARN at module-import time
