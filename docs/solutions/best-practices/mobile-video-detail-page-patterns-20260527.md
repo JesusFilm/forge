@@ -52,26 +52,44 @@ if (result.type === "EXPERIENCE") { ... }
 
 Check the admin SDL or a live query response before writing discriminator logic for any enum field.
 
-### 2. expo-video language switching: replace, do not reinitialize
+### 2. expo-video language switching: replace, don't reinitialize — and FREEZE the source
 
-When a user switches the audio language, swap the stream URL via `player.replace(newUrl)` rather than re-creating the `useVideoPlayer` instance. Reinitializing destroys the decoder slot, causes a blank frame, buffering delay, and lost playback position.
+When a user switches the audio language, swap the stream URL via `player.replaceAsync(newUrl)` rather than re-creating the `useVideoPlayer` instance. Reinitializing destroys the decoder slot, causes a blank frame, buffering delay, and lost playback position.
+
+**Critically, the source passed to `useVideoPlayer` must be frozen.** `useVideoPlayer` recreates AND releases the native player whenever its source argument _value_ changes (its internal dependency is `JSON.stringify(source)`). Passing a ref value you then mutate — which an earlier version of this pattern did (`initialUrl.current = streamingUrl`) — defeats `replaceAsync`: the next render hands `useVideoPlayer` the new value, so it tears down the playing player and builds a fresh paused one on the new asset while the in-flight `replaceAsync` runs against the just-released instance. Symptom: black/stuck frame on language switch, controls showing "playing" while nothing plays. Track the loaded URL in a **separate** ref.
 
 ```typescript
-const initialUrl = useRef(streamingUrl)
-const player = useVideoPlayer(initialUrl.current, (p) => {
+// Frozen at creation — never reassigned, so useVideoPlayer never recreates.
+const creationSource = useRef(streamingUrl).current
+const player = useVideoPlayer(creationSource, (p) => {
   p.muted = false
   p.loop = false
 })
 
+// Separate ref tracks the loaded URL for swap decisions.
+const loadedUrlRef = useRef(streamingUrl)
+
 useEffect(() => {
-  if (streamingUrl && streamingUrl !== initialUrl.current) {
-    initialUrl.current = streamingUrl
-    player.replace(streamingUrl)
-  }
+  if (!streamingUrl || streamingUrl === loadedUrlRef.current) return
+  loadedUrlRef.current = streamingUrl
+  // Preserve playback: replace does not carry the play state to the new source.
+  const wasPlaying = player.playing
+  void player
+    .replaceAsync(streamingUrl)
+    .then(() => {
+      if (wasPlaying) player.play()
+    })
+    .catch(() => {
+      try {
+        player.replace(streamingUrl, true)
+      } catch {}
+    })
 }, [streamingUrl, player])
 ```
 
-The parent component must pass `activeVariant?.hls` (the currently-selected variant's stream), not the base `video.streamingUrl`. A common bug (found in code review) is wiring the player to a fixed base URL so the language switch becomes a no-op.
+Also make play/pause controls read the **live** `player.playing`, not a cached React snapshot: a source swap can leave the player paused without emitting a `playingChange`, so a stale snapshot wedges the toggle (it calls `pause()` on an already-paused player forever, and the user can't resume without leaving the screen).
+
+The parent component must pass `activeVariant?.hls` (the currently-selected variant's stream), not the base `video.streamingUrl`. A common bug (found in code review) is wiring the player to a fixed base URL so the language switch becomes a no-op. Identify _which_ language is active by the unique language slug, never by bcp47 — see the language-identity doc in Related.
 
 ### 3. Bible verse fetching: bookSlugForApi strips spaces, not replaces with hyphens
 
@@ -183,5 +201,6 @@ Web reference for study questions CTA parity: `apps/web/src/components/watch/Wat
 
 - `docs/solutions/architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md` — normalizer pattern upstream
 - `docs/solutions/database-issues/prisma-video-relation-inverted-back-references-20260514.md` — known constraint for sibling queries
-- `docs/solutions/best-practices/playlist-video-player-sdui-mobile-20260409.md` — prior `useVideoPlayer` source-swap approach
+- `docs/solutions/best-practices/playlist-video-player-sdui-mobile-20260409.md` — prior `useVideoPlayer` source-swap approach (frozen creation source + `replaceAsync`); the canonical reference for why the source arg must not change
+- `docs/solutions/best-practices/language-identity-on-slug-not-bcp47-20260605.md` — how to identify _which_ language is active/preferred (key on the unique language slug, not bcp47); complements Pattern 2's swap mechanism
 - `docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md` — ref-mirror patterns for expo-video async events

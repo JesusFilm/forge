@@ -1,6 +1,7 @@
 ---
 title: "Bottom sheet migration pitfalls in Expo SDK 54 with @gorhom/bottom-sheet"
 date: "2026-05-27"
+last_updated: "2026-06-05"
 category: best-practices
 module: apps/mobile
 problem_type: best_practice
@@ -23,7 +24,6 @@ tags:
   - mobile
   - download
 related_components:
-  - apps/mobile/src/components/ui/BottomSheet.tsx
   - apps/mobile/src/components/watch/DownloadSheet.tsx
   - apps/mobile/src/components/watch/LanguageSheet.tsx
   - apps/mobile/src/components/watch/SubtitleSheet.tsx
@@ -32,6 +32,8 @@ related_components:
 ---
 
 # Bottom sheet migration pitfalls in Expo SDK 54 with @gorhom/bottom-sheet
+
+> **Status update (2026-06-05):** the watch sheets (Language / Subtitle / Download) were migrated OFF `@gorhom/bottom-sheet` to **native formSheet** (`react-native-screens`, `presentation: "formSheet"`) shortly after this doc was written. `@gorhom/bottom-sheet` and `react-native-gesture-handler` are no longer dependencies, and `BottomSheet.tsx` was removed. So the `@gorhom`-specific pitfalls below — **#1** (GestureHandlerRootView), **#2** (onChange-on-every-snap), **#3** (enableContentPanningGesture), and **#9** (BottomSheetFlatList) — no longer describe the current sheets; keep them only as reference if you adopt `@gorhom` elsewhere. The **library-independent** pitfalls still apply to the current native `DownloadSheet.tsx`: **#4–#6** (expo-file-system v19 legacy API + null guard + documentId filename prefix), **#8** (shareAsync iOS-cancel), and **#10** (native language-name extraction). For the current sheet stack see [`flashlist-v2-maintainvisiblecontentposition-default-20260605.md`](./flashlist-v2-maintainvisiblecontentposition-default-20260605.md) (FlashList v2 list behavior) and the native-formSheet refactor plan in Related.
 
 ## Context
 
@@ -131,6 +133,8 @@ try {
 
 ### 9. Use BottomSheetFlatList for large lists
 
+> **Superseded (2026-06-05):** these sheets now use `@shopify/flash-list` (FlashList v2) inside a native formSheet, not `BottomSheetFlatList`. FlashList virtualizes by default but needs an explicit height inside the formSheet and `maintainVisibleContentPosition={{ disabled: true }}` for search-filtered lists — see [`flashlist-v2-maintainvisiblecontentposition-default-20260605.md`](./flashlist-v2-maintainvisiblecontentposition-default-20260605.md). The original `BottomSheetFlatList` guidance below applies only if you use `@gorhom/bottom-sheet`.
+
 Videos can have 2,200+ language variants. Rendering via `.map()` creates all views upfront. Use `BottomSheetFlatList` (not plain `FlatList`) for proper gesture coordination inside the sheet.
 
 ```tsx
@@ -186,4 +190,6 @@ After: `import { cacheDirectory, downloadAsync } from 'expo-file-system/src/lega
 - `docs/solutions/mobile/react-native-scrollview-touch-event-z-index-fix.md` — z-index vs touch priority; `@gorhom/bottom-sheet` uses a portal pattern that avoids this
 - `docs/solutions/mobile/quiz-button-section-webview-modal-pipeline.md` — native module additions require EAS native build; Jest `transformIgnorePatterns` must be updated in the same commit
 - `docs/solutions/best-practices/mobile-video-detail-page-patterns-20260527.md` — mounted-vs-visible animation pattern; `@gorhom/bottom-sheet` keeps sheets mounted at index -1
-- `docs/plans/2026-05-27-001-feat-mobile-watch-bottom-sheets-plan.md` — implementation plan for this migration
+- `docs/solutions/best-practices/flashlist-v2-maintainvisiblecontentposition-default-20260605.md` — current FlashList v2 list behavior in these sheets (supersedes #9 for the native-formSheet stack)
+- `docs/plans/2026-05-27-001-feat-mobile-watch-bottom-sheets-plan.md` — implementation plan for this (now-reverted) `@gorhom` migration
+- `docs/plans/2026-05-29-001-refactor-watch-sheets-native-formsheet-plan.md` — the subsequent refactor from `@gorhom/bottom-sheet` to native formSheet
