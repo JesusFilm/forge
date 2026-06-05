@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   AppState,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -35,6 +36,11 @@ type VideoPlayerProps = {
   posterUrl: string | null
   subtitleVttSrc?: string | null
   onPlayingChange?: (isPlaying: boolean) => void
+  /** True while the player is expanded to a custom in-tree fullscreen. The
+   *  parent route owns the state (it also drives orientation/header/back). */
+  fullscreen?: boolean
+  /** Toggle fullscreen (fired by the fullscreen control). */
+  onToggleFullscreen?: () => void
 }
 
 export function VideoPlayer({
@@ -42,8 +48,10 @@ export function VideoPlayer({
   posterUrl,
   subtitleVttSrc = null,
   onPlayingChange,
+  fullscreen = false,
+  onToggleFullscreen,
 }: VideoPlayerProps) {
-  const { width: screenWidth } = useWindowDimensions()
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
   const [hasStarted, setHasStarted] = useState(false)
   const wasPlayingRef = useRef(false)
@@ -260,22 +268,32 @@ export function VideoPlayer({
     [controls, doSideSeek],
   )
 
-  const videoViewRef = useRef<React.ComponentRef<typeof VideoView>>(null)
-
-  const handleFullscreen = useCallback(() => {
-    videoViewRef.current?.enterFullscreen()
-  }, [])
-
   return (
-    <View style={[styles.container, { height: playerHeight }]}>
+    <View
+      style={[
+        styles.container,
+        fullscreen
+          ? {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: screenWidth,
+              height: screenHeight,
+              zIndex: 1000,
+            }
+          : { height: playerHeight },
+      ]}
+    >
       <VideoView
-        ref={videoViewRef}
         player={player}
         style={StyleSheet.absoluteFill}
         nativeControls={false}
         contentFit="contain"
-        allowsFullscreen
         allowsPictureInPicture
+        // textureView composites in the RN view hierarchy on Android so the
+        // controls/captions overlay reliably renders above the video surface
+        // (SurfaceView otherwise punches through). No-op on iOS.
+        surfaceType={Platform.OS === "android" ? "textureView" : undefined}
       />
 
       {!hasStarted && resolvedPoster != null && (
@@ -331,7 +349,8 @@ export function VideoPlayer({
         >
           <PlayerControls
             player={player}
-            onFullscreen={handleFullscreen}
+            fullscreen={fullscreen}
+            onFullscreen={onToggleFullscreen}
             onInteract={controls.noteInteraction}
           />
         </Animated.View>

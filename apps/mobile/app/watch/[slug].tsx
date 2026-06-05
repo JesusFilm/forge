@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Animated,
+  AppState,
+  BackHandler,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -10,6 +12,7 @@ import {
   Text,
   View,
 } from "react-native"
+import { StatusBar } from "expo-status-bar"
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
@@ -25,6 +28,10 @@ import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
 import { ACCENT } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import {
+  enterLandscapeFollowDevice,
+  exitToPortrait,
+} from "../../src/lib/orientation"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
@@ -55,7 +62,48 @@ export default function WatchVideoPage() {
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const titleOpacity = useRef(new Animated.Value(0)).current
   const [showNavTitle, setShowNavTitle] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const insets = useSafeAreaInsets()
+
+  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
+
+  // Fullscreen side-effects: hide the native header + disable the iOS edge-swipe
+  // back (so it can't pop the route mid-fullscreen), and drive orientation —
+  // landscape-follow-device on enter, re-lock portrait on exit.
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: !isFullscreen,
+      gestureEnabled: !isFullscreen,
+    })
+    if (isFullscreen) void enterLandscapeFollowDevice()
+    else void exitToPortrait()
+  }, [isFullscreen, navigation])
+
+  // While fullscreen: Android hardware back exits fullscreen (not the route),
+  // and a foreground resume re-asserts the landscape-follow lock the OS may
+  // have dropped on background.
+  useEffect(() => {
+    if (!isFullscreen) return
+    const back = BackHandler.addEventListener("hardwareBackPress", () => {
+      setIsFullscreen(false)
+      return true
+    })
+    const app = AppState.addEventListener("change", (s) => {
+      if (s === "active") void enterLandscapeFollowDevice()
+    })
+    return () => {
+      back.remove()
+      app.remove()
+    }
+  }, [isFullscreen])
+
+  // Safety net: re-lock portrait if the screen unmounts while still fullscreen
+  // (e.g. a deep navigation away), so no other screen inherits landscape.
+  useEffect(() => {
+    return () => {
+      void exitToPortrait()
+    }
+  }, [])
 
   const {
     video,
@@ -263,6 +311,22 @@ export default function WatchVideoPage() {
 
   return (
     <View style={layout.screenContainer}>
+      <StatusBar style="light" hidden={isFullscreen} />
+
+      {/* Player is pinned at the route root (outside the ScrollView) so its
+          custom fullscreen can expand to an absolute-fill window overlay above
+          the page and native header, without ever being reparented (which
+          would release the expo-video player). Inline it occupies a fixed 16:9
+          box at the top; content scrolls beneath it. */}
+      <VideoPlayer
+        streamingUrl={playerSource}
+        posterUrl={displayPoster}
+        subtitleVttSrc={subtitleVttSrc}
+        onPlayingChange={undefined}
+        fullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+      />
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.scroll}
@@ -271,13 +335,6 @@ export default function WatchVideoPage() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        <VideoPlayer
-          streamingUrl={playerSource}
-          posterUrl={displayPoster}
-          subtitleVttSrc={subtitleVttSrc}
-          onPlayingChange={undefined}
-        />
-
         <VideoMetadata
           label={video?.label ?? null}
           title={displayTitle}

@@ -13,7 +13,9 @@ const SKIP_SECONDS = 10
 
 type PlayerControlsProps = {
   player: VideoPlayer
-  onFullscreen: () => void
+  /** True while in custom fullscreen — flips the control to an exit affordance. */
+  fullscreen?: boolean
+  onFullscreen?: () => void
   /** Called when any control is used, so the auto-hide timer resets (R4). */
   onInteract?: () => void
 }
@@ -26,6 +28,7 @@ function formatTime(seconds: number): string {
 
 export function PlayerControls({
   player,
+  fullscreen = false,
   onFullscreen,
   onInteract,
 }: PlayerControlsProps) {
@@ -182,13 +185,17 @@ export function PlayerControls({
             <Pressable
               onPress={() => {
                 onInteract?.()
-                onFullscreen()
+                onFullscreen?.()
               }}
               style={styles.iconButton}
               accessibilityRole="button"
-              accessibilityLabel="Fullscreen"
+              accessibilityLabel={fullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
-              <Ionicons name="expand" size={20} color={TEXT_ON_OVERLAY} />
+              <Ionicons
+                name={fullscreen ? "contract" : "expand"}
+                size={20}
+                color={TEXT_ON_OVERLAY}
+              />
             </Pressable>
           </View>
         </View>
