@@ -298,6 +298,61 @@ describe("buildWatchHomeModelFromVideos", () => {
     ])
   })
 
+  it("builds carousel pools from bounded admin pool sources that are not in the home query", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [makeVideo()] as never,
+      carouselPoolSources: [
+        {
+          coreId: "JFP-Featured",
+          playableCount: 4,
+          source: {
+            documentId: "featured-source",
+            coreId: "JFP-Featured",
+            slug: "featured",
+            label: "COLLECTION",
+          },
+          videos: [
+            makeChild({
+              documentId: "featured-child",
+              coreId: "featured-child",
+              slug: "featured-episode",
+              locales: [
+                {
+                  documentId: "featured-child-locale",
+                  languageSlug: "english",
+                  title: "Featured Episode",
+                  description: null,
+                  snippet: "A playlist-only candidate.",
+                  imageAlt: "Featured episode",
+                },
+              ],
+            }),
+          ],
+        },
+      ] as never,
+    })
+
+    const featuredPool = model.carousel.pools.find((pool) =>
+      pool.collectionIds.includes("JFP-Featured"),
+    )
+
+    expect(featuredPool?.videos.map((video) => video.id)).toEqual([
+      "featured-child",
+    ])
+    expect(featuredPool?.videos[0]?.href).toBe(
+      "/featured.html/featured-episode/english.html",
+    )
+    expect(
+      model.carousel.pools.some((pool) =>
+        pool.collectionIds.includes("1_jf-0-0"),
+      ),
+    ).toBe(false)
+  })
+
   it("uses Mux thumbnails when admin images are missing and records the image gap", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 
@@ -333,20 +388,32 @@ describe("resolveWatchHome", () => {
   })
 
   it("queries admin with the public language slug for the UI locale", async () => {
-    queryMock.mockResolvedValueOnce({
-      data: {
-        watchHomeVideos: [makeVideo()],
-      },
-    })
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchHomeVideos: [makeVideo()],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          watchHomeCarouselPools: [],
+        },
+      })
 
     const { resolveWatchHome } = await import("../watch-home")
 
     const result = await resolveWatchHome("ru")
 
     expect(result.error).toBeNull()
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(2)
     expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe("russian")
     expect(queryMock.mock.calls[0][0].variables.locale).toBe("ru")
     expect(queryMock.mock.calls[0][0].variables.coreIds).toContain("1_jf-0-0")
+    expect(queryMock.mock.calls[1][0].variables.languageSlug).toBe("russian")
+    expect(queryMock.mock.calls[1][0].variables.locale).toBe("ru")
+    expect(queryMock.mock.calls[1][0].variables.coreIds).toContain(
+      "JFP-Featured",
+    )
+    expect(queryMock.mock.calls[1][0].variables.limit).toBe(8)
   })
 })

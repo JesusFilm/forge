@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { Principal } from "@/auth/principal"
 import {
+  WATCH_HOME_CAROUSEL_POOL_LIMIT_MAX,
   VideoService,
   VideoLookupValidationError,
   VIDEOS_BY_CORE_IDS_MAX,
@@ -21,6 +22,10 @@ function mockPrisma() {
     videoDub: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+    },
+    videoRelation: {
+      count: vi.fn(),
+      findMany: vi.fn(),
     },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
@@ -898,6 +903,213 @@ describe("VideoService", () => {
 
       await expect(
         service.getWatchHomeVideos({ coreIds: tooMany, query: {} }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      expect(prisma.video.findMany).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("getWatchHomeCarouselPools", () => {
+    it("returns one row per requested source in caller order, including unknown ids", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([
+        { id: "source-2", coreId: "core-2" },
+        { id: "source-1", coreId: "core-1" },
+      ])
+      prisma.videoRelation.count.mockResolvedValue(0)
+      prisma.video.count.mockResolvedValue(0)
+
+      const result = await service.getWatchHomeCarouselPools({
+        coreIds: ["core-1", "core-missing", "core-2"],
+        user: VIEWER,
+      })
+
+      expect(result.map((row) => row.coreId)).toEqual([
+        "core-1",
+        "core-missing",
+        "core-2",
+      ])
+      expect(result[0]?.source?.id).toBe("source-1")
+      expect(result[1]).toEqual({
+        coreId: "core-missing",
+        source: null,
+        playableCount: 0,
+        videos: [],
+      })
+      expect(result[2]?.source?.id).toBe("source-2")
+      expect(prisma.video.findMany).toHaveBeenCalledWith({
+        where: {
+          coreId: { in: ["core-1", "core-missing", "core-2"] },
+          deletedAt: null,
+        },
+      })
+    })
+
+    it("returns a bounded child candidate window with the full playable count", async () => {
+      const source = { id: "source-1", coreId: "core-1" }
+      prisma.video.findMany.mockResolvedValueOnce([source])
+      prisma.videoRelation.count.mockResolvedValueOnce(3)
+      prisma.videoRelation.findMany
+        .mockResolvedValueOnce([
+          { child: { id: "child-en", coreId: "child-en" } },
+        ])
+        .mockResolvedValueOnce([
+          { child: { id: "child-fallback", coreId: "child-fallback" } },
+        ])
+
+      const result = await service.getWatchHomeCarouselPools({
+        coreIds: ["core-1"],
+        user: VIEWER,
+        languageSlug: "english",
+        limit: 2,
+      })
+
+      expect(result[0]?.playableCount).toBe(3)
+      expect(result[0]?.videos.map((video) => video.id)).toEqual([
+        "child-en",
+        "child-fallback",
+      ])
+      expect(prisma.videoRelation.findMany).toHaveBeenNthCalledWith(1, {
+        where: {
+          parentId: "source-1",
+          child: expect.objectContaining({
+            dubs: {
+              some: expect.objectContaining({
+                language: expect.objectContaining({ slug: "english" }),
+              }),
+            },
+            locales: {
+              some: {
+                status: "PUBLISHED",
+                deletedAt: null,
+              },
+            },
+          }),
+        },
+        orderBy: [{ order: "asc" }, { childId: "asc" }],
+        take: 2,
+        include: { child: true },
+      })
+      expect(prisma.videoRelation.findMany).toHaveBeenNthCalledWith(2, {
+        where: {
+          parentId: "source-1",
+          child: expect.objectContaining({
+            id: { notIn: ["child-en"] },
+            dubs: {
+              some: expect.objectContaining({
+                language: expect.objectContaining({
+                  slug: { not: null },
+                }),
+              }),
+            },
+          }),
+        },
+        orderBy: [{ order: "asc" }, { childId: "asc" }],
+        take: 1,
+        include: { child: true },
+      })
+    })
+
+    it("requires published child locales for public callers", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([
+        { id: "source-1", coreId: "core-1" },
+      ])
+      prisma.videoRelation.count.mockResolvedValueOnce(1)
+      prisma.videoRelation.findMany.mockResolvedValueOnce([])
+
+      await service.getWatchHomeCarouselPools({
+        coreIds: ["core-1"],
+        user: PUBLIC_USER,
+      })
+
+      expect(prisma.videoRelation.count).toHaveBeenCalledWith({
+        where: {
+          parentId: "source-1",
+          child: expect.objectContaining({
+            locales: {
+              some: {
+                status: "PUBLISHED",
+                deletedAt: null,
+              },
+            },
+          }),
+        },
+      })
+    })
+
+    it("does not require published child locales for editor callers", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([
+        { id: "source-1", coreId: "core-1" },
+      ])
+      prisma.videoRelation.count.mockResolvedValueOnce(1)
+      prisma.videoRelation.findMany.mockResolvedValueOnce([])
+
+      await service.getWatchHomeCarouselPools({
+        coreIds: ["core-1"],
+        user: EDITOR,
+      })
+
+      const call = prisma.videoRelation.count.mock.calls[0][0]
+      expect(call.where.child.deletedAt).toBeNull()
+      expect(call.where.child.locales).toBeUndefined()
+    })
+
+    it("falls back to the source video itself when it is a playable leaf", async () => {
+      const source = { id: "source-1", coreId: "core-1" }
+      prisma.video.findMany.mockResolvedValueOnce([source])
+      prisma.videoRelation.count.mockResolvedValueOnce(0)
+      prisma.video.count.mockResolvedValueOnce(1)
+
+      const result = await service.getWatchHomeCarouselPools({
+        coreIds: ["core-1"],
+        user: VIEWER,
+      })
+
+      expect(result[0]).toEqual({
+        coreId: "core-1",
+        source,
+        playableCount: 1,
+        videos: [source],
+      })
+      expect(prisma.video.count).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          id: "source-1",
+          dubs: {
+            some: expect.objectContaining({
+              published: true,
+              hls: { not: null },
+            }),
+          },
+        }),
+      })
+    })
+
+    it("clamps the per-source candidate limit", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([
+        { id: "source-1", coreId: "core-1" },
+      ])
+      prisma.videoRelation.count.mockResolvedValueOnce(50)
+      prisma.videoRelation.findMany.mockResolvedValueOnce([])
+
+      await service.getWatchHomeCarouselPools({
+        coreIds: ["core-1"],
+        user: VIEWER,
+        limit: 500,
+      })
+
+      expect(prisma.videoRelation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: WATCH_HOME_CAROUSEL_POOL_LIMIT_MAX,
+        }),
+      )
+    })
+
+    it("throws VideoLookupValidationError when coreIds exceeds cap", async () => {
+      const tooMany = Array.from(
+        { length: VIDEOS_BY_CORE_IDS_MAX + 1 },
+        (_, i) => `core-${i}`,
+      )
+
+      await expect(
+        service.getWatchHomeCarouselPools({ coreIds: tooMany, user: VIEWER }),
       ).rejects.toBeInstanceOf(VideoLookupValidationError)
       expect(prisma.video.findMany).not.toHaveBeenCalled()
     })

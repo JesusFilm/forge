@@ -49,7 +49,8 @@ export type WatchHomeSectionConfig = {
   childLimit?: number
 }
 
-export const WATCH_HOME_CACHE_VERSION = "v3-carousel-sequence"
+export const WATCH_HOME_CACHE_VERSION = "v4-carousel-bounded-pools"
+export const WATCH_HOME_CAROUSEL_POOL_LIMIT = 8
 
 export const collectionShowcaseSources = [
   { id: "1_jf-0-0", limitChildren: 0 },
@@ -295,6 +296,14 @@ export function getWatchHomeCoreIds(): string[] {
   ].filter(
     (id): id is string =>
       typeof id === "string" && !WATCH_HOME_COLLECTION_BLACKLIST.has(id),
+  )
+
+  return [...new Set(ids)]
+}
+
+export function getWatchHomeCarouselCoreIds(): string[] {
+  const ids = WATCH_HOME_PLAYLIST_SEQUENCE.flat().filter(
+    (id) => !WATCH_HOME_COLLECTION_BLACKLIST.has(id),
   )
 
   return [...new Set(ids)]

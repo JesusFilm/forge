@@ -11,6 +11,7 @@ import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 import type {
   ChildDubLanguageRow,
+  WatchHomeCarouselPoolSource,
   VideoForEnrichment,
 } from "@/services/video.service"
 
@@ -384,7 +385,7 @@ ChildDubLanguageRef.implement({
 })
 
 /** @classification public-shape */
-builder.prismaObject("Video", {
+const VideoRef = builder.prismaObject("Video", {
   description:
     "A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1.",
   fields: (t) => ({
@@ -457,6 +458,28 @@ builder.prismaObject("Video", {
       description:
         "Child Video-Video relations: rows where this Video appears on the PARENT side of the VideoRelation join. Traverse `child { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
       query: (_args, ctx) => videoChildrenFilter(ctx.user),
+    }),
+  }),
+})
+
+const WatchHomeCarouselPoolSourceRef =
+  builder.objectRef<WatchHomeCarouselPoolSource>("WatchHomeCarouselPoolSource")
+
+WatchHomeCarouselPoolSourceRef.implement({
+  description:
+    "Bounded, service-mediated source row for Forge's /watch home carousel. `playableCount` reports the full playable pool size while `videos` returns only the requested candidate window so consumers do not fetch every child dub through the broad home query.",
+  fields: (t) => ({
+    coreId: t.exposeString("coreId", { nullable: false }),
+    source: t.field({
+      type: VideoRef,
+      nullable: true,
+      resolve: (row) => row.source,
+    }),
+    playableCount: t.exposeInt("playableCount", { nullable: false }),
+    videos: t.field({
+      type: [VideoRef],
+      nullable: false,
+      resolve: (row) => row.videos,
     }),
   }),
 })
@@ -599,6 +622,25 @@ builder.queryFields((t) => ({
       ctx.services.video.getWatchHomeVideos({
         coreIds: args.coreIds,
         query,
+      }),
+  }),
+  watchHomeCarouselPools: t.field({
+    type: [WatchHomeCarouselPoolSourceRef],
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Fetch ordered, bounded playable candidate windows for Forge's public /watch home carousel playlist pools. Max 100 source Core ids per call; per-source limit is clamped server-side.",
+    args: {
+      coreIds: t.arg.stringList({ required: true }),
+      languageSlug: t.arg.string({ required: false }),
+      limit: t.arg.int({ required: false, defaultValue: 12 }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getWatchHomeCarouselPools({
+        coreIds: args.coreIds,
+        languageSlug: args.languageSlug,
+        limit: args.limit,
+        user: ctx.user,
       }),
   }),
   videosByCoreIds: t.field({

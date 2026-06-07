@@ -15,7 +15,9 @@ import {
 import {
   WATCH_HOME_MUX_INSERTS,
   WATCH_HOME_PLAYLIST_SEQUENCE,
+  getWatchHomeCarouselCoreIds,
   getWatchHomeCoreIds,
+  WATCH_HOME_CAROUSEL_POOL_LIMIT,
   WATCH_HOME_CACHE_VERSION,
   WATCH_HOME_COLLECTION_BLACKLIST,
   WATCH_HOME_HERO_SOURCE_IDS,
@@ -28,14 +30,29 @@ import type {
   WatchHomeCarouselSequenceData,
   WatchHomeTvCarouselVideoSlide,
 } from "@/lib/watch-home-carousel-sequence"
-import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
+import {
+  getWatchHomeCarouselPoolsOperation,
+  getWatchHomeVideosOperation,
+} from "@/lib/fragments/watch-home"
 
 type WatchHomeVideosData = AdminResultOf<typeof getWatchHomeVideosOperation>
+type WatchHomeCarouselPoolsData = AdminResultOf<
+  typeof getWatchHomeCarouselPoolsOperation
+>
 type AdminHomeVideo = WatchHomeVideosData["watchHomeVideos"][number]
 type AdminHomeChildRelation = NonNullable<AdminHomeVideo["children"]>[number]
 type AdminHomeChildVideo = NonNullable<AdminHomeChildRelation["child"]>
+type AdminCarouselPoolSource =
+  WatchHomeCarouselPoolsData["watchHomeCarouselPools"][number]
+type AdminCarouselVideo = AdminCarouselPoolSource["videos"][number]
+type AdminCarouselSourceVideo = NonNullable<AdminCarouselPoolSource["source"]>
 type AdminHomeImage = NonNullable<AdminHomeVideo["images"]>[number]
 type AdminHomeVariant = NonNullable<AdminHomeVideo["variants"]>[number]
+type AdminWatchHomeVideo =
+  | AdminHomeVideo
+  | AdminHomeChildVideo
+  | AdminCarouselVideo
+type AdminWatchHomeParent = AdminHomeVideo | AdminCarouselSourceVideo
 
 export type WatchHomeMissingField =
   | "record"
@@ -212,9 +229,9 @@ function missingEntry(args: WatchHomeMissingData): WatchHomeMissingData {
 function normalizeCard(args: {
   sectionId: string
   sourceId: string
-  video: AdminHomeVideo | AdminHomeChildVideo
+  video: AdminWatchHomeVideo
   languageSlug: string
-  parent?: AdminHomeVideo | null
+  parent?: AdminWatchHomeParent | null
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
   const locale = args.video.locales?.[0] ?? null
@@ -512,7 +529,75 @@ function playableSlidesForSource(args: {
   return slide ? [slide] : []
 }
 
-function buildCarouselPools(args: {
+function parentForCarouselVideo(
+  source: AdminCarouselSourceVideo | null | undefined,
+  video: AdminCarouselVideo,
+): AdminCarouselSourceVideo | null {
+  if (!source) return null
+  return source.coreId !== video.coreId ? source : null
+}
+
+function playableSlidesForPoolSource(args: {
+  sectionId: string
+  sourceId: string
+  poolSource: AdminCarouselPoolSource | null
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeTvCarouselVideoSlide[] {
+  if (WATCH_HOME_COLLECTION_BLACKLIST.has(args.sourceId)) return []
+
+  const poolSource = args.poolSource
+  if (!poolSource?.source) {
+    args.missingData.push(
+      missingEntry({
+        sectionId: args.sectionId,
+        sourceId: args.sourceId,
+        field: "record",
+        detail: `Admin watchHomeCarouselPools did not return carousel source Core id ${args.sourceId}.`,
+        fallback: "Pool skipped",
+        followUp:
+          "Verify the Core id exists in admin sync or replace the carousel playlist source.",
+      }),
+    )
+    return []
+  }
+
+  if (poolSource.playableCount <= 0 || poolSource.videos.length === 0) {
+    args.missingData.push(
+      missingEntry({
+        sectionId: args.sectionId,
+        sourceId: args.sourceId,
+        field: "record",
+        detail: `Admin watchHomeCarouselPools returned no playable candidates for ${args.sourceId}.`,
+        fallback: "Pool skipped",
+        followUp:
+          "Backfill published playable dubs/locales or replace the carousel playlist source.",
+      }),
+    )
+    return []
+  }
+
+  return poolSource.videos
+    .filter(
+      (video) =>
+        typeof video.coreId === "string" &&
+        !WATCH_HOME_COLLECTION_BLACKLIST.has(video.coreId),
+    )
+    .map((video) =>
+      normalizeCard({
+        sectionId: args.sectionId,
+        sourceId: args.sourceId,
+        video,
+        parent: parentForCarouselVideo(poolSource.source, video),
+        languageSlug: args.languageSlug,
+      }),
+    )
+    .filter((card): card is WatchHomeCard => card != null)
+    .map(cardToCarouselSlide)
+    .filter((slide): slide is WatchHomeTvCarouselVideoSlide => slide != null)
+}
+
+function buildFallbackCarouselPools(args: {
   videoByCoreId: Map<string, AdminHomeVideo>
   languageSlug: string
   missingData: WatchHomeMissingData[]
@@ -578,6 +663,96 @@ function buildCarouselPools(args: {
   return pools
 }
 
+function shortFilmSlidesFromPoolSources(args: {
+  poolSources: readonly AdminCarouselPoolSource[]
+  languageSlug: string
+}): WatchHomeTvCarouselVideoSlide[] {
+  const shortFilmById = new Map<string, WatchHomeTvCarouselVideoSlide>()
+
+  for (const poolSource of args.poolSources) {
+    for (const video of poolSource.videos) {
+      if (video.label !== "SHORT_FILM") continue
+      const card = normalizeCard({
+        sectionId: "home-carousel-short-films",
+        sourceId: poolSource.coreId,
+        video,
+        parent: parentForCarouselVideo(poolSource.source, video),
+        languageSlug: args.languageSlug,
+      })
+      const slide = card ? cardToCarouselSlide(card) : null
+      if (slide) shortFilmById.set(slide.id, slide)
+    }
+  }
+
+  return [...shortFilmById.values()]
+}
+
+function buildCarouselPoolsFromPoolSources(args: {
+  poolSources: readonly AdminCarouselPoolSource[]
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeCarouselPool[] {
+  const sourceByCoreId = new Map(
+    args.poolSources.map((poolSource) => [poolSource.coreId, poolSource]),
+  )
+  const pools = WATCH_HOME_PLAYLIST_SEQUENCE.map((group, index) => {
+    const collectionIds = group.filter(
+      (id) => !WATCH_HOME_COLLECTION_BLACKLIST.has(id),
+    )
+    const videos = collectionIds.flatMap((sourceId) =>
+      playableSlidesForPoolSource({
+        sectionId: "home-carousel",
+        sourceId,
+        poolSource: sourceByCoreId.get(sourceId) ?? null,
+        languageSlug: args.languageSlug,
+        missingData: args.missingData,
+      }),
+    )
+
+    return {
+      id: `playlist-${index}-${collectionIds.join("|")}`,
+      collectionIds,
+      videos,
+    }
+  }).filter((pool) => pool.videos.length > 0)
+
+  const shortFilms = shortFilmSlidesFromPoolSources({
+    poolSources: args.poolSources,
+    languageSlug: args.languageSlug,
+  })
+
+  if (shortFilms.length > 0) {
+    pools.push({
+      id: "shortFilms",
+      collectionIds: ["shortFilms"],
+      videos: shortFilms,
+    })
+  }
+
+  return pools
+}
+
+function buildCarouselPools(args: {
+  videoByCoreId: Map<string, AdminHomeVideo>
+  poolSources?: readonly AdminCarouselPoolSource[]
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeCarouselPool[] {
+  if (args.poolSources != null && args.poolSources.length > 0) {
+    return buildCarouselPoolsFromPoolSources({
+      poolSources: args.poolSources,
+      languageSlug: args.languageSlug,
+      missingData: args.missingData,
+    })
+  }
+
+  return buildFallbackCarouselPools({
+    videoByCoreId: args.videoByCoreId,
+    languageSlug: args.languageSlug,
+    missingData: args.missingData,
+  })
+}
+
 function dedupeMissingData(
   missingData: readonly WatchHomeMissingData[],
 ): WatchHomeMissingData[] {
@@ -600,6 +775,7 @@ function hasCoreId(video: AdminHomeVideo): video is AdminHomeVideo & {
 
 export function buildWatchHomeModelFromVideos(args: {
   videos: readonly AdminHomeVideo[]
+  carouselPoolSources?: readonly AdminCarouselPoolSource[]
   locale: string
   languageSlug?: string | null
 }): WatchHomeModel {
@@ -658,7 +834,12 @@ export function buildWatchHomeModelFromVideos(args: {
 
   const sections = buildSections({ videoByCoreId, languageSlug, missingData })
   const carousel = {
-    pools: buildCarouselPools({ videoByCoreId, languageSlug, missingData }),
+    pools: buildCarouselPools({
+      videoByCoreId,
+      poolSources: args.carouselPoolSources,
+      languageSlug,
+      missingData,
+    }),
     muxInserts: WATCH_HOME_MUX_INSERTS,
   }
   const cardMissing = [
@@ -676,11 +857,45 @@ export function buildWatchHomeModelFromVideos(args: {
   }
 }
 
+async function fetchWatchHomeCarouselPoolSources({
+  locale,
+  languageSlug,
+}: {
+  locale: string
+  languageSlug: string
+}): Promise<readonly AdminCarouselPoolSource[]> {
+  try {
+    const result = await client.query({
+      query: getWatchHomeCarouselPoolsOperation,
+      variables: {
+        coreIds: getWatchHomeCarouselCoreIds(),
+        locale,
+        languageSlug,
+        limit: WATCH_HOME_CAROUSEL_POOL_LIMIT,
+      },
+      fetchPolicy: "no-cache",
+    })
+
+    const error = graphqlError(
+      result as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
+
+    return result.data?.watchHomeCarouselPools ?? []
+  } catch (error) {
+    console.warn(
+      "[watch-home] watchHomeCarouselPools unavailable; using home video fallback",
+      error,
+    )
+    return []
+  }
+}
+
 async function fetchWatchHomeModel(
   locale: string,
   languageSlug: string,
 ): Promise<WatchHomeModel> {
-  const result = await client.query({
+  const homeResult = await client.query({
     query: getWatchHomeVideosOperation,
     variables: {
       coreIds: getWatchHomeCoreIds(),
@@ -691,12 +906,18 @@ async function fetchWatchHomeModel(
   })
 
   const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
+    homeResult as { error?: ErrorLike; errors?: unknown[] },
   )
   if (error) throw error
 
+  const carouselPoolSources = await fetchWatchHomeCarouselPoolSources({
+    locale,
+    languageSlug,
+  })
+
   return buildWatchHomeModelFromVideos({
-    videos: result.data?.watchHomeVideos ?? [],
+    videos: homeResult.data?.watchHomeVideos ?? [],
+    carouselPoolSources,
     locale,
     languageSlug,
   })

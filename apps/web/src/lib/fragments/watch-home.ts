@@ -72,6 +72,53 @@ export const watchHomeVideoFragment = adminGraphql(`
   }
 `)
 
+export const watchHomeCarouselVideoFragment = adminGraphql(`
+  fragment WatchHomeCarouselVideo on Video @_unmask {
+    documentId: id
+    coreId
+    slug
+    label
+    durationSeconds
+    primaryLanguage {
+      coreId
+      bcp47
+      slug
+    }
+    images {
+      documentId: id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+      videoStill
+    }
+    locales(locale: $locale, languageSlug: $languageSlug) {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+    variants: dubs {
+      documentId: id
+      slug
+      published
+      hls
+      duration
+      language {
+        coreId
+        bcp47
+        slug
+        name
+      }
+      muxVideo {
+        playbackId
+      }
+    }
+  }
+`)
+
 export const getWatchHomeVideosOperation = adminGraphql(
   `
     query GetWatchHomeVideos(
@@ -85,4 +132,34 @@ export const getWatchHomeVideosOperation = adminGraphql(
     }
   `,
   [watchHomeVideoFragment],
+)
+
+export const getWatchHomeCarouselPoolsOperation = adminGraphql(
+  `
+    query GetWatchHomeCarouselPools(
+      $coreIds: [String!]!
+      $locale: String!
+      $languageSlug: String
+      $limit: Int = 8
+    ) {
+      watchHomeCarouselPools(
+        coreIds: $coreIds
+        languageSlug: $languageSlug
+        limit: $limit
+      ) {
+        coreId
+        playableCount
+        source {
+          documentId: id
+          coreId
+          slug
+          label
+        }
+        videos {
+          ...WatchHomeCarouselVideo
+        }
+      }
+    }
+  `,
+  [watchHomeCarouselVideoFragment],
 )
