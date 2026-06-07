@@ -45,7 +45,7 @@ function depsFor(input?: {
       provider: "jesus-film-ai-gateway",
       model: "embeddings",
       requestModel: "embeddings",
-      nativeDimensions: 4096,
+      nativeDimensions: 1536,
       finalDimensions: 1536,
       transformVersion: "matryoshka-truncate-1536-v1",
     })),
@@ -126,7 +126,7 @@ describe("runContentEmbeddingSearchEvalCli", () => {
       expect.objectContaining({
         contentEmbeddingProvider: expect.objectContaining({
           provider: "jesus-film-ai-gateway",
-          nativeDimensions: 4096,
+          nativeDimensions: 1536,
           finalDimensions: 1536,
         }),
         humanAdjudications: [
@@ -239,7 +239,7 @@ describe("defaultContentEmbeddingProviderForGate", () => {
       provider: "jesus-film-ai-gateway",
       model: "embeddings",
       requestModel: "embeddings",
-      nativeDimensions: 4096,
+      nativeDimensions: 1536,
       finalDimensions: 1536,
       transformVersion: "matryoshka-truncate-1536-v1",
     })

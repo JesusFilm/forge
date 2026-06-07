@@ -187,7 +187,7 @@ const EXPECTED_CONTENT_GATE_PROVIDER = {
   provider: "jesus-film-ai-gateway",
   model: "embeddings",
   requestModel: "embeddings",
-  nativeDimensions: 4096,
+  nativeDimensions: 1536,
   finalDimensions: 1536,
   transformVersion: "matryoshka-truncate-1536-v1",
 } as const
