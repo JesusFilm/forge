@@ -298,7 +298,7 @@ describe("Mastra env", () => {
       provider: "jesus-film-ai-gateway",
       userAgent: "forge-test/1.0",
       timeoutMs: 60_000,
-      expectedNativeDimensions: 4096,
+      expectedNativeDimensions: 1536,
       truncateToDimensions: 1536,
       transformVersion: "matryoshka-truncate-1536-v1",
     }
