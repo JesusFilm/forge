@@ -8,8 +8,6 @@ import {
   type LayoutChangeEvent,
   type PanResponderGestureState,
 } from "react-native"
-// `useState` drives only the track-width layout value below — never the drag,
-// which is animated without re-rendering.
 
 import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import {
@@ -202,6 +200,9 @@ export function Scrubber({
         max: 100,
         now: Math.round(progressFraction(currentTime, duration) * 100),
       }}
+      // Declare the actions explicitly so TalkBack (Android — the primary
+      // audience) registers them; iOS infers them from the adjustable role.
+      accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
       onAccessibilityAction={(e) => {
         const delta =
           e.nativeEvent.actionName === "increment"
@@ -217,14 +218,24 @@ export function Scrubber({
           style={[styles.fill, { transform: [{ scaleX: progress }] }]}
         />
       </View>
-      <Animated.View
-        style={[
-          styles.thumb,
-          {
-            transform: [{ translateX: thumbTranslateX }, { scale: thumbScale }],
-          },
-        ]}
-      />
+      {/* Render the thumb only once the track is measured. With trackWidth 0
+          (every chrome reveal remounts the Scrubber), the translateX
+          interpolation collapses to [0, 0] and the thumb would sit at the left
+          edge while the fill already shows the real position — a one-frame
+          desync. The fill is immune (scaleX needs no width). */}
+      {trackWidth > 0 && (
+        <Animated.View
+          style={[
+            styles.thumb,
+            {
+              transform: [
+                { translateX: thumbTranslateX },
+                { scale: thumbScale },
+              ],
+            },
+          ]}
+        />
+      )}
     </View>
   )
 }
