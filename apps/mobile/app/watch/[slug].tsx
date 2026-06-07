@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  AccessibilityInfo,
   Animated,
   AppState,
   BackHandler,
@@ -25,7 +26,13 @@ import {
 } from "../../src/lib/normalizeVideo"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
-import { ACCENT } from "../../src/lib/color"
+import {
+  ACCENT_ON_DARK,
+  BLACK,
+  SURFACE_COLOR,
+  TEXT_PRIMARY,
+  hexToRgba,
+} from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
 import {
@@ -64,8 +71,30 @@ export default function WatchVideoPage() {
   const [showNavTitle, setShowNavTitle] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const insets = useSafeAreaInsets()
+  // Honor reduce-motion for the scroll-to-top FAB and nav-title reveals, the
+  // way the player's chrome/subtitles already do — snap instead of fading.
+  const reduceMotionRef = useRef(false)
 
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      reduceMotionRef.current = v
+    })
+    const sub = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      (v) => {
+        reduceMotionRef.current = v
+      },
+    )
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // noop
+      }
+    }
+  }, [])
 
   // Fullscreen side-effects: hide the native header + disable the iOS edge-swipe
   // back (so it can't pop the route mid-fullscreen), and drive orientation.
@@ -222,16 +251,26 @@ export default function WatchVideoPage() {
   )
 
   useEffect(() => {
+    const to = showScrollTop ? 1 : 0
+    if (reduceMotionRef.current) {
+      scrollTopOpacity.setValue(to)
+      return
+    }
     Animated.timing(scrollTopOpacity, {
-      toValue: showScrollTop ? 1 : 0,
+      toValue: to,
       duration: 200,
       useNativeDriver: true,
     }).start()
   }, [showScrollTop, scrollTopOpacity])
 
   useEffect(() => {
+    const to = showNavTitle ? 1 : 0
+    if (reduceMotionRef.current) {
+      titleOpacity.setValue(to)
+      return
+    }
     Animated.timing(titleOpacity, {
-      toValue: showNavTitle ? 1 : 0,
+      toValue: to,
       duration: 200,
       useNativeDriver: true,
     }).start()
@@ -414,7 +453,7 @@ export default function WatchVideoPage() {
             accessibilityRole="button"
             accessibilityLabel="Scroll to top"
           >
-            <Ionicons name="chevron-up" size={22} color="#f5f5f4" />
+            <Ionicons name="chevron-up" size={22} color={TEXT_PRIMARY} />
           </Pressable>
         </Animated.View>
       )}
@@ -436,7 +475,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   navTitle: {
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontSize: 17,
     fontWeight: "600",
     fontFamily: "System",
@@ -451,7 +490,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   retryLink: {
-    color: ACCENT,
+    // ACCENT_ON_DARK, not ACCENT: 15px link text needs >= 4.5:1 on the dark bg.
+    color: ACCENT_ON_DARK,
     fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
@@ -466,10 +506,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(41, 37, 36, 0.85)",
+    backgroundColor: hexToRgba(SURFACE_COLOR, 0.85),
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
