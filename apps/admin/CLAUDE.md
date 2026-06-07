@@ -1799,9 +1799,9 @@ path and the Cloudflare 524 edge timeout. Per
    `--gate-report` points at a sanitized
    `content-search-eval-gate-report` whose gate is backfill-ready, judged,
    calibrated, passed, has zero loss/search/judge/disagreement failures, and
-   is bound to the Jesus Film AI Gateway `embeddings` provider with 4096 native
-   dimensions, 1536 final dimensions, and the
-   `matryoshka-truncate-1536-v1` transform. Local-only dry exercises can use
+   is bound to the Jesus Film AI Gateway `embeddings` provider with 1536 native
+   dimensions, 1536 final dimensions, and `transformVersion: null` for the
+   current production gateway contract. Local-only dry exercises can use
    `--allow-ungated-local-backfill` only when `DATABASE_URL` points at a
    loopback host and the database name contains `local`, `test`, `dev`, or
    `development`; production and tunneled prod databases cannot bypass the

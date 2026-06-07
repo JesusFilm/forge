@@ -38,8 +38,9 @@ The script writes a sanitized full JSON report to
 assigned `gate.judgeModel`, non-skipped passing calibration, non-negative
 `gate.netWinRate`, `gate.backfillReady=true`, and
 `contentEmbeddingProvider` bound to `jesus-film-ai-gateway` / `embeddings` /
-4096 native dimensions / 1536 final dimensions before content replacement can
-proceed. The file name must match `gate.reportId`.
+1536 native dimensions / 1536 final dimensions /
+`transformVersion: null` before content replacement can proceed. The file name
+must match `gate.reportId`.
 
 Use the emitted JSON as the required Admin backfill gate:
 

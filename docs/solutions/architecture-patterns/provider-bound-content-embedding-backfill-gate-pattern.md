@@ -1,7 +1,7 @@
 ---
 title: "Provider-bound content embedding backfill gate pattern"
 date: "2026-06-03"
-last_updated: "2026-06-03"
+last_updated: "2026-06-07"
 category: "architecture-patterns"
 module: "apps/mastra, apps/admin"
 problem_type: "architecture_pattern"
@@ -9,7 +9,7 @@ component: "service_object"
 severity: "high"
 applies_when:
   - "A content embedding provider migration needs a production backfill gate"
-  - "A Matryoshka/native-dimension embedding response is truncated before pgvector storage"
+  - "A native-dimension embedding response must be bound to pgvector storage provenance"
   - "Offline search eval artifacts are used to authorize a destructive or high-churn vector rewrite"
   - "Multiple embedding content types must move together without accepting mixed provider provenance"
   - "Multilingual content embeddings need local proof before full all-locale backfill"
@@ -38,17 +38,18 @@ related:
 
 The AI Gateway content embedding migration moves transcript, scene, and
 experience embedding generation away from OpenRouter/OpenAI-compatible
-credentials and onto the Jesus Film AI Gateway endpoint. The gateway returns a
-native 4096-dimensional Matryoshka vector. Mastra truncates that vector to 1536
-dimensions, re-normalizes it, and Admin stores the final vector in existing
-`vector(1536)` pgvector columns.
+credentials and onto the Jesus Film AI Gateway endpoint. The current production
+gateway returns native 1536-dimensional unit vectors for `model: embeddings`,
+and Admin stores those vectors in existing `vector(1536)` pgvector columns
+with `embedding_transform_version=NULL`.
 
 That shape creates a new failure mode: a search eval report can look generally
 positive while proving the wrong embedding population. For example, it might be
 produced from legacy OpenAI rows, a synthetic fixture, a report from a different
-provider, or a 1536-native response instead of the intended 4096-native
-Matryoshka response. A production backfill gate must therefore bind the eval
-artifact to the exact provider contract it is approving.
+provider, or a 4096/truncate report from an older local run instead of the
+current native-1536 production contract. A production backfill gate must
+therefore bind the eval artifact to the exact provider contract it is
+approving.
 
 ## Guidance
 
@@ -61,18 +62,20 @@ logs. The eval export that operators hand to Admin should include a sanitized
   "provider": "jesus-film-ai-gateway",
   "model": "embeddings",
   "requestModel": "embeddings",
-  "nativeDimensions": 4096,
+  "nativeDimensions": 1536,
   "finalDimensions": 1536,
-  "transformVersion": "matryoshka-truncate-1536-v1"
+  "transformVersion": null
 }
 ```
 
 The Mastra provider client should request the normal embedding endpoint without
-a `dimensions` parameter, validate that the native response has the expected
-4096 dimensions, slice to 1536, reject zero-norm vectors, and then re-normalize.
-The same transformed dimension and transform version must be sent to Admin
-alongside the vector payload. Do this for every content type that writes
-vectors, not only the first workflow you migrate.
+a `dimensions` parameter and validate that the native response has the expected
+configured dimensions. For current production native-1536 output, Mastra should
+not slice or re-normalize and should send `transformVersion: null` to Admin
+alongside the vector payload. If a future gateway variant truly returns 4096
+dimensions, re-enable the existing slice-to-1536/re-normalize transform and
+bind the gate report to the 4096/native transform tuple instead. Do this for
+every content type that writes vectors, not only the first workflow you migrate.
 
 Admin should persist both native and final provenance. The final pgvector column
 stays `vector(1536)`, but transcript, scene, and experience rows should also
@@ -93,7 +96,17 @@ flag:
 - the embedded search-eval report agrees with the outer gate fields
 - losses, search failures, judge failures, and judge disagreements are zero
 - the assigned judge is present and calibration is not skipped
-- the provider tuple matches the gateway tuple above exactly
+- the provider tuple matches the active gateway tuple exactly
+
+Also distinguish config provenance from corpus provenance. A docs report that
+records the active Mastra provider config proves what query embeddings and new
+workflow writes are configured to use; it does not, by itself, prove the
+searched Admin rows have already been rewritten. For destructive production
+work, pair the eval gate with row-level provenance counts for the evaluated
+scene, transcript, and experience corpus, or expose a sanitized Admin internal
+provenance summary and embed that summary in the gate report. Do not authorize a
+wipe or backfill from a config-only tuple when the production question is
+"which stored rows did this eval actually search?"
 
 Keep local bypasses deliberately narrow. A no-report run is acceptable only for
 local development databases on loopback hosts with names that clearly contain
@@ -111,7 +124,7 @@ success are different proofs:
   `(video, edition, locale)` and `(video, edition, language)` targets from
   primary language, subtitle, and dub data.
 - Bounded embed batches prove Mastra can fetch Manager artifacts, call the
-  gateway provider, transform to `vector(1536)`, and write through Admin ingest
+  gateway provider, produce `vector(1536)`, and write through Admin ingest
   callbacks for each language.
 - A multilingual eval baseline and judged comparison prove local search can use
   those vectors without losses, search failures, judge failures, or judge
@@ -162,7 +175,8 @@ multilingual baseline because that baseline did not exist.
 
 - A provider migration will rewrite transcript, scene, experience, or other
   pgvector-backed content rows.
-- The provider's native output differs from the stored vector dimension.
+- The provider's native output and transform status are part of the production
+  backfill gate.
 - A search eval artifact is used as an operator gate for a backfill.
 - Multiple services share ownership: Mastra generates, Admin stores/searches,
   and operators need durable evidence under `docs/search-eval-reports/`.

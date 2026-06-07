@@ -41,9 +41,11 @@ Origin documents:
   for count alignment, finite vector values, and configured dimensions. Invalid
   provider output must throw inside the workflow so Studio records a failed run.
 - AI Gateway content embeddings request the normal OpenAI-compatible embedding
-  response, then truncate gateway-native vectors to 1536 dimensions and
-  re-normalize them in Mastra before Admin ingest. Do not send `dimensions`
-  through LiteLLM.
+  response and require the configured native dimensions before Admin ingest.
+  Current production gateway output is native 1536, so Mastra does not pass
+  `dimensions` through LiteLLM and does not apply a client transform. Keep the
+  shared 4096-to-1536 truncate/re-normalize helper for future gateway variants
+  that truly return 4096.
 - Transcript, scene, and experience workflows share Admin ingest transport
   behavior but keep separate Admin endpoints, local schemas, and type-specific
   payload parsing. Do not replace them with a generic embedding blob route.
@@ -224,9 +226,9 @@ non-negative net win rate, at least one comparable query, and no configured
 loss/search/judge/disagreement failures before it exits zero. The emitted JSON
 has `kind=content-search-eval-gate-report`, embeds the sanitized comparison
 report and orchestrator summary, and stamps the evaluated content embedding
-provider as Jesus Film AI Gateway `embeddings` with 4096 native dimensions,
-1536 final dimensions, and `matryoshka-truncate-1536-v1`. That JSON is the gate
-artifact consumed by Admin's
+provider as Jesus Film AI Gateway `embeddings` with 1536 native dimensions,
+1536 final dimensions, and `transformVersion: null` for the current production
+gateway contract. That JSON is the gate artifact consumed by Admin's
 `run-embeds --pipeline=all --gate-report=docs/search-eval-reports/<id>.json`.
 
 Candidate generation and seed candidate submission are explicit opt-ins. The

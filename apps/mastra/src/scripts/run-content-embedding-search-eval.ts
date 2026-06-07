@@ -5,6 +5,7 @@ import { dirname, isAbsolute, resolve } from "node:path"
 import { getTranscriptEmbeddingProviderConfig } from "../config/env"
 import { runSearchEvalOrchestratorWorkflow as defaultRunSearchEvalOrchestratorWorkflow } from "../mastra/workflows/search-eval-orchestrator"
 import {
+  DEFAULT_EMBEDDING_TRANSFORM_VERSION,
   EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS,
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   requestModelForEndpoint,
@@ -120,8 +121,14 @@ export function defaultContentEmbeddingProviderForGate(): ContentSearchEvalGateD
     finalDimensions:
       providerConfig.truncateToDimensions ??
       EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-    transformVersion: providerConfig.transformVersion ?? "",
+    transformVersion: providerConfig.transformVersion ?? null,
   }
+
+  const expectedTransformVersion =
+    EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS ===
+    EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS
+      ? null
+      : DEFAULT_EMBEDDING_TRANSFORM_VERSION
 
   if (
     provenance.provider !== "jesus-film-ai-gateway" ||
@@ -130,7 +137,7 @@ export function defaultContentEmbeddingProviderForGate(): ContentSearchEvalGateD
     provenance.nativeDimensions !==
       EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS ||
     provenance.finalDimensions !== EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS ||
-    provenance.transformVersion !== "matryoshka-truncate-1536-v1"
+    provenance.transformVersion !== expectedTransformVersion
   ) {
     throw new Error(
       "content embedding search-eval gate must run against the Jesus Film AI Gateway embeddings provider",

@@ -23,6 +23,9 @@ const DEFAULT_AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS = 60_000
 const AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS =
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS
 const AI_GATEWAY_TRANSFORM_VERSION = DEFAULT_EMBEDDING_TRANSFORM_VERSION
+const AI_GATEWAY_NEEDS_CLIENT_TRANSFORM =
+  EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS !==
+  AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS
 
 export type ContentEmbeddingsProviderMode = "legacy" | "gateway"
 
@@ -256,6 +259,18 @@ function assertGatewayBaseUrlAllowedForProduction() {
   }
 }
 
+function assertGatewayProviderContractAllowedForProduction() {
+  if (
+    env.AI_GATEWAY_EMBEDDINGS_MODEL !== DEFAULT_AI_GATEWAY_EMBEDDINGS_MODEL ||
+    env.AI_GATEWAY_EMBEDDINGS_PROVIDER !==
+      DEFAULT_AI_GATEWAY_EMBEDDINGS_PROVIDER
+  ) {
+    throw new Error(
+      "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
+    )
+  }
+}
+
 export function getContentEmbeddingsProviderMode(): ContentEmbeddingsProviderMode {
   if (env.MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE) {
     return env.MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE
@@ -304,6 +319,7 @@ export function assertMastraRuntimeEnv() {
       env.AI_GATEWAY_EMBEDDINGS_API_KEY,
     ])
     assertGatewayBaseUrlAllowedForProduction()
+    assertGatewayProviderContractAllowedForProduction()
   } else {
     missing.push([
       "OPENROUTER_API_KEY or OPENAI_API_KEY",
@@ -362,8 +378,12 @@ function getGatewayEmbeddingProviderConfig(): ContentEmbeddingProviderConfig {
     userAgent: env.AI_GATEWAY_EMBEDDINGS_USER_AGENT,
     timeoutMs: env.AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS,
     expectedNativeDimensions: EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS,
-    truncateToDimensions: AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS,
-    transformVersion: AI_GATEWAY_TRANSFORM_VERSION,
+    ...(AI_GATEWAY_NEEDS_CLIENT_TRANSFORM
+      ? {
+          truncateToDimensions: AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS,
+          transformVersion: AI_GATEWAY_TRANSFORM_VERSION,
+        }
+      : {}),
   }
 }
 
