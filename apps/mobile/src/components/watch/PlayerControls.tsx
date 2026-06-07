@@ -3,8 +3,9 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import type { VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { TEXT_ON_OVERLAY } from "../../lib/color"
+import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import { applySkip } from "../../lib/scrubber"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
@@ -36,6 +37,7 @@ export function PlayerControls({
   seekSignal,
 }: PlayerControlsProps) {
   const typography = useTypography()
+  const insets = useSafeAreaInsets()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
@@ -185,7 +187,12 @@ export function PlayerControls({
           accessibilityRole="button"
           accessibilityLabel={`Back ${SKIP_SECONDS} seconds`}
         >
-          <Ionicons name="play-back" size={24} color={TEXT_ON_OVERLAY} />
+          <Ionicons
+            name="play-back"
+            size={24}
+            color={TEXT_ON_OVERLAY}
+            style={styles.centerIcon}
+          />
         </Pressable>
 
         <Pressable
@@ -198,7 +205,11 @@ export function PlayerControls({
             name={ended ? "reload" : isPlaying ? "pause" : "play"}
             size={24}
             color={TEXT_ON_OVERLAY}
-            style={!ended && !isPlaying ? { marginLeft: 3 } : undefined}
+            // Ionicons' style prop takes a single object, not an array.
+            style={StyleSheet.flatten([
+              styles.centerIcon,
+              !ended && !isPlaying ? styles.playGlyphNudge : null,
+            ])}
           />
         </Pressable>
 
@@ -208,16 +219,41 @@ export function PlayerControls({
           accessibilityRole="button"
           accessibilityLabel={`Forward ${SKIP_SECONDS} seconds`}
         >
-          <Ionicons name="play-forward" size={24} color={TEXT_ON_OVERLAY} />
+          <Ionicons
+            name="play-forward"
+            size={24}
+            color={TEXT_ON_OVERLAY}
+            style={styles.centerIcon}
+          />
         </Pressable>
       </View>
 
-      <View style={styles.bottomBar}>
+      <View
+        style={[
+          styles.bottomBar,
+          // In landscape fullscreen the bar would otherwise sit under the side
+          // notch and the home indicator. Inline (16:9 box) needs no insets.
+          fullscreen && {
+            paddingBottom: Math.max(insets.bottom, 8),
+            paddingLeft: Math.max(insets.left, 12),
+            paddingRight: Math.max(insets.right, 12),
+          },
+        ]}
+      >
         <View style={styles.timeRow}>
-          <Text style={[styles.timeText, typography.caption]}>
+          <Text
+            style={[styles.timeText, typography.caption]}
+            accessibilityLabel={`Elapsed ${formatTime(displayedTime)} of ${formatTime(duration)}`}
+          >
             {formatTime(displayedTime)}
           </Text>
-          <Text style={[styles.timeText, typography.caption]}>
+          {/* The total is already spoken in the elapsed label above; hide this
+              duplicate from screen readers so the position isn't announced twice. */}
+          <Text
+            style={[styles.timeText, typography.caption]}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
             {formatTime(duration)}
           </Text>
         </View>
@@ -282,11 +318,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // The center cluster sits above the bottom scrim, so over a bright frame the
+  // white glyphs need their own contrast. The play button carries a backplate;
+  // the skip glyphs lean on this shadow halo (same technique as the captions)
+  // to clear the WCAG 1.4.11 3:1 bar against any footage.
+  centerIcon: {
+    textShadowColor: hexToRgba(BLACK, 0.6),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  playGlyphNudge: {
+    marginLeft: 3,
+  },
   playButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: hexToRgba(BLACK, 0.5),
     justifyContent: "center",
     alignItems: "center",
   },

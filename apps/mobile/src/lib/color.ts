@@ -19,8 +19,18 @@ export const TEXT_SECONDARY = "#a8a29e"
 /** Body text (stone-300). */
 export const TEXT_BODY = "#d6d3d1"
 
-/** Brand accent (JFP red). */
+/** Brand accent (JFP red). For fills, large text, and non-text UI (3:1 bar). */
 export const ACCENT = "#CB333B"
+
+/**
+ * Brand accent tuned for legible TEXT and links on the dark palette.
+ *
+ * ACCENT (#CB333B) measures only ~3.4:1 on BG_COLOR (and ~3.2:1 on
+ * SURFACE_COLOR) — below the WCAG AA 4.5:1 floor for normal-size text. This
+ * lighter red clears 4.5:1 on both dark surfaces (~5.3:1 on BG, ~4.6:1 on
+ * surface). Use it for accent text/links; keep ACCENT for fills and large text.
+ */
+export const ACCENT_ON_DARK = "#E96067"
 
 /** Text rendered on image/gradient overlays. */
 export const TEXT_ON_OVERLAY = "#ffffff"

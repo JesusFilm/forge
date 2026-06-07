@@ -1,13 +1,17 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
+  Animated,
   PanResponder,
   StyleSheet,
   View,
   type GestureResponderEvent,
+  type LayoutChangeEvent,
   type PanResponderGestureState,
 } from "react-native"
+// `useState` drives only the track-width layout value below — never the drag,
+// which is animated without re-rendering.
 
-import { ACCENT } from "../../lib/color"
+import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import {
   applySkip,
   clamp,
@@ -28,16 +32,27 @@ type ScrubberProps = {
 }
 
 const THUMB = 14
+const TRACK_HEIGHT = 3
+const HIT_HEIGHT = 44
 
 /**
  * Draggable seek bar (built-in PanResponder — react-native-gesture-handler is
  * forbidden under Expo Go).
  *
+ * Position is driven by an `Animated.Value` (0..1), NOT React state: the fill
+ * uses `scaleX` (anchored left via `transformOrigin`) and the thumb uses
+ * `translateX`, both updated with `setValue` on every pan move. `setValue`
+ * pushes straight to the native view without a React re-render, so a drag never
+ * re-renders this component or its parent — the previous setState-per-frame
+ * approach re-rendered both on every touch sample, which janks on the low-end
+ * Android devices this app targets. The parent's preview-time callback (which
+ * does setState) is throttled to whole-second changes for the same reason.
+ *
  * The fraction is computed from the gesture's ABSOLUTE screen X minus the
  * track's measured left edge — NOT `nativeEvent.locationX`, which is relative
- * to whichever child view (thumb/fill) is under the finger and under-reports as
- * the thumb moves, making the thumb lag behind the finger. `measureInWindow`
- * keeps the track origin/width current across layout + rotation changes.
+ * to whichever child view is under the finger and under-reports as the thumb
+ * moves. `measureInWindow` keeps the track origin/width current across layout +
+ * rotation changes.
  */
 export function Scrubber({
   currentTime,
@@ -50,8 +65,14 @@ export function Scrubber({
   // Last fraction from grant/move. Release seeks to THIS, not a fresh read of
   // gestureState.moveX — on a tap (no move) moveX is 0, which would seek to 0.
   const lastFractionRef = useRef(0)
-  const [dragging, setDragging] = useState(false)
-  const [dragFraction, setDragFraction] = useState(0)
+  // Track width in state so the thumb's translateX interpolation has a concrete
+  // output range; set on layout/rotation only, never per drag frame.
+  const [trackWidth, setTrackWidth] = useState(0)
+
+  // Native-friendly position (0..1) and thumb grow-on-grab scale. Both updated
+  // via setValue so the gesture never triggers a React render.
+  const progress = useRef(new Animated.Value(0)).current
+  const thumbScale = useRef(new Animated.Value(1)).current
 
   // Mirror live props into refs so the PanResponder (created once) reads
   // current values instead of the closure captured on first render.
@@ -61,6 +82,10 @@ export function Scrubber({
   onSeekRef.current = onSeek
   const onScrubChangeRef = useRef(onScrubChange)
   onScrubChangeRef.current = onScrubChange
+  const draggingRef = useRef(false)
+  // Last whole second pushed to the parent label, so the preview callback fires
+  // at most ~once per displayed second instead of once per frame.
+  const lastWholeSecondRef = useRef(-1)
 
   const measure = () => {
     containerRef.current?.measureInWindow((x, _y, width) => {
@@ -71,6 +96,25 @@ export function Scrubber({
   const fractionFromAbsX = (absX: number) => {
     const { x, width } = trackRef.current
     return clamp(width > 0 ? (absX - x) / width : 0, 0, 1)
+  }
+
+  // Keep the position synced to playback whenever NOT dragging. setValue (not
+  // setState) so the 500ms poll advancing currentTime never re-renders us.
+  useEffect(() => {
+    if (draggingRef.current) return
+    progress.setValue(progressFraction(currentTime, duration))
+  }, [currentTime, duration, progress])
+
+  // Emit the preview time to the parent, but only when the displayed (whole)
+  // second changes — the label shows mm:ss, so sub-second emits are wasted
+  // setState in the parent.
+  const emitPreviewThrottled = (f: number) => {
+    const t = fractionToTime(f, durationRef.current)
+    if (t == null) return
+    const whole = Math.floor(t)
+    if (whole === lastWholeSecondRef.current) return
+    lastWholeSecondRef.current = whole
+    onScrubChangeRef.current?.(true, t)
   }
 
   const pan = useRef(
@@ -91,9 +135,13 @@ export function Scrubber({
         measure()
         const f = fractionFromAbsX(g.x0)
         lastFractionRef.current = f
-        setDragging(true)
-        setDragFraction(f)
-        onScrubChangeRef.current?.(true, fractionToTime(f, durationRef.current))
+        draggingRef.current = true
+        progress.setValue(f)
+        thumbScale.setValue(1.4)
+        // Always emit the start so the parent suppresses its poll immediately.
+        const t = fractionToTime(f, durationRef.current)
+        lastWholeSecondRef.current = t == null ? -1 : Math.floor(t)
+        onScrubChangeRef.current?.(true, t)
       },
       onPanResponderMove: (
         _e: GestureResponderEvent,
@@ -101,40 +149,59 @@ export function Scrubber({
       ) => {
         const f = fractionFromAbsX(g.moveX)
         lastFractionRef.current = f
-        setDragFraction(f)
-        onScrubChangeRef.current?.(true, fractionToTime(f, durationRef.current))
+        progress.setValue(f) // native update, no React render
+        emitPreviewThrottled(f)
       },
       onPanResponderRelease: () => {
         // Seek to the last grant/move fraction — NOT a fresh moveX read, which
         // is 0 on a tap and would reset to the start.
         const t = fractionToTime(lastFractionRef.current, durationRef.current)
-        setDragging(false)
+        draggingRef.current = false
+        thumbScale.setValue(1)
         onScrubChangeRef.current?.(false, null)
         if (t != null) onSeekRef.current(t)
       },
       onPanResponderTerminate: () => {
-        setDragging(false)
+        draggingRef.current = false
+        thumbScale.setValue(1)
         onScrubChangeRef.current?.(false, null)
       },
     }),
   ).current
 
-  const fraction = dragging
-    ? dragFraction
-    : progressFraction(currentTime, duration)
-  const pct = `${fraction * 100}%` as const
+  // 0..1 → [0, trackWidth] px. Rebuilt when the track is (re)measured, not per
+  // frame; the thumb is centered on the position via the static marginLeft.
+  const thumbTranslateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, trackWidth],
+  })
 
   return (
     <View
       ref={containerRef}
       style={styles.hitArea}
-      onLayout={measure}
+      onLayout={(e: LayoutChangeEvent) => {
+        measure()
+        setTrackWidth(e.nativeEvent.layout.width)
+      }}
+      // accessible MUST be set explicitly: a plain View with an
+      // accessibilityRole is NOT promoted to an accessibility element on iOS
+      // (unlike Pressable), so without this the adjustable role + the
+      // increment/decrement actions below never reach VoiceOver/Switch Control
+      // — the seek bar was silently unreachable to assistive tech.
+      accessible
       accessibilityRole="adjustable"
       accessibilityLabel="Seek bar"
       // The seek bar is drag-only by touch; expose increment/decrement so
       // VoiceOver/Switch Control (and idb automation) can operate it without a
-      // drag gesture. Swipe up/down → ±10s, matching the skip buttons.
-      accessibilityValue={{ min: 0, max: 100, now: Math.round(fraction * 100) }}
+      // drag gesture. Swipe up/down → ±10s, matching the skip buttons. `now`
+      // reads the playback position (props), which is what a screen-reader user
+      // tracks — they use the actions above rather than dragging.
+      accessibilityValue={{
+        min: 0,
+        max: 100,
+        now: Math.round(progressFraction(currentTime, duration) * 100),
+      }}
       onAccessibilityAction={(e) => {
         const delta =
           e.nativeEvent.actionName === "increment"
@@ -146,13 +213,16 @@ export function Scrubber({
       {...pan.panHandlers}
     >
       <View style={styles.track}>
-        <View style={[styles.fill, { width: pct }]} />
+        <Animated.View
+          style={[styles.fill, { transform: [{ scaleX: progress }] }]}
+        />
       </View>
-      <View
+      <Animated.View
         style={[
           styles.thumb,
-          dragging && styles.thumbActive,
-          { left: pct, marginLeft: -THUMB / 2 },
+          {
+            transform: [{ translateX: thumbTranslateX }, { scale: thumbScale }],
+          },
         ]}
       />
     </View>
@@ -160,22 +230,24 @@ export function Scrubber({
 }
 
 const styles = StyleSheet.create({
-  // Tall, transparent hit area for an easy grab; the visible track is thin.
+  // Tall (44px), transparent hit area for an easy, accessible grab; the visible
+  // track is thin and vertically centered within it.
   hitArea: {
-    height: 28,
+    height: HIT_HEIGHT,
     justifyContent: "center",
-    marginBottom: 4,
   },
   track: {
-    height: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: 1.5,
+    height: TRACK_HEIGHT,
+    backgroundColor: hexToRgba(TEXT_ON_OVERLAY, 0.3),
+    borderRadius: TRACK_HEIGHT / 2,
     overflow: "hidden",
   },
   fill: {
     height: "100%",
+    width: "100%",
     backgroundColor: ACCENT,
-    borderRadius: 1.5,
+    // Scale from the left edge so scaleX = fraction fills left-to-right.
+    transformOrigin: "left center",
   },
   thumb: {
     position: "absolute",
@@ -183,9 +255,9 @@ const styles = StyleSheet.create({
     height: THUMB,
     borderRadius: THUMB / 2,
     backgroundColor: ACCENT,
-    top: 14 - THUMB / 2,
-  },
-  thumbActive: {
-    transform: [{ scale: 1.4 }],
+    // Vertically center on the track; horizontally center on the position.
+    top: (HIT_HEIGHT - THUMB) / 2,
+    left: 0,
+    marginLeft: -THUMB / 2,
   },
 })
