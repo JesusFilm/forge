@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { useEffect, useRef, useState } from "react"
+import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  StyleSheet,
+  Text,
+} from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
@@ -10,6 +16,14 @@ type SubtitleOverlayProps = {
   player: ExpoVideoPlayer
   vttSrc: string | null
   bottomOffset?: number
+  /** Horizontal padding so captions clear the notch / home-indicator in
+   *  landscape fullscreen. Defaults to the inline value. */
+  horizontalInset?: number
+  /** Caption text size — larger in fullscreen where the video fills the screen. */
+  fontSize?: number
+  /** Animate vertical-offset changes (used only in fullscreen, where the caption
+   *  lifts to clear the chrome/timeline). When false, offset changes snap. */
+  animate?: boolean
 }
 
 // Cues are sorted by start time. Binary-search the last cue whose start is <= t,
@@ -47,9 +61,49 @@ export function SubtitleOverlay({
   player,
   vttSrc,
   bottomOffset = 16,
+  horizontalInset = 16,
+  fontSize = 16,
+  animate = false,
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
+
+  // Vertical offset via translateY (native-driver friendly on Fabric). Anchored
+  // at bottom:0 and lifted by -bottomOffset. Animated only when `animate` (the
+  // fullscreen lift-to-clear-the-chrome effect); otherwise it snaps so inline
+  // captions never move.
+  const translateY = useRef(new Animated.Value(-bottomOffset)).current
+  const reduceMotionRef = useRef(false)
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      reduceMotionRef.current = v
+    })
+    const sub = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      (v) => {
+        reduceMotionRef.current = v
+      },
+    )
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // noop
+      }
+    }
+  }, [])
+  useEffect(() => {
+    if (!animate || reduceMotionRef.current) {
+      translateY.setValue(-bottomOffset)
+      return
+    }
+    Animated.timing(translateY, {
+      toValue: -bottomOffset,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+  }, [bottomOffset, animate, translateY])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -123,12 +177,27 @@ export function SubtitleOverlay({
   if (!activeText) return null
 
   return (
-    <View
+    <Animated.View
       pointerEvents="none"
-      style={[styles.container, { bottom: bottomOffset }]}
+      style={[
+        styles.container,
+        { paddingHorizontal: horizontalInset, transform: [{ translateY }] },
+      ]}
     >
-      <Text style={styles.text}>{activeText}</Text>
-    </View>
+      <Text
+        style={[
+          styles.text,
+          {
+            fontSize,
+            lineHeight: Math.round(fontSize * 1.3),
+            paddingVertical: Math.round(fontSize * 0.3),
+            paddingHorizontal: Math.round(fontSize * 0.65),
+          },
+        ]}
+      >
+        {activeText}
+      </Text>
+    </Animated.View>
   )
 }
 
@@ -137,6 +206,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+    bottom: 0,
     alignItems: "center",
     paddingHorizontal: 16,
   },

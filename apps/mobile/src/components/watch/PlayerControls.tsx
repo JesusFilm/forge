@@ -4,12 +4,22 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import type { VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
-import { ACCENT, TEXT_ON_OVERLAY } from "../../lib/color"
+import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { applySkip } from "../../lib/scrubber"
+import { SKIP_SECONDS } from "../../lib/tapSeek"
+import { Scrubber } from "./Scrubber"
 
 type PlayerControlsProps = {
   player: VideoPlayer
-  onFullscreen: () => void
+  /** True while in custom fullscreen — flips the control to an exit affordance. */
+  fullscreen?: boolean
+  onFullscreen?: () => void
+  /** Called when any control is used, so the auto-hide timer resets (R4). */
+  onInteract?: () => void
+  /** A seek performed outside this component (double-tap-the-sides). The bumped
+   *  nonce updates the displayed time immediately, even while paused. */
+  seekSignal?: { time: number; n: number } | null
 }
 
 function formatTime(seconds: number): string {
@@ -18,12 +28,24 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
+export function PlayerControls({
+  player,
+  fullscreen = false,
+  onFullscreen,
+  onInteract,
+  seekSignal,
+}: PlayerControlsProps) {
   const typography = useTypography()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
+  const [scrubPreview, setScrubPreview] = useState<number | null>(null)
+  // True once playback reaches the end — the center control becomes Replay.
+  const [ended, setEnded] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Mirror scrubbing into a ref so the poll closure (set up on [isPlaying])
+  // reads the live value without re-subscribing.
+  const scrubbingRef = useRef(false)
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -32,6 +54,8 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
   useEffect(() => {
     if (isPlaying) {
       intervalRef.current = setInterval(() => {
+        // Don't let the poll fight the finger while scrubbing (R8).
+        if (scrubbingRef.current) return
         setCurrentTime(player.currentTime)
         setDuration(player.duration)
       }, 500)
@@ -46,7 +70,53 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
     }
   }, [isPlaying, player])
 
+  // Reflect an external seek (double-tap-the-sides) in the label/scrubber at
+  // once — the poll is idle while paused, so without this the time would lag.
+  // Clear `ended` when the seek lands before the end (mirrors skip/handleSeek),
+  // else a double-tap-rewind from the end leaves the center stuck on Replay.
+  useEffect(() => {
+    if (!seekSignal) return
+    setCurrentTime(seekSignal.time)
+    if (seekSignal.time < player.duration - 0.5) setEnded(false)
+  }, [seekSignal, player])
+
+  // Mark ended on playToEnd (the reliable end signal — the time poll stops
+  // before the last frame, so currentTime alone can't detect it). Resuming
+  // playback clears it.
+  useEffect(() => {
+    const sub = player.addListener("playToEnd", () => setEnded(true))
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // player already released
+      }
+    }
+  }, [player])
+  useEffect(() => {
+    if (isPlaying) setEnded(false)
+  }, [isPlaying])
+
+  // Seed from the live player on (re)mount. The controls unmount when the
+  // chrome hides; without this, re-showing them resets to 0:00 / play because
+  // the fresh component starts at 0 and the poll only runs while playing — so a
+  // paused or ended video would lose its position and the replay state.
+  useEffect(() => {
+    // Mute is read first and unconditionally: it persists on the player across
+    // a chrome hide/show, but this fresh mount's useState(false) would otherwise
+    // show an un-muted icon while audio stays muted. (Duration may still be 0
+    // here on HLS, so the time/ended seed stays behind the guard below.)
+    setIsMuted(player.muted)
+    const d = player.duration
+    if (!Number.isFinite(d) || d <= 0) return
+    const t = player.currentTime
+    setCurrentTime(t)
+    setDuration(d)
+    setEnded(!player.playing && t >= d - 0.5)
+  }, [player])
+
   const togglePlayPause = useCallback(() => {
+    onInteract?.()
     // Read the live player state, NOT the React `isPlaying` snapshot. A source
     // swap (e.g. switching language mid-play) can leave expo-video paused
     // without emitting a playingChange, so the snapshot goes stale-true.
@@ -54,51 +124,109 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
     // wedging the controls so the video can never be resumed without a remount.
     if (player.playing) {
       player.pause()
-    } else {
-      player.play()
+      return
     }
-  }, [player])
+    // Replay from the start if the video has reached the end — otherwise
+    // play() is a no-op on a finished video and nothing happens.
+    const dur = player.duration
+    if (Number.isFinite(dur) && dur > 0 && player.currentTime >= dur - 0.5) {
+      player.currentTime = 0
+      setCurrentTime(0)
+    }
+    player.play()
+  }, [player, onInteract])
 
   const toggleMute = useCallback(() => {
+    onInteract?.()
     const newMuted = !isMuted
     player.muted = newMuted
     setIsMuted(newMuted)
-  }, [player, isMuted])
+  }, [player, isMuted, onInteract])
 
-  const progress = duration > 0 ? currentTime / duration : 0
+  const skip = useCallback(
+    (delta: number) => {
+      onInteract?.()
+      const target = applySkip(player.currentTime, delta, player.duration)
+      if (target == null) return
+      player.currentTime = target
+      setCurrentTime(target)
+      if (target < player.duration - 0.5) setEnded(false)
+    },
+    [player, onInteract],
+  )
+
+  const handleSeek = useCallback(
+    (time: number) => {
+      onInteract?.()
+      player.currentTime = time
+      setCurrentTime(time)
+      if (time < player.duration - 0.5) setEnded(false)
+    },
+    [player, onInteract],
+  )
+
+  const handleScrubChange = useCallback(
+    (active: boolean, previewTime: number | null) => {
+      scrubbingRef.current = active
+      setScrubPreview(active ? previewTime : null)
+      if (active) onInteract?.()
+    },
+    [onInteract],
+  )
+
+  const displayedTime = scrubPreview != null ? scrubPreview : currentTime
 
   return (
     <View style={styles.container} pointerEvents="box-none">
       <View style={styles.controlsRow}>
         <Pressable
+          onPress={() => skip(-SKIP_SECONDS)}
+          style={styles.skipButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Back ${SKIP_SECONDS} seconds`}
+        >
+          <Ionicons name="play-back" size={24} color={TEXT_ON_OVERLAY} />
+        </Pressable>
+
+        <Pressable
           onPress={togglePlayPause}
           style={styles.playButton}
           accessibilityRole="button"
-          accessibilityLabel={isPlaying ? "Pause" : "Play"}
+          accessibilityLabel={ended ? "Replay" : isPlaying ? "Pause" : "Play"}
         >
           <Ionicons
-            name={isPlaying ? "pause" : "play"}
+            name={ended ? "reload" : isPlaying ? "pause" : "play"}
             size={24}
             color={TEXT_ON_OVERLAY}
-            style={isPlaying ? undefined : { marginLeft: 3 }}
+            style={!ended && !isPlaying ? { marginLeft: 3 } : undefined}
           />
+        </Pressable>
+
+        <Pressable
+          onPress={() => skip(SKIP_SECONDS)}
+          style={styles.skipButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Forward ${SKIP_SECONDS} seconds`}
+        >
+          <Ionicons name="play-forward" size={24} color={TEXT_ON_OVERLAY} />
         </Pressable>
       </View>
 
       <View style={styles.bottomBar}>
         <View style={styles.timeRow}>
           <Text style={[styles.timeText, typography.caption]}>
-            {formatTime(currentTime)}
+            {formatTime(displayedTime)}
           </Text>
           <Text style={[styles.timeText, typography.caption]}>
             {formatTime(duration)}
           </Text>
         </View>
-        <View style={styles.progressTrack}>
-          <View
-            style={[styles.progressFill, { width: `${progress * 100}%` }]}
-          />
-        </View>
+        <Scrubber
+          currentTime={displayedTime}
+          duration={duration}
+          onSeek={handleSeek}
+          onScrubChange={handleScrubChange}
+        />
         <View style={styles.iconRow}>
           <Pressable
             onPress={toggleMute}
@@ -114,12 +242,19 @@ export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
           </Pressable>
           <View style={styles.rightIconGroup}>
             <Pressable
-              onPress={onFullscreen}
+              onPress={() => {
+                onInteract?.()
+                onFullscreen?.()
+              }}
               style={styles.iconButton}
               accessibilityRole="button"
-              accessibilityLabel="Fullscreen"
+              accessibilityLabel={fullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
-              <Ionicons name="expand" size={20} color={TEXT_ON_OVERLAY} />
+              <Ionicons
+                name={fullscreen ? "contract" : "expand"}
+                size={20}
+                color={TEXT_ON_OVERLAY}
+              />
             </Pressable>
           </View>
         </View>
@@ -136,6 +271,14 @@ const styles = StyleSheet.create({
   },
   controlsRow: {
     flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 28,
+  },
+  skipButton: {
+    width: 48,
+    height: 48,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -154,18 +297,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 12,
     paddingBottom: 8,
-  },
-  progressTrack: {
-    height: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-    borderRadius: 1.5,
-    marginBottom: 4,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: ACCENT,
-    borderRadius: 1.5,
   },
   timeRow: {
     flexDirection: "row",
