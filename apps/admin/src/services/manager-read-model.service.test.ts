@@ -8,6 +8,8 @@ function mockPrisma() {
     country: { findMany: vi.fn() },
     language: { findMany: vi.fn() },
     video: { findMany: vi.fn() },
+    videoSubtitle: { groupBy: vi.fn() },
+    videoDub: { groupBy: vi.fn() },
     managerCoverageSnapshot: { findMany: vi.fn() },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
@@ -93,17 +95,23 @@ describe("ManagerReadModelService", () => {
         slug: "video-one",
         label: "SHORT_FILM",
         aiMetadata: true,
-        locales: [{ title: "Video One" }],
+        locales: [{ locale: "en", languageId: "lang-en", title: "Video One" }],
         images: [{ url: "https://example.test/image.jpg" }],
         parents: [{ parentId: "parent-1" }],
-        subtitles: [
-          { languageId: "lang-a", aiGenerated: false },
-          { languageId: "lang-b", aiGenerated: true },
-        ],
-        dubs: [
-          { languageId: "lang-a", aiGenerated: false },
-          { languageId: "lang-b", aiGenerated: true },
-        ],
+      },
+    ])
+    prisma.videoSubtitle.groupBy.mockResolvedValueOnce([
+      {
+        videoId: "video-1",
+        aiGenerated: false,
+        _count: { _all: 1 },
+      },
+    ])
+    prisma.videoDub.groupBy.mockResolvedValueOnce([
+      {
+        videoId: "video-1",
+        aiGenerated: false,
+        _count: { _all: 1 },
       },
     ])
 
@@ -128,5 +136,124 @@ describe("ManagerReadModelService", () => {
         },
       },
     ])
+    expect(prisma.video.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          locales: expect.objectContaining({
+            where: {
+              deletedAt: null,
+              title: { not: null },
+              OR: [{ locale: "en" }, { languageId: { in: ["lang-a"] } }],
+            },
+          }),
+        }),
+      }),
+    )
+    expect(prisma.video.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.not.objectContaining({
+          subtitles: expect.anything(),
+          dubs: expect.anything(),
+        }),
+      }),
+    )
+    expect(prisma.videoSubtitle.groupBy).toHaveBeenCalledWith({
+      by: ["videoId", "aiGenerated"],
+      where: {
+        deletedAt: null,
+        videoId: { in: ["video-1"] },
+        languageId: { in: ["lang-a"] },
+      },
+      _count: { _all: true },
+    })
+    expect(prisma.videoDub.groupBy).toHaveBeenCalledWith({
+      by: ["videoId", "aiGenerated"],
+      where: {
+        deletedAt: null,
+        videoId: { in: ["video-1"] },
+        languageId: { in: ["lang-a"] },
+      },
+      _count: { _all: true },
+    })
+  })
+
+  it("prefers English video titles over newer non-English locales", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        coreId: "core-1",
+        slug: "video-one",
+        label: "SHORT_FILM",
+        aiMetadata: false,
+        locales: [
+          { locale: "ja", languageId: "lang-ja", title: "Japanese Title" },
+          { locale: "en", languageId: "lang-en", title: "English Title" },
+        ],
+        images: [],
+        parents: [],
+      },
+    ])
+    prisma.videoSubtitle.groupBy.mockResolvedValueOnce([])
+    prisma.videoDub.groupBy.mockResolvedValueOnce([])
+
+    const result = await service.getVideoCoverage({
+      user: MANAGER_BACKEND_PRINCIPAL,
+      languageIds: ["lang-en", "lang-be"],
+    })
+
+    expect(result[0]?.title).toBe("English Title")
+  })
+
+  it("uses a selected-language title when English is absent", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        coreId: "core-1",
+        slug: "video-one",
+        label: "SHORT_FILM",
+        aiMetadata: false,
+        locales: [
+          { locale: "ja", languageId: "lang-ja", title: "Japanese Title" },
+          { locale: "be", languageId: "lang-be", title: "Belarusian Title" },
+        ],
+        images: [],
+        parents: [],
+      },
+    ])
+    prisma.videoSubtitle.groupBy.mockResolvedValueOnce([])
+    prisma.videoDub.groupBy.mockResolvedValueOnce([])
+
+    const result = await service.getVideoCoverage({
+      user: MANAGER_BACKEND_PRINCIPAL,
+      languageIds: ["lang-be"],
+    })
+
+    expect(result[0]?.title).toBe("Belarusian Title")
+  })
+
+  it("falls back to the Manager slug path when no preferred locale exists", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        coreId: "core-1",
+        slug: "video-one",
+        label: "SHORT_FILM",
+        aiMetadata: false,
+        locales: [
+          { locale: "ja", languageId: "lang-ja", title: "Japanese Title" },
+        ],
+        images: [],
+        parents: [],
+      },
+    ])
+    prisma.videoSubtitle.groupBy.mockResolvedValueOnce([])
+    prisma.videoDub.groupBy.mockResolvedValueOnce([])
+
+    const result = await service.getVideoCoverage({
+      user: MANAGER_BACKEND_PRINCIPAL,
+      languageIds: ["lang-be"],
+    })
+
+    expect(result[0]?.title).toBeNull()
   })
 })

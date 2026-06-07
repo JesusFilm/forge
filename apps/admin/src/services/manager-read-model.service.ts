@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "./errors"
@@ -49,6 +49,18 @@ export type ManagerCoverageSnapshot = {
   languageCoverage: unknown
 }
 
+type CoverageAggregateRow = {
+  videoId: string | null
+  aiGenerated: boolean
+  _count: { _all: number }
+}
+
+type VideoTitleLocale = {
+  locale: string | null
+  languageId: string | null
+  title: string | null
+}
+
 function assertManagerReadAccess(user: Principal | null) {
   if (!hasPermission(user, "read:manager-read-models")) {
     throw new ForbiddenError()
@@ -72,21 +84,56 @@ function nameFrom(
   return first ?? ""
 }
 
-function countByAiGenerated(
-  rows: Array<{ languageId?: string | null; aiGenerated: boolean }>,
-  languageIds: string[],
-): ManagerCoverageCounts {
-  const selected = new Set(languageIds)
-  const scoped =
-    selected.size === 0
-      ? rows
-      : rows.filter(
-          (row) => row.languageId != null && selected.has(row.languageId),
-        )
-  return {
-    human: scoped.filter((row) => !row.aiGenerated).length,
-    ai: scoped.filter((row) => row.aiGenerated).length,
+function buildCoverageCountMap(
+  rows: CoverageAggregateRow[],
+): Map<string, ManagerCoverageCounts> {
+  const countsByVideoId = new Map<string, ManagerCoverageCounts>()
+
+  for (const row of rows) {
+    if (row.videoId == null) continue
+
+    const counts = countsByVideoId.get(row.videoId) ?? { human: 0, ai: 0 }
+    if (row.aiGenerated) {
+      counts.ai += row._count._all
+    } else {
+      counts.human += row._count._all
+    }
+    countsByVideoId.set(row.videoId, counts)
   }
+
+  return countsByVideoId
+}
+
+function countsForVideo(
+  countsByVideoId: Map<string, ManagerCoverageCounts>,
+  videoId: string,
+): ManagerCoverageCounts {
+  return countsByVideoId.get(videoId) ?? { human: 0, ai: 0 }
+}
+
+function titleFrom(
+  locales: VideoTitleLocale[],
+  selectedLanguageIds: string[],
+): string | null {
+  const titledLocales = locales.filter(
+    (
+      locale,
+    ): locale is VideoTitleLocale & {
+      title: string
+    } => typeof locale.title === "string" && locale.title.trim().length > 0,
+  )
+
+  const englishLocale = titledLocales.find((locale) => locale.locale === "en")
+  if (englishLocale) return englishLocale.title
+
+  for (const selectedLanguageId of selectedLanguageIds) {
+    const selectedLocale = titledLocales.find(
+      (locale) => locale.languageId === selectedLanguageId,
+    )
+    if (selectedLocale) return selectedLocale.title
+  }
+
+  return null
 }
 
 export class ManagerReadModelService {
@@ -183,34 +230,82 @@ export class ManagerReadModelService {
   }): Promise<ManagerVideoCoverage[]> {
     assertManagerReadAccess(user)
 
+    const titleLocaleFilters: Prisma.VideoLocaleWhereInput[] = [
+      { locale: "en" },
+    ]
+    if (languageIds.length > 0) {
+      titleLocaleFilters.push({ languageId: { in: languageIds } })
+    }
+
     const videos = await this.prisma.video.findMany({
       where: { deletedAt: null },
       include: {
-        locales: { orderBy: { updatedAt: "desc" }, take: 1 },
+        locales: {
+          where: {
+            deletedAt: null,
+            title: { not: null },
+            OR: titleLocaleFilters,
+          },
+          select: {
+            locale: true,
+            languageId: true,
+            title: true,
+          },
+          orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+        },
         images: {
           where: { deletedAt: null },
           orderBy: { updatedAt: "desc" },
           take: 1,
         },
         parents: true,
-        subtitles: { where: { deletedAt: null } },
-        dubs: { where: { deletedAt: null } },
       },
       orderBy: { updatedAt: "desc" },
     })
 
+    const videoIds = videos.map((video) => video.id)
+    const languageFilter =
+      languageIds.length > 0 ? { languageId: { in: languageIds } } : {}
+
+    const [subtitleCounts, dubCounts] =
+      videoIds.length === 0
+        ? [[], []]
+        : await Promise.all([
+            this.prisma.videoSubtitle.groupBy({
+              by: ["videoId", "aiGenerated"],
+              where: {
+                deletedAt: null,
+                videoId: { in: videoIds },
+                ...languageFilter,
+              },
+              _count: { _all: true },
+            }),
+            this.prisma.videoDub.groupBy({
+              by: ["videoId", "aiGenerated"],
+              where: {
+                deletedAt: null,
+                videoId: { in: videoIds },
+                ...languageFilter,
+              },
+              _count: { _all: true },
+            }),
+          ])
+
+    const subtitleCountsByVideoId = buildCoverageCountMap(subtitleCounts)
+    const dubCountsByVideoId = buildCoverageCountMap(dubCounts)
+
     return videos.map((video) => ({
       documentId: video.id,
       coreId: video.coreId ?? null,
-      title: video.locales[0]?.title ?? null,
+      title: titleFrom(video.locales, languageIds),
       label: video.label ?? null,
       slug: video.slug ?? null,
       aiMetadata: video.aiMetadata ?? null,
       imageUrl: video.images[0]?.url ?? null,
       parentDocumentIds: video.parents.map((parent) => parent.parentId),
       coverage: {
-        subtitles: countByAiGenerated(video.subtitles, languageIds),
-        audio: countByAiGenerated(video.dubs, languageIds),
+        subtitles: countsForVideo(subtitleCountsByVideoId, video.id),
+        audio: countsForVideo(dubCountsByVideoId, video.id),
       },
     }))
   }

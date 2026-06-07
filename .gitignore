@@ -25,6 +25,16 @@ local.properties
 .tmp/
 **/.tmp/
 
+# Mastra CLI build output (regenerated on each `mastra dev` / `mastra build`)
+**/.mastra/
+
+# Playwright / vitest test output (per-run artifacts)
+test-results/
+**/test-results/
+
+# Local package tarballs (pnpm pack output)
+*.tgz
+
 # Xcode user state (do not commit)
 **/xcuserdata/
 **/*.xcuserstate
@@ -35,6 +45,7 @@ local.properties
 .claude/debug/
 .claude/telemetry/
 .claude/worktrees/
+.claude/secrets.local.md
 
 # Compound engineering working files
 .context/

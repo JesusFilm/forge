@@ -13,13 +13,21 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import {
+  WATCH_HOME_MUX_INSERTS,
+  WATCH_HOME_PLAYLIST_SEQUENCE,
   getWatchHomeCoreIds,
   WATCH_HOME_CACHE_VERSION,
+  WATCH_HOME_COLLECTION_BLACKLIST,
   WATCH_HOME_HERO_SOURCE_IDS,
   WATCH_HOME_SECTIONS,
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "@/lib/watch-home-config"
+import type {
+  WatchHomeCarouselPool,
+  WatchHomeCarouselSequenceData,
+  WatchHomeTvCarouselVideoSlide,
+} from "@/lib/watch-home-carousel-sequence"
 import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
 
 type WatchHomeVideosData = AdminResultOf<typeof getWatchHomeVideosOperation>
@@ -57,6 +65,7 @@ export type WatchHomeCard = {
   href: string | null
   imageUrl: string | null
   imageAlt: string
+  hls: string | null
   playbackId: string | null
   durationSeconds: number | null
   childCount: number
@@ -83,6 +92,7 @@ export type WatchHomeSection = {
 export type WatchHomeModel = {
   heroSlides: WatchHomeHeroSlide[]
   sections: WatchHomeSection[]
+  carousel: WatchHomeCarouselSequenceData
   missingData: WatchHomeMissingData[]
 }
 
@@ -290,8 +300,10 @@ function normalizeCard(args: {
     href,
     imageUrl,
     imageAlt: locale?.imageAlt ?? title,
+    hls: selectedVariant?.hls ?? null,
     playbackId,
-    durationSeconds: args.video.durationSeconds ?? null,
+    durationSeconds:
+      selectedVariant?.duration ?? args.video.durationSeconds ?? null,
     childCount,
     parentCoreId: args.parent?.coreId ?? null,
     parentSlug: args.parent?.slug ?? null,
@@ -425,6 +437,147 @@ function buildSections(args: {
   }).filter((section) => section.cards.length > 0)
 }
 
+function cardToCarouselSlide(
+  card: WatchHomeCard,
+): WatchHomeTvCarouselVideoSlide | null {
+  if (!card.hls) return null
+  if (WATCH_HOME_COLLECTION_BLACKLIST.has(card.coreId)) return null
+
+  return {
+    kind: "video",
+    id: card.coreId,
+    title: card.title,
+    description: card.description,
+    label: card.label,
+    href: card.href,
+    posterUrl: card.imageUrl,
+    thumbnailUrl: card.imageUrl,
+    imageAlt: card.imageAlt,
+    src: card.hls,
+    playbackId: card.playbackId,
+    durationSeconds: card.durationSeconds,
+  }
+}
+
+function playableSlidesForSource(args: {
+  sectionId: string
+  sourceId: string
+  videoByCoreId: Map<string, AdminHomeVideo>
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeTvCarouselVideoSlide[] {
+  if (WATCH_HOME_COLLECTION_BLACKLIST.has(args.sourceId)) return []
+
+  const parent = args.videoByCoreId.get(args.sourceId)
+  if (!parent) {
+    args.missingData.push(
+      missingEntry({
+        sectionId: args.sectionId,
+        sourceId: args.sourceId,
+        field: "record",
+        detail: `Admin watchHomeVideos did not return carousel pool source Core id ${args.sourceId}.`,
+        fallback: "Pool skipped",
+        followUp:
+          "Verify the Core id exists in admin sync or replace the carousel playlist source.",
+      }),
+    )
+    return []
+  }
+
+  const childSlides = (parent.children ?? [])
+    .map((rel) =>
+      rel.child
+        ? normalizeCard({
+            sectionId: args.sectionId,
+            sourceId: args.sourceId,
+            video: rel.child,
+            parent,
+            languageSlug: args.languageSlug,
+          })
+        : null,
+    )
+    .filter((card): card is WatchHomeCard => card != null)
+    .map(cardToCarouselSlide)
+    .filter((slide): slide is WatchHomeTvCarouselVideoSlide => slide != null)
+
+  if (childSlides.length > 0) return childSlides
+
+  const card = normalizeCard({
+    sectionId: args.sectionId,
+    sourceId: args.sourceId,
+    video: parent,
+    languageSlug: args.languageSlug,
+  })
+  const slide = card ? cardToCarouselSlide(card) : null
+  return slide ? [slide] : []
+}
+
+function buildCarouselPools(args: {
+  videoByCoreId: Map<string, AdminHomeVideo>
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeCarouselPool[] {
+  const pools = WATCH_HOME_PLAYLIST_SEQUENCE.map((group, index) => {
+    const collectionIds = group.filter(
+      (id) => !WATCH_HOME_COLLECTION_BLACKLIST.has(id),
+    )
+    const videos = collectionIds.flatMap((sourceId) =>
+      playableSlidesForSource({
+        sectionId: "home-carousel",
+        sourceId,
+        videoByCoreId: args.videoByCoreId,
+        languageSlug: args.languageSlug,
+        missingData: args.missingData,
+      }),
+    )
+
+    return {
+      id: `playlist-${index}-${collectionIds.join("|")}`,
+      collectionIds,
+      videos,
+    }
+  }).filter((pool) => pool.videos.length > 0)
+
+  const shortFilmById = new Map<string, WatchHomeTvCarouselVideoSlide>()
+  for (const video of args.videoByCoreId.values()) {
+    const cards: WatchHomeCard[] = []
+    const parentCard = normalizeCard({
+      sectionId: "home-carousel-short-films",
+      sourceId: video.coreId ?? video.documentId ?? "unknown",
+      video,
+      languageSlug: args.languageSlug,
+    })
+    if (parentCard) cards.push(parentCard)
+    for (const rel of video.children ?? []) {
+      if (!rel.child || rel.child.label !== "SHORT_FILM") continue
+      const childCard = normalizeCard({
+        sectionId: "home-carousel-short-films",
+        sourceId: video.coreId ?? video.documentId ?? "unknown",
+        video: rel.child,
+        parent: video,
+        languageSlug: args.languageSlug,
+      })
+      if (childCard) cards.push(childCard)
+    }
+
+    for (const card of cards) {
+      if (card.label !== "Short film") continue
+      const slide = cardToCarouselSlide(card)
+      if (slide) shortFilmById.set(slide.id, slide)
+    }
+  }
+
+  if (shortFilmById.size > 0) {
+    pools.push({
+      id: "shortFilms",
+      collectionIds: ["shortFilms"],
+      videos: [...shortFilmById.values()],
+    })
+  }
+
+  return pools
+}
+
 function dedupeMissingData(
   missingData: readonly WatchHomeMissingData[],
 ): WatchHomeMissingData[] {
@@ -504,6 +657,10 @@ export function buildWatchHomeModelFromVideos(args: {
   })
 
   const sections = buildSections({ videoByCoreId, languageSlug, missingData })
+  const carousel = {
+    pools: buildCarouselPools({ videoByCoreId, languageSlug, missingData }),
+    muxInserts: WATCH_HOME_MUX_INSERTS,
+  }
   const cardMissing = [
     ...heroSlides.flatMap((card) => card.missingData),
     ...sections.flatMap((section) =>
@@ -514,6 +671,7 @@ export function buildWatchHomeModelFromVideos(args: {
   return {
     heroSlides,
     sections,
+    carousel,
     missingData: dedupeMissingData([...missingData, ...cardMissing]),
   }
 }

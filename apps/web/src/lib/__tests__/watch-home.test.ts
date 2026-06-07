@@ -59,6 +59,11 @@ function makeChild(overrides: Record<string, unknown> = {}) {
     slug: "episode-one",
     label: "EPISODE",
     durationSeconds: 87,
+    primaryLanguage: {
+      coreId: "529",
+      bcp47: "en",
+      slug: "english",
+    },
     images: [makeImage({ mobileCinematicHigh: "https://cdn.example/ep1.jpg" })],
     locales: [
       {
@@ -69,6 +74,14 @@ function makeChild(overrides: Record<string, unknown> = {}) {
         snippet: "The first episode",
         imageAlt: "Episode One still",
       },
+    ],
+    variants: [
+      makeVariant({
+        documentId: "child-variant-1",
+        hls: "https://stream.example/episode-one.m3u8",
+        duration: 87,
+        muxVideo: { playbackId: "mux-episode-one" },
+      }),
     ],
     ...overrides,
   }
@@ -146,6 +159,19 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(gospelRail?.cards.map((card) => card.coreId)).toEqual([
       "1_jf-0-0",
       "2_GOJ-0-0",
+    ])
+    expect(model.carousel.pools[0]).toMatchObject({
+      collectionIds: ["1_jf-0-0"],
+    })
+    expect(model.carousel.pools[0]?.videos[0]).toMatchObject({
+      kind: "video",
+      title: "Jesus",
+      src: "https://stream.example/jesus.m3u8",
+    })
+    expect(model.carousel.muxInserts.map((insert) => insert.id)).toEqual([
+      "welcome-start",
+      "join-us",
+      "telling-the-story-of-jesus",
     ])
   })
 
@@ -229,6 +255,47 @@ describe("buildWatchHomeModelFromVideos", () => {
     )
     expect(course?.cards[0]?.parentCoreId).toBe("8_NBC")
     expect(course?.cards.some((card) => card.coreId === "8_NBC")).toBe(false)
+  })
+
+  it("filters blacklisted child videos from carousel pools", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          documentId: "origins",
+          coreId: "7_Origins",
+          slug: "origins",
+          label: "COLLECTION",
+          children: [
+            {
+              child: makeChild({
+                documentId: "blacklisted",
+                coreId: "7_Origins4Connect",
+                slug: "connect",
+              }),
+            },
+            {
+              child: makeChild({
+                documentId: "allowed",
+                coreId: "7_OriginsAllowed",
+                slug: "allowed",
+              }),
+            },
+          ],
+        }),
+      ] as never,
+    })
+
+    const originsPool = model.carousel.pools.find((pool) =>
+      pool.collectionIds.includes("7_Origins"),
+    )
+
+    expect(originsPool?.videos.map((video) => video.id)).toEqual([
+      "7_OriginsAllowed",
+    ])
   })
 
   it("uses Mux thumbnails when admin images are missing and records the image gap", async () => {

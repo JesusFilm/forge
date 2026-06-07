@@ -1,8 +1,8 @@
 import Image from "next/image"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
-import { WatchHomeHero } from "@/components/home/WatchHomeHero"
 import { WatchHomePromo } from "@/components/home/WatchHomePromo"
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
+import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
 type WatchHomePageProps = {
@@ -56,7 +56,10 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
         </div>
 
         <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px] overflow-hidden">
-          <WatchHomeHero slides={model.heroSlides} />
+          <WatchHomeTvCarousel
+            slides={model.heroSlides}
+            sequence={model.carousel}
+          />
           {model.sections.map((section) => (
             <WatchHomeSection key={section.id} section={section} />
           ))}

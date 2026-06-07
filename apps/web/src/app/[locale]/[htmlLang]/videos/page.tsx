@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
-import { WATCH_BASE_PATH, WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
+import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 
 export const revalidate = 60
 export const dynamic = "force-static"
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: "All Videos",
   description: "Browse the full catalog of JesusFilm videos.",
   alternates: {
-    canonical: `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/videos`,
+    canonical: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/videos`,
   },
 }
 

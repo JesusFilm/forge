@@ -5,6 +5,7 @@ import {
   type MediaImageEnrichmentStatus,
   type MediaAssetStatus,
   type SourceTier,
+  type UserRole,
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
@@ -32,7 +33,7 @@ type QueueItem = {
   meta: string
   detail?: string
   statusLabel: string
-  statusTone: "success" | "warning" | "danger" | "info" | "muted"
+  statusTone: DashboardStatusTone
 }
 
 type Insight = {
@@ -46,26 +47,81 @@ type TableRow = {
   title: string
   detail: string
   statusLabel: string
-  statusTone: "success" | "warning" | "danger" | "info" | "muted"
+  statusTone: DashboardStatusTone
   meta: string
-  productAccess?: ProductAccess[]
 }
 
-type ProductAccess = {
-  key: "manager"
-  label: string
-  active: boolean
-  statusLabel: string
-  statusTone: "success" | "warning" | "danger" | "info" | "muted"
-  roleLabel?: string
-}
-
-export type LanguageDiagnosticTone =
+export type DashboardStatusTone =
   | "success"
   | "warning"
   | "danger"
   | "info"
   | "muted"
+
+type UserProductAccessRoleValue =
+  | "NO_ACCESS"
+  | "OPERATOR"
+  | "STUDIO_ACCESS"
+  | UserRole
+
+type UserProductAccessRoleOption = {
+  value: UserProductAccessRoleValue
+  label: string
+}
+
+export type UserProductAccess = {
+  key: "admin" | "manager" | "mastra-studio"
+  label: string
+  selectedRole: UserProductAccessRoleValue
+  roleOptions: UserProductAccessRoleOption[]
+  statusTone: DashboardStatusTone
+  disabled: boolean
+  backed: boolean
+  helperText: string
+}
+
+export type UserTableRow = TableRow & {
+  productAccess: UserProductAccess[]
+}
+
+const ADMIN_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "VIEWER", label: "Viewer" },
+  { value: "EDITOR", label: "Editor" },
+  { value: "ADMIN", label: "Admin" },
+] satisfies UserProductAccessRoleOption[]
+
+const MANAGER_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "OPERATOR", label: "Operator" },
+] satisfies UserProductAccessRoleOption[]
+
+const MASTRA_STUDIO_ROLE_OPTIONS = [
+  { value: "NO_ACCESS", label: "No access" },
+  { value: "STUDIO_ACCESS", label: "Studio access" },
+] satisfies UserProductAccessRoleOption[]
+
+export type UserAccessSourceRow = {
+  id: string
+  email: string
+  role: UserRole
+  emailVerified: boolean
+  updatedAt: Date
+  managerMembership: {
+    role: "OPERATOR"
+    revokedAt: Date | null
+  } | null
+}
+
+type UserAccessBaseRow = Omit<UserAccessSourceRow, "managerMembership">
+
+type UserAccessMembershipRow = {
+  userId: string
+  role: "OPERATOR"
+  revokedAt: Date | null
+}
+
+export type LanguageDiagnosticTone = DashboardStatusTone
 
 export type LanguageDiagnosticName = {
   locale: string
@@ -233,7 +289,7 @@ type SystemStatusData = {
     entity: string
     source: string
     statusLabel: string
-    statusTone: "success" | "warning" | "danger" | "info" | "muted"
+    statusTone: DashboardStatusTone
     lastRun: string
   }>
   incidents: QueueItem[]
@@ -315,7 +371,7 @@ type MediaAssetWithEnglishLocale = Awaited<
 
 type UsersData = {
   metrics: Metric[]
-  rows: TableRow[]
+  rows: UserTableRow[]
   insights: Insight[]
 }
 
@@ -1977,7 +2033,7 @@ export async function loadMediaData(principal: Principal): Promise<MediaData> {
 }
 
 export async function loadUsersData(): Promise<UsersData> {
-  const [counts, rows] = await Promise.all([
+  const [counts, userRows] = await Promise.all([
     getUserRoleCounts(),
     withTableFallback(
       () =>
@@ -1988,29 +2044,44 @@ export async function loadUsersData(): Promise<UsersData> {
             role: true,
             emailVerified: true,
             updatedAt: true,
-            managerMembership: {
-              select: {
-                role: true,
-                revokedAt: true,
-              },
-            },
           },
           orderBy: { updatedAt: "desc" },
           take: 8,
         }),
-      [] as Array<{
-        id: string
-        email: string
-        role: string
-        emailVerified: boolean
-        updatedAt: Date
-        managerMembership: {
-          role: "OPERATOR"
-          revokedAt: Date | null
-        } | null
-      }>,
+      [] as UserAccessBaseRow[],
     ),
   ])
+  const userIds = userRows.map((row) => row.id)
+  const managerMemberships =
+    userIds.length > 0
+      ? await withTableFallback(
+          () =>
+            prisma.managerMembership.findMany({
+              where: { userId: { in: userIds } },
+              select: {
+                userId: true,
+                role: true,
+                revokedAt: true,
+              },
+            }),
+          [] as UserAccessMembershipRow[],
+        )
+      : []
+  const managerMembershipByUserId = new Map(
+    managerMemberships.map((membership) => [membership.userId, membership]),
+  )
+  const rows = userRows.map((row): UserAccessSourceRow => {
+    const managerMembership = managerMembershipByUserId.get(row.id)
+    return {
+      ...row,
+      managerMembership: managerMembership
+        ? {
+            role: managerMembership.role,
+            revokedAt: managerMembership.revokedAt,
+          }
+        : null,
+    }
+  })
 
   return {
     metrics: [
@@ -2030,33 +2101,7 @@ export async function loadUsersData(): Promise<UsersData> {
         footer: "PENDING_APPROVAL",
       },
     ],
-    rows: rows.map((row) => {
-      const hasManagerAccess = Boolean(
-        row.managerMembership && !row.managerMembership.revokedAt,
-      )
-
-      return {
-        key: row.id,
-        title: row.email,
-        detail: row.id,
-        statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
-        statusTone:
-          !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
-        meta: formatDateTime(row.updatedAt),
-        productAccess: [
-          {
-            key: "manager",
-            label: "Manager",
-            active: hasManagerAccess,
-            statusLabel: hasManagerAccess ? "Enabled" : "Disabled",
-            statusTone: hasManagerAccess ? "success" : "muted",
-            roleLabel: hasManagerAccess
-              ? row.managerMembership?.role
-              : undefined,
-          },
-        ],
-      }
-    }),
+    rows: rows.map(buildUserTableRow),
     insights: [
       {
         label: "Role Mappings",
@@ -2073,6 +2118,55 @@ export async function loadUsersData(): Promise<UsersData> {
         label: "Auth Issuer",
         value: new URL(env.AUTH_ISSUER_URL).host,
         detail: "Standalone Auth service used for admin OAuth.",
+      },
+    ],
+  }
+}
+
+export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
+  const hasManagerAccess = Boolean(
+    row.managerMembership && !row.managerMembership.revokedAt,
+  )
+
+  return {
+    key: row.id,
+    title: row.email,
+    detail: row.id,
+    statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
+    statusTone:
+      !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
+    meta: formatDateTime(row.updatedAt),
+    productAccess: [
+      {
+        key: "admin",
+        label: "Admin",
+        selectedRole: row.emailVerified ? row.role : "NO_ACCESS",
+        roleOptions: ADMIN_ROLE_OPTIONS,
+        statusTone:
+          !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
+        disabled: true,
+        backed: false,
+        helperText: "Status role",
+      },
+      {
+        key: "manager",
+        label: "Manager",
+        selectedRole: hasManagerAccess ? "OPERATOR" : "NO_ACCESS",
+        roleOptions: MANAGER_ROLE_OPTIONS,
+        statusTone: hasManagerAccess ? "success" : "muted",
+        disabled: false,
+        backed: true,
+        helperText: "Backed",
+      },
+      {
+        key: "mastra-studio",
+        label: "Mastra Studio",
+        selectedRole: "NO_ACCESS",
+        roleOptions: MASTRA_STUDIO_ROLE_OPTIONS,
+        statusTone: "muted",
+        disabled: true,
+        backed: false,
+        helperText: "Mock only",
       },
     ],
   }

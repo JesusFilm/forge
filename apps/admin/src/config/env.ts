@@ -243,6 +243,48 @@ export const env = createEnv({
     // Optional OpenRouter model override used by the production search trace
     // query classifier. Defaults to the classifier module's pinned model.
     OPENROUTER_QUERY_CLASSIFIER_MODEL: z.string().min(1).optional(),
+    // -----------------------------------------------------------------
+    // Experience-AI chat runtime (in-admin Mastra agents) — additive
+    // block. AI_GATEWAY_* names follow apps/mastra's convention for the
+    // same self-hosted OpenAI-compatible gateway; CHAT_* keys are
+    // model-scoped separately from EMBEDDINGS_* (the gateway issues
+    // per-model keys — the chat key cannot embed and vice versa).
+    // AI_GATEWAY_CHAT_ENABLED gates routing the structured chat agents
+    // through the gateway (only the literal "true" enables it).
+    // -----------------------------------------------------------------
+    GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
+    AI_GATEWAY_CHAT_BASE_URL: z.string().url().optional(),
+    AI_GATEWAY_CHAT_API_KEY: z.string().min(1).optional(),
+    AI_GATEWAY_CHAT_MODEL: z.string().min(1).optional(),
+    AI_GATEWAY_CHAT_ENABLED: z.string().optional(),
+    AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
+    AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
+    AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
+    // Embedding source for the admin AI experience generator's video search
+    // (the Mastra `searchVideos` tool). "openai" (default) keeps that search
+    // on the OpenAI `embedding` column; "gateway" routes it to Qwen + the
+    // `embedding_qwen` column. Default "openai" so this PR is behavior-neutral
+    // until the `embedding_qwen` backfill exists — the operator flips it to
+    // "gateway" only after the backfill completes (one-line reversible switch).
+    // Enum-of-strings (not boolean) so a stray value can't silently flip it.
+    AI_VIDEO_SEARCH_EMBEDDING_SOURCE: z
+      .enum(["openai", "gateway"])
+      .optional()
+      .default("openai"),
+    MASTRA_STORAGE_URL: z.string().url().optional(),
+    MASTRA_DEFAULT_PROVIDER: z
+      .enum([
+        "openrouter",
+        "ollama",
+        "openai",
+        "anthropic",
+        "google",
+        "jesusfilm",
+      ])
+      .optional(),
+    OLLAMA_BASE_URL: z.string().url().optional(),
+    OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
+    OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
   },
   client: {},
   skipValidation: !!process.env.CI,
@@ -387,6 +429,43 @@ export const env = createEnv({
     ALGOLIA_INDEX: emptyToUndefined(process.env.ALGOLIA_INDEX),
     OPENROUTER_QUERY_CLASSIFIER_MODEL: emptyToUndefined(
       process.env.OPENROUTER_QUERY_CLASSIFIER_MODEL,
+    ),
+    // Experience-AI chat runtime — additive block (see server section).
+    GOOGLE_GENERATIVE_AI_API_KEY: emptyToUndefined(
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    ),
+    AI_GATEWAY_CHAT_BASE_URL: emptyToUndefined(
+      process.env.AI_GATEWAY_CHAT_BASE_URL,
+    ),
+    AI_GATEWAY_CHAT_API_KEY: emptyToUndefined(
+      process.env.AI_GATEWAY_CHAT_API_KEY,
+    ),
+    AI_GATEWAY_CHAT_MODEL: emptyToUndefined(process.env.AI_GATEWAY_CHAT_MODEL),
+    AI_GATEWAY_CHAT_ENABLED: emptyToUndefined(
+      process.env.AI_GATEWAY_CHAT_ENABLED,
+    ),
+    AI_GATEWAY_EMBEDDINGS_BASE_URL: emptyToUndefined(
+      process.env.AI_GATEWAY_EMBEDDINGS_BASE_URL,
+    ),
+    AI_GATEWAY_EMBEDDINGS_API_KEY: emptyToUndefined(
+      process.env.AI_GATEWAY_EMBEDDINGS_API_KEY,
+    ),
+    AI_GATEWAY_EMBEDDINGS_MODEL: emptyToUndefined(
+      process.env.AI_GATEWAY_EMBEDDINGS_MODEL,
+    ),
+    AI_VIDEO_SEARCH_EMBEDDING_SOURCE: emptyToUndefined(
+      process.env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE,
+    ),
+    MASTRA_STORAGE_URL: emptyToUndefined(process.env.MASTRA_STORAGE_URL),
+    MASTRA_DEFAULT_PROVIDER: emptyToUndefined(
+      process.env.MASTRA_DEFAULT_PROVIDER,
+    ),
+    OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
+    OLLAMA_EMBEDDING_MODEL: emptyToUndefined(
+      process.env.OLLAMA_EMBEDDING_MODEL,
+    ),
+    OLLAMA_EMBEDDING_DIMENSIONS: emptyToUndefined(
+      process.env.OLLAMA_EMBEDDING_DIMENSIONS,
     ),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
   },

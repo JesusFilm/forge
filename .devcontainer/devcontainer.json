@@ -3,7 +3,6 @@
   "name": "Forge",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
-  "shutdownAction": "none",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
@@ -47,12 +46,5 @@
   },
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\"",
   "workspaceFolder": "/workspace",
-  "forwardPorts": [4111],
-  "portsAttributes": {
-    "4111": {
-      "label": "Mastra Studio",
-      "onAutoForward": "notify"
-    }
-  },
   "postCreateCommand": "uv run --no-project /opt/post_install.py"
 }

@@ -1,0 +1,95 @@
+/**
+ * searchVideos tool (U5).
+ *
+ * Lets Mastra agents call admin's existing hybrid-search service
+ * during a chat turn instead of receiving pre-fetched candidates in
+ * the prompt. Wraps `HybridSearchService.search` with a tight Zod
+ * surface scoped to what an editorial agent actually consumes.
+ *
+ * ABAC posture: the tool's `execute` runs inside the request context;
+ * the principal is pulled from `context.requestContext` and used by
+ * the service's own ABAC checks. The tool itself does NOT call Prisma
+ * directly — it goes through the service-layer entrypoint so the
+ * existing service-layer ABAC rules govern.
+ *
+ * Result shape: trimmed to fields the agent will use in block
+ * construction (id, title, description, videoId, locale). The full
+ * SearchResponse contains scoring debug + per-result metadata we
+ * don't need to feed into the agent's context.
+ */
+
+import { createTool } from "@mastra/core/tools"
+import { z } from "zod"
+
+import { env } from "@/config/env"
+import { prisma } from "@/db/client"
+import { HybridSearchService } from "@/services/hybrid-search.service"
+
+/** Exported for unit-test access; createTool wraps this in a Standard Schema. */
+export const searchVideosInputSchema = z.object({
+  q: z.string().min(1).describe("Editor's free-text search query."),
+  locale: z
+    .string()
+    .min(2)
+    .describe('BCP-47 locale (e.g. "en", "es", "fr-CA").'),
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(20)
+    .default(8)
+    .describe("Max results to return."),
+})
+
+const inputSchema = searchVideosInputSchema
+
+const outputSchema = z.object({
+  videos: z.array(
+    z.object({
+      videoId: z.string(),
+      title: z.string(),
+      snippet: z.string(),
+      slug: z.string(),
+      imageUrl: z.string().nullable(),
+    }),
+  ),
+})
+
+export const searchVideosTool = createTool({
+  id: "searchVideos",
+  description:
+    "Search the JesusFilm video library for videos matching the editor's intent. Returns videoIds, titles, descriptions, and slugs. Use the returned videoId values verbatim in block videoId fields — never invent ids.",
+  inputSchema,
+  outputSchema,
+  execute: async (inputData, context) => {
+    void context?.requestContext // principal pulled here when service-layer ABAC needs it
+    const service = new HybridSearchService({ prisma })
+    const response = await service.search({
+      query: inputData.q,
+      locale: inputData.locale,
+      limit: inputData.limit,
+      contentTypes: ["video"],
+      // AI experience-gen video search source, operator-controlled via
+      // AI_VIDEO_SEARCH_EMBEDDING_SOURCE (default "openai"). Flip to
+      // "gateway" — Qwen 1536 query + `embedding_qwen` column, no paid-API
+      // dependency — only AFTER the embedding_qwen backfill exists, else the
+      // search hits an empty column. One-line reversible switch. Public
+      // search omits this arg entirely and stays on OpenAI + `embedding`.
+      // U3 of the content-embeddings-gateway-migration pilot; see
+      // docs/plans/2026-06-05-001-feat-content-embeddings-gateway-migration-plan.md.
+      embeddingSource: env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE,
+    })
+
+    const videos = response.results
+      .filter((result) => result.type === "video")
+      .map((result) => ({
+        videoId: result.id,
+        title: result.title,
+        snippet: result.snippet,
+        slug: result.slug,
+        imageUrl: result.imageUrl,
+      }))
+
+    return { videos }
+  },
+})

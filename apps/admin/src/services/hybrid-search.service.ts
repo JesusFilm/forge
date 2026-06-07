@@ -18,7 +18,10 @@
  */
 
 import type { PrismaClient, VideoLabel } from "@prisma/client"
-import { generateExperienceEmbedding } from "./embeddings.service"
+import {
+  generateExperienceEmbedding,
+  type EmbeddingSource,
+} from "./embeddings.service"
 import {
   fuseRankedLists,
   deduplicateResults,
@@ -67,6 +70,19 @@ export function isDilutionCapEnabled(): boolean {
   return process.env.SEARCH_DILUTION_CAP_ENABLED !== "false"
 }
 
+/**
+ * Normalize the per-call embedding source to a known value. Absent or
+ * any non-`"gateway"` value resolves to `"openai"` — the fail-safe
+ * public path. This keeps the resolution in ONE place so the query
+ * model and the read column can never diverge: only an explicit
+ * `"gateway"` opts into the Qwen vector space.
+ */
+export function resolveEmbeddingSource(
+  source: EmbeddingSource | undefined,
+): EmbeddingSource {
+  return source === "gateway" ? "gateway" : "openai"
+}
+
 export type ContentType = "video" | "experience"
 
 export const ALL_CONTENT_TYPES: readonly ContentType[] = ["video", "experience"]
@@ -110,6 +126,25 @@ export type SearchParams = {
    * via `isDebugAllowedForOrigin`; the service trusts the boolean.
    */
   debug?: boolean
+  /**
+   * Per-call embedding source. Selects BOTH the query-embedding model
+   * AND the stored vector column the semantic-video retriever reads, so
+   * the two can never cross-compare across embedding spaces:
+   *
+   * - `"openai"` (default, also for unset / unknown) — OpenRouter →
+   *   OpenAI query embed against the `embedding` column. This is the
+   *   public path: REST `/api/search`, GraphQL `Query.search`, and
+   *   scene-recommendations never pass this arg, so they are
+   *   structurally incapable of being affected (locked by
+   *   hybrid-search.regression.test.ts).
+   * - `"gateway"` — JesusFilm AI gateway (Qwen → 1536-dim) query embed
+   *   against the parallel `embedding_qwen` column. Only the Mastra
+   *   `searchVideos` tool (admin AI experience generation) opts in.
+   *
+   * U3 of the content-embeddings-gateway-migration pilot; see
+   * docs/plans/2026-06-05-001-feat-content-embeddings-gateway-migration-plan.md.
+   */
+  embeddingSource?: EmbeddingSource
 }
 
 /**
@@ -262,12 +297,18 @@ function toPgvectorText(embedding: number[]): string {
 
 /**
  * Injectable embedder signature so tests can stub the provider call
- * without mocking the module import.
+ * without mocking the module import. The optional `source` selects the
+ * embedding model per call (default `"openai"` — see SearchParams
+ * `embeddingSource`); the default embedder forwards it to
+ * `generateExperienceEmbedding`.
  */
-export type QueryEmbedder = (text: string) => Promise<number[]>
+export type QueryEmbedder = (
+  text: string,
+  source?: EmbeddingSource,
+) => Promise<number[]>
 
-const defaultEmbedder: QueryEmbedder = async (text) => {
-  const result = await generateExperienceEmbedding(text)
+const defaultEmbedder: QueryEmbedder = async (text, source = "openai") => {
+  const result = await generateExperienceEmbedding(text, { source })
   return result.embedding
 }
 
@@ -517,6 +558,11 @@ export class HybridSearchService {
     // surface to clients. Computed once per call so the warn log fires
     // at most once.
     const pipelineMode = normalizeMode(params.mode, this.logger)
+    // Resolve the per-call embedding source. Absent / unknown values
+    // fail-safe to "openai" — the known-good public path — so the
+    // query model and the stored column the semantic-video retriever
+    // reads always move together (never cross an embedding space).
+    const embeddingSource = resolveEmbeddingSource(params.embeddingSource)
     const limit = Math.min(
       Math.max(1, params.limit ?? DEFAULT_LIMIT),
       MAX_LIMIT,
@@ -542,7 +588,7 @@ export class HybridSearchService {
     let embeddingFailed = false
     recordAttempt()
     try {
-      const vector = await this.embedder(query)
+      const vector = await this.embedder(query, embeddingSource)
       queryEmbeddingText = toPgvectorText(vector)
     } catch (error) {
       embeddingFailed = true
@@ -576,6 +622,7 @@ export class HybridSearchService {
                 queryEmbedding: queryEmbeddingText,
                 locale,
                 limit: overfetchLimit,
+                embeddingSource,
               }) as Promise<RankedItem[]>)
             : Promise.resolve([]),
       })
