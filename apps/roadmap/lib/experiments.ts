@@ -30,7 +30,7 @@ export const EXPERIMENTS: Experiment[] = [
     links: [
       {
         label: "View Demo",
-        href: "https://watch.jesusfilm.org/watch/easter",
+        href: "https://watch.jesusfilm.org/watch/easter.html/english.html",
       },
     ],
     accent: "text-emerald-400",
@@ -47,7 +47,7 @@ export const EXPERIMENTS: Experiment[] = [
     links: [
       {
         label: "View Demo",
-        href: "https://watch.jesusfilm.org/watch/christmas",
+        href: "https://watch.jesusfilm.org/watch/christmas.html/english.html",
       },
     ],
     accent: "text-violet-400",

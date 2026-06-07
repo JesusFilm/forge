@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  AccessibilityInfo,
   Animated,
+  AppState,
+  BackHandler,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -10,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native"
+import { StatusBar } from "expo-status-bar"
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
@@ -22,9 +26,19 @@ import {
 } from "../../src/lib/normalizeVideo"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
-import { ACCENT } from "../../src/lib/color"
+import {
+  ACCENT_ON_DARK,
+  BLACK,
+  SURFACE_COLOR,
+  TEXT_PRIMARY,
+  hexToRgba,
+} from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import {
+  enterFullscreenLandscape,
+  exitToPortrait,
+} from "../../src/lib/orientation"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
@@ -55,7 +69,77 @@ export default function WatchVideoPage() {
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const titleOpacity = useRef(new Animated.Value(0)).current
   const [showNavTitle, setShowNavTitle] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const insets = useSafeAreaInsets()
+  // Honor reduce-motion for the scroll-to-top FAB and nav-title reveals, the
+  // way the player's chrome/subtitles already do — snap instead of fading.
+  const reduceMotionRef = useRef(false)
+
+  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      reduceMotionRef.current = v
+    })
+    const sub = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      (v) => {
+        reduceMotionRef.current = v
+      },
+    )
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // noop
+      }
+    }
+  }, [])
+
+  // Fullscreen side-effects: hide the native header + disable the iOS edge-swipe
+  // back (so it can't pop the route mid-fullscreen), and drive orientation.
+  //
+  // Orientation is driven TWO ways because react-native-screens (which
+  // expo-router's native Stack uses) owns the view controller's
+  // supportedInterfaceOrientations and overrides expo-screen-orientation's
+  // lockAsync. Setting the screen's `orientation` option is what actually
+  // rotates the view; the expo-screen-orientation calls re-assert the lock and
+  // cover the global/non-screen paths.
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: !isFullscreen,
+      gestureEnabled: !isFullscreen,
+      orientation: isFullscreen ? "landscape" : "portrait",
+    })
+    if (isFullscreen) void enterFullscreenLandscape()
+    else void exitToPortrait()
+  }, [isFullscreen, navigation])
+
+  // While fullscreen: Android hardware back exits fullscreen (not the route),
+  // and a foreground resume re-asserts the landscape-follow lock the OS may
+  // have dropped on background.
+  useEffect(() => {
+    if (!isFullscreen) return
+    const back = BackHandler.addEventListener("hardwareBackPress", () => {
+      setIsFullscreen(false)
+      return true
+    })
+    const app = AppState.addEventListener("change", (s) => {
+      if (s === "active") void enterFullscreenLandscape()
+    })
+    return () => {
+      back.remove()
+      app.remove()
+    }
+  }, [isFullscreen])
+
+  // Safety net: re-lock portrait if the screen unmounts while still fullscreen
+  // (e.g. a deep navigation away), so no other screen inherits landscape.
+  useEffect(() => {
+    return () => {
+      void exitToPortrait()
+    }
+  }, [])
 
   const {
     video,
@@ -167,16 +251,26 @@ export default function WatchVideoPage() {
   )
 
   useEffect(() => {
+    const to = showScrollTop ? 1 : 0
+    if (reduceMotionRef.current) {
+      scrollTopOpacity.setValue(to)
+      return
+    }
     Animated.timing(scrollTopOpacity, {
-      toValue: showScrollTop ? 1 : 0,
+      toValue: to,
       duration: 200,
       useNativeDriver: true,
     }).start()
   }, [showScrollTop, scrollTopOpacity])
 
   useEffect(() => {
+    const to = showNavTitle ? 1 : 0
+    if (reduceMotionRef.current) {
+      titleOpacity.setValue(to)
+      return
+    }
     Animated.timing(titleOpacity, {
-      toValue: showNavTitle ? 1 : 0,
+      toValue: to,
       duration: 200,
       useNativeDriver: true,
     }).start()
@@ -263,6 +357,22 @@ export default function WatchVideoPage() {
 
   return (
     <View style={layout.screenContainer}>
+      <StatusBar style="light" hidden={isFullscreen} />
+
+      {/* Player is pinned at the route root (outside the ScrollView) so its
+          custom fullscreen can expand to an absolute-fill window overlay above
+          the page and native header, without ever being reparented (which
+          would release the expo-video player). Inline it occupies a fixed 16:9
+          box at the top; content scrolls beneath it. */}
+      <VideoPlayer
+        streamingUrl={playerSource}
+        posterUrl={displayPoster}
+        subtitleVttSrc={subtitleVttSrc}
+        onPlayingChange={undefined}
+        fullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+      />
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.scroll}
@@ -271,13 +381,6 @@ export default function WatchVideoPage() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        <VideoPlayer
-          streamingUrl={playerSource}
-          posterUrl={displayPoster}
-          subtitleVttSrc={subtitleVttSrc}
-          onPlayingChange={undefined}
-        />
-
         <VideoMetadata
           label={video?.label ?? null}
           title={displayTitle}
@@ -350,7 +453,7 @@ export default function WatchVideoPage() {
             accessibilityRole="button"
             accessibilityLabel="Scroll to top"
           >
-            <Ionicons name="chevron-up" size={22} color="#f5f5f4" />
+            <Ionicons name="chevron-up" size={22} color={TEXT_PRIMARY} />
           </Pressable>
         </Animated.View>
       )}
@@ -372,7 +475,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   navTitle: {
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontSize: 17,
     fontWeight: "600",
     fontFamily: "System",
@@ -387,7 +490,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   retryLink: {
-    color: ACCENT,
+    // ACCENT_ON_DARK, not ACCENT: 15px link text needs >= 4.5:1 on the dark bg.
+    color: ACCENT_ON_DARK,
     fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
@@ -402,10 +506,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(41, 37, 36, 0.85)",
+    backgroundColor: hexToRgba(SURFACE_COLOR, 0.85),
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
