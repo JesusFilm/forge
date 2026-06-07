@@ -260,7 +260,7 @@ export type ContentSearchEvalGateDocsReport = {
     requestModel: string
     nativeDimensions: number
     finalDimensions: number
-    transformVersion: string
+    transformVersion: string | null
   }
   gate: {
     backfillReady: boolean

@@ -47,7 +47,7 @@ function depsFor(input?: {
       requestModel: "embeddings",
       nativeDimensions: 1536,
       finalDimensions: 1536,
-      transformVersion: "matryoshka-truncate-1536-v1",
+      transformVersion: null,
     })),
     writeJson: vi.fn(async () => undefined),
     stdout: vi.fn(),
@@ -241,7 +241,7 @@ describe("defaultContentEmbeddingProviderForGate", () => {
       requestModel: "embeddings",
       nativeDimensions: 1536,
       finalDimensions: 1536,
-      transformVersion: "matryoshka-truncate-1536-v1",
+      transformVersion: null,
     })
 
     vi.unstubAllEnvs()

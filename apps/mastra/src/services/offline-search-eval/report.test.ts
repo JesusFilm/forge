@@ -27,7 +27,7 @@ const contentEmbeddingProvider = {
   requestModel: "embeddings",
   nativeDimensions: 1536,
   finalDimensions: 1536,
-  transformVersion: "matryoshka-truncate-1536-v1",
+  transformVersion: null,
 } as const
 
 const result = {

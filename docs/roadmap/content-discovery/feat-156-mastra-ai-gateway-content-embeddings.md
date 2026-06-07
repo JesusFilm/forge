@@ -27,15 +27,16 @@ tags:
 Mastra now owns background transcript, scene, and experience embedding
 generation, but the shared provider path still depends on the OpenRouter/OpenAI
 embedding key posture. The Jesus Film AI Gateway is available as an
-OpenAI-compatible embeddings endpoint and returns 4096-dimensional vectors by
-default.
+OpenAI-compatible embeddings endpoint, and the current production endpoint has
+been verified to return native 1536-dimensional unit vectors for
+`model: embeddings`.
 
 Admin's pgvector columns, ingest contracts, indexes, and search retrievers
 still use 1536-dimensional vectors. The provider migration must therefore keep
-the existing 1536 contract by truncating gateway vectors and re-normalizing
-them before Admin ingest. Production content vectors should only be replaced
-after the full Mastra local eval suite passes with an assigned judge and a
-durable full JSON report.
+the existing 1536 contract without applying a client transform to the current
+native-1536 gateway output. Production content vectors should only be replaced
+after the full Mastra eval suite passes with an assigned judge and a durable
+full JSON report bound to the current native-1536 provider tuple.
 
 ## Entry Points - Read These First
 
@@ -75,9 +76,11 @@ rg -n "mastraRunId|dimensions: 1536|model-upgrade|provider" apps/admin/src/servi
 
 1. Add Jesus Film AI Gateway embedding provider configuration to Mastra without
    reusing Admin live query embedding configuration or exposing secrets.
-2. Extend the shared Mastra provider helper so gateway-native vectors can be
-   transformed into the existing 1536-dimensional Admin ingest contract by
-   truncating and re-normalizing.
+2. Extend the shared Mastra provider helper so gateway-native vectors keep the
+   existing 1536-dimensional Admin ingest contract. Current production
+   native-1536 responses pass through without a client transform; the generic
+   4096-to-1536 truncation/re-normalization path remains covered for future
+   gateway variants that truly return 4096.
 3. Keep transcript, scene, and experience workflows using the shared provider
    helper and type-specific Admin ingest endpoints.
 4. Add provider metadata and validation coverage so malformed gateway responses,
@@ -107,9 +110,10 @@ rg -n "mastraRunId|dimensions: 1536|model-upgrade|provider" apps/admin/src/servi
   and rejects non-HTTPS or non-allowlisted gateway hosts before credentials can
   be sent.
 - The shared Mastra provider helper requests the normal gateway embedding
-  response without a `dimensions` field, validates provider shape/count/order,
-  truncates gateway-native vectors to 1536 dimensions, and re-normalizes before
-  workflow handoff.
+  response without a `dimensions` field and validates provider
+  shape/count/order before workflow handoff. Earlier local validation used a
+  4096-native gateway response and transformed it to 1536; current production
+  gateway mode is native 1536 and records `embedding_transform_version=NULL`.
 - Transcript, scene, and experience workflows send provider/model/native
   dimensions/transform provenance through their existing type-specific Admin
   ingest contracts.
@@ -129,9 +133,15 @@ rg -n "mastraRunId|dimensions: 1536|model-upgrade|provider" apps/admin/src/servi
 
 ## Operator Sequence
 
-1. Generate gateway-backed content vectors against a prod-like local Admin
+1. Merge the native-1536 provenance fix, deploy Admin and Mastra production,
+   and verify both services are running the merged commit before generating a
+   new gate report or starting production backfill.
+2. Verify the production gateway/env tuple without printing secrets:
+   `jesus-film-ai-gateway`, model/request model `embeddings`, native
+   dimensions `1536`, final dimensions `1536`, and `transformVersion: null`.
+3. Generate gateway-backed content vectors against a prod-like local Admin
    restore.
-2. Run the content embedding search-eval gate:
+4. Run the content embedding search-eval gate:
 
    ```bash
    pnpm --filter @forge/mastra eval:content-embedding-gate -- \
@@ -139,9 +149,9 @@ rg -n "mastraRunId|dimensions: 1536|model-upgrade|provider" apps/admin/src/servi
      --environment-label=local
    ```
 
-3. Review and commit the sanitized JSON at
+5. Review and commit the sanitized JSON at
    `docs/search-eval-reports/<reportId>.json`.
-4. Only after the gate report has `gate.backfillReady=true`, run the
+6. Only after the gate report has `gate.backfillReady=true`, run the
    all-content backfill:
 
    ```bash
@@ -214,9 +224,46 @@ WHERE embedding IS NOT NULL
 GROUP BY 1, 2, 3;
 ```
 
-Expected gateway rows should show `jesus-film-ai-gateway`, native dimensions
-`4096`, final stored dimensions `1536`, and
-`matryoshka-truncate-1536-v1`. If a rollback is needed, restore from the
+Zero-mismatch checks:
+
+```sql
+SELECT COUNT(*) AS mismatched_video_transcripts
+FROM video_transcript
+WHERE embedding_provider IS DISTINCT FROM 'jesus-film-ai-gateway'
+   OR model IS DISTINCT FROM 'embeddings'
+   OR dimensions IS DISTINCT FROM 1536
+   OR embedding_native_dimensions IS DISTINCT FROM 1536
+   OR embedding_transform_version IS NOT NULL;
+
+SELECT COUNT(*) AS mismatched_scene_locales
+FROM video_scene_locale
+WHERE embedding IS NOT NULL
+  AND (
+    embedding_provider IS DISTINCT FROM 'jesus-film-ai-gateway'
+    OR model IS DISTINCT FROM 'embeddings'
+    OR dimensions IS DISTINCT FROM 1536
+    OR embedding_native_dimensions IS DISTINCT FROM 1536
+    OR embedding_transform_version IS NOT NULL
+  );
+
+SELECT COUNT(*) AS mismatched_experience_locales
+FROM experience_locale
+WHERE embedding IS NOT NULL
+  AND (
+    embedding_provider IS DISTINCT FROM 'jesus-film-ai-gateway'
+    OR embedding_model IS DISTINCT FROM 'embeddings'
+    OR embedding_dimensions IS DISTINCT FROM 1536
+    OR embedding_native_dimensions IS DISTINCT FROM 1536
+    OR embedding_transform_version IS NOT NULL
+  );
+```
+
+Expected gateway rows for the current production contract should show
+`jesus-film-ai-gateway`, native dimensions `1536`, final stored dimensions
+`1536`, and `embedding_transform_version IS NULL`. Every mismatch count above
+must be zero, and gateway-qualified row counts should be compared with the
+saved pre-backfill baselines and the `run-embeds.complete` report before
+declaring the migration complete. If a rollback is needed, restore from the
 recorded backup/export first, then rerun the pre-backfill baselines and compare
 counts before reopening the migration gate.
 
@@ -239,7 +286,7 @@ counts before reopening the migration gate.
 
 - Do not move Admin live query embedding generation to the gateway in this
   ticket.
-- Do not move pgvector storage, indexes, or ingest contracts from 1536 to 4096
+- Do not move pgvector storage, indexes, or ingest contracts away from 1536
   dimensions.
 - Do not change public search REST, GraphQL response shapes, or vector exposure
   boundaries.
@@ -256,8 +303,9 @@ counts before reopening the migration gate.
 
 ## Verification
 
-- Mastra provider tests prove gateway-style 4096-dimensional responses become
-  finite, unit-normalized, 1536-dimensional vectors before workflow handoff.
+- Mastra provider tests prove current native-1536 gateway responses stay
+  finite and 1536-dimensional before workflow handoff, while the generic
+  4096-to-1536 transform path remains covered for future gateway variants.
 - Transcript, scene, and experience workflow tests prove the shared provider
   result still threads vectors by input position and reports provider metadata
   safely.
