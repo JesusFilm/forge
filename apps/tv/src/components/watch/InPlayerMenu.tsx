@@ -21,7 +21,6 @@
 import { useEffect, useMemo } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
-import { type DubMediaState } from "../../contexts/watchSessionState"
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { FocusableCard } from "../FocusableCard"
 import { TVFocusGuideView } from "../TVFocusGuideView"
@@ -32,15 +31,15 @@ import {
   deriveSubtitlePanelState,
   isSubtitleRowActive,
 } from "./panelState"
+import { panelStyles } from "./panelStyles"
+import { VariantRow } from "./VariantRow"
 
 export function InPlayerMenu({ onClose }: { onClose: () => void }) {
   const {
     video,
     activeVariantIndex,
     setActiveVariantIndex,
-    activeVariantMedia,
-    activeVariantMediaLoading,
-    activeVariantMediaError,
+    activeVariantMediaState,
     ensureActiveVariantMedia,
     subtitleEnabled,
     setSubtitleEnabled,
@@ -59,12 +58,7 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
     [video?.variants, activeVariantIndex],
   )
 
-  const mediaState: DubMediaState = {
-    media: activeVariantMedia,
-    loading: activeVariantMediaLoading,
-    error: activeVariantMediaError,
-  }
-  const subtitleState = deriveSubtitlePanelState(mediaState)
+  const subtitleState = deriveSubtitlePanelState(activeVariantMediaState)
 
   return (
     // Absolute-fill scrim INSIDE the overlay's content layer. Its own
@@ -85,59 +79,15 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
           <Text style={styles.heading} accessibilityRole="header">
             Audio Language
           </Text>
-          {languageRows.map((row) => {
-            const { variant, index, disabled, active } = row
-            const name =
-              variant.languageName ?? variant.languageSlug ?? variant.slug
-            const native = variant.languageNameNative
-              ? `  ·  ${variant.languageNameNative}`
-              : ""
-
-            // Unplayable dub (no HLS): inert, non-focusable, muted — the D-pad
-            // skips it so the viewer can't select an unplayable language.
-            if (disabled) {
-              return (
-                <View
-                  key={`variant-${variant.documentId ?? ""}-${index}`}
-                  style={[styles.row, styles.disabledRow]}
-                  accessibilityLabel={`${name}, unavailable`}
-                >
-                  <View style={styles.rowInner}>
-                    <Text
-                      style={[styles.rowText, styles.disabledText]}
-                      numberOfLines={1}
-                    >
-                      {name}
-                      {native}
-                    </Text>
-                    <Text style={styles.unavailable}>Unavailable</Text>
-                  </View>
-                </View>
-              )
-            }
-
-            return (
-              <FocusableCard
-                key={`variant-${variant.documentId ?? ""}-${index}`}
-                onPress={() => {
-                  setActiveVariantIndex(index)
-                  onClose()
-                }}
-                hasTVPreferredFocus={active}
-                focusScale={1.02}
-                style={styles.row}
-                accessibilityLabel={name}
-              >
-                <View style={styles.rowInner}>
-                  <Text style={styles.rowText} numberOfLines={1}>
-                    {name}
-                    {native}
-                  </Text>
-                  {active ? <Text style={styles.check}>{"✓"}</Text> : null}
-                </View>
-              </FocusableCard>
-            )
-          })}
+          {languageRows.map((row) => (
+            <VariantRow
+              key={`variant-${row.variant.documentId ?? ""}-${row.index}`}
+              row={row}
+              onSelect={setActiveVariantIndex}
+              onClose={onClose}
+              rowInnerStyle={panelStyles.rowInnerCompact}
+            />
+          ))}
 
           {/* ── Subtitles ─────────────────────────────────────────────── */}
           <Text style={[styles.heading, styles.headingGap]}>Subtitles</Text>
@@ -149,13 +99,13 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
               onClose()
             }}
             focusScale={1.02}
-            style={styles.row}
+            style={panelStyles.row}
             accessibilityLabel="Subtitles off"
           >
-            <View style={styles.rowInner}>
-              <Text style={styles.rowText}>Subtitles off</Text>
+            <View style={panelStyles.rowInnerCompact}>
+              <Text style={panelStyles.rowText}>Subtitles off</Text>
               {!subtitleEnabled ? (
-                <Text style={styles.check}>{"✓"}</Text>
+                <Text style={panelStyles.check}>{"✓"}</Text>
               ) : null}
             </View>
           </FocusableCard>
@@ -195,15 +145,15 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
                     }}
                     hasTVPreferredFocus={isActive}
                     focusScale={1.02}
-                    style={styles.row}
+                    style={panelStyles.row}
                     accessibilityLabel={name}
                   >
-                    <View style={styles.rowInner}>
-                      <Text style={styles.rowText} numberOfLines={1}>
+                    <View style={panelStyles.rowInnerCompact}>
+                      <Text style={panelStyles.rowText} numberOfLines={1}>
                         {name}
                       </Text>
                       {isActive ? (
-                        <Text style={styles.check}>{"✓"}</Text>
+                        <Text style={panelStyles.check}>{"✓"}</Text>
                       ) : null}
                     </View>
                   </FocusableCard>
@@ -257,45 +207,6 @@ const styles = StyleSheet.create({
   },
   headingGap: {
     marginTop: scale(28),
-  },
-  row: {
-    backgroundColor: COLORS.surfaceContainerHigh,
-    marginBottom: scale(12),
-    borderRadius: scale(16),
-  },
-  disabledRow: {
-    opacity: 0.4,
-    overflow: "hidden",
-  },
-  rowInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: scale(16),
-    paddingHorizontal: scale(24),
-  },
-  rowText: {
-    flex: 1,
-    fontFamily: "System",
-    fontSize: Math.round(scale(22)),
-    fontWeight: "600",
-    color: COLORS.text,
-    marginRight: scale(12),
-  },
-  disabledText: {
-    color: COLORS.muted,
-  },
-  unavailable: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(16)),
-    fontWeight: "600",
-    color: COLORS.muted,
-  },
-  check: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    color: COLORS.primary,
-    fontWeight: "700",
   },
   status: {
     fontFamily: "System",

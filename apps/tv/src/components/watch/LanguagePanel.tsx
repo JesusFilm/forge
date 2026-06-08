@@ -20,6 +20,7 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { annotateVariantRows } from "./panelState"
+import { VariantRow } from "./VariantRow"
 
 export function LanguagePanel({
   visible,
@@ -54,62 +55,14 @@ export function LanguagePanel({
             Audio Language
           </Text>
           <ScrollView contentContainerStyle={styles.listContent}>
-            {rows.map((row) => {
-              const { variant, index, disabled, active } = row
-              const name =
-                variant.languageName ?? variant.languageSlug ?? variant.slug
-              const native = variant.languageNameNative
-                ? `  ·  ${variant.languageNameNative}`
-                : ""
-
-              // Unplayable dub (no HLS): inert, non-focusable, muted. Rendered
-              // as a plain View — never wrapped in a FocusableCard — so the
-              // D-pad skips it and the viewer can't select an unplayable
-              // language. "Unavailable" tag mirrors DESIGN.md §4's ghosted
-              // unfocusable error treatment.
-              if (disabled) {
-                return (
-                  <View
-                    key={`variant-${variant.documentId ?? ""}-${index}`}
-                    style={[styles.row, styles.disabledRow]}
-                    accessibilityLabel={`${name}, unavailable`}
-                  >
-                    <View style={styles.rowInner}>
-                      <Text
-                        style={[styles.rowText, styles.disabledText]}
-                        numberOfLines={1}
-                      >
-                        {name}
-                        {native}
-                      </Text>
-                      <Text style={styles.unavailable}>Unavailable</Text>
-                    </View>
-                  </View>
-                )
-              }
-
-              return (
-                <FocusableCard
-                  key={`variant-${variant.documentId ?? ""}-${index}`}
-                  onPress={() => {
-                    setActiveVariantIndex(index)
-                    onClose()
-                  }}
-                  hasTVPreferredFocus={active}
-                  focusScale={1.02}
-                  style={styles.row}
-                  accessibilityLabel={name}
-                >
-                  <View style={styles.rowInner}>
-                    <Text style={styles.rowText} numberOfLines={1}>
-                      {name}
-                      {native}
-                    </Text>
-                    {active ? <Text style={styles.check}>{"✓"}</Text> : null}
-                  </View>
-                </FocusableCard>
-              )
-            })}
+            {rows.map((row) => (
+              <VariantRow
+                key={`variant-${row.variant.documentId ?? ""}-${row.index}`}
+                row={row}
+                onSelect={setActiveVariantIndex}
+                onClose={onClose}
+              />
+            ))}
           </ScrollView>
 
           {/* Dismiss affordance stays focusable in every state so the viewer is
@@ -151,45 +104,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: scale(8),
-  },
-  row: {
-    backgroundColor: COLORS.surfaceContainerHigh,
-    marginBottom: scale(12),
-    borderRadius: scale(16),
-  },
-  disabledRow: {
-    opacity: 0.4,
-    overflow: "hidden",
-  },
-  rowInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: scale(18),
-    paddingHorizontal: scale(24),
-  },
-  rowText: {
-    flex: 1,
-    fontFamily: "System",
-    fontSize: Math.round(scale(22)),
-    fontWeight: "600",
-    color: COLORS.text,
-    marginRight: scale(12),
-  },
-  disabledText: {
-    color: COLORS.muted,
-  },
-  unavailable: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(16)),
-    fontWeight: "600",
-    color: COLORS.muted,
-  },
-  check: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    color: COLORS.primary,
-    fontWeight: "700",
   },
   closeRow: {
     marginTop: scale(12),

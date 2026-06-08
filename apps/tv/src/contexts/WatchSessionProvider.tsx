@@ -40,6 +40,7 @@ import {
   resolveDefaultVariantIndex,
   selectActiveVariant,
   selectDubMediaState,
+  type DubMediaState,
 } from "./watchSessionState"
 
 // Re-export the pure state helpers so consumers (and tests) have one surface.
@@ -78,6 +79,13 @@ type WatchSessionContextValue = {
    * Lets panels show a retry affordance instead of a misleading empty list.
    */
   activeVariantMediaError: boolean
+  /**
+   * The active dub's media as a single `{ media, loading, error }` struct —
+   * the same value the flat fields above are destructured from. Panels feed
+   * this straight into `deriveSubtitlePanelState` instead of rebuilding the
+   * struct; the flat fields stay for the player hook that reads them.
+   */
+  activeVariantMediaState: DubMediaState
   /**
    * Fetch the active variant's downloads + subtitles if not already loaded /
    * in flight. Call when the Subtitle panel / in-player menu opens or captions
@@ -144,11 +152,20 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const requestedRef = useRef<Set<string>>(new Set())
 
   const activeVariantId = activeVariant?.documentId ?? null
+  // The active dub's media as a single struct. Exposed directly on the context
+  // (`activeVariantMediaState`) for panels that feed it to deriveSubtitlePanelState,
+  // and destructured into the flat fields the player hook still reads.
+  const activeVariantMediaState = selectDubMediaState(
+    activeVariantId,
+    mediaById,
+    loadingIds,
+    errorIds,
+  )
   const {
     media: activeVariantMedia,
     loading: activeVariantMediaLoading,
     error: activeVariantMediaError,
-  } = selectDubMediaState(activeVariantId, mediaById, loadingIds, errorIds)
+  } = activeVariantMediaState
 
   const ensureActiveVariantMedia = useCallback(() => {
     // Inert when there is no active dub — no Apollo query fires.
@@ -274,6 +291,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       activeVariantMedia,
       activeVariantMediaLoading,
       activeVariantMediaError,
+      activeVariantMediaState,
       ensureActiveVariantMedia,
     }),
     [
@@ -288,6 +306,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       activeVariantMedia,
       activeVariantMediaLoading,
       activeVariantMediaError,
+      activeVariantMediaState,
       ensureActiveVariantMedia,
     ],
   )

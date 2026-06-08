@@ -17,13 +17,13 @@
 import { useEffect } from "react"
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native"
 
-import { type DubMediaState } from "../../contexts/watchSessionState"
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { FocusableCard } from "../FocusableCard"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { deriveSubtitlePanelState, isSubtitleRowActive } from "./panelState"
+import { panelStyles } from "./panelStyles"
 
 export function SubtitlePanel({
   visible,
@@ -33,9 +33,7 @@ export function SubtitlePanel({
   onClose: () => void
 }) {
   const {
-    activeVariantMedia,
-    activeVariantMediaLoading,
-    activeVariantMediaError,
+    activeVariantMediaState,
     ensureActiveVariantMedia,
     subtitleEnabled,
     setSubtitleEnabled,
@@ -48,15 +46,9 @@ export function SubtitlePanel({
     if (visible) ensureActiveVariantMedia()
   }, [visible, ensureActiveVariantMedia])
 
-  // Re-derive the discriminated UI state from the session's media flags. We
-  // reconstruct a DubMediaState here (the provider exposes the flattened flags,
-  // not the struct) so the pure mapping in panelState.ts owns the precedence.
-  const mediaState: DubMediaState = {
-    media: activeVariantMedia,
-    loading: activeVariantMediaLoading,
-    error: activeVariantMediaError,
-  }
-  const panelState = deriveSubtitlePanelState(mediaState)
+  // Re-derive the discriminated UI state from the session's media struct; the
+  // pure mapping in panelState.ts owns the loading/error/loaded precedence.
+  const panelState = deriveSubtitlePanelState(activeVariantMediaState)
 
   return (
     <Modal
@@ -86,13 +78,13 @@ export function SubtitlePanel({
               }}
               hasTVPreferredFocus={!subtitleEnabled}
               focusScale={1.02}
-              style={styles.row}
+              style={panelStyles.row}
               accessibilityLabel="Subtitles off"
             >
-              <View style={styles.rowInner}>
-                <Text style={styles.rowText}>Subtitles off</Text>
+              <View style={panelStyles.rowInner}>
+                <Text style={panelStyles.rowText}>Subtitles off</Text>
                 {!subtitleEnabled ? (
-                  <Text style={styles.check}>{"✓"}</Text>
+                  <Text style={panelStyles.check}>{"✓"}</Text>
                 ) : null}
               </View>
             </FocusableCard>
@@ -132,15 +124,15 @@ export function SubtitlePanel({
                       }}
                       hasTVPreferredFocus={isActive}
                       focusScale={1.02}
-                      style={styles.row}
+                      style={panelStyles.row}
                       accessibilityLabel={name}
                     >
-                      <View style={styles.rowInner}>
-                        <Text style={styles.rowText} numberOfLines={1}>
+                      <View style={panelStyles.rowInner}>
+                        <Text style={panelStyles.rowText} numberOfLines={1}>
                           {name}
                         </Text>
                         {isActive ? (
-                          <Text style={styles.check}>{"✓"}</Text>
+                          <Text style={panelStyles.check}>{"✓"}</Text>
                         ) : null}
                       </View>
                     </FocusableCard>
@@ -188,32 +180,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: scale(8),
-  },
-  row: {
-    backgroundColor: COLORS.surfaceContainerHigh,
-    marginBottom: scale(12),
-    borderRadius: scale(16),
-  },
-  rowInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: scale(18),
-    paddingHorizontal: scale(24),
-  },
-  rowText: {
-    flex: 1,
-    fontFamily: "System",
-    fontSize: Math.round(scale(22)),
-    fontWeight: "600",
-    color: COLORS.text,
-    marginRight: scale(12),
-  },
-  check: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    color: COLORS.primary,
-    fontWeight: "700",
   },
   status: {
     fontFamily: "System",
