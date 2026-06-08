@@ -21,7 +21,6 @@
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
 
-import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { HybridSearchService } from "@/services/hybrid-search.service"
 
@@ -69,15 +68,6 @@ export const searchVideosTool = createTool({
       locale: inputData.locale,
       limit: inputData.limit,
       contentTypes: ["video"],
-      // AI experience-gen video search source, operator-controlled via
-      // AI_VIDEO_SEARCH_EMBEDDING_SOURCE (default "openrouter"). Flip to
-      // "gateway" to route through the JesusFilm AI Gateway +
-      // `embedding_qwen` column only after that backfill exists, else the
-      // search hits an empty column. Public search omits this arg entirely
-      // and stays on the default OpenRouter + `embedding` path.
-      // U3 of the content-embeddings-gateway-migration pilot; see
-      // docs/plans/2026-06-05-001-feat-content-embeddings-gateway-migration-plan.md.
-      embeddingSource: env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE,
     })
 
     const videos = response.results
