@@ -1,24 +1,24 @@
-// BASIC functional on-page language (audio dub) picker for the details screen.
+// On-page language (audio dub) picker for the details screen (R8, R13).
 //
 // Full-screen dimmed overlay with a focus-trapping TVFocusGuideView and a
 // focusable list of dubs (FocusableCard rows), a checkmark on the active row,
-// crimson glow on focus, and a focusable Close affordance. Selecting a dub sets
-// the session's activeVariantIndex (R8) and dismisses.
+// crimson glow on focus, and a focusable Close affordance. Selecting a playable
+// dub sets the session's activeVariantIndex and dismisses.
 //
-// U6 HARDENING (left for later, marked below):
-//   - a published dub with `hls == null` should render as a disabled /
-//     annotated row (not selectable);
-//   - loading / error / empty-list states (variants are part of the bulk
-//     payload so they're usually present, but a partial-data window can show an
-//     empty list — U6 adds the "no languages yet" affordance).
+// A published dub with no playable stream (`hls == null` / empty) renders as a
+// DISABLED, non-selectable row: visually muted and NOT focusable, so the viewer
+// can't pick an unplayable language. The annotation lives in panelState.ts
+// (unit-tested there — jest-expo can't load this .tsx). The Close affordance is
+// always focusable. No bottom sheets (DESIGN.md §4).
 
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { FocusableCard } from "../FocusableCard"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS } from "../../lib/colors"
+import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
+import { annotateVariantRows } from "./panelState"
 
 export function LanguagePanel({
   visible,
@@ -28,7 +28,7 @@ export function LanguagePanel({
   onClose: () => void
 }) {
   const { video, activeVariantIndex, setActiveVariantIndex } = useWatchSession()
-  const variants = video?.variants ?? []
+  const rows = annotateVariantRows(video?.variants ?? [], activeVariantIndex)
 
   return (
     <Modal
@@ -50,10 +50,40 @@ export function LanguagePanel({
             Audio Language
           </Text>
           <ScrollView contentContainerStyle={styles.listContent}>
-            {variants.map((variant, index) => {
-              const isActive = index === activeVariantIndex
+            {rows.map((row) => {
+              const { variant, index, disabled, active } = row
               const name =
                 variant.languageName ?? variant.languageSlug ?? variant.slug
+              const native = variant.languageNameNative
+                ? `  ·  ${variant.languageNameNative}`
+                : ""
+
+              // Unplayable dub (no HLS): inert, non-focusable, muted. Rendered
+              // as a plain View — never wrapped in a FocusableCard — so the
+              // D-pad skips it and the viewer can't select an unplayable
+              // language. "Unavailable" tag mirrors DESIGN.md §4's ghosted
+              // unfocusable error treatment.
+              if (disabled) {
+                return (
+                  <View
+                    key={variant.documentId || `variant-${index}`}
+                    style={[styles.row, styles.disabledRow]}
+                    accessibilityLabel={`${name}, unavailable`}
+                  >
+                    <View style={styles.rowInner}>
+                      <Text
+                        style={[styles.rowText, styles.disabledText]}
+                        numberOfLines={1}
+                      >
+                        {name}
+                        {native}
+                      </Text>
+                      <Text style={styles.unavailable}>Unavailable</Text>
+                    </View>
+                  </View>
+                )
+              }
+
               return (
                 <FocusableCard
                   key={variant.documentId || `variant-${index}`}
@@ -61,9 +91,7 @@ export function LanguagePanel({
                     setActiveVariantIndex(index)
                     onClose()
                   }}
-                  // First row gets initial focus when no active selection is
-                  // visible; the active row otherwise.
-                  hasTVPreferredFocus={isActive}
+                  hasTVPreferredFocus={active}
                   focusScale={1.02}
                   style={styles.row}
                   accessibilityLabel={name}
@@ -71,11 +99,9 @@ export function LanguagePanel({
                   <View style={styles.rowInner}>
                     <Text style={styles.rowText} numberOfLines={1}>
                       {name}
-                      {variant.languageNameNative
-                        ? `  ·  ${variant.languageNameNative}`
-                        : ""}
+                      {native}
                     </Text>
-                    {isActive ? <Text style={styles.check}>{"✓"}</Text> : null}
+                    {active ? <Text style={styles.check}>{"✓"}</Text> : null}
                   </View>
                 </FocusableCard>
               )
@@ -83,7 +109,7 @@ export function LanguagePanel({
           </ScrollView>
 
           {/* Dismiss affordance stays focusable in every state so the viewer is
-              never trapped (U6 keeps this invariant across loading/empty). */}
+              never trapped (kept reachable even when all dubs are disabled). */}
           <FocusableCard
             onPress={onClose}
             focusScale={1.02}
@@ -101,7 +127,7 @@ export function LanguagePanel({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: hexToRgba("#000000", 0.8),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -114,7 +140,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontFamily: "System",
-    fontSize: scale(32),
+    fontSize: Math.round(scale(32)),
     fontWeight: "700",
     color: COLORS.text,
     marginBottom: scale(24),
@@ -125,6 +151,11 @@ const styles = StyleSheet.create({
   row: {
     backgroundColor: COLORS.surfaceContainerHigh,
     marginBottom: scale(12),
+    borderRadius: scale(16),
+  },
+  disabledRow: {
+    opacity: 0.4,
+    overflow: "hidden",
   },
   rowInner: {
     flexDirection: "row",
@@ -136,14 +167,23 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     fontFamily: "System",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(22)),
     fontWeight: "600",
     color: COLORS.text,
     marginRight: scale(12),
   },
+  disabledText: {
+    color: COLORS.muted,
+  },
+  unavailable: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(16)),
+    fontWeight: "600",
+    color: COLORS.muted,
+  },
   check: {
     fontFamily: "System",
-    fontSize: scale(24),
+    fontSize: Math.round(scale(24)),
     color: COLORS.primary,
     fontWeight: "700",
   },
@@ -154,7 +194,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(20)),
     fontWeight: "600",
     color: COLORS.muted,
     paddingVertical: scale(16),

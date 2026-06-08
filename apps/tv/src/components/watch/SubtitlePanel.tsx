@@ -1,29 +1,29 @@
-// BASIC functional on-page subtitle picker for the details screen.
+// On-page subtitle picker for the details screen (R9, R13).
 //
-// Full-screen dimmed overlay with a focus-trapping TVFocusGuideView and a
-// focusable list: an "Off" row plus one row per subtitle track for the active
-// dub. Selecting "Off" disables subtitles; selecting a track enables subtitles
-// and sets the active subtitle slug (slug-keyed — R9). Calls
+// Full-screen dimmed overlay with a focus-trapping TVFocusGuideView. Calls
 // ensureActiveVariantMedia() on open so the active dub's lazy media (subtitles)
-// is fetched. Checkmark on the active row, crimson glow on focus, focusable
-// Close affordance.
+// is fetched (GET_VIDEO_DUB), then renders the four media states distinctly:
+//   - loading  → a NON-focusable "Loading…" row,
+//   - error    → a NON-focusable "Couldn't load subtitles" row,
+//   - loaded-empty → a NON-focusable "No subtitles available" row,
+//   - loaded-list  → the subtitle rows (slug-keyed, checkmark on active).
+// An "Off" row is always present and focusable (setSubtitleEnabled(false)). In
+// EVERY state the Close affordance stays focusable, so the viewer is never
+// trapped in an empty/loading/error panel. No bottom sheets (DESIGN.md §4).
 //
-// U6 HARDENING (left for later, marked below):
-//   - the four media states are only partially surfaced here: this v1 shows the
-//     loaded list (and an "Off" row that is always present). U6 adds a
-//     non-focusable "Loading…" row while `activeVariantMediaLoading`, a
-//     non-focusable error row on `activeVariantMediaError`, and a
-//     "No subtitles available" row when loaded-empty — without ever ejecting
-//     focus from the panel (Close stays reachable in every state).
+// The media-state → UI-state mapping and the active-row test are pure helpers in
+// panelState.ts (unit-tested there — jest-expo can't load this .tsx).
 
 import { useEffect } from "react"
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native"
 
+import { type DubMediaState } from "../../contexts/watchSessionState"
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { FocusableCard } from "../FocusableCard"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS } from "../../lib/colors"
+import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
+import { deriveSubtitlePanelState, isSubtitleRowActive } from "./panelState"
 
 export function SubtitlePanel({
   visible,
@@ -48,16 +48,15 @@ export function SubtitlePanel({
     if (visible) ensureActiveVariantMedia()
   }, [visible, ensureActiveVariantMedia])
 
-  const subtitles = activeVariantMedia?.subtitles ?? []
-
-  // U6: surface loading / error / loaded-empty here. v1 just notes them.
-  const statusText = activeVariantMediaLoading
-    ? "Loading…"
-    : activeVariantMediaError
-      ? "Couldn't load subtitles."
-      : activeVariantMedia != null && subtitles.length === 0
-        ? "No subtitles available."
-        : null
+  // Re-derive the discriminated UI state from the session's media flags. We
+  // reconstruct a DubMediaState here (the provider exposes the flattened flags,
+  // not the struct) so the pure mapping in panelState.ts owns the precedence.
+  const mediaState: DubMediaState = {
+    media: activeVariantMedia,
+    loading: activeVariantMediaLoading,
+    error: activeVariantMediaError,
+  }
+  const panelState = deriveSubtitlePanelState(mediaState)
 
   return (
     <Modal
@@ -79,7 +78,7 @@ export function SubtitlePanel({
             Subtitles
           </Text>
           <ScrollView contentContainerStyle={styles.listContent}>
-            {/* Off row — always present, always focusable. */}
+            {/* Off row — always present, always focusable, in every state. */}
             <FocusableCard
               onPress={() => {
                 setSubtitleEnabled(false)
@@ -88,50 +87,70 @@ export function SubtitlePanel({
               hasTVPreferredFocus={!subtitleEnabled}
               focusScale={1.02}
               style={styles.row}
-              accessibilityLabel="Off"
+              accessibilityLabel="Subtitles off"
             >
               <View style={styles.rowInner}>
-                <Text style={styles.rowText}>Off</Text>
+                <Text style={styles.rowText}>Subtitles off</Text>
                 {!subtitleEnabled ? (
                   <Text style={styles.check}>{"✓"}</Text>
                 ) : null}
               </View>
             </FocusableCard>
 
-            {statusText != null ? (
-              <Text style={styles.status}>{statusText}</Text>
+            {/* loading: non-focusable status row. */}
+            {panelState.kind === "loading" ? (
+              <Text style={styles.status}>Loading…</Text>
             ) : null}
 
-            {subtitles.map((subtitle, index) => {
-              const isActive =
-                subtitleEnabled && activeSubtitleSlug === subtitle.languageSlug
-              const name = subtitle.languageName || subtitle.languageSlug
-              return (
-                <FocusableCard
-                  key={subtitle.languageSlug || `subtitle-${index}`}
-                  onPress={() => {
-                    setActiveSubtitleSlug(subtitle.languageSlug)
-                    setSubtitleEnabled(true)
-                    onClose()
-                  }}
-                  hasTVPreferredFocus={isActive}
-                  focusScale={1.02}
-                  style={styles.row}
-                  accessibilityLabel={name}
-                >
-                  <View style={styles.rowInner}>
-                    <Text style={styles.rowText} numberOfLines={1}>
-                      {name}
-                    </Text>
-                    {isActive ? <Text style={styles.check}>{"✓"}</Text> : null}
-                  </View>
-                </FocusableCard>
-              )
-            })}
+            {/* error: non-focusable status row (vs. a misleading empty list). */}
+            {panelState.kind === "error" ? (
+              <Text style={styles.status}>Couldn’t load subtitles</Text>
+            ) : null}
+
+            {/* loaded-empty: non-focusable status row. */}
+            {panelState.kind === "loaded" &&
+            panelState.subtitles.length === 0 ? (
+              <Text style={styles.status}>No subtitles available</Text>
+            ) : null}
+
+            {/* loaded-list: focusable, slug-keyed subtitle rows. */}
+            {panelState.kind === "loaded"
+              ? panelState.subtitles.map((subtitle, index) => {
+                  const isActive = isSubtitleRowActive(
+                    subtitle,
+                    subtitleEnabled,
+                    activeSubtitleSlug,
+                  )
+                  const name = subtitle.languageName || subtitle.languageSlug
+                  return (
+                    <FocusableCard
+                      key={subtitle.languageSlug || `subtitle-${index}`}
+                      onPress={() => {
+                        setActiveSubtitleSlug(subtitle.languageSlug)
+                        setSubtitleEnabled(true)
+                        onClose()
+                      }}
+                      hasTVPreferredFocus={isActive}
+                      focusScale={1.02}
+                      style={styles.row}
+                      accessibilityLabel={name}
+                    >
+                      <View style={styles.rowInner}>
+                        <Text style={styles.rowText} numberOfLines={1}>
+                          {name}
+                        </Text>
+                        {isActive ? (
+                          <Text style={styles.check}>{"✓"}</Text>
+                        ) : null}
+                      </View>
+                    </FocusableCard>
+                  )
+                })
+              : null}
           </ScrollView>
 
-          {/* Dismiss affordance stays focusable in every state so the viewer is
-              never trapped in an empty panel. */}
+          {/* Dismiss affordance stays focusable in EVERY media state so the
+              viewer is never trapped in a loading / error / empty panel. */}
           <FocusableCard
             onPress={onClose}
             focusScale={1.02}
@@ -149,7 +168,7 @@ export function SubtitlePanel({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: hexToRgba("#000000", 0.8),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -162,7 +181,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontFamily: "System",
-    fontSize: scale(32),
+    fontSize: Math.round(scale(32)),
     fontWeight: "700",
     color: COLORS.text,
     marginBottom: scale(24),
@@ -184,20 +203,20 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     fontFamily: "System",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(22)),
     fontWeight: "600",
     color: COLORS.text,
     marginRight: scale(12),
   },
   check: {
     fontFamily: "System",
-    fontSize: scale(24),
+    fontSize: Math.round(scale(24)),
     color: COLORS.primary,
     fontWeight: "700",
   },
   status: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(20)),
     color: COLORS.muted,
     paddingVertical: scale(16),
     paddingHorizontal: scale(24),
@@ -209,7 +228,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(20)),
     fontWeight: "600",
     color: COLORS.muted,
     paddingVertical: scale(16),
