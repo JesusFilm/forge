@@ -11,6 +11,7 @@
 // (unit-tested there — jest-expo can't load this .tsx). The Close affordance is
 // always focusable. No bottom sheets (DESIGN.md §4).
 
+import { useMemo } from "react"
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
@@ -28,7 +29,10 @@ export function LanguagePanel({
   onClose: () => void
 }) {
   const { video, activeVariantIndex, setActiveVariantIndex } = useWatchSession()
-  const rows = annotateVariantRows(video?.variants ?? [], activeVariantIndex)
+  const rows = useMemo(
+    () => annotateVariantRows(video?.variants ?? [], activeVariantIndex),
+    [video?.variants, activeVariantIndex],
+  )
 
   return (
     <Modal
@@ -66,7 +70,7 @@ export function LanguagePanel({
               if (disabled) {
                 return (
                   <View
-                    key={variant.documentId || `variant-${index}`}
+                    key={`variant-${variant.documentId ?? ""}-${index}`}
                     style={[styles.row, styles.disabledRow]}
                     accessibilityLabel={`${name}, unavailable`}
                   >
@@ -86,7 +90,7 @@ export function LanguagePanel({
 
               return (
                 <FocusableCard
-                  key={variant.documentId || `variant-${index}`}
+                  key={`variant-${variant.documentId ?? ""}-${index}`}
                   onPress={() => {
                     setActiveVariantIndex(index)
                     onClose()

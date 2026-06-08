@@ -18,7 +18,7 @@
 // subtitle rendering. The Close affordance stays focusable in every state so the
 // viewer is never trapped in a loading/error/empty menu.
 
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { type DubMediaState } from "../../contexts/watchSessionState"
@@ -54,9 +54,9 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
     ensureActiveVariantMedia()
   }, [ensureActiveVariantMedia])
 
-  const languageRows = annotateVariantRows(
-    video?.variants ?? [],
-    activeVariantIndex,
+  const languageRows = useMemo(
+    () => annotateVariantRows(video?.variants ?? [], activeVariantIndex),
+    [video?.variants, activeVariantIndex],
   )
 
   const mediaState: DubMediaState = {
@@ -98,7 +98,7 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
             if (disabled) {
               return (
                 <View
-                  key={variant.documentId || `variant-${index}`}
+                  key={`variant-${variant.documentId ?? ""}-${index}`}
                   style={[styles.row, styles.disabledRow]}
                   accessibilityLabel={`${name}, unavailable`}
                 >
@@ -118,7 +118,7 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
 
             return (
               <FocusableCard
-                key={variant.documentId || `variant-${index}`}
+                key={`variant-${variant.documentId ?? ""}-${index}`}
                 onPress={() => {
                   setActiveVariantIndex(index)
                   onClose()
@@ -187,7 +187,7 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
                 const name = subtitle.languageName || subtitle.languageSlug
                 return (
                   <FocusableCard
-                    key={subtitle.languageSlug || `subtitle-${index}`}
+                    key={`subtitle-${subtitle.languageSlug ?? ""}-${index}`}
                     onPress={() => {
                       setActiveSubtitleSlug(subtitle.languageSlug)
                       setSubtitleEnabled(true)

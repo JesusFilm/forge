@@ -36,6 +36,24 @@ describe("extractMuxPlaybackId", () => {
     expect(extractMuxPlaybackId("https://example.com/video.m3u8")).toBeNull()
   })
 
+  it("returns null when stream.mux.com is embedded in a non-Mux host's path", () => {
+    // Host-anchor: an unanchored substring match would falsely extract "abc"
+    // here. The real hostname is evil.com, so this must be rejected.
+    expect(
+      extractMuxPlaybackId("https://evil.com/stream.mux.com/abc.m3u8"),
+    ).toBeNull()
+  })
+
+  it("still extracts the id from a genuine Mux URL", () => {
+    expect(extractMuxPlaybackId("https://stream.mux.com/abc123.m3u8")).toBe(
+      "abc123",
+    )
+  })
+
+  it("returns null for a non-URL string", () => {
+    expect(extractMuxPlaybackId("not a url")).toBeNull()
+  })
+
   it("returns null for null / undefined / empty", () => {
     expect(extractMuxPlaybackId(null)).toBeNull()
     expect(extractMuxPlaybackId(undefined)).toBeNull()

@@ -17,7 +17,7 @@
 // title/poster first; no per-section spinners).
 
 import { useEffect, useMemo, useState } from "react"
-import { ScrollView, StyleSheet, Text, View } from "react-native"
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useLocalSearchParams } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
@@ -56,7 +56,7 @@ export default function WatchVideoScreen() {
   const { video, setVideo, activeVariant } = useWatchSession()
   const { state: playerState } = useVideoPlayerContext()
 
-  const { data } = useQuery(GET_VIDEO_BY_SLUG, {
+  const { data, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { locale: "en", slug: decodedSlug },
     skip: !decodedSlug,
     // cache-first (NOT cache-and-network): the payload is large for videos with
@@ -66,12 +66,15 @@ export default function WatchVideoScreen() {
     returnPartialData: true,
   })
 
+  // Keyed on the inner videoBySlug object (NOT the outer `data` wrapper): a new
+  // wrapper over an unchanged inner object — common on partial → full transitions
+  // — must not re-walk normalizeVideo over thousands of dubs.
   const normalized = useMemo(
     () =>
       normalizeVideo(
         (data?.videoBySlug ?? null) as Parameters<typeof normalizeVideo>[0],
       ),
-    [data],
+    [data?.videoBySlug],
   )
 
   // Seed: instant first paint (title + poster) from data carried by the list
@@ -107,6 +110,12 @@ export default function WatchVideoScreen() {
 
   const hasVideo = video != null
 
+  // Error state: only when the query errored AND there's nothing usable to keep
+  // showing — no normalized/cached video and no seed to paint a skeleton from.
+  // If a seed or cached video exists we prefer that (degraded-but-usable) over a
+  // hard error screen, so the seed-skeleton behavior survives a transient error.
+  const showErrorState = error != null && !hasVideo && seed == null
+
   // First paint prefers resolved data, falling back to the seed.
   const displayTitle = video?.title ?? seed?.title ?? null
   const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
@@ -131,6 +140,21 @@ export default function WatchVideoScreen() {
   const bibleQuotesBlock = hasVideo
     ? buildBibleQuotesBlock(video.bibleCitations)
     : null
+
+  if (showErrorState) {
+    return (
+      <View style={[styles.screen, styles.errorCentered]}>
+        <Text style={styles.errorMessage}>
+          This video is temporarily unavailable.
+        </Text>
+        <RetryButton
+          onPress={() => {
+            void refetch()
+          }}
+        />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.screen}>
@@ -191,6 +215,32 @@ export default function WatchVideoScreen() {
   )
 }
 
+/**
+ * Focusable "Try again" control for the error state. Uses the
+ * onFocus / onBlur + state pattern (matching SearchResultsGrid's
+ * RetryButton) rather than the `({ focused }) => [...]` callback —
+ * `focused` is exposed at runtime by react-native-tvos but not by the
+ * upstream PressableStateCallbackType, so the callback form fails the
+ * strict tsc check.
+ */
+function RetryButton({ onPress }: { onPress: () => void }) {
+  const [isFocused, setIsFocused] = useState(false)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Try again"
+      accessibilityHint="Reloads this video"
+      hasTVPreferredFocus
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={[styles.retryButton, isFocused && styles.retryButtonFocused]}
+      onPress={onPress}
+    >
+      <Text style={styles.retryText}>Try again</Text>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -208,15 +258,47 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: "System",
-    fontSize: scale(48),
+    fontSize: Math.round(scale(48)),
     fontWeight: "bold",
     color: COLORS.text,
     letterSpacing: -0.5,
   },
   metadata: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(20)),
     color: COLORS.muted,
     marginTop: scale(8),
+  },
+  errorCentered: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(20),
+    paddingHorizontal: scale(80),
+  },
+  errorMessage: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(24)),
+    fontWeight: "600",
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  retryButton: {
+    paddingHorizontal: scale(32),
+    paddingVertical: scale(14),
+    borderRadius: scale(24),
+    backgroundColor: COLORS.primary,
+  },
+  retryButtonFocused: {
+    transform: [{ scale: 1.05 }],
+    shadowColor: COLORS.primary,
+    shadowRadius: scale(20),
+    shadowOpacity: 0.5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  retryText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(18)),
+    fontWeight: "600",
+    color: COLORS.text,
   },
 })

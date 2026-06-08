@@ -80,6 +80,7 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
+    borderRadius: scale(16),
     backgroundColor: COLORS.surfaceContainer,
   },
   posterFallback: {
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: "System",
-    fontSize: scale(18),
+    fontSize: Math.round(scale(18)),
     fontWeight: "600",
     color: COLORS.text,
   },

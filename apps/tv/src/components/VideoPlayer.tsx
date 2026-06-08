@@ -588,6 +588,11 @@ export function VideoPlayer({
 
     const target = desiredSource
     loadedUrlRef.current = target
+    // A dub switch resets the playhead to ~0, so any pending seek target (set
+    // by Forward/Rewind, cleared only when a timeUpdate reaches it) would never
+    // be reached again — leaving setCurrentTime suppressed forever and freezing
+    // the progress bar. Clear it here so timeUpdate resumes immediately.
+    seekTargetRef.current = null
     const token = ++switchTokenRef.current
     // Read LIVE playing state (not React `isPaused`, which lags a tick) so the
     // resume decision reflects ground truth at switch time.
@@ -610,12 +615,15 @@ export function VideoPlayer({
       .replaceAsync(target)
       .then(resume)
       .catch(() => {
+        // resume() is token-guarded and self-wrapped in try/catch, so run it
+        // unconditionally after the synchronous fallback — even if replace()
+        // throws (player released), the resume attempt is a safe no-op.
         try {
           player.replace(target, true)
-          resume()
         } catch {
           // Player already released.
         }
+        resume()
       })
   }, [desiredSource, player])
 
@@ -922,6 +930,13 @@ export function VideoPlayer({
   // chrome doesn't fade under the menu; closing re-arms auto-hide and routes
   // focus back to play/pause via the one-shot revealFocusPending claim.
   const openMenu = () => {
+    // Stop any in-flight hide so its completion callback can't flip
+    // controlsVisible=false after the menu opens (captured-handle pattern,
+    // mirrors revealControls / the error + foreground paths).
+    if (hideAnimRef.current != null) {
+      hideAnimRef.current.stop()
+      hideAnimRef.current = null
+    }
     if (inactivityTimerRef.current != null) {
       clearTimeout(inactivityTimerRef.current)
       inactivityTimerRef.current = null
@@ -1317,8 +1332,11 @@ export function VideoPlayer({
             {menuActive && (
               <Pressable
                 onPress={() => {
+                  // No scheduleHide() here: openMenu() sets
+                  // menuOpenRef.current=true synchronously and scheduleHide
+                  // early-returns while the menu is open, so it would be a
+                  // guaranteed no-op.
                   openMenu()
-                  scheduleHide()
                 }}
                 onFocus={() => {
                   setMenuFocused(true)

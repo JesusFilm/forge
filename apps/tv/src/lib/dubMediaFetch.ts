@@ -17,9 +17,13 @@ export type DubMediaCallbacks = {
 // the next call retries. `onStart`/`onSettled` bracket the request for loading
 // state; `onError` flags a failure distinct from "loaded, empty".
 //
-// The whole dispatch is wrapped so a synchronous throw before the promise is
-// returned (from onStart or fetchMedia itself) is treated as a failed attempt —
-// the ledger slot is released so the id can never wedge into a permanent no-op.
+// The whole dispatch is wrapped so ANY synchronous failure — from onStart,
+// from fetchMedia itself, or from attaching the promise chain (a non-thenable
+// return value, or a `.then` that throws) — is treated as a failed attempt.
+// The catch releases the ledger slot and fires onError/onSettled
+// unconditionally; if the synchronous path got far enough to hand control to
+// the async chain, that chain (not the catch) owns release/onError on rejection,
+// so there is exactly one release per outcome and no double-fire.
 export function ensureDubMedia(
   id: string | null | undefined,
   requested: Set<string>,
@@ -29,12 +33,12 @@ export function ensureDubMedia(
   if (!id) return
   if (requested.has(id)) return
   requested.add(id)
-  let dispatched = false
   try {
     cb.onStart(id)
-    const pending = fetchMedia(id)
-    dispatched = true
-    pending
+    // If fetchMedia returns a non-thenable, `.then` throws synchronously and is
+    // caught below — so a post-`dispatched` wedge can't happen: the async chain
+    // only owns the outcome once it is fully attached without throwing.
+    fetchMedia(id)
       .then((media) => cb.onSuccess(id, media))
       .catch(() => {
         requested.delete(id)
@@ -42,10 +46,10 @@ export function ensureDubMedia(
       })
       .finally(() => cb.onSettled(id))
   } catch {
-    if (!dispatched) {
-      requested.delete(id)
-      cb.onError(id)
-      cb.onSettled(id)
-    }
+    // Any synchronous failure on the dispatch path: the async chain never took
+    // over, so release the slot here and report the failure.
+    requested.delete(id)
+    cb.onError(id)
+    cb.onSettled(id)
   }
 }

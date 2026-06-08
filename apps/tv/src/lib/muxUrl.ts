@@ -7,7 +7,9 @@
 // playback before the full video query resolves.
 
 // Mux HLS URLs: https://stream.mux.com/{playbackId}.m3u8
-const MUX_STREAM_RE = /stream\.mux\.com\/([a-zA-Z0-9_-]+)/
+const MUX_STREAM_HOST = "stream.mux.com"
+// First path segment of a Mux HLS URL is the id (charset matches Mux's - and _).
+const MUX_PATH_SEGMENT_RE = /^([a-zA-Z0-9_-]+)/
 // Playback IDs are opaque tokens — validate before interpolating into a URL so a
 // tainted seed value can't inject a different host/path. The charset matches
 // getMuxThumbnailUrl in resolveImageUrl.ts (Mux ids use - and _), so an id
@@ -34,5 +36,18 @@ export function extractMuxPlaybackId(
   streamingUrl: string | null | undefined,
 ): string | null {
   if (!streamingUrl) return null
-  return MUX_STREAM_RE.exec(streamingUrl)?.[1] ?? null
+  // Parse and host-anchor: an unanchored substring match would let a non-Mux
+  // host with `stream.mux.com/<id>` embedded in its path/query falsely match
+  // (e.g. https://evil.com/stream.mux.com/abc.m3u8). Require the URL's hostname
+  // to actually be stream.mux.com, then read the id from the first path segment.
+  let parsed: URL
+  try {
+    parsed = new URL(streamingUrl)
+  } catch {
+    return null
+  }
+  if (parsed.hostname !== MUX_STREAM_HOST) return null
+  // pathname is like "/abc123.m3u8" — strip the leading slash, take the id token.
+  const firstSegment = parsed.pathname.replace(/^\//, "")
+  return MUX_PATH_SEGMENT_RE.exec(firstSegment)?.[1] ?? null
 }

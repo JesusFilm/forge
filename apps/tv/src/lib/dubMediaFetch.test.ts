@@ -124,6 +124,28 @@ describe("ensureDubMedia", () => {
     expect(requested.has("dub-1")).toBe(true)
   })
 
+  it("settles into error and releases the slot when fetchMedia rejects (e.g. a hung admin hits the timeout)", async () => {
+    // Mirrors the provider's GET_VIDEO_DUB timeout: a never-resolving Apollo
+    // query is raced against an 8 s reject, so fetchMedia surfaces a rejection
+    // rather than hanging. ensureDubMedia must treat that as a failed attempt —
+    // error fired, settled, and the ledger slot freed so the next ensure retries.
+    const requested = new Set<string>()
+    const fetchMedia = jest.fn(
+      (): Promise<VariantMedia> =>
+        Promise.reject(new Error("dub_media_fetch_timeout")),
+    )
+    const { cb, errors, settles, successes } = makeCallbacks()
+
+    ensureDubMedia("dub-1", requested, fetchMedia, cb)
+    await flush()
+
+    expect(errors).toEqual(["dub-1"])
+    expect(settles).toEqual(["dub-1"])
+    expect(successes).toEqual([])
+    // Slot released — no permanent loading/ledger wedge from the hung fetch.
+    expect(requested.has("dub-1")).toBe(false)
+  })
+
   it("releases the slot when fetchMedia throws synchronously (no permanent wedge)", () => {
     const requested = new Set<string>()
     const fetchMedia = jest.fn((): Promise<VariantMedia> => {
@@ -137,6 +159,27 @@ describe("ensureDubMedia", () => {
     // fired, and the ledger slot released so the next call can retry.
     expect(errors).toEqual(["dub-1"])
     expect(settles).toEqual(["dub-1"])
+    expect(requested.has("dub-1")).toBe(false)
+
+    // A retry actually re-dispatches (slot was released).
+    const fetchOk = jest.fn(async () => EMPTY_MEDIA)
+    ensureDubMedia("dub-1", requested, fetchOk, cb)
+    expect(fetchOk).toHaveBeenCalledTimes(1)
+  })
+
+  it("releases the slot when fetchMedia returns a non-thenable (post-dispatch wedge)", () => {
+    const requested = new Set<string>()
+    // Returns null instead of a promise: attaching `.then` throws synchronously
+    // AFTER fetchMedia "returned". The catch must still release + fire onError —
+    // otherwise the id wedges into a permanent no-op with no error/settled.
+    const fetchMedia = jest.fn(() => null as unknown as Promise<VariantMedia>)
+    const { cb, errors, settles } = makeCallbacks()
+
+    ensureDubMedia("dub-1", requested, fetchMedia, cb)
+
+    expect(errors).toEqual(["dub-1"])
+    expect(settles).toEqual(["dub-1"])
+    // No permanent wedge: the id is back out of the ledger so a retry can run.
     expect(requested.has("dub-1")).toBe(false)
 
     // A retry actually re-dispatches (slot was released).

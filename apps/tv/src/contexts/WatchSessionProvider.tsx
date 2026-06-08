@@ -88,6 +88,14 @@ type WatchSessionContextValue = {
 
 const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
 
+// Hard cap on the GET_VIDEO_DUB request so a hung admin can't wedge the loading
+// state (and the dedupe-ledger slot) forever. Matches the 8 s VTT-fetch budget
+// in SubtitleOverlay; per CLAUDE.md the outbound timeout must be shorter than
+// the upstream caller's budget (Apollo's HttpLink fetch timeout). On expiry the
+// race REJECTS so ensureDubMedia's onError path fires — releasing the slot and
+// surfacing the error state instead of hanging.
+const DUB_MEDIA_FETCH_TIMEOUT_MS = 8000
+
 export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
   const [activeVariantIndex, setActiveVariantIndexState] = useState(0)
@@ -150,14 +158,30 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       requestedRef.current,
       async (id) => {
         // Lazy client getter — never module-scope (apps/tv/CLAUDE.md).
-        const res = await getApolloClient().query({
+        const queryPromise = getApolloClient().query({
           query: GET_VIDEO_DUB,
           variables: { id },
           // The dub is normalized by id; once fetched, re-opening the panel (or
           // switching back to this language) reads the warm cache, no refetch.
           fetchPolicy: "cache-first",
         })
-        return normalizeDubMedia(res.data?.videoDub ?? null)
+        // Apollo's query() doesn't honor a per-call deadline, so race it against
+        // a timeout that REJECTS — a hung admin then surfaces as an error (slot
+        // released) instead of an indefinite spinner. The timer is unref-free
+        // (RN has no unref) but the race settling lets it be GC'd.
+        let timeoutId: ReturnType<typeof setTimeout> | undefined
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error("dub_media_fetch_timeout")),
+            DUB_MEDIA_FETCH_TIMEOUT_MS,
+          )
+        })
+        try {
+          const res = await Promise.race([queryPromise, timeoutPromise])
+          return normalizeDubMedia(res.data?.videoDub ?? null)
+        } finally {
+          if (timeoutId !== undefined) clearTimeout(timeoutId)
+        }
       },
       {
         onStart: (id) => {

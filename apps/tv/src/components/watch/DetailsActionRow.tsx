@@ -81,7 +81,7 @@ export function DetailsActionRow({
     "Scan to continue on your phone",
   )
 
-  const openModal = (url: string, heading: string) => {
+  const openModal = (url: string | null, heading: string) => {
     if (!validateActionUrl(url)) return
     setModalHeading(heading)
     setModalUrl(url)
@@ -98,13 +98,13 @@ export function DetailsActionRow({
           hasTVPreferredFocus={playPreferredFocus}
         />
 
-        {canShare && shareUrl != null ? (
+        {canShare ? (
           <SecondaryAction
             label="Share"
             onPress={() => openModal(shareUrl, "Scan to share on your phone")}
           />
         ) : null}
-        {canShare && shareUrl != null ? (
+        {canShare ? (
           <SecondaryAction
             label="Download"
             onPress={() =>

@@ -124,7 +124,7 @@ export function SubtitlePanel({
                   const name = subtitle.languageName || subtitle.languageSlug
                   return (
                     <FocusableCard
-                      key={subtitle.languageSlug || `subtitle-${index}`}
+                      key={`subtitle-${subtitle.languageSlug ?? ""}-${index}`}
                       onPress={() => {
                         setActiveSubtitleSlug(subtitle.languageSlug)
                         setSubtitleEnabled(true)
@@ -192,6 +192,7 @@ const styles = StyleSheet.create({
   row: {
     backgroundColor: COLORS.surfaceContainerHigh,
     marginBottom: scale(12),
+    borderRadius: scale(16),
   },
   rowInner: {
     flexDirection: "row",
