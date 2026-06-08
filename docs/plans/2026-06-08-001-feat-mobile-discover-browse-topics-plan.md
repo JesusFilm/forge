@@ -1,7 +1,7 @@
 ---
 title: "feat: Mobile Discover browse topics"
 type: feat
-status: active
+status: completed
 date: 2026-06-08
 origin: docs/brainstorms/2026-06-08-mobile-discover-browse-topics-requirements.md
 ---
