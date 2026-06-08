@@ -35,6 +35,16 @@ The metadata that says which provider contract produced a stored Content Embeddi
 
 An evaluation or backfill approval artifact that binds quality evidence to a specific embedding provider contract before high-churn content vectors are rewritten. A Provider-Bound Gate needs both configuration provenance and corpus provenance: it must show what the system is configured to generate and what stored rows the evaluation actually searched.
 
+## Admin schema operations
+
+### Forward-Only Migration
+
+A database schema change that is reversed by moving the schema forward again, not by editing or deleting migration history that a deployed database may already have observed. Failed-up recovery and successful-up rollback are different paths: failed attempts can be marked rolled back after cleanup, while successful attempts need a new migration to undo them.
+
+### Known Recoverable Migration
+
+A migration failure state the team has classified as safe for automated failed-row recovery after the root cause or partial schema state is understood. The classification applies only to failed migration rows; it does not mean a successfully applied migration can be removed from history.
+
 ## Watch experiences
 
 ### Experience
