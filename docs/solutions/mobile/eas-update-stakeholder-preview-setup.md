@@ -16,8 +16,9 @@ module: apps/mobile
 related_issues:
   - ".env.ci gitignored by .env.* glob — required !.env.ci exemption"
   - "resolveImageUrl.ts bypassed env validation with raw process.env"
-  - "fetchWithTimeout silently dropped caller AbortSignal — fixed with AbortSignal.any()"
-  - "Silent empty-string fallback chain for missing GraphQL URL — now throws explicitly"
+  - "fetchWithTimeout silently dropped caller AbortSignal — fixed by composing signals"
+  - "Silent empty-string fallback chain for missing GraphQL URL — replaced with an explicit production-default fallback"
+last_updated: 2026-06-08
 ---
 
 # EAS Update for Stakeholder Previews via Expo Go
@@ -105,23 +106,26 @@ import { z } from "zod"
 export const env = createEnv({
   clientPrefix: "EXPO_PUBLIC_",
   client: {
-    EXPO_PUBLIC_GRAPHQL_URL_IOS: z.string().url(),
-    EXPO_PUBLIC_GRAPHQL_URL_ANDROID: z.string().url(),
-    EXPO_PUBLIC_STRAPI_TOKEN: z.string().optional(),
-    EXPO_PUBLIC_WEB_BASE_URL: z.string().optional(),
+    // Optional + a production default in config.ts (see §4). A required `.url()`
+    // here would brick CI/EAS environments that haven't set the var.
+    EXPO_PUBLIC_ADMIN_GRAPHQL_URL: z.string().url().optional(),
+    EXPO_PUBLIC_FORGE_CACHE_PERSIST: z.string().optional(),
   },
   runtimeEnvStrict: {
-    EXPO_PUBLIC_GRAPHQL_URL_IOS: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS,
-    EXPO_PUBLIC_GRAPHQL_URL_ANDROID:
-      process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID,
-    EXPO_PUBLIC_STRAPI_TOKEN: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
-    EXPO_PUBLIC_WEB_BASE_URL: process.env.EXPO_PUBLIC_WEB_BASE_URL,
+    EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
+    EXPO_PUBLIC_FORGE_CACHE_PERSIST:
+      process.env.EXPO_PUBLIC_FORGE_CACHE_PERSIST,
   },
   isServer: false,
   emptyStringAsUndefined: true,
   skipValidation: !!process.env.CI && !process.env.EAS_BUILD,
 })
 ```
+
+> The app moved from Strapi to admin GraphQL: the old platform-split
+> `EXPO_PUBLIC_GRAPHQL_URL_IOS`/`_ANDROID` + `EXPO_PUBLIC_STRAPI_TOKEN` were
+> replaced by a single `EXPO_PUBLIC_ADMIN_GRAPHQL_URL`. See the
+> [mobile admin data-layer cutover](../architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md).
 
 | Setting                  | Why                                                                                                                                                                     |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -138,35 +142,33 @@ Refactored from module-scope instantiation to defer initialization until first c
 let _client: ApolloClient | undefined
 
 export function getApolloClient(): ApolloClient {
-  if (!_client) {
-    const uri = config.graphqlUrl
-    const headers: Record<string, string> = {}
-    if (config.strapiToken) {
-      headers.Authorization = `Bearer ${config.strapiToken}`
-    }
-    const link = new HttpLink({ uri, headers, fetch: fetchWithTimeout })
-    _client = new ApolloClient({ link, cache: new InMemoryCache() })
-  }
+  if (_client) return _client
+
+  const link = new HttpLink({
+    uri: getGraphQLUrl(), // env var ?? production default — see §4
+    fetch: fetchWithTimeout,
+  })
+  _client = new ApolloClient({ link, cache: new InMemoryCache() })
   return _client
 }
 ```
 
-### 4. Config — Fail Fast on Missing URL
+The admin GraphQL endpoint serves the app's reads anonymously, so there's no
+`Authorization` header — the old Strapi bearer token is gone.
 
-Replaced silent fallback chain (`?? "" || "http://localhost:1337/graphql"`) with explicit error:
+### 4. Config — fall back to the production default, never to empty/localhost
+
+The original silent chain (`?? "" || "http://localhost:1337/graphql"`) hid misconfig behind a dead localhost URL. The current resolver returns the env var **or a real production default** — never an empty string, and no `Platform.OS` split:
 
 ```typescript
-get graphqlUrl(): string {
-  const url =
-    Platform.OS === "android"
-      ? env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID
-      : env.EXPO_PUBLIC_GRAPHQL_URL_IOS
-  if (!url) {
-    throw new Error(`Missing EXPO_PUBLIC_GRAPHQL_URL for platform: ${Platform.OS}`)
-  }
-  return url
+// config.ts
+export function getGraphQLUrl(): string {
+  return env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL ?? DEFAULT_ADMIN_GRAPHQL_URL
 }
+// env.ts:  const DEFAULT_ADMIN_GRAPHQL_URL = "https://admin.jesusfilm.org/api/graphql"
 ```
+
+This intentionally moved **away** from the earlier "throw on missing URL" posture: the var is now `.optional()` with a production default so default builds and un-provisioned CI/EAS environments need zero new env vars. See [required env var without default broke Railway deploy](../runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md) for why opt-in vars must be optional.
 
 ### 5. Fixed AbortSignal Override in fetchWithTimeout
 
@@ -215,7 +217,7 @@ The `groupId` changes with each update — extract it from the `eas update` comm
 
 4. **Raw `process.env` bypass:** `resolveImageUrl.ts` read `EXPO_PUBLIC_WEB_BASE_URL` directly, bypassing env validation. All `EXPO_PUBLIC_*` access must go through `env.ts`.
 
-5. **Silent URL fallback chain:** Missing URL → `""` → localhost fallback hid real errors in production. Removed all silent fallbacks.
+5. **Silent URL fallback chain:** Missing URL → `""` → dead-`localhost` fallback hid real errors. Now resolves to a real production default (`https://admin.jesusfilm.org/api/graphql`), never an empty string — see §4.
 
 6. **Doppler is dev-only:** Staging/production secrets are managed in EAS Environments dashboard, not Doppler. The `fetch-secrets` script stays hardcoded to `--config dev`.
 
@@ -259,11 +261,13 @@ The `groupId` changes with each update — extract it from the `eas update` comm
 1. **Lint against raw `process.env` access:** Add ESLint rule forbidding `process.env.EXPO_PUBLIC_*` outside `env.ts`.
 2. **Audit `.gitignore` after adding `.env.*` files:** Run `git check-ignore -v <file>` before committing.
 3. **Compose AbortSignals, never replace:** Use `AbortSignal.any()` when adding timeout to existing fetch wrappers.
-4. **No silent URL fallbacks:** Required env vars should throw on missing, not fall back to empty string or localhost.
+4. **No silent fallback to empty/localhost:** A missing URL must resolve to a real default (the production admin endpoint) or throw — never to `""` or a dead `localhost`. Opt-in vars use a production default so un-provisioned environments still boot (see §4).
 5. **Log resolved config at startup:** `console.info("Config:", { graphqlUrl })` makes misconfig visible in EAS build logs.
 
 ## Related Documentation
 
+- [Mobile admin data-layer cutover](../architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md) — replaced the Strapi env vars/endpoint this doc's snippets used to show
+- [Verifying mobile Expo worktree changes in the simulator](../developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md) — local admin endpoint (`:3003`) + simulator verification loop
 - [Lazy SDK Initialization Pattern](../platform/new-app-ci-and-deployment-patterns.md) — Core pattern for `skipValidation` + lazy getter
 - [Adding New Apps Checklist](../platform/adding-new-apps.md) — Monorepo onboarding including `@t3-oss/env` setup
 - [Expo GraphQL Schema Drift](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — Mobile app's local GraphQL queries (not codegen)

@@ -72,6 +72,10 @@ shell `export` won't take effect and Metro must be **restarted** to pick up the
 edit. (This same `:1337` → `:3003` trap exists on `apps/tv` — it generalizes to
 both Expo apps.) (auto memory [claude])
 
+The canonical local admin port is `:3003` — admin's `pnpm dev` binds it
+(hardcoded in `apps/admin/package.json`), and `apps/mobile/.env.example` /
+`.env.ci` point there too.
+
 ### 2. Verify the worktree non-disruptively with a second Metro
 
 The installed iOS build (`org.jesusfilm.forgewatch`) is a **debug build
