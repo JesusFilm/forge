@@ -7,11 +7,12 @@ module: apps/mobile
 symptom: "Network Request Failed or Aborted on real iOS devices; app works on simulators"
 root_cause: "@expo/env loads .env.production over .env when NODE_ENV=production (set by Metro for device builds); real devices cannot reach localhost"
 severity: high
+last_updated: 2026-06-08
 ---
 
 ## Problem
 
-Real iOS devices showed "Network Request Failed" or "Aborted" when connecting to local Strapi, while simulators worked fine. Multiple cascading issues were discovered:
+Real iOS devices showed "Network Request Failed" or "Aborted" when connecting to the local admin GraphQL API, while simulators worked fine. Multiple cascading issues were discovered:
 
 1. `.env.production` overrode local dev secrets due to Expo's env file priority
 2. Real devices can't reach `localhost` — they need the computer's LAN IP
@@ -32,11 +33,11 @@ Real iOS devices showed "Network Request Failed" or "Aborted" when connecting to
 .env                                                 ← LOWEST
 ```
 
-When Metro bundles for real devices, it sets `NODE_ENV=production`, causing `.env.production` (with production CMS URLs) to override `.env` (with local dev URLs). The old `fetch-secrets` script wrote to `.env`, which lost to `.env.production`.
+When Metro bundles for real devices, it sets `NODE_ENV=production`, causing `.env.production` (with production GraphQL URLs) to override `.env` (with local dev URLs). The old `fetch-secrets` script wrote to `.env`, which lost to `.env.production`.
 
 ### Localhost vs LAN IP
 
-Simulators share the host's network stack (`localhost` works), but a physical phone is a separate device on the WiFi network. It needs the computer's actual LAN IP (e.g., `192.168.x.x`) to reach local Strapi.
+Simulators share the host's network stack (`localhost` works), but a physical phone is a separate device on the WiFi network. It needs the computer's actual LAN IP (e.g., `192.168.x.x`) to reach the local admin GraphQL API.
 
 ### Shell Env Vars vs Metro
 
@@ -54,21 +55,26 @@ Simulators share the host's network stack (`localhost` works), but a physical ph
 - Atomic write: temp file + `mv` prevents empty `.env.local` on Doppler failure
 - `rm -f .env` cleans up stale files from the old convention
 
-### 2. `pnpm device` writes `.env.development.local` with LAN IP
+### 2. Real device: write `.env.development.local` with your LAN IP
 
-```json
-"device": "IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}') && [ -n \"$IP\" ] || { echo 'ERROR: Could not detect local IP.'; exit 1; } && printf 'EXPO_PUBLIC_GRAPHQL_URL_ANDROID=http://%s:1337/graphql\\nEXPO_PUBLIC_GRAPHQL_URL_IOS=http://%s:1337/graphql\\n' \"$IP\" \"$IP\" > .env.development.local && node scripts/device.mjs"
+A physical phone can't reach `localhost`/`127.0.0.1` — point it at the host's LAN IP. `.env.development.local` has the HIGHEST priority, overriding everything, and is gitignored:
+
+```bash
+IP=$(ipconfig getifaddr en0) && [ -n "$IP" ] || { echo 'ERROR: no LAN IP'; exit 1; }
+printf 'EXPO_PUBLIC_ADMIN_GRAPHQL_URL=http://%s:3003/api/graphql\n' "$IP" > .env.development.local
 ```
 
-`.env.development.local` has the HIGHEST priority, overriding everything. The IP validation prevents silently writing empty URLs.
+The app reads a single `EXPO_PUBLIC_ADMIN_GRAPHQL_URL` (admin dev runs on `:3003`), not the old platform-split `EXPO_PUBLIC_GRAPHQL_URL_IOS`/`_ANDROID`. Validate the IP before writing so you never silently emit an empty URL.
 
-### 3. `pnpm emulator` cleans up device overrides
+> Earlier revisions shipped `pnpm device` / `pnpm emulator` npm scripts that automated this against the retired Strapi `:1337` endpoint. Both scripts were removed in the admin cutover — the manual technique here is the current path.
 
-```json
-"emulator": "rm -f .env.development.local && expo start"
+### 3. Back to the simulator: remove the device override
+
+```bash
+rm -f .env.development.local && npx expo start --clear
 ```
 
-Removes `.env.development.local` so simulators use localhost/10.0.2.2 from `.env.local`.
+Deleting `.env.development.local` lets the simulator fall back to the `127.0.0.1:3003` admin endpoint in `.env.local`. Simulators share the host network stack, so `127.0.0.1` reaches local admin — use `127.0.0.1`, not `localhost`, which loops through admin's auth-host proxy.
 
 ### 4. iOS ATS exception for local networking
 
@@ -115,7 +121,9 @@ Added to `app.json` infoPlist. Allows HTTP to LAN IPs on real devices. Scoped to
 
 ## Related
 
-- [EAS Update Stakeholder Preview Setup](../mobile/eas-update-stakeholder-preview-setup.md) — **NOTE: references `.env` which is now `.env.local`**
+- [Mobile admin data-layer cutover](../architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md) — the Strapi → admin migration that replaced platform-split `EXPO_PUBLIC_GRAPHQL_URL_*` (+ `:1337`) with the single `EXPO_PUBLIC_ADMIN_GRAPHQL_URL`
+- [Verifying mobile Expo worktree changes in the simulator](../developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md) — the local admin endpoint trap (`:3003`) and the second-Metro / full-reload verification loop
+- [EAS Update Stakeholder Preview Setup](../mobile/eas-update-stakeholder-preview-setup.md) — references `.env` which is now `.env.local`
 - [New App CI and Deployment Patterns](../platform/new-app-ci-and-deployment-patterns.md) — `skipValidation` guard and `EAS_BUILD` explanation
 - [Adding New Apps](../platform/adding-new-apps.md) — env validation convention
 - `@expo/env` source: `node_modules/.pnpm/@expo+env@2.0.8/node_modules/@expo/env/build/index.js`
