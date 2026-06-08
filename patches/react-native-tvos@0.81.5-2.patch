@@ -1,0 +1,34 @@
+diff --git a/third-party-podspecs/RCT-Folly.podspec b/third-party-podspecs/RCT-Folly.podspec
+index 8852179b6ce2ef6ae64e0239edb2594925ff8bc1..2dbc576e8ec2d137a89fffe9ceca772d04ef1328 100644
+--- a/third-party-podspecs/RCT-Folly.podspec
++++ b/third-party-podspecs/RCT-Folly.podspec
+@@ -25,7 +25,7 @@ Pod::Spec.new do |spec|
+   spec.dependency "DoubleConversion"
+   spec.dependency "glog"
+   spec.dependency "fast_float", "8.0.0"
+-  spec.dependency "fmt", "11.0.2"
++  spec.dependency "fmt", "11.2.0"
+   spec.compiler_flags = '-Wno-documentation -faligned-new'
+   spec.source_files = 'folly/String.cpp',
+                       'folly/Conv.cpp',
+diff --git a/third-party-podspecs/fmt.podspec b/third-party-podspecs/fmt.podspec
+index 2f38990e226c13f483aaf1b986302d4094243814..6454ff132ff53a8ba462d5d2e1dbee0820183972 100644
+--- a/third-party-podspecs/fmt.podspec
++++ b/third-party-podspecs/fmt.podspec
+@@ -8,14 +8,14 @@ fmt_git_url = fmt_config[:git]
+ 
+ Pod::Spec.new do |spec|
+   spec.name = "fmt"
+-  spec.version = "11.0.2"
++  spec.version = "11.2.0"
+   spec.license = { :type => "MIT" }
+   spec.homepage = "https://github.com/fmtlib/fmt"
+   spec.summary = "{fmt} is an open-source formatting library for C++. It can be used as a safe and fast alternative to (s)printf and iostreams."
+   spec.authors = "The fmt contributors"
+   spec.source = {
+     :git => fmt_git_url,
+-    :tag => "11.0.2"
++    :tag => "11.2.0"
+   }
+   spec.pod_target_xcconfig = {
+     "CLANG_CXX_LANGUAGE_STANDARD" => rct_cxx_language_standard(),
