@@ -1,9 +1,10 @@
 // Muted, non-interactive cinematic backdrop for the video-details screen.
 //
-// Mirrors HomeHero's MediaLayer (poster-hold → video-fade-in, no black flash)
-// but is a single layer (one video, not a focus-driven crossfade between heroes)
-// and adds the overlay-visibility pause (R6): when the fullscreen overlay player
-// is open, this preview pauses; it resumes on close.
+// Uses a poster-hold → video-fade-in media layer (poster held until the
+// stream is ready, then crossfade — no black flash). A single layer (one
+// video, not a focus-driven crossfade between heroes) plus the
+// overlay-visibility pause (R6): when the fullscreen overlay player is open,
+// this preview pauses; it resumes on close.
 //
 // NON-INTERACTIVE (KTD4/KTD8): the VideoView is wrapped in a
 // `pointerEvents="none"` View, marked `focusable={false}`, and the gradient/text
@@ -31,7 +32,7 @@ const BACKDROP_HEIGHT = SCREEN_HEIGHT * 0.55
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
-// a black-flash → pop. Matches HomeHero's timing.
+// a black-flash → pop.
 const POSTER_HOLD_MS = 500
 const POSTER_FADE_MS = 500
 

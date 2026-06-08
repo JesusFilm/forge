@@ -27,7 +27,7 @@ import { useSessionPlayback } from "./watch/useSessionPlayback"
 // Player chrome uses the app-wide Crimson Gallery tokens (see ../lib/colors).
 // The warm-salmon palette previously pinned here (from an early Stitch
 // mockup) has been retired — the player now visually matches the rest of
-// the TV app (HomeHero, FocusableCard, etc.).
+// the TV app (FocusableCard, ContentRail, etc.).
 const TRACK_BG = COLORS.surfaceContainerHighest // progress track fill
 const GLASS_BG = hexToRgba(COLORS.surfaceContainer, 0.8) // frosted-glass panel
 
@@ -275,7 +275,7 @@ export function VideoPlayer({
   // Accessibility: seed + subscribe to screen-reader and reduce-motion
   // state. Auto-hide is disabled while a screen reader is active (D13);
   // reduce-motion switches the fade to an instant snap (D8 reduce-motion
-  // path). Mirror the subscription shape already used by HomeHero.
+  // path). Standard AccessibilityInfo reduce-motion subscription shape.
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setIsReduceMotionEnabled)
     AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled)
