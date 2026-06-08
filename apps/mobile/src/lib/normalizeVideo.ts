@@ -1,4 +1,4 @@
-import type { WatchVideoData, WatchDubData } from "./queries"
+import type { WatchVideoData, WatchDubData, SeriesVideoData } from "./queries"
 import { pickLocalizedName } from "./pickLocalizedName"
 
 // ── Consumer types ─────────────────────────────────────────────────
@@ -50,6 +50,19 @@ export type WatchSibling = {
   posterUrl: string | null
 }
 
+// A child video of a series, rendered as a card in the episode grid. Same shape
+// as a sibling — a related video reduced to what a card needs.
+export type WatchEpisode = WatchSibling
+
+// One language the series' episodes are available in (server-aggregated union),
+// the feed for the series language sheet. Identity is the unique `slug`, never
+// bcp47 — `ko` collides with `ko-kmr`.
+export type WatchChildLanguage = {
+  slug: string
+  name: string | null
+  bcp47: string | null
+}
+
 export type WatchStudyQuestion = {
   documentId: string
   value: string
@@ -83,6 +96,9 @@ export type WatchVideoRecord = {
   variants: WatchVariant[]
   studyQuestions: WatchStudyQuestion[]
   bibleCitations: WatchBibleCitation[]
+  // Series-only: empty for a single video; populated by normalizeSeries.
+  episodes: WatchEpisode[]
+  languages: WatchChildLanguage[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -321,5 +337,69 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
     variants,
     studyQuestions,
     bibleCitations,
+    episodes: [],
+    languages: [],
   }
+}
+
+// ── Series normalizer ──────────────────────────────────────────────
+
+type RawSeriesVideo = NonNullable<SeriesVideoData["videoBySlug"]>
+
+function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
+  const episodes = (raw.children ?? [])
+    .filter(
+      (rel): rel is typeof rel & { child: NonNullable<typeof rel.child> } =>
+        rel.child != null,
+    )
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((rel) => ({
+      documentId: rel.child.documentId ?? "",
+      slug: rel.child.slug ?? "",
+      label: rel.child.label ?? null,
+      title: pickFirstLocale(rel.child.locales).title,
+      posterUrl: pickPosterUrl(rel.child.images),
+    }))
+  return dedupeByDocumentId(episodes)
+}
+
+function buildLanguages(raw: RawSeriesVideo): WatchChildLanguage[] {
+  const seen = new Set<string>()
+  const languages: WatchChildLanguage[] = []
+  for (const lang of raw.childDubLanguages ?? []) {
+    const slug = lang.slug
+    if (slug == null || slug === "" || seen.has(slug)) continue
+    seen.add(slug)
+    languages.push({
+      slug,
+      name: lang.name ? (pickLocalizedName(lang.name) ?? null) : null,
+      bcp47: lang.bcp47 ?? null,
+    })
+  }
+  return languages
+}
+
+// Memoize on the raw reference like normalizeVideo, so a cache-first re-entry
+// doesn't re-walk children/languages.
+const normalizeSeriesCache = new WeakMap<object, WatchVideoRecord | null>()
+
+// Normalize a series Video: the shared video record (trailer = the series' own
+// playable dub, exposed as streamingUrl/variants) plus the series-only episode
+// grid and the language union that feeds the language sheet.
+export function normalizeSeries(
+  raw: RawSeriesVideo | null | undefined,
+): WatchVideoRecord | null {
+  if (raw == null || !raw.documentId) return null
+  const cached = normalizeSeriesCache.get(raw)
+  if (cached !== undefined) return cached
+  // RawSeriesVideo is a structural superset of RawVideo (it spreads WatchVideo),
+  // so the shared builder maps the common fields; episodes + languages attach on
+  // top.
+  const result: WatchVideoRecord = {
+    ...buildWatchVideoRecord(raw),
+    episodes: buildEpisodes(raw),
+    languages: buildLanguages(raw),
+  }
+  normalizeSeriesCache.set(raw, result)
+  return result
 }
