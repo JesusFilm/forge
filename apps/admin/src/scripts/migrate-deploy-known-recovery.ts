@@ -20,9 +20,7 @@ export function getKnownRecoverableP3009Migration(
   output: string,
 ): (typeof RECOVERABLE_MIGRATIONS)[number] | undefined {
   if (!output.includes("P3009")) return undefined
-  return RECOVERABLE_MIGRATIONS.find((migration) =>
-    output.includes(migration),
-  )
+  return RECOVERABLE_MIGRATIONS.find((migration) => output.includes(migration))
 }
 
 export function isKnownRecoverableP3009(output: string): boolean {

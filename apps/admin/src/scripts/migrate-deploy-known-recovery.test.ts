@@ -15,9 +15,7 @@ describe("isKnownRecoverableP3009", () => {
       isKnownRecoverableP3009(`Error code: P3009 ${RECOVERABLE_MIGRATION}`),
     ).toBe(true)
     expect(
-      isKnownRecoverableP3009(
-        `Error code: P3009 ${RECOVERABLE_MIGRATIONS[1]}`,
-      ),
+      isKnownRecoverableP3009(`Error code: P3009 ${RECOVERABLE_MIGRATIONS[1]}`),
     ).toBe(true)
     expect(isKnownRecoverableP3009(`Error code: P3009 0001_init`)).toBe(false)
     expect(
