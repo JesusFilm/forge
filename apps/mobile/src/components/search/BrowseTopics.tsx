@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { BROWSE_TOPICS } from "../../lib/browseTopics"
 import { TEXT_SECONDARY } from "../../lib/color"
+import { useCategoryThumbnails } from "../../hooks/useCategoryThumbnails"
 import { TopicCard } from "./TopicCard"
 
 export interface BrowseTopicsProps {
@@ -13,6 +14,8 @@ export interface BrowseTopicsProps {
 // Replaces the old dead-end placeholder line. Tapping a card routes through
 // onSelect (wired to the screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
+  const thumbnails = useCategoryThumbnails()
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -23,7 +26,12 @@ export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
       <Text style={styles.heading}>Browse Categories</Text>
       <View style={styles.grid}>
         {BROWSE_TOPICS.map((topic) => (
-          <TopicCard key={topic.searchTerm} topic={topic} onSelect={onSelect} />
+          <TopicCard
+            key={topic.searchTerm}
+            topic={topic}
+            onSelect={onSelect}
+            thumbnailUrl={thumbnails[topic.searchTerm]}
+          />
         ))}
       </View>
     </ScrollView>

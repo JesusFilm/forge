@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -10,13 +11,15 @@ import { feedback } from "../../styles/shared"
 export interface TopicCardProps {
   topic: BrowseTopic
   onSelect: (searchTerm: string) => void
+  /** First search result's thumbnail, rendered faintly over the gradient. */
+  thumbnailUrl?: string | null
 }
 
 // A browse-category grid card. A vivid two-stop gradient fills the card, a
 // bottom scrim keeps the label legible, a white outline glyph sits top-left, and
 // the label sits bottom-left — mirroring the "Discover Categories Grid Card"
 // design. The Pressable owns touch + a11y; the glyph is decorative.
-export function TopicCard({ topic, onSelect }: TopicCardProps) {
+export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
   const typography = useTypography()
 
   return (
@@ -32,6 +35,15 @@ export function TopicCard({ topic, onSelect }: TopicCardProps) {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+      {thumbnailUrl ? (
+        <Image
+          source={thumbnailUrl}
+          style={[StyleSheet.absoluteFill, styles.thumbnail]}
+          contentFit="cover"
+          transition={400}
+          recyclingKey={topic.searchTerm}
+        />
+      ) : null}
       <LinearGradient
         colors={[hexToRgba("#000000", 0), hexToRgba("#000000", 0.55)]}
         start={{ x: 0.5, y: 0.35 }}
@@ -61,6 +73,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     justifyContent: "flex-end",
     padding: 14,
+  },
+  thumbnail: {
+    opacity: 0.3,
   },
   iconWrap: {
     position: "absolute",
