@@ -23,6 +23,7 @@ import {
   normalizeVideo,
   type WatchBibleCitation,
 } from "../../src/lib/normalizeVideo"
+import { isSeriesRecord } from "../../src/lib/isSeriesRecord"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
 import { ACCENT } from "../../src/lib/color"
@@ -152,6 +153,22 @@ export default function WatchVideoPage() {
       ),
     [data],
   )
+
+  // A series reached via /watch (deep link, recommendation, or a stale search
+  // entry) redirects to the dedicated series page. Detection is label-based —
+  // the lean watch fragment doesn't fetch the video's own children. Fires once
+  // per resolved slug (a ref guard) so it can't loop, and as early as the record
+  // resolves to minimize the brief watch-screen flash (the seed's playbackId is
+  // null for a series, so no stream loads in that window).
+  const redirectedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!normalized) return
+    if (redirectedRef.current === decodedSlug) return
+    if (!isSeriesRecord(normalized)) return
+    redirectedRef.current = decodedSlug
+    const seedSuffix = seedParam ? `?seed=${seedParam}` : ""
+    router.replace(`/series/${encodeURIComponent(decodedSlug)}${seedSuffix}`)
+  }, [normalized, decodedSlug, seedParam, router])
 
   // Seed carried from the list surface (search / Up Next) so the screen paints
   // instantly from data already in hand, before the query resolves.
