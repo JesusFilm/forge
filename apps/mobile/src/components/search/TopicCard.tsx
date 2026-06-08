@@ -42,6 +42,7 @@ export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
           contentFit="cover"
           contentPosition="top left"
           transition={400}
+          cachePolicy="memory-disk"
           recyclingKey={topic.searchTerm}
         />
       ) : null}
