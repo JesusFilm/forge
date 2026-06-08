@@ -12,10 +12,11 @@ function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
 const searchMock = vi.hoisted(() => vi.fn())
 
 // AI_VIDEO_SEARCH_EMBEDDING_SOURCE controls which embedding source the tool
-// passes; defaults to "openai" (behavior-neutral until the embedding_qwen
-// backfill exists). Tests flip it to exercise both paths.
+// passes; defaults to "openrouter". Tests flip it to exercise both paths.
 const mockEnv = vi.hoisted(() => ({
-  env: { AI_VIDEO_SEARCH_EMBEDDING_SOURCE: "openai" as "openai" | "gateway" },
+  env: {
+    AI_VIDEO_SEARCH_EMBEDDING_SOURCE: "openrouter" as "openrouter" | "gateway",
+  },
 }))
 
 vi.mock("@/config/env", () => mockEnv)
@@ -33,7 +34,7 @@ vi.mock("@/db/client", () => ({
 describe("searchVideosTool", () => {
   beforeEach(() => {
     searchMock.mockReset()
-    mockEnv.env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE = "openai"
+    mockEnv.env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE = "openrouter"
     vi.resetModules()
   })
 
@@ -92,8 +93,8 @@ describe("searchVideosTool", () => {
       locale: "en",
       limit: 5,
       contentTypes: ["video"],
-      // Default flag → OpenAI source (behavior-neutral until backfill).
-      embeddingSource: "openai",
+      // Default flag → OpenRouter source.
+      embeddingSource: "openrouter",
     })
     expect(result.videos).toEqual([
       {

@@ -1647,11 +1647,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
     insights: [
       {
         label: "Provider",
-        value: env.OPENROUTER_API_KEY
-          ? "OpenRouter"
-          : env.OPENAI_API_KEY
-            ? "OpenAI"
-            : "Missing",
+        value: env.OPENROUTER_API_KEY ? "OpenRouter" : "Missing",
         detail:
           "Embedding generation backend currently configured for admin workflows.",
       },
@@ -1669,7 +1665,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
         detail: "Published locales participating in retrieval once embedded.",
       },
     ],
-    providerReady: Boolean(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY),
+    providerReady: Boolean(env.OPENROUTER_API_KEY),
   }
 }
 
@@ -2251,11 +2247,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
       },
       {
         label: "Embedding Backend",
-        value: env.OPENROUTER_API_KEY
-          ? "OpenRouter"
-          : env.OPENAI_API_KEY
-            ? "OpenAI"
-            : "Missing",
+        value: env.OPENROUTER_API_KEY ? "OpenRouter" : "Missing",
         detail: "Provider used for admin-side semantic embedding generation.",
       },
     ],
@@ -2270,7 +2262,7 @@ export async function runSemanticSearch(params: {
   const queryText = params.queryText?.trim() ?? ""
   const locale = params.locale?.trim() ?? "en"
   const embeddingCounts = await getEmbeddingCounts()
-  const providerReady = Boolean(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY)
+  const providerReady = Boolean(env.OPENROUTER_API_KEY)
 
   const metrics: Metric[] = [
     {
@@ -2328,8 +2320,7 @@ export async function runSemanticSearch(params: {
       results: [],
       queryText,
       locale,
-      unavailableReason:
-        "Semantic search requires OPENROUTER_API_KEY or OPENAI_API_KEY.",
+      unavailableReason: "Semantic search requires OPENROUTER_API_KEY.",
     }
   }
 

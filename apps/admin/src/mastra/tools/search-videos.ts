@@ -70,11 +70,11 @@ export const searchVideosTool = createTool({
       limit: inputData.limit,
       contentTypes: ["video"],
       // AI experience-gen video search source, operator-controlled via
-      // AI_VIDEO_SEARCH_EMBEDDING_SOURCE (default "openai"). Flip to
-      // "gateway" — Qwen 1536 query + `embedding_qwen` column, no paid-API
-      // dependency — only AFTER the embedding_qwen backfill exists, else the
-      // search hits an empty column. One-line reversible switch. Public
-      // search omits this arg entirely and stays on OpenAI + `embedding`.
+      // AI_VIDEO_SEARCH_EMBEDDING_SOURCE (default "openrouter"). Flip to
+      // "gateway" to route through the JesusFilm AI Gateway +
+      // `embedding_qwen` column only after that backfill exists, else the
+      // search hits an empty column. Public search omits this arg entirely
+      // and stays on the default OpenRouter + `embedding` path.
       // U3 of the content-embeddings-gateway-migration pilot; see
       // docs/plans/2026-06-05-001-feat-content-embeddings-gateway-migration-plan.md.
       embeddingSource: env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE,

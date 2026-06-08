@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest"
 import {
   assertBearerCsvsDisjoint,
+  aiVideoSearchEmbeddingSourceEnvSchema,
   concurrencyEnvSchema,
   DEFAULT_WEB_CANONICAL_ORIGIN,
   env,
@@ -84,6 +85,32 @@ describe("env", () => {
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("1.5")).toThrow()
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("-1")).toThrow()
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("30")).toThrow()
+    })
+  })
+
+  describe("aiVideoSearchEmbeddingSourceEnvSchema", () => {
+    it("defaults to openrouter", () => {
+      expect(aiVideoSearchEmbeddingSourceEnvSchema.parse(undefined)).toBe(
+        "openrouter",
+      )
+    })
+
+    it("accepts gateway as the explicit alternate vector column", () => {
+      expect(aiVideoSearchEmbeddingSourceEnvSchema.parse("gateway")).toBe(
+        "gateway",
+      )
+    })
+
+    it("normalizes the legacy openai value to openrouter", () => {
+      expect(aiVideoSearchEmbeddingSourceEnvSchema.parse("openai")).toBe(
+        "openrouter",
+      )
+    })
+
+    it("rejects unknown source values", () => {
+      expect(() =>
+        aiVideoSearchEmbeddingSourceEnvSchema.parse("qwen"),
+      ).toThrow()
     })
   })
 
