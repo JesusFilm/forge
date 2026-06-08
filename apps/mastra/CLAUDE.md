@@ -51,6 +51,10 @@ Origin documents:
   payload parsing. Do not replace them with a generic embedding blob route.
 - Generation mode semantics are shared across embedding workflows: omitted means
   idempotent; explicit `repair`, `force`, and `model-upgrade` request rewrites.
+- Firecrawl web data access is Mastra-owned through bounded search/scrape
+  tools, `webResearchAgent`, the `firecrawl-web-data` workflow, and the
+  `/forge-firecrawl-web-data` service route. Keep direct Firecrawl credentials
+  and API calls out of Admin and Manager.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
   contracts are HTTP payloads plus local Zod schemas.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
@@ -111,6 +115,13 @@ pnpm --filter @forge/mastra lint
 | `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
 | `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.       |
 | `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
+| `FIRECRAWL_API_KEY`                       | Firecrawl bearer key for Mastra-owned web search/scrape tools. Required in production runtime.                             |
+| `FIRECRAWL_API_URL`                       | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`; production must use HTTPS and an allowlisted host.        |
+| `FIRECRAWL_ALLOWED_HOSTS`                 | CSV host allowlist for production Firecrawl egress. Defaults to `api.firecrawl.dev`.                                       |
+| `FIRECRAWL_USER_AGENT`                    | Non-default user agent for Firecrawl requests. Defaults to `forge-mastra-firecrawl/1.0`.                                   |
+| `FIRECRAWL_TIMEOUT_MS`                    | Default Firecrawl request timeout. Defaults to `60000`.                                                                    |
+| `FIRECRAWL_MAX_SEARCH_RESULTS`            | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                           |
+| `FIRECRAWL_MAX_MARKDOWN_CHARS`            | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                           |
 | `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
@@ -251,6 +262,35 @@ explicit seed-only payload:
   "syncPromoted": false
 }
 ```
+
+## Firecrawl web data
+
+Firecrawl web data access is Mastra-owned. The runtime exposes:
+
+- `webResearchAgent`, with `firecrawlSearch` and `firecrawlScrape` tools.
+- `firecrawl-web-data`, a Studio-friendly workflow for either `search` or
+  `scrape` actions.
+- `POST /forge-firecrawl-web-data`, protected by `MASTRA_SERVICE_API_KEYS`, for
+  internal service callers that need bounded web data without direct Firecrawl
+  credentials.
+
+Default route payloads:
+
+```json
+{ "action": "search", "query": "firecrawl mastra tools", "limit": 5 }
+```
+
+```json
+{ "action": "scrape", "url": "https://docs.firecrawl.dev" }
+```
+
+The integration uses Firecrawl API v2 search and scrape over HTTPS, returns
+bounded markdown, and maps upstream failures into safe structured result
+objects. Keep direct Firecrawl calls out of Admin and Manager; those apps should
+use this runtime's tools/workflow/route if they need web data. Do not add
+Firecrawl MCP as the production path unless a later plan proves a real
+multi-tool MCP server need; MCP can be useful for local operator convenience but
+is not the deterministic product contract here.
 
 ## Search eval baseline portability
 

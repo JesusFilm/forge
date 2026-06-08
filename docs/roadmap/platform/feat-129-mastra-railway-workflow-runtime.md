@@ -10,6 +10,7 @@ depends_on:
   - "feat-121"
 blocks:
   - "feat-132"
+  - "feat-169"
 tags:
   - "platform"
   - "manager"

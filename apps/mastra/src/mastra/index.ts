@@ -21,6 +21,7 @@ import {
   getMastraStorageDir,
 } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
+import { webResearchAgent } from "./agents/web-research-agent"
 import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
@@ -59,6 +60,10 @@ import {
   searchEvalBaselinePortabilityWorkflow,
 } from "./workflows/search-eval-baseline-portability"
 import {
+  firecrawlWebDataWorkflow,
+  handleFirecrawlWebDataRouteRequest,
+} from "./workflows/firecrawl-web-data"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -95,7 +100,7 @@ const redactPromptBodies: SpanOutputProcessor = {
 }
 
 export const mastra = new Mastra({
-  agents: { smokeAgent },
+  agents: { smokeAgent, webResearchAgent },
   workflows: {
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
@@ -106,6 +111,7 @@ export const mastra = new Mastra({
     searchEvalNativeSuiteWorkflow,
     searchEvalOrchestratorWorkflow,
     searchEvalBaselinePortabilityWorkflow,
+    firecrawlWebDataWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -168,6 +174,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleTranscriptEmbeddingRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-firecrawl-web-data", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleFirecrawlWebDataRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
