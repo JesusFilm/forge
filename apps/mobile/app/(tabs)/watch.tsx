@@ -19,6 +19,7 @@ import {
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
+import { BrowseTopics } from "../../src/components/search/BrowseTopics"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
 import {
   ACCENT,
@@ -246,6 +247,14 @@ export default function DiscoverScreen() {
     timerRef.current = setTimeout(() => search(text), DEBOUNCE_MS)
   }
 
+  // Tapping a browse topic fills the bar and searches immediately, reusing the
+  // same stale-guarded search() — no debounce wait, no second fetch path.
+  function handleSelectTopic(term: string) {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setQuery(term)
+    void search(term)
+  }
+
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return
 
@@ -315,13 +324,7 @@ export default function DiscoverScreen() {
         />
       </View>
 
-      {!searched && !loading && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
-            Search for videos about any topic
-          </Text>
-        </View>
-      )}
+      {!searched && !loading && <BrowseTopics onSelect={handleSelectTopic} />}
 
       {loading && showSkeleton && <SearchResultSkeleton />}
 
@@ -415,12 +418,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
-  },
-  emptyText: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    fontSize: 16,
-    textAlign: "center",
   },
   noResultsTitle: {
     color: TEXT_PRIMARY,
