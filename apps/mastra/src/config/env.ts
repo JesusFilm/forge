@@ -20,6 +20,12 @@ const DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT =
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_MODEL = "embeddings"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_PROVIDER = "jesus-film-ai-gateway"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS = 60_000
+const DEFAULT_FIRECRAWL_API_URL = "https://api.firecrawl.dev"
+const DEFAULT_FIRECRAWL_ALLOWED_HOSTS = "api.firecrawl.dev"
+const DEFAULT_FIRECRAWL_USER_AGENT = "forge-mastra-firecrawl/1.0"
+const DEFAULT_FIRECRAWL_TIMEOUT_MS = 60_000
+const DEFAULT_FIRECRAWL_MAX_SEARCH_RESULTS = 5
+const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
 const AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS =
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS
 const AI_GATEWAY_TRANSFORM_VERSION = DEFAULT_EMBEDDING_TRANSFORM_VERSION
@@ -39,6 +45,15 @@ export type ContentEmbeddingProviderConfig = {
   expectedNativeDimensions?: number
   truncateToDimensions?: number
   transformVersion?: string
+}
+
+export type FirecrawlConfig = {
+  apiKey?: string
+  apiUrl: string
+  timeoutMs: number
+  userAgent: string
+  maxSearchResults: number
+  maxMarkdownCharacters: number
 }
 
 const envSchema = z.object({
@@ -116,6 +131,31 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
+  FIRECRAWL_ALLOWED_HOSTS: z
+    .string()
+    .min(1)
+    .default(DEFAULT_FIRECRAWL_ALLOWED_HOSTS),
+  FIRECRAWL_API_KEY: z.string().min(1).optional(),
+  FIRECRAWL_API_URL: z.string().url().default(DEFAULT_FIRECRAWL_API_URL),
+  FIRECRAWL_MAX_MARKDOWN_CHARS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(100_000)
+    .default(DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS),
+  FIRECRAWL_MAX_SEARCH_RESULTS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(20)
+    .default(DEFAULT_FIRECRAWL_MAX_SEARCH_RESULTS),
+  FIRECRAWL_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(300_000)
+    .default(DEFAULT_FIRECRAWL_TIMEOUT_MS),
+  FIRECRAWL_USER_AGENT: z.string().min(1).default(DEFAULT_FIRECRAWL_USER_AGENT),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -225,6 +265,19 @@ export const env = envSchema.parse({
   EVAL_QUERY_GENERATION_MODEL: emptyToUndefined(
     process.env.EVAL_QUERY_GENERATION_MODEL,
   ),
+  FIRECRAWL_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.FIRECRAWL_ALLOWED_HOSTS,
+  ),
+  FIRECRAWL_API_KEY: emptyToUndefined(process.env.FIRECRAWL_API_KEY),
+  FIRECRAWL_API_URL: emptyToUndefined(process.env.FIRECRAWL_API_URL),
+  FIRECRAWL_MAX_MARKDOWN_CHARS: emptyToUndefined(
+    process.env.FIRECRAWL_MAX_MARKDOWN_CHARS,
+  ),
+  FIRECRAWL_MAX_SEARCH_RESULTS: emptyToUndefined(
+    process.env.FIRECRAWL_MAX_SEARCH_RESULTS,
+  ),
+  FIRECRAWL_TIMEOUT_MS: emptyToUndefined(process.env.FIRECRAWL_TIMEOUT_MS),
+  FIRECRAWL_USER_AGENT: emptyToUndefined(process.env.FIRECRAWL_USER_AGENT),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
@@ -255,6 +308,16 @@ function assertGatewayBaseUrlAllowedForProduction() {
   if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
     throw new Error(
       "AI_GATEWAY_EMBEDDINGS_BASE_URL must use https and a host listed in AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
+function assertFirecrawlApiUrlAllowedForProduction() {
+  const apiUrl = new URL(env.FIRECRAWL_API_URL)
+  const allowedHosts = csvSet(env.FIRECRAWL_ALLOWED_HOSTS)
+  if (apiUrl.protocol !== "https:" || !allowedHosts.has(apiUrl.hostname)) {
+    throw new Error(
+      "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
     )
   }
 }
@@ -310,8 +373,10 @@ export function assertMastraRuntimeEnv() {
     ["ADMIN_SCENE_INGEST_URL", env.ADMIN_SCENE_INGEST_URL],
     ["ADMIN_TRANSCRIPT_INGEST_URL", env.ADMIN_TRANSCRIPT_INGEST_URL],
     ["DATABASE_URL", env.DATABASE_URL],
+    ["FIRECRAWL_API_KEY", env.FIRECRAWL_API_KEY],
     ["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS],
   ]
+  assertFirecrawlApiUrlAllowedForProduction()
 
   if (getContentEmbeddingsProviderMode() === "gateway") {
     missing.push([
@@ -346,6 +411,17 @@ export function getMastraStorageDir() {
     return `${env.RAILWAY_VOLUME_MOUNT_PATH.replace(/\/$/, "")}/mastra`
   }
   return ".mastra/storage"
+}
+
+export function getFirecrawlConfig(): FirecrawlConfig {
+  return {
+    apiKey: env.FIRECRAWL_API_KEY,
+    apiUrl: env.FIRECRAWL_API_URL,
+    timeoutMs: env.FIRECRAWL_TIMEOUT_MS,
+    userAgent: env.FIRECRAWL_USER_AGENT,
+    maxSearchResults: env.FIRECRAWL_MAX_SEARCH_RESULTS,
+    maxMarkdownCharacters: env.FIRECRAWL_MAX_MARKDOWN_CHARS,
+  }
 }
 
 function getLegacyEmbeddingProviderConfig(

@@ -20,6 +20,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns a thin search eval orchestrator that coordinates those leaf workflows
   for baseline capture, comparison, native Evaluation sync, and release-gate
   summaries without moving leaf logic into one mega-workflow.
+- Owns Firecrawl web data access for agents and operator workflows through
+  bounded search/scrape tools, a dedicated web research agent, and the
+  `/forge-firecrawl-web-data` service route.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
@@ -59,6 +62,11 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - The search eval orchestrator must not promote generated, trace-derived, seed,
   or user-submitted candidates. Candidate generation and seed submission are
   opt-in staging steps; human promotion stays behind Admin review contracts.
+- Firecrawl access belongs in this runtime. Do not add Firecrawl SDK/API calls
+  to Admin or Manager; expose typed Mastra tools/workflows and HTTP contracts
+  from here when other apps need web data.
+- Firecrawl MCP is not the product runtime path. Revisit MCP only for local
+  operator/coding-agent convenience or after a clear multi-tool server need.
 - Studio-facing workflows need structured Zod object input schemas on both the
   workflow and first step. Avoid `z.unknown()` for operator-run workflows, and
   prefer defaults/optional fields that render usable Studio forms.
