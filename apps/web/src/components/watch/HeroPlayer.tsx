@@ -103,6 +103,13 @@ const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
   objectFit: "contain",
 }
 
+const HERO_STAGE_TRANSITION_CLASSES =
+  "transition-[height,padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+const PRE_REVEAL_STAGE_CLASSES = `sticky w-full h-[calc(100svh-300px)] min-h-[400px] overflow-x-clip bg-black ${HERO_STAGE_TRANSITION_CLASSES}`
+const REVEALED_STAGE_CLASSES = `sticky flex w-full h-[min(100svh,calc(56.25vw+4rem))] min-h-[400px] items-center justify-center overflow-hidden bg-black p-4 sm:p-6 md:h-[min(100svh,calc(56.25vw+6rem))] lg:p-8 xl:p-10 ${HERO_STAGE_TRANSITION_CLASSES}`
+const HERO_MEDIA_CLASSES =
+  "block h-full w-full origin-top transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
@@ -664,7 +671,9 @@ export function HeroPlayer({
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky w-full h-[calc(100svh-300px)] min-h-[400px] bg-black ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
+        className={
+          chromeRevealed ? REVEALED_STAGE_CLASSES : PRE_REVEAL_STAGE_CLASSES
+        }
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -727,7 +736,7 @@ export function HeroPlayer({
             // the same handler accepts either at runtime; cast bridges the
             // type-system difference.
             onError={(event) => handlePlayerError(event as unknown as Event)}
-            className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
+            className={`${HERO_MEDIA_CLASSES} ${chromeRevealed ? "" : "scale-y-110"}`}
           />
         ) : (
           <MuxPlayer
@@ -754,7 +763,7 @@ export function HeroPlayer({
             onLoadedMetadata={handleLoadedMetadata}
             onCanPlay={handleCanPlay}
             onError={handlePlayerError}
-            className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
+            className={`${HERO_MEDIA_CLASSES} ${chromeRevealed ? "" : "scale-y-110"}`}
           />
         )}
 

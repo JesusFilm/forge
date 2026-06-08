@@ -297,7 +297,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("uses the sound-on player height before reveal so Play with Sound does not resize the hero", async () => {
+  it("animates into a centered cinematic frame after Play with Sound", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -308,7 +308,12 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-x-clip")
-    expect(wrapper.className).not.toContain("md:max-w-[calc(100svh*16/9)]")
+    expect(wrapper.className).not.toContain("items-center")
+    expect(wrapper.className).not.toContain(
+      "h-[min(100svh,calc(56.25vw+4rem))]",
+    )
+
+    expect(lastMuxProps().className as string).toContain("scale-y-110")
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -317,9 +322,27 @@ describe("HeroPlayer — initial mount", () => {
       pill.click()
     })
 
-    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("h-[min(100svh,calc(56.25vw+4rem))]")
+    expect(wrapper.className).toContain("md:h-[min(100svh,calc(56.25vw+6rem))]")
     expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("flex")
+    expect(wrapper.className).toContain("items-center")
+    expect(wrapper.className).toContain("justify-center")
+    expect(wrapper.className).toContain("p-4")
+    expect(wrapper.className).toContain("sm:p-6")
+    expect(wrapper.className).toContain("lg:p-8")
+    expect(wrapper.className).toContain("xl:p-10")
+    expect(wrapper.className).toContain("transition-[height,padding]")
     expect(wrapper.className).toContain("overflow-hidden")
+    expect(wrapper.className).not.toContain("overflow-x-clip")
+
+    const revealedProps = lastMuxProps()
+    expect(revealedProps.className as string).not.toContain("scale-y-110")
+    expect(
+      revealedProps.style as Record<string, string | undefined>,
+    ).toMatchObject({
+      "--media-object-fit": "contain",
+    })
   })
 
   it("renders a 'Play with Sound' pill (default state) above the player", () => {
