@@ -155,11 +155,13 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // The active dub's media as a single struct. Exposed directly on the context
   // (`activeVariantMediaState`) for panels that feed it to deriveSubtitlePanelState,
   // and destructured into the flat fields the player hook still reads.
-  const activeVariantMediaState = selectDubMediaState(
-    activeVariantId,
-    mediaById,
-    loadingIds,
-    errorIds,
+  // Memoized: selectDubMediaState returns a fresh object literal every call, and
+  // this value feeds the context-value useMemo below — without a stable reference
+  // here the context value changes on every provider render, re-rendering every
+  // useWatchSession consumer even when the active dub's media is unchanged.
+  const activeVariantMediaState = useMemo(
+    () => selectDubMediaState(activeVariantId, mediaById, loadingIds, errorIds),
+    [activeVariantId, mediaById, loadingIds, errorIds],
   )
   const {
     media: activeVariantMedia,

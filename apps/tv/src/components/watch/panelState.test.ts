@@ -34,7 +34,7 @@ function variant(overrides: Partial<WatchVariant> = {}): WatchVariant {
     documentId: "v1",
     slug: "english",
     published: true,
-    hls: "https://example.test/v1.m3u8",
+    hls: "https://stream.mux.com/v1.m3u8",
     duration: 100,
     languageCoreId: null,
     languageBcp47: "en",
@@ -119,27 +119,38 @@ describe("isSubtitleRowActive", () => {
 // ── isVariantPlayable / annotateVariantRows ─────────────────────────────────
 
 describe("isVariantPlayable", () => {
-  it("is playable with a non-empty HLS url", () => {
-    expect(isVariantPlayable({ hls: "https://x/v.m3u8" })).toBe(true)
+  it("is playable with a Mux-hosted HLS url the player accepts", () => {
+    expect(isVariantPlayable({ hls: "https://stream.mux.com/v.m3u8" })).toBe(
+      true,
+    )
   })
 
   it("is not playable when hls is null or empty", () => {
     expect(isVariantPlayable({ hls: null })).toBe(false)
     expect(isVariantPlayable({ hls: "" })).toBe(false)
   })
+
+  it("is not playable for a non-Mux url the player would reject", () => {
+    // Raw CMS hls can be a non-Mux host; the player's validateStreamingUrl
+    // rejects it, so the row must be disabled rather than selectable-but-dead.
+    expect(isVariantPlayable({ hls: "https://example.test/v.m3u8" })).toBe(
+      false,
+    )
+  })
 })
 
 describe("annotateVariantRows", () => {
-  it("marks hls==null rows disabled and keeps playable rows enabled", () => {
+  it("disables unplayable rows (null / empty / non-Mux) and keeps Mux rows enabled", () => {
     const rows = annotateVariantRows(
       [
-        variant({ documentId: "v1", hls: "https://x/v1.m3u8" }),
+        variant({ documentId: "v1", hls: "https://stream.mux.com/v1.m3u8" }),
         variant({ documentId: "v2", hls: null }),
         variant({ documentId: "v3", hls: "" }),
+        variant({ documentId: "v4", hls: "https://example.test/v4.m3u8" }),
       ],
       0,
     )
-    expect(rows.map((r) => r.disabled)).toEqual([false, true, true])
+    expect(rows.map((r) => r.disabled)).toEqual([false, true, true, true])
   })
 
   it("preserves the original index for write-back", () => {

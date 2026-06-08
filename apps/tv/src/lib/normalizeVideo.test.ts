@@ -226,6 +226,43 @@ describe("normalizeVideo — base record", () => {
     expect(englishVariant).not.toHaveProperty("subtitles")
   })
 
+  it("computes languageNameNative: null for English, the native label for a distinct one", () => {
+    const result = normalizeVideo(makeRawVideo())!
+    const en = result.variants.find((v) => v.languageSlug === "english")!
+    const es = result.variants.find((v) => v.languageSlug === "spanish")!
+    // Branch 1: bcp47 === "en" → null (no redundant native label for English).
+    expect(en.languageNameNative).toBeNull()
+    // Branch 3: native name distinct from the English name → returned.
+    expect(es.languageNameNative).toBe("Español")
+  })
+
+  it("languageNameNative is null when the native name equals the English name", () => {
+    // Branch 2: a language whose name map has only an English entry — the native
+    // lookup falls back to the same string, so there is no distinct native label.
+    const result = normalizeVideo(
+      makeRawVideo({
+        variants: [
+          {
+            documentId: "dub-ko",
+            slug: "korean-dub",
+            published: true,
+            hls: "https://stream.mux.com/kkk.m3u8",
+            duration: 100,
+            language: {
+              coreId: "1",
+              bcp47: "ko",
+              slug: "korean",
+              name: { en: "Korean" },
+            },
+            muxVideo: { playbackId: "kkk" },
+          },
+        ],
+      }),
+    )!
+    const ko = result.variants.find((v) => v.languageSlug === "korean")!
+    expect(ko.languageNameNative).toBeNull()
+  })
+
   it("sorts study questions by order and filters empty values", () => {
     const result = normalizeVideo(makeRawVideo())!
     expect(result.studyQuestions).toHaveLength(2)

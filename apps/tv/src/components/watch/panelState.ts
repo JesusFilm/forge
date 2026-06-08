@@ -6,6 +6,7 @@
 
 import type { DubMediaState } from "../../contexts/watchSessionState"
 import type { WatchSubtitle, WatchVariant } from "../../lib/normalizeVideo"
+import { validateStreamingUrl } from "../../lib/validateUrl"
 
 // ── Subtitle panel: media-state → discriminated UI state ───────────────────
 
@@ -77,9 +78,17 @@ export type AnnotatedVariantRow = {
   active: boolean
 }
 
-/** A variant is playable when it has a non-empty HLS URL. */
+/**
+ * A variant is playable when its HLS URL is one the player will actually accept
+ * — i.e. it passes `validateStreamingUrl` (Mux-hosted HLS). Gating on non-empty
+ * alone is not enough: `normalizeVideo` passes the raw CMS `hls` through, so a
+ * published dub can carry a non-Mux URL that the player's own
+ * `validateStreamingUrl` guard rejects at Play time. Keeping this gate in sync
+ * with that guard means a dub the player can't play renders as a disabled row
+ * instead of a selectable one that silently does nothing.
+ */
 export function isVariantPlayable(variant: Pick<WatchVariant, "hls">): boolean {
-  return variant.hls != null && variant.hls !== ""
+  return validateStreamingUrl(variant.hls)
 }
 
 /**

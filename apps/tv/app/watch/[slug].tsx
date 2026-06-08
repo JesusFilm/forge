@@ -42,6 +42,7 @@ import { TextRenderer } from "../../src/components/sections/TextRenderer"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { COLORS } from "../../src/lib/colors"
+import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
 
 type ActivePanel = "none" | "language" | "subtitle"
@@ -118,7 +119,12 @@ export default function WatchVideoScreen() {
 
   // First paint prefers resolved data, falling back to the seed.
   const displayTitle = video?.title ?? seed?.title ?? null
-  const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
+  // CMS posterUrl is untrusted — sanitize before it reaches expo-image (the
+  // seed.imageUrl branch is already resolveImageUrl-sanitized in decodeWatchSeed).
+  const displayPoster =
+    (video?.posterUrl != null ? resolveImageUrl(video.posterUrl) : null) ??
+    seed?.imageUrl ??
+    null
   // Backdrop source: active dub → first-playable → seed-derived Mux URL.
   const backdropSource =
     activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl

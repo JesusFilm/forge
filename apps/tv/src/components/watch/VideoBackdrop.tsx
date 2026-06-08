@@ -76,10 +76,24 @@ export function VideoBackdrop({
       : null
   const hasValidStream = validStream !== null
 
-  const player = useVideoPlayer(validStream, (p) => {
+  // Freeze the source passed to useVideoPlayer. Its source argument RELEASES and
+  // recreates the player whenever it changes (black/stuck frame). A dub switch
+  // from the Language panel mutates streamingUrl in place, so we seed the player
+  // with the first source and route every later swap through replaceAsync on the
+  // SAME instance — mirrors VideoPlayer.tsx's frozen-creationSource pattern.
+  const creationSource = useRef(validStream).current
+  const player = useVideoPlayer(creationSource, (p) => {
     p.muted = true
     p.loop = true
   })
+
+  const loadedSourceRef = useRef(creationSource)
+  useEffect(() => {
+    if (validStream === loadedSourceRef.current) return
+    loadedSourceRef.current = validStream
+    // Swap on the same instance; null clears the source when no valid stream.
+    player.replaceAsync(validStream).catch(() => {})
+  }, [player, validStream])
 
   // Gate mounting the native VideoView until the source is ready to render its
   // first frame — avoids the black-flash window during HLS init.

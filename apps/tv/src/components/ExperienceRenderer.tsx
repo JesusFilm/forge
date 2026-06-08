@@ -27,6 +27,7 @@ import {
 
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
+import { COLORS } from "../lib/colors"
 import { normalizeExperience, type NormalizedBlock } from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
@@ -174,7 +175,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
   if (loading) {
     return (
       <StateScreen header={header}>
-        <ActivityIndicator size="large" color="#CB333B" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </StateScreen>
     )
   }
@@ -319,17 +320,17 @@ function ErrorState({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#161311",
+    backgroundColor: COLORS.surface,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#161311",
+    backgroundColor: COLORS.surface,
   },
   list: {
     flex: 1,
-    backgroundColor: "#161311",
+    backgroundColor: COLORS.surface,
   },
   listContent: {
     // Extra bottom padding ensures the last section can scroll fully to the
@@ -347,12 +348,12 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   emptyText: {
-    color: "#F5F5F4",
+    color: COLORS.text,
     fontSize: 20,
     fontFamily: "System",
   },
   errorText: {
-    color: "#F5F5F4",
+    color: COLORS.text,
     fontSize: 20,
     fontFamily: "System",
     marginBottom: 24,
@@ -360,26 +361,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   retryButton: {
-    backgroundColor: "#CB333B",
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 24,
   },
   retryButtonFocused: {
-    shadowColor: "#CB333B",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 12,
     elevation: 8,
   },
   retryButtonText: {
-    color: "#F5F5F4",
+    color: COLORS.text,
     fontSize: 18,
     fontFamily: "System",
     fontWeight: "600",
   },
   backHint: {
-    color: "#A8A29E",
+    color: COLORS.muted,
     fontSize: 14,
     fontFamily: "System",
     marginTop: 16,

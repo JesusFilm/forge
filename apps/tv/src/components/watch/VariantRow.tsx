@@ -12,7 +12,7 @@
 //     original index and closes the panel; the active row gets initial focus
 //     (hasTVPreferredFocus) and a checkmark.
 
-import { Text, View, type TextStyle, type ViewStyle } from "react-native"
+import { Text, View, type ViewStyle } from "react-native"
 
 import { FocusableCard } from "../FocusableCard"
 import type { AnnotatedVariantRow } from "./panelState"
@@ -36,7 +36,7 @@ export function VariantRow({
    * `panelStyles.rowInnerCompact`. Behavior-preserving — keeps each panel's
    * existing spacing.
    */
-  rowInnerStyle?: ViewStyle | TextStyle
+  rowInnerStyle?: ViewStyle
 }) {
   const { variant, index, disabled, active } = row
   const name = variant.languageName ?? variant.languageSlug ?? variant.slug
