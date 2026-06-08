@@ -20,11 +20,14 @@ describe("BROWSE_TOPICS", () => {
     }
   })
 
-  it("gives every topic a distinct hex base color and glyph", () => {
-    expect(new Set(BROWSE_TOPICS.map((t) => t.baseColor)).size).toBe(6)
+  it("gives every topic a distinct two-stop hex gradient and glyph", () => {
+    expect(new Set(BROWSE_TOPICS.map((t) => t.gradient.join("-"))).size).toBe(6)
     expect(new Set(BROWSE_TOPICS.map((t) => t.glyph)).size).toBe(6)
     for (const t of BROWSE_TOPICS) {
-      expect(t.baseColor).toMatch(/^#[0-9A-Fa-f]{6}$/)
+      expect(t.gradient).toHaveLength(2)
+      for (const stop of t.gradient) {
+        expect(stop).toMatch(/^#[0-9A-Fa-f]{6}$/)
+      }
       expect(t.glyph.length).toBeGreaterThan(0)
     }
   })

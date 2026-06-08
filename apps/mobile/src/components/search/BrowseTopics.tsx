@@ -1,50 +1,56 @@
-import { StyleSheet, Text, View } from "react-native"
+import { ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { BROWSE_TOPICS } from "../../lib/browseTopics"
 import { TEXT_SECONDARY } from "../../lib/color"
-import { TopicBubble } from "./TopicBubble"
+import { TopicCard } from "./TopicCard"
 
 export interface BrowseTopicsProps {
   onSelect: (searchTerm: string) => void
 }
 
-// The Discover empty state: a "Browse" heading over the six topic bubbles, which
-// wrap to fit the viewport. Replaces the old dead-end placeholder line. Tapping a
-// bubble routes through onSelect (wired to the screen's stale-guarded search).
+// The Discover empty state: a "Browse Categories" heading over a 2-column grid
+// of gradient category cards, scrollable so it never clips on short screens.
+// Replaces the old dead-end placeholder line. Tapping a card routes through
+// onSelect (wired to the screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Browse</Text>
-      <View style={styles.bubbles}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <Text style={styles.heading}>Browse Categories</Text>
+      <View style={styles.grid}>
         {BROWSE_TOPICS.map((topic) => (
-          <TopicBubble
-            key={topic.searchTerm}
-            topic={topic}
-            onSelect={onSelect}
-          />
+          <TopicCard key={topic.searchTerm} topic={topic} onSelect={onSelect} />
         ))}
       </View>
-    </View>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
+    flex: 1,
+  },
+  content: {
     paddingHorizontal: 16,
     paddingTop: 12,
+    paddingBottom: 24,
   },
   heading: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 1,
     textTransform: "uppercase",
-    marginBottom: 12,
+    marginBottom: 14,
   },
-  bubbles: {
+  grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 9,
+    gap: 12,
   },
 })
