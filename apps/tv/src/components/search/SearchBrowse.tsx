@@ -1,26 +1,10 @@
-import { useQuery } from "@apollo/client/react"
-import { type AdminResultOf as ResultOf } from "@forge/admin-graphql"
 import { LinearGradient } from "expo-linear-gradient"
-import { Image } from "expo-image"
-import { useRouter } from "expo-router"
-import { useCallback, useMemo } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
-import { LIST_EXPERIENCES } from "../../lib/queries"
 import { COLORS, hexToRgba } from "../../lib/colors"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
 import { CATEGORIES, type SearchCategory } from "./categories"
-
-const POPULAR_COUNT = 8
-
-type ListResult = ResultOf<typeof LIST_EXPERIENCES>
-type Experience = NonNullable<
-  NonNullable<
-    NonNullable<NonNullable<ListResult["experiences"]>[number]>["locales"]
-  >[number]
->
 
 type Props = {
   recents: string[]
@@ -32,41 +16,14 @@ type Props = {
   onClearHistory: () => void
 }
 
+// The search-empty browse view: Recent searches + Browse-topics categories.
+// Both are sourced locally / statically (recents from history, categories from
+// the static CATEGORIES list), so this view needs no GraphQL query and works
+// for the unauthenticated public app. (It previously showed a "Popular
+// experiences" rail backed by the editor-gated Query.experiences, which 401'd
+// for the public TV app and silently rendered empty — removed with the home's
+// migration off that gated query.)
 export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
-  const router = useRouter()
-
-  // Reuses home's LIST_EXPERIENCES query so the Apollo cache is warm
-  // when the user came from home. If /search is deep-linked directly
-  // (cache cold), useQuery fires the network request — same shape as
-  // home does on first mount.
-  // cache-first explicitly: SearchBrowse only mounts when /search has
-  // an empty query, so we want to instantly render whatever the home
-  // screen's earlier LIST_EXPERIENCES populated and only network-
-  // fetch when nothing's cached yet (deep-link case).
-  const { data } = useQuery(LIST_EXPERIENCES, {
-    variables: { locale: "en" },
-    fetchPolicy: "cache-first",
-  })
-  const experiences: Experience[] = useMemo(
-    () =>
-      (data?.experiences ?? [])
-        .flatMap(
-          (experience) =>
-            experience?.locales?.filter(
-              (locale) => locale?.slug != null && locale.documentId != null,
-            ) ?? [],
-        )
-        .slice(0, POPULAR_COUNT),
-    [data],
-  )
-
-  const openExperience = useCallback(
-    (slug: string) => {
-      router.push(`/experience/${encodeURIComponent(slug)}`)
-    },
-    [router],
-  )
-
   const showRecent = recents.length > 0
 
   return (
@@ -111,66 +68,6 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
           ))}
         </ScrollView>
       </View>
-
-      {experiences.length > 0 ? (
-        <View style={styles.railContainer}>
-          <Text style={styles.railTitle} accessibilityRole="header">
-            Popular experiences
-          </Text>
-          {/* Inline horizontal ScrollView matching the chip + category
-              row patterns above, NOT the home-screen ContentRail.
-              ContentRail is tuned for the home screen's edge-to-edge
-              layout and hardcodes paddingHorizontal: scale(80) on both
-              its title and listContent. Inside the /search right pane
-              that 80dp gutter sits on TOP of the rightPane's own
-              padding (32dp), pushing the Popular row visibly further
-              right than the Recent / Browse topics rows above it.
-              Reusing the local rail styling keeps all three rails
-              starting at the same X column inside the panel. */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.popularRowContent}
-          >
-            {experiences.map((item) => {
-              const imageUrl = resolveImageUrl(item.ogImageUrl)
-              return (
-                <View
-                  key={item.documentId ?? item.slug ?? "experience"}
-                  style={styles.popularCellWrapper}
-                >
-                  <FocusableCard
-                    onPress={() => {
-                      if (item.slug) openExperience(item.slug)
-                    }}
-                    accessibilityLabel={item.title ?? "Untitled"}
-                    accessibilityHint="Opens this experience"
-                    style={styles.popularCard}
-                  >
-                    {imageUrl != null ? (
-                      <Image
-                        source={{ uri: imageUrl }}
-                        style={styles.popularImage}
-                        contentFit="cover"
-                        recyclingKey={`popular-${item.documentId ?? item.slug}`}
-                      />
-                    ) : (
-                      <View
-                        style={[styles.popularImage, styles.popularFallback]}
-                      />
-                    )}
-                    <View style={styles.popularText}>
-                      <Text style={styles.popularTitle} numberOfLines={2}>
-                        {item.title ?? "Untitled"}
-                      </Text>
-                    </View>
-                  </FocusableCard>
-                </View>
-              )
-            })}
-          </ScrollView>
-        </View>
-      ) : null}
     </ScrollView>
   )
 }
@@ -253,8 +150,6 @@ function CategoryCard({
 
 const CATEGORY_W = scale(220)
 const CATEGORY_H = scale(124)
-const POPULAR_W = scale(240)
-const POPULAR_IMG_H = scale(136)
 
 const styles = StyleSheet.create({
   scroll: {
@@ -356,44 +251,5 @@ const styles = StyleSheet.create({
     textShadowColor: hexToRgba(COLORS.surface, 0.45),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-  },
-  popularRowContent: {
-    // Match chipRowContent / categoryRowContent so the Popular row's
-    // leftmost card lines up at the same X column as the Recent chips
-    // and Browse-topics cards above it. Without this the row would
-    // start at X=0 of its container and lose the focus-glow gutter.
-    paddingHorizontal: scale(24),
-  },
-  popularCellWrapper: {
-    // Vertical halo headroom mirrors categoryCellWrapper (scale(32))
-    // since the popular cards have the same 1.05x scale + scale(16)
-    // shadow on focus. Horizontal mirror at scale(16) matches the
-    // category row's inter-card gap so all three rails feel like
-    // siblings, not three different rhythms.
-    paddingVertical: scale(32),
-    paddingHorizontal: scale(16),
-  },
-  popularCard: {
-    width: POPULAR_W,
-    backgroundColor: COLORS.surfaceContainer,
-    overflow: "hidden",
-  },
-  popularImage: {
-    width: POPULAR_W,
-    height: POPULAR_IMG_H,
-    borderTopLeftRadius: scale(16),
-    borderTopRightRadius: scale(16),
-  },
-  popularFallback: {
-    backgroundColor: COLORS.surfaceContainerHigh,
-  },
-  popularText: {
-    padding: scale(12),
-  },
-  popularTitle: {
-    fontFamily: "System",
-    fontSize: scale(14),
-    fontWeight: "600",
-    color: COLORS.text,
   },
 })

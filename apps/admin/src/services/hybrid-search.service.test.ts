@@ -106,13 +106,10 @@ describe("HybridSearchService", () => {
     })
 
     // All 4 retrievers were invoked with overfetch = DEFAULT_LIMIT * 3 = 60.
-    // The default path resolves embeddingSource to "openrouter" (→ `embedding`
-    // column in the retriever).
     expect(searchVideoSemantic).toHaveBeenCalledWith(mockPrisma, {
       queryEmbedding: "[0.1,0.2,0.3]",
       locale: "en",
       limit: 60,
-      embeddingSource: "openrouter",
     })
     expect(searchVideoKeyword).toHaveBeenCalledWith(mockPrisma, {
       query: "forgiveness",
@@ -287,8 +284,8 @@ describe("HybridSearchService", () => {
     expect(traced.trace.contributingRetrievers).toEqual(["semantic-video"])
   })
 
-  describe("embeddingSource threading (U3)", () => {
-    it("defaults to 'openrouter' for the embedder and semantic retriever when unset", async () => {
+  describe("query embedding", () => {
+    it("calls the embedder without a per-call source override", async () => {
       const embedder = successEmbedder()
       const service = new HybridSearchService({
         prisma: mockPrisma,
@@ -298,33 +295,9 @@ describe("HybridSearchService", () => {
 
       await service.search({ query: "test", locale: "en" })
 
-      // Embedder receives the resolved source as its 2nd arg.
-      expect(embedder).toHaveBeenCalledWith("test", "openrouter")
-      expect(searchVideoSemantic).toHaveBeenCalledWith(
-        mockPrisma,
-        expect.objectContaining({ embeddingSource: "openrouter" }),
-      )
-    })
-
-    it("threads 'gateway' to both the embedder and the semantic retriever", async () => {
-      const embedder = successEmbedder()
-      const service = new HybridSearchService({
-        prisma: mockPrisma,
-        embedder,
-        logger,
-      })
-
-      await service.search({
-        query: "test",
-        locale: "en",
-        embeddingSource: "gateway",
-      })
-
-      expect(embedder).toHaveBeenCalledWith("test", "gateway")
-      expect(searchVideoSemantic).toHaveBeenCalledWith(
-        mockPrisma,
-        expect.objectContaining({ embeddingSource: "gateway" }),
-      )
+      expect(embedder).toHaveBeenCalledWith("test")
+      const params = vi.mocked(searchVideoSemantic).mock.calls.at(-1)?.[1]
+      expect(params).not.toHaveProperty("embeddingSource")
     })
   })
 

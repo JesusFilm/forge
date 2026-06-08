@@ -16,6 +16,7 @@ import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { ResultCard } from "./ResultCard"
+import { searchResultPath } from "./searchResultPath"
 
 type Props = {
   state: SearchState
@@ -43,7 +44,7 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
   const router = useRouter()
   const openResult = useCallback(
     (result: SearchResult) => {
-      router.push(`/experience/${encodeURIComponent(result.slug)}`)
+      router.push(searchResultPath(result))
     },
     [router],
   )

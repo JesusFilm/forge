@@ -6,6 +6,7 @@ import {
   VideoPlayerProvider,
   useVideoPlayerContext,
 } from "../src/contexts/VideoPlayerContext"
+import { WatchSessionProvider } from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
 
 /** Background color from Crimson Gallery design system */
@@ -160,16 +161,23 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <ApolloProvider client={clientRef.current!}>
-        <VideoPlayerProvider>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: BG_COLOR },
-            }}
-          />
-          <VideoPlayerOverlay />
-        </VideoPlayerProvider>
+        {/* WatchSession is the OUTER provider: the overlay VideoPlayer rendered
+            inside VideoPlayerProvider must be able to call useWatchSession()
+            (live dub/subtitle handoff). It sits below ErrorBoundary so a
+            provider throw degrades to the error screen, not a white screen.
+            Inert when no video is published into it (KTD2, U3). */}
+        <WatchSessionProvider>
+          <VideoPlayerProvider>
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: BG_COLOR },
+              }}
+            />
+            <VideoPlayerOverlay />
+          </VideoPlayerProvider>
+        </WatchSessionProvider>
       </ApolloProvider>
     </ErrorBoundary>
   )

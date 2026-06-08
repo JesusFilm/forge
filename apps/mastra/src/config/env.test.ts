@@ -1,6 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 describe("Mastra env", () => {
+  beforeEach(() => {
+    vi.stubEnv("FIRECRAWL_API_KEY", "firecrawl-key")
+  })
+
   afterEach(() => {
     vi.doUnmock("../services/embedding-provider")
     vi.unstubAllEnvs()
@@ -156,6 +160,13 @@ describe("Mastra env", () => {
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "")
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS", "")
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_USER_AGENT", "")
+    vi.stubEnv("FIRECRAWL_ALLOWED_HOSTS", "")
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+    vi.stubEnv("FIRECRAWL_API_URL", "")
+    vi.stubEnv("FIRECRAWL_MAX_MARKDOWN_CHARS", "")
+    vi.stubEnv("FIRECRAWL_MAX_SEARCH_RESULTS", "")
+    vi.stubEnv("FIRECRAWL_TIMEOUT_MS", "")
+    vi.stubEnv("FIRECRAWL_USER_AGENT", "")
     vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_MODEL", "")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_PROVIDER", "")
@@ -188,6 +199,13 @@ describe("Mastra env", () => {
     expect(env.AI_GATEWAY_EMBEDDINGS_USER_AGENT).toBe(
       "forge-mastra-content-embeddings/1.0",
     )
+    expect(env.FIRECRAWL_ALLOWED_HOSTS).toBe("api.firecrawl.dev")
+    expect(env.FIRECRAWL_API_KEY).toBeUndefined()
+    expect(env.FIRECRAWL_API_URL).toBe("https://api.firecrawl.dev")
+    expect(env.FIRECRAWL_MAX_MARKDOWN_CHARS).toBe(16_000)
+    expect(env.FIRECRAWL_MAX_SEARCH_RESULTS).toBe(5)
+    expect(env.FIRECRAWL_TIMEOUT_MS).toBe(60_000)
+    expect(env.FIRECRAWL_USER_AGENT).toBe("forge-mastra-firecrawl/1.0")
     expect(env.OPENAI_EMBEDDINGS_BASE_URL).toBe("https://api.openai.com/v1")
     expect(env.OPENROUTER_EMBEDDINGS_BASE_URL).toBe(
       "https://openrouter.ai/api/v1",
@@ -205,6 +223,27 @@ describe("Mastra env", () => {
     expect(getSceneEmbeddingProviderConfig()).toMatchObject({
       provider: "jesus-film-ai-gateway",
       timeoutMs: 90_000,
+    })
+  })
+
+  it("passes Firecrawl settings through provider config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "custom-firecrawl-key")
+    vi.stubEnv("FIRECRAWL_API_URL", "https://firecrawl.internal")
+    vi.stubEnv("FIRECRAWL_TIMEOUT_MS", "45000")
+    vi.stubEnv("FIRECRAWL_USER_AGENT", "forge-test-firecrawl/1.0")
+    vi.stubEnv("FIRECRAWL_MAX_SEARCH_RESULTS", "7")
+    vi.stubEnv("FIRECRAWL_MAX_MARKDOWN_CHARS", "9000")
+
+    const { getFirecrawlConfig } = await import("./env")
+
+    expect(getFirecrawlConfig()).toEqual({
+      apiKey: "custom-firecrawl-key",
+      apiUrl: "https://firecrawl.internal",
+      timeoutMs: 45_000,
+      userAgent: "forge-test-firecrawl/1.0",
+      maxSearchResults: 7,
+      maxMarkdownCharacters: 9000,
     })
   })
 
@@ -236,6 +275,107 @@ describe("Mastra env", () => {
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
       "AI_GATEWAY_EMBEDDINGS_API_KEY required for Mastra production",
+    )
+  })
+
+  it("requires Firecrawl credentials in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_KEY required for Mastra production",
+    )
+  })
+
+  it("rejects unsafe Firecrawl API URLs in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("FIRECRAWL_API_URL", "http://evil.test")
+    vi.stubEnv("FIRECRAWL_ALLOWED_HOSTS", "api.firecrawl.dev")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects non-allowlisted Firecrawl API hosts in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("FIRECRAWL_API_URL", "https://other.test")
+    vi.stubEnv("FIRECRAWL_ALLOWED_HOSTS", "api.firecrawl.dev")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
     )
   })
 

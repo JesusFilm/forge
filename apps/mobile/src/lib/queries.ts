@@ -65,6 +65,8 @@ export const SEARCH = adminGraphql(`
         startSeconds
         playbackId
         score
+        label
+        childCount
       }
     }
   }
@@ -210,6 +212,58 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 )
 
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
+
+// ── Series detail query ─────────────────────────────────────────────
+//
+// A series is a Video whose label is SERIES/COLLECTION (or which has children).
+// The series detail page needs three things the single-video query doesn't:
+//   1. the series' OWN `children` (the episode grid) — distinct from the
+//      `parents.parent.children` siblings the WatchVideo fragment carries;
+//   2. `childDubLanguages` — the server-aggregated union of languages the
+//      episodes are available in, which drives the language sheet;
+//   3. (already in WatchVideo) the series' own `variants`/dubs — a playable one
+//      is the trailer.
+// These series-only selections live HERE, on a dedicated operation, NOT on the
+// shared `watchVideoFragment` — keeping the single-video query lean (see the
+// payload note above). gql.tada infers the types from admin's introspection;
+// no admin schema change is needed (the fields already exist).
+export const GET_SERIES_BY_SLUG = adminGraphql(
+  `
+    query GetSeriesBySlug($locale: String!, $slug: String!) {
+      videoBySlug(slug: $slug) {
+        ...WatchVideo
+        children {
+          order
+          child {
+            documentId: id
+            slug
+            label
+            locales(locale: $locale) {
+              documentId: id
+              languageSlug
+              title
+            }
+            images {
+              documentId: id
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+          }
+        }
+        childDubLanguages {
+          slug
+          name
+          bcp47
+        }
+      }
+    }
+  `,
+  [watchVideoFragment],
+)
+
+export type SeriesVideoData = AdminResultOf<typeof GET_SERIES_BY_SLUG>
 
 // ── Per-dub media (lazy) ────────────────────────────────────────────
 //

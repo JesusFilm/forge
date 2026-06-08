@@ -1,0 +1,69 @@
+import { extractMuxPlaybackId, muxHlsUrlFromPlaybackId } from "./muxUrl"
+
+describe("muxHlsUrlFromPlaybackId", () => {
+  it("builds the canonical HLS URL from a clean token", () => {
+    expect(muxHlsUrlFromPlaybackId("abc123XYZ")).toBe(
+      "https://stream.mux.com/abc123XYZ.m3u8",
+    )
+  })
+
+  it("accepts the - and _ characters Mux uses in playback ids", () => {
+    expect(muxHlsUrlFromPlaybackId("x3XKV1Yi01z-dyF_8ZLBM")).toBe(
+      "https://stream.mux.com/x3XKV1Yi01z-dyF_8ZLBM.m3u8",
+    )
+  })
+
+  it("returns null for a token with unsafe characters (no host/path injection)", () => {
+    expect(muxHlsUrlFromPlaybackId("evil.com/x")).toBeNull()
+    expect(muxHlsUrlFromPlaybackId("ab cd")).toBeNull()
+  })
+
+  it("returns null for null / undefined / empty", () => {
+    expect(muxHlsUrlFromPlaybackId(null)).toBeNull()
+    expect(muxHlsUrlFromPlaybackId(undefined)).toBeNull()
+    expect(muxHlsUrlFromPlaybackId("")).toBeNull()
+  })
+})
+
+describe("extractMuxPlaybackId", () => {
+  it("extracts the playback ID from a Mux HLS URL", () => {
+    expect(extractMuxPlaybackId("https://stream.mux.com/abc123.m3u8")).toBe(
+      "abc123",
+    )
+  })
+
+  it("returns null for a non-Mux URL", () => {
+    expect(extractMuxPlaybackId("https://example.com/video.m3u8")).toBeNull()
+  })
+
+  it("returns null when stream.mux.com is embedded in a non-Mux host's path", () => {
+    // Host-anchor: an unanchored substring match would falsely extract "abc"
+    // here. The real hostname is evil.com, so this must be rejected.
+    expect(
+      extractMuxPlaybackId("https://evil.com/stream.mux.com/abc.m3u8"),
+    ).toBeNull()
+  })
+
+  it("still extracts the id from a genuine Mux URL", () => {
+    expect(extractMuxPlaybackId("https://stream.mux.com/abc123.m3u8")).toBe(
+      "abc123",
+    )
+  })
+
+  it("returns null for a non-URL string", () => {
+    expect(extractMuxPlaybackId("not a url")).toBeNull()
+  })
+
+  it("returns null for null / undefined / empty", () => {
+    expect(extractMuxPlaybackId(null)).toBeNull()
+    expect(extractMuxPlaybackId(undefined)).toBeNull()
+    expect(extractMuxPlaybackId("")).toBeNull()
+  })
+
+  it("round-trips: a Mux URL → id → URL yields the same URL", () => {
+    const url = "https://stream.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02i.m3u8"
+    const id = extractMuxPlaybackId(url)
+    expect(id).not.toBeNull()
+    expect(muxHlsUrlFromPlaybackId(id)).toBe(url)
+  })
+})

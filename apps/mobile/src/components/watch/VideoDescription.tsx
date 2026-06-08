@@ -16,12 +16,15 @@ export function VideoDescription({ description }: VideoDescriptionProps) {
   const typography = useTypography()
   const [expanded, setExpanded] = useState(false)
 
-  if (description == null || description.length === 0) return null
-
   const handleToggle = useCallback(() => {
     animateLayout()
     setExpanded((prev) => !prev)
   }, [])
+
+  // Guard AFTER all hooks — a description that goes null -> non-null on a mounted
+  // instance (the series screen republishes partial -> full under cache-first)
+  // would otherwise change the hook count between renders and crash.
+  if (description == null || description.length === 0) return null
 
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
