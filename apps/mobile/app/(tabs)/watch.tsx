@@ -131,6 +131,9 @@ export default function DiscoverScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
   const [resultsKey, setResultsKey] = useState(0)
+  const browseAnim = useRef(new Animated.Value(0)).current
+  const browseScale = useRef(new Animated.Value(0.97)).current
+  const [browseMounted, setBrowseMounted] = useState(true)
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -139,6 +142,45 @@ export default function DiscoverScreen() {
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
     }
   }, [])
+
+  // Fade the browse grid in and out the same way the results animate: fade +
+  // slight scale in on enter, fade out then unmount on leave.
+  const showBrowse = !searched && !loading
+  useEffect(() => {
+    if (showBrowse) {
+      setBrowseMounted(true)
+      browseAnim.setValue(0)
+      browseScale.setValue(0.97)
+      Animated.parallel([
+        Animated.timing(browseAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(browseScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 9,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(browseAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(browseScale, {
+          toValue: 0.95,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setBrowseMounted(false)
+      })
+    }
+  }, [showBrowse, browseAnim, browseScale])
 
   const animateOut = useCallback((): Promise<void> => {
     if (results.length === 0) return Promise.resolve()
@@ -347,73 +389,84 @@ export default function DiscoverScreen() {
         </View>
       </View>
 
-      {!searched && !loading && <BrowseTopics onSelect={handleSelectTopic} />}
+      <View style={styles.contentArea}>
+        {browseMounted && (
+          <Animated.View
+            style={[
+              styles.browseLayer,
+              { opacity: browseAnim, transform: [{ scale: browseScale }] },
+            ]}
+          >
+            <BrowseTopics onSelect={handleSelectTopic} />
+          </Animated.View>
+        )}
 
-      {loading && showSkeleton && <SearchResultSkeleton />}
+        {loading && showSkeleton && <SearchResultSkeleton />}
 
-      {!loading && searched && results.length === 0 && !error && (
-        <View style={styles.emptyState}>
-          <Text style={styles.noResultsTitle}>
-            No results for &apos;{query.trim()}&apos;
-          </Text>
-          <Text style={styles.noResultsBody}>
-            Try different keywords or browse experiences
-          </Text>
-        </View>
-      )}
+        {!loading && searched && results.length === 0 && !error && (
+          <View style={styles.emptyState}>
+            <Text style={styles.noResultsTitle}>
+              No results for &apos;{query.trim()}&apos;
+            </Text>
+            <Text style={styles.noResultsBody}>
+              Try different keywords or browse experiences
+            </Text>
+          </View>
+        )}
 
-      {error && results.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Text style={styles.retryLink} onPress={() => search(query)}>
-            Retry
-          </Text>
-        </View>
-      )}
+        {error && results.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.retryLink} onPress={() => search(query)}>
+              Retry
+            </Text>
+          </View>
+        )}
 
-      {results.length > 0 && (
-        <Animated.View
-          style={{
-            flex: 1,
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          }}
-        >
-          <FlatList
-            key={resultsKey}
-            data={results}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            numColumns={2}
-            keyboardDismissMode="on-drag"
-            contentContainerStyle={styles.listContent}
-            columnWrapperStyle={styles.columnWrapper}
-            ListFooterComponent={
-              <>
-                {error && (
-                  <View style={styles.inlineError}>
-                    <Text style={styles.errorText}>{error}</Text>
-                    <Text style={styles.retryLink} onPress={loadMore}>
-                      Retry
-                    </Text>
-                  </View>
-                )}
-                {hasMore && !error && (
-                  <View style={styles.loadMoreContainer}>
-                    <Text
-                      style={styles.loadMoreButton}
-                      onPress={loadMore}
-                      suppressHighlighting={loadingMore}
-                    >
-                      {loadingMore ? "Loading..." : "Load more"}
-                    </Text>
-                  </View>
-                )}
-              </>
-            }
-          />
-        </Animated.View>
-      )}
+        {results.length > 0 && (
+          <Animated.View
+            style={{
+              flex: 1,
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            }}
+          >
+            <FlatList
+              key={resultsKey}
+              data={results}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              numColumns={2}
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={styles.listContent}
+              columnWrapperStyle={styles.columnWrapper}
+              ListFooterComponent={
+                <>
+                  {error && (
+                    <View style={styles.inlineError}>
+                      <Text style={styles.errorText}>{error}</Text>
+                      <Text style={styles.retryLink} onPress={loadMore}>
+                        Retry
+                      </Text>
+                    </View>
+                  )}
+                  {hasMore && !error && (
+                    <View style={styles.loadMoreContainer}>
+                      <Text
+                        style={styles.loadMoreButton}
+                        onPress={loadMore}
+                        suppressHighlighting={loadingMore}
+                      >
+                        {loadingMore ? "Loading..." : "Load more"}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              }
+            />
+          </Animated.View>
+        )}
+      </View>
     </View>
   )
 }
@@ -422,6 +475,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG_COLOR,
+  },
+  contentArea: {
+    flex: 1,
+  },
+  browseLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
   inputContainer: {
     paddingHorizontal: 16,
