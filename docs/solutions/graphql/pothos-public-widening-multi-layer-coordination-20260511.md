@@ -120,6 +120,10 @@ Add `apps/admin/src/graphql/public-resolvers.regression.test.ts`. It walks sourc
 Pair with a reciprocal `existsSync` assertion in `classification.test.ts` so deleting either test fails the other (meta-defense against silent removal).
 
 ```ts
+// Illustrative point-in-time snapshot — the canonical set lives in the test
+// file and GROWS as resolvers are widened (e.g. `watchHomeVideos` and the lazy
+// per-dub media fetch were added after this doc was written). Treat the test,
+// not this snippet, as the source of truth.
 const INTENDED_PUBLIC_RESOLVERS = [
   "experienceBySlug",
   "searchExperiences",
@@ -218,6 +222,7 @@ PR #921 shipped 6/6 green on local Postgres AND against the Railway preview at `
 
 ## Related
 
+- [`../conventions/tv-mobile-clients-consume-only-public-admin-queries.md`](../conventions/tv-mobile-clients-consume-only-public-admin-queries.md) — the **client-side corollary**. This doc is the server-side source of truth for which resolvers are public (`INTENDED_PUBLIC_RESOLVERS`); that one is the rule consumer apps (web/mobile/TV) must follow — consume only these public queries, never an editor-gated field.
 - [`pothos-relation-abac-filter-required-for-nested-types.md`](pothos-relation-abac-filter-required-for-nested-types.md) — sibling pattern: `t.relation` query-callback ABAC filtering for nested children. Complements this doc's resolver-level scope widening + field-level strip.
 - [`../architecture-patterns/dual-client-gql-tada-multi-schema-codegen-pattern-20260507.md`](../architecture-patterns/dual-client-gql-tada-multi-schema-codegen-pattern-20260507.md) — causal predecessor. Explains §4 (AST directive stripping) which is _why_ SDL-drift CI is blind to `authScopes` changes, making the centralized regression test necessary.
 - Plan: [`docs/plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md`](../../plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md)
