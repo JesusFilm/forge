@@ -21,6 +21,7 @@ import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
+import { useTypography } from "../../src/hooks/useTypography"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
 import {
   enterFullscreenLandscape,
@@ -51,6 +52,7 @@ export default function SeriesScreen() {
   const router = useRouter()
   const [isFullscreen, setIsFullscreen] = useState(false)
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
+  const typography = useTypography()
 
   const { series, setSeries, selectedLanguageSlug } = useSeriesSession()
 
@@ -245,7 +247,13 @@ export default function SeriesScreen() {
                 />
                 <VideoDescription description={series.description} />
                 {series.episodes.length > 0 && (
-                  <Text style={[text.sectionHeading, styles.gridHeading]}>
+                  <Text
+                    style={[
+                      text.sectionHeadingPadded,
+                      typography.titleLarge,
+                      styles.gridHeading,
+                    ]}
+                  >
                     Videos
                   </Text>
                 )}
@@ -283,8 +291,7 @@ const styles = StyleSheet.create({
     backgroundColor: SURFACE_COLOR,
   },
   gridHeading: {
-    paddingHorizontal: 16,
-    marginTop: 8,
+    marginTop: 12,
     marginBottom: 2,
   },
   inlineError: {
