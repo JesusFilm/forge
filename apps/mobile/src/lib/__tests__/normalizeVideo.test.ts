@@ -685,4 +685,48 @@ describe("normalizeSeries", () => {
     expect(result.episodes).toEqual([])
     expect(result.languages).toEqual([])
   })
+
+  it("drops a null child relation from the episode list", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          { order: 1, child: null },
+          {
+            order: 2,
+            child: {
+              documentId: "ep-2",
+              slug: "episode-2",
+              label: "EPISODE",
+              locales: [
+                {
+                  documentId: "l",
+                  languageSlug: "english",
+                  title: "Episode 2",
+                },
+              ],
+              images: [],
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.slug)).toEqual(["episode-2"])
+  })
+
+  it("drops an empty-string language slug from the union", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        childDubLanguages: [
+          { slug: "", name: { en: "Blank" }, bcp47: "xx" },
+          { slug: "english", name: { en: "English" }, bcp47: "en" },
+        ],
+      }),
+    )!
+    expect(result.languages.map((l) => l.slug)).toEqual(["english"])
+  })
+
+  it("memoizes on the raw reference (cache-first re-entry returns same record)", () => {
+    const raw = makeRawSeries()
+    expect(normalizeSeries(raw)).toBe(normalizeSeries(raw))
+  })
 })

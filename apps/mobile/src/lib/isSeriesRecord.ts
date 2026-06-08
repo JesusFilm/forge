@@ -19,3 +19,12 @@ export function isSeriesRecord(record: {
 }): boolean {
   return isSeriesLabel(record.label) || record.episodes.length > 0
 }
+
+// Search-result form: a SearchResult carries `label` + `childCount` (a number),
+// not a children array. Used by the search screen's routing branch.
+export function isSeriesSearchResult(result: {
+  label?: string | null
+  childCount?: number | null
+}): boolean {
+  return isSeriesLabel(result.label) || (result.childCount ?? 0) > 0
+}

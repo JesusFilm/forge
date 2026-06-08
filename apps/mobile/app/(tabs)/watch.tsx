@@ -17,7 +17,7 @@ import {
   type SearchResult,
 } from "../../src/lib/queries"
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
-import { isSeriesLabel } from "../../src/lib/isSeriesRecord"
+import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
@@ -111,10 +111,7 @@ export default function DiscoverScreen() {
       })
       // A series-shaped result (SERIES/COLLECTION label, or has children) opens
       // the series page; a single video opens the watch page.
-      const route =
-        isSeriesLabel(result.label) || (result.childCount ?? 0) > 0
-          ? "series"
-          : "watch"
+      const route = isSeriesSearchResult(result) ? "series" : "watch"
       router.push(`/${route}/${encodeURIComponent(result.slug)}?seed=${seed}`)
     },
     [selectExperience, router],

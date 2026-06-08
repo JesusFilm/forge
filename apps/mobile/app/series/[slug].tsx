@@ -122,7 +122,10 @@ export default function SeriesScreen() {
   const trailerHls = useMemo(() => {
     if (!series) return null
     const forLanguage = series.variants.find(
-      (v) => v.languageSlug === selectedLanguageSlug && v.hls != null,
+      (v) =>
+        v.languageSlug === selectedLanguageSlug &&
+        v.hls != null &&
+        v.hls !== "",
     )
     return forLanguage?.hls ?? series.streamingUrl
   }, [series, selectedLanguageSlug])
@@ -132,12 +135,18 @@ export default function SeriesScreen() {
 
   const handleShare = useCallback(() => {
     if (!series) return
-    // The public watch URL is two .html segments — a bare /watch/{slug} 404s.
-    const base = `https://www.jesusfilm.org/${series.slug}.html`
+    // Public watch URL is /watch/{slug}.html/{language}.html (verified 200);
+    // the bare /{slug}.html form without /watch/ 404s.
+    const base = `https://www.jesusfilm.org/watch/${series.slug}.html`
     const shareUrl = selectedLanguageSlug
       ? `${base}/${selectedLanguageSlug}.html`
       : base
-    Share.share({ message: shareUrl, title: series.title ?? undefined })
+    // Share.share rejects when the OS share sheet is dismissed/unavailable;
+    // swallow it so it never surfaces as an unhandled rejection.
+    void Share.share({
+      message: shareUrl,
+      title: series.title ?? undefined,
+    }).catch(() => {})
   }, [series, selectedLanguageSlug])
 
   // Tap an episode → its video detail page. The selected language carries via
@@ -200,6 +209,7 @@ export default function SeriesScreen() {
       ) : (
         <View
           style={styles.posterHero}
+          accessible={true}
           accessibilityRole="image"
           accessibilityLabel={
             displayTitle ? `${displayTitle} poster` : "Series poster"

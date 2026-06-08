@@ -9,7 +9,7 @@ import { useTypography } from "../../hooks/useTypography"
 // to download or caption, so the video page's Download/Subtitles buttons don't
 // carry over (ActionButtonRow is a fixed four-button row, hence a separate
 // component rather than a prop on it).
-export interface SeriesActionRowProps {
+export type SeriesActionRowProps = {
   onLanguage: () => void
   onShare: () => void
 }
