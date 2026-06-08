@@ -16,11 +16,47 @@ export type CommandResult = {
 
 export type PrismaRunner = (args: readonly string[]) => Promise<CommandResult>
 
+type DeployRecoveryOptions = {
+  transientDeployAttempts?: number
+  transientDeployDelayMs?: number
+  sleep?: (ms: number) => Promise<void>
+}
+
+const TRANSIENT_DEPLOY_FAILURE_PATTERNS = [
+  /too many clients already/i,
+  /remaining connection slots are reserved/i,
+  /connection limit exceeded/i,
+] as const
+
+function positiveIntegerEnv(name: string, fallback: number) {
+  const value = Number.parseInt(process.env[name] ?? "", 10)
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+const DEFAULT_TRANSIENT_DEPLOY_ATTEMPTS = positiveIntegerEnv(
+  "MIGRATE_DEPLOY_TRANSIENT_ATTEMPTS",
+  8,
+)
+const DEFAULT_TRANSIENT_DEPLOY_DELAY_MS = positiveIntegerEnv(
+  "MIGRATE_DEPLOY_TRANSIENT_DELAY_MS",
+  10_000,
+)
+
+function defaultSleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
+
 export function getKnownRecoverableP3009Migration(
   output: string,
 ): (typeof RECOVERABLE_MIGRATIONS)[number] | undefined {
   if (!output.includes("P3009")) return undefined
   return RECOVERABLE_MIGRATIONS.find((migration) => output.includes(migration))
+}
+
+export function isTransientPrismaDeployFailure(output: string): boolean {
+  return TRANSIENT_DEPLOY_FAILURE_PATTERNS.some((pattern) =>
+    pattern.test(output),
+  )
 }
 
 export function isKnownRecoverableP3009(output: string): boolean {
@@ -52,10 +88,41 @@ export async function runPrisma(
   })
 }
 
+async function runMigrateDeployWithTransientRetry(
+  runner: PrismaRunner,
+  options: DeployRecoveryOptions,
+): Promise<CommandResult> {
+  const attempts =
+    options.transientDeployAttempts ?? DEFAULT_TRANSIENT_DEPLOY_ATTEMPTS
+  const delayMs =
+    options.transientDeployDelayMs ?? DEFAULT_TRANSIENT_DEPLOY_DELAY_MS
+  const sleep = options.sleep ?? defaultSleep
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const result = await runner(["migrate", "deploy"])
+    if (result.code === 0) return result
+
+    if (
+      !isTransientPrismaDeployFailure(result.output) ||
+      attempt === attempts
+    ) {
+      return result
+    }
+
+    process.stderr.write(
+      `[migrate-deploy] transient prisma migrate deploy failure; retrying attempt ${attempt + 1}/${attempts}\n`,
+    )
+    await sleep(delayMs)
+  }
+
+  return runner(["migrate", "deploy"])
+}
+
 export async function deployWithKnownRecovery(
   runner: PrismaRunner = runPrisma,
+  options: DeployRecoveryOptions = {},
 ): Promise<void> {
-  const firstDeploy = await runner(["migrate", "deploy"])
+  const firstDeploy = await runMigrateDeployWithTransientRetry(runner, options)
   if (firstDeploy.code === 0) return
 
   const recoverableMigration = getKnownRecoverableP3009Migration(
@@ -76,7 +143,10 @@ export async function deployWithKnownRecovery(
     recoverableMigration,
   ])
   if (resolve.code !== 0) {
-    const retryAfterResolveFailure = await runner(["migrate", "deploy"])
+    const retryAfterResolveFailure = await runMigrateDeployWithTransientRetry(
+      runner,
+      options,
+    )
     if (retryAfterResolveFailure.code === 0) return
 
     throw new Error(
@@ -84,7 +154,7 @@ export async function deployWithKnownRecovery(
     )
   }
 
-  const secondDeploy = await runner(["migrate", "deploy"])
+  const secondDeploy = await runMigrateDeployWithTransientRetry(runner, options)
   if (secondDeploy.code !== 0) {
     throw new Error("prisma migrate deploy failed after known recovery")
   }
