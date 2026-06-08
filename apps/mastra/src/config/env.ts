@@ -156,6 +156,7 @@ const envSchema = z.object({
     .max(300_000)
     .default(DEFAULT_FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: z.string().min(1).default(DEFAULT_FIRECRAWL_USER_AGENT),
+  INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -281,6 +282,9 @@ export const env = envSchema.parse({
   ),
   FIRECRAWL_TIMEOUT_MS: emptyToUndefined(process.env.FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: emptyToUndefined(process.env.FIRECRAWL_USER_AGENT),
+  INSTAGRAM_DISCOVERY_ARTIFACT_DIR: emptyToUndefined(
+    process.env.INSTAGRAM_DISCOVERY_ARTIFACT_DIR,
+  ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
