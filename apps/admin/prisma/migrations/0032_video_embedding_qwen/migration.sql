@@ -19,6 +19,11 @@
 -- `experience_locale` is deliberately OUT OF SCOPE for this migration.
 -- The `vector` extension is already installed (the existing `embedding`
 -- columns use it); do NOT re-create it.
+--
+-- Railway Postgres has constrained shared memory. pgvector's HNSW index
+-- builder reserves maintenance_work_mem even when this additive column is still
+-- NULL for all rows, so keep the build below the default 64MB segment request.
+SET maintenance_work_mem = '16MB';
 
 -- =============================================================================
 -- video_scene_locale — parallel Qwen embedding column + per-locale HNSW

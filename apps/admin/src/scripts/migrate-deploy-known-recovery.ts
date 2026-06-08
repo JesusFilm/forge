@@ -2,8 +2,12 @@
 
 import { spawn } from "node:child_process"
 
-export const RECOVERABLE_MIGRATION =
-  "0027_video_localized_language_slug_identity"
+export const RECOVERABLE_MIGRATIONS = [
+  "0027_video_localized_language_slug_identity",
+  "0032_video_embedding_qwen",
+] as const
+
+export const RECOVERABLE_MIGRATION = RECOVERABLE_MIGRATIONS[0]
 
 export type CommandResult = {
   code: number
@@ -12,8 +16,17 @@ export type CommandResult = {
 
 export type PrismaRunner = (args: readonly string[]) => Promise<CommandResult>
 
+export function getKnownRecoverableP3009Migration(
+  output: string,
+): (typeof RECOVERABLE_MIGRATIONS)[number] | undefined {
+  if (!output.includes("P3009")) return undefined
+  return RECOVERABLE_MIGRATIONS.find((migration) =>
+    output.includes(migration),
+  )
+}
+
 export function isKnownRecoverableP3009(output: string): boolean {
-  return output.includes("P3009") && output.includes(RECOVERABLE_MIGRATION)
+  return getKnownRecoverableP3009Migration(output) !== undefined
 }
 
 export async function runPrisma(
@@ -47,25 +60,29 @@ export async function deployWithKnownRecovery(
   const firstDeploy = await runner(["migrate", "deploy"])
   if (firstDeploy.code === 0) return
 
-  if (!isKnownRecoverableP3009(firstDeploy.output)) {
+  const recoverableMigration = getKnownRecoverableP3009Migration(
+    firstDeploy.output,
+  )
+
+  if (!recoverableMigration) {
     throw new Error("prisma migrate deploy failed without known P3009 recovery")
   }
 
   process.stderr.write(
-    `[migrate-deploy] recovering known failed migration ${RECOVERABLE_MIGRATION}\n`,
+    `[migrate-deploy] recovering known failed migration ${recoverableMigration}\n`,
   )
   const resolve = await runner([
     "migrate",
     "resolve",
     "--rolled-back",
-    RECOVERABLE_MIGRATION,
+    recoverableMigration,
   ])
   if (resolve.code !== 0) {
     const retryAfterResolveFailure = await runner(["migrate", "deploy"])
     if (retryAfterResolveFailure.code === 0) return
 
     throw new Error(
-      `prisma migrate resolve --rolled-back ${RECOVERABLE_MIGRATION} failed`,
+      `prisma migrate resolve --rolled-back ${recoverableMigration} failed`,
     )
   }
 

@@ -2,20 +2,37 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   RECOVERABLE_MIGRATION,
+  RECOVERABLE_MIGRATIONS,
   deployWithKnownRecovery,
+  getKnownRecoverableP3009Migration,
   isKnownRecoverableP3009,
   type CommandResult,
 } from "./migrate-deploy-known-recovery"
 
 describe("isKnownRecoverableP3009", () => {
-  it("matches only P3009 output for the localized metadata migration", () => {
+  it("matches only P3009 output for known recoverable migrations", () => {
     expect(
       isKnownRecoverableP3009(`Error code: P3009 ${RECOVERABLE_MIGRATION}`),
+    ).toBe(true)
+    expect(
+      isKnownRecoverableP3009(
+        `Error code: P3009 ${RECOVERABLE_MIGRATIONS[1]}`,
+      ),
     ).toBe(true)
     expect(isKnownRecoverableP3009(`Error code: P3009 0001_init`)).toBe(false)
     expect(
       isKnownRecoverableP3009(`Error code: P3018 ${RECOVERABLE_MIGRATION}`),
     ).toBe(false)
+  })
+})
+
+describe("getKnownRecoverableP3009Migration", () => {
+  it("returns the migration named in the P3009 output", () => {
+    expect(
+      getKnownRecoverableP3009Migration(
+        `Error code: P3009 ${RECOVERABLE_MIGRATIONS[1]}`,
+      ),
+    ).toBe(RECOVERABLE_MIGRATIONS[1])
   })
 })
 
@@ -35,9 +52,10 @@ describe("deployWithKnownRecovery", () => {
   })
 
   it("resolves the known failed migration and retries deploy", async () => {
+    const migration = RECOVERABLE_MIGRATIONS[1]
     const runner = vi
       .fn()
-      .mockResolvedValueOnce(result(1, `P3009 ${RECOVERABLE_MIGRATION}`))
+      .mockResolvedValueOnce(result(1, `P3009 ${migration}`))
       .mockResolvedValueOnce(result(0))
       .mockResolvedValueOnce(result(0))
 
@@ -48,7 +66,7 @@ describe("deployWithKnownRecovery", () => {
       "migrate",
       "resolve",
       "--rolled-back",
-      RECOVERABLE_MIGRATION,
+      migration,
     ])
     expect(runner).toHaveBeenNthCalledWith(3, ["migrate", "deploy"])
   })
