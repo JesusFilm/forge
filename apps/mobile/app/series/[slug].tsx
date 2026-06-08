@@ -1,30 +1,62 @@
-import { useEffect, useMemo } from "react"
-import { ScrollView, View } from "react-native"
-import { useLocalSearchParams } from "expo-router"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  AppState,
+  BackHandler,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
+import { Image } from "expo-image"
+import { StatusBar } from "expo-status-bar"
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_SERIES_BY_SLUG } from "../../src/lib/queries"
 import { normalizeSeries } from "../../src/lib/normalizeVideo"
+import { decodeWatchSeed } from "../../src/lib/watchSeed"
+import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
+import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
+import { layout, text } from "../../src/styles/shared"
+import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import {
+  enterFullscreenLandscape,
+  exitToPortrait,
+} from "../../src/lib/orientation"
+import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
+import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
+import { VideoDescription } from "../../src/components/watch/VideoDescription"
+import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
-import { layout } from "../../src/styles/shared"
 
-// Series detail screen — skeleton (U2): resolves the series, publishes it to the
-// SeriesSessionProvider so the language sheet can read it. The hero (trailer or
-// poster), metadata, description, and actions land in U3; the episode grid in
-// U4. cache-first + returnPartialData mirrors the watch screen's payload posture.
+// Series detail screen. The hero is pinned at the route root (outside the
+// ScrollView), mirroring the watch screen: with a playable trailer it's the
+// reused VideoPlayer (custom fullscreen needs to never be reparented); without
+// one it's a plain poster image — no player mounted. Either way the hero holds
+// the only decoder slot on the screen; the episode grid (U4) is static images.
 export default function SeriesScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string; seed?: string }>()
+  const { slug, seed: seedParam } = useLocalSearchParams<{
+    slug: string
+    seed?: string
+  }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
-  const { setSeries } = useSeriesSession()
 
-  const { data } = useQuery(GET_SERIES_BY_SLUG, {
+  const navigation = useNavigation()
+  const router = useRouter()
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
+
+  const { series, setSeries, selectedLanguageSlug } = useSeriesSession()
+
+  const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
     fetchPolicy: "cache-first",
     returnPartialData: true,
   })
 
-  const series = useMemo(
+  const normalized = useMemo(
     // returnPartialData widens videoBySlug to a deep-partial type; normalizeSeries
     // tolerates missing fields (returns null without a documentId).
     () =>
@@ -35,12 +67,195 @@ export default function SeriesScreen() {
   )
 
   useEffect(() => {
-    setSeries(series)
-  }, [series, setSeries])
+    if (normalized) setSeries(normalized)
+  }, [normalized, setSeries])
+
+  const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
+
+  // Fullscreen side-effects — the same three the watch screen runs, so the
+  // reused player's custom fullscreen rotates and toggles the header in step.
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: !isFullscreen,
+      gestureEnabled: !isFullscreen,
+      orientation: isFullscreen ? "landscape" : "portrait",
+    })
+    if (isFullscreen) void enterFullscreenLandscape()
+    else void exitToPortrait()
+  }, [isFullscreen, navigation])
+
+  useEffect(() => {
+    if (!isFullscreen) return
+    const back = BackHandler.addEventListener("hardwareBackPress", () => {
+      setIsFullscreen(false)
+      return true
+    })
+    const app = AppState.addEventListener("change", (s) => {
+      if (s === "active") void enterFullscreenLandscape()
+    })
+    return () => {
+      back.remove()
+      app.remove()
+    }
+  }, [isFullscreen])
+
+  useEffect(() => {
+    return () => {
+      void exitToPortrait()
+    }
+  }, [])
+
+  const displayTitle = series?.title ?? seed?.title ?? null
+  const displayPoster = resolveImageUrl(
+    series?.posterUrl ?? seed?.imageUrl ?? null,
+  )
+
+  // The trailer follows the selected language: the series' own dub for that
+  // language, else its first playable dub. Resolved only from the loaded series
+  // — never the seed — so a series that turns out to have no trailer never
+  // mounts a player.
+  const trailerHls = useMemo(() => {
+    if (!series) return null
+    const forLanguage = series.variants.find(
+      (v) => v.languageSlug === selectedLanguageSlug && v.hls != null,
+    )
+    return forLanguage?.hls ?? series.streamingUrl
+  }, [series, selectedLanguageSlug])
+
+  const hasSeries = series != null
+  const hasTrailer = trailerHls != null
+
+  const handleShare = useCallback(() => {
+    if (!series) return
+    // The public watch URL is two .html segments — a bare /watch/{slug} 404s.
+    const base = `https://www.jesusfilm.org/${series.slug}.html`
+    const shareUrl = selectedLanguageSlug
+      ? `${base}/${selectedLanguageSlug}.html`
+      : base
+    Share.share({ message: shareUrl, title: series.title ?? undefined })
+  }, [series, selectedLanguageSlug])
+
+  // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.
+  if (!hasSeries && seed == null && loading) {
+    return (
+      <View style={layout.screenContainer}>
+        <VideoDetailSkeleton />
+      </View>
+    )
+  }
+
+  // No series, no seed, not loading → genuinely nothing to show.
+  if (!hasSeries && seed == null) {
+    return (
+      <View style={layout.centered}>
+        <Text style={text.errorTitle}>Series Not Found</Text>
+        <Text style={text.errorMessage}>
+          {error?.message ?? "This series could not be loaded."}
+        </Text>
+        <Text
+          style={styles.retryLink}
+          onPress={() => void refetch()}
+          accessibilityRole="button"
+        >
+          Retry
+        </Text>
+      </View>
+    )
+  }
 
   return (
     <View style={layout.screenContainer}>
-      <ScrollView />
+      <StatusBar style="light" hidden={isFullscreen} />
+
+      {hasSeries && hasTrailer ? (
+        <VideoPlayer
+          streamingUrl={trailerHls}
+          posterUrl={displayPoster}
+          fullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+        />
+      ) : (
+        <View
+          style={styles.posterHero}
+          accessibilityRole="image"
+          accessibilityLabel={
+            displayTitle ? `${displayTitle} poster` : "Series poster"
+          }
+        >
+          {displayPoster != null && (
+            <Image
+              source={{ uri: displayPoster }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={series?.documentId ?? decodedSlug}
+            />
+          )}
+        </View>
+      )}
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <VideoMetadata
+          label={series?.label ?? "SERIES"}
+          title={displayTitle}
+          subtitle={null}
+        />
+
+        {hasSeries ? (
+          <>
+            <SeriesActionRow
+              onLanguage={() => router.push("/series/language")}
+              onShare={handleShare}
+            />
+            <VideoDescription description={series.description} />
+            {/* Episode grid lands in U4. */}
+          </>
+        ) : (
+          <>
+            {error != null && (
+              <View style={styles.inlineError}>
+                <Text style={text.errorMessage}>
+                  Couldn&apos;t load full details.
+                </Text>
+                <Text
+                  style={styles.retryLink}
+                  onPress={() => void refetch()}
+                  accessibilityRole="button"
+                >
+                  Retry
+                </Text>
+              </View>
+            )}
+            <VideoDetailSkeleton variant="sections" />
+          </>
+        )}
+      </ScrollView>
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 80 },
+  posterHero: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    backgroundColor: SURFACE_COLOR,
+  },
+  inlineError: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  retryLink: {
+    color: ACCENT,
+    fontFamily: "System",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 12,
+    textAlign: "center",
+  },
+})
