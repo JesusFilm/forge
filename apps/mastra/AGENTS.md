@@ -23,9 +23,11 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
-  embedding response, require the expected 4096 native dimensions, then
-  truncate gateway-native vectors to 1536 dimensions and re-normalize them in
-  Mastra before Admin ingest. Do not send `dimensions` through LiteLLM.
+  embedding response and require the configured native dimensions before Admin
+  ingest. Current production gateway output is native 1536, so Mastra does not
+  pass `dimensions` through LiteLLM and does not apply a client transform; keep
+  the shared 4096-to-1536 truncate/re-normalize helper for future gateway
+  variants that truly return 4096.
 - All embedding workflows use the shared Admin ingest client behavior but keep
   separate transcript, scene, and experience endpoints and payload schemas.
 - Generation modes are consistent across embedding workflows: omitted means

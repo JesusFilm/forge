@@ -12,6 +12,7 @@ import { StyleSheet } from "react-native"
 
 import {
   ACCENT,
+  ACCENT_ON_DARK,
   BG_COLOR,
   SURFACE_COLOR,
   TEXT_PRIMARY,
@@ -91,7 +92,8 @@ export const text = StyleSheet.create({
   },
   accentLinkText: {
     fontWeight: "600",
-    color: ACCENT,
+    // ACCENT_ON_DARK, not ACCENT: link text needs >= 4.5:1 on the dark bg (AA).
+    color: ACCENT_ON_DARK,
     fontFamily: "System",
   },
 })

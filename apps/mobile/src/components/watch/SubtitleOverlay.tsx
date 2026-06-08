@@ -9,6 +9,7 @@ import {
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
+import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
 
@@ -211,16 +212,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   text: {
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontSize: 16,
     fontFamily: "System",
     textAlign: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: hexToRgba(BLACK, 0.7),
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
     overflow: "hidden",
-    textShadowColor: "rgba(0, 0, 0, 0.9)",
+    textShadowColor: hexToRgba(BLACK, 0.9),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },

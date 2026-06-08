@@ -179,17 +179,25 @@ export type ContentBackfillGateSummary = {
     requestModel: string
     nativeDimensions: number
     finalDimensions: number
-    transformVersion: string
+    transformVersion: string | null
   }
 }
+
+const EXPECTED_CONTENT_GATE_NATIVE_DIMENSIONS = 1536
+const EXPECTED_CONTENT_GATE_FINAL_DIMENSIONS = 1536
+const EXPECTED_CONTENT_GATE_TRANSFORM_VERSION =
+  EXPECTED_CONTENT_GATE_NATIVE_DIMENSIONS ===
+  EXPECTED_CONTENT_GATE_FINAL_DIMENSIONS
+    ? null
+    : "matryoshka-truncate-1536-v1"
 
 const EXPECTED_CONTENT_GATE_PROVIDER = {
   provider: "jesus-film-ai-gateway",
   model: "embeddings",
   requestModel: "embeddings",
-  nativeDimensions: 1536,
-  finalDimensions: 1536,
-  transformVersion: "matryoshka-truncate-1536-v1",
+  nativeDimensions: EXPECTED_CONTENT_GATE_NATIVE_DIMENSIONS,
+  finalDimensions: EXPECTED_CONTENT_GATE_FINAL_DIMENSIONS,
+  transformVersion: EXPECTED_CONTENT_GATE_TRANSFORM_VERSION,
 } as const
 
 const GATE_REPORT_SECRET_STRING_PATTERN =
@@ -268,6 +276,20 @@ function stringField(value: Record<string, unknown>, key: string): string {
   return field
 }
 
+function nullableStringField(
+  value: Record<string, unknown>,
+  key: string,
+): string | null {
+  const field = gateReportField(value, key)
+  if (field === null) return null
+  if (typeof field !== "string" || field.length === 0) {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --gate-report missing string or null ${key}`,
+    )
+  }
+  return field
+}
+
 function nearlyEqual(left: number, right: number): boolean {
   return Math.abs(left - right) <= 1e-12
 }
@@ -281,7 +303,7 @@ function validateContentEmbeddingProvider(
     requestModel: stringField(provider, "requestModel"),
     nativeDimensions: finiteNumberField(provider, "nativeDimensions"),
     finalDimensions: finiteNumberField(provider, "finalDimensions"),
-    transformVersion: stringField(provider, "transformVersion"),
+    transformVersion: nullableStringField(provider, "transformVersion"),
   }
   for (const [key, expected] of Object.entries(
     EXPECTED_CONTENT_GATE_PROVIDER,

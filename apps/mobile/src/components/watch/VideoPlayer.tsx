@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    backgroundColor: hexToRgba(BLACK, 0.55),
   },
   seekFlashLeft: {
     left: "14%",
