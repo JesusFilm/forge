@@ -131,14 +131,19 @@ export default function HomeScreen() {
     loading: listLoading,
     error: listError,
     refetch: listRefetch,
-  } = useQuery(LIST_EXPERIENCES, { variables: { locale: "en" } })
+  } = useQuery(LIST_EXPERIENCES)
 
   const experiences = useMemo(
     () =>
-      (listData?.experiences ?? []).flatMap(
-        (experience) =>
-          experience?.locales?.filter((locale) => locale != null) ?? [],
-      ),
+      // `Experience.locales` takes no locale arg — it returns every locale, so
+      // pick the desired one (fallback: first available) per experience here.
+      (listData?.experiences ?? []).flatMap((experience) => {
+        const locales =
+          experience?.locales?.filter((locale) => locale != null) ?? []
+        const chosen =
+          locales.find((locale) => locale.locale === "en") ?? locales[0]
+        return chosen != null ? [chosen] : []
+      }),
     [listData],
   )
 

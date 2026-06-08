@@ -379,10 +379,11 @@ export const GET_WATCH_EXPERIENCE = graphql(
 
 export const LIST_EXPERIENCES = graphql(
   `
-    query ListExperiences($locale: String!) {
+    query ListExperiences {
       experiences {
         id
-        locales(locale: $locale) {
+        locales {
+          locale
           documentId: id
           slug
           title
