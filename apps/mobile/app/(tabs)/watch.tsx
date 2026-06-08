@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -9,6 +10,7 @@ import {
 } from "react-native"
 
 import { useRouter } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
 import {
@@ -255,6 +257,14 @@ export default function DiscoverScreen() {
     void search(term)
   }
 
+  // The search bar's clear (X) button: wipe the input and return to the browse
+  // bubbles immediately — search("") resets searched to false, no debounce.
+  function handleClear() {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setQuery("")
+    void search("")
+  }
+
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return
 
@@ -311,17 +321,30 @@ export default function DiscoverScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={query}
-          onChangeText={handleChangeText}
-          placeholder="Search for videos about any topic..."
-          placeholderTextColor={TEXT_SECONDARY}
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-          selectionColor={ACCENT}
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            value={query}
+            onChangeText={handleChangeText}
+            placeholder="Search for videos about any topic..."
+            placeholderTextColor={TEXT_SECONDARY}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            selectionColor={ACCENT}
+          />
+          {query.length > 0 && (
+            <Pressable
+              style={styles.clearButton}
+              onPress={handleClear}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons name="close-circle" size={20} color={TEXT_SECONDARY} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {!searched && !loading && <BrowseTopics onSelect={handleSelectTopic} />}
@@ -407,11 +430,23 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: SURFACE_COLOR,
     borderRadius: 24,
-    paddingHorizontal: 20,
+    paddingLeft: 20,
+    paddingRight: 44,
     paddingVertical: 12,
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontSize: 15,
+  },
+  inputWrapper: {
+    justifyContent: "center",
+  },
+  clearButton: {
+    position: "absolute",
+    right: 6,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    paddingHorizontal: 8,
   },
   emptyState: {
     flex: 1,
