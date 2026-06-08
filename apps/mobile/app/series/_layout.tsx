@@ -4,10 +4,27 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { ACCENT, BG_COLOR } from "../../src/lib/color"
 import { SeriesSessionProvider } from "../../src/contexts/SeriesSessionProvider"
+import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
+
+const SHEET_BASE_OPTIONS = {
+  headerShown: false,
+  presentation: "formSheet",
+  sheetInitialDetentIndex: 0,
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 16,
+} as const
+
+// Long, scrollable language list → opt out of scroll-expands-to-edge so the
+// first scroll at the smaller detent doesn't snap the sheet to full (same as
+// the watch language/subtitle sheets).
+const LIST_SHEET_OPTIONS = {
+  ...SHEET_BASE_OPTIONS,
+  sheetAllowedDetents: [...LIST_SHEET_DETENTS],
+  sheetExpandsWhenScrolledToEdge: false,
+}
 
 // Mirrors app/watch/_layout.tsx: the series screen + its language sheet share a
-// session context, so the Stack is wrapped in SeriesSessionProvider. The
-// `language` formSheet route is registered in U5 when the sheet lands.
+// session context, so the Stack is wrapped in SeriesSessionProvider.
 export default function SeriesLayout() {
   const router = useRouter()
 
@@ -39,6 +56,7 @@ export default function SeriesLayout() {
             ),
           }}
         />
+        <Stack.Screen name="language" options={LIST_SHEET_OPTIONS} />
       </Stack>
     </SeriesSessionProvider>
   )
