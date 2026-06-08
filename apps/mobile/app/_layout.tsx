@@ -266,6 +266,10 @@ export default function RootLayout() {
                       name="watch"
                       options={{ headerShown: false }}
                     />
+                    <Stack.Screen
+                      name="series"
+                      options={{ headerShown: false }}
+                    />
                   </Stack>
                 </ExperienceShell>
               </WatchPreferencesProvider>
