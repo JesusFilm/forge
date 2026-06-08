@@ -66,31 +66,55 @@ is a reference to mirror, not a dependency.
 1. `apps/mastra/src/mastra/agents/seeker-agent.ts` — a `new Agent(...)` with
    minimal placeholder instructions (helps people exploring Christianity / who
    Jesus is; warm and honest; uses `retrieve-answer` to ground factual
-   answers). Register it in `apps/mastra/src/mastra/index.ts` `agents: { ... }`.
+   answers). Include one safety line even at placeholder level: the agent is a
+   non-production prototype and must not invent scripture, citations, or
+   doctrinal claims, even in Studio. Register it in
+   `apps/mastra/src/mastra/index.ts` `agents: { ... }`.
 2. `apps/mastra/src/mastra/tools/` — new folder with one stub tool
-   `retrieve-answer` via `createTool`, shaped like the eventual RAG contract:
+   `retrieve-answer` via `createTool`. The I/O is a PROVISIONAL placeholder,
+   NOT a finalized RAG contract (RAG is undesigned — not a drop-in):
    - input: `{ query: string, locale?: string }`
    - output: `{ answer: string, sources: [] }` — hard-coded answer, empty
      `sources`.
-   Wire it onto the agent via `tools: { retrieveAnswer }`.
-3. Attach Mastra Memory to the seeker agent so in-thread context persists for
-   the session (in-memory backend; no Postgres).
-4. `apps/mastra/CLAUDE.md` — new "Seeker agent" section: the local run command
+   Real retrieval will likely return passage-shaped `sources`
+   (`{ text, ref, score? }`, cf. admin's `search-videos` / `lookup-bible-verse`,
+   which return structured results, not a finished answer). Final shape deferred
+   to RAG design. Wire it onto the agent via `tools: { retrieveAnswer }`.
+3. Add the `@mastra/memory` dependency to `apps/mastra` (NOT yet present — only
+   `apps/admin` has it) and wire a `Memory` instance against the existing
+   `InMemoryStore`. The `InMemoryStore` is app-level storage, not the Memory
+   primitive — the storage tier is free, the primitive is new work. Memory
+   wipes on process restart, not per session.
+4. Add a single commented guardrail attach-point in the agent/tool flow marking
+   where later honesty / crisis-deferral checks will hook (breadcrumb, no logic).
+5. Route-isolation test: assert the seeker agent is NOT attached to any
+   `registerApiRoute` (stays Studio-only) — a cheap self-enforcing guard for the
+   release gate. Heavier enforcement deferred until a public surface exists.
+6. `apps/mastra/CLAUDE.md` — new "Seeker agent" section: the local run command
    (`MASTRA_STORAGE_BACKEND=memory pnpm --filter @forge/mastra dev`), Studio
    steps, a brief "not wired yet" note listing the deferred set, and a one-line
    note that observability traces appear in Studio automatically (inherited
-   from the instance-level `Observability` config; no new observability code).
-5. Colocated unit tests next to the agent and tool (match `smoke-agent.test.ts`).
+   from the instance-level `Observability` config; the `redactPromptBodies`
+   span processor blanks `input`/`output` on all spans, tool spans included; no
+   new observability code).
+7. Colocated unit tests next to the agent and tool (match `smoke-agent.test.ts`).
 
 ## Constraints
 
 - Minimal placeholder instructions ONLY. Full persona + safety guardrails are a
   DEFERRED release gate — do not author them here, and do not expose this agent
-  to real seekers. Studio-only.
-- Stub tool returns a hard-coded answer; do NOT build real retrieval.
+  to real seekers. Studio-only. The eventual gate must explicitly cover crisis
+  handling (suicidal-ideation / self-harm / acute distress → route to human /
+  helpline resources, never improvise).
+- Stub tool returns a hard-coded answer; do NOT build real retrieval. Treat its
+  shape as provisional, not a contract.
 - No public-facing surface; no Postgres-persisted memory.
+- In-memory storage is process-lifetime, not per-session: use distinct
+  `threadId`s per tester so sensitive test inputs don't leak across testers in
+  one Studio process.
 - Do NOT import from `apps/admin`, `apps/manager`, or `apps/auth` — mirror the
-  pattern by copying.
+  pattern by copying. Divergence accepted as a one-time bootstrap; maintained
+  independently.
 - Do NOT push this branch to `main` until the `ai-chat` lane decision lands.
 
 ## Verification
@@ -100,4 +124,7 @@ is a reference to mirror, not a dependency.
 - `MASTRA_STORAGE_BACKEND=memory pnpm --filter @forge/mastra dev` boots Studio.
 - In Studio: the seeker agent converses; asking a factual question visibly
   fires `retrieve-answer` (hard-coded answer returned); a follow-up turn shows
-  earlier context is remembered within the thread.
+  earlier context is remembered within the thread (assert correct `threadId`
+  scoping so this can't pass by accident on a shared thread).
+- Route-isolation test passes: the seeker agent is not wired to any
+  `registerApiRoute`.
