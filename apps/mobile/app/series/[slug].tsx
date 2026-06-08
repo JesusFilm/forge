@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   AppState,
   BackHandler,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -14,8 +13,11 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_SERIES_BY_SLUG } from "../../src/lib/queries"
-import { normalizeSeries } from "../../src/lib/normalizeVideo"
-import { decodeWatchSeed } from "../../src/lib/watchSeed"
+import {
+  normalizeSeries,
+  type WatchEpisode,
+} from "../../src/lib/normalizeVideo"
+import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
@@ -28,7 +30,10 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
+import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGrid"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
+
+const EMPTY_EPISODES: WatchEpisode[] = []
 
 // Series detail screen. The hero is pinned at the route root (outside the
 // ScrollView), mirroring the watch screen: with a playable trailer it's the
@@ -135,6 +140,24 @@ export default function SeriesScreen() {
     Share.share({ message: shareUrl, title: series.title ?? undefined })
   }, [series, selectedLanguageSlug])
 
+  // Tap an episode → its video detail page. The selected language carries via
+  // the persisted WatchPreferences audio slug (set when the user picks a
+  // language in the sheet), which the watch screen resolves its dub from — so no
+  // language is threaded through the nav params. The seed paints the episode
+  // hero instantly.
+  const handleSelectEpisode = useCallback(
+    (episode: WatchEpisode) => {
+      const seed = encodeWatchSeed({
+        slug: episode.slug,
+        title: episode.title,
+        imageUrl: episode.posterUrl,
+        playbackId: null,
+      })
+      router.push(`/watch/${encodeURIComponent(episode.slug)}?seed=${seed}`)
+    },
+    [router],
+  )
+
   // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.
   if (!hasSeries && seed == null && loading) {
     return (
@@ -193,57 +216,66 @@ export default function SeriesScreen() {
         </View>
       )}
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <VideoMetadata
-          label={series?.label ?? "SERIES"}
-          title={displayTitle}
-          subtitle={null}
-        />
-
-        {hasSeries ? (
+      <SeriesEpisodesGrid
+        episodes={hasSeries ? series.episodes : EMPTY_EPISODES}
+        onSelect={handleSelectEpisode}
+        header={
           <>
-            <SeriesActionRow
-              onLanguage={() => router.push("/series/language")}
-              onShare={handleShare}
+            <VideoMetadata
+              label={series?.label ?? "SERIES"}
+              title={displayTitle}
+              subtitle={null}
             />
-            <VideoDescription description={series.description} />
-            {/* Episode grid lands in U4. */}
-          </>
-        ) : (
-          <>
-            {error != null && (
-              <View style={styles.inlineError}>
-                <Text style={text.errorMessage}>
-                  Couldn&apos;t load full details.
-                </Text>
-                <Text
-                  style={styles.retryLink}
-                  onPress={() => void refetch()}
-                  accessibilityRole="button"
-                >
-                  Retry
-                </Text>
-              </View>
+
+            {hasSeries ? (
+              <>
+                <SeriesActionRow
+                  onLanguage={() => router.push("/series/language")}
+                  onShare={handleShare}
+                />
+                <VideoDescription description={series.description} />
+                {series.episodes.length > 0 && (
+                  <Text style={[text.sectionHeading, styles.gridHeading]}>
+                    Videos
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
+                {error != null && (
+                  <View style={styles.inlineError}>
+                    <Text style={text.errorMessage}>
+                      Couldn&apos;t load full details.
+                    </Text>
+                    <Text
+                      style={styles.retryLink}
+                      onPress={() => void refetch()}
+                      accessibilityRole="button"
+                    >
+                      Retry
+                    </Text>
+                  </View>
+                )}
+                <VideoDetailSkeleton variant="sections" />
+              </>
             )}
-            <VideoDetailSkeleton variant="sections" />
           </>
-        )}
-      </ScrollView>
+        }
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 80 },
   posterHero: {
     width: "100%",
     aspectRatio: 16 / 9,
     backgroundColor: SURFACE_COLOR,
+  },
+  gridHeading: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 2,
   },
   inlineError: {
     paddingHorizontal: 16,
