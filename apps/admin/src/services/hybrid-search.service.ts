@@ -72,15 +72,15 @@ export function isDilutionCapEnabled(): boolean {
 
 /**
  * Normalize the per-call embedding source to a known value. Absent or
- * any non-`"gateway"` value resolves to `"openai"` — the fail-safe
+ * any non-`"gateway"` value resolves to `"openrouter"` — the default
  * public path. This keeps the resolution in ONE place so the query
  * model and the read column can never diverge: only an explicit
- * `"gateway"` opts into the Qwen vector space.
+ * `"gateway"` opts into the gateway vector column.
  */
 export function resolveEmbeddingSource(
   source: EmbeddingSource | undefined,
 ): EmbeddingSource {
-  return source === "gateway" ? "gateway" : "openai"
+  return source === "gateway" ? "gateway" : "openrouter"
 }
 
 export type ContentType = "video" | "experience"
@@ -131,12 +131,12 @@ export type SearchParams = {
    * AND the stored vector column the semantic-video retriever reads, so
    * the two can never cross-compare across embedding spaces:
    *
-   * - `"openai"` (default, also for unset / unknown) — OpenRouter →
-   *   OpenAI query embed against the `embedding` column. This is the
-   *   public path: REST `/api/search`, GraphQL `Query.search`, and
-   *   scene-recommendations never pass this arg, so they are
-   *   structurally incapable of being affected (locked by
-   *   hybrid-search.regression.test.ts).
+   * - `"openrouter"` (default, also for unset / unknown) — OpenRouter
+   *   Qwen query embed against rows in the `embedding` column that carry
+   *   the approved Qwen-compatible content provenance. This is the public
+   *   path: REST `/api/search`, GraphQL `Query.search`, and
+   *   scene-recommendations never pass this arg, so they consistently use
+   *   the default source (locked by hybrid-search.regression.test.ts).
    * - `"gateway"` — JesusFilm AI gateway (Qwen → 1536-dim) query embed
    *   against the parallel `embedding_qwen` column. Only the Mastra
    *   `searchVideos` tool (admin AI experience generation) opts in.
@@ -298,7 +298,7 @@ function toPgvectorText(embedding: number[]): string {
 /**
  * Injectable embedder signature so tests can stub the provider call
  * without mocking the module import. The optional `source` selects the
- * embedding model per call (default `"openai"` — see SearchParams
+ * embedding model per call (default `"openrouter"` — see SearchParams
  * `embeddingSource`); the default embedder forwards it to
  * `generateExperienceEmbedding`.
  */
@@ -307,7 +307,7 @@ export type QueryEmbedder = (
   source?: EmbeddingSource,
 ) => Promise<number[]>
 
-const defaultEmbedder: QueryEmbedder = async (text, source = "openai") => {
+const defaultEmbedder: QueryEmbedder = async (text, source = "openrouter") => {
   const result = await generateExperienceEmbedding(text, { source })
   return result.embedding
 }
@@ -559,9 +559,8 @@ export class HybridSearchService {
     // at most once.
     const pipelineMode = normalizeMode(params.mode, this.logger)
     // Resolve the per-call embedding source. Absent / unknown values
-    // fail-safe to "openai" — the known-good public path — so the
-    // query model and the stored column the semantic-video retriever
-    // reads always move together (never cross an embedding space).
+    // fail-safe to "openrouter"; semantic SQL also filters stored rows by
+    // Qwen-compatible provenance so legacy vectors fail closed during rollout.
     const embeddingSource = resolveEmbeddingSource(params.embeddingSource)
     const limit = Math.min(
       Math.max(1, params.limit ?? DEFAULT_LIMIT),

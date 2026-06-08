@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 describe("Mastra env", () => {
   afterEach(() => {
+    vi.doUnmock("../services/embedding-provider")
     vi.unstubAllEnvs()
     vi.resetModules()
   })
@@ -299,12 +300,41 @@ describe("Mastra env", () => {
       userAgent: "forge-test/1.0",
       timeoutMs: 60_000,
       expectedNativeDimensions: 1536,
-      truncateToDimensions: 1536,
-      transformVersion: "matryoshka-truncate-1536-v1",
     }
     expect(getTranscriptEmbeddingProviderConfig()).toEqual(expected)
     expect(getSceneEmbeddingProviderConfig()).toEqual(expected)
     expect(getExperienceEmbeddingProviderConfig()).toEqual(expected)
+  })
+
+  it("keeps transform config for a future 4096-native gateway variant", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL",
+      "https://ai-gateway.jesusfilm.org/v1",
+    )
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "embeddings")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "jesus-film-ai-gateway")
+
+    vi.doMock("../services/embedding-provider", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../services/embedding-provider")>()
+      return {
+        ...actual,
+        EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS: 4096,
+        EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS: 1536,
+      }
+    })
+
+    const { getTranscriptEmbeddingProviderConfig } = await import("./env")
+
+    expect(getTranscriptEmbeddingProviderConfig()).toMatchObject({
+      provider: "jesus-film-ai-gateway",
+      model: "embeddings",
+      expectedNativeDimensions: 4096,
+      truncateToDimensions: 1536,
+      transformVersion: "matryoshka-truncate-1536-v1",
+    })
   })
 
   it("allows explicit legacy content embedding mode in production", async () => {
@@ -409,6 +439,70 @@ describe("Mastra env", () => {
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
       "AI_GATEWAY_EMBEDDINGS_BASE_URL must use https and a host listed in AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects unexpected AI Gateway embedding models in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "other-embeddings")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
+    )
+  })
+
+  it("rejects unexpected AI Gateway embedding providers in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "other-provider")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
     )
   })
 })

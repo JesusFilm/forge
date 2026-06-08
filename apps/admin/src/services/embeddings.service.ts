@@ -12,20 +12,17 @@ import {
 } from "@/mastra/gateway-constants"
 
 export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
-export const OPENROUTER_EMBEDDING_MODEL = "openai/text-embedding-3-small"
-export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+export const OPENROUTER_EMBEDDING_MODEL = "qwen/qwen3-embedding-8b"
 export const GATEWAY_EMBEDDING_MODEL = "embeddings"
 
 /**
- * Per-call embedding source. `"openai"` (the default) keeps the existing
- * OpenRouter → OpenAI precedence byte-identical to today. `"gateway"`
- * routes through the self-hosted JesusFilm AI gateway (Qwen → 1536-dim)
- * so the admin AI experience generator can search Qwen-embedded video
- * vectors without a paid-API dependency. Selected per call — public
- * search / recommendations never pass it, so they are structurally
- * incapable of being affected.
+ * Per-call embedding source. `"openrouter"` (the default) routes query
+ * embedding through OpenRouter's Qwen3 Embedding 8B model at 1536
+ * dimensions. `"gateway"` routes through the self-hosted JesusFilm AI
+ * gateway so the admin AI experience generator can search the parallel
+ * Qwen-embedded video vectors.
  */
-export type EmbeddingSource = "openai" | "gateway"
+export type EmbeddingSource = "openrouter" | "gateway"
 
 /**
  * Hard timeout for provider requests. Node's default fetch has no
@@ -226,9 +223,12 @@ type EmbeddingProvider = {
    * 403s on missing/odd UAs.
    */
   headers?: Record<string, string>
+  dimensions?: number
 }
 
-function selectProvider(source: EmbeddingSource = "openai"): EmbeddingProvider {
+function selectProvider(
+  source: EmbeddingSource = "openrouter",
+): EmbeddingProvider {
   if (source === "gateway") {
     if (!env.AI_GATEWAY_EMBEDDINGS_API_KEY) {
       throw new EmbeddingsBatchError(
@@ -250,20 +250,12 @@ function selectProvider(source: EmbeddingSource = "openai"): EmbeddingProvider {
       apiKey: env.OPENROUTER_API_KEY,
       model: OPENROUTER_EMBEDDING_MODEL,
       url: "https://openrouter.ai/api/v1/embeddings",
-    }
-  }
-  if (env.OPENAI_API_KEY) {
-    return {
-      apiKey: env.OPENAI_API_KEY,
-      model: OPENAI_EMBEDDING_MODEL,
-      url: embeddingEndpointFromBase(
-        env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-      ),
+      dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
     }
   }
   throw new EmbeddingsBatchError(
     "missing_credentials",
-    "OPENROUTER_API_KEY or OPENAI_API_KEY is required for embedding generation",
+    "OPENROUTER_API_KEY is required for embedding generation",
   )
 }
 
@@ -324,6 +316,7 @@ export async function generateExperienceEmbeddings(
         model: provider.model,
         input: normalized,
         encoding_format: "float",
+        ...(provider.dimensions ? { dimensions: provider.dimensions } : {}),
       }),
       signal: controller.signal,
     })

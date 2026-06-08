@@ -7,9 +7,24 @@ const { userCount, userFindMany, managerMembershipFindMany } = vi.hoisted(
     managerMembershipFindMany: vi.fn(),
   }),
 )
+const { queryRaw, mockEnv } = vi.hoisted(() => ({
+  queryRaw: vi.fn(),
+  mockEnv: {
+    env: {
+      ADMIN_BASE_URL: "https://admin.example",
+      ADMIN_SESSION_SECRET: "x".repeat(32),
+      AUTH_ADMIN_CLIENT_ID: "admin-client",
+      AUTH_ISSUER_URL: "https://auth.example",
+      CORS_ALLOWED_ORIGINS: "",
+      OPENROUTER_API_KEY: undefined as string | undefined,
+      OPENAI_API_KEY: undefined as string | undefined,
+    },
+  },
+}))
 
 vi.mock("@/db/client", () => ({
   prisma: {
+    $queryRaw: (...args: unknown[]) => queryRaw(...args),
     user: {
       count: (...args: unknown[]) => userCount(...args),
       findMany: (...args: unknown[]) => userFindMany(...args),
@@ -20,20 +35,52 @@ vi.mock("@/db/client", () => ({
   },
 }))
 
-vi.mock("@/config/env", () => ({
-  env: {
-    AUTH_ISSUER_URL: "https://auth.example",
-    CORS_ALLOWED_ORIGINS: "",
-  },
-}))
+vi.mock("@/config/env", () => mockEnv)
 
 import {
   buildUserTableRow,
   buildLanguageDiagnosticRow,
+  loadEmbeddingsData,
+  loadSettingsData,
   loadUsersData,
+  runSemanticSearch,
   type LanguageDiagnosticSourceRow,
   type UserAccessSourceRow,
 } from "@/app/dashboard/ops-data"
+import type { Principal } from "@/auth/principal"
+
+const ADMIN_PRINCIPAL = {
+  id: "admin-1",
+  role: "ADMIN",
+} as const satisfies Principal
+
+function resetMockEnv() {
+  mockEnv.env.OPENROUTER_API_KEY = undefined
+  mockEnv.env.OPENAI_API_KEY = undefined
+}
+
+function mockEmbeddingCounts({
+  total = 0,
+  embedded = 0,
+  published = 0,
+}: {
+  total?: number
+  embedded?: number
+  published?: number
+} = {}) {
+  queryRaw.mockResolvedValueOnce([
+    {
+      total: BigInt(total),
+      embedded: BigInt(embedded),
+      published: BigInt(published),
+    },
+  ])
+}
+
+beforeEach(() => {
+  queryRaw.mockReset()
+  resetMockEnv()
+})
 
 function sourceRow(
   overrides: Partial<LanguageDiagnosticSourceRow> = {},
@@ -116,6 +163,59 @@ function userSourceRow(
     ...overrides,
   }
 }
+
+describe("embedding provider readiness", () => {
+  it("does not treat OPENAI_API_KEY alone as configured for embeddings", async () => {
+    mockEnv.env.OPENAI_API_KEY = "legacy-openai-key"
+    mockEmbeddingCounts({ total: 2, embedded: 1, published: 1 })
+    queryRaw.mockResolvedValueOnce([])
+
+    const data = await loadEmbeddingsData()
+
+    expect(data.providerReady).toBe(false)
+    expect(
+      data.insights.find((insight) => insight.label === "Provider"),
+    ).toEqual(expect.objectContaining({ value: "Missing" }))
+  })
+
+  it("reports OpenRouter as the only ready embedding backend", async () => {
+    mockEnv.env.OPENROUTER_API_KEY = "openrouter-key"
+    mockEnv.env.OPENAI_API_KEY = "legacy-openai-key"
+    mockEmbeddingCounts({ total: 2, embedded: 2, published: 1 })
+    queryRaw.mockResolvedValueOnce([])
+
+    const embeddings = await loadEmbeddingsData()
+    const settings = await loadSettingsData()
+
+    expect(embeddings.providerReady).toBe(true)
+    expect(
+      embeddings.insights.find((insight) => insight.label === "Provider"),
+    ).toEqual(expect.objectContaining({ value: "OpenRouter" }))
+    expect(
+      settings.insights.find(
+        (insight) => insight.label === "Embedding Backend",
+      ),
+    ).toEqual(expect.objectContaining({ value: "OpenRouter" }))
+  })
+
+  it("keeps semantic search unavailable when only OPENAI_API_KEY is set", async () => {
+    mockEnv.env.OPENAI_API_KEY = "legacy-openai-key"
+    mockEmbeddingCounts({ total: 2, embedded: 1, published: 1 })
+
+    const data = await runSemanticSearch({
+      queryText: "hope",
+      locale: "en",
+      user: ADMIN_PRINCIPAL,
+    })
+
+    expect(data.metrics.find((metric) => metric.label === "Provider")).toEqual(
+      expect.objectContaining({ value: "Missing" }),
+    )
+    expect(data.unavailableReason).toBe(
+      "Semantic search requires OPENROUTER_API_KEY.",
+    )
+  })
+})
 
 describe("loadUsersData", () => {
   beforeEach(() => {

@@ -88,6 +88,29 @@ describe("generateExperienceEmbedding", () => {
       embedding: vector,
     })
   })
+
+  it("requests Qwen through OpenRouter at 1536 dimensions", async () => {
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    await generateExperienceEmbedding("hope and peace")
+
+    const [, init] = fetchMock.mock.calls[0]!
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      model: string
+      dimensions: number
+    }
+    expect(body.model).toBe("qwen/qwen3-embedding-8b")
+    expect(body.dimensions).toBe(1536)
+  })
 })
 
 describe("generateExperienceEmbedding (gateway source)", () => {
@@ -258,10 +281,12 @@ describe("generateExperienceEmbeddings (batched)", () => {
       input: string[]
       model: string
       encoding_format: string
+      dimensions: number
     }
     expect(body.input).toEqual(["first input", "second input", "third input"])
     expect(body.model).toBe(OPENROUTER_EMBEDDING_MODEL)
     expect(body.encoding_format).toBe("float")
+    expect(body.dimensions).toBe(1536)
 
     // Position-stable: embeddings[i] aligns with inputs[i].
     expect(result.embeddings).toEqual([v0, v1, v2])
@@ -378,6 +403,22 @@ describe("generateExperienceEmbeddings (batched)", () => {
     expect((thrown as { code: string }).code).toBe("missing_credentials")
   })
 
+  it("does not fall back to OpenAI credentials when OpenRouter is missing", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    process.env.OPENAI_API_KEY = "test-openai-key"
+    process.env.OPENAI_BASE_URL = "https://api.openai.example/v1"
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbeddings, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+
+    const thrown = await generateExperienceEmbeddings(["hi"]).catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("missing_credentials")
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("surfaces an AbortError as EmbeddingsBatchError(request_timed_out)", async () => {
     // Simulate the AbortController firing inside the timeout window.
     // Vitest doesn't ship an easy way to fast-forward the real
@@ -475,9 +516,9 @@ describe("writeExperienceEmbeddingPayloadInTransaction", () => {
     return {
       sourceContentHash: "sha256:source",
       sourceSummary: "chars=10;lines=1;title=present;meta=absent;og=absent",
-      model: "openai/text-embedding-3-small",
+      model: "qwen/qwen3-embedding-8b",
       dimensions: 1536,
-      provider: "openai",
+      provider: "openrouter",
       generationMode: "idempotent" as const,
       mastraRunId: "run-1",
       generatedAt: "2026-05-26T00:00:00.000Z",

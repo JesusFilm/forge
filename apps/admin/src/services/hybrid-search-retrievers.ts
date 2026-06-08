@@ -32,6 +32,10 @@ import {
 import type { RankedItem } from "./hybrid-search-fusion"
 import type { EmbeddingSource } from "./embeddings.service"
 
+const QWEN_CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
+const QWEN_CONTENT_EMBEDDING_MODEL = "embeddings"
+const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
+
 /**
  * Closed allowlist mapping an embedding source to the physical pgvector
  * COLUMN the semantic-video retriever reads. This is the SQL-injection
@@ -41,8 +45,10 @@ import type { EmbeddingSource } from "./embeddings.service"
  *
  * - `"gateway"` → `"embedding_qwen"` (Qwen 1536-dim vectors, U2 column;
  *   read by the admin AI experience-gen path only).
- * - anything else (including `"openai"`) → `"embedding"` (the existing
- *   OpenAI column; the public default, byte-identical to today).
+ * - anything else (including `"openrouter"`) → `"embedding"` (the
+ *   public default column). Semantic SQL also requires the row-level
+ *   Qwen-compatible content provenance below, so legacy OpenAI vectors in
+ *   the same column fail closed instead of being cross-compared.
  *
  * The matching per-locale partial HNSW index on the chosen column is
  * selected by the planner automatically — the WHERE locale predicate
@@ -52,6 +58,12 @@ export function resolveSemanticEmbeddingColumn(
   source: EmbeddingSource | undefined,
 ): "embedding" | "embedding_qwen" {
   return source === "gateway" ? "embedding_qwen" : "embedding"
+}
+
+function requiresSharedColumnQwenProvenance(
+  source: EmbeddingSource | undefined,
+): boolean {
+  return source !== "gateway"
 }
 
 // -----------------------------------------------------------------------------
@@ -69,7 +81,7 @@ export type SemanticSearchParams = {
    * Per-call embedding source. Selects which stored vector COLUMN the
    * video semantic retriever reads via the `resolveSemanticEmbeddingColumn`
    * closed allowlist (`"gateway"` → `embedding_qwen`, else `embedding`).
-   * Absent / unknown → `embedding` (the public default). Consumed only by
+   * Absent / unknown → `embedding` (the OpenRouter default). Consumed only by
    * `searchVideoSemantic`; the experience retriever ignores it (experience
    * vectors are out of the U3 pilot and always read `embedding`).
    */
@@ -345,6 +357,29 @@ export async function searchVideoSemantic(
   // unvalidated (SQL-injection guard). `vsl.<col>` is the scene column,
   // `vtc.<col>` the transcript column; both move together per call.
   const column = resolveSemanticEmbeddingColumn(params.embeddingSource)
+  const requireProvenance = requiresSharedColumnQwenProvenance(
+    params.embeddingSource,
+  )
+  const sceneProvenanceFilter = requireProvenance
+    ? Prisma.sql`
+          AND vsl.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
+          AND vsl.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
+          AND vsl.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          AND vsl.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          AND vsl.embedding_transform_version IS NULL
+        `
+    : Prisma.empty
+  const transcriptProvenanceFilter = requireProvenance
+    ? Prisma.sql`
+          AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
+          AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
+          AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          AND vt.embedding_transform_version IS NULL
+          AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
+          AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        `
+    : Prisma.empty
   const sceneEmbeddingCol = Prisma.raw(`vsl.${column}`)
   const transcriptEmbeddingCol = Prisma.raw(`vtc.${column}`)
 
@@ -394,6 +429,7 @@ export async function searchVideoSemantic(
           LIMIT 1
         ) vi ON true
         WHERE ${sceneEmbeddingCol} IS NOT NULL
+          ${sceneProvenanceFilter}
           AND vsl.locale = ${locale}
         ORDER BY
           vs.video_id,
@@ -449,6 +485,7 @@ export async function searchVideoSemantic(
           LIMIT 1
         ) vi ON true
         WHERE ${transcriptEmbeddingCol} IS NOT NULL
+          ${transcriptProvenanceFilter}
           AND vtc.language = ${locale}
           AND vt.language = ${locale}
         ORDER BY
@@ -601,6 +638,11 @@ export async function searchExperienceSemantic(
     JOIN experience e ON e.id = el.experience_id
       AND e.archived_at IS NULL
     WHERE el.embedding IS NOT NULL
+      AND el.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
+      AND el.embedding_model = ${QWEN_CONTENT_EMBEDDING_MODEL}
+      AND el.embedding_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+      AND el.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+      AND el.embedding_transform_version IS NULL
       AND el.locale = ${locale}
       AND el.status = 'published'
     ORDER BY el.embedding <=> ${queryEmbedding}::vector

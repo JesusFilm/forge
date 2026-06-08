@@ -33,7 +33,7 @@ function validGateReport(reportId = "report-1") {
       requestModel: "embeddings",
       nativeDimensions: 1536,
       finalDimensions: 1536,
-      transformVersion: "matryoshka-truncate-1536-v1",
+      transformVersion: null,
     },
     gate: {
       backfillReady: true,
@@ -241,7 +241,7 @@ describe("extractContentBackfillGateFromReport", () => {
         requestModel: "embeddings",
         nativeDimensions: 1536,
         finalDimensions: 1536,
-        transformVersion: "matryoshka-truncate-1536-v1",
+        transformVersion: null,
       },
     })
   })
@@ -781,7 +781,7 @@ describe("writeReportToPath", () => {
         requestModel: "embeddings",
         nativeDimensions: 1536,
         finalDimensions: 1536,
-        transformVersion: "matryoshka-truncate-1536-v1",
+        transformVersion: null,
       },
     })
   })
@@ -813,6 +813,27 @@ describe("writeReportToPath", () => {
         },
       }),
     ).toThrow(/contentEmbeddingProvider\.nativeDimensions/)
+
+    expect(() =>
+      extractContentBackfillGateFromReport({
+        ...validGateReport("report-1"),
+        contentEmbeddingProvider: {
+          ...validGateReport("report-1").contentEmbeddingProvider,
+          nativeDimensions: 4096,
+          transformVersion: "matryoshka-truncate-1536-v1",
+        },
+      }),
+    ).toThrow(/contentEmbeddingProvider\.nativeDimensions/)
+
+    expect(() =>
+      extractContentBackfillGateFromReport({
+        ...validGateReport("report-1"),
+        contentEmbeddingProvider: {
+          ...validGateReport("report-1").contentEmbeddingProvider,
+          transformVersion: "matryoshka-truncate-1536-v1",
+        },
+      }),
+    ).toThrow(/contentEmbeddingProvider\.transformVersion/)
 
     expect(() =>
       extractContentBackfillGateFromReport(
