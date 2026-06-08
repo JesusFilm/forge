@@ -40,13 +40,19 @@ export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
           source={thumbnailUrl}
           style={[StyleSheet.absoluteFill, styles.thumbnail]}
           contentFit="cover"
+          contentPosition="top left"
           transition={400}
           recyclingKey={topic.searchTerm}
         />
       ) : null}
       <LinearGradient
-        colors={[hexToRgba("#000000", 0), hexToRgba("#000000", 0.55)]}
-        start={{ x: 0.5, y: 0.35 }}
+        colors={[
+          hexToRgba("#000000", 0.4),
+          hexToRgba("#000000", 0),
+          hexToRgba("#000000", 0.65),
+        ]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
