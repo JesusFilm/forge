@@ -109,6 +109,53 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
+  it("defaults Firecrawl config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-key")
+    vi.stubEnv("FIRECRAWL_API_BASE_URL", "")
+    vi.stubEnv("FIRECRAWL_SEARCH_TIMEOUT_MS", "")
+
+    const { getFirecrawlConfig } = await import("./env")
+
+    expect(getFirecrawlConfig()).toEqual({
+      apiKey: "fc-test-key",
+      baseUrl: "https://api.firecrawl.dev",
+      timeoutMs: 60_000,
+    })
+  })
+
+  it("does not require Firecrawl vars in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+
+    const { assertMastraRuntimeEnv, getFirecrawlConfig } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getFirecrawlConfig().apiKey).toBeUndefined()
+  })
+
   it("defaults storage to the local gateway database in development", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("DATABASE_URL", "")

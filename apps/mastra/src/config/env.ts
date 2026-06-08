@@ -81,6 +81,15 @@ const envSchema = z.object({
     .min(1)
     .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT),
   DATABASE_URL: z.string().url().optional(),
+  FIRECRAWL_API_KEY: z.string().min(1).optional(),
+  FIRECRAWL_API_BASE_URL: z.string().url().default("https://api.firecrawl.dev"),
+  FIRECRAWL_SEARCH_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(120_000)
+    .default(60_000),
+  INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -186,6 +195,14 @@ export const env = envSchema.parse({
     process.env.AI_GATEWAY_EMBEDDINGS_USER_AGENT,
   ),
   DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
+  FIRECRAWL_API_KEY: emptyToUndefined(process.env.FIRECRAWL_API_KEY),
+  FIRECRAWL_API_BASE_URL: emptyToUndefined(process.env.FIRECRAWL_API_BASE_URL),
+  FIRECRAWL_SEARCH_TIMEOUT_MS: emptyToUndefined(
+    process.env.FIRECRAWL_SEARCH_TIMEOUT_MS,
+  ),
+  INSTAGRAM_DISCOVERY_ARTIFACT_DIR: emptyToUndefined(
+    process.env.INSTAGRAM_DISCOVERY_ARTIFACT_DIR,
+  ),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
@@ -333,6 +350,20 @@ export function assertMastraRuntimeEnv() {
 
   if (missingNames.length > 0) {
     throw new Error(`${missingNames.join(", ")} required for Mastra production`)
+  }
+}
+
+export type FirecrawlConfig = {
+  apiKey?: string
+  baseUrl: string
+  timeoutMs: number
+}
+
+export function getFirecrawlConfig(): FirecrawlConfig {
+  return {
+    apiKey: env.FIRECRAWL_API_KEY,
+    baseUrl: env.FIRECRAWL_API_BASE_URL,
+    timeoutMs: env.FIRECRAWL_SEARCH_TIMEOUT_MS,
   }
 }
 
