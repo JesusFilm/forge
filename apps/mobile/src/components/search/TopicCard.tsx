@@ -41,6 +41,7 @@ export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
           style={[StyleSheet.absoluteFill, styles.thumbnail]}
           contentFit="cover"
           contentPosition="top left"
+          blurRadius={4}
           transition={400}
           cachePolicy="memory-disk"
           recyclingKey={topic.searchTerm}
