@@ -3,7 +3,7 @@
 - **Date:** 2026-06-08
 - **Status:** Ready for planning
 - **Lane (proposed):** `ai-chat` — *Jesus Film AI Chat*, the headless multi-agent system (pending team decision — see Dependencies)
-- **Roadmap ticket:** `docs/roadmap/ai-chat/feat-169-seeker-agent-skeleton.md`
+- **Roadmap ticket:** `docs/roadmap/ai-chat/feat-170-seeker-agent-skeleton.md`
 - **Branch:** `feat/seeker-agent-skeleton` (do not push to `main` until the lane decision lands)
 
 ## Problem
@@ -22,18 +22,18 @@ Stand up a **seeker agent** in `apps/mastra` with one stub retrieval tool and Ma
 
 People seeking to understand Christianity and who Jesus is. This is a **sensitive audience** — see the guardrail gate under Constraints. The skeleton is *not* for real seekers yet; it is exercised by the team in Studio only.
 
-## Approach — mirror admin's proven pattern, copy don't import
+## Approach — follow the in-app pattern; admin for Memory wiring only
 
-`apps/admin/src/mastra` already contains a complete conversational-agent setup: chat agents, a `tools/` folder using `createTool` (`search-videos`, `lookup-bible-verse`, `fetch-video-image`), a `memory.ts` with Postgres + PgVector semantic recall, scorers, and prompts. That is admin's internal Experience-AI authoring assistant — a different audience, but the *mechanics* are exactly what the seeker agent needs.
+`apps/mastra` now has its **own** agent-with-tools prior art (added by feat-169, the Firecrawl web-data work): `apps/mastra/src/mastra/agents/web-research-agent.ts` is an `Agent` with instructions + tools, and `apps/mastra/src/mastra/tools/firecrawl.ts` is a same-app `createTool` with Zod schemas and an `ok: false` failure shape, registered in `index.ts` as `agents: { smokeAgent, webResearchAgent }`. **This is the primary template** — same app, no import restriction, exactly the shape the seeker agent and its stub tool need. The `tools/` folder already exists; we add a file to it, not create it.
 
-`apps/mastra` architecture rules **forbid importing from `apps/admin`**. So admin is a **reference to mirror, not a dependency to import**. The seeker agent copies the shape (agent registration, `createTool`, Memory wiring) into `apps/mastra`. **Sync stance:** divergence from admin's setup is accepted as a one-time bootstrap; this skeleton is maintained independently. (Whether anything should later be shared between the two Mastra setups is an open question for another day — not decided here.)
+The one piece the in-app pattern does **not** cover is **Mastra Memory** — `web-research-agent` has no memory. For that, `apps/admin/src/mastra/memory.ts` is the reference (Postgres/PgVector there, but the `Memory` wiring shape transfers). `apps/mastra` architecture rules **forbid importing from `apps/admin`**, so admin is a **reference to mirror, not a dependency**. **Sync stance:** divergence is accepted as a one-time bootstrap; this skeleton is maintained independently. (Whether the two Mastra setups should later share code is an open question for another day — not decided here.)
 
 The local **storage backend** already exists, but the **Memory primitive does not**: `apps/mastra` wires `MASTRA_STORAGE_BACKEND=memory` → `InMemoryStore` today (`apps/mastra/src/mastra/index.ts` + `apps/mastra/src/config/env.ts`), and production rejects `memory`. That `InMemoryStore` is *app-level Mastra storage* — it is **not** the `@mastra/memory` `Memory` primitive an agent needs for thread recall, and `@mastra/memory` is **not yet a dependency of `apps/mastra`** (only `apps/admin` has it). So the skeleton must add the `@mastra/memory` dependency and wire a `Memory` instance against the existing `InMemoryStore`: the storage tier is free, the Memory primitive is new work.
 
 ## In Scope
 
 1. **`seeker-agent.ts`** in `apps/mastra/src/mastra/agents/`, registered in `apps/mastra/src/mastra/index.ts`. **Minimal placeholder instructions** only: it helps people exploring Christianity / who Jesus is, is warm and honest, and uses the retrieve tool to ground factual answers. (Full persona + guardrails deferred — see Constraints.) Even at placeholder level, the instructions carry one safety line: the agent is a **non-production prototype and must not invent scripture, citations, or doctrinal claims** — even in Studio testing. This bounds the blast radius of any leaked/screenshotted test output before the guardrail gate is met.
-2. **New `apps/mastra/src/mastra/tools/` folder + one stub tool** (working name `retrieve-answer`) built with `createTool`. Its I/O is a **provisional placeholder, NOT a finalized RAG contract** (RAG is undesigned — do not treat this as a drop-in):
+2. **One stub tool in the existing `apps/mastra/src/mastra/tools/` folder** (working name `retrieve-answer`) built with `createTool`, following the same-app `tools/firecrawl.ts` shape. Its I/O is a **provisional placeholder, NOT a finalized RAG contract** (RAG is undesigned — do not treat this as a drop-in):
    - input: `{ query: string, locale?: string }`
    - output: `{ answer: string, sources: [] }` — hard-coded answer + empty `sources`.
    Real retrieval will likely return passage-shaped `sources` (`{ text, ref, score? }`, cf. admin's `search-videos` / `lookup-bible-verse`, which return structured results rather than a finished answer). The final shape is deferred to RAG design; this stub exists only to prove the agent calls *a* tool.
@@ -63,9 +63,9 @@ These are recorded here so planning does not pull them in, and so the deferral i
 ## Dependencies / Outstanding Questions
 
 1. **`ai-chat` lane is pending a team decision.** The team needs to agree on how the roadmap documents new lanes before `ai-chat` is added to the repo's canonical surfaces. Until then, on this branch:
-   - **Apply:** the `feat-169` ticket file + this requirements doc.
+   - **Apply:** the `feat-170` ticket file + this requirements doc.
    - **Recipe only (do NOT apply):** root `CLAUDE.md` Roadmap Structure tree + tag-vocabulary edits, and the hardcoded lane spots in `apps/roadmap/` (enumerated below). These are captured in `todos/007-pending-p2-ai-chat-roadmap-lane-pending-team-decision.md`.
-2. **Roadmap app impact (verified).** The roadmap viewer hardcodes its lanes in **two files** — a `feat-169` file in `docs/roadmap/ai-chat/` is **silently ignored** (not rendered, no crash), and the `/lane/ai-chat` page would **404**, until all of these learn about `ai-chat`:
+2. **Roadmap app impact (verified).** The roadmap viewer hardcodes its lanes in **two files** — a `feat-170` file in `docs/roadmap/ai-chat/` is **silently ignored** (not rendered, no crash), and the `/lane/ai-chat` page would **404**, until all of these learn about `ai-chat`:
    - `apps/roadmap/lib/features.ts` — the `Lane` type union (~line 11)
    - `apps/roadmap/lib/features.ts` — `LANE_DIRS` (~line 52)
    - `apps/roadmap/lib/features.ts` — `ALL_LANES` (~line 187) — drives `/lane/[lane]` static params + route guard, contributions, llms.txt
@@ -76,9 +76,10 @@ These are recorded here so planning does not pull them in, and so the deferral i
 
 ## References
 
-- `apps/mastra/src/mastra/agents/smoke-agent.ts` — sibling agent + registration pattern.
-- `apps/mastra/src/mastra/index.ts` — agent/tool registration, storage backend switch.
+- `apps/mastra/src/mastra/agents/web-research-agent.ts` — **primary** in-app agent-with-tools template.
+- `apps/mastra/src/mastra/tools/firecrawl.ts` — **primary** in-app `createTool` template (Zod schemas, `ok:false` shape).
+- `apps/mastra/src/mastra/agents/smoke-agent.ts` — minimal sibling agent.
+- `apps/mastra/src/mastra/index.ts` — agent/tool registration (`agents: { smokeAgent, webResearchAgent }`), storage backend switch.
 - `apps/mastra/src/config/env.ts` — `MASTRA_STORAGE_BACKEND` handling.
 - `apps/mastra/CLAUDE.md` — per-capability section pattern to follow.
-- `apps/admin/src/mastra/tools/` — `createTool` reference (mirror, do not import).
-- `apps/admin/src/mastra/memory.ts` — Memory wiring reference.
+- `apps/admin/src/mastra/memory.ts` — Memory wiring reference (mirror, do not import; admin uses Postgres/PgVector but the `Memory` shape transfers).

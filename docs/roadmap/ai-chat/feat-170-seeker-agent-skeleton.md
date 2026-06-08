@@ -1,5 +1,5 @@
 ---
-id: "feat-169"
+id: "feat-170"
 title: "Seeker Agent Skeleton"
 owner: "jianwei"
 priority: "P2"
@@ -41,25 +41,29 @@ is a reference to mirror, not a dependency.
 
 1. `docs/brainstorms/2026-06-08-seeker-agent-skeleton-requirements.md` — chosen
    scope, deferred set, and the guardrail release gate.
-2. `apps/mastra/src/mastra/agents/smoke-agent.ts` — sibling agent shape.
-3. `apps/mastra/src/mastra/index.ts` — agent/tool registration + the
-   `MASTRA_STORAGE_BACKEND` storage switch (`InMemoryStore` vs `PostgresStore`).
-4. `apps/mastra/src/config/env.ts` — `MASTRA_STORAGE_BACKEND` handling and the
+2. `apps/mastra/src/mastra/agents/web-research-agent.ts` — PRIMARY template:
+   in-app `Agent` with instructions + tools (same app, no import restriction).
+3. `apps/mastra/src/mastra/tools/firecrawl.ts` — PRIMARY template: in-app
+   `createTool` with Zod schemas and an `ok:false` failure shape.
+4. `apps/mastra/src/mastra/agents/smoke-agent.ts` — minimal sibling agent.
+5. `apps/mastra/src/mastra/index.ts` — agent/tool registration
+   (`agents: { smokeAgent, webResearchAgent }`) + the `MASTRA_STORAGE_BACKEND`
+   storage switch (`InMemoryStore` vs `PostgresStore`).
+6. `apps/mastra/src/config/env.ts` — `MASTRA_STORAGE_BACKEND` handling and the
    production `memory`-rejection guard.
-5. `apps/mastra/CLAUDE.md` — per-capability section pattern; add a "Seeker
+7. `apps/mastra/CLAUDE.md` — per-capability section pattern; add a "Seeker
    agent" section in the same style.
-6. `apps/admin/src/mastra/tools/lookup-bible-verse.ts` — `createTool` reference
-   (mirror, do not import).
-7. `apps/admin/src/mastra/memory.ts` — Memory wiring reference (mirror, do not
-   import).
+8. `apps/admin/src/mastra/memory.ts` — Memory wiring reference (mirror, do not
+   import; the in-app pattern has no memory, so this is the one piece admin
+   covers).
 
 ## Grep These
 
 - `new Agent(` in `apps/mastra/src` — agent construction + registration.
 - `agents: {` in `apps/mastra/src/mastra/index.ts` — where to register the agent.
+- `createTool` in `apps/mastra/src/mastra/tools` — in-app tool definition pattern.
 - `MASTRA_STORAGE_BACKEND|InMemoryStore` in `apps/mastra/src` — memory backend.
-- `createTool` in `apps/admin/src/mastra/tools` — tool definition pattern.
-- `new Memory(` in `apps/admin/src/mastra` — memory attach pattern.
+- `new Memory(` in `apps/admin/src/mastra` — memory attach pattern (admin only).
 
 ## What To Build
 
@@ -70,9 +74,10 @@ is a reference to mirror, not a dependency.
    non-production prototype and must not invent scripture, citations, or
    doctrinal claims, even in Studio. Register it in
    `apps/mastra/src/mastra/index.ts` `agents: { ... }`.
-2. `apps/mastra/src/mastra/tools/` — new folder with one stub tool
-   `retrieve-answer` via `createTool`. The I/O is a PROVISIONAL placeholder,
-   NOT a finalized RAG contract (RAG is undesigned — not a drop-in):
+2. `apps/mastra/src/mastra/tools/` (folder already exists) — add one stub tool
+   `retrieve-answer` via `createTool`, following the same-app `firecrawl.ts`
+   shape. The I/O is a PROVISIONAL placeholder, NOT a finalized RAG contract
+   (RAG is undesigned — not a drop-in):
    - input: `{ query: string, locale?: string }`
    - output: `{ answer: string, sources: [] }` — hard-coded answer, empty
      `sources`.
