@@ -1,0 +1,183 @@
+import type { DubMediaState } from "../../contexts/watchSessionState"
+import type {
+  VariantMedia,
+  WatchSubtitle,
+  WatchVariant,
+} from "../../lib/normalizeVideo"
+import {
+  annotateVariantRows,
+  deriveSubtitlePanelState,
+  isSubtitleRowActive,
+  isVariantPlayable,
+} from "./panelState"
+
+// ── Fixtures ───────────────────────────────────────────────────────────────
+
+function subtitle(slug: string): WatchSubtitle {
+  return {
+    documentId: `sub-${slug}`,
+    languageSlug: slug,
+    languageName: slug,
+    languageBcp47: slug,
+    vttSrc: `https://example.test/${slug}.vtt`,
+    primary: false,
+    aiGenerated: false,
+  }
+}
+
+function media(subtitles: WatchSubtitle[]): VariantMedia {
+  return { downloads: [], subtitles }
+}
+
+function variant(overrides: Partial<WatchVariant> = {}): WatchVariant {
+  return {
+    documentId: "v1",
+    slug: "english",
+    published: true,
+    hls: "https://stream.mux.com/v1.m3u8",
+    duration: 100,
+    languageCoreId: null,
+    languageBcp47: "en",
+    languageSlug: "english",
+    languageName: "English",
+    languageNameNative: null,
+    muxPlaybackId: null,
+    ...overrides,
+  }
+}
+
+const NOT_LOADED: DubMediaState = { media: null, loading: false, error: false }
+
+// ── deriveSubtitlePanelState ─────────────────────────────────────────────────
+
+describe("deriveSubtitlePanelState", () => {
+  it("maps not-loaded (media null, no flags) → loading", () => {
+    // media == null is "not yet fetched"; render as loading so the panel never
+    // flashes an empty list before the lazy fetch resolves.
+    expect(deriveSubtitlePanelState(NOT_LOADED)).toEqual({ kind: "loading" })
+  })
+
+  it("maps loading flag → loading", () => {
+    expect(
+      deriveSubtitlePanelState({ media: null, loading: true, error: false }),
+    ).toEqual({ kind: "loading" })
+  })
+
+  it("maps error flag → error", () => {
+    expect(
+      deriveSubtitlePanelState({ media: null, loading: false, error: true }),
+    ).toEqual({ kind: "error" })
+  })
+
+  it("loading takes precedence over error", () => {
+    expect(
+      deriveSubtitlePanelState({ media: null, loading: true, error: true }),
+    ).toEqual({ kind: "loading" })
+  })
+
+  it("maps loaded-empty (media non-null, subtitles []) → loaded with empty list", () => {
+    expect(
+      deriveSubtitlePanelState({
+        media: media([]),
+        loading: false,
+        error: false,
+      }),
+    ).toEqual({ kind: "loaded", subtitles: [] })
+  })
+
+  it("maps loaded-list → loaded with the subtitle rows", () => {
+    const subs = [subtitle("spanish"), subtitle("french")]
+    expect(
+      deriveSubtitlePanelState({
+        media: media(subs),
+        loading: false,
+        error: false,
+      }),
+    ).toEqual({ kind: "loaded", subtitles: subs })
+  })
+})
+
+// ── isSubtitleRowActive ──────────────────────────────────────────────────────
+
+describe("isSubtitleRowActive", () => {
+  it("is active only when enabled AND slug matches", () => {
+    expect(isSubtitleRowActive(subtitle("spanish"), true, "spanish")).toBe(true)
+  })
+
+  it("is inactive when subtitles are off, even if the slug matches", () => {
+    expect(isSubtitleRowActive(subtitle("spanish"), false, "spanish")).toBe(
+      false,
+    )
+  })
+
+  it("is inactive when the slug does not match", () => {
+    expect(isSubtitleRowActive(subtitle("spanish"), true, "french")).toBe(false)
+    expect(isSubtitleRowActive(subtitle("spanish"), true, null)).toBe(false)
+  })
+})
+
+// ── isVariantPlayable / annotateVariantRows ─────────────────────────────────
+
+describe("isVariantPlayable", () => {
+  it("is playable with a Mux-hosted HLS url the player accepts", () => {
+    expect(isVariantPlayable({ hls: "https://stream.mux.com/v.m3u8" })).toBe(
+      true,
+    )
+  })
+
+  it("is not playable when hls is null or empty", () => {
+    expect(isVariantPlayable({ hls: null })).toBe(false)
+    expect(isVariantPlayable({ hls: "" })).toBe(false)
+  })
+
+  it("is not playable for a non-Mux url the player would reject", () => {
+    // Raw CMS hls can be a non-Mux host; the player's validateStreamingUrl
+    // rejects it, so the row must be disabled rather than selectable-but-dead.
+    expect(isVariantPlayable({ hls: "https://example.test/v.m3u8" })).toBe(
+      false,
+    )
+  })
+})
+
+describe("annotateVariantRows", () => {
+  it("disables unplayable rows (null / empty / non-Mux) and keeps Mux rows enabled", () => {
+    const rows = annotateVariantRows(
+      [
+        variant({ documentId: "v1", hls: "https://stream.mux.com/v1.m3u8" }),
+        variant({ documentId: "v2", hls: null }),
+        variant({ documentId: "v3", hls: "" }),
+        variant({ documentId: "v4", hls: "https://example.test/v4.m3u8" }),
+      ],
+      0,
+    )
+    expect(rows.map((r) => r.disabled)).toEqual([false, true, true, true])
+  })
+
+  it("preserves the original index for write-back", () => {
+    const rows = annotateVariantRows(
+      [
+        variant({ documentId: "v1" }),
+        variant({ documentId: "v2" }),
+        variant({ documentId: "v3" }),
+      ],
+      1,
+    )
+    expect(rows.map((r) => r.index)).toEqual([0, 1, 2])
+  })
+
+  it("marks the active index active and nothing else", () => {
+    const rows = annotateVariantRows(
+      [
+        variant({ documentId: "v1" }),
+        variant({ documentId: "v2" }),
+        variant({ documentId: "v3" }),
+      ],
+      1,
+    )
+    expect(rows.map((r) => r.active)).toEqual([false, true, false])
+  })
+
+  it("returns an empty list for no variants", () => {
+    expect(annotateVariantRows([], 0)).toEqual([])
+  })
+})

@@ -41,6 +41,10 @@ An evaluation or backfill approval artifact that binds quality evidence to a spe
 
 A curated, themed watch page — such as Easter or Christmas — that assembles a selection of watch content under an editorial frame. An Experience is authored in admin (hand-curated by the editorial team, or AI-generated) and published to render as its own standalone page on the watch site, reachable by a public slug of its own (distinct from any single Video's slug).
 
+### Homepage Experience
+
+The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
+
 ## Watch player UI
 
 ### Chrome
