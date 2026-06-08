@@ -106,13 +106,13 @@ describe("HybridSearchService", () => {
     })
 
     // All 4 retrievers were invoked with overfetch = DEFAULT_LIMIT * 3 = 60.
-    // The default path resolves embeddingSource to "openai" (→ `embedding`
+    // The default path resolves embeddingSource to "openrouter" (→ `embedding`
     // column in the retriever).
     expect(searchVideoSemantic).toHaveBeenCalledWith(mockPrisma, {
       queryEmbedding: "[0.1,0.2,0.3]",
       locale: "en",
       limit: 60,
-      embeddingSource: "openai",
+      embeddingSource: "openrouter",
     })
     expect(searchVideoKeyword).toHaveBeenCalledWith(mockPrisma, {
       query: "forgiveness",
@@ -288,7 +288,7 @@ describe("HybridSearchService", () => {
   })
 
   describe("embeddingSource threading (U3)", () => {
-    it("defaults to 'openai' for the embedder and semantic retriever when unset", async () => {
+    it("defaults to 'openrouter' for the embedder and semantic retriever when unset", async () => {
       const embedder = successEmbedder()
       const service = new HybridSearchService({
         prisma: mockPrisma,
@@ -299,10 +299,10 @@ describe("HybridSearchService", () => {
       await service.search({ query: "test", locale: "en" })
 
       // Embedder receives the resolved source as its 2nd arg.
-      expect(embedder).toHaveBeenCalledWith("test", "openai")
+      expect(embedder).toHaveBeenCalledWith("test", "openrouter")
       expect(searchVideoSemantic).toHaveBeenCalledWith(
         mockPrisma,
-        expect.objectContaining({ embeddingSource: "openai" }),
+        expect.objectContaining({ embeddingSource: "openrouter" }),
       )
     })
 

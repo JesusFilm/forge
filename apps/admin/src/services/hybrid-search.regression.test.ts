@@ -199,7 +199,7 @@ describe("HybridSearchService default-mode regression snapshot", () => {
     }
   })
 
-  it("default path resolves embeddingSource to 'openai' (public byte-identity / U3)", async () => {
+  it("default path resolves embeddingSource to 'openrouter' (public default / U3)", async () => {
     for (const { mode } of DEFAULT_EQUIVALENT_MODES) {
       vi.clearAllMocks()
       setupRetrieverFixtures()
@@ -211,13 +211,13 @@ describe("HybridSearchService default-mode regression snapshot", () => {
         logger: { warn: vi.fn(), error: vi.fn() },
       })
       // No embeddingSource passed — the public contract. Both the query
-      // embedder and the semantic-video retriever must see "openai" so
-      // the read column stays `embedding` (never the Qwen column).
+      // embedder and the semantic-video retriever must see "openrouter" so
+      // the read column stays `embedding` (never the gateway column).
       await service.search({ query: "jesus", locale: "en", mode })
-      expect(embedder).toHaveBeenCalledWith("jesus", "openai")
+      expect(embedder).toHaveBeenCalledWith("jesus", "openrouter")
       expect(searchVideoSemantic).toHaveBeenCalledWith(
         mockPrisma,
-        expect.objectContaining({ embeddingSource: "openai" }),
+        expect.objectContaining({ embeddingSource: "openrouter" }),
       )
     }
   })

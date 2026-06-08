@@ -33,7 +33,17 @@ function latestRawSql(prisma: ReturnType<typeof mockPrisma>): string {
 
 function latestRawValues(prisma: ReturnType<typeof mockPrisma>): unknown[] {
   const call = prisma.$queryRaw.mock.calls.at(-1)
-  return call?.slice(1) ?? []
+  return (call?.slice(1) ?? []).flatMap((value: unknown) => {
+    if (
+      value != null &&
+      typeof value === "object" &&
+      "values" in (value as Record<string, unknown>) &&
+      Array.isArray((value as { values: unknown }).values)
+    ) {
+      return [value, ...(value as { values: unknown[] }).values]
+    }
+    return [value]
+  })
 }
 
 /**
@@ -313,8 +323,8 @@ describe("resolveSemanticEmbeddingColumn (U3 allowlist)", () => {
     expect(resolveSemanticEmbeddingColumn("gateway")).toBe("embedding_qwen")
   })
 
-  it("maps 'openai' to embedding", () => {
-    expect(resolveSemanticEmbeddingColumn("openai")).toBe("embedding")
+  it("maps 'openrouter' to embedding", () => {
+    expect(resolveSemanticEmbeddingColumn("openrouter")).toBe("embedding")
   })
 
   it("maps undefined to embedding (fail-safe default)", () => {
@@ -346,21 +356,25 @@ describe("searchVideoSemantic embeddingSource column selection (U3)", () => {
     const sql = latestRawSqlWithFragments(prisma)
     expect(sql).toContain("vsl.embedding")
     expect(sql).toContain("vtc.embedding")
+    expect(sql).toContain("vsl.embedding_provider")
+    expect(sql).toContain("vt.embedding_provider")
     expect(sql).not.toContain("embedding_qwen")
   })
 
-  it("reads vsl.embedding / vtc.embedding when source='openai'", async () => {
+  it("reads vsl.embedding / vtc.embedding when source='openrouter'", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
     await searchVideoSemantic(prisma, {
       queryEmbedding: "[0.1]",
       locale: "en",
       limit: 5,
-      embeddingSource: "openai",
+      embeddingSource: "openrouter",
     })
 
     const sql = latestRawSqlWithFragments(prisma)
     expect(sql).toContain("vsl.embedding")
     expect(sql).toContain("vtc.embedding")
+    expect(sql).toContain("vsl.embedding_provider")
+    expect(sql).toContain("vt.embedding_provider")
     expect(sql).not.toContain("embedding_qwen")
   })
 
@@ -376,6 +390,8 @@ describe("searchVideoSemantic embeddingSource column selection (U3)", () => {
     const sql = latestRawSqlWithFragments(prisma)
     expect(sql).toContain("vsl.embedding_qwen")
     expect(sql).toContain("vtc.embedding_qwen")
+    expect(sql).not.toContain("vsl.embedding_provider")
+    expect(sql).not.toContain("vt.embedding_provider")
   })
 
   it("falls back to the embedding column for an unknown source (allowlist guard)", async () => {
@@ -390,8 +406,61 @@ describe("searchVideoSemantic embeddingSource column selection (U3)", () => {
     const sql = latestRawSqlWithFragments(prisma)
     expect(sql).toContain("vsl.embedding")
     expect(sql).toContain("vtc.embedding")
+    expect(sql).toContain("vsl.embedding_provider")
+    expect(sql).toContain("vt.embedding_provider")
     expect(sql).not.toContain("embedding_qwen")
     expect(sql).not.toContain("injection")
+  })
+})
+
+describe("semantic retriever provenance gates", () => {
+  let prisma: ReturnType<typeof mockPrisma>
+
+  beforeEach(() => {
+    prisma = mockPrisma()
+  })
+
+  it("requires the approved Qwen-compatible content provenance for video semantic rows", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1]",
+      locale: "en",
+      limit: 5,
+      embeddingSource: "openrouter",
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    const values = latestRawValues(prisma)
+    expect(sql).toContain("vsl.embedding_provider")
+    expect(sql).toContain("vt.embedding_provider")
+    expect(sql).toContain("vsl.embedding_native_dimensions")
+    expect(sql).toContain("vt.embedding_native_dimensions")
+    expect(sql).toContain("vsl.embedding_transform_version IS NULL")
+    expect(sql).toContain("vt.embedding_transform_version IS NULL")
+    expect(values).toContain("jesus-film-ai-gateway")
+    expect(values).toContain("embeddings")
+    expect(values).toContain(1536)
+  })
+
+  it("requires the approved Qwen-compatible content provenance for experience semantic rows", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await searchExperienceSemantic(prisma, {
+      queryEmbedding: "[0.1]",
+      locale: "en",
+      limit: 5,
+      embeddingSource: "openrouter",
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    const values = latestRawValues(prisma)
+    expect(sql).toContain("el.embedding_provider")
+    expect(sql).toContain("el.embedding_model")
+    expect(sql).toContain("el.embedding_dimensions")
+    expect(sql).toContain("el.embedding_native_dimensions")
+    expect(sql).toContain("el.embedding_transform_version IS NULL")
+    expect(values).toContain("jesus-film-ai-gateway")
+    expect(values).toContain("embeddings")
+    expect(values).toContain(1536)
   })
 })
 
