@@ -47,6 +47,18 @@ A ranked possible attribution produced by a Match Job, pairing a source Video wi
 
 ## Search & embeddings
 
+### Search Pipeline Mode
+
+A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
+
+### Keyword-First Search
+
+A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
+
+### Search Degradation Signal
+
+The response-side state that says whether semantic retrieval actually contributed to a search response. It reflects runtime embedding availability, not the requested Search Pipeline Mode.
+
 ### Content Embedding
 
 A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.
