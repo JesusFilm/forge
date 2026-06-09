@@ -32,7 +32,8 @@ if (
 type QuestionItem = {
   id: string
   question: string
-  answer: string
+  /** Nullable in admin's schema (RelatedQuestionItem.answer: String). */
+  answer: string | null
 }
 
 // ── No-answer fallback ──────────────────────────────────────────────────────
@@ -109,7 +110,10 @@ function QuestionRow({
   onOpenLink: (url: string) => void
 }) {
   const [isFocused, setIsFocused] = useState(false)
-  const hasAnswer = item.answer.trim() !== ""
+  // Null-safe: admin's RelatedQuestionItem.answer is a nullable String and the
+  // SDUI cast hides it — a null answer must fall back, not crash the screen
+  // (mobile's renderer guards the same way).
+  const hasAnswer = (item.answer ?? "").trim() !== ""
 
   return (
     <View style={[styles.item, { marginHorizontal: inset }]}>

@@ -14,7 +14,7 @@
 
 import { useMemo } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
-import type Ionicons from "@expo/vector-icons/Ionicons"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
 import { WATCH_THEME } from "./watchDetailTheme"
@@ -104,19 +104,18 @@ export function WatchOptionRow({
 
   // Unplayable dub: a plain View (never a Pressable) so the D-pad skips it and
   // the viewer can't select an unplayable language. Muted + "Unavailable" tag.
+  // Static Ionicons (not AnimatedFocusIcon): the row can never focus, so the
+  // two-layer cross-fade would be dead Animated infrastructure — at thousands
+  // of dub rows that waste is material.
   if (disabled) {
     return (
       <View
         style={[styles.row, styles.disabledRow]}
         accessibilityLabel={`${accessibilityLabel ?? label}, unavailable`}
+        accessibilityState={{ disabled: true }}
       >
         {icon ? (
-          <AnimatedFocusIcon
-            name={icon}
-            progress={progress}
-            size={ICON_SIZE}
-            restColor={WATCH_THEME.text50}
-          />
+          <Ionicons name={icon} size={ICON_SIZE} color={WATCH_THEME.text50} />
         ) : null}
         <Text style={[styles.label, styles.disabledText]} numberOfLines={1}>
           {label}
@@ -135,6 +134,7 @@ export function WatchOptionRow({
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ selected }}
     >
       <Animated.View style={[styles.row, animatedRow]}>
         {icon ? (
