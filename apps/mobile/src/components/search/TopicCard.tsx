@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -14,6 +14,10 @@ const SCRIM_COLORS = [
   hexToRgba("#000000", 0),
   hexToRgba("#000000", 0.65),
 ] as const
+
+// expo-image's blurRadius isn't calibrated equally across platforms — the same
+// value blurs noticeably harder on Android than iOS — so bump iOS to match.
+const THUMBNAIL_BLUR_RADIUS = Platform.OS === "ios" ? 12 : 4
 
 export interface TopicCardProps {
   topic: BrowseTopic
@@ -48,7 +52,7 @@ export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
           style={[StyleSheet.absoluteFill, styles.thumbnail]}
           contentFit="cover"
           contentPosition="top left"
-          blurRadius={4}
+          blurRadius={THUMBNAIL_BLUR_RADIUS}
           transition={400}
           cachePolicy="memory-disk"
           recyclingKey={topic.searchTerm}
