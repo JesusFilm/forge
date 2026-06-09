@@ -8,6 +8,13 @@ import { hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import { feedback } from "../../styles/shared"
 
+// Cinematic top + bottom darkening — fixed across all cards, so compute once.
+const SCRIM_COLORS = [
+  hexToRgba("#000000", 0.4),
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0.65),
+] as const
+
 export interface TopicCardProps {
   topic: BrowseTopic
   onSelect: (searchTerm: string) => void
@@ -48,11 +55,7 @@ export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
         />
       ) : null}
       <LinearGradient
-        colors={[
-          hexToRgba("#000000", 0.4),
-          hexToRgba("#000000", 0),
-          hexToRgba("#000000", 0.65),
-        ]}
+        colors={[...SCRIM_COLORS]}
         locations={[0, 0.5, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}

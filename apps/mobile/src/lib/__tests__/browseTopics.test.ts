@@ -13,11 +13,17 @@ describe("BROWSE_TOPICS", () => {
     ])
   })
 
-  it("uses lowercase, non-empty search terms", () => {
+  it("uses distinct lowercase, non-empty search terms", () => {
     for (const t of BROWSE_TOPICS) {
       expect(t.searchTerm).toBe(t.searchTerm.toLowerCase())
       expect(t.searchTerm.trim().length).toBeGreaterThan(0)
     }
+    // searchTerm is the identity key for the thumbnail cache, the React list
+    // key, and expo-image recyclingKey — a duplicate would silently collide all
+    // three.
+    expect(new Set(BROWSE_TOPICS.map((t) => t.searchTerm)).size).toBe(
+      BROWSE_TOPICS.length,
+    )
   })
 
   it("gives every topic a distinct two-stop hex gradient and glyph", () => {

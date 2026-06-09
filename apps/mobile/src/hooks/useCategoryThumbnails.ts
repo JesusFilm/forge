@@ -44,8 +44,14 @@ export function useCategoryThumbnails(): Record<string, string | null> {
             setThumbnails((prev) => ({ ...prev, [topic.searchTerm]: url }))
           }
         })
-        .catch(() => {
+        .catch((err) => {
           // Transient failure — leave uncached so a later mount can retry.
+          if (__DEV__) {
+            console.warn(
+              `[useCategoryThumbnails] thumbnail fetch failed for "${topic.searchTerm}"`,
+              err,
+            )
+          }
         })
     }
     return () => {
