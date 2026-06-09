@@ -43,7 +43,8 @@ Required for production:
 
 - `DATABASE_URL=<Railway Postgres DATABASE_URL reference>`
 - `MAPPER_API_TOKEN=<runtime secret, at least 32 characters>`
-- `UPLOAD_STORAGE_DIR=/tmp/yt-video-mapper/uploads`
+- `NODE_ENV=production`
+- `UPLOAD_STORAGE_DIR=/data/yt-video-mapper/uploads`
 - `MAX_UPLOAD_BYTES=100000000`
 - `MATCH_RESULT_LIMIT=3`
 - `JOB_RESULT_RETENTION_HOURS=168`
@@ -68,10 +69,16 @@ pnpm --filter @forge/yt-video-mapper-backend build
 Then verify the deployed service:
 
 ```bash
+MAPPER_BASE_URL="https://forgeyt-video-mapper-backend-production.up.railway.app"
+
 curl "$MAPPER_BASE_URL/health"
 curl -i -X POST "$MAPPER_BASE_URL/match-jobs"
 curl -i -X POST "$MAPPER_BASE_URL/match-jobs" \
   -H "Authorization: Bearer invalid"
+curl -i -X POST "$MAPPER_BASE_URL/match-jobs" \
+  -H "Authorization: Bearer $MAPPER_API_TOKEN" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary "smoke-video"
 ```
 
 Expected results:
@@ -79,18 +86,22 @@ Expected results:
 - `GET /health` returns `{ "ok": true, "service": "yt-video-mapper-backend" }`.
 - `POST /match-jobs` without a bearer token returns `401`.
 - `POST /match-jobs` with an invalid bearer token returns `401`.
+- `POST /match-jobs` with the valid mapper token returns `202` and a `jobId`.
 
 ## 2026-06-09 Provisioning Notes
 
 - Railway config is intended to be config-as-code via
   `apps/yt-video-mapper-backend/railway.toml`.
 - Railway production is configured as config-as-code. Deployment
-  `b1108157-a875-49e4-8b44-1048dc3e9e32` recorded
+  `f15835f6-2447-4a99-b336-ddabea796ccd` recorded
   `configFile: /apps/yt-video-mapper-backend/railway.toml`; the build command,
   start command, and `/health` healthcheck came from that file.
 - Created Postgres service `@forge/yt-video-mapper-backend/db` from Railway's
   SSL-enabled Postgres 18 image with a persistent volume mounted at
   `/var/lib/postgresql/data` in `us-west2`.
+- Created a persistent app volume mounted at `/data` in `us-west2` and set
+  `UPLOAD_STORAGE_DIR=/data/yt-video-mapper/uploads` so queued uploads survive
+  service restarts until a worker processes them.
 - Set app service env vars for `DATABASE_URL`, `MAPPER_API_TOKEN`,
   `UPLOAD_STORAGE_DIR`, `MAX_UPLOAD_BYTES`, `MATCH_RESULT_LIMIT`,
   `JOB_RESULT_RETENTION_HOURS`, and `JOB_RUNNING_STALE_MINUTES`.
@@ -104,3 +115,5 @@ Expected results:
   `{ "ok": true, "service": "yt-video-mapper-backend" }`.
 - Verified public `POST /match-jobs` returns `401` for both missing and invalid
   bearer tokens.
+- Verified public authenticated `POST /match-jobs` returns `202`, creates a
+  durable queued job, and the explicit process/poll path returns `200`.
