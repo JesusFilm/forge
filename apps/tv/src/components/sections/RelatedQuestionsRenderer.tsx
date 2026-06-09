@@ -10,6 +10,11 @@ import {
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import {
+  ANSWER_FALLBACK_BODY,
+  ASK_BIBLE_QUESTION_URL,
+  CHAT_WITH_PERSON_URL,
+} from "../../lib/bibleContent"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
@@ -42,14 +47,7 @@ type QuestionItem = {
 // no answer text shows the same fallback mobile/web render: a "private
 // discussion" line plus two white pill CTAs (Chat / Ask a Bible question).
 // On TV the links open the QR LinkModal — the phone is the continuation
-// surface — instead of Linking.openURL.
-
-const CHAT_WITH_PERSON_URL =
-  "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
-const ASK_BIBLE_QUESTION_URL =
-  "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
-const FALLBACK_BODY =
-  "Have a private discussion with someone who is ready to listen."
+// surface — instead of Linking.openURL. URLs + copy live in lib/bibleContent.
 
 const PILL_ICON_SIZE = Math.round(scale(18))
 
@@ -77,7 +75,7 @@ function FallbackPill({
 function AnswerFallback({ onOpenLink }: { onOpenLink: (url: string) => void }) {
   return (
     <View style={styles.fallbackContainer}>
-      <Text style={styles.fallbackBody}>{FALLBACK_BODY}</Text>
+      <Text style={styles.fallbackBody}>{ANSWER_FALLBACK_BODY}</Text>
       <View style={styles.fallbackButtonRow}>
         <FallbackPill
           icon="chatbubble-outline"

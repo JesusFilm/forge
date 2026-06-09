@@ -25,6 +25,15 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
 const ICON_SIZE = Math.round(scale(26))
 
+// Deterministic single-line row height so virtualized lists (FlatList
+// getItemLayout / initialScrollIndex) can compute offsets without measuring.
+// Every text child pins lineHeight to ROW_LINE_HEIGHT and rows are
+// numberOfLines={1}, so height = vertical padding + line height exactly.
+const ROW_VERTICAL_PADDING = scale(16)
+const ROW_LINE_HEIGHT = Math.round(scale(32))
+export const WATCH_OPTION_ROW_HEIGHT =
+  ROW_VERTICAL_PADDING * 2 + ROW_LINE_HEIGHT
+
 export function WatchOptionRow({
   icon,
   label,
@@ -166,11 +175,12 @@ export function WatchOptionRow({
 
 const styles = StyleSheet.create({
   // Design `.menu-item`: gap 16, padding 16/20, radius 14, transparent at rest.
+  // Fixed-height single-line rows (see WATCH_OPTION_ROW_HEIGHT above).
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: scale(16),
-    paddingVertical: scale(16),
+    height: WATCH_OPTION_ROW_HEIGHT,
     paddingHorizontal: scale(20),
     borderRadius: scale(14),
   },
@@ -182,6 +192,7 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: "System",
     fontSize: Math.round(scale(24)),
+    lineHeight: ROW_LINE_HEIGHT,
     fontWeight: "500",
   },
   labelWrap: {
@@ -193,12 +204,14 @@ const styles = StyleSheet.create({
   unavailable: {
     fontFamily: "System",
     fontSize: Math.round(scale(16)),
+    lineHeight: ROW_LINE_HEIGHT,
     fontWeight: "600",
     color: WATCH_THEME.text50,
   },
   check: {
     fontFamily: "System",
     fontSize: Math.round(scale(26)),
+    lineHeight: ROW_LINE_HEIGHT,
     fontWeight: "700",
   },
 })

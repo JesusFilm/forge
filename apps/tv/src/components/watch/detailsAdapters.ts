@@ -12,6 +12,11 @@
 // Returning null when there are no items lets the screen omit the whole section
 // (heading + body) — the degraded contract in U5.
 
+import {
+  BIBLE_IMAGES,
+  JOIN_BIBLE_STUDY_URL,
+  PROMO_IMAGE_URL,
+} from "../../lib/bibleContent"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import type {
   WatchBibleCitation,
@@ -67,25 +72,6 @@ export function buildRelatedQuestionsBlock(
 }
 
 // ── Bible citations → BibleQuotesCarouselRenderer block ────────────
-
-// Decorative card backgrounds + the trailing promo card, ported from mobile's
-// useBibleVerses / web's BibleQuotesSection (originally core/apps/watch).
-// The Unsplash photos are wallpapers cycled by index, not curated per verse.
-const BIBLE_IMAGES = [
-  "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/16/unsplash_526360a842e20_1.JPG?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1497333558196-daaff02b56d0?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1555892727-55b51e5fceae?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1631125915973-e0d155a14e4e?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1659260145900-1ac1afc45dcf?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1535979863199-3c77338429a0?q=80&w=800&auto=format&fit=crop",
-] as const
-
-const PROMO_IMAGE_URL =
-  "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60"
-
-const JOIN_BIBLE_STUDY_URL =
-  "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
 
 /**
  * Synthesize a human-readable reference from a citation's book / chapter / verse
