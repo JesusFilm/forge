@@ -310,7 +310,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).toContain("overflow-x-clip")
     expect(wrapper.className).not.toContain("items-center")
     expect(wrapper.className).not.toContain(
-      "h-[min(100svh,calc(56.25vw+4rem))]",
+      "h-[min(100svh,calc(56.25vw+8rem))]",
     )
 
     expect(lastMuxProps().className as string).toContain("scale-y-110")
@@ -322,16 +322,19 @@ describe("HeroPlayer — initial mount", () => {
       pill.click()
     })
 
-    expect(wrapper.className).toContain("h-[min(100svh,calc(56.25vw+4rem))]")
-    expect(wrapper.className).toContain("md:h-[min(100svh,calc(56.25vw+6rem))]")
+    expect(wrapper.className).toContain("h-[min(100svh,calc(56.25vw+8rem))]")
+    expect(wrapper.className).toContain(
+      "md:h-[min(100svh,calc(56.25vw+18rem))]",
+    )
     expect(wrapper.className).toContain("min-h-[400px]")
     expect(wrapper.className).toContain("flex")
     expect(wrapper.className).toContain("items-center")
     expect(wrapper.className).toContain("justify-center")
     expect(wrapper.className).toContain("p-4")
     expect(wrapper.className).toContain("sm:p-6")
-    expect(wrapper.className).toContain("lg:p-8")
-    expect(wrapper.className).toContain("xl:p-10")
+    expect(wrapper.className).toContain("md:px-[clamp(3rem,6vw,8rem)]")
+    expect(wrapper.className).toContain("md:pt-[clamp(6rem,15svh,10rem)]")
+    expect(wrapper.className).toContain("md:pb-[clamp(6rem,12svh,9rem)]")
     expect(wrapper.className).toContain("transition-[height,padding]")
     expect(wrapper.className).toContain("overflow-hidden")
     expect(wrapper.className).not.toContain("overflow-x-clip")

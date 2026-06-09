@@ -106,7 +106,7 @@ const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
 const HERO_STAGE_TRANSITION_CLASSES =
   "transition-[height,padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 const PRE_REVEAL_STAGE_CLASSES = `sticky w-full h-[calc(100svh-300px)] min-h-[400px] overflow-x-clip bg-black ${HERO_STAGE_TRANSITION_CLASSES}`
-const REVEALED_STAGE_CLASSES = `sticky flex w-full h-[min(100svh,calc(56.25vw+4rem))] min-h-[400px] items-center justify-center overflow-hidden bg-black p-4 sm:p-6 md:h-[min(100svh,calc(56.25vw+6rem))] lg:p-8 xl:p-10 ${HERO_STAGE_TRANSITION_CLASSES}`
+const REVEALED_STAGE_CLASSES = `sticky flex w-full h-[min(100svh,calc(56.25vw+8rem))] min-h-[400px] items-center justify-center overflow-hidden bg-black p-4 sm:p-6 md:h-[min(100svh,calc(56.25vw+18rem))] md:px-[clamp(3rem,6vw,8rem)] md:pt-[clamp(6rem,15svh,10rem)] md:pb-[clamp(6rem,12svh,9rem)] ${HERO_STAGE_TRANSITION_CLASSES}`
 const HERO_MEDIA_CLASSES =
   "block h-full w-full origin-top transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 
