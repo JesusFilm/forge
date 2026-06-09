@@ -4,6 +4,12 @@ Shared domain vocabulary for this project — entities, named processes, and sta
 
 ## Video & media
 
+### Core ID
+
+The stable identifier from the Core API for a Core-sourced entity. For source
+video attribution, `Video.coreId` is the canonical video answer and
+`VideoDub.coreId` is Core's `videoVariantId`.
+
 ### Video
 
 A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their episodes — and "Up Next" siblings — are formed.
