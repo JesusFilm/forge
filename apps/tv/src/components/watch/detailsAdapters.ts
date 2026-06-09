@@ -6,10 +6,11 @@
 //
 // KTD7: feed the existing renderers via small adapter objects rather than
 // rebuilding them. Study questions carry no inline answers (the data has none),
-// so answers are empty strings; Bible citations render at reference level for v1
-// (synthesized reference, empty verse text). Returning null when there are no
-// items lets the screen omit the whole section (heading + body) — the degraded
-// contract in U5.
+// so answers are empty strings. Bible citations carry only reference fields, so
+// the verse text arrives via the useBibleVerses fetch map and the card
+// backgrounds are the same stock Unsplash set mobile/web cycle by index.
+// Returning null when there are no items lets the screen omit the whole section
+// (heading + body) — the degraded contract in U5.
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import type {
@@ -67,10 +68,28 @@ export function buildRelatedQuestionsBlock(
 
 // ── Bible citations → BibleQuotesCarouselRenderer block ────────────
 
+// Decorative card backgrounds + the trailing promo card, ported from mobile's
+// useBibleVerses / web's BibleQuotesSection (originally core/apps/watch).
+// The Unsplash photos are wallpapers cycled by index, not curated per verse.
+const BIBLE_IMAGES = [
+  "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/16/unsplash_526360a842e20_1.JPG?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1497333558196-daaff02b56d0?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1555892727-55b51e5fceae?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1631125915973-e0d155a14e4e?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1659260145900-1ac1afc45dcf?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1535979863199-3c77338429a0?q=80&w=800&auto=format&fit=crop",
+] as const
+
+const PROMO_IMAGE_URL =
+  "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60"
+
+const JOIN_BIBLE_STUDY_URL =
+  "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
+
 /**
  * Synthesize a human-readable reference from a citation's book / chapter / verse
- * range. v1 is reference-level only — full verse text is a deferred follow-up.
- * Returns null when there isn't even a book name to anchor the reference.
+ * range. Returns null when there isn't even a book name to anchor the reference.
  */
 export function formatCitationReference(c: WatchBibleCitation): string | null {
   if (!c.bookName) return null
@@ -88,26 +107,49 @@ export function formatCitationReference(c: WatchBibleCitation): string | null {
   return `${c.bookName} ${chapter}:${verse}`
 }
 
+type BibleQuoteCard = {
+  id: string
+  reference: string
+  text: string
+  imageUrl: string
+  ctaLabel?: string
+  ctaLink?: string
+}
+
 /**
  * Build the BibleQuotesCarouselRenderer input from the video's bible citations,
- * or null when there are none with a usable reference. Reference-level for v1:
- * each quote has a synthesized `reference` and an empty `text`.
+ * or null when there are none with a usable reference. Each citation card gets
+ * the verse text from the `verses` fetch map (keyed by documentId — empty
+ * fallback while loading / unavailable) and a stock background image cycled by
+ * index, then the "Join Our Bible Study" promo card closes the rail — the same
+ * card set mobile/web render for this section.
  */
 export function buildBibleQuotesBlock(
   bibleCitations: readonly WatchBibleCitation[] | null | undefined,
+  verses: Record<string, string> = {},
 ): NormalizedBlock | null {
   if (!bibleCitations || bibleCitations.length === 0) return null
   const quotes = bibleCitations
-    .map((c, i) => ({
-      id: String(i),
-      reference: formatCitationReference(c),
-      text: "",
-    }))
-    .filter(
-      (q): q is { id: string; reference: string; text: string } =>
-        q.reference != null,
-    )
+    .map((c, i): BibleQuoteCard | null => {
+      const reference = formatCitationReference(c)
+      if (reference == null) return null
+      return {
+        id: String(i),
+        reference,
+        text: verses[c.documentId] ?? "",
+        imageUrl: BIBLE_IMAGES[i % BIBLE_IMAGES.length],
+      }
+    })
+    .filter((q): q is BibleQuoteCard => q != null)
   if (quotes.length === 0) return null
+  quotes.push({
+    id: "promo",
+    reference: "Free Resources",
+    text: "Want to explore life's biggest questions?",
+    imageUrl: PROMO_IMAGE_URL,
+    ctaLabel: "Join Our Bible Study",
+    ctaLink: JOIN_BIBLE_STUDY_URL,
+  })
   return {
     kind: "bibleQuotesCarousel",
     __typename: "BibleQuotesCarouselBlock",

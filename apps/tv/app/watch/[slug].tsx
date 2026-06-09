@@ -49,11 +49,17 @@ import { WATCH_THEME } from "../../src/components/watch/watchDetailTheme"
 import { SECTION_HEADING } from "../../src/components/sections/sectionHeading"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
+import { useBibleVerses } from "../../src/hooks/useBibleVerses"
 import { COLORS } from "../../src/lib/colors"
+import type { WatchBibleCitation } from "../../src/lib/normalizeVideo"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
+
+// Stable fallback for useBibleVerses while no video is resolved — a fresh []
+// each render would re-fire the hook's citations-keyed effect.
+const NO_CITATIONS: readonly WatchBibleCitation[] = []
 
 type ActivePanel = "none" | "language" | "subtitle"
 
@@ -149,11 +155,14 @@ export default function WatchVideoScreen() {
 
   // Below-fold section blocks — built from the resolved video only (adapters
   // return null for empty input so the whole section is omitted: R14–R17).
+  // Verse text is fetched per citation (useBibleVerses) and threaded into the
+  // quote cards; until it resolves the cards render reference-only.
+  const bibleVerses = useBibleVerses(video?.bibleCitations ?? NO_CITATIONS)
   const relatedQuestionsBlock = hasVideo
     ? buildRelatedQuestionsBlock(video.studyQuestions)
     : null
   const bibleQuotesBlock = hasVideo
-    ? buildBibleQuotesBlock(video.bibleCitations)
+    ? buildBibleQuotesBlock(video.bibleCitations, bibleVerses)
     : null
 
   if (showErrorState) {
