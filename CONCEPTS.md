@@ -37,6 +37,10 @@ A prototype attribution service that accepts an externally uploaded or reuploade
 
 A mapper-owned projection of official Forge/Admin media records and matchable media signals used for attribution. The Mapper Catalog is an index for matching, not the source of truth for Videos, Dubs, or Video Editions.
 
+Mapper Catalog rows are shaped around matchable variants: the source Video
+identity stays anchored by Core ID, while each Dub contributes the variant
+identity the mapper uses to compare uploaded media against official media.
+
 ### Match Job
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.

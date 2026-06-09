@@ -1,7 +1,7 @@
 ---
 id: YTM-002
 title: "Add Admin flat catalog projection for mapper sync"
-status: todo
+status: complete
 priority: P1
 depends_on: []
 ---
@@ -39,6 +39,7 @@ indexable video variants without nested all-video/all-dub fan-out.
 
 ```sh
 pnpm --filter @forge/admin test video-mapper-catalog
+DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' VIDEO_MAPPER_CATALOG_DB_TEST=1 pnpm --filter @forge/admin test video-mapper-catalog.db
 pnpm --filter @forge/admin schema:print
 pnpm --filter @forge/admin-graphql generate
 pnpm --filter @forge/admin-graphql typecheck

@@ -88,7 +88,8 @@ describe("env", () => {
   })
 
   // Bearer-CSV disjointness invariant. The bearer CSVs
-  // (WORKFLOW_API_KEYS, MASTRA_TRANSCRIPT_INGEST_API_KEYS,
+  // (WORKFLOW_API_KEYS, VIDEO_MAPPER_ADMIN_API_KEYS,
+  // MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   // MASTRA_SCENE_INGEST_API_KEYS, MASTRA_EXPERIENCE_INGEST_API_KEYS,
   // WEB_ADMIN_API_KEYS,
   // BACKUP_DOWNLOAD_API_KEYS, SEARCH_TRACE_SAMPLING_API_KEYS)
@@ -108,6 +109,11 @@ describe("env", () => {
       ).not.toThrow()
       expect(() =>
         assertBearerCsvsDisjoint({ WORKFLOW_API_KEYS: "wf-a" }),
+      ).not.toThrow()
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          VIDEO_MAPPER_ADMIN_API_KEYS: "mapper-a",
+        }),
       ).not.toThrow()
       expect(() =>
         assertBearerCsvsDisjoint({
@@ -138,6 +144,7 @@ describe("env", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "wf-a,wf-b",
+          VIDEO_MAPPER_ADMIN_API_KEYS: "mapper-a,mapper-b",
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a,mastra-b",
           MASTRA_SCENE_INGEST_API_KEYS: "scene-a,scene-b",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a,experience-b",
@@ -155,6 +162,15 @@ describe("env", () => {
           WEB_ADMIN_API_KEYS: "shared-key",
         }),
       ).toThrow(/WORKFLOW_API_KEYS and WEB_ADMIN_API_KEYS/)
+    })
+
+    it("throws when WORKFLOW and VIDEO_MAPPER share a value", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "shared-key",
+          VIDEO_MAPPER_ADMIN_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WORKFLOW_API_KEYS and VIDEO_MAPPER_ADMIN_API_KEYS/)
     })
 
     it("throws when WORKFLOW and MASTRA_TRANSCRIPT_INGEST share a value", () => {
@@ -225,6 +241,7 @@ describe("env", () => {
       try {
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "shared-1",
+          VIDEO_MAPPER_ADMIN_API_KEYS: "mapper-a",
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a",
           MASTRA_SCENE_INGEST_API_KEYS: "scene-a",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a",
@@ -274,6 +291,9 @@ describe("env", () => {
       // And it MUST reference the remaining CSV env vars from `env`.
       // The legacy SEARCH_API_KEYS was retired in Plan 003.
       expect(source).toMatch(/WORKFLOW_API_KEYS:\s*env\.WORKFLOW_API_KEYS/)
+      expect(source).toMatch(
+        /VIDEO_MAPPER_ADMIN_API_KEYS:\s*env\.VIDEO_MAPPER_ADMIN_API_KEYS/,
+      )
       expect(source).toMatch(
         /MASTRA_TRANSCRIPT_INGEST_API_KEYS:\s*env\.MASTRA_TRANSCRIPT_INGEST_API_KEYS/,
       )

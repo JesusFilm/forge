@@ -89,6 +89,13 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for yt-video-mapper -> Admin catalog sync.
+    // The mapper service reads ADMIN_SERVICE_BEARER_TOKEN; production Admin
+    // accepts the matching value here without widening WORKFLOW_API_KEYS.
+    VIDEO_MAPPER_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Opt-in read-only integration test gate for the mapper catalog SQL.
+    // Test-only; production code does not branch on this value.
+    VIDEO_MAPPER_CATALOG_DB_TEST: z.enum(["1"]).optional(),
     // Narrow receiver-side CSV for Mastra -> Admin transcript vector ingest.
     // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
     // must not automatically gain direct vector-write capability.
@@ -326,6 +333,12 @@ export const env = createEnv({
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
+    VIDEO_MAPPER_ADMIN_API_KEYS: emptyToUndefined(
+      process.env.VIDEO_MAPPER_ADMIN_API_KEYS,
+    ),
+    VIDEO_MAPPER_CATALOG_DB_TEST: emptyToUndefined(
+      process.env.VIDEO_MAPPER_CATALOG_DB_TEST,
+    ),
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
     ),
@@ -489,6 +502,7 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
 // the constant AND the type in lockstep, or the build breaks.
 const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
+  "VIDEO_MAPPER_ADMIN_API_KEYS",
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
   "MASTRA_SCENE_INGEST_API_KEYS",
   "MASTRA_EXPERIENCE_INGEST_API_KEYS",
@@ -565,6 +579,7 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 // satisfies the check.
 assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
+  VIDEO_MAPPER_ADMIN_API_KEYS: env.VIDEO_MAPPER_ADMIN_API_KEYS,
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
   MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
