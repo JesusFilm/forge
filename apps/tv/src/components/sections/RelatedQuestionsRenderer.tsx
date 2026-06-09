@@ -8,10 +8,14 @@ import {
   UIManager,
   View,
 } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
+import { validateActionUrl } from "../../lib/validateUrl"
+import { FocusableCard } from "../FocusableCard"
+import { LinkModal } from "../LinkModal"
 import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Enable LayoutAnimation on Android ───────────────────────────────────────
@@ -31,6 +35,64 @@ type QuestionItem = {
   answer: string
 }
 
+// ── No-answer fallback ──────────────────────────────────────────────────────
+//
+// The studyQuestions data carries no inline answers, so an expanded row with
+// no answer text shows the same fallback mobile/web render: a "private
+// discussion" line plus two white pill CTAs (Chat / Ask a Bible question).
+// On TV the links open the QR LinkModal — the phone is the continuation
+// surface — instead of Linking.openURL.
+
+const CHAT_WITH_PERSON_URL =
+  "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
+const ASK_BIBLE_QUESTION_URL =
+  "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
+const FALLBACK_BODY =
+  "Have a private discussion with someone who is ready to listen."
+
+const PILL_ICON_SIZE = Math.round(scale(18))
+
+function FallbackPill({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"]
+  label: string
+  onPress: () => void
+}) {
+  return (
+    <FocusableCard
+      onPress={onPress}
+      accessibilityLabel={label}
+      style={styles.fallbackPill}
+    >
+      <Ionicons name={icon} size={PILL_ICON_SIZE} color={COLORS.surface} />
+      <Text style={styles.fallbackPillText}>{label}</Text>
+    </FocusableCard>
+  )
+}
+
+function AnswerFallback({ onOpenLink }: { onOpenLink: (url: string) => void }) {
+  return (
+    <View style={styles.fallbackContainer}>
+      <Text style={styles.fallbackBody}>{FALLBACK_BODY}</Text>
+      <View style={styles.fallbackButtonRow}>
+        <FallbackPill
+          icon="chatbubble-outline"
+          label="Chat with a person"
+          onPress={() => onOpenLink(CHAT_WITH_PERSON_URL)}
+        />
+        <FallbackPill
+          icon="mail-outline"
+          label="Ask a Bible question"
+          onPress={() => onOpenLink(ASK_BIBLE_QUESTION_URL)}
+        />
+      </View>
+    </View>
+  )
+}
+
 // ── QuestionRow ─────────────────────────────────────────────────────────────
 
 function QuestionRow({
@@ -38,13 +100,16 @@ function QuestionRow({
   isExpanded,
   onToggle,
   inset,
+  onOpenLink,
 }: {
   item: QuestionItem
   isExpanded: boolean
   onToggle: () => void
   inset: number
+  onOpenLink: (url: string) => void
 }) {
   const [isFocused, setIsFocused] = useState(false)
+  const hasAnswer = item.answer.trim() !== ""
 
   return (
     <View style={[styles.item, { marginHorizontal: inset }]}>
@@ -62,7 +127,12 @@ function QuestionRow({
         </Text>
         <Text style={styles.chevron}>{isExpanded ? "\u2304" : "\u203A"}</Text>
       </Pressable>
-      {isExpanded && <Text style={styles.answerText}>{item.answer}</Text>}
+      {isExpanded &&
+        (hasAnswer ? (
+          <Text style={styles.answerText}>{item.answer}</Text>
+        ) : (
+          <AnswerFallback onOpenLink={onOpenLink} />
+        ))}
     </View>
   )
 }
@@ -82,6 +152,7 @@ export function RelatedQuestionsRenderer({
   inset?: number
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [linkUrl, setLinkUrl] = useState<string | null>(null)
 
   const heading = section.rqHeading as string | null
   const questions = (section.questions as QuestionItem[] | undefined) ?? []
@@ -122,8 +193,19 @@ export function RelatedQuestionsRenderer({
           isExpanded={expandedId === item.id}
           onToggle={() => handleToggle(item.id)}
           inset={inset}
+          onOpenLink={setLinkUrl}
         />
       ))}
+      {linkUrl != null && (
+        <LinkModal
+          url={linkUrl}
+          visible
+          onClose={() => setLinkUrl(null)}
+          urlValidator={validateActionUrl}
+          errorText="Couldn't load the page."
+          qrHeading="Scan to continue on your phone"
+        />
+      )}
     </View>
   )
 }
@@ -169,6 +251,37 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(24),
     color: COLORS.muted,
+  },
+  fallbackContainer: {
+    paddingBottom: scale(24),
+  },
+  fallbackBody: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(20)),
+    lineHeight: Math.round(scale(28)),
+    color: COLORS.muted,
+    marginBottom: scale(16),
+  },
+  fallbackButtonRow: {
+    flexDirection: "row",
+    gap: scale(16),
+  },
+  // White pill with dark ink (mobile/web parity); focus comes from
+  // FocusableCard's scale + crimson glow.
+  fallbackPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+    backgroundColor: COLORS.text,
+    borderRadius: scale(999),
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(10),
+  },
+  fallbackPillText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(18)),
+    fontWeight: "600",
+    color: COLORS.surface,
   },
   answerText: {
     fontFamily: "System",
