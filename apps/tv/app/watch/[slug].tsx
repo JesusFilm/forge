@@ -35,6 +35,7 @@ import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
+import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
@@ -235,17 +236,31 @@ export default function WatchVideoScreen() {
         <View style={styles.below}>
           {hasVideo ? <UpNextRail siblings={video.siblings} /> : null}
 
-          {descriptionText != null ? (
-            <View style={styles.about}>
-              <Text style={styles.aboutHeading} accessibilityRole="header">
-                About
-              </Text>
-              <Text style={styles.aboutText}>{descriptionText}</Text>
-            </View>
-          ) : null}
+          {/* About + Related Questions share one two-column row; either column
+              alone stretches across the full row width. The TVFocusGuideView
+              spans the full row so vertical D-pad traversal over the
+              non-focusable About column redirects into the question rows
+              (offset focusables are otherwise skipped by the focus engine). */}
+          {descriptionText != null || relatedQuestionsBlock != null ? (
+            <TVFocusGuideView autoFocus style={styles.aboutRow}>
+              {descriptionText != null ? (
+                <View style={styles.aboutCol}>
+                  <Text style={styles.aboutHeading} accessibilityRole="header">
+                    About
+                  </Text>
+                  <Text style={styles.aboutText}>{descriptionText}</Text>
+                </View>
+              ) : null}
 
-          {relatedQuestionsBlock != null ? (
-            <RelatedQuestionsRenderer section={relatedQuestionsBlock} />
+              {relatedQuestionsBlock != null ? (
+                <View style={styles.questionsCol}>
+                  <RelatedQuestionsRenderer
+                    section={relatedQuestionsBlock}
+                    inset={0}
+                  />
+                </View>
+              ) : null}
+            </TVFocusGuideView>
           ) : null}
 
           {bibleQuotesBlock != null ? (
@@ -369,10 +384,19 @@ const styles = StyleSheet.create({
     backgroundColor: WATCH_THEME.below,
     paddingTop: scale(48),
   },
-  about: {
+  aboutRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: scale(64),
     paddingHorizontal: scale(80),
     paddingTop: scale(30),
     paddingBottom: scale(40),
+  },
+  aboutCol: {
+    flex: 1,
+  },
+  questionsCol: {
+    flex: 1,
   },
   aboutHeading: {
     ...SECTION_HEADING,
@@ -383,7 +407,6 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(23)),
     lineHeight: Math.round(scale(34)),
     color: WATCH_THEME.text66,
-    maxWidth: scale(1320),
   },
 
   // ── Error state ───────────────────────────────────────────────────

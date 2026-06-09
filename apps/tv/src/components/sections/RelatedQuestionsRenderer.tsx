@@ -37,15 +37,17 @@ function QuestionRow({
   item,
   isExpanded,
   onToggle,
+  inset,
 }: {
   item: QuestionItem
   isExpanded: boolean
   onToggle: () => void
+  inset: number
 }) {
   const [isFocused, setIsFocused] = useState(false)
 
   return (
-    <View style={styles.item}>
+    <View style={[styles.item, { marginHorizontal: inset }]}>
       <Pressable
         style={[styles.questionRow, isFocused && styles.questionRowFocused]}
         onPress={onToggle}
@@ -69,8 +71,15 @@ function QuestionRow({
 
 export function RelatedQuestionsRenderer({
   section,
+  inset = scale(80),
 }: {
   section: NormalizedBlock
+  /**
+   * Horizontal screen gutter. Defaults to the SDUI full-bleed gutter
+   * (scale(80)); the watch page passes 0 when the section sits inside an
+   * already-padded column.
+   */
+  inset?: number
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -86,7 +95,10 @@ export function RelatedQuestionsRenderer({
     if (heading == null) return null
     return (
       <View style={styles.container}>
-        <Text style={styles.heading} accessibilityRole="header">
+        <Text
+          style={[styles.heading, { paddingHorizontal: inset }]}
+          accessibilityRole="header"
+        >
           {heading}
         </Text>
       </View>
@@ -96,7 +108,10 @@ export function RelatedQuestionsRenderer({
   return (
     <View style={styles.container}>
       {heading != null && (
-        <Text style={styles.heading} accessibilityRole="header">
+        <Text
+          style={[styles.heading, { paddingHorizontal: inset }]}
+          accessibilityRole="header"
+        >
           {heading}
         </Text>
       )}
@@ -106,6 +121,7 @@ export function RelatedQuestionsRenderer({
           item={item}
           isExpanded={expandedId === item.id}
           onToggle={() => handleToggle(item.id)}
+          inset={inset}
         />
       ))}
     </View>
@@ -118,15 +134,15 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: scale(32),
   },
+  // Horizontal gutters (heading paddingHorizontal / item marginHorizontal)
+  // come from the `inset` prop so the section works full-bleed and in-column.
   heading: {
     ...SECTION_HEADING,
     marginBottom: scale(12),
-    paddingHorizontal: scale(80),
   },
   item: {
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.1)",
-    marginHorizontal: scale(80),
   },
   questionRow: {
     flexDirection: "row",
