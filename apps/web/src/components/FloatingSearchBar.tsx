@@ -12,7 +12,8 @@ import { FloatingSearchFieldButton } from "./FloatingSearchField"
 export function FloatingSearchBar() {
   const t = useTranslations("FloatingSearch")
   const { open, closing, query, setOpen } = useFloatingSearch()
-  const { pinned, searchChromeVisible } = useFloatingSearchPinned()
+  const { pinned, searchChromeDimmed, searchChromeVisible } =
+    useFloatingSearchPinned()
 
   const display = query.trim().length > 0 ? query : t("placeholder")
   const isPlaceholder = query.trim().length === 0
@@ -25,7 +26,9 @@ export function FloatingSearchBar() {
   const chromeHidden = open || closing || !searchChromeVisible
   const openClass = chromeHidden
     ? "opacity-0 pointer-events-none"
-    : "opacity-100 pointer-events-auto"
+    : searchChromeDimmed
+      ? "opacity-30 pointer-events-auto"
+      : "opacity-100 pointer-events-auto"
 
   return (
     <>
