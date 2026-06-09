@@ -51,8 +51,6 @@ export function assertRuntimeEnv(): void {
 
   const missing = [
     ["DATABASE_URL", env.DATABASE_URL],
-    ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
-    ["ADMIN_SERVICE_BEARER_TOKEN", env.ADMIN_SERVICE_BEARER_TOKEN],
     ["MAPPER_API_TOKEN", env.MAPPER_API_TOKEN],
   ]
     .filter(([, value]) => !value)
