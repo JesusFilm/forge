@@ -27,6 +27,24 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons — persisting or re-selecting a user's chosen language — key on the slug; the BCP-47 tag is only for best-effort device-locale matching.
 
+## Video source mapper
+
+### Video Source Mapper
+
+A prototype attribution service that accepts an externally uploaded or reuploaded video and maps it back to the official source Video and likely Dub it came from.
+
+### Mapper Catalog
+
+A mapper-owned projection of official Forge/Admin media records and matchable media signals used for attribution. The Mapper Catalog is an index for matching, not the source of truth for Videos, Dubs, or Video Editions.
+
+### Match Job
+
+An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
+
+### Match Candidate
+
+A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
+
 ## Search & embeddings
 
 ### Content Embedding

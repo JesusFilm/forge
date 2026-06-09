@@ -1,7 +1,7 @@
 ---
 id: YTM-001
 title: "Deploy yt-video-mapper-backend service and database"
-status: todo
+status: complete
 priority: P1
 depends_on: []
 ---
