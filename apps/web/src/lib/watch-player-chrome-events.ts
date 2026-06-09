@@ -3,7 +3,10 @@ export const WATCH_PLAYER_CHROME_VISIBILITY_EVENT =
 
 export type WatchPlayerChromeVisibilityDetail = {
   visible: boolean
+  opacity?: number
 }
+
+export const WATCH_PLAYER_CHROME_REVEAL_EVENT = "watch-player-chrome-reveal"
 
 export const WATCH_PLAYER_PLAYBACK_STATE_EVENT =
   "watch-player-playback-state-change"

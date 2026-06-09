@@ -25,6 +25,7 @@ import { buildSearchUrl } from "@/lib/search-url"
 import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  WATCH_PLAYER_CHROME_REVEAL_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   WATCH_PLAYER_PLAYBACK_STATE_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
@@ -62,6 +63,7 @@ export type FloatingSearchPinnedContextValue = {
   pinned: boolean
   playerChromeVisible: boolean
   searchChromeVisible: boolean
+  searchChromeDimmed: boolean
   // True while the search overlay is open OR running its close animation.
   // Watch-page modal coordinators read this to pause/resume the video
   // alongside their own (download / language / share) modal state.
@@ -119,6 +121,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState<string>("")
   const [pinned, setPinned] = useState<boolean>(false)
   const [playerChromeVisible, setPlayerChromeVisible] = useState(true)
+  const [playerChromeOpacity, setPlayerChromeOpacity] = useState(1)
   const [playerPlaybackState, setPlayerPlaybackState] =
     useState<WatchPlayerPlaybackStateDetail>({
       playing: false,
@@ -169,6 +172,14 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         .detail
       if (typeof detail?.visible !== "boolean") return
       setPlayerChromeVisible(detail.visible)
+      const nextOpacity =
+        typeof detail.opacity === "number"
+          ? Math.max(0, Math.min(1, detail.opacity))
+          : detail.visible
+            ? 1
+            : 0
+      setPlayerChromeOpacity(nextOpacity)
+      if (nextOpacity < 1) setHeaderHovered(false)
     }
 
     window.addEventListener(
@@ -241,6 +252,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     setPlayerChromeVisible(true)
+    setPlayerChromeOpacity(1)
     setPlayerPlaybackState({ playing: false, muted: true, preview: false })
     setHeaderLanguageSwitcher({ visible: false, onClick: null })
     setHeaderHovered(false)
@@ -480,12 +492,33 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
-  const headerChromeHidden =
-    modalChromeHidden || (!playerChromeVisible && !headerHovered)
+  const headerChromeOpacity =
+    headerHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
+  const headerChromeHidden = modalChromeHidden || headerChromeOpacity <= 0
+  const headerChromeDimmed = !headerChromeHidden && headerChromeOpacity < 1
   const searchChromeVisible = !headerChromeHidden
+  const searchChromeDimmed = headerChromeDimmed
   const headerBackdropHidden = modalChromeHidden || !playerPlaybackState.preview
   const headerHoverZoneActive =
-    !modalChromeHidden && (playerPlayingWithSound || !playerChromeVisible)
+    !modalChromeHidden &&
+    (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
+  const headerCanBrightenLocally = playerChromeOpacity <= 0
+  const headerPointerRevealAllowed = playerChromeOpacity < 1
+
+  const revealPlayerChromeFromHeader = useCallback(() => {
+    if (typeof window === "undefined") return
+    window.dispatchEvent(new CustomEvent(WATCH_PLAYER_CHROME_REVEAL_EVENT))
+  }, [])
+
+  const handleHeaderPointerEnter = useCallback(() => {
+    if (!headerPointerRevealAllowed) return
+    setHeaderHovered(headerCanBrightenLocally)
+    revealPlayerChromeFromHeader()
+  }, [
+    headerCanBrightenLocally,
+    headerPointerRevealAllowed,
+    revealPlayerChromeFromHeader,
+  ])
 
   useEffect(() => {
     if (!headerHoverZoneActive) {
@@ -494,21 +527,37 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     }
 
     const handlePointerMove = (event: PointerEvent) => {
-      setHeaderHovered(event.clientY <= HEADER_HOVER_HEIGHT_PX)
+      const hoveringHeader = event.clientY <= HEADER_HOVER_HEIGHT_PX
+      setHeaderHovered(hoveringHeader && headerCanBrightenLocally)
+      if (hoveringHeader && headerPointerRevealAllowed) {
+        revealPlayerChromeFromHeader()
+      }
     }
 
     window.addEventListener("pointermove", handlePointerMove)
     return () => window.removeEventListener("pointermove", handlePointerMove)
-  }, [headerHoverZoneActive])
+  }, [
+    headerHoverZoneActive,
+    headerCanBrightenLocally,
+    headerPointerRevealAllowed,
+    revealPlayerChromeFromHeader,
+  ])
 
   const pinnedValue = useMemo<FloatingSearchPinnedContextValue>(
     () => ({
       pinned,
       playerChromeVisible,
       searchChromeVisible,
+      searchChromeDimmed,
       searchOpen: modalChromeHidden,
     }),
-    [pinned, playerChromeVisible, searchChromeVisible, modalChromeHidden],
+    [
+      pinned,
+      playerChromeVisible,
+      searchChromeVisible,
+      searchChromeDimmed,
+      modalChromeHidden,
+    ],
   )
 
   return (
@@ -535,7 +584,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         <div
           aria-hidden="true"
           data-testid="floating-header-hover-zone"
-          onPointerEnter={() => setHeaderHovered(true)}
+          onPointerEnter={handleHeaderPointerEnter}
           className={`fixed inset-x-0 top-0 z-[45] h-[calc(6.75rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] ${
             headerHoverZoneActive
               ? "pointer-events-auto"
@@ -559,7 +608,9 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             } ${
               headerChromeHidden
                 ? "opacity-0 pointer-events-none"
-                : "opacity-100"
+                : headerChromeDimmed
+                  ? "opacity-30"
+                  : "opacity-100"
             }`}
           >
             <Globe
@@ -585,7 +636,11 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
               ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
               : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
           } ${
-            headerChromeHidden ? "opacity-0 pointer-events-none" : "opacity-100"
+            headerChromeHidden
+              ? "opacity-0 pointer-events-none"
+              : headerChromeDimmed
+                ? "opacity-30"
+                : "opacity-100"
           }`}
         >
           <Image
