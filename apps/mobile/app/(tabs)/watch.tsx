@@ -203,11 +203,16 @@ export default function DiscoverScreen() {
   const search = useCallback(
     async (q: string) => {
       const trimmed = q.trim().slice(0, MAX_QUERY_LENGTH)
+      // Bump first so an empty/clear query invalidates any in-flight search —
+      // otherwise a stale result lands over the browse grid after clearing, and
+      // its guarded finally never resets loading.
+      const thisRequest = ++requestIdRef.current
       if (!trimmed) {
         await animateOut()
         setResults([])
         setHasMore(false)
         setSearched(false)
+        setLoading(false)
         setError(null)
         setShowSkeleton(false)
         if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -215,8 +220,6 @@ export default function DiscoverScreen() {
         scaleAnim.setValue(1)
         return
       }
-
-      const thisRequest = ++requestIdRef.current
 
       // Animate out existing results before loading new ones
       if (results.length > 0) {
