@@ -51,7 +51,6 @@ export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
           source={thumbnailUrl}
           style={[StyleSheet.absoluteFill, styles.thumbnail]}
           contentFit="cover"
-          contentPosition="top left"
           blurRadius={THUMBNAIL_BLUR_RADIUS}
           transition={400}
           cachePolicy="memory-disk"
