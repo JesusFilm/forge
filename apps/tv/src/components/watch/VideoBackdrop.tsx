@@ -13,22 +13,14 @@
 // page's first focusable (the Play button) owns initial focus.
 
 import { useEffect, useRef, useState } from "react"
-import {
-  AccessibilityInfo,
-  Animated,
-  Dimensions,
-  StyleSheet,
-  View,
-} from "react-native"
+import { AccessibilityInfo, Animated, StyleSheet, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { COLORS } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window")
-const BACKDROP_HEIGHT = SCREEN_HEIGHT * 0.55
+import { WATCH_THEME } from "./watchDetailTheme"
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
@@ -84,7 +76,10 @@ export function VideoBackdrop({
   const creationSource = useRef(validStream).current
   const player = useVideoPlayer(creationSource, (p) => {
     p.muted = true
-    p.loop = true
+    // Looped manually via the playToEnd listener below — the native `loop` left a
+    // long black pause before restarting (it re-buffers the HLS seek). With the
+    // VideoView kept mounted (videoReady latches), replay() restarts instantly.
+    p.loop = false
   })
 
   const loadedSourceRef = useRef(creationSource)
@@ -99,6 +94,9 @@ export function VideoBackdrop({
   // first frame — avoids the black-flash window during HLS init.
   const [videoReady, setVideoReady] = useState(false)
   const videoOpacity = useRef(new Animated.Value(0)).current
+  // Mirrors overlayVisible for the playToEnd listener (reads it at call time
+  // without re-registering the listener on every overlay toggle).
+  const overlayVisibleRef = useRef(overlayVisible)
 
   useEffect(() => {
     if (!hasValidStream) {
@@ -107,8 +105,36 @@ export function VideoBackdrop({
     }
     if (player.status === "readyToPlay") setVideoReady(true)
     const sub = player.addListener("statusChange", ({ status }) => {
+      // Latch true once ready and KEEP it through `idle`: a transient idle blip
+      // while the video loops must not unmount the VideoView — remounting
+      // re-initialises HLS from scratch, which (plus the poster-hold → fade
+      // re-run) was the long black pause at the loop point.
       if (status === "readyToPlay") setVideoReady(true)
-      else if (status === "error" || status === "idle") setVideoReady(false)
+      // A genuine `error` is never a loop-seam blip — fall back to the poster so
+      // a permanent failure (expired HLS token, CDN outage, decode error) doesn't
+      // strand the hero on a frozen frame. `idle` is deliberately NOT reset.
+      else if (status === "error") setVideoReady(false)
+    })
+    return () => sub.remove()
+  }, [player, hasValidStream])
+
+  // Immediate loop: the moment playback reaches the end, seek to the start and
+  // play again. Driving this ourselves (loop=false above) restarts instantly —
+  // the player stays mounted, so replay() is a fast in-player seek, not a full
+  // HLS re-init. Only fires while playing, so it naturally respects the
+  // overlay-pause (a paused backdrop never reaches the end).
+  useEffect(() => {
+    if (!hasValidStream) return
+    const sub = player.addListener("playToEnd", () => {
+      // Guard the overlay-pause race: if the fullscreen player opened right at
+      // the loop seam, a queued playToEnd must not resume the backdrop (two
+      // concurrent decoders — R6). The overlay-pause effect already paused us.
+      if (overlayVisibleRef.current) return
+      try {
+        player.replay()
+      } catch {
+        // Native player already released; benign.
+      }
     })
     return () => sub.remove()
   }, [player, hasValidStream])
@@ -117,6 +143,7 @@ export function VideoBackdrop({
   // single decoder active and frees the backdrop's frame budget for the
   // fullscreen player (R6). Resume on close.
   useEffect(() => {
+    overlayVisibleRef.current = overlayVisible
     if (!hasValidStream) return
     try {
       if (overlayVisible) player.pause()
@@ -190,12 +217,43 @@ export function VideoBackdrop({
         </Animated.View>
       ) : null}
 
-      {/* Gradient fade to the warm-stone surface. `collapsable={false}` forces a
-          native view on Android TV so the gradient isn't folded under the
-          VideoView SurfaceView. hexToRgba(_, 0) stops — never "transparent". */}
+      {/* Ambient scrims (ported from the design's .ambient-scrim) so the
+          bottom-left hero content reads cleanly over the cinematic backdrop:
+          a left→right darken, a bottom→up darken, and a faint top fade. Each is
+          a separate LinearGradient (RN paints one gradient per layer).
+          `collapsable={false}` forces native views on Android TV so they aren't
+          folded under the VideoView SurfaceView. */}
       <LinearGradient
-        colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
-        locations={[0.4, 1]}
+        colors={[
+          WATCH_THEME.scrim(0.92),
+          WATCH_THEME.scrim(0.55),
+          WATCH_THEME.scrim(0),
+        ]}
+        locations={[0, 0.34, 0.6]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        collapsable={false}
+      />
+      <LinearGradient
+        colors={[
+          WATCH_THEME.scrim(0.96),
+          WATCH_THEME.scrim(0.5),
+          WATCH_THEME.scrim(0),
+        ]}
+        locations={[0.04, 0.26, 0.52]}
+        start={{ x: 0.5, y: 1 }}
+        end={{ x: 0.5, y: 0 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        collapsable={false}
+      />
+      <LinearGradient
+        colors={[WATCH_THEME.scrim(0.5), WATCH_THEME.scrim(0)]}
+        locations={[0, 0.18]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
         collapsable={false}
@@ -205,10 +263,9 @@ export function VideoBackdrop({
 }
 
 const styles = StyleSheet.create({
+  // Fills the (relative) hero — full-screen cinematic backdrop, content overlaid.
   container: {
-    width: "100%",
-    height: BACKDROP_HEIGHT,
-    position: "relative",
+    ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
   },
   fallbackBg: {

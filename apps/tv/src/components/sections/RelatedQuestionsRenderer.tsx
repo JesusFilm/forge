@@ -12,6 +12,7 @@ import {
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
+import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Enable LayoutAnimation on Android ───────────────────────────────────────
 
@@ -118,11 +119,7 @@ const styles = StyleSheet.create({
     marginBottom: scale(32),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: scale(24),
-    fontWeight: "600",
-    color: COLORS.muted,
-    letterSpacing: 0.5,
+    ...SECTION_HEADING,
     marginBottom: scale(12),
     paddingHorizontal: scale(80),
   },
