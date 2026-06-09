@@ -125,7 +125,9 @@ permission and bearer role instead of widening an existing shared principal:
 const VIDEO_MAPPER_PERMISSIONS = new Set(["read:video-mapper-catalog"])
 
 // apps/admin/src/graphql/types/video.ts
-authScopes: { hasPermission: "read:video-mapper-catalog" }
+authScopes: {
+  hasPermission: "read:video-mapper-catalog"
+}
 ```
 
 Back the bearer with an optional env-CSV keyring such as
@@ -215,6 +217,7 @@ Tests should cover both the public contract and the implementation boundary:
   ```
 
   It is skipped unless `VIDEO_MAPPER_CATALOG_DB_TEST=1` is set.
+
 - Auth tests proving the mapper bearer mints `VIDEO_MAPPER`, only grants
   `read:video-mapper-catalog`, stays disjoint from other env CSVs, and uses a
   service-specific rate-limit bucket.
