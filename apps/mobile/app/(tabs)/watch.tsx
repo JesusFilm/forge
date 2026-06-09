@@ -19,6 +19,7 @@ import {
   type SearchResult,
 } from "../../src/lib/queries"
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
+import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { BrowseTopics } from "../../src/components/search/BrowseTopics"
@@ -111,7 +112,10 @@ export default function DiscoverScreen() {
         imageUrl: result.imageUrl ?? null,
         playbackId: result.playbackId ?? null,
       })
-      router.push(`/watch/${encodeURIComponent(result.slug)}?seed=${seed}`)
+      // A series-shaped result (SERIES/COLLECTION label, or has children) opens
+      // the series page; a single video opens the watch page.
+      const route = isSeriesSearchResult(result) ? "series" : "watch"
+      router.push(`/${route}/${encodeURIComponent(result.slug)}?seed=${seed}`)
     },
     [selectExperience, router],
   )

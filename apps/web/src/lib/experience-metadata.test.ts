@@ -52,7 +52,7 @@ describe("getWatchPageMetadata", () => {
     // `snippet` for SEO (Google likes 120–160 chars). Snippet is the fallback.
     expect(metadata.description).toBe("Longer description")
     expect(metadata.alternates?.canonical).toBe(
-      "http://localhost:3000/watch/jesus.html",
+      "https://www.jesusfilm.org/watch/jesus.html",
     )
     expect(metadata.openGraph).toMatchObject({
       title: "Jesus | Jesus Film Project",

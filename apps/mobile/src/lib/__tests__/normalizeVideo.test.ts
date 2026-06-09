@@ -1,4 +1,8 @@
-import { normalizeVideo, normalizeDubMedia } from "../normalizeVideo"
+import {
+  normalizeVideo,
+  normalizeDubMedia,
+  normalizeSeries,
+} from "../normalizeVideo"
 
 // A single dub's raw shape as returned by GET_VIDEO_DUB (the lazy per-dub media
 // query). Downloads + subtitles now live here, not on the bulk WatchVideo dubs.
@@ -523,5 +527,206 @@ describe("normalizeVideo — partial data (returnPartialData)", () => {
     expect(result.streamingUrl).toBeNull()
     expect(result.posterUrl).toBeNull()
     expect(result.title).toBeNull()
+  })
+})
+
+function makeRawSeries(overrides: Record<string, unknown> = {}) {
+  const child = (
+    n: number,
+    extra: Record<string, unknown> = {},
+  ): { order: number; child: Record<string, unknown> } => ({
+    order: n,
+    child: {
+      documentId: `ep-${n}`,
+      slug: `episode-${n}`,
+      label: "EPISODE",
+      locales: [
+        {
+          documentId: `eploc-${n}`,
+          languageSlug: "english",
+          title: `Episode ${n}`,
+        },
+      ],
+      images: [
+        {
+          documentId: `epimg-${n}`,
+          url: `https://img.example.com/ep${n}.jpg`,
+          thumbnail: `https://img.example.com/ep${n}-thumb.jpg`,
+          mobileCinematicHigh: `https://img.example.com/ep${n}-cine.jpg`,
+          mobileCinematicLow: null,
+        },
+      ],
+      ...extra,
+    },
+  })
+  return {
+    documentId: "series-1",
+    slug: "storyclubs",
+    label: "SERIES",
+    images: [
+      {
+        documentId: "simg-1",
+        url: "https://img.example.com/series-poster.jpg",
+        thumbnail: "https://img.example.com/series-thumb.jpg",
+        mobileCinematicHigh: "https://img.example.com/series-cine.jpg",
+        mobileCinematicLow: null,
+      },
+    ],
+    primaryLanguage: { coreId: "529", bcp47: "en" },
+    locales: [
+      {
+        documentId: "sloc-1",
+        languageSlug: "english",
+        title: "StoryClubs",
+        description: "Bible lessons for kids.",
+        snippet: "Kids around the world",
+        imageAlt: "StoryClubs",
+      },
+    ],
+    parents: [],
+    variants: [
+      {
+        documentId: "trailer-dub",
+        slug: "storyclubs-trailer-english",
+        published: true,
+        hls: "https://stream.mux.com/trailer.m3u8",
+        duration: 45,
+        language: {
+          coreId: "529",
+          bcp47: "en",
+          slug: "english",
+          name: { en: "English" },
+        },
+        muxVideo: { playbackId: "trailer123" },
+      },
+    ],
+    // Deliberately out of order to prove sort-by-`order`.
+    children: [child(2), child(1), child(3)],
+    childDubLanguages: [
+      { slug: "english", name: { en: "English" }, bcp47: "en" },
+      { slug: "spanish", name: { en: "Spanish", es: "Español" }, bcp47: "es" },
+      // Duplicate slug to prove dedupe.
+      { slug: "english", name: { en: "English" }, bcp47: "en" },
+    ],
+    studyQuestions: [],
+    bibleCitations: [],
+    ...overrides,
+  } as unknown as Parameters<typeof normalizeSeries>[0]
+}
+
+describe("normalizeSeries", () => {
+  it("returns null for null / undefined / identity-less input", () => {
+    expect(normalizeSeries(null)).toBeNull()
+    expect(normalizeSeries(undefined)).toBeNull()
+    expect(
+      normalizeSeries(makeRawSeries({ documentId: "" }) as never),
+    ).toBeNull()
+  })
+
+  it("maps children to episodes sorted by order", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.episodes.map((e) => e.slug)).toEqual([
+      "episode-1",
+      "episode-2",
+      "episode-3",
+    ])
+    expect(result.episodes[0].title).toBe("Episode 1")
+    expect(result.episodes[0].posterUrl).toBe(
+      "https://img.example.com/ep1-cine.jpg",
+    )
+  })
+
+  it("deduplicates episodes by documentId", () => {
+    const raw = makeRawSeries()
+    raw!.children = [...raw!.children!, raw!.children![0]]
+    const result = normalizeSeries(raw)!
+    expect(result.episodes.filter((e) => e.documentId === "ep-2")).toHaveLength(
+      1,
+    )
+  })
+
+  it("builds the language union, localized and deduped by slug", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.languages.map((l) => l.slug)).toEqual(["english", "spanish"])
+    expect(result.languages[1].name).toBe("Spanish")
+    expect(result.languages[1].bcp47).toBe("es")
+  })
+
+  it("exposes the series' own playable dub as the trailer", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.streamingUrl).toBe("https://stream.mux.com/trailer.m3u8")
+    expect(result.muxPlaybackId).toBe("trailer123")
+    expect(result.variants).toHaveLength(1)
+  })
+
+  it("has no trailer streamingUrl when no dub is playable", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        variants: [
+          {
+            documentId: "d",
+            slug: "d",
+            published: true,
+            hls: null,
+            duration: null,
+            language: null,
+            muxVideo: null,
+          },
+        ],
+      }),
+    )!
+    expect(result.streamingUrl).toBeNull()
+  })
+
+  it("yields empty episodes/languages for a series with none", () => {
+    const result = normalizeSeries(
+      makeRawSeries({ children: [], childDubLanguages: [] }),
+    )!
+    expect(result.episodes).toEqual([])
+    expect(result.languages).toEqual([])
+  })
+
+  it("drops a null child relation from the episode list", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          { order: 1, child: null },
+          {
+            order: 2,
+            child: {
+              documentId: "ep-2",
+              slug: "episode-2",
+              label: "EPISODE",
+              locales: [
+                {
+                  documentId: "l",
+                  languageSlug: "english",
+                  title: "Episode 2",
+                },
+              ],
+              images: [],
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.slug)).toEqual(["episode-2"])
+  })
+
+  it("drops an empty-string language slug from the union", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        childDubLanguages: [
+          { slug: "", name: { en: "Blank" }, bcp47: "xx" },
+          { slug: "english", name: { en: "English" }, bcp47: "en" },
+        ],
+      }),
+    )!
+    expect(result.languages.map((l) => l.slug)).toEqual(["english"])
+  })
+
+  it("memoizes on the raw reference (cache-first re-entry returns same record)", () => {
+    const raw = makeRawSeries()
+    expect(normalizeSeries(raw)).toBe(normalizeSeries(raw))
   })
 })

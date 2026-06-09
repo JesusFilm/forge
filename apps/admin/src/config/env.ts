@@ -39,12 +39,6 @@ export const searchTraceRawRetentionDaysEnvSchema = z.coerce
   .optional()
   .default(29)
 
-export const aiVideoSearchEmbeddingSourceEnvSchema = z
-  .enum(["openrouter", "gateway", "openai"])
-  .optional()
-  .default("openrouter")
-  .transform((value) => (value === "openai" ? "openrouter" : value))
-
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -266,13 +260,6 @@ export const env = createEnv({
     AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
     AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
-    // Embedding source for the admin AI experience generator's video search
-    // (the Mastra `searchVideos` tool). "openrouter" (default) uses the
-    // Qwen-backed OpenRouter query path + `embedding` column; "gateway" routes
-    // through the JesusFilm AI Gateway + `embedding_qwen` column. The legacy
-    // "openai" value is accepted as a deploy-safe alias for "openrouter" but
-    // never re-enables the removed OpenAI embedding fallback.
-    AI_VIDEO_SEARCH_EMBEDDING_SOURCE: aiVideoSearchEmbeddingSourceEnvSchema,
     MASTRA_STORAGE_URL: z.string().url().optional(),
     MASTRA_DEFAULT_PROVIDER: z
       .enum([
@@ -454,9 +441,6 @@ export const env = createEnv({
     ),
     AI_GATEWAY_EMBEDDINGS_MODEL: emptyToUndefined(
       process.env.AI_GATEWAY_EMBEDDINGS_MODEL,
-    ),
-    AI_VIDEO_SEARCH_EMBEDDING_SOURCE: emptyToUndefined(
-      process.env.AI_VIDEO_SEARCH_EMBEDDING_SOURCE,
     ),
     MASTRA_STORAGE_URL: emptyToUndefined(process.env.MASTRA_STORAGE_URL),
     MASTRA_DEFAULT_PROVIDER: emptyToUndefined(

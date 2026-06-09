@@ -199,7 +199,7 @@ describe("HybridSearchService default-mode regression snapshot", () => {
     }
   })
 
-  it("default path resolves embeddingSource to 'openrouter' (public default / U3)", async () => {
+  it("default path embeds once and searches semantic video without a source override", async () => {
     for (const { mode } of DEFAULT_EQUIVALENT_MODES) {
       vi.clearAllMocks()
       setupRetrieverFixtures()
@@ -210,15 +210,10 @@ describe("HybridSearchService default-mode regression snapshot", () => {
         embedder,
         logger: { warn: vi.fn(), error: vi.fn() },
       })
-      // No embeddingSource passed — the public contract. Both the query
-      // embedder and the semantic-video retriever must see "openrouter" so
-      // the read column stays `embedding` (never the gateway column).
       await service.search({ query: "jesus", locale: "en", mode })
-      expect(embedder).toHaveBeenCalledWith("jesus", "openrouter")
-      expect(searchVideoSemantic).toHaveBeenCalledWith(
-        mockPrisma,
-        expect.objectContaining({ embeddingSource: "openrouter" }),
-      )
+      expect(embedder).toHaveBeenCalledWith("jesus")
+      const params = vi.mocked(searchVideoSemantic).mock.calls.at(-1)?.[1]
+      expect(params).not.toHaveProperty("embeddingSource")
     }
   })
 
