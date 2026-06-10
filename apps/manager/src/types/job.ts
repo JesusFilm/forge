@@ -28,11 +28,103 @@ export type WorkflowStepName =
   | "theology_validation_bible_quotes"
   | "seo_improvements"
   | "cms_notify"
+  | "smart_crop_fingerprint"
+  | "smart_crop_plan"
+  | "smart_crop_align"
+  | "smart_crop_preview_render"
+  | "smart_crop_qa"
+  | "smart_crop_render"
+  | "smart_crop_mux_output"
+
+export type SmartCropKind = "canonical" | "localized"
+
+export type SmartCropCropMode =
+  | "auto"
+  | "speaker"
+  | "group"
+  | "object"
+  | "slide_aware"
+
+// Job options discriminator for Smart Crop jobs (plan 2026-06-09-002).
+// `assetId` is the operator-facing storage-key prefix; smart-crop artifacts
+// live under this id, which MAY differ from the job's muxAssetId. The
+// artifact download route resolves the storage prefix from this field.
+export type SmartCropJobOptions = {
+  kind: SmartCropKind
+  assetId: string
+  targetAspectRatio: "9:16"
+  cropMode: SmartCropCropMode
+  canonicalAssetId?: string
+  language?: string
+  model?: string
+  force?: boolean
+}
 
 export interface JobOptions {
   generateVoiceover?: boolean
   uploadMux?: boolean
   notifyCms?: boolean
+  smartCrop?: SmartCropJobOptions
+}
+
+// ---------------------------------------------------------------------------
+// Smart Crop metadata artifact entry (plan 2026-06-09-002 "Job options
+// discriminator"): live phase data mirrored into the `smartCrop` metadata
+// artifact entry for the UI.
+// ---------------------------------------------------------------------------
+
+export type SmartCropPhase =
+  | "queued"
+  | "fingerprint"
+  | "plan"
+  | "align"
+  | "preview_render"
+  | "qa"
+  | "render"
+  | "mux_output"
+  | "completed"
+  | "failed"
+
+export type SmartCropQaVerdict = "pass" | "needs_repair" | "fail"
+
+export type SmartCropAlignmentSummary = {
+  overallConfidence: number
+  unmappedDurationPercent: number
+  gatePassed: boolean
+}
+
+export type SmartCropPlanSummary = {
+  segmentCount: number
+  approved: boolean
+}
+
+export type SmartCropOutputSummary = {
+  muxAssetId: string
+  playbackId?: string
+}
+
+export type SmartCropUsageSummary = {
+  inputTokens: number
+  outputTokens: number
+}
+
+// `qa` carries either a real verdict or the reason the QA step was skipped
+// as advisory (mastra config gap such as frame_host_not_allowed — a config
+// problem, not a content verdict).
+export type SmartCropQaSummary = {
+  verdict?: SmartCropQaVerdict
+  unavailableReason?: string
+}
+
+export type SmartCropJobReport = {
+  domain: "smart_crop"
+  kind: SmartCropKind
+  phase: SmartCropPhase
+  alignment?: SmartCropAlignmentSummary
+  qa?: SmartCropQaSummary
+  plan?: SmartCropPlanSummary
+  output?: SmartCropOutputSummary
+  usage?: SmartCropUsageSummary
 }
 
 export type TranslationLanguageResult = {
@@ -140,6 +232,10 @@ export type TranscriptionRoutingReport = {
 
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
+  // Live crop-worker render progress (0..1) + human-readable message,
+  // written throttled by the smart-crop workflow steps.
+  progress?: number
+  message?: string
 }
 
 export interface JobStepState {

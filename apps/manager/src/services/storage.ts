@@ -224,3 +224,32 @@ export async function artifactExists(
     ? s3Exists(assetId, artifactType, ext)
     : localExists(assetId, artifactType, ext)
 }
+
+// Presigned GET URL for an artifact (smart-crop QA frames + Mux output
+// ingestion). S3 mode only — the local fallback has no URL surface, so the
+// caller must degrade (smart-crop marks the step skipped with reason
+// "storage_presign_unavailable").
+export async function createPresignedArtifactUrl(
+  assetId: string,
+  artifactType: string,
+  ext: string,
+  expiresInSeconds: number,
+): Promise<string | null> {
+  if (!useS3) {
+    return null
+  }
+
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3")
+  const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner")
+  const key = artifactKey(assetId, artifactType, ext)
+  const s3 = await getS3()
+
+  return getSignedUrl(
+    s3,
+    new GetObjectCommand({
+      Bucket: env.RAILWAY_S3_BUCKET,
+      Key: key,
+    }),
+    { expiresIn: expiresInSeconds },
+  )
+}
