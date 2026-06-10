@@ -320,7 +320,7 @@ export function HomeScreen() {
         </View>
       )}
 
-      <HomeHeader title={null} titleOpacity={0} showWordmark />
+      <HomeHeader title={null} titleOpacity={0} homeVariant />
 
       <FlashList
         data={feedItems}

@@ -1,13 +1,10 @@
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { GlassView } from "expo-glass-effect"
-import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
-// Copy of apps/web/public/images/footer/jesus-film-logo.png — keep in sync.
-import jesusFilmLogo from "../../../assets/jesus-film-logo.png"
 import {
   ACCENT,
   BLACK,
@@ -21,17 +18,17 @@ type HomeHeaderProps = {
   title: string | null
   titleOpacity: number
   /**
-   * Home-tab variant: JesusFilm wordmark on the LEFT, search + profile
-   * grouped on the right. Default (Experience screens) keeps the original
-   * layout — search left, profile right.
+   * Home-tab variant: search + profile grouped on the right, left slot
+   * empty. Default (Experience screens) keeps the original layout —
+   * search left, profile right.
    */
-  showWordmark?: boolean
+  homeVariant?: boolean
 }
 
 export function HomeHeader({
   title,
   titleOpacity,
-  showWordmark = false,
+  homeVariant = false,
 }: HomeHeaderProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -75,16 +72,7 @@ export function HomeHeader({
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      {showWordmark ? (
-        <Image
-          source={jesusFilmLogo}
-          style={styles.wordmark}
-          contentFit="contain"
-          accessibilityLabel="Jesus Film Project"
-        />
-      ) : (
-        searchButton
-      )}
+      {homeVariant ? <View /> : searchButton}
 
       {title != null && titleOpacity > 0 && (
         <GlassView
@@ -98,7 +86,7 @@ export function HomeHeader({
         </GlassView>
       )}
 
-      {showWordmark ? (
+      {homeVariant ? (
         <View style={styles.buttonRow}>
           {searchButton}
           {profileButton}
@@ -122,12 +110,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingBottom: 8,
-  },
-  wordmark: {
-    // Source asset is 489x487; aspectRatio derives the width from the fixed
-    // height (expo-image has no auto width).
-    height: 24,
-    aspectRatio: 489 / 487,
   },
   buttonRow: {
     flexDirection: "row",
