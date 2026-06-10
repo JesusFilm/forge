@@ -12,6 +12,7 @@
  * Background: none. The Home feed's renderItem wrapper owns the translucent
  * per-item background (CuratedHomeLayout's feedItemBackground convention).
  */
+import { memo, useCallback } from "react"
 import {
   FlatList,
   StyleSheet,
@@ -20,7 +21,6 @@ import {
   useWindowDimensions,
 } from "react-native"
 
-import { TEXT_SECONDARY } from "../../lib/color"
 import type { WatchHomeCard, WatchHomeSection } from "../../lib/watchHome/model"
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -40,25 +40,28 @@ export type HomeShelfProps = {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function HomeShelf({ section }: HomeShelfProps) {
+export const HomeShelf = memo(function HomeShelf({ section }: HomeShelfProps) {
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
-
-  // The model already drops zero-card sections; defensive guard regardless.
-  if (section.cards.length === 0) return null
 
   const variant: HomeCardVariant =
     section.orientation === "vertical" ? "portrait" : "landscape"
   const cardWidth = homeCardWidth(variant, screenWidth)
 
-  const renderItem = ({ item }: { item: WatchHomeCard }) => (
-    <HomeCard card={item} variant={variant} />
+  const renderItem = useCallback(
+    ({ item }: { item: WatchHomeCard }) => (
+      <HomeCard card={item} variant={variant} />
+    ),
+    [variant],
   )
+
+  // The model already drops zero-card sections; defensive guard regardless.
+  if (section.cards.length === 0) return null
 
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
       {section.eyebrow.length > 0 && (
-        <Text style={[styles.eyebrow, typography.caption]}>
+        <Text style={[text.eyebrow, styles.eyebrow, typography.caption]}>
           {section.eyebrow.toUpperCase()}
         </Text>
       )}
@@ -82,7 +85,7 @@ export function HomeShelf({ section }: HomeShelfProps) {
       />
     </View>
   )
-}
+})
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -91,11 +94,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   eyebrow: {
-    fontWeight: "600",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    textTransform: "uppercase",
-    letterSpacing: 1,
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 4,
   },

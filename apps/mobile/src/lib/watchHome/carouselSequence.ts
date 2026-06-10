@@ -16,8 +16,10 @@
  * Pure TypeScript only — no React/React Native imports.
  */
 
+import { muxHlsUrlFromPlaybackId } from "../muxThumbnail"
 import type { WatchHomeMuxInsertConfig } from "./config"
 
+// Kept for web-parity sync; unused by the mobile pager (advance is playToEnd/timer-driven).
 export const WATCH_HOME_TV_ADVANCE_THRESHOLD = 95
 
 /** Web's initial hero queue size (useWatchHomeTvCarousel builds 7 first). */
@@ -210,10 +212,6 @@ export function buildWatchHomeVideoQueue({
   return { videos, nextPoolIndex: poolIndex }
 }
 
-export function muxStreamUrl(playbackId: string): string {
-  return `https://stream.mux.com/${playbackId}.m3u8`
-}
-
 export function muxPosterUrl(playbackId: string, width = 1280): string {
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${width}&height=720&fit_mode=smartcrop`
 }
@@ -345,7 +343,10 @@ function muxInsertToSlide(
     posterUrl,
     thumbnailUrl: muxPosterUrl(playbackId, 640),
     imageAlt: title,
-    src: muxStreamUrl(playbackId),
+    // muxHlsUrlFromPlaybackId additionally guards for a clean alphanumeric
+    // token; a tainted playback id yields src: null (no consumer plays mux
+    // src today — slides advance on the image timer).
+    src: muxHlsUrlFromPlaybackId(playbackId),
     playbackId,
     durationSeconds: insert.durationSeconds,
     logo: insert.logo,

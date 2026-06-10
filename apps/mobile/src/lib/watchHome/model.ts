@@ -15,6 +15,7 @@
  */
 
 import {
+  ENGLISH_LANGUAGE_SLUG,
   WATCH_HOME_COLLECTION_BLACKLIST,
   WATCH_HOME_HERO_SOURCE_IDS,
   WATCH_HOME_MUX_INSERTS,
@@ -125,9 +126,6 @@ export type WatchHomeModel = {
   missingData: WatchHomeMissingData[]
 }
 
-/** KTD-7: mobile's hardcoded language identity keys on slug, never bcp47. */
-const ENGLISH_LANGUAGE_SLUG = "english"
-
 export const LABEL_TEXT: Record<string, string> = {
   BEHIND_THE_SCENES: "Behind the scenes",
   COLLECTION: "Collection",
@@ -190,10 +188,6 @@ function buildMetaLabel(args: {
   return args.label
 }
 
-function missingEntry(args: WatchHomeMissingData): WatchHomeMissingData {
-  return args
-}
-
 function normalizeCard(args: {
   sectionId: string
   sourceId: string
@@ -218,30 +212,26 @@ function normalizeCard(args: {
 
   const missingData: WatchHomeMissingData[] = []
   if (!locale?.title) {
-    missingData.push(
-      missingEntry({
-        sectionId: args.sectionId,
-        sourceId: args.sourceId,
-        field: "title",
-        detail: `Admin returned ${args.video.coreId} without a localized title for ${args.languageSlug}.`,
-        fallback: title,
-        followUp:
-          "Backfill or publish VideoLocale title data for the home language.",
-      }),
-    )
+    missingData.push({
+      sectionId: args.sectionId,
+      sourceId: args.sourceId,
+      field: "title",
+      detail: `Admin returned ${args.video.coreId} without a localized title for ${args.languageSlug}.`,
+      fallback: title,
+      followUp:
+        "Backfill or publish VideoLocale title data for the home language.",
+    })
   }
   if (!adminImageUrl) {
-    missingData.push(
-      missingEntry({
-        sectionId: args.sectionId,
-        sourceId: args.sourceId,
-        field: "image",
-        detail: `Admin returned ${args.video.coreId} without a usable cinematic/still image.`,
-        fallback: imageUrl ? "Mux thumbnail" : "Styled placeholder",
-        followUp:
-          "Ingest the source app local thumbnail override or enrich admin/Core image fields.",
-      }),
-    )
+    missingData.push({
+      sectionId: args.sectionId,
+      sourceId: args.sourceId,
+      field: "image",
+      detail: `Admin returned ${args.video.coreId} without a usable cinematic/still image.`,
+      fallback: imageUrl ? "Mux thumbnail" : "Styled placeholder",
+      followUp:
+        "Ingest the source app local thumbnail override or enrich admin/Core image fields.",
+    })
   }
 
   return {
@@ -277,17 +267,15 @@ function cardEntriesForSource(args: {
 }): WatchHomeCard[] {
   const parent = args.videoByCoreId.get(args.source.id)
   if (!parent) {
-    args.missingData.push(
-      missingEntry({
-        sectionId: args.sectionId,
-        sourceId: args.source.id,
-        field: "record",
-        detail: `Admin watchHomeVideos did not return source Core id ${args.source.id}.`,
-        fallback: "Section card omitted",
-        followUp:
-          "Verify the Core id exists in admin sync or replace the source id.",
-      }),
-    )
+    args.missingData.push({
+      sectionId: args.sectionId,
+      sourceId: args.source.id,
+      field: "record",
+      detail: `Admin watchHomeVideos did not return source Core id ${args.source.id}.`,
+      fallback: "Section card omitted",
+      followUp:
+        "Verify the Core id exists in admin sync or replace the source id.",
+    })
     return []
   }
 
@@ -327,17 +315,15 @@ function cardsForPrimaryCollection(args: {
   if (!collectionId) return []
   const parent = args.videoByCoreId.get(collectionId)
   if (!parent) {
-    args.missingData.push(
-      missingEntry({
-        sectionId: args.section.id,
-        sourceId: collectionId,
-        field: "record",
-        detail: `Admin watchHomeVideos did not return primary collection ${collectionId}.`,
-        fallback: "Section omitted",
-        followUp:
-          "Verify the collection exists in admin sync or update home programming.",
-      }),
-    )
+    args.missingData.push({
+      sectionId: args.section.id,
+      sourceId: collectionId,
+      field: "record",
+      detail: `Admin watchHomeVideos did not return primary collection ${collectionId}.`,
+      fallback: "Section omitted",
+      followUp:
+        "Verify the collection exists in admin sync or update home programming.",
+    })
     return []
   }
 
@@ -428,17 +414,15 @@ function eligibleSlidesForSource(args: {
 
   const parent = args.videoByCoreId.get(args.sourceId)
   if (!parent) {
-    args.missingData.push(
-      missingEntry({
-        sectionId: args.sectionId,
-        sourceId: args.sourceId,
-        field: "record",
-        detail: `Admin watchHomeVideos did not return carousel pool source Core id ${args.sourceId}.`,
-        fallback: "Pool skipped",
-        followUp:
-          "Verify the Core id exists in admin sync or replace the carousel playlist source.",
-      }),
-    )
+    args.missingData.push({
+      sectionId: args.sectionId,
+      sourceId: args.sourceId,
+      field: "record",
+      detail: `Admin watchHomeVideos did not return carousel pool source Core id ${args.sourceId}.`,
+      fallback: "Pool skipped",
+      followUp:
+        "Verify the Core id exists in admin sync or replace the carousel playlist source.",
+    })
     return []
   }
 
@@ -590,17 +574,15 @@ export function buildWatchHomeModelFromVideos(args: {
   const heroSlides = WATCH_HOME_HERO_SOURCE_IDS.flatMap((sourceId) => {
     const video = videoByCoreId.get(sourceId)
     if (!video) {
-      missingData.push(
-        missingEntry({
-          sectionId: "home-hero",
-          sourceId,
-          field: "record",
-          detail: `Admin watchHomeVideos did not return hero source Core id ${sourceId}.`,
-          fallback: "Hero slide omitted",
-          followUp:
-            "Verify the Core id exists in admin sync or replace the hero source.",
-        }),
-      )
+      missingData.push({
+        sectionId: "home-hero",
+        sourceId,
+        field: "record",
+        detail: `Admin watchHomeVideos did not return hero source Core id ${sourceId}.`,
+        fallback: "Hero slide omitted",
+        followUp:
+          "Verify the Core id exists in admin sync or replace the hero source.",
+      })
       return []
     }
 

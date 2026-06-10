@@ -2,16 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getApolloClient } from "../lib/apolloClient"
 import { GET_WATCH_HOME_VIDEOS } from "../lib/queries"
-import { getWatchHomeCoreIds } from "../lib/watchHome/config"
+import {
+  ENGLISH_LANGUAGE_SLUG,
+  HOME_LOCALE,
+  getWatchHomeCoreIds,
+} from "../lib/watchHome/config"
 import {
   buildWatchHomeModelFromVideos,
   type WatchHomeModel,
 } from "../lib/watchHome/model"
-
-// KTD-7: the app-wide hardcoded locale pair. The model keys locale/variant
-// selection on languageSlug, never bcp47 (en-nai/en collide on prefix).
-const HOME_LOCALE = "en"
-const HOME_LANGUAGE_SLUG = "english"
 
 // Errors surface as a retryable message (never a throw) so the screen renders
 // error-with-retry instead of a blank surface (R12).
@@ -53,7 +52,7 @@ export function useWatchHome(): WatchHomeState {
         variables: {
           coreIds: getWatchHomeCoreIds(),
           locale: HOME_LOCALE,
-          languageSlug: HOME_LANGUAGE_SLUG,
+          languageSlug: ENGLISH_LANGUAGE_SLUG,
         },
         // Initial load reuses the cache; explicit refetch forces the network.
         fetchPolicy: mode === "initial" ? "cache-first" : "network-only",
@@ -62,7 +61,7 @@ export function useWatchHome(): WatchHomeState {
       setModel(
         buildWatchHomeModelFromVideos({
           videos: result.data?.watchHomeVideos ?? [],
-          languageSlug: HOME_LANGUAGE_SLUG,
+          languageSlug: ENGLISH_LANGUAGE_SLUG,
         }),
       )
     } catch {

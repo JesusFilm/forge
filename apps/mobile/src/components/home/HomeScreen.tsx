@@ -246,6 +246,16 @@ export function HomeScreen() {
     [heroSlides, activeIndex, handleChipPress, heroVisible],
   )
 
+  const contentContainerStyle = useMemo(
+    () => ({
+      // Hero-less degraded render: feed starts below the absolute header
+      // instead of leaving a hero-sized hole.
+      paddingTop: heroVisible ? heroHeight : insets.top + HEADER_ALLOWANCE,
+      paddingBottom: 48,
+    }),
+    [heroVisible, heroHeight, insets.top],
+  )
+
   // ── States (R12: never a blank screen) ─────────────────────────────────────
 
   if (loading && model == null) {
@@ -316,12 +326,7 @@ export function HomeScreen() {
         extraData={activeIndex}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{
-          // Hero-less degraded render: feed starts below the absolute header
-          // instead of leaving a hero-sized hole.
-          paddingTop: heroVisible ? heroHeight : insets.top + HEADER_ALLOWANCE,
-          paddingBottom: 48,
-        }}
+        contentContainerStyle={contentContainerStyle}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

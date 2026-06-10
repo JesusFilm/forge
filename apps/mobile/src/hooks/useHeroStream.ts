@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { getApolloClient } from "../lib/apolloClient"
 import { GET_VIDEO_BY_SLUG } from "../lib/queries"
+import { HOME_LOCALE } from "../lib/watchHome/config"
 import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
 
 // Stream-resolution path (KTD-2 lazy half): the bulk home query is card-lean,
@@ -13,9 +14,6 @@ import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
 // page plays (activeVariant.hls / normalizeVideo's first-playable fallback),
 // so resolving or prefetching a slide also warms the cache for navigation to
 // /watch/[slug].
-
-// KTD-7: the app-wide hardcoded locale.
-const HOME_LOCALE = "en"
 
 export type HeroStreamState = {
   streamUrl: string | null
@@ -87,6 +85,8 @@ export function prefetchHeroStream(slug: string | null | undefined): void {
   if (!slug) return
   if (prefetchedSlugs.has(slug)) return
   if (prefetchInFlight >= MAX_PREFETCH_INFLIGHT) return
+  // Apollo cache is the real dedupe; this only bounds the in-flight bookkeeping.
+  if (prefetchedSlugs.size > 100) prefetchedSlugs.clear()
   prefetchedSlugs.add(slug)
   prefetchInFlight += 1
   getApolloClient()

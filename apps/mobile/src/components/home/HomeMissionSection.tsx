@@ -6,15 +6,8 @@
  * inside the Home FlashList; carries its own translucent background per the
  * transparent-feed convention.
  */
-import { type ComponentProps, useCallback } from "react"
-import {
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native"
+import { type ComponentProps, memo, useCallback } from "react"
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
 
@@ -25,8 +18,12 @@ import {
   TEXT_PRIMARY,
   hexToRgba,
 } from "../../lib/color"
-import { validateActionUrl } from "../../lib/validateUrl"
-import { CARD_BORDER_RADIUS, HORIZONTAL_PADDING } from "../../styles/shared"
+import { openExternalUrl } from "../../lib/openExternalUrl"
+import {
+  CARD_BORDER_RADIUS,
+  HORIZONTAL_PADDING,
+  feedback,
+} from "../../styles/shared"
 
 const BETA_SIGNUP_URL = "https://mailchi.mp/jesusfilm/beta"
 
@@ -86,13 +83,11 @@ const HIGHLIGHTS: readonly Highlight[] = [
   },
 ] as const
 
-export function HomeMissionSection() {
+export const HomeMissionSection = memo(function HomeMissionSection() {
   const typography = useTypography()
 
   const handleBetaPress = useCallback(() => {
-    if (validateActionUrl(BETA_SIGNUP_URL)) {
-      Linking.openURL(BETA_SIGNUP_URL)
-    }
+    openExternalUrl(BETA_SIGNUP_URL)
   }, [])
 
   return (
@@ -188,7 +183,7 @@ export function HomeMissionSection() {
             onPress={handleBetaPress}
             style={({ pressed }) => [
               styles.betaButton,
-              pressed && Platform.OS === "ios" && styles.betaButtonPressed,
+              pressed && Platform.OS === "ios" && feedback.pressed,
             ]}
             android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
             accessibilityRole="button"
@@ -202,7 +197,7 @@ export function HomeMissionSection() {
       </View>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {
@@ -306,9 +301,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
-  },
-  betaButtonPressed: {
-    opacity: 0.85,
   },
   betaButtonText: {
     color: BG_COLOR,

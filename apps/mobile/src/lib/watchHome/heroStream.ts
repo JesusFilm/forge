@@ -7,9 +7,7 @@
  */
 
 import { validateStreamingUrl } from "../validateUrl"
-
-/** KTD-7: language identity keys on languageSlug, never bcp47. */
-const ENGLISH_LANGUAGE_SLUG = "english"
+import { ENGLISH_LANGUAGE_SLUG } from "./config"
 
 /**
  * Structural slice of GET_VIDEO_BY_SLUG's `variants: dubs` entries —

@@ -1,9 +1,9 @@
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
 import { SURFACE_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
-import { validateActionUrl } from "../../lib/validateUrl"
+import { openExternalUrl } from "../../lib/openExternalUrl"
 import {
   CARD_BORDER_RADIUS,
   HORIZONTAL_PADDING,
@@ -54,12 +54,6 @@ const NAV_LINKS: readonly ExternalLink[] = [
   { label: "Privacy Policy", url: "https://www.jesusfilm.org/privacy/" },
   { label: "Legal Statement", url: "https://www.jesusfilm.org/legal/" },
 ]
-
-function openExternalUrl(url: string): void {
-  if (validateActionUrl(url)) {
-    Linking.openURL(url)
-  }
-}
 
 export function ProfileLinksSection() {
   const typography = useTypography()

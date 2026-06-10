@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { memo, useCallback, useEffect, useRef } from "react"
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native"
 
 import { ACCENT, TEXT_PRIMARY, hexToRgba } from "../../lib/color"
@@ -22,7 +22,7 @@ export type HomeChipRailProps = {
  * Hidden for single-slide queues, matching the reducer's showsPagerChrome
  * rule (AE2).
  */
-export function HomeChipRail({
+export const HomeChipRail = memo(function HomeChipRail({
   slides,
   activeIndex,
   onChipPress,
@@ -117,7 +117,7 @@ export function HomeChipRail({
       />
     </View>
   )
-}
+})
 
 /**
  * Mux insert chips show the insert's CONFIGURED title (not the time-of-day

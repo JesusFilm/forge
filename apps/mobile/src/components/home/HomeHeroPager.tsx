@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useReducer,
   useRef,
   type Ref,
@@ -9,7 +10,6 @@ import {
 import {
   AppState,
   FlatList,
-  Linking,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
@@ -39,7 +39,7 @@ import { feedback } from "../../styles/shared"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { validateActionUrl } from "../../lib/validateUrl"
+import { openExternalUrl } from "../../lib/openExternalUrl"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import {
@@ -86,8 +86,7 @@ export type HomeHeroPagerProps = {
    * overlay touch target (hybrid-overlay pattern, see
    * docs/solutions/mobile/hero-mute-button-hybrid-overlay-touch-target.md).
    * The session rules — unmute persists across advances, tab blur resets to
-   * muted — are specified and jest-covered by pagerReducer; the screen's
-   * state must implement them.
+   * muted — are implemented by the screen's state (HomeScreen).
    */
   muted?: boolean
   onMuteToggle?: () => void
@@ -115,7 +114,6 @@ export function HomeHeroPager({
   const typography = useTypography()
   const router = useRouter()
 
-  const pageWidth = screenWidth
   const pageHeight = heroHeight ?? Math.round(screenWidth * 1.2)
 
   const [state, dispatch] = useReducer(
@@ -310,16 +308,16 @@ export function HomeHeroPager({
 
   // Warm the next video slide's stream once the current slide settles.
   useEffect(() => {
-    const { slides: queue, currentIndex } = state
+    const queue = state.slides
     if (queue.length <= 1) return
     for (let step = 1; step < queue.length; step++) {
-      const next = queue[(currentIndex + step) % queue.length]
+      const next = queue[(state.currentIndex + step) % queue.length]
       if (next?.kind === "video") {
         prefetchHeroStream(next.slug)
         break
       }
     }
-  }, [state])
+  }, [state.currentIndex, state.slides])
 
   // ── Timers (armed only while timersRunning — AE6 stops them) ─────────────
 
@@ -399,29 +397,29 @@ export function HomeHeroPager({
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / pageWidth)
+      const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
       dispatch({ type: "SLIDE_SHOWN", index })
     },
-    [pageWidth],
+    [screenWidth],
   )
 
   const handleScrollToIndexFailed = useCallback(
     (info: { index: number }) => {
       listRef.current?.scrollToOffset({
-        offset: info.index * pageWidth,
+        offset: info.index * screenWidth,
         animated: true,
       })
     },
-    [pageWidth],
+    [screenWidth],
   )
 
   const getItemLayout = useCallback(
     (_data: ArrayLike<WatchHomeSlide> | null | undefined, index: number) => ({
-      length: pageWidth,
-      offset: index * pageWidth,
+      length: screenWidth,
+      offset: index * screenWidth,
       index,
     }),
-    [pageWidth],
+    [screenWidth],
   )
 
   const keyExtractor = useCallback((item: WatchHomeSlide) => item.id, [])
@@ -438,9 +436,15 @@ export function HomeHeroPager({
   useEffect(() => {
     onSlideChangeRef.current = onSlideChange
   })
+  // Notify only on a REAL index change — a slides-identity change landing on
+  // the same index (e.g., SLIDES_SET resetting to 0) must not re-fire.
+  const notifiedIndexRef = useRef<number | null>(null)
   useEffect(() => {
+    if (notifiedIndexRef.current === state.currentIndex) return
     const slide = state.slides[state.currentIndex]
-    if (slide) onSlideChangeRef.current?.(state.currentIndex, slide)
+    if (!slide) return
+    notifiedIndexRef.current = state.currentIndex
+    onSlideChangeRef.current?.(state.currentIndex, slide)
   }, [state.currentIndex, state.slides])
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -464,9 +468,8 @@ export function HomeHeroPager({
   )
 
   const handleInsertAction = useCallback((url: string) => {
-    // External destination — system browser via validated Linking
-    // (RelatedQuestionsRenderer pattern).
-    if (validateActionUrl(url)) Linking.openURL(url)
+    // External destination — system browser via the shared validated helper.
+    openExternalUrl(url)
   }, [])
 
   // ── Mute button layout reporting (hybrid-overlay pattern) ─────────────────
@@ -497,7 +500,7 @@ export function HomeHeroPager({
         phase={state.phase}
         videoReady={state.videoReady}
         player={player}
-        width={pageWidth}
+        width={screenWidth}
         height={pageHeight}
         typography={typography}
         onWatchNow={handleWatchNow}
@@ -509,7 +512,7 @@ export function HomeHeroPager({
       state.phase,
       state.videoReady,
       player,
-      pageWidth,
+      screenWidth,
       pageHeight,
       typography,
       handleWatchNow,
@@ -627,9 +630,14 @@ function HeroPage({
   const posterHidden = showVideo && phase === "playing"
 
   // Mux overlay copy is time-of-day sensitive — resolve at DISPLAY time
-  // (Eastern-hour rule), not at queue-build time.
-  const muxCopy =
-    slide.kind === "mux" ? muxSlideDisplayCopy(slide, new Date()) : null
+  // (Eastern-hour rule), not at queue-build time. Memoized per slide entry:
+  // per-slide-entry resolution is the intended display-time semantics;
+  // per-render recomputation is wasteful.
+  const muxCopy = useMemo(
+    () =>
+      slide.kind === "mux" ? muxSlideDisplayCopy(slide, new Date()) : null,
+    [slide],
+  )
   const eyebrow = muxCopy?.label ?? slide.label
   const title = muxCopy?.title ?? slide.title
   const insertAction = muxCopy?.action ?? null

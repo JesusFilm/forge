@@ -357,37 +357,6 @@ describe("suspension (AE6)", () => {
   })
 })
 
-// ── Mute rules ──────────────────────────────────────────────────────────────
-
-describe("mute rules", () => {
-  it("starts muted and toggles", () => {
-    const initial = createInitialPagerState(twoVideos)
-    expect(initial.muted).toBe(true)
-    expect(pagerReducer(initial, { type: "MUTE_TOGGLED" }).muted).toBe(false)
-  })
-
-  it("persists an unmute across an auto-advance", () => {
-    const next = run(
-      createInitialPagerState(twoVideos),
-      { type: "MUTE_TOGGLED" },
-      { type: "PLAY_STARTED" },
-      { type: "PLAY_TO_END" },
-    )
-    expect(next.currentIndex).toBe(1)
-    expect(next.muted).toBe(false)
-  })
-
-  it("resets to muted and suspends on tab blur", () => {
-    const next = run(
-      createInitialPagerState(twoVideos),
-      { type: "MUTE_TOGGLED" },
-      { type: "TAB_BLURRED" },
-    )
-    expect(next.muted).toBe(true)
-    expect(next.suspended).toBe("blur")
-  })
-})
-
 // ── videoReady latch ────────────────────────────────────────────────────────
 
 describe("videoReady latch", () => {
@@ -411,7 +380,6 @@ describe("slides set", () => {
   it("replaces the queue, resets to the first slide, and keeps session state", () => {
     const session = run(
       createInitialPagerState(twoVideos),
-      { type: "MUTE_TOGGLED" },
       { type: "PLAY_TO_END" }, // marks v1 played, now on v2
     )
     const fresh = [videoSlide("v3"), videoSlide("v4")]
@@ -420,7 +388,6 @@ describe("slides set", () => {
     expect(next.slides).toBe(fresh)
     expect(next.currentIndex).toBe(0)
     expect(next.phase).toBe("poster")
-    expect(next.muted).toBe(false) // session mute survives
     expect(next.playedIds.has("v1")).toBe(true) // session history survives
   })
 

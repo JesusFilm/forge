@@ -12,6 +12,7 @@
  * the destination paints instantly. Touch-down warms the per-video query via
  * the shared capped/deduped prefetch.
  */
+import { memo } from "react"
 import {
   Platform,
   Pressable,
@@ -73,7 +74,10 @@ export function homeCardWidth(
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function HomeCard({ card, variant }: HomeCardProps) {
+export const HomeCard = memo(function HomeCard({
+  card,
+  variant,
+}: HomeCardProps) {
   const router = useRouter()
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
@@ -140,8 +144,8 @@ export function HomeCard({ card, variant }: HomeCardProps) {
       {/* Meta derivation (duration m:ss|h:mm:ss / "N episodes" / label text)
           lives in the model's buildMetaLabel — consume, don't re-derive. */}
       {card.metaLabel != null && (
-        <View style={styles.badge}>
-          <Text style={[styles.badgeText, typography.caption]}>
+        <View style={cardStyle.badge}>
+          <Text style={[cardStyle.badgeText, typography.caption]}>
             {card.metaLabel}
           </Text>
         </View>
@@ -156,25 +160,11 @@ export function HomeCard({ card, variant }: HomeCardProps) {
       </View>
     </Pressable>
   )
-}
+})
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  badge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontWeight: "600",
-  },
   textContent: {
     position: "absolute",
     bottom: 10,

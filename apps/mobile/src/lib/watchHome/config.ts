@@ -11,6 +11,10 @@
  * curation into admin and deletes this copy.
  */
 
+// The hardcoded home locale pair (KTD-7): query locale + language identity, keyed on languageSlug, never bcp47.
+export const HOME_LOCALE = "en"
+export const ENGLISH_LANGUAGE_SLUG = "english"
+
 export type WatchHomeSourceConfig = {
   id: string
   limitChildren?: number

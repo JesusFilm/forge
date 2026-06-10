@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { StyleSheet, View } from "react-native"
 
 import { TEXT_ON_OVERLAY } from "../../lib/color"
@@ -13,6 +14,11 @@ export type HomePagerDotsProps = {
  * pager also gates on the selector so both stay in agreement.
  */
 export function HomePagerDots({ count, activeIndex }: HomePagerDotsProps) {
+  const indexes = useMemo(
+    () => Array.from({ length: count }, (_, i) => i),
+    [count],
+  )
+
   if (count <= 1) return null
 
   return (
@@ -21,7 +27,7 @@ export function HomePagerDots({ count, activeIndex }: HomePagerDotsProps) {
       accessible
       accessibilityLabel={`Slide ${activeIndex + 1} of ${count}`}
     >
-      {Array.from({ length: count }, (_, i) => (
+      {indexes.map((i) => (
         <View
           key={i}
           style={[styles.dot, i === activeIndex && styles.dotActive]}

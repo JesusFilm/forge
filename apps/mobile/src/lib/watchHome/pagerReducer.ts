@@ -17,8 +17,9 @@
  *   - SUSPEND stops timers (timersRunning selector) and records an
  *     interrupted swap as pendingSwap; RESUME restores the current slide and
  *     shouldReissueSwap tells the component to re-issue it (AE6)
- *   - user unmute persists across advances within the session; TAB_BLURRED
- *     resets muted=true (matches existing home behavior)
+ *   - mute is a CONTROLLED prop owned by the screen, not reducer state: the
+ *     session rules (unmute persists across advances, reset to muted on tab
+ *     blur) are implemented in HomeScreen
  *   - single-slide queue: no auto-advance, chips/dots hidden
  *     (showsPagerChrome, AE2)
  *
@@ -64,7 +65,6 @@ export type PagerState = {
    */
   pendingSwap: boolean
   suspended: PagerSuspendReason | null
-  muted: boolean
   /** Slides the pager has left, fed back into queue rebuilds on wrap. */
   playedIds: ReadonlySet<string>
   /** Times the queue wrapped past its end back to index 0. */
@@ -88,8 +88,6 @@ export type PagerEvent =
   | { type: "MAX_DWELL_ELAPSED" }
   | { type: "SUSPEND"; reason: PagerSuspendReason }
   | { type: "RESUME" }
-  | { type: "MUTE_TOGGLED" }
-  | { type: "TAB_BLURRED" }
 
 export function createInitialPagerState(
   slides: readonly WatchHomeSlide[] = [],
@@ -102,7 +100,6 @@ export function createInitialPagerState(
     swapInFlight: false,
     pendingSwap: false,
     suspended: null,
-    muted: true,
     playedIds: new Set<string>(),
     wrapCount: 0,
   }
@@ -176,21 +173,12 @@ function advance(state: PagerState): PagerState {
   }
 }
 
-function suspend(
-  state: PagerState,
-  reason: PagerSuspendReason,
-  resetMute: boolean,
-): PagerState {
-  const muted = resetMute ? true : state.muted
+function suspend(state: PagerState, reason: PagerSuspendReason): PagerState {
   const pendingSwap = state.pendingSwap || state.swapInFlight
-  if (
-    state.suspended === reason &&
-    state.muted === muted &&
-    state.pendingSwap === pendingSwap
-  ) {
+  if (state.suspended === reason && state.pendingSwap === pendingSwap) {
     return state
   }
-  return { ...state, suspended: reason, muted, pendingSwap }
+  return { ...state, suspended: reason, pendingSwap }
 }
 
 export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
@@ -269,16 +257,9 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
       return state.phase === "playing" ? state : advance(state)
 
     case "SUSPEND":
-      return suspend(state, event.reason, false)
+      return suspend(state, event.reason)
 
     case "RESUME":
       return state.suspended === null ? state : { ...state, suspended: null }
-
-    case "MUTE_TOGGLED":
-      return { ...state, muted: !state.muted }
-
-    case "TAB_BLURRED":
-      // Leaving the tab both suspends and resets the session mute.
-      return suspend(state, "blur", true)
   }
 }
