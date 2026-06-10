@@ -64,6 +64,13 @@ export type PagerState = {
    * when shouldReissueSwap turns true.
    */
   pendingSwap: boolean
+  /**
+   * A skip (STREAM_ERROR or MAX_DWELL_ELAPSED) arrived while suspended and
+   * was deferred. RESUME executes the advance and clears this flag (AE5).
+   * Cleared early by SLIDES_SET / CHIP_TAPPED / SLIDE_SHOWN since an explicit
+   * move supersedes the deferred skip.
+   */
+  pendingSkip: boolean
   suspended: PagerSuspendReason | null
   /** Slides the pager has left, fed back into queue rebuilds on wrap. */
   playedIds: ReadonlySet<string>
@@ -99,6 +106,7 @@ export function createInitialPagerState(
     videoReady: false,
     swapInFlight: false,
     pendingSwap: false,
+    pendingSkip: false,
     suspended: null,
     playedIds: new Set<string>(),
     wrapCount: 0,
@@ -154,6 +162,8 @@ function moveTo(state: PagerState, rawIndex: number): PagerState {
     // A move during an in-flight swap can't cancel the native replaceAsync;
     // it records a pending swap for the new slide instead.
     pendingSwap: state.pendingSwap || state.swapInFlight,
+    // Explicit navigation supersedes any deferred skip.
+    pendingSkip: false,
   }
 }
 
@@ -190,6 +200,8 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
         currentIndex: 0,
         phase: "poster",
         pendingSwap: state.pendingSwap || state.swapInFlight,
+        // A queue replacement is an explicit move; supersedes any deferred skip.
+        pendingSkip: false,
       }
 
     case "SLIDE_SHOWN":
@@ -239,10 +251,17 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
         ? { ...state, swapInFlight: false }
         : state
       if (cleared.suspended !== null) {
-        // Skip-on-error waits for resume; just settle back on the poster.
-        return cleared.phase === "poster"
-          ? cleared
-          : { ...cleared, phase: "poster" }
+        // Can't advance while suspended. Record a pendingSkip for multi-slide
+        // queues so RESUME executes the skip promptly (AE5) instead of letting
+        // the dead slide sit on its poster for the full 20s max-dwell.
+        const base =
+          cleared.phase === "poster"
+            ? cleared
+            : { ...cleared, phase: "poster" as const }
+        if (cleared.slides.length > 1 && !base.pendingSkip) {
+          return { ...base, pendingSkip: true }
+        }
+        return base
       }
       const advanced = advance(cleared)
       if (advanced !== cleared) return advanced
@@ -254,12 +273,32 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
 
     case "MAX_DWELL_ELAPSED":
       // Max dwell guards stuck slides; a playing video ends via PLAY_TO_END.
-      return state.phase === "playing" ? state : advance(state)
+      if (state.phase === "playing") return state
+      if (state.suspended !== null && state.slides.length > 1) {
+        // Deferred skip: advance cannot run while suspended. Record it for
+        // RESUME to execute (AE5) so the stuck slide doesn't dwell needlessly.
+        return state.pendingSkip ? state : { ...state, pendingSkip: true }
+      }
+      return advance(state)
 
     case "SUSPEND":
       return suspend(state, event.reason)
 
-    case "RESUME":
-      return state.suspended === null ? state : { ...state, suspended: null }
+    case "RESUME": {
+      if (state.suspended === null) return state
+      const resumed = { ...state, suspended: null }
+      if (resumed.pendingSkip) {
+        // Execute the deferred skip now that the pager is running again (AE5).
+        // advance() guards on suspended === null, which is satisfied after the
+        // field reset above; call it directly on resumed.
+        const advanced = advance(resumed)
+        // advance() returns the same reference only for single-slide queues;
+        // clear pendingSkip regardless so we don't carry stale state.
+        return advanced !== resumed
+          ? { ...advanced, pendingSkip: false }
+          : { ...resumed, pendingSkip: false }
+      }
+      return resumed
+    }
   }
 }

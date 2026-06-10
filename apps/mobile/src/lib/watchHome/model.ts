@@ -10,6 +10,9 @@
  *     streams lazily per slide (`selectPlayableVariant` is dropped).
  *   - Carousel slide eligibility is a poster image + slug (KTD-4), not a
  *     playable stream.
+ *   - heroSlides intentionally not ported — mobile's hero queue is the
+ *     carousel sequence (HomeScreen builds it via buildWatchHomeHeroQueue
+ *     from model.carousel, not a pre-built model field).
  *
  * Pure TypeScript only — no React/React Native imports.
  */
@@ -104,10 +107,6 @@ export type WatchHomeCard = {
   missingData: WatchHomeMissingData[]
 }
 
-export type WatchHomeHeroSlide = WatchHomeCard & {
-  eyebrow: string
-}
-
 export type WatchHomeSection = {
   id: string
   eyebrow: string
@@ -120,7 +119,6 @@ export type WatchHomeSection = {
 }
 
 export type WatchHomeModel = {
-  heroSlides: WatchHomeHeroSlide[]
   sections: WatchHomeSection[]
   carousel: WatchHomeCarouselSequenceData
   missingData: WatchHomeMissingData[]
@@ -571,9 +569,11 @@ export function buildWatchHomeModelFromVideos(args: {
     args.videos.filter(hasCoreId).map((video) => [video.coreId, video]),
   )
 
-  const heroSlides = WATCH_HOME_HERO_SOURCE_IDS.flatMap((sourceId) => {
-    const video = videoByCoreId.get(sourceId)
-    if (!video) {
+  // Emit missing-data records for unresolved hero sources so operators can
+  // see which hero videos are absent. The hero queue itself is not built here
+  // — HomeScreen builds it via buildWatchHomeHeroQueue from model.carousel.
+  for (const sourceId of WATCH_HOME_HERO_SOURCE_IDS) {
+    if (!videoByCoreId.has(sourceId)) {
       missingData.push({
         sectionId: "home-hero",
         sourceId,
@@ -583,32 +583,19 @@ export function buildWatchHomeModelFromVideos(args: {
         followUp:
           "Verify the Core id exists in admin sync or replace the hero source.",
       })
-      return []
     }
-
-    const card = normalizeCard({
-      sectionId: "home-hero",
-      sourceId,
-      video,
-      languageSlug,
-    })
-    return card ? [{ ...card, eyebrow: "Featured" }] : []
-  })
+  }
 
   const sections = buildSections({ videoByCoreId, languageSlug, missingData })
   const carousel: WatchHomeCarouselSequenceData = {
     pools: buildCarouselPools({ videoByCoreId, languageSlug, missingData }),
     muxInserts: WATCH_HOME_MUX_INSERTS,
   }
-  const cardMissing = [
-    ...heroSlides.flatMap((card) => card.missingData),
-    ...sections.flatMap((section) =>
-      section.cards.flatMap((card) => card.missingData),
-    ),
-  ]
+  const cardMissing = sections.flatMap((section) =>
+    section.cards.flatMap((card) => card.missingData),
+  )
 
   return {
-    heroSlides,
     sections,
     carousel,
     missingData: dedupeMissingData([...missingData, ...cardMissing]),

@@ -9,6 +9,7 @@ import { validateActionUrl } from "./validateUrl"
 
 export function openExternalUrl(url: string): void {
   if (validateActionUrl(url)) {
-    Linking.openURL(url)
+    // Best-effort: iOS rejects when no handler is registered for the scheme.
+    Linking.openURL(url).catch(() => {})
   }
 }

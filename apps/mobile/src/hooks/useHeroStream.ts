@@ -89,16 +89,24 @@ export function prefetchHeroStream(slug: string | null | undefined): void {
   if (prefetchedSlugs.size > 100) prefetchedSlugs.clear()
   prefetchedSlugs.add(slug)
   prefetchInFlight += 1
-  getApolloClient()
-    .query({
-      query: GET_VIDEO_BY_SLUG,
-      variables: { slug, locale: HOME_LOCALE },
-      fetchPolicy: "cache-first",
-    })
-    .catch(() => {
-      prefetchedSlugs.delete(slug)
-    })
-    .finally(() => {
-      prefetchInFlight -= 1
-    })
+  try {
+    getApolloClient()
+      .query({
+        query: GET_VIDEO_BY_SLUG,
+        variables: { slug, locale: HOME_LOCALE },
+        fetchPolicy: "cache-first",
+      })
+      .catch(() => {
+        // Async failure: release the slug so a later attempt can retry.
+        prefetchedSlugs.delete(slug)
+      })
+      .finally(() => {
+        prefetchInFlight -= 1
+      })
+  } catch {
+    // Synchronous throw from getApolloClient() or .query() setup: roll back the
+    // reserved slot so the counter and set stay consistent (slot-leak guard).
+    prefetchedSlugs.delete(slug)
+    prefetchInFlight -= 1
+  }
 }

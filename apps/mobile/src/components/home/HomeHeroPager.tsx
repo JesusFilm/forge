@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -135,6 +136,9 @@ export function HomeHeroPager({
   useEffect(() => {
     if (slidesPropRef.current === slides) return
     slidesPropRef.current = slides
+    // Reset swap key: after pull-to-refresh a same-slug slide 0 would match
+    // the stale key and skip its re-issued swap without this reset.
+    lastSwapKeyRef.current = null
     dispatch({ type: "SLIDES_SET", slides })
   }, [slides])
 
@@ -272,6 +276,9 @@ export function HomeHeroPager({
 
     dispatch({ type: "SWAP_STARTED" })
     const epochAtSwap = slideEpochRef.current
+    // Capture suspended synchronously: stateRef can be one commit behind the
+    // epoch guard by the time the replaceAsync .then() fires.
+    const suspendedAtSwap = stateRef.current.suspended
     player
       .replaceAsync(url)
       .then(() => {
@@ -279,7 +286,7 @@ export function HomeHeroPager({
         // Stale settle: the pager moved on mid-swap — pendingSwap re-issues
         // for the new slide; don't start the old source under its poster.
         if (slideEpochRef.current !== epochAtSwap) return
-        if (stateRef.current.suspended !== null) return
+        if (suspendedAtSwap !== null) return
         try {
           player.play()
         } catch {
@@ -607,7 +614,7 @@ type HeroPageProps = {
   onInsertAction: (url: string) => void
 }
 
-function HeroPage({
+const HeroPage = memo(function HeroPage({
   slide,
   isActive,
   phase,
@@ -732,7 +739,7 @@ function HeroPage({
       </View>
     </View>
   )
-}
+})
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 

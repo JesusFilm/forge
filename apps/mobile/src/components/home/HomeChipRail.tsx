@@ -29,6 +29,9 @@ export const HomeChipRail = memo(function HomeChipRail({
 }: HomeChipRailProps) {
   const typography = useTypography()
   const listRef = useRef<FlatList<WatchHomeSlide>>(null)
+  // Holds the pending retry timer so we can cancel it if the component
+  // unmounts or a new failure fires before the previous delay fires.
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Keep the active chip visible as the pager advances. Chips have intrinsic
   // (text-driven) widths, so scrollToIndex can fail for not-yet-measured
@@ -46,13 +49,29 @@ export const HomeChipRail = memo(function HomeChipRail({
     }
   }, [activeIndex, slides.length])
 
+  // Clear any pending retry on unmount so a stale callback can't fire
+  // scrollToIndex against a released FlatList ref.
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current !== null) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
+    }
+  }, [])
+
   const handleScrollToIndexFailed = useCallback(
     (info: { index: number; averageItemLength: number }) => {
+      // Cancel any prior pending retry before scheduling a new one.
+      if (retryTimerRef.current !== null) {
+        clearTimeout(retryTimerRef.current)
+      }
       listRef.current?.scrollToOffset({
         offset: info.averageItemLength * info.index,
         animated: true,
       })
-      setTimeout(() => {
+      retryTimerRef.current = setTimeout(() => {
+        retryTimerRef.current = null
         try {
           listRef.current?.scrollToIndex({
             index: info.index,

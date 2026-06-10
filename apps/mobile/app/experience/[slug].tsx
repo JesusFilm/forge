@@ -23,7 +23,7 @@ export default function ExperienceScreen() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
 
   const { currentSlug, selectExperience } = useExperienceSelection()
-  const { experience, error, refetch } = useExperienceContext()
+  const { experience, loading, error, refetch } = useExperienceContext()
 
   // Make this the active experience. Guarded so re-renders (and revisits to
   // an already-active experience) don't re-trigger selection/persistence.
@@ -37,7 +37,7 @@ export default function ExperienceScreen() {
     experience != null && experience.slug === decodedSlug
 
   if (hasThisExperience) {
-    return <CuratedHomeLayout />
+    return <CuratedHomeLayout hideHeader />
   }
 
   if (currentSlug === decodedSlug && error != null) {
@@ -50,6 +50,25 @@ export default function ExperienceScreen() {
           style={[button.accent, styles.retryButton]}
           accessibilityRole="button"
           accessibilityLabel="Retry loading experience"
+        >
+          <Text style={button.accentText}>Try Again</Text>
+        </Pressable>
+      </View>
+    )
+  }
+
+  // Terminal empty state: slug resolved but admin returned no experience
+  // (deleted, unpublished, or bogus deep link). loading is false and error is
+  // null — without this branch the spinner would never clear.
+  if (currentSlug === decodedSlug && !loading && experience == null) {
+    return (
+      <View style={layout.centered}>
+        <Text style={text.errorTitle}>No content available</Text>
+        <Pressable
+          onPress={refetch}
+          style={[button.accent, styles.retryButton]}
+          accessibilityRole="button"
+          accessibilityLabel="Try loading experience again"
         >
           <Text style={button.accentText}>Try Again</Text>
         </Pressable>

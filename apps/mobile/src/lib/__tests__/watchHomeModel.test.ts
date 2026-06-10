@@ -121,10 +121,6 @@ describe("buildWatchHomeModelFromVideos", () => {
       videos: [videoInput("1_jf-0-0")],
     })
 
-    // Only the resolved hero source produces a slide.
-    expect(model.heroSlides.map((slide) => slide.coreId)).toEqual(["1_jf-0-0"])
-    expect(model.heroSlides[0]?.eyebrow).toBe("Featured")
-
     const recordMissing = model.missingData.filter(
       (entry) => entry.field === "record",
     )
@@ -147,7 +143,6 @@ describe("buildWatchHomeModelFromVideos", () => {
   it("returns an empty-but-valid model when no videos resolve", () => {
     const model = buildWatchHomeModelFromVideos({ videos: [] })
 
-    expect(model.heroSlides).toEqual([])
     expect(model.sections).toEqual([])
     expect(model.carousel.pools).toEqual([])
     expect(

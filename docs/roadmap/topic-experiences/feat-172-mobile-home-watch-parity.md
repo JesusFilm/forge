@@ -10,8 +10,6 @@ depends_on: []
 blocks: []
 tags:
   - "mobile"
-  - "watch"
-  - "ui"
 ---
 
 ## Problem

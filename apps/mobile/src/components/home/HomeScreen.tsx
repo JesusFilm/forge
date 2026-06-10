@@ -81,6 +81,9 @@ export function HomeScreen() {
   // In-memory played set (web's localStorage persistence does not port —
   // KTD-3). A ref, not state: it only feeds queue REBUILDS (new model
   // identity); the live pager tracks its own progress internally.
+  // Intentionally duplicates the reducer's playedIds: the reducer's set signals
+  // wrap for the pager; this ref feeds queue rebuilds across model refreshes
+  // and resets on wrap.
   const playedIdsRef = useRef<Set<string>>(new Set())
   // Stable per-mount seed keeps each insert's mux playback selection stable
   // for the session (carouselSequence's sessionSeed contract).
@@ -258,7 +261,7 @@ export function HomeScreen() {
 
   // ── States (R12: never a blank screen) ─────────────────────────────────────
 
-  if (loading && model == null) {
+  if ((loading || refreshing) && model == null) {
     return (
       <View style={[layout.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={ACCENT} />
@@ -328,6 +331,7 @@ export function HomeScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={contentContainerStyle}
         showsVerticalScrollIndicator={false}
+        maintainVisibleContentPosition={{ disabled: true }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

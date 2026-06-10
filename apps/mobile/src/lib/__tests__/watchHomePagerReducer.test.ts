@@ -294,15 +294,12 @@ describe("suspension (AE6)", () => {
     expect(timersRunning(suspended)).toBe(false)
   })
 
-  it("ignores auto-advance events while suspended", () => {
+  it("ignores PLAY_TO_END and IMAGE_TIMER_ELAPSED while suspended", () => {
     const suspended = pagerReducer(createInitialPagerState(twoVideos), {
       type: "SUSPEND",
       reason: "blur",
     })
     expect(pagerReducer(suspended, { type: "PLAY_TO_END" })).toBe(suspended)
-    expect(pagerReducer(suspended, { type: "MAX_DWELL_ELAPSED" })).toBe(
-      suspended,
-    )
 
     const suspendedMux = run(
       createInitialPagerState(mixedQueue),
@@ -311,6 +308,22 @@ describe("suspension (AE6)", () => {
     )
     expect(pagerReducer(suspendedMux, { type: "IMAGE_TIMER_ELAPSED" })).toBe(
       suspendedMux,
+    )
+  })
+
+  it("defers MAX_DWELL_ELAPSED advance while suspended (sets pendingSkip)", () => {
+    const suspended = pagerReducer(createInitialPagerState(twoVideos), {
+      type: "SUSPEND",
+      reason: "blur",
+    })
+    // MAX_DWELL_ELAPSED while suspended records a deferred skip instead of
+    // dropping the event — so RESUME can advance promptly (AE5).
+    const afterDwell = pagerReducer(suspended, { type: "MAX_DWELL_ELAPSED" })
+    expect(afterDwell.currentIndex).toBe(0) // not advanced yet
+    expect(afterDwell.pendingSkip).toBe(true)
+    // Idempotent: second fire does not toggle or clear the flag.
+    expect(pagerReducer(afterDwell, { type: "MAX_DWELL_ELAPSED" })).toBe(
+      afterDwell,
     )
   })
 
@@ -425,5 +438,85 @@ describe("swap serialization", () => {
       resolving,
     )
     expect(pagerReducer(resolving, { type: "STREAM_READY" })).toBe(resolving)
+  })
+
+  it("SLIDES_SET while swapInFlight preserves pendingSwap = true", () => {
+    // Start from a real in-flight swap, then replace the queue.
+    const inFlight = run(createInitialPagerState(twoVideos), {
+      type: "SWAP_STARTED",
+    })
+    expect(inFlight.swapInFlight).toBe(true)
+
+    const fresh = [videoSlide("v3"), videoSlide("v4")]
+    const next = pagerReducer(inFlight, { type: "SLIDES_SET", slides: fresh })
+
+    // The interrupted swap must be remembered so the component re-issues it
+    // for the new slide (preservation branch: `|| state.swapInFlight`).
+    expect(next.pendingSwap).toBe(true)
+    expect(next.slides).toBe(fresh)
+    expect(next.currentIndex).toBe(0)
+  })
+})
+
+// ── AE5: pendingSkip (deferred skip on stream error while suspended) ─────────
+
+describe("pendingSkip (AE5 deferred skip)", () => {
+  it("records pendingSkip on STREAM_ERROR while suspended, then advances on RESUME", () => {
+    // Scenario: SWAP_STARTED → STREAM_RESOLVING → SUSPEND → STREAM_ERROR
+    const afterError = run(
+      createInitialPagerState(twoVideos),
+      { type: "SWAP_STARTED" },
+      { type: "STREAM_RESOLVING" },
+      { type: "SUSPEND", reason: "scroll" },
+      { type: "STREAM_ERROR" },
+    )
+
+    expect(afterError.phase).toBe("poster")
+    expect(afterError.currentIndex).toBe(0) // not advanced yet
+    expect(afterError.swapInFlight).toBe(false) // swap cleared
+    expect(afterError.pendingSkip).toBe(true)
+
+    const resumed = pagerReducer(afterError, { type: "RESUME" })
+    expect(resumed.suspended).toBeNull()
+    expect(resumed.currentIndex).toBe(1) // deferred skip executed
+    expect(resumed.pendingSkip).toBe(false)
+  })
+
+  it("records pendingSkip on MAX_DWELL_ELAPSED while suspended, then advances on RESUME", () => {
+    const afterDwell = run(
+      createInitialPagerState(twoVideos),
+      { type: "STREAM_RESOLVING" },
+      { type: "SUSPEND", reason: "blur" },
+      { type: "MAX_DWELL_ELAPSED" },
+    )
+
+    expect(afterDwell.currentIndex).toBe(0) // not advanced yet
+    expect(afterDwell.pendingSkip).toBe(true)
+
+    const resumed = pagerReducer(afterDwell, { type: "RESUME" })
+    expect(resumed.currentIndex).toBe(1)
+    expect(resumed.pendingSkip).toBe(false)
+  })
+
+  it("chip tap while pendingSkip is set clears it without double-advancing", () => {
+    const afterError = run(
+      createInitialPagerState(twoVideos),
+      { type: "SUSPEND", reason: "scroll" },
+      { type: "STREAM_ERROR" },
+    )
+    expect(afterError.pendingSkip).toBe(true)
+
+    // User explicitly taps chip index 1 while still suspended.
+    const tapped = pagerReducer(afterError, { type: "CHIP_TAPPED", index: 1 })
+    expect(tapped.currentIndex).toBe(1)
+    expect(tapped.pendingSkip).toBe(false)
+
+    // RESUME after an explicit move must NOT advance a second time.
+    const resumed = pagerReducer(
+      { ...tapped, suspended: null },
+      { type: "RESUME" },
+    )
+    expect(resumed.currentIndex).toBe(1)
+    expect(resumed.pendingSkip).toBe(false)
   })
 })
