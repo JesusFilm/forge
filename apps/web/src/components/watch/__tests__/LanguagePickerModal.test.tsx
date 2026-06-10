@@ -444,7 +444,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     )
     expect(defaultTooltipPanel).not.toBeNull()
     expect(defaultTooltipPanel?.className).toContain("opacity-0")
-    expect(defaultTooltipPanel?.className).toContain("translate-y-4")
+    expect(defaultTooltipPanel?.className).toContain("translate-y-2")
     expect(defaultTooltipPanel?.className).toContain("absolute")
     expect(defaultTooltipPanel?.className).toContain("bottom-full")
     expect(defaultTooltipPanel?.getAttribute("aria-hidden")).toBe("true")
