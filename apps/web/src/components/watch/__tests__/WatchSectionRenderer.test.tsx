@@ -391,6 +391,39 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(content.hls).toBe("https://cdn.example/jesus.m3u8")
     expect(content.videoDocumentId).toBe("video-1")
   })
+
+  it("skips the synthetic BibleQuotes section when the watch hide flag is active", () => {
+    const video = makeVideo({
+      bibleCitations: [
+        {
+          bibleBook: { documentId: "bb-john", name: "John" },
+          chapterEnd: null,
+          chapterStart: 1,
+          documentId: "bc-1",
+          order: 1,
+          osisId: "John.1.1",
+          verseEnd: null,
+          verseStart: 1,
+        },
+      ],
+    })
+    const blocks: MergedWatchBlock[] = [
+      buildBibleQuotesBlock(
+        (video as { bibleCitations?: unknown[] }).bibleCitations as never,
+      ),
+      buildShareBlock(video),
+    ]
+
+    act(() => {
+      root.render(<WatchSectionRenderer blocks={blocks} hideBibleQuotes />)
+    })
+
+    expect(bibleQuotesSectionMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-block-type="BibleQuotes"]'),
+    ).toBeNull()
+    expect(container.querySelector('[data-block-type="Share"]')).not.toBeNull()
+  })
 })
 
 describe("WatchSectionRenderer — Strapi block delegation", () => {

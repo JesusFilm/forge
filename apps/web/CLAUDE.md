@@ -102,6 +102,13 @@ and skips YouVersion API calls; `true` enables the server fetch when
 `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=false` unless intentionally
 smoke-testing the panel locally.
 
+`forge.watch.hideBibleQuotes` is a temporary LaunchDarkly-backed release flag
+for hiding the full watch-page Bible Quotes band. `false` keeps the existing
+band, including quote cards, promo card, and section-local Share button;
+`true` hides that band on synthetic watch pages. Keep
+`FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT=false` unless intentionally testing the
+hidden state locally.
+
 `forge.watch.questionPanel` is a temporary LaunchDarkly-backed release flag
 for the watch-page floating question panel. `false` hides the panel;
 `true` renders the floating input and message-type selector. Keep

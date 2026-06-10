@@ -28,6 +28,7 @@ import {
 import { resolveWatchHome } from "@/lib/watch-home"
 import {
   isWatchCtaTextCopyEnabled,
+  isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
   isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
@@ -188,6 +189,12 @@ async function getYouVersionBibleQuotePassages(
 
 async function getQuestionPanelEnabled(route: string): Promise<boolean> {
   return isWatchQuestionPanelEnabled({
+    custom: { route },
+  })
+}
+
+async function getHideBibleQuotesEnabled(route: string): Promise<boolean> {
+  return isWatchHideBibleQuotesEnabled({
     custom: { route },
   })
 }
@@ -416,12 +423,18 @@ async function renderEpisode(shape: {
   }
 
   const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
-  const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+  const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
     await Promise.all([
       getDownloadButtonLabel(route, locale),
       getQuestionPanelEnabled(route),
-      getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
+      getHideBibleQuotesEnabled(route),
     ])
+  const youVersionPassages = hideBibleQuotes
+    ? []
+    : await getYouVersionBibleQuotePassages(
+        route,
+        resolved.video.bibleCitations,
+      )
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
@@ -456,6 +469,7 @@ async function renderEpisode(shape: {
         video={resolved.video}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
         locale={locale}
+        hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
       />
     </>
@@ -540,12 +554,18 @@ async function renderVideo(shape: {
         />
       )
     }
-    const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+    const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
       await Promise.all([
         getDownloadButtonLabel(route, locale),
         getQuestionPanelEnabled(route),
-        getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations),
+        getHideBibleQuotesEnabled(route),
       ])
+    const youVersionPassages = hideBibleQuotes
+      ? []
+      : await getYouVersionBibleQuotePassages(
+          route,
+          watchVideo.video.bibleCitations,
+        )
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
@@ -578,6 +598,7 @@ async function renderVideo(shape: {
           video={watchVideo.video}
           languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
           locale={locale}
+          hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
         />
       </>
