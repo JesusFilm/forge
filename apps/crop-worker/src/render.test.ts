@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { basename, join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { createJobDeadline, JobDeadlineExceededError } from "./deadline.js"
 import type { RunCommand } from "./ffmpeg.js"
 import {
   buildCropFilter,
@@ -83,6 +84,32 @@ describe("buildXExpression", () => {
       ),
     ).toBe("if(lt(t,3),0+100*min(max((t-0)/3,0),1),if(lt(t,6),100,100))")
   })
+
+  it("honors progress values when two keyframes are not at 0 and 1 (piecewise, not full-span lerp)", () => {
+    // progress 0.2/0.8 over 10s: the pan runs from t=2 to t=8, holding the
+    // endpoint values outside that window — NOT a t/10 full-span lerp.
+    expect(
+      buildXExpression(
+        [
+          { progress: 0.2, x: 520, y: 0, width: 606, height: 1080 },
+          { progress: 0.8, x: 560, y: 0, width: 606, height: 1080 },
+        ],
+        10,
+      ),
+    ).toBe("if(lt(t,8),520+40*min(max((t-2)/6,0),1),560)")
+  })
+
+  it("still returns a static x for two equal-x keyframes regardless of progress", () => {
+    expect(
+      buildXExpression(
+        [
+          { progress: 0.2, x: 520, y: 0, width: 606, height: 1080 },
+          { progress: 0.8, x: 520, y: 0, width: 606, height: 1080 },
+        ],
+        10,
+      ),
+    ).toBe("520")
+  })
 })
 
 describe("buildCropFilter", () => {
@@ -124,6 +151,7 @@ describe("buildCropFilter", () => {
 
 describe("runRender", () => {
   const sourceUrl = "https://stream.example.test/pb.m3u8"
+  const whitelist = "https,tls,tcp,crypto,hls"
   let root: string
   let storage: Storage
   let ffmpegCalls: string[][]
@@ -204,6 +232,7 @@ describe("runRender", () => {
       deps: {
         runCommand,
         storage,
+        protocolWhitelist: whitelist,
         previewMaxSegments: 6,
         previewMaxSeconds: 90,
         now: () => new Date("2026-06-09T00:00:00.000Z"),
@@ -211,10 +240,13 @@ describe("runRender", () => {
       onProgress: (value, message) => progress.push([value, message]),
     })
 
-    // Segment 1: animated pan, input-seek args in the documented order.
+    // Segment 1: animated pan, source protocol whitelist, input-seek args in
+    // the documented order.
     const firstSegmentArgs = ffmpegCalls[0]!
-    expect(firstSegmentArgs.slice(0, 9)).toEqual([
+    expect(firstSegmentArgs.slice(0, 11)).toEqual([
       "-y",
+      "-protocol_whitelist",
+      whitelist,
       "-ss",
       "0",
       "-t",
@@ -224,7 +256,7 @@ describe("runRender", () => {
       "-vf",
       "crop=606:1080:'520+40*min(t/10,1)':0,scale=1080:1920:flags=lanczos,setsar=1",
     ])
-    expect(firstSegmentArgs.slice(9, -1)).toEqual([
+    expect(firstSegmentArgs.slice(11, -1)).toEqual([
       "-c:v",
       "libx264",
       "-preset",
@@ -241,7 +273,8 @@ describe("runRender", () => {
       "+faststart",
     ])
 
-    // Concat call shape.
+    // Concat call shape — reads a worker-generated local list file, so the
+    // restrictive source whitelist must NOT be applied here.
     const concatArgs = ffmpegCalls[2]!
     expect(concatArgs.slice(0, 6)).toEqual([
       "-y",
@@ -252,12 +285,15 @@ describe("runRender", () => {
       "-i",
     ])
     expect(concatArgs.slice(7, 9)).toEqual(["-c", "copy"])
+    expect(concatArgs).not.toContain("-protocol_whitelist")
 
     // Frame extraction calls: output duration 25, two frames at 6.25/18.75.
+    // These read the local output file — no source whitelist either.
     const frameCalls = ffmpegCalls.filter((args) => args.includes("-frames:v"))
     expect(frameCalls.map((args) => args[2])).toEqual(["6.25", "18.75"])
     expect(frameCalls[0]!.slice(0, 2)).toEqual(["-y", "-ss"])
     expect(frameCalls[0]).toContain("-q:v")
+    expect(frameCalls[0]).not.toContain("-protocol_whitelist")
 
     // Uploaded artifacts.
     await expect(
@@ -368,12 +404,14 @@ describe("runRender", () => {
       cropPlanAssetId: "asset123",
       timelineMapAssetId: "asset456",
       previewFrameCount: 0,
-      deps: { runCommand, storage },
+      deps: { runCommand, storage, protocolWhitelist: whitelist },
     })
 
     // Localized timing drives the segment seek.
-    expect(ffmpegCalls[0]!.slice(0, 5)).toEqual([
+    expect(ffmpegCalls[0]!.slice(0, 7)).toEqual([
       "-y",
+      "-protocol_whitelist",
+      whitelist,
       "-ss",
       "2",
       "-t",
@@ -445,5 +483,60 @@ describe("runRender", () => {
         deps: { runCommand, storage },
       }),
     ).rejects.toThrow(/no renderable segments/)
+  })
+
+  it("fails with JobDeadlineExceededError when the job deadline passes between segments", async () => {
+    let nowMs = 0
+    // Each invocation "takes" 60ms against a 50ms job budget: segment 1 is
+    // allowed to start (budget remaining), segment 2 must not be invoked.
+    const slowRunCommand: RunCommand = async (command, args, options) => {
+      await runCommand(command, args, options)
+      nowMs += 60
+      return { stdout: Buffer.alloc(0), stderr: "" }
+    }
+    const deadline = createJobDeadline(50, () => nowMs)
+
+    const promise = runRender({
+      assetId: "asset123",
+      sourceUrl,
+      mode: "preview",
+      cropPlanAssetId: "asset123",
+      previewFrameCount: 0,
+      deps: { runCommand: slowRunCommand, storage, deadline },
+    })
+    await expect(promise).rejects.toThrow(JobDeadlineExceededError)
+    await expect(promise).rejects.toThrow(/job deadline exceeded/)
+
+    // Only segment 1 was invoked before the deadline tripped.
+    expect(ffmpegCalls).toHaveLength(1)
+  })
+
+  it("caps each invocation's timeoutMs at the remaining job budget", async () => {
+    let nowMs = 0
+    const timeouts: Array<number | undefined> = []
+    const cappedRunCommand: RunCommand = async (command, args, options) => {
+      timeouts.push(options?.timeoutMs)
+      await runCommand(command, args, options)
+      nowMs += 30
+      return { stdout: Buffer.alloc(0), stderr: "" }
+    }
+
+    const result = await runRender({
+      assetId: "asset123",
+      sourceUrl,
+      mode: "preview",
+      cropPlanAssetId: "asset123",
+      previewFrameCount: 0,
+      deps: {
+        runCommand: cappedRunCommand,
+        storage,
+        timeoutMs: 1_000,
+        deadline: createJobDeadline(100, () => nowMs),
+      },
+    })
+
+    // seg1 at t=0 → min(1000, 100); seg2 at t=30 → 70; concat at t=60 → 40.
+    expect(timeouts).toEqual([100, 70, 40])
+    expect(result.report.segmentsRendered).toBe(2)
   })
 })

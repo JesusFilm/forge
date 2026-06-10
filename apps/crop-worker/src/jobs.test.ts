@@ -32,11 +32,11 @@ describe("createJobQueue", () => {
     const second = deferred<JobResult>()
     const order: string[] = []
 
-    const submitFirst = queue.submit("fingerprint", async () => {
+    const submitFirst = queue.submit("fingerprint", "fp:a", async () => {
       order.push("first-started")
       return first.promise
     })
-    const submitSecond = queue.submit("render", async () => {
+    const submitSecond = queue.submit("render", "render:a", async () => {
       order.push("second-started")
       return second.promise
     })
@@ -63,9 +63,23 @@ describe("createJobQueue", () => {
     const queue = createJobQueue({ concurrency: 1, limit: 2 })
     const blocker = deferred<JobResult>()
 
-    const first = queue.submit("render", async () => blocker.promise)
-    const second = queue.submit("render", async () => blocker.promise)
-    const third = queue.submit("render", async () => blocker.promise)
+    // Distinct dedupe keys: identical keys would re-attach (deduped) instead
+    // of exercising the queue_full bound.
+    const first = queue.submit(
+      "render",
+      "render:a",
+      async () => blocker.promise,
+    )
+    const second = queue.submit(
+      "render",
+      "render:b",
+      async () => blocker.promise,
+    )
+    const third = queue.submit(
+      "render",
+      "render:c",
+      async () => blocker.promise,
+    )
 
     expect(first.ok).toBe(true)
     expect(second.ok).toBe(true)
@@ -74,16 +88,90 @@ describe("createJobQueue", () => {
     // Finishing a job frees capacity for new submissions.
     blocker.resolve(fakeResult("a"))
     await settle()
-    const fourth = queue.submit("render", async () => fakeResult("b"))
+    const fourth = queue.submit("render", "render:d", async () =>
+      fakeResult("b"),
+    )
     expect(fourth.ok).toBe(true)
+  })
+
+  it("re-attaches to an ACTIVE job with the same dedupe key instead of enqueueing a duplicate", async () => {
+    const queue = createJobQueue({ concurrency: 1, limit: 10 })
+    const running = deferred<JobResult>()
+    const queued = deferred<JobResult>()
+
+    const first = queue.submit(
+      "render",
+      "render:a",
+      async () => running.promise,
+    )
+    const second = queue.submit(
+      "render",
+      "render:b",
+      async () => queued.promise,
+    )
+    if (!first.ok || !second.ok) throw new Error("submit failed")
+    await settle()
+
+    // Duplicate of the RUNNING job re-attaches.
+    const duplicateOfRunning = queue.submit("render", "render:a", async () =>
+      fakeResult("dup"),
+    )
+    expect(duplicateOfRunning).toEqual({
+      ok: true,
+      job: first.job,
+      deduped: true,
+    })
+    expect(duplicateOfRunning.ok && duplicateOfRunning.job.workerJobId).toBe(
+      first.job.workerJobId,
+    )
+
+    // Duplicate of the QUEUED job re-attaches too.
+    const duplicateOfQueued = queue.submit("render", "render:b", async () =>
+      fakeResult("dup"),
+    )
+    expect(duplicateOfQueued).toEqual({
+      ok: true,
+      job: second.job,
+      deduped: true,
+    })
+  })
+
+  it("does not dedupe against completed or failed records (genuine reruns re-enqueue)", async () => {
+    const queue = createJobQueue({ concurrency: 1, limit: 10 })
+
+    const completed = queue.submit("render", "render:a", async () =>
+      fakeResult("ok"),
+    )
+    const failed = queue.submit("render", "render:b", async () => {
+      throw new Error("boom")
+    })
+    if (!completed.ok || !failed.ok) throw new Error("submit failed")
+    await settle()
+    expect(queue.get(completed.job.workerJobId)!.status).toBe("completed")
+    expect(queue.get(failed.job.workerJobId)!.status).toBe("failed")
+
+    const rerunCompleted = queue.submit("render", "render:a", async () =>
+      fakeResult("again"),
+    )
+    const rerunFailed = queue.submit("render", "render:b", async () =>
+      fakeResult("again"),
+    )
+    if (!rerunCompleted.ok || !rerunFailed.ok) throw new Error("submit failed")
+
+    expect(rerunCompleted.deduped).toBe(false)
+    expect(rerunCompleted.job.workerJobId).not.toBe(completed.job.workerJobId)
+    expect(rerunFailed.deduped).toBe(false)
+    expect(rerunFailed.job.workerJobId).not.toBe(failed.job.workerJobId)
   })
 
   it("contains async failures: job marked failed, queue keeps processing", async () => {
     const queue = createJobQueue({ concurrency: 1, limit: 10 })
-    const failing = queue.submit("render", async () => {
+    const failing = queue.submit("render", "render:a", async () => {
       throw new Error("render exploded")
     })
-    const following = queue.submit("fingerprint", async () => fakeResult("ok"))
+    const following = queue.submit("fingerprint", "fp:a", async () =>
+      fakeResult("ok"),
+    )
     if (!failing.ok || !following.ok) throw new Error("submit failed")
 
     await settle()
@@ -103,8 +191,10 @@ describe("createJobQueue", () => {
       throw new Error("sync boom")
     }) as unknown as JobExecutor
 
-    const failing = queue.submit("render", syncThrow)
-    const following = queue.submit("render", async () => fakeResult("ok"))
+    const failing = queue.submit("render", "render:a", syncThrow)
+    const following = queue.submit("render", "render:b", async () =>
+      fakeResult("ok"),
+    )
     if (!failing.ok || !following.ok) throw new Error("submit failed")
 
     await settle()
@@ -119,10 +209,14 @@ describe("createJobQueue", () => {
     const gate = deferred<JobResult>()
     let report!: Parameters<JobExecutor>[0]["onProgress"]
 
-    const submitted = queue.submit("render", async ({ onProgress }) => {
-      report = onProgress
-      return gate.promise
-    })
+    const submitted = queue.submit(
+      "render",
+      "render:a",
+      async ({ onProgress }) => {
+        report = onProgress
+        return gate.promise
+      },
+    )
     if (!submitted.ok) throw new Error("submit failed")
 
     await settle()
@@ -148,7 +242,9 @@ describe("createJobQueue", () => {
     const queue = createJobQueue({ concurrency: 1, limit: 10 })
     expect(queue.get("wj_missing")).toBeUndefined()
 
-    const submitted = queue.submit("fingerprint", async () => fakeResult("a"))
+    const submitted = queue.submit("fingerprint", "fp:a", async () =>
+      fakeResult("a"),
+    )
     if (!submitted.ok) throw new Error("submit failed")
     expect(submitted.job.workerJobId).toMatch(/^wj_[0-9a-f-]{36}$/)
     expect(submitted.job.status).toBe("queued")

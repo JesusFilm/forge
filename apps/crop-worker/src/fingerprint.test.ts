@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { createJobDeadline, JobDeadlineExceededError } from "./deadline.js"
 import { MissingBinaryError, type RunCommand } from "./ffmpeg.js"
 import {
   buildShots,
@@ -155,6 +156,7 @@ describe("pickRepresentativeHashes", () => {
 
 describe("runFingerprint", () => {
   const sourceUrl = "https://stream.example.test/pb.m3u8"
+  const whitelist = "https,tls,tcp,crypto,hls"
 
   function buildFrame(row: number[]): Buffer {
     return Buffer.from(Array(8).fill(row).flat())
@@ -181,6 +183,8 @@ describe("runFingerprint", () => {
 
       if (args.includes("null")) {
         expect(args).toEqual([
+          "-protocol_whitelist",
+          whitelist,
           "-i",
           sourceUrl,
           "-vf",
@@ -201,6 +205,8 @@ describe("runFingerprint", () => {
       }
 
       expect(args).toEqual([
+        "-protocol_whitelist",
+        whitelist,
         "-i",
         sourceUrl,
         "-vf",
@@ -233,6 +239,7 @@ describe("runFingerprint", () => {
         storage,
         sceneThreshold: 0.3,
         minShotSeconds: 1.5,
+        protocolWhitelist: whitelist,
         now: () => new Date("2026-06-09T00:00:00.000Z"),
       },
     })
@@ -317,6 +324,51 @@ describe("runFingerprint", () => {
         deps: { runCommand, storage },
       }),
     ).rejects.toThrow(MissingBinaryError)
+    expect(storage.writes).toHaveLength(0)
+  })
+
+  it("fails with JobDeadlineExceededError between passes and caps the probe timeout at the remaining budget", async () => {
+    const storage = createMemoryStorage()
+    let nowMs = 0
+    const timeouts: Array<number | undefined> = []
+    const commands: string[] = []
+    // Each invocation "takes" 60ms against a 100ms job budget: probe + pass 1
+    // fit, the dhash pass must never be invoked.
+    const runCommand: RunCommand = async (command, _args, options = {}) => {
+      commands.push(command)
+      timeouts.push(options.timeoutMs)
+      nowMs += 60
+      if (command === "ffprobe") {
+        return {
+          stdout: Buffer.from(
+            JSON.stringify({
+              streams: [{ codec_type: "video", width: 1920, height: 1080 }],
+              format: { duration: "10" },
+            }),
+          ),
+          stderr: "",
+        }
+      }
+      return { stdout: Buffer.alloc(0), stderr: "" }
+    }
+
+    const promise = runFingerprint({
+      assetId: "asset123",
+      sourceUrl,
+      deps: {
+        runCommand,
+        storage,
+        timeoutMs: 1_000,
+        deadline: createJobDeadline(100, () => nowMs),
+      },
+    })
+    await expect(promise).rejects.toThrow(JobDeadlineExceededError)
+    await expect(promise).rejects.toThrow(/job deadline exceeded/)
+
+    expect(commands).toEqual(["ffprobe", "ffmpeg"])
+    // Probe at t=0: min(120s default cap, 100 remaining); pass 1 at t=60:
+    // min(1000, 40).
+    expect(timeouts).toEqual([100, 40])
     expect(storage.writes).toHaveLength(0)
   })
 })

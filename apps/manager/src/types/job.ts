@@ -108,12 +108,20 @@ export type SmartCropUsageSummary = {
   outputTokens: number
 }
 
+// `qa` carries either a real verdict or the reason the QA step was skipped
+// as advisory (mastra config gap such as frame_host_not_allowed — a config
+// problem, not a content verdict).
+export type SmartCropQaSummary = {
+  verdict?: SmartCropQaVerdict
+  unavailableReason?: string
+}
+
 export type SmartCropJobReport = {
   domain: "smart_crop"
   kind: SmartCropKind
   phase: SmartCropPhase
   alignment?: SmartCropAlignmentSummary
-  qa?: { verdict: SmartCropQaVerdict }
+  qa?: SmartCropQaSummary
   plan?: SmartCropPlanSummary
   output?: SmartCropOutputSummary
   usage?: SmartCropUsageSummary
@@ -224,6 +232,10 @@ export type TranscriptionRoutingReport = {
 
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
+  // Live crop-worker render progress (0..1) + human-readable message,
+  // written throttled by the smart-crop workflow steps.
+  progress?: number
+  message?: string
 }
 
 export interface JobStepState {

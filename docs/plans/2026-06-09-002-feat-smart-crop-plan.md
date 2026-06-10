@@ -206,6 +206,24 @@ Producer: manager (from mastra align response). Consumer: crop-worker.
 ```
 
 - `mappingMethod` ∈ `"identical-duration" | "shot-sequence"` (MVP tiers).
+- Manager additionally stamps an additive `provenance` block
+  (`{ canonicalPlanGeneratedAt, canonicalFingerprintGeneratedAt, localizedFingerprintGeneratedAt }`)
+  when writing the map; the align step only reuses an existing map when this
+  provenance matches the current artifacts (legacy maps without provenance are
+  recomputed). crop-worker reads the map with a loose schema, so the extra
+  field is wire-safe.
+
+### 3b. Manager-internal working artifacts (not cross-app contracts)
+
+- `{assetId}/smart-crop-plan-progress-v1.json` — `kind: "smart-crop-plan-progress"`;
+  per-batch checkpoint of the plan step (`fingerprintGeneratedAt`, `batchSize`,
+  `totalBatches`, `completedBatches`, `segments`, `usage`, `model`). Lets a
+  retried/restarted plan step resume from the first incomplete mastra batch
+  instead of redoing all AI calls; ignored once the final plan exists.
+- `{assetId}/smart-crop-mux-output-v1.json` — durable record of the created
+  output Mux asset (`muxAssetId`, `ready`, `playbackId?`), written immediately
+  after `createMuxAsset` and BEFORE readiness polling so a retry resumes
+  polling the same asset instead of creating a duplicate.
 
 ### 4. QA report — `{assetId}/smart-crop-qa-9x16-v1.json`
 
@@ -305,8 +323,19 @@ unset in production, non-production bypass when unset; 401 on bad bearer).
 - `render.mode` ∈ `"preview" | "full"`. Preview renders up to
   `CROP_WORKER_PREVIEW_MAX_SEGMENTS` (default 6) segments evenly sampled
   across the plan, capped at `CROP_WORKER_PREVIEW_MAX_SECONDS` (default 90).
-- Response: `{ "workerJobId": "wj_...", "status": "queued" }`.
-- 409 `{ "error": "queue_full" }` when the bounded queue is full.
+- Response: `{ "workerJobId": "wj_...", "status": "queued" | "running" }` —
+  submissions are idempotent for ACTIVE jobs: an existing queued/running job
+  with the same logical identity (kind + assetId, plus render mode) is
+  returned instead of enqueuing a duplicate (manager restarts/retries
+  re-attach rather than doubling multi-hour ffmpeg load). Completed/failed
+  records do not dedupe.
+- 409 `{ "error": "queue_full" }` when the bounded queue is full; manager
+  waits 30s and resubmits (bounded, 10 attempts) before failing the step.
+- Source URLs are restricted by an ffmpeg `-protocol_whitelist`
+  (production default `https,tls,tcp,crypto,hls`; `file` added outside
+  production for local smokes) and a production-only https schema check.
+- Each job runs under a total deadline strictly below manager's poll ceiling
+  (fingerprint/preview 25min vs 30min; full render 5.5h vs 6h).
 
 ### `GET /jobs/{workerJobId}`
 
@@ -413,8 +442,14 @@ Shared failure reasons: `invalid_input | provider_config_missing | provider_auth
   `smart_crop_align` → `smart_crop_preview_render` → `smart_crop_qa` →
   `smart_crop_render` → `smart_crop_mux_output`.
 - Steps idempotent: each checks `artifactExists` (and `force` option) before
-  recomputing; Mux output step checks the job metadata for an existing output
-  asset id before creating a new one.
+  recomputing — skip paths parse and validate the existing artifact and
+  recompute when malformed or provenance-stale. The Mux output step records
+  the created asset in `smart-crop-mux-output-v1.json` before readiness
+  polling and resumes that asset on retry (no duplicates). Deterministic
+  failures (gate failure, plan not approved, dimension mismatch, malformed
+  artifacts, non-retryable mastra reasons) throw the workflow SDK's
+  `FatalError` so they are never step-retried; only transient errors use SDK
+  retries.
 - New `WorkflowStepName` members (manager-side unions + zod enum + step
   descriptions): `smart_crop_fingerprint`, `smart_crop_plan`,
   `smart_crop_align`, `smart_crop_preview_render`, `smart_crop_qa`,
@@ -441,7 +476,10 @@ A `smartCrop` **metadata artifact entry** mirrors live phase data for the UI:
 - `POST /api/smart-crop/jobs/{id}/approve` — `{ "action": "approve" | "reject" }`
   → updates plan artifact `qa` block + job metadata.
 - `POST /api/smart-crop/jobs/{id}/retry` — relaunches the workflow for failed
-  jobs (idempotent steps skip completed work).
+  jobs (idempotent steps skip completed work). Accepts an optional lenient
+  `{ "force": true }` body to regenerate artifacts — the operator escape
+  hatch for stored QA `fail` verdicts and gate failures. Guarded against
+  double-submits (30s in-flight TTL → 409).
 - Artifact downloads reuse `/api/jobs/{id}/artifacts/{logicalKey}`:
   `job-artifacts.ts` gains `mp4`/`jpg` exts + smart-crop logical keys.
 
@@ -456,7 +494,8 @@ A `smartCrop` **metadata artifact entry** mirrors live phase data for the UI:
   (S3 mode only; returns null in local fallback → QA/Mux steps degrade to
   skipped with reason).
 - Mux output: `createMuxAsset({ inputUrl: presignedUrl, passthrough: jobId })`
-  - poll `getMuxAsset` until ready (bounded 10min).
+  then poll `getMuxAsset` until ready (bounded 60min), with the asset id
+  durably recorded before polling (see artifact 3b).
 
 ### UI
 
@@ -469,20 +508,23 @@ A `smartCrop` **metadata artifact entry** mirrors live phase data for the UI:
 
 ## Env vars (all `.optional()` at schema load)
 
-| App         | Var                                                                    | Purpose                                                        |
-| ----------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| manager     | `CROP_WORKER_BASE_URL`                                                 | crop-worker base URL                                           |
-| manager     | `CROP_WORKER_API_KEY`                                                  | caller-side single bearer for crop-worker                      |
-| manager     | `MASTRA_SMART_CROP_TIMEOUT_MS`                                         | per-call mastra timeout (default 120000)                       |
-| mastra      | `SMART_CROP_PLAN_MODEL`                                                | default `qwen/qwen2.5-vl-72b-instruct`                         |
-| mastra      | `SMART_CROP_QA_MODEL`                                                  | default `google/gemini-2.5-flash`                              |
-| mastra      | `SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`                                   | CSV, default `image.mux.com`                                   |
-| crop-worker | `PORT`                                                                 | default 3011                                                   |
-| crop-worker | `CROP_WORKER_API_KEYS`                                                 | receiver-side CSV allowlist                                    |
-| crop-worker | `RAILWAY_S3_*`                                                         | same five names as manager; `.tmp/artifacts` fallback          |
-| crop-worker | `CROP_WORKER_MAX_CONCURRENT_JOBS`                                      | default 1                                                      |
-| crop-worker | `CROP_WORKER_PREVIEW_MAX_SEGMENTS` / `CROP_WORKER_PREVIEW_MAX_SECONDS` | preview sampling caps                                          |
-| crop-worker | `CROP_WORKER_FFMPEG_TIMEOUT_MS`                                        | per-invocation ceiling (default 6h render / 30min fingerprint) |
+| App         | Var                                                                                                                               | Purpose                                                                    |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| manager     | `CROP_WORKER_BASE_URL`                                                                                                            | crop-worker base URL                                                       |
+| manager     | `CROP_WORKER_API_KEY`                                                                                                             | caller-side single bearer for crop-worker                                  |
+| manager     | `MASTRA_SMART_CROP_TIMEOUT_MS`                                                                                                    | per-call mastra timeout (default 120000)                                   |
+| mastra      | `SMART_CROP_PLAN_MODEL`                                                                                                           | default `qwen/qwen2.5-vl-72b-instruct`                                     |
+| mastra      | `SMART_CROP_QA_MODEL`                                                                                                             | default `google/gemini-2.5-flash`                                          |
+| mastra      | `SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`                                                                                              | CSV, default `image.mux.com`                                               |
+| crop-worker | `PORT`                                                                                                                            | default 3011                                                               |
+| crop-worker | `CROP_WORKER_API_KEYS`                                                                                                            | receiver-side CSV allowlist                                                |
+| crop-worker | `RAILWAY_S3_*`                                                                                                                    | same five names as manager; `.tmp/artifacts` fallback                      |
+| crop-worker | `CROP_WORKER_MAX_CONCURRENT_JOBS`                                                                                                 | default 1                                                                  |
+| crop-worker | `CROP_WORKER_PREVIEW_MAX_SEGMENTS` / `CROP_WORKER_PREVIEW_MAX_SECONDS`                                                            | preview sampling caps                                                      |
+| crop-worker | `CROP_WORKER_FFMPEG_FINGERPRINT_TIMEOUT_MS` / `CROP_WORKER_FFMPEG_RENDER_TIMEOUT_MS`                                              | per-invocation ceilings (30min / 6h)                                       |
+| crop-worker | `CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS` / `CROP_WORKER_RENDER_PREVIEW_JOB_TIMEOUT_MS` / `CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS` | per-JOB deadlines (25min/25min/5.5h), strictly below manager poll ceilings |
+| crop-worker | `CROP_WORKER_SOURCE_PROTOCOL_WHITELIST`                                                                                           | ffmpeg protocol allowlist override (CSV)                                   |
+| manager     | `CROP_WORKER_QUEUE_FULL_RETRY_INTERVAL_MS` / `CROP_WORKER_MAX_QUEUE_FULL_RETRIES`                                                 | queue_full wait-and-resubmit tuning (30s × 10)                             |
 
 Deploy ordering (receiver first): set `CROP_WORKER_API_KEYS` on crop-worker,
 verify 401-not-503 with wrong bearer, then set manager's `CROP_WORKER_*`.

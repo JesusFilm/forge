@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { JobRecord } from "@/types/job"
 
 const {
-  authenticateRequestMock,
+  authenticateOverrideMock,
   getJobMock,
   mergeJobArtifactsMock,
   artifactExistsMock,
   readArtifactMock,
   writeArtifactMock,
 } = vi.hoisted(() => ({
-  authenticateRequestMock: vi.fn(),
+  authenticateOverrideMock: vi.fn(),
   getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
   artifactExistsMock: vi.fn(),
@@ -18,7 +18,7 @@ const {
 }))
 
 vi.mock("@/lib/auth", () => ({
-  authenticateRequest: authenticateRequestMock,
+  authenticateManagerOverrideRequest: authenticateOverrideMock,
 }))
 
 vi.mock("@/lib/state", () => ({
@@ -98,14 +98,24 @@ function postRequest(body: unknown): Request {
 const routeParams = { params: Promise.resolve({ id: "job-1" }) }
 
 beforeEach(() => {
-  authenticateRequestMock.mockReset()
+  authenticateOverrideMock.mockReset()
   getJobMock.mockReset()
   mergeJobArtifactsMock.mockReset()
   artifactExistsMock.mockReset()
   readArtifactMock.mockReset()
   writeArtifactMock.mockReset()
 
-  authenticateRequestMock.mockResolvedValue(null)
+  // Session actor by default — the route records the authenticated identity.
+  authenticateOverrideMock.mockResolvedValue({
+    kind: "session",
+    user: {
+      id: "user-7",
+      username: "Vlad",
+      email: "vlad@example.test",
+      role: { name: "Manager", type: "manager" },
+    },
+    approvedByUserId: "user-7",
+  })
   getJobMock.mockResolvedValue(buildSmartCropJob())
   mergeJobArtifactsMock.mockResolvedValue(buildSmartCropJob())
   artifactExistsMock.mockResolvedValue(true)
@@ -162,7 +172,10 @@ describe("POST /api/smart-crop/jobs/[id]/approve", () => {
     expect(response.status).toBe(400)
   })
 
-  it("approves the plan: updates the artifact qa block and the metadata", async () => {
+  // Deliberately updated: approvedBy used to pin the hardcoded
+  // "manager-operator" constant; the route now records the authenticated
+  // actor (session email, or the api-key service id for bearer callers).
+  it("approves the plan recording the session actor in the qa block", async () => {
     const response = await POST(postRequest({ action: "approve" }), routeParams)
 
     expect(response.status).toBe(200)
@@ -170,7 +183,7 @@ describe("POST /api/smart-crop/jobs/[id]/approve", () => {
     expect(payload.ok).toBe(true)
     expect(payload.qa).toMatchObject({
       status: "approved",
-      approvedBy: "manager-operator",
+      approvedBy: "vlad@example.test",
     })
 
     const writtenPlan = JSON.parse(
@@ -184,7 +197,7 @@ describe("POST /api/smart-crop/jobs/[id]/approve", () => {
       }),
     )
     expect(writtenPlan.qa.status).toBe("approved")
-    expect(writtenPlan.qa.approvedBy).toBe("manager-operator")
+    expect(writtenPlan.qa.approvedBy).toBe("vlad@example.test")
 
     expect(mergeJobArtifactsMock).toHaveBeenCalledWith("job-1", {
       smartCrop: {
@@ -196,6 +209,33 @@ describe("POST /api/smart-crop/jobs/[id]/approve", () => {
         }),
       },
     })
+  })
+
+  it("records the api-key service id for bearer-authenticated callers", async () => {
+    authenticateOverrideMock.mockResolvedValue({
+      kind: "api_key",
+      approvedByUserId: "service:manager-api-key",
+    })
+
+    const response = await POST(postRequest({ action: "approve" }), routeParams)
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      qa: { approvedBy: "service:manager-api-key" },
+    })
+  })
+
+  it("propagates the authenticator's error response", async () => {
+    const { NextResponse } = await import("next/server")
+    authenticateOverrideMock.mockResolvedValue(
+      NextResponse.json(
+        { error: "Interactive Manager session or API key required" },
+        { status: 403 },
+      ),
+    )
+
+    const response = await POST(postRequest({ action: "approve" }), routeParams)
+    expect(response.status).toBe(403)
+    expect(writeArtifactMock).not.toHaveBeenCalled()
   })
 
   it("rejects the plan with qa.status rejected", async () => {

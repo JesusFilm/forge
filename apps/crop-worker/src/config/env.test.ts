@@ -25,6 +25,11 @@ describe("parseEnv", () => {
     expect(env.CROP_WORKER_PREVIEW_MAX_SECONDS).toBe(90)
     expect(env.CROP_WORKER_FFMPEG_FINGERPRINT_TIMEOUT_MS).toBe(1_800_000)
     expect(env.CROP_WORKER_FFMPEG_RENDER_TIMEOUT_MS).toBe(21_600_000)
+    // Per-job budgets: strictly below manager's 30min/30min/6h poll ceilings.
+    expect(env.CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS).toBe(1_500_000)
+    expect(env.CROP_WORKER_RENDER_PREVIEW_JOB_TIMEOUT_MS).toBe(1_500_000)
+    expect(env.CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS).toBe(19_800_000)
+    expect(env.CROP_WORKER_SOURCE_PROTOCOL_WHITELIST).toBeUndefined()
     expect(env.CROP_WORKER_SCENE_THRESHOLD).toBe(0.3)
     expect(env.CROP_WORKER_MIN_SHOT_SECONDS).toBe(1.5)
   })
@@ -48,6 +53,8 @@ describe("parseEnv", () => {
       CROP_WORKER_QUEUE_LIMIT: "25",
       CROP_WORKER_SCENE_THRESHOLD: "0.42",
       CROP_WORKER_MIN_SHOT_SECONDS: "2.5",
+      CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS: "600000",
+      CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS: "7200000",
     })
 
     expect(env.PORT).toBe(4001)
@@ -55,6 +62,19 @@ describe("parseEnv", () => {
     expect(env.CROP_WORKER_QUEUE_LIMIT).toBe(25)
     expect(env.CROP_WORKER_SCENE_THRESHOLD).toBe(0.42)
     expect(env.CROP_WORKER_MIN_SHOT_SECONDS).toBe(2.5)
+    expect(env.CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS).toBe(600_000)
+    expect(env.CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS).toBe(7_200_000)
+  })
+
+  it("passes the protocol whitelist override through and treats empty as unset", () => {
+    expect(
+      parseEnv({ CROP_WORKER_SOURCE_PROTOCOL_WHITELIST: "https,tls,tcp" })
+        .CROP_WORKER_SOURCE_PROTOCOL_WHITELIST,
+    ).toBe("https,tls,tcp")
+    expect(
+      parseEnv({ CROP_WORKER_SOURCE_PROTOCOL_WHITELIST: "" })
+        .CROP_WORKER_SOURCE_PROTOCOL_WHITELIST,
+    ).toBeUndefined()
   })
 
   it("rejects invalid numeric values", () => {

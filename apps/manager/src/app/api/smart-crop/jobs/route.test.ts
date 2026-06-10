@@ -91,7 +91,7 @@ beforeEach(() => {
   updateJobMock.mockResolvedValue(null)
   getMuxAssetMock.mockResolvedValue({
     assetId: "mux-1",
-    playbackId: "pb-resolved",
+    playbackId: "pbresolved",
     status: "ready",
     duration: 60,
   })
@@ -161,6 +161,54 @@ describe("POST /api/smart-crop/jobs", () => {
     expect(payload.error).toContain("playback")
   })
 
+  it("returns 400 for an operator-supplied playbackId with an invalid shape", async () => {
+    const response = await POST(
+      postRequest({
+        kind: "canonical",
+        muxAssetId: "mux-1",
+        playbackId: "pb-1; rm -rf /",
+      }),
+    )
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toBe("Validation failed")
+    expect(launchSmartCropMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when the Mux-resolved playbackId has an invalid shape", async () => {
+    getMuxAssetMock.mockResolvedValue({
+      assetId: "mux-1",
+      playbackId: "pb/../evil",
+      status: "ready",
+      duration: 60,
+    })
+
+    const response = await POST(
+      postRequest({ kind: "canonical", muxAssetId: "mux-1" }),
+    )
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toContain("not a valid Mux playback ID")
+    expect(createJobMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when a localized job would overwrite the canonical artifacts", async () => {
+    const response = await POST(
+      postRequest({
+        kind: "localized",
+        muxAssetId: "mux-uk",
+        assetId: "asset123",
+        canonicalAssetId: "asset123",
+        language: "uk",
+        playbackId: "pbuk",
+      }),
+    )
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toBe("Validation failed")
+    expect(createJobMock).not.toHaveBeenCalled()
+  })
+
   it("returns 400 canonical_plan_missing for localized jobs without a plan", async () => {
     artifactExistsMock.mockResolvedValue(false)
 
@@ -199,7 +247,7 @@ describe("POST /api/smart-crop/jobs", () => {
 
     expect(createJobMock).toHaveBeenCalledWith(
       "mux-1",
-      "pb-resolved",
+      "pbresolved",
       [],
       expect.objectContaining({
         jobOptions: {
@@ -224,7 +272,7 @@ describe("POST /api/smart-crop/jobs", () => {
         jobId: "job-1",
         assetId: "mux-1",
         muxAssetId: "mux-1",
-        playbackId: "pb-resolved",
+        playbackId: "pbresolved",
         cropMode: "speaker",
       }),
     )
@@ -238,7 +286,7 @@ describe("POST /api/smart-crop/jobs", () => {
         assetId: "asset456",
         canonicalAssetId: "asset123",
         language: "uk",
-        playbackId: "pb-uk",
+        playbackId: "pbuk",
       }),
     )
 
@@ -246,7 +294,7 @@ describe("POST /api/smart-crop/jobs", () => {
     expect(getMuxAssetMock).not.toHaveBeenCalled()
     expect(createJobMock).toHaveBeenCalledWith(
       "mux-uk",
-      "pb-uk",
+      "pbuk",
       ["uk"],
       expect.objectContaining({
         jobOptions: {

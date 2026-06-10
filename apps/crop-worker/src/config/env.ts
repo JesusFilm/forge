@@ -37,6 +37,32 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(21_600_000),
+  // Per-JOB deadlines (queue wait + every ffmpeg/ffprobe invocation). Each
+  // default MUST stay strictly below the matching manager poll ceiling in
+  // apps/manager/src/workflows/smartCrop.ts (FINGERPRINT_POLL_TIMEOUT_MS
+  // 30min, PREVIEW_RENDER_POLL_TIMEOUT_MS 30min, FULL_RENDER_POLL_TIMEOUT_MS
+  // 6h) so the worker fails definitively before the caller's budget expires
+  // (root CLAUDE.md: outbound timeout shorter than caller budget). Raise the
+  // pair TOGETHER, worker strictly below manager.
+  CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1_500_000),
+  CROP_WORKER_RENDER_PREVIEW_JOB_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1_500_000),
+  CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(19_800_000),
+  // Optional CSV override for the ffmpeg/ffprobe -protocol_whitelist applied
+  // to attacker-influencable source-URL inputs (see ffmpeg.ts
+  // sourceProtocolWhitelist for the defaults).
+  CROP_WORKER_SOURCE_PROTOCOL_WHITELIST: z.string().min(1).optional(),
   CROP_WORKER_SCENE_THRESHOLD: z.coerce.number().positive().max(1).default(0.3),
   CROP_WORKER_MIN_SHOT_SECONDS: z.coerce.number().positive().default(1.5),
 })
@@ -75,6 +101,18 @@ export function parseEnv(source: EnvSource): Env {
     ),
     CROP_WORKER_FFMPEG_RENDER_TIMEOUT_MS: emptyToUndefined(
       source.CROP_WORKER_FFMPEG_RENDER_TIMEOUT_MS,
+    ),
+    CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS: emptyToUndefined(
+      source.CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS,
+    ),
+    CROP_WORKER_RENDER_PREVIEW_JOB_TIMEOUT_MS: emptyToUndefined(
+      source.CROP_WORKER_RENDER_PREVIEW_JOB_TIMEOUT_MS,
+    ),
+    CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS: emptyToUndefined(
+      source.CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS,
+    ),
+    CROP_WORKER_SOURCE_PROTOCOL_WHITELIST: emptyToUndefined(
+      source.CROP_WORKER_SOURCE_PROTOCOL_WHITELIST,
     ),
     CROP_WORKER_SCENE_THRESHOLD: emptyToUndefined(
       source.CROP_WORKER_SCENE_THRESHOLD,

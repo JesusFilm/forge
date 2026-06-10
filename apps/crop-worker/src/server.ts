@@ -11,6 +11,7 @@ import { createJobsRoute, type JobsRouteOptions } from "./routes/jobs.js"
 export type ServerDependencies = {
   queue?: JobQueue
   auth?: JobsRouteOptions["auth"]
+  nodeEnv?: JobsRouteOptions["nodeEnv"]
   runFingerprintImpl?: JobsRouteOptions["runFingerprintImpl"]
   runRenderImpl?: JobsRouteOptions["runRenderImpl"]
 }
@@ -18,12 +19,14 @@ export type ServerDependencies = {
 export function createHandleRequest({
   queue = createJobQueue(),
   auth,
+  nodeEnv,
   runFingerprintImpl,
   runRenderImpl,
 }: ServerDependencies = {}) {
   const handleJobsRoute = createJobsRoute({
     queue,
     auth,
+    nodeEnv,
     runFingerprintImpl,
     runRenderImpl,
   })
@@ -50,17 +53,41 @@ export function createHandleRequest({
 
 export const handleRequest = createHandleRequest()
 
-export function startServer(port = env.PORT): void {
-  assertRuntimeEnv()
-
-  createServer((request, response) => {
-    void handleRequest(request, response).catch((error: unknown) => {
+// Top-level error boundary. Must never itself throw/reject: if a route
+// failed AFTER writing headers, a second writeHead would raise
+// ERR_HTTP_HEADERS_SENT inside the handler — so check headersSent and fall
+// back to destroying the socket, with a belt-and-braces try/catch.
+export function createRequestListener(handler = handleRequest) {
+  return async function listen(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> {
+    try {
+      await handler(request, response)
+    } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error(
         `[crop-worker] event=request_failed message=${JSON.stringify(message)}`,
       )
-      sendJson(response, 500, { error: "internal_error" })
-    })
+      try {
+        if (response.headersSent) {
+          response.destroy()
+        } else {
+          sendJson(response, 500, { error: "internal_error" })
+        }
+      } catch {
+        response.destroy()
+      }
+    }
+  }
+}
+
+export function startServer(port = env.PORT): void {
+  assertRuntimeEnv()
+
+  const listener = createRequestListener()
+  createServer((request, response) => {
+    void listener(request, response)
   }).listen(port, () => {
     console.log(`crop-worker listening on :${port}`)
   })

@@ -9,6 +9,14 @@ import type { JobKind, JobResult, WorkerJobStatus } from "./types.js"
 export type JobRecord = {
   workerJobId: string
   kind: JobKind
+  /**
+   * Logical job identity used for in-flight dedupe (see submit). Routes
+   * derive it from the request body's stable ids (assetId, mode, plan/map
+   * asset ids) — deliberately NOT the manager jobId, so a re-launched
+   * workflow or operator retry for the same asset re-attaches to the
+   * running job instead of double-rendering.
+   */
+  dedupeKey: string
   status: WorkerJobStatus
   progress: number
   message: string | null
@@ -25,11 +33,11 @@ export type JobExecutor = (context: {
 }) => Promise<JobResult>
 
 export type SubmitOutcome =
-  | { ok: true; job: JobRecord }
+  | { ok: true; job: JobRecord; deduped: boolean }
   | { ok: false; reason: "queue_full" }
 
 export type JobQueue = {
-  submit(kind: JobKind, execute: JobExecutor): SubmitOutcome
+  submit(kind: JobKind, dedupeKey: string, execute: JobExecutor): SubmitOutcome
   get(workerJobId: string): JobRecord | undefined
 }
 
@@ -109,7 +117,21 @@ export function createJobQueue({
   }
 
   return {
-    submit(kind, execute) {
+    submit(kind, dedupeKey, execute) {
+      // In-flight dedupe: a resubmission with the same logical identity
+      // re-attaches to the ACTIVE (queued/running) job instead of enqueueing
+      // a duplicate multi-hour render (manager restarts, SDK step retries,
+      // operator retries). Completed/failed records do NOT dedupe — manager
+      // resubmits after a failure intentionally.
+      for (const existing of jobs.values()) {
+        if (
+          existing.dedupeKey === dedupeKey &&
+          (existing.status === "queued" || existing.status === "running")
+        ) {
+          return { ok: true, job: existing, deduped: true }
+        }
+      }
+
       if (inFlightCount() >= limit) {
         return { ok: false, reason: "queue_full" }
       }
@@ -118,6 +140,7 @@ export function createJobQueue({
       const job: JobRecord = {
         workerJobId: `wj_${randomUUID()}`,
         kind,
+        dedupeKey,
         status: "queued",
         progress: 0,
         message: null,
@@ -130,7 +153,7 @@ export function createJobQueue({
       pending.push({ job, execute })
       queueMicrotask(pump)
 
-      return { ok: true, job }
+      return { ok: true, job, deduped: false }
     },
 
     get(workerJobId) {

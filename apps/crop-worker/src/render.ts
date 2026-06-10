@@ -15,9 +15,11 @@ import {
   type CropPlan,
   type TimelineMap,
 } from "./crop-plan.js"
+import type { JobDeadline } from "./deadline.js"
 import {
   classifyCommandError,
   defaultRunCommand,
+  sourceProtocolWhitelist,
   type RunCommand,
 } from "./ffmpeg.js"
 import { createStorage, type Storage } from "./storage.js"
@@ -54,10 +56,15 @@ export function buildXExpression(
     const x0 = xs[0]!
     const x1 = xs[1]!
     if (x0 === x1) return String(x0)
-    // min(t/D,1) clamps the pan at the segment end. The caller wraps this
-    // expression in single quotes so ffmpeg's filter parser does not split
-    // the filtergraph on the comma inside min(...).
-    return `${x0}+${x1 - x0}*min(t/${durationSeconds},1)`
+    // The full-span lerp shortcut is only valid when the two keyframes sit
+    // exactly at progress 0 and 1; any other pair falls through to the
+    // piecewise path below, which honors the keyframes' progress values.
+    if (sorted[0]!.progress === 0 && sorted[1]!.progress === 1) {
+      // min(t/D,1) clamps the pan at the segment end. The caller wraps this
+      // expression in single quotes so ffmpeg's filter parser does not split
+      // the filtergraph on the comma inside min(...).
+      return `${x0}+${x1 - x0}*min(t/${durationSeconds},1)`
+    }
   }
 
   // Piecewise linear interpolation via nested if(lt(t,...)) expressions.
@@ -95,6 +102,9 @@ export type RenderDependencies = {
   runCommand?: RunCommand
   storage?: Storage
   timeoutMs?: number
+  /** Per-JOB deadline (set at enqueue time); caps every invocation below the remaining budget. */
+  deadline?: JobDeadline
+  protocolWhitelist?: string
   previewMaxSegments?: number
   previewMaxSeconds?: number
   now?: () => Date
@@ -154,6 +164,12 @@ export async function runRender({
   const runCommand = deps.runCommand ?? defaultRunCommand
   const storage = deps.storage ?? createStorage()
   const timeoutMs = deps.timeoutMs ?? env.CROP_WORKER_FFMPEG_RENDER_TIMEOUT_MS
+  const deadline = deps.deadline
+  const protocolWhitelist = deps.protocolWhitelist ?? sourceProtocolWhitelist()
+  // Per-invocation timeout = min(per-invocation cap, remaining job budget);
+  // throws JobDeadlineExceededError once the job deadline has passed.
+  const invocationTimeoutMs = (): number =>
+    deadline ? deadline.capTimeoutMs(timeoutMs) : timeoutMs
   const previewMaxSegments =
     deps.previewMaxSegments ?? env.CROP_WORKER_PREVIEW_MAX_SEGMENTS
   const previewMaxSeconds =
@@ -218,6 +234,8 @@ export async function runRender({
           "ffmpeg",
           [
             "-y",
+            "-protocol_whitelist",
+            protocolWhitelist,
             "-ss",
             String(segment.start),
             "-t",
@@ -242,7 +260,7 @@ export async function runRender({
             "+faststart",
             segmentPath,
           ],
-          { timeoutMs },
+          { timeoutMs: invocationTimeoutMs() },
         )
       } catch (error) {
         throw classifyCommandError(error, "ffmpeg")
@@ -264,6 +282,10 @@ export async function runRender({
     )
     const outputPath = join(tempDir, "output.mp4")
     try {
+      // The concat input is a worker-generated local list file, NOT the
+      // request-supplied source URL — it keeps ffmpeg's default protocol set
+      // (it legitimately needs file access). Do not add the restrictive
+      // source whitelist here.
       await runCommand(
         "ffmpeg",
         [
@@ -278,7 +300,7 @@ export async function runRender({
           "copy",
           outputPath,
         ],
-        { timeoutMs },
+        { timeoutMs: invocationTimeoutMs() },
       )
     } catch (error) {
       throw classifyCommandError(error, "ffmpeg")
@@ -324,7 +346,7 @@ export async function runRender({
               "3",
               framePath,
             ],
-            { timeoutMs },
+            { timeoutMs: invocationTimeoutMs() },
           )
         } catch (error) {
           throw classifyCommandError(error, "ffmpeg")

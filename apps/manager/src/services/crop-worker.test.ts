@@ -325,11 +325,73 @@ describe("runCropWorkerJob", () => {
       { ...CLIENT, fetchImpl },
     )
 
-    expect(result).toMatchObject({ ok: false, reason: "job_lost" })
+    // retryable flipped to false after the bounded resubmit budget is
+    // exhausted: the resubmit loop IS the retry policy for job_lost, so
+    // workflow steps must not compound it with their own retries.
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "job_lost",
+      retryable: false,
+    })
     const submissions = fetchImpl.mock.calls.filter(
       ([, init]) => init?.method === "POST",
     )
     expect(submissions).toHaveLength(3)
+  })
+
+  it("waits out queue_full responses and resubmits until accepted", async () => {
+    let posts = 0
+    const fetchImpl = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          posts += 1
+          if (posts <= 2) {
+            return Response.json({ error: "queue_full" }, { status: 409 })
+          }
+          return Response.json(
+            { workerJobId: "wj_after_wait", status: "queued" },
+            { status: 202 },
+          )
+        }
+        return Response.json(buildSnapshot({ status: "completed" }))
+      },
+    )
+    const sleep = vi.fn(async (_ms: number) => {})
+
+    const result = await runCropWorkerJob(
+      {
+        body,
+        pollTimeoutMs: 60_000,
+        intervalMs: 1_000,
+        sleep,
+      },
+      { ...CLIENT, fetchImpl },
+    )
+
+    expect(result).toMatchObject({ ok: true, data: { status: "completed" } })
+    expect(posts).toBe(3)
+    // One 30s wait per queue_full response before resubmitting.
+    expect(sleep.mock.calls.filter(([ms]) => ms === 30_000)).toHaveLength(2)
+  })
+
+  it("fails with queue_full only after exhausting the bounded waits", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ error: "queue_full" }, { status: 409 }),
+    )
+
+    const result = await runCropWorkerJob(
+      {
+        body,
+        pollTimeoutMs: 60_000,
+        intervalMs: 1_000,
+        sleep: instantSleep,
+      },
+      { ...CLIENT, fetchImpl },
+    )
+
+    expect(result).toMatchObject({ ok: false, reason: "queue_full" })
+    // Initial submit + 10 bounded queue_full retries, no further attempts.
+    expect(fetchImpl).toHaveBeenCalledTimes(11)
   })
 
   it("recovers when a resubmitted job completes", async () => {

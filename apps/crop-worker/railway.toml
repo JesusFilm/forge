@@ -19,6 +19,15 @@ watchPatterns = [
 ]
 
 [deploy]
+# Single replica REQUIRED — the job registry/queue is in-memory (src/jobs.ts).
+# A second replica round-robins manager's GET /jobs/{id} polls onto replicas
+# that never saw the POST, producing spurious 404s that manager classifies as
+# job_lost (bounded resubmit, then terminal failure) while orphaned renders
+# keep burning CPU. Scale throughput via CROP_WORKER_MAX_CONCURRENT_JOBS /
+# CROP_WORKER_QUEUE_LIMIT, not replicas. Railway only honors this file when
+# the service's Config-as-code Path is set — keep the dashboard replica
+# setting at 1 as well.
+numReplicas = 1
 startCommand = "pnpm --filter @forge/crop-worker start"
 healthcheckPath = "/health"
 healthcheckTimeout = 60

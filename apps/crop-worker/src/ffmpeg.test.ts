@@ -6,6 +6,7 @@ import {
   defaultRunCommand,
   MissingBinaryError,
   probeSource,
+  sourceProtocolWhitelist,
   type RunCommand,
 } from "./ffmpeg.js"
 
@@ -87,7 +88,35 @@ describe("classifyCommandError", () => {
   })
 })
 
+describe("sourceProtocolWhitelist", () => {
+  it("returns the HLS-over-HTTPS chain in production", () => {
+    expect(sourceProtocolWhitelist(undefined, "production")).toBe(
+      "https,tls,tcp,crypto,hls",
+    )
+  })
+
+  it("adds file outside production so local-path smokes keep working", () => {
+    expect(sourceProtocolWhitelist(undefined, "development")).toBe(
+      "https,tls,tcp,crypto,hls,file",
+    )
+    expect(sourceProtocolWhitelist(undefined, "test")).toBe(
+      "https,tls,tcp,crypto,hls,file",
+    )
+  })
+
+  it("prefers the env override in any environment", () => {
+    expect(sourceProtocolWhitelist("https,tls,tcp", "production")).toBe(
+      "https,tls,tcp",
+    )
+    expect(sourceProtocolWhitelist("file,pipe", "development")).toBe(
+      "file,pipe",
+    )
+  })
+})
+
 describe("probeSource", () => {
+  const whitelist = "https,tls,tcp,crypto,hls"
+
   const ffprobeJson = {
     streams: [
       { codec_type: "audio", duration: "7200.10" },
@@ -102,6 +131,8 @@ describe("probeSource", () => {
       expect(args).toEqual([
         "-v",
         "error",
+        "-protocol_whitelist",
+        whitelist,
         "-print_format",
         "json",
         "-show_streams",
@@ -119,6 +150,7 @@ describe("probeSource", () => {
     await expect(
       probeSource("https://stream.example.test/pb.m3u8", {
         runCommand: fakeRunCommand(ffprobeJson),
+        protocolWhitelist: whitelist,
       }),
     ).resolves.toEqual({ width: 1920, height: 1080, durationSeconds: 7200.04 })
   })
@@ -130,6 +162,7 @@ describe("probeSource", () => {
           streams: ffprobeJson.streams,
           format: {},
         }),
+        protocolWhitelist: whitelist,
       }),
     ).resolves.toEqual({ width: 1920, height: 1080, durationSeconds: 7199.9 })
   })
@@ -141,6 +174,7 @@ describe("probeSource", () => {
           streams: [{ codec_type: "audio" }],
           format: { duration: "10" },
         }),
+        protocolWhitelist: whitelist,
       }),
     ).rejects.toThrow(/no video stream/)
   })
@@ -152,6 +186,7 @@ describe("probeSource", () => {
           streams: [{ codec_type: "video", width: 100, height: 100 }],
           format: {},
         }),
+        protocolWhitelist: whitelist,
       }),
     ).rejects.toThrow(/no usable duration/)
   })

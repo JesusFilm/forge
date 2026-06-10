@@ -79,9 +79,15 @@ function buildFailedJob(overrides: Partial<JobRecord> = {}): JobRecord {
   }
 }
 
-function postRequest(): Request {
+function postRequest(body?: unknown): Request {
   return new Request("http://example.test/api/smart-crop/jobs/job-1/retry", {
     method: "POST",
+    ...(body !== undefined
+      ? {
+          headers: { "content-type": "application/json" },
+          body: typeof body === "string" ? body : JSON.stringify(body),
+        }
+      : {}),
   })
 }
 
@@ -165,5 +171,57 @@ describe("POST /api/smart-crop/jobs/[id]/retry", () => {
     expect(updateJobMock).toHaveBeenLastCalledWith("job-1", {
       status: "failed",
     })
+  })
+
+  it("threads force:true from the optional body to the relaunch", async () => {
+    const response = await POST(postRequest({ force: true }), routeParams)
+    expect(response.status).toBe(202)
+    expect(launchSmartCropMock).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "canonical", force: true }),
+    )
+  })
+
+  it("keeps force:false for an explicit empty body", async () => {
+    const response = await POST(postRequest({}), routeParams)
+    expect(response.status).toBe(202)
+    expect(launchSmartCropMock).toHaveBeenCalledWith(
+      expect.objectContaining({ force: false }),
+    )
+  })
+
+  it("returns 400 for present-but-invalid bodies", async () => {
+    const invalidJson = await POST(postRequest("{not json"), routeParams)
+    expect(invalidJson.status).toBe(400)
+
+    const invalidShape = await POST(postRequest({ force: "yes" }), routeParams)
+    expect(invalidShape.status).toBe(400)
+    expect(launchSmartCropMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects a concurrent duplicate retry with 409 already_in_flight", async () => {
+    let releaseLaunch: () => void = () => {}
+    launchSmartCropMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseLaunch = resolve
+        }),
+    )
+
+    const first = POST(postRequest(), routeParams)
+    // Give the first request time to claim the in-flight slot.
+    await vi.waitFor(() => {
+      expect(launchSmartCropMock).toHaveBeenCalledTimes(1)
+    })
+
+    const second = await POST(postRequest(), routeParams)
+    expect(second.status).toBe(409)
+    await expect(second.json()).resolves.toMatchObject({
+      reason: "already_in_flight",
+    })
+
+    releaseLaunch()
+    const firstResponse = await first
+    expect(firstResponse.status).toBe(202)
+    expect(launchSmartCropMock).toHaveBeenCalledTimes(1)
   })
 })

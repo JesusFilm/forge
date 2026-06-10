@@ -36,7 +36,8 @@ src/
   server.ts       createHandleRequest DI factory + self-start (not in test)
   routes/jobs.ts  POST /jobs + GET /jobs/{workerJobId}
   auth.ts         CSV bearer allowlist (timing-safe full-list compare)
-  jobs.ts         In-memory job registry + bounded queue
+  jobs.ts         In-memory job registry + bounded queue + in-flight dedupe
+  deadline.ts     Per-job deadline (enqueue-time budget, caps invocations)
   fingerprint.ts  Shot detection + dhash pass + fingerprint artifact
   render.ts       Segment render + concat + frames + render report
   crop-plan.ts    Zod schemas for plan/timeline-map + remap + preview sampling
@@ -55,9 +56,18 @@ outside production an unset allowlist bypasses auth (local dev). Bad/missing
 bearer → 401 `{"error":"unauthorized"}`.
 
 - `GET /health` (unauthenticated) → `{ "ok": true, "service": "crop-worker" }`
-- `POST /jobs` → 202 `{ "workerJobId": "wj_...", "status": "queued" }`;
+- `POST /jobs` → 202 `{ "workerJobId": "wj_...", "status": "queued" | "running" }`;
   400 `invalid_body`, 409 `queue_full`, 413 `body_too_large`. Body is the
-  discriminated `kind: "fingerprint" | "render"` shape from the plan doc.
+  discriminated `kind: "fingerprint" | "render"` shape from the plan doc. In
+  production `source.url` must be a parseable https URL (400 otherwise).
+  **In-flight dedupe:** when an ACTIVE (queued/running) job already exists
+  with the same logical identity — `fingerprint:{assetId}` or
+  `render:{assetId}:{mode}:{cropPlan.assetId}:{timelineMap.assetId ?? ""}`,
+  deliberately NOT the manager `jobId` — the POST re-attaches: 202 with the
+  EXISTING job's `workerJobId` and current status (`event=job_deduped`).
+  Completed/failed records never dedupe (manager resubmits after failure
+  intentionally). This turns manager restarts / SDK step retries / operator
+  retries into re-attaches instead of duplicate multi-hour renders.
 - `GET /jobs/{workerJobId}` → status JSON
   (`status` ∈ `queued | running | completed | failed`, `progress` 0..1,
   `message`, `error`, `result`); 404 `{"error":"not_found"}` for unknown ids.
@@ -68,7 +78,14 @@ report }` where `report` is the render report (render jobs) or the
 **In-memory job state caveat:** the registry and queue are process-local.
 A restart loses all job records; manager treats a 404 poll as a lost job and
 resubmits (bounded). Completed records are retained for the process lifetime
-(small JSON; queue limit bounds growth per restart cycle).
+(small JSON; queue limit bounds growth per restart cycle). **Single replica
+only:** scaling the Railway service to >1 replica round-robins manager's
+status polls onto replicas that never saw the POST, producing spurious 404s
+that manager classifies as `job_lost` (bounded resubmit, then terminal
+failure) while orphaned renders keep burning CPU. `railway.toml` pins
+`numReplicas = 1`; keep the dashboard replica setting at 1 too (the file only
+applies when the service's Config-as-code Path is set). Throughput scaling
+belongs to `CROP_WORKER_MAX_CONCURRENT_JOBS` / `CROP_WORKER_QUEUE_LIMIT`.
 
 Render progress is reported as `segmentsDone/totalSegments * 0.9` with
 message `"Rendering segment X of Y"`; upload + report occupy the final 0.1
@@ -101,9 +118,31 @@ Reads: `{cropPlanAssetId}/smart-crop-plan-9x16-v1.json` and
   `crop=W:H:'X_EXPR':Y,scale=1080:1920:flags=lanczos,setsar=1`. The single
   quotes around the x expression are REQUIRED — `min(t/D,1)` contains a comma
   and an unquoted expression would split the filtergraph. x values are
-  rounded to even integers (yuv420p chroma alignment). More than 2 keyframes
-  use nested `if(lt(t,...))` piecewise lerp; 2 keyframes are the expected
-  case.
+  rounded to even integers (yuv420p chroma alignment). The `min(t/D,1)`
+  full-span lerp fast path applies only to 2 keyframes at exactly progress
+  0 and 1 (the expected case); any other keyframe set — including 2
+  keyframes at other progress values — uses nested `if(lt(t,...))` piecewise
+  lerp that honors the progress values.
+- **Source protocol whitelist:** every ffmpeg/ffprobe invocation that reads
+  the request-supplied `source.url` (probe, both fingerprint passes, render
+  segments) passes `-protocol_whitelist` — `https,tls,tcp,crypto,hls` in
+  production, plus `file` outside production (local-path smokes), overridable
+  via `CROP_WORKER_SOURCE_PROTOCOL_WHITELIST`. Defense-in-depth against
+  `file:`/`concat:`/`data:`/`http:` smuggling on top of the schema-level
+  https check. The concat pass and preview-frame extraction read
+  worker-generated local temp files and keep ffmpeg's default protocol set —
+  do NOT add the restrictive whitelist there.
+- **Per-JOB deadlines:** each job gets a deadline at ENQUEUE time (queue wait
+  counts, matching how manager's poll budget accrues from submission):
+  fingerprint 25min, preview render 25min, full render 5.5h by default
+  (`CROP_WORKER_*_JOB_TIMEOUT_MS`), each strictly below manager's
+  30min/30min/6h poll ceilings in `apps/manager/src/workflows/smartCrop.ts`
+  (root CLAUDE.md: outbound timeout below caller budget — raise the pair
+  together, worker strictly below manager). Before every invocation the
+  per-invocation timeout is capped at the remaining budget; once the budget
+  is exhausted the job fails fast with a typed `JobDeadlineExceededError`
+  ("job deadline exceeded after Xs") so manager gets a definitive `failed`
+  instead of burning its poll ceiling against a stuck slot.
 - The dhash pass assumes frame N of the `fps=1` output corresponds to
   N + 0.5 seconds (approximately mid-second) — documented in
   `src/fingerprint.ts`.
@@ -134,8 +173,12 @@ throws at startup in production when the required set is missing.
 | CROP_WORKER_QUEUE_LIMIT                   | 10             | in-flight cap → 409 `queue_full`                                           |
 | CROP_WORKER_PREVIEW_MAX_SEGMENTS          | 6              | preview sampling cap                                                       |
 | CROP_WORKER_PREVIEW_MAX_SECONDS           | 90             | preview duration cap                                                       |
-| CROP_WORKER_FFMPEG_FINGERPRINT_TIMEOUT_MS | 1800000        | 30min                                                                      |
-| CROP_WORKER_FFMPEG_RENDER_TIMEOUT_MS      | 21600000       | 6h                                                                         |
+| CROP_WORKER_FFMPEG_FINGERPRINT_TIMEOUT_MS | 1800000        | 30min per-invocation cap                                                   |
+| CROP_WORKER_FFMPEG_RENDER_TIMEOUT_MS      | 21600000       | 6h per-invocation cap                                                      |
+| CROP_WORKER_FINGERPRINT_JOB_TIMEOUT_MS    | 1500000        | 25min per-JOB budget; < manager's 30min fingerprint poll ceiling           |
+| CROP_WORKER_RENDER_PREVIEW_JOB_TIMEOUT_MS | 1500000        | 25min per-JOB budget; < manager's 30min preview poll ceiling               |
+| CROP_WORKER_RENDER_FULL_JOB_TIMEOUT_MS    | 19800000       | 5.5h per-JOB budget; < manager's 6h full-render poll ceiling               |
+| CROP_WORKER_SOURCE_PROTOCOL_WHITELIST     | —              | CSV override for the source-URL `-protocol_whitelist` (see FFmpeg notes)   |
 | CROP_WORKER_SCENE_THRESHOLD               | 0.3            | scene-change sensitivity                                                   |
 | CROP_WORKER_MIN_SHOT_SECONDS              | 1.5            | shorter shots merge into the previous shot                                 |
 

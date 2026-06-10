@@ -276,6 +276,14 @@ frames arrive as caller-provided, host-allowlisted https URLs
 (`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`, default `image.mux.com`; https only,
 exact hostname match).
 
+**Production precondition for QA:** the `smart-crop-qa` route receives
+presigned Railway S3 URLs for preview frames, so production must extend
+`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS` with the Railway S3 endpoint hostname
+(the host of manager's `RAILWAY_S3_ENDPOINT`) alongside `image.mux.com`.
+Without it the QA route rejects every frame with `frame_host_not_allowed`;
+manager degrades that to a skipped QA step rather than a failed job, but no
+QA report is produced.
+
 Three bounded synchronous workflows, each with a service route protected by
 `MASTRA_SERVICE_API_KEYS`:
 

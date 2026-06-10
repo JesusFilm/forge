@@ -14,13 +14,17 @@ import { createJob, listJobs, updateJob } from "@/lib/state"
 import type { SmartCropJobOptions } from "@/types/job"
 
 const ASSET_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
+// Mux playback IDs are alphanumeric; the playback id is interpolated into the
+// crop-worker ffmpeg source URL, so validate the shape at the boundary (both
+// operator-supplied and Mux-resolved values).
+const PLAYBACK_ID_PATTERN = /^[a-zA-Z0-9]+$/
 const LANGUAGE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i
 
 const createSmartCropJobSchema = z
   .object({
     kind: z.enum(["canonical", "localized"]),
     muxAssetId: z.string().min(1),
-    playbackId: z.string().min(1).optional(),
+    playbackId: z.string().regex(PLAYBACK_ID_PATTERN).optional(),
     assetId: z.string().regex(ASSET_ID_PATTERN).optional(),
     language: z.string().regex(LANGUAGE_SLUG_PATTERN).optional(),
     canonicalAssetId: z.string().regex(ASSET_ID_PATTERN).optional(),
@@ -44,6 +48,19 @@ const createSmartCropJobSchema = z
           code: "custom",
           path: ["canonicalAssetId"],
           message: "canonicalAssetId is required for localized smart-crop jobs",
+        })
+      }
+      // Localized artifacts live under the localized assetId; sharing the
+      // canonical prefix would silently overwrite canonical artifacts.
+      if (
+        value.canonicalAssetId &&
+        (value.assetId ?? value.muxAssetId) === value.canonicalAssetId
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["assetId"],
+          message:
+            "localized assetId must differ from canonicalAssetId (it would overwrite the canonical smart-crop artifacts) — supply a distinct assetId",
         })
       }
     }
@@ -117,6 +134,17 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+  }
+
+  // Mux-resolved values go through the same shape gate as operator-supplied
+  // ones before being interpolated into crop-worker source URLs.
+  if (!PLAYBACK_ID_PATTERN.test(playbackId)) {
+    return NextResponse.json(
+      {
+        error: `Resolved playback ID for Mux asset ${body.muxAssetId} is not a valid Mux playback ID (alphanumeric)`,
+      },
+      { status: 400 },
+    )
   }
 
   if (body.kind === "localized" && body.canonicalAssetId) {

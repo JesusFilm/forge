@@ -420,11 +420,13 @@ describe("queue limits and unknown jobs", () => {
     })
     expect(first.statusCode).toBe(202)
 
+    // A DIFFERENT asset: resubmitting the same body would re-attach to the
+    // active job (in-flight dedupe) instead of exercising the queue bound.
     const second = await dispatch(handler, {
       method: "POST",
       url: "/jobs",
       headers: authedHeaders,
-      body: fingerprintBody,
+      body: { ...fingerprintBody, assetId: "asset-other" },
     })
     expect(second).toEqual({ statusCode: 409, body: { error: "queue_full" } })
   })
@@ -442,5 +444,268 @@ describe("queue limits and unknown jobs", () => {
         headers: authedHeaders,
       }),
     ).resolves.toEqual({ statusCode: 404, body: { error: "not_found" } })
+  })
+})
+
+describe("in-flight dedupe", () => {
+  function neverResolves(): Promise<never> {
+    return new Promise<never>(() => {})
+  }
+
+  const renderBody = {
+    kind: "render",
+    jobId: "manager-job-render-1",
+    assetId: "asset123",
+    source: { url: "https://stream.mux.com/pb_abc.m3u8" },
+    render: { mode: "preview", cropPlan: { assetId: "asset123" } },
+  }
+
+  it("re-attaches a duplicate POST to the ACTIVE job (202 with the original workerJobId and current status)", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runFingerprintImpl: (async () =>
+        neverResolves()) as unknown as typeof runFingerprint,
+    })
+
+    const first = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    expect(first.statusCode).toBe(202)
+    await settle()
+
+    // Same logical identity, even with a DIFFERENT manager jobId (a
+    // re-launched workflow re-attaches too).
+    const duplicate = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...fingerprintBody, jobId: "manager-job-relaunched" },
+    })
+    expect(duplicate.statusCode).toBe(202)
+    expect(duplicate.body.workerJobId).toBe(first.body.workerJobId)
+    expect(duplicate.body.status).toBe("running")
+  })
+
+  it("does not dedupe after the job completes or fails (manager resubmits intentionally)", async () => {
+    let callCount = 0
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runFingerprintImpl: (async () => {
+        callCount += 1
+        if (callCount === 1) throw new Error("fingerprint exploded")
+        return summary
+      }) as typeof runFingerprint,
+    })
+
+    // First job fails — a rerun with the same identity must NOT dedupe.
+    const failed = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    await settle()
+    const afterFailed = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    expect(afterFailed.statusCode).toBe(202)
+    expect(afterFailed.body.status).toBe("queued")
+    expect(afterFailed.body.workerJobId).not.toBe(failed.body.workerJobId)
+
+    // Second job completes — a rerun must NOT dedupe either.
+    await settle()
+    const afterCompleted = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    expect(afterCompleted.statusCode).toBe(202)
+    expect(afterCompleted.body.workerJobId).not.toBe(
+      afterFailed.body.workerJobId,
+    )
+  })
+
+  it("does not dedupe render jobs across distinct modes", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runRenderImpl: (async () =>
+        neverResolves()) as unknown as typeof runRender,
+    })
+
+    const preview = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: renderBody,
+    })
+    const full = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...renderBody, render: { ...renderBody.render, mode: "full" } },
+    })
+
+    expect(preview.statusCode).toBe(202)
+    expect(full.statusCode).toBe(202)
+    expect(full.body.workerJobId).not.toBe(preview.body.workerJobId)
+  })
+
+  it("does not collide fingerprint and render keys for the same assetId", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runFingerprintImpl: (async () =>
+        neverResolves()) as unknown as typeof runFingerprint,
+      runRenderImpl: (async () =>
+        neverResolves()) as unknown as typeof runRender,
+    })
+
+    const fingerprint = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    const render = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...renderBody, assetId: "asset123" },
+    })
+
+    expect(fingerprint.statusCode).toBe(202)
+    expect(render.statusCode).toBe(202)
+    expect(render.body.workerJobId).not.toBe(fingerprint.body.workerJobId)
+  })
+})
+
+describe("source.url scheme validation", () => {
+  it.each(["file:///app/.env", "http://169.254.169.254/latest/meta-data"])(
+    "rejects %s with 400 in production",
+    async (url) => {
+      const handler = createHandleRequest({
+        queue: createJobQueue({ concurrency: 1, limit: 10 }),
+        auth,
+        nodeEnv: "production",
+      })
+
+      await expect(
+        dispatch(handler, {
+          method: "POST",
+          url: "/jobs",
+          headers: authedHeaders,
+          body: { ...fingerprintBody, source: { url } },
+        }),
+      ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+    },
+  )
+
+  it("rejects unparseable URLs with 400 in production", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      nodeEnv: "production",
+    })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: { ...fingerprintBody, source: { url: "not a url" } },
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+  })
+
+  it("accepts https URLs in production", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      nodeEnv: "production",
+      runFingerprintImpl: (async () => summary) as typeof runFingerprint,
+    })
+
+    const submitted = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    expect(submitted.statusCode).toBe(202)
+  })
+
+  it("accepts non-https strings outside production (local-path smokes)", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth: { apiKeysCsv: "test-key", nodeEnv: "development" },
+      nodeEnv: "development",
+      runFingerprintImpl: (async () => summary) as typeof runFingerprint,
+    })
+
+    const submitted = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...fingerprintBody, source: { url: "/tmp/local-source.mp4" } },
+    })
+    expect(submitted.statusCode).toBe(202)
+  })
+})
+
+describe("per-job deadline wiring", () => {
+  it("threads an enqueue-time deadline into runFingerprint and runRender deps", async () => {
+    const fingerprintInputs: Parameters<typeof runFingerprint>[0][] = []
+    const renderInputs: RunRenderInput[] = []
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 2, limit: 10 }),
+      auth,
+      runFingerprintImpl: (async (input) => {
+        fingerprintInputs.push(input)
+        return summary
+      }) as typeof runFingerprint,
+      runRenderImpl: (async (input) => {
+        renderInputs.push(input)
+        return { artifacts: [], report: renderReport }
+      }) as typeof runRender,
+    })
+
+    await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        kind: "render",
+        jobId: "manager-job-deadline",
+        assetId: "asset456",
+        source: { url: "https://stream.mux.com/pb_abc.m3u8" },
+        render: { mode: "preview", cropPlan: { assetId: "asset123" } },
+      },
+    })
+    await settle()
+
+    expect(fingerprintInputs[0]?.deps?.deadline?.capTimeoutMs).toBeTypeOf(
+      "function",
+    )
+    expect(renderInputs[0]?.deps?.deadline?.capTimeoutMs).toBeTypeOf("function")
+    // Fresh deadlines: the default budgets leave (most of) the budget intact.
+    expect(fingerprintInputs[0]!.deps!.deadline!.remainingMs()).toBeGreaterThan(
+      0,
+    )
   })
 })

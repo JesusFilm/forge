@@ -3,9 +3,12 @@
 // artifact defined in docs/plans/2026-06-09-002-feat-smart-crop-plan.md.
 
 import { env } from "./config/env.js"
+import type { JobDeadline } from "./deadline.js"
 import {
   classifyCommandError,
+  DEFAULT_PROBE_TIMEOUT_MS,
   defaultRunCommand,
+  sourceProtocolWhitelist,
   type RunCommand,
 } from "./ffmpeg.js"
 import { probeSource, type ProbeResult } from "./ffmpeg.js"
@@ -141,6 +144,9 @@ export type FingerprintDependencies = {
   sceneThreshold?: number
   minShotSeconds?: number
   timeoutMs?: number
+  /** Per-JOB deadline (set at enqueue time); caps every invocation below the remaining budget. */
+  deadline?: JobDeadline
+  protocolWhitelist?: string
   now?: () => Date
 }
 
@@ -156,9 +162,20 @@ export async function runFingerprint({
   const minShotSeconds = deps.minShotSeconds ?? env.CROP_WORKER_MIN_SHOT_SECONDS
   const timeoutMs =
     deps.timeoutMs ?? env.CROP_WORKER_FFMPEG_FINGERPRINT_TIMEOUT_MS
+  const deadline = deps.deadline
+  const protocolWhitelist = deps.protocolWhitelist ?? sourceProtocolWhitelist()
   const now = deps.now ?? (() => new Date())
 
-  const source: ProbeResult = await probe(sourceUrl, { runCommand })
+  // Per-invocation timeout = min(per-invocation cap, remaining job budget);
+  // throws JobDeadlineExceededError once the job deadline has passed.
+  const invocationTimeoutMs = (capMs: number): number =>
+    deadline ? deadline.capTimeoutMs(capMs) : capMs
+
+  const source: ProbeResult = await probe(sourceUrl, {
+    runCommand,
+    timeoutMs: invocationTimeoutMs(DEFAULT_PROBE_TIMEOUT_MS),
+    protocolWhitelist,
+  })
 
   // Pass 1 — shot boundaries from the scene-change filter's showinfo lines.
   const boundaries: number[] = []
@@ -166,6 +183,8 @@ export async function runFingerprint({
     await runCommand(
       "ffmpeg",
       [
+        "-protocol_whitelist",
+        protocolWhitelist,
         "-i",
         sourceUrl,
         "-vf",
@@ -176,7 +195,7 @@ export async function runFingerprint({
         "-",
       ],
       {
-        timeoutMs,
+        timeoutMs: invocationTimeoutMs(timeoutMs),
         onStderrLine: (line) => {
           const ptsTime = parsePtsTime(line)
           if (ptsTime != null) {
@@ -202,6 +221,8 @@ export async function runFingerprint({
     await runCommand(
       "ffmpeg",
       [
+        "-protocol_whitelist",
+        protocolWhitelist,
         "-i",
         sourceUrl,
         "-vf",
@@ -211,7 +232,7 @@ export async function runFingerprint({
         "pipe:1",
       ],
       {
-        timeoutMs,
+        timeoutMs: invocationTimeoutMs(timeoutMs),
         onStdoutChunk: (chunk) => {
           pending = pending.byteLength ? Buffer.concat([pending, chunk]) : chunk
           while (pending.byteLength >= DHASH_FRAME_BYTES) {

@@ -239,6 +239,38 @@ job-loss).
   `POST /api/smart-crop/jobs/{id}/approve` (canonical plan qa block),
   `POST /api/smart-crop/jobs/{id}/retry` (failed jobs; idempotent steps skip
   completed artifacts). UI at `/dashboard/smart-crop`.
+- **Force retry escape hatch:** `POST /api/smart-crop/jobs/{id}/retry` accepts
+  an optional `{ "force": true }` body that opts the relaunch out of artifact
+  reuse (every step recomputes). This is the recovery path for deterministic
+  re-fails — a stored QA verdict `fail` or an alignment gate failure replays
+  from the existing artifact on a plain retry forever. Bodiless POST (the UI
+  default) keeps `force: false`.
+- **Step error classification:** deterministic step failures
+  (missing/invalid artifacts, `canonical_plan_not_approved`, `retryable:false`
+  client envelopes) throw the workflow SDK's `FatalError` so the runtime does
+  NOT auto-retry them (default is 3x); transient failures keep throwing
+  `SmartCropStepError` and ride the SDK retries.
+- **Mux output idempotency:** the Mux output step records the created asset id
+  in `{assetId}/smart-crop-mux-output-v1.json` IMMEDIATELY after
+  `createMuxAsset` (before readiness polling, `ready: false`). Retries resume
+  polling the recorded asset instead of creating a duplicate; a resumed asset
+  in status `errored` is replaced by a fresh one (record overwritten).
+- **Plan checkpointing:** the plan step persists per-batch progress to
+  `{assetId}/smart-crop-plan-progress-v1.json` (keyed to the fingerprint's
+  `generatedAt`); retries resume from the first incomplete vision batch
+  instead of re-paying completed LLM calls. `force` ignores the checkpoint.
+- **QA is advisory:** mastra config-shaped QA failures
+  (`frame_host_not_allowed`, `provider_config_missing`, `config_missing`,
+  `auth_failed`, `provider_auth_failed`) degrade the QA step to `skipped` with
+  the reason in the step note + `metadata.qa.unavailableReason` — renders and
+  Mux output proceed. A genuine verdict `fail` still fails the job.
+- **Timeline-map provenance:** the align step stamps
+  `provenance: { canonicalPlanGeneratedAt, canonicalFingerprintGeneratedAt,
+localizedFingerprintGeneratedAt }` into the timeline-map artifact and only
+  reuses an existing map when the provenance matches the current artifacts
+  (legacy maps without provenance are recomputed). It also fails
+  deterministically with `source_dimensions_mismatch` when the canonical plan
+  and localized fingerprint disagree on source width/height.
 - Steps are `smart_crop_*` members of `WorkflowStepName`; initial inventories
   come from `buildSmartCropInitialSteps(kind)` in `src/lib/workflow-steps.ts`.
 - **Storage prefix caveat:** smart-crop artifacts live under
@@ -262,7 +294,13 @@ when unset):
 crop-worker, verify a wrong bearer gets 401 (not 503), THEN set manager's
 `CROP_WORKER_BASE_URL` + `CROP_WORKER_API_KEY`. Reverse order produces a dead
 minute where manager's first call 401s. Mastra needs no new bearer (existing
-`MASTRA_SERVICE_API_KEY` pair).
+`MASTRA_SERVICE_API_KEY` pair), but **production mastra DOES need
+`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS=image.mux.com,<host of manager's
+RAILWAY_S3_ENDPOINT>` set BEFORE the first job** — QA frames are presigned
+Railway S3 URLs, and mastra's default allowlist (`image.mux.com` only)
+rejects every QA call with `frame_host_not_allowed`. Manager degrades that to
+a skipped (advisory) QA step rather than a failed job, but the QA gap stays
+until the allowlist is extended.
 
 ## Common pitfalls
 

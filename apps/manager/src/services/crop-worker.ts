@@ -17,6 +17,11 @@ const CROP_WORKER_HTTP_TIMEOUT_MS = 15_000
 export const CROP_WORKER_POLL_INTERVAL_MS = 5_000
 export const CROP_WORKER_MAX_RESUBMITS = 2
 
+// queue_full (409) is a normal operational state while long renders drain the
+// worker's bounded queue — wait and resubmit instead of failing the job.
+export const CROP_WORKER_QUEUE_FULL_RETRY_INTERVAL_MS = 30_000
+export const CROP_WORKER_MAX_QUEUE_FULL_RETRIES = 10
+
 export type CropWorkerJobKind = "fingerprint" | "render"
 
 export type CropWorkerRenderMode = "preview" | "full"
@@ -396,8 +401,37 @@ export type RunCropWorkerJobInput = {
   sleep?: (ms: number) => Promise<void>
 }
 
+// Submits one job, waiting out queue_full (409) responses: up to
+// maxQueueFullRetries resubmissions spaced queueFullRetryIntervalMs apart
+// before giving up with the queue_full envelope. This wait axis is separate
+// from the job_lost resubmit counter in runCropWorkerJob.
+async function submitWithQueueFullBackoff(
+  input: RunCropWorkerJobInput,
+  options: CropWorkerClientOptions,
+): Promise<CropWorkerEnvelope<CropWorkerSubmitAccepted>> {
+  const sleep = input.sleep ?? defaultSleep
+
+  let submitted = await submitCropWorkerJob(input.body, options)
+  for (
+    let queueFullRetry = 0;
+    !submitted.ok &&
+    submitted.reason === "queue_full" &&
+    queueFullRetry < CROP_WORKER_MAX_QUEUE_FULL_RETRIES;
+    queueFullRetry += 1
+  ) {
+    console.log(
+      `[crop-worker] event=queue_full_wait kind=${input.body.kind} assetId=${input.body.assetId} retry=${queueFullRetry + 1} waitMs=${CROP_WORKER_QUEUE_FULL_RETRY_INTERVAL_MS}`,
+    )
+    await sleep(CROP_WORKER_QUEUE_FULL_RETRY_INTERVAL_MS)
+    submitted = await submitCropWorkerJob(input.body, options)
+  }
+
+  return submitted
+}
+
 // Submit + poll with bounded resubmission when the worker loses the job
-// (in-memory state, 404 on poll). Total submissions <= 1 + maxResubmits.
+// (in-memory state, 404 on poll). Total submissions <= 1 + maxResubmits
+// (each submission additionally rides out queue_full waits).
 export async function runCropWorkerJob(
   input: RunCropWorkerJobInput,
   options: CropWorkerClientOptions = {},
@@ -406,7 +440,7 @@ export async function runCropWorkerJob(
 
   let lastFailure: CropWorkerFailure | null = null
   for (let attempt = 0; attempt <= maxResubmits; attempt += 1) {
-    const submitted = await submitCropWorkerJob(input.body, options)
+    const submitted = await submitWithQueueFullBackoff(input, options)
     if (!submitted.ok) {
       return submitted
     }
@@ -436,12 +470,15 @@ export async function runCropWorkerJob(
     )
   }
 
-  return (
-    lastFailure ?? {
-      ok: false,
-      reason: "job_lost",
-      messages: ["crop-worker lost the job after bounded resubmissions"],
-      retryable: false,
-    }
-  )
+  // The bounded resubmit budget IS the retry policy for job_lost — advertise
+  // retryable:false so callers (workflow steps) don't compound it with their
+  // own retries.
+  return lastFailure
+    ? { ...lastFailure, retryable: false }
+    : {
+        ok: false,
+        reason: "job_lost",
+        messages: ["crop-worker lost the job after bounded resubmissions"],
+        retryable: false,
+      }
 }

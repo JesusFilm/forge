@@ -100,7 +100,9 @@ export function getSmartCropReport(
     typeof qa.verdict === "string" &&
     QA_VERDICTS.has(qa.verdict as SmartCropQaVerdict)
       ? { qa: { verdict: qa.verdict as SmartCropQaVerdict } }
-      : {}),
+      : qa && typeof qa.unavailableReason === "string"
+        ? { qa: { unavailableReason: qa.unavailableReason } }
+        : {}),
     ...(plan &&
     typeof plan.segmentCount === "number" &&
     typeof plan.approved === "boolean"

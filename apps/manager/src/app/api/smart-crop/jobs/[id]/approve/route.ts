@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { authenticateRequest } from "@/lib/auth"
+import { authenticateManagerOverrideRequest } from "@/lib/auth"
 import {
   buildSmartCropMetadataArtifact,
   getSmartCropReport,
@@ -23,8 +23,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const authError = await authenticateRequest(request)
-  if (authError) return authError
+  // Identity-returning authenticator (same credentials as authenticateRequest;
+  // precedent: mux-sync override) so the plan review records WHO acted instead
+  // of a hardcoded constant.
+  const actor = await authenticateManagerOverrideRequest(request)
+  if (actor instanceof NextResponse) return actor
 
   const { id } = await params
 
@@ -96,9 +99,14 @@ export async function POST(
     )
   }
 
+  const approvedBy =
+    actor.kind === "session"
+      ? actor.user.email || actor.approvedByUserId
+      : actor.approvedByUserId
+
   const qa = {
     status: parsed.data.action === "approve" ? "approved" : "rejected",
-    approvedBy: "manager-operator",
+    approvedBy,
     approvedAt: new Date().toISOString(),
   } as const
 

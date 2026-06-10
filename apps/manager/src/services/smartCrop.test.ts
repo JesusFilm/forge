@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
   assemblePlanArtifact,
+  buildMuxOutputRecord,
+  buildPlanProgressArtifact,
   buildPlanSummary,
   buildQaArtifact,
   buildQaFrameTimes,
@@ -9,11 +11,17 @@ import {
   buildTimelineMapArtifact,
   listPreviewFrameLogicalKeys,
   parseFingerprintArtifact,
+  parseMuxOutputRecord,
   parsePlanArtifact,
+  parsePlanProgressArtifact,
   parseRenderReportSummary,
   parseTimelineMapArtifactSummary,
+  shouldEmitRenderProgress,
   shouldSkipWhenArtifactExists,
+  sourceDimensionsMismatch,
   sumUsage,
+  timelineMapMatchesProvenance,
+  SMART_CROP_PLAN_BATCH_SIZE,
 } from "@/services/smartCrop"
 import type { SmartCropPlanSegment } from "@/services/mastra-smart-crop"
 
@@ -269,6 +277,9 @@ describe("artifact readers", () => {
     expect(parsePlanArtifact({ ...plan, qa: { status: "maybe" } })).toBeNull()
   })
 
+  // Deliberately extended: the summary now also surfaces the asset-pair ids
+  // and provenance block so the align step's skip path can detect stale maps
+  // (legacy maps report null provenance and are recomputed).
   it("summarizes timeline-map artifacts", () => {
     expect(
       parseTimelineMapArtifactSummary({
@@ -283,6 +294,36 @@ describe("artifact readers", () => {
       unmappedDurationPercent: 6.5,
       gatePassed: false,
       gateFailures: ["unmapped duration 6.5% > 5%"],
+      canonicalAssetId: null,
+      localizedAssetId: null,
+      provenance: null,
+    })
+  })
+
+  it("surfaces ids and provenance from a stamped timeline map", () => {
+    const summary = parseTimelineMapArtifactSummary({
+      version: 1,
+      kind: "smart-crop-timeline-map",
+      canonicalAssetId: "asset123",
+      localizedAssetId: "asset456",
+      provenance: {
+        canonicalPlanGeneratedAt: "2026-06-09T00:00:00.000Z",
+        canonicalFingerprintGeneratedAt: "2026-06-08T00:00:00.000Z",
+        localizedFingerprintGeneratedAt: "2026-06-08T01:00:00.000Z",
+      },
+      overallConfidence: 0.97,
+      unmappedDurationPercent: 1.2,
+      gate: { passed: true, failures: [] },
+    })
+
+    expect(summary).toMatchObject({
+      canonicalAssetId: "asset123",
+      localizedAssetId: "asset456",
+      provenance: {
+        canonicalPlanGeneratedAt: "2026-06-09T00:00:00.000Z",
+        canonicalFingerprintGeneratedAt: "2026-06-08T00:00:00.000Z",
+        localizedFingerprintGeneratedAt: "2026-06-08T01:00:00.000Z",
+      },
     })
   })
 
@@ -306,5 +347,290 @@ describe("artifact readers", () => {
     ])
     expect(parseRenderReportSummary(report)?.outputDurationSeconds).toBe(88.4)
     expect(listPreviewFrameLogicalKeys({ kind: "other" })).toEqual([])
+  })
+
+  // parsePlanArtifact validates the full contract (no pass-through casts):
+  // every consumer (align, QA, full render, approve route) relies on the
+  // returned fields being real.
+  it("rejects plan artifacts with malformed segments or missing fields", () => {
+    const plan = assemblePlanArtifact({
+      assetId: "asset123",
+      muxAssetId: "mux_abc",
+      playbackId: "pb_abc",
+      source: { width: 1920, height: 1080, durationSeconds: 10 },
+      cropMode: "auto",
+      model: "m",
+      segmentsFromChunks: [[SEGMENT]],
+      usageTotals: { inputTokens: 0, outputTokens: 0 },
+    })
+    const raw = JSON.parse(JSON.stringify(plan)) as Record<string, unknown>
+
+    expect(parsePlanArtifact({ ...raw, usage: undefined })).toBeNull()
+    expect(
+      parsePlanArtifact({
+        ...raw,
+        segments: [{ ...SEGMENT, cropKeyframes: [] }],
+      }),
+    ).toBeNull()
+    expect(
+      parsePlanArtifact({ ...raw, segments: [{ ...SEGMENT, mode: "zoom" }] }),
+    ).toBeNull()
+    expect(
+      parsePlanArtifact({
+        ...raw,
+        qa: { status: "approved" }, // approved without approvedBy/approvedAt
+      }),
+    ).toBeNull()
+    expect(parsePlanArtifact(raw)).not.toBeNull()
+  })
+
+  it("preserves the approved qa variant fields", () => {
+    const plan = assemblePlanArtifact({
+      assetId: "asset123",
+      muxAssetId: "mux_abc",
+      playbackId: "pb_abc",
+      source: { width: 1920, height: 1080, durationSeconds: 10 },
+      cropMode: "auto",
+      model: "m",
+      segmentsFromChunks: [[SEGMENT]],
+      usageTotals: { inputTokens: 1, outputTokens: 2 },
+    })
+    const approved = {
+      ...JSON.parse(JSON.stringify(plan)),
+      qa: {
+        status: "approved",
+        approvedBy: "vlad@example.test",
+        approvedAt: "2026-06-09T00:00:00.000Z",
+      },
+    }
+
+    expect(parsePlanArtifact(approved)?.qa).toEqual({
+      status: "approved",
+      approvedBy: "vlad@example.test",
+      approvedAt: "2026-06-09T00:00:00.000Z",
+    })
+  })
+})
+
+describe("timelineMapMatchesProvenance", () => {
+  const provenance = {
+    canonicalPlanGeneratedAt: "2026-06-09T00:00:00.000Z",
+    canonicalFingerprintGeneratedAt: "2026-06-08T00:00:00.000Z",
+    localizedFingerprintGeneratedAt: "2026-06-08T01:00:00.000Z",
+  }
+  const summary = {
+    overallConfidence: 0.97,
+    unmappedDurationPercent: 1.2,
+    gatePassed: true,
+    gateFailures: [],
+    canonicalAssetId: "asset123",
+    localizedAssetId: "asset456",
+    provenance,
+  }
+  const expected = {
+    canonicalAssetId: "asset123",
+    localizedAssetId: "asset456",
+    provenance,
+  }
+
+  it("matches when ids and provenance agree", () => {
+    expect(timelineMapMatchesProvenance(summary, expected)).toBe(true)
+  })
+
+  it("rejects legacy maps without provenance", () => {
+    expect(
+      timelineMapMatchesProvenance({ ...summary, provenance: null }, expected),
+    ).toBe(false)
+  })
+
+  it("rejects regenerated canonical plans", () => {
+    expect(
+      timelineMapMatchesProvenance(summary, {
+        ...expected,
+        provenance: {
+          ...provenance,
+          canonicalPlanGeneratedAt: "2026-06-10T00:00:00.000Z",
+        },
+      }),
+    ).toBe(false)
+  })
+
+  it("rejects a different asset pair", () => {
+    expect(
+      timelineMapMatchesProvenance(summary, {
+        ...expected,
+        canonicalAssetId: "asset999",
+      }),
+    ).toBe(false)
+  })
+})
+
+describe("sourceDimensionsMismatch", () => {
+  it("returns null when dimensions match exactly", () => {
+    expect(
+      sourceDimensionsMismatch(
+        { width: 1920, height: 1080, durationSeconds: 100 },
+        { width: 1920, height: 1080, durationSeconds: 101.5 },
+      ),
+    ).toBeNull()
+  })
+
+  it("returns an actionable message on any width/height difference", () => {
+    expect(
+      sourceDimensionsMismatch(
+        { width: 1920, height: 1080, durationSeconds: 100 },
+        { width: 1280, height: 720, durationSeconds: 100 },
+      ),
+    ).toBe("canonical 1920x1080 != localized 1280x720")
+  })
+})
+
+describe("plan progress checkpoint", () => {
+  const expected = {
+    fingerprintGeneratedAt: "2026-06-09T00:00:00.000Z",
+    batchSize: SMART_CROP_PLAN_BATCH_SIZE,
+    totalBatches: 3,
+  }
+
+  function buildCheckpoint() {
+    return buildPlanProgressArtifact({
+      fingerprintGeneratedAt: expected.fingerprintGeneratedAt,
+      batchSize: expected.batchSize,
+      totalBatches: expected.totalBatches,
+      completedBatches: 2,
+      segments: [SEGMENT],
+      usage: { inputTokens: 100, outputTokens: 10 },
+      model: "qwen/qwen2.5-vl-72b-instruct",
+    })
+  }
+
+  it("round-trips a checkpoint matching the current fingerprint", () => {
+    const parsed = parsePlanProgressArtifact(
+      JSON.parse(JSON.stringify(buildCheckpoint())),
+      expected,
+    )
+    expect(parsed).toMatchObject({
+      completedBatches: 2,
+      usage: { inputTokens: 100, outputTokens: 10 },
+      model: "qwen/qwen2.5-vl-72b-instruct",
+    })
+    expect(parsed?.segments).toHaveLength(1)
+  })
+
+  it("rejects a checkpoint from a regenerated fingerprint", () => {
+    expect(
+      parsePlanProgressArtifact(buildCheckpoint(), {
+        ...expected,
+        fingerprintGeneratedAt: "2026-06-10T00:00:00.000Z",
+      }),
+    ).toBeNull()
+  })
+
+  it("rejects a checkpoint with a different batching shape", () => {
+    expect(
+      parsePlanProgressArtifact(buildCheckpoint(), {
+        ...expected,
+        totalBatches: 5,
+      }),
+    ).toBeNull()
+    expect(
+      parsePlanProgressArtifact(buildCheckpoint(), {
+        ...expected,
+        batchSize: 4,
+      }),
+    ).toBeNull()
+  })
+
+  it("rejects malformed or out-of-range checkpoints", () => {
+    expect(parsePlanProgressArtifact(null, expected)).toBeNull()
+    expect(parsePlanProgressArtifact({ kind: "other" }, expected)).toBeNull()
+    expect(
+      parsePlanProgressArtifact(
+        { ...buildCheckpoint(), completedBatches: 9 },
+        expected,
+      ),
+    ).toBeNull()
+    expect(
+      parsePlanProgressArtifact(
+        { ...buildCheckpoint(), segments: [{ shotId: 42 }] },
+        expected,
+      ),
+    ).toBeNull()
+  })
+})
+
+describe("mux output record", () => {
+  it("round-trips the pending and ready record shapes", () => {
+    const pending = buildMuxOutputRecord({
+      jobId: "job-1",
+      muxAssetId: "mux_out_1",
+      ready: false,
+      createdAt: "2026-06-09T00:00:00.000Z",
+    })
+    expect(parseMuxOutputRecord(JSON.parse(JSON.stringify(pending)))).toEqual({
+      version: 1,
+      kind: "smart-crop-mux-output",
+      jobId: "job-1",
+      muxAssetId: "mux_out_1",
+      ready: false,
+      playbackId: undefined,
+      createdAt: "2026-06-09T00:00:00.000Z",
+    })
+
+    const ready = buildMuxOutputRecord({
+      jobId: "job-1",
+      muxAssetId: "mux_out_1",
+      ready: true,
+      playbackId: "pb_out_1",
+      createdAt: "2026-06-09T00:00:00.000Z",
+    })
+    expect(
+      parseMuxOutputRecord(JSON.parse(JSON.stringify(ready))),
+    ).toMatchObject({ ready: true, playbackId: "pb_out_1" })
+  })
+
+  it("rejects malformed records", () => {
+    expect(parseMuxOutputRecord(null)).toBeNull()
+    expect(parseMuxOutputRecord({ kind: "smart-crop-mux-output" })).toBeNull()
+  })
+})
+
+describe("shouldEmitRenderProgress", () => {
+  it("emits the first snapshot with any signal", () => {
+    expect(
+      shouldEmitRenderProgress(null, { progress: 0.01, message: null }),
+    ).toBe(true)
+    expect(
+      shouldEmitRenderProgress(null, { progress: null, message: "Starting" }),
+    ).toBe(true)
+    expect(
+      shouldEmitRenderProgress(null, { progress: null, message: null }),
+    ).toBe(false)
+  })
+
+  it("throttles small progress advances", () => {
+    const last = { progress: 0.5, message: "Rendering segment 5 of 10" }
+    expect(
+      shouldEmitRenderProgress(last, {
+        progress: 0.52,
+        message: "Rendering segment 5 of 10",
+      }),
+    ).toBe(false)
+    expect(
+      shouldEmitRenderProgress(last, {
+        progress: 0.55,
+        message: "Rendering segment 5 of 10",
+      }),
+    ).toBe(true)
+  })
+
+  it("emits on message change even without progress movement", () => {
+    const last = { progress: 0.5, message: "Rendering segment 5 of 10" }
+    expect(
+      shouldEmitRenderProgress(last, {
+        progress: 0.5,
+        message: "Rendering segment 6 of 10",
+      }),
+    ).toBe(true)
   })
 })

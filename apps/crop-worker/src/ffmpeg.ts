@@ -5,6 +5,24 @@
 // actionable "binary is required" error.
 
 import { spawn } from "node:child_process"
+import { env } from "./config/env.js"
+
+// -protocol_whitelist applied to every ffmpeg/ffprobe input that reads the
+// request-supplied source URL (probe, fingerprint passes, render segments).
+// Defeats file:/concat:/data:/http: smuggling even if a hostile URL slips
+// past request validation. The concat pass and frame extraction read
+// worker-generated local temp files and keep ffmpeg's default protocol set.
+// Production allows only the HLS-over-HTTPS chain; outside production "file"
+// is added so local-path smokes keep working. Override via
+// CROP_WORKER_SOURCE_PROTOCOL_WHITELIST (CSV).
+export function sourceProtocolWhitelist(
+  override: string | undefined = env.CROP_WORKER_SOURCE_PROTOCOL_WHITELIST,
+  nodeEnv: string = env.NODE_ENV,
+): string {
+  if (override) return override
+  const base = "https,tls,tcp,crypto,hls"
+  return nodeEnv === "production" ? base : `${base},file`
+}
 
 export type CommandResult = {
   stdout: Buffer
@@ -177,9 +195,10 @@ export type ProbeResult = {
 export type ProbeSourceDependencies = {
   runCommand?: RunCommand
   timeoutMs?: number
+  protocolWhitelist?: string
 }
 
-const DEFAULT_PROBE_TIMEOUT_MS = 120_000
+export const DEFAULT_PROBE_TIMEOUT_MS = 120_000
 
 type FfprobeStream = {
   codec_type?: string
@@ -198,6 +217,7 @@ export async function probeSource(
   deps: ProbeSourceDependencies = {},
 ): Promise<ProbeResult> {
   const runCommand = deps.runCommand ?? defaultRunCommand
+  const protocolWhitelist = deps.protocolWhitelist ?? sourceProtocolWhitelist()
 
   let result: CommandResult
   try {
@@ -206,6 +226,8 @@ export async function probeSource(
       [
         "-v",
         "error",
+        "-protocol_whitelist",
+        protocolWhitelist,
         "-print_format",
         "json",
         "-show_streams",

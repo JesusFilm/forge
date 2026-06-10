@@ -141,6 +141,11 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
   const showReviewButtons = canReviewSmartCropPlan(job)
   const showRetryButton = canRetrySmartCropJob(job)
   const latestError = job.errors.at(-1)
+  // Live render progress mirrored into the running step's details by the
+  // workflow (throttled crop-worker onProgress).
+  const runningStepDetails = job.steps.find(
+    (step) => step.status === "running" && step.details?.progress != null,
+  )?.details
 
   return (
     <>
@@ -237,7 +242,24 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
           </div>
           <div>
             <dt className="small jobs-field-label">QA verdict</dt>
-            <dd>{report?.qa ? report.qa.verdict : "–"}</dd>
+            <dd>
+              {report?.qa?.verdict ??
+                (report?.qa?.unavailableReason
+                  ? `unavailable (${report.qa.unavailableReason})`
+                  : "–")}
+            </dd>
+          </div>
+          <div>
+            <dt className="small jobs-field-label">Render progress</dt>
+            <dd>
+              {runningStepDetails?.progress != null
+                ? `${Math.round(runningStepDetails.progress * 100)}%${
+                    runningStepDetails.message
+                      ? ` · ${runningStepDetails.message}`
+                      : ""
+                  }`
+                : "–"}
+            </dd>
           </div>
           <div>
             <dt className="small jobs-field-label">Output</dt>
