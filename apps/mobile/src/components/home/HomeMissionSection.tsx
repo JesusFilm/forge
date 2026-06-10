@@ -6,9 +6,10 @@
  * signup directly. Renders as a feed item with its own translucent
  * background per the transparent-feed convention.
  */
-import { memo } from "react"
+import { memo, useCallback } from "react"
 import {
   FlatList,
+  type ListRenderItem,
   Platform,
   Pressable,
   StyleSheet,
@@ -89,21 +90,79 @@ const CARDS: readonly MissionCardSpec[] = [
   },
 ] as const
 
+const keyExtractor = (spec: MissionCardSpec) => spec.key
+
+const CARD_RIPPLE = { color: "rgba(255, 255, 255, 0.08)" }
+
 export const HomeMissionSection = memo(function HomeMissionSection() {
   const typography = useTypography()
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
   const cardWidth = homeCardWidth("landscape", screenWidth)
 
-  const handlePress = (spec: MissionCardSpec) => {
-    if (spec.action === "beta") {
-      openExternalUrl(BETA_SIGNUP_URL)
-      return
-    }
-    router.push(
-      spec.action === "roadmap" ? "/mission?section=roadmap" : "/mission",
-    )
-  }
+  const handlePress = useCallback(
+    (spec: MissionCardSpec) => {
+      if (spec.action === "beta") {
+        openExternalUrl(BETA_SIGNUP_URL)
+        return
+      }
+      // navigate (not push) dedupes a double-tap into one screen.
+      router.navigate(
+        spec.action === "roadmap" ? "/mission?section=roadmap" : "/mission",
+      )
+    },
+    [router],
+  )
+
+  const renderItem = useCallback<ListRenderItem<MissionCardSpec>>(
+    ({ item: spec }) => (
+      <Pressable
+        onPress={() => handlePress(spec)}
+        style={({ pressed }) => [
+          card.surface,
+          styles.card,
+          { width: cardWidth },
+          pressed && Platform.OS === "ios" && feedback.pressed,
+        ]}
+        android_ripple={CARD_RIPPLE}
+        accessibilityRole="button"
+        accessibilityLabel={spec.title}
+        accessibilityHint={spec.accessibilityHint}
+      >
+        <LinearGradient
+          colors={[
+            hexToRgba(spec.wash[0], 0.75),
+            hexToRgba(spec.wash[1], 0.35),
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <Ionicons
+          name={spec.icon}
+          size={64}
+          color={hexToRgba(TEXT_PRIMARY, 0.18)}
+          style={styles.cardIcon}
+        />
+        <LinearGradient
+          colors={[hexToRgba(BLACK, 0), hexToRgba(BLACK, 0.7)]}
+          style={styles.cardFooterGradient}
+        />
+        <View style={styles.cardFooter}>
+          <Text style={[styles.cardEyebrow, typography.caption]}>
+            {spec.eyebrow.toUpperCase()}
+          </Text>
+          <Text
+            style={[styles.cardTitle, typography.titleSmall]}
+            numberOfLines={2}
+          >
+            {spec.title}
+          </Text>
+        </View>
+      </Pressable>
+    ),
+    [typography, cardWidth, handlePress],
+  )
 
   return (
     <View style={styles.container}>
@@ -114,53 +173,8 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
       <FlatList
         horizontal
         data={CARDS}
-        keyExtractor={(spec) => spec.key}
-        renderItem={({ item: spec }) => (
-          <Pressable
-            onPress={() => handlePress(spec)}
-            style={({ pressed }) => [
-              card.surface,
-              styles.card,
-              { width: cardWidth },
-              pressed && Platform.OS === "ios" && feedback.pressed,
-            ]}
-            android_ripple={{ color: "rgba(255, 255, 255, 0.08)" }}
-            accessibilityRole="button"
-            accessibilityLabel={spec.title}
-            accessibilityHint={spec.accessibilityHint}
-          >
-            <LinearGradient
-              colors={[
-                hexToRgba(spec.wash[0], 0.75),
-                hexToRgba(spec.wash[1], 0.35),
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Ionicons
-              name={spec.icon}
-              size={64}
-              color={hexToRgba(TEXT_PRIMARY, 0.18)}
-              style={styles.cardIcon}
-            />
-            <LinearGradient
-              colors={[hexToRgba(BLACK, 0), hexToRgba(BLACK, 0.7)]}
-              style={styles.cardFooterGradient}
-            />
-            <View style={styles.cardFooter}>
-              <Text style={[styles.cardEyebrow, typography.caption]}>
-                {spec.eyebrow.toUpperCase()}
-              </Text>
-              <Text
-                style={[styles.cardTitle, typography.titleSmall]}
-                numberOfLines={2}
-              >
-                {spec.title}
-              </Text>
-            </View>
-          </Pressable>
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         showsHorizontalScrollIndicator={false}
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"

@@ -38,7 +38,6 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import {
   muxSlideDisplayCopy,
   type WatchHomeSlide,
-  type WatchHomeVideoSlide,
 } from "../../lib/watchHome/carouselSequence"
 import {
   WATCH_HOME_IMAGE_SLIDE_DWELL_MS,
@@ -59,7 +58,23 @@ export type HomeHeroPagerHandle = {
    * No-op on the current index; dropped while a swap is in flight.
    */
   selectSlide: (index: number) => void
+  /**
+   * Swipe-gesture jump (SWIPED): like selectSlide but never dropped during
+   * an in-flight swap — the user physically moved the pager.
+   */
+  swipeToSlide: (index: number) => void
 }
+
+// Shared hero-chrome geometry. HomeScreen's overlay chrome (Watch Now /
+// insert CTA / mute) positions itself with these same numbers, so the pager's
+// reserved text-block padding and the overlay buttons cannot silently
+// misalign when one side resizes.
+/** Bottom offset of the chrome row above the hero's bottom edge. */
+export const HERO_CHROME_BOTTOM = 44
+/** Overlay CTA pill height (also the mute circle's diameter). */
+export const HERO_CTA_HEIGHT = 48
+/** Vertical footprint the text block reserves for the CTA (pill + 16 gap). */
+export const HERO_CTA_FOOTPRINT = HERO_CTA_HEIGHT + 16
 
 export type HomeHeroPagerProps = {
   /**
@@ -86,28 +101,6 @@ export type HomeHeroPagerProps = {
   /** Fires whenever the active slide settles (chip, swipe, or auto-advance). */
   onSlideChange?: (index: number, slide: WatchHomeSlide) => void
   ref?: Ref<HomeHeroPagerHandle>
-}
-
-/**
- * What HomeScreen's overlay "Watch Now" button needs to build the watch-seed
- * route for a video slide. Keeps slide-shape knowledge (poster fallback
- * chain, series-label routing input) in one place instead of leaking it into
- * the screen.
- */
-export function slideRouteArgs(slide: WatchHomeVideoSlide): {
-  slug: string | null
-  title: string
-  label: string
-  imageUrl: string | null
-  playbackId: string | null
-} {
-  return {
-    slug: slide.slug,
-    title: slide.title,
-    label: slide.label,
-    imageUrl: slide.posterUrl ?? slide.thumbnailUrl,
-    playbackId: slide.playbackId,
-  }
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -398,9 +391,14 @@ export function HomeHeroPager({
   // ── Pager scroll wiring ───────────────────────────────────────────────────
 
   const listRef = useRef<FlatList<WatchHomeSlide>>(null)
+  // The index the latest programmatic scrollToIndex is heading for; settles
+  // on a different index are stale (an older animation finishing) and must
+  // not move the reducer.
+  const pendingScrollIndexRef = useRef(0)
 
   useEffect(() => {
     if (state.slides.length === 0) return
+    pendingScrollIndexRef.current = state.currentIndex
     try {
       listRef.current?.scrollToIndex({
         index: state.currentIndex,
@@ -413,13 +411,16 @@ export function HomeHeroPager({
 
   // The list is scrollEnabled={false} (slide changes are programmatic only:
   // chips, auto-advance, and HomeScreen's capture-phase swipe all go through
-  // selectSlide / the reducer). Animated scrollToIndex still fires momentum
+  // the handle / the reducer). Animated scrollToIndex still fires momentum
   // end; SLIDE_SHOWN on the settled index is a no-op when it matches
-  // currentIndex (moveTo's equal-index bail), and re-syncs the reducer if the
-  // list ever settles off-page.
+  // currentIndex (moveTo's equal-index bail).
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
+      // Stale settle (an older animation overtaken by a newer target) must
+      // not move the reducer; legit off-page re-syncs go through
+      // onScrollToIndexFailed instead.
+      if (index !== pendingScrollIndexRef.current) return
       dispatch({ type: "SLIDE_SHOWN", index })
     },
     [screenWidth],
@@ -450,6 +451,7 @@ export function HomeHeroPager({
     ref,
     () => ({
       selectSlide: (index: number) => dispatch({ type: "CHIP_TAPPED", index }),
+      swipeToSlide: (index: number) => dispatch({ type: "SWIPED", index }),
     }),
     [],
   )
@@ -517,7 +519,7 @@ export function HomeHeroPager({
         windowSize={3}
         // Never user-scrollable: the vertical FlashList above the hero claims
         // direct drags anyway. Hero swipes are claimed by HomeScreen's
-        // capture-phase PanResponder and arrive via selectSlide.
+        // capture-phase PanResponder and arrive via swipeToSlide.
         scrollEnabled={false}
       />
 
@@ -691,12 +693,12 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     // Clears HomeScreen's overlay mute circle at the right edge (48 + 16 + margin).
     paddingRight: 76,
-    paddingBottom: 44,
+    paddingBottom: HERO_CHROME_BOTTOM,
   },
   pageContentWithCta: {
-    // Reserve the overlay CTA's footprint (48 pill + 16 gap above it) so the
-    // title block sits exactly where it did when the Pressable was in-page.
-    paddingBottom: 44 + 48 + 16,
+    // Reserve the overlay CTA's footprint (pill + gap above it) so the title
+    // block sits exactly where it did when the Pressable was in-page.
+    paddingBottom: HERO_CHROME_BOTTOM + HERO_CTA_FOOTPRINT,
   },
   wordmark: {
     color: TEXT_ON_OVERLAY,

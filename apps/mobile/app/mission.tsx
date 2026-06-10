@@ -6,7 +6,7 @@
  * beta invitation. Reached from the Home mission rail; the native stack
  * header supplies back navigation.
  */
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import {
   type LayoutChangeEvent,
   Platform,
@@ -33,6 +33,7 @@ import {
   CARD_BORDER_RADIUS,
   HORIZONTAL_PADDING,
   feedback,
+  text,
 } from "../src/styles/shared"
 import {
   BETA_CTA_LABEL,
@@ -61,6 +62,12 @@ export default function MissionScreen() {
   // so one unanimated scrollTo on first layout puts it at the top.
   const scrollRef = useRef<ScrollView>(null)
   const didScrollToSectionRef = useRef(false)
+
+  // Re-arm the one-shot scroll when a new deep link changes the section on a
+  // reused screen (navigate to ?section=roadmap a second time).
+  useEffect(() => {
+    didScrollToSectionRef.current = false
+  }, [section])
 
   const handleRoadmapLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -97,7 +104,7 @@ export default function MissionScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.eyebrow, typography.caption]}>
+        <Text style={[text.eyebrow, styles.eyebrow, typography.caption]}>
           {MISSION_EYEBROW}
         </Text>
         <Text
@@ -154,7 +161,12 @@ export default function MissionScreen() {
 
         <View style={styles.invite}>
           <Text
-            style={[styles.eyebrow, styles.inviteEyebrow, typography.caption]}
+            style={[
+              text.eyebrow,
+              styles.eyebrow,
+              styles.inviteEyebrow,
+              typography.caption,
+            ]}
           >
             {INVITE_EYEBROW}
           </Text>
@@ -200,12 +212,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: 24,
   },
+  // Local overrides on the shared text.eyebrow base (warm tint, wider
+  // tracking, page-scale margin).
   eyebrow: {
     color: hexToRgba("#fee2e2", 0.7),
-    fontFamily: "System",
-    fontWeight: "600",
     letterSpacing: 3,
-    textTransform: "uppercase",
     marginBottom: 12,
   },
   headline: {

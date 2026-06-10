@@ -67,8 +67,9 @@ export type PagerState = {
   /**
    * A skip (STREAM_ERROR or MAX_DWELL_ELAPSED) arrived while suspended and
    * was deferred. RESUME executes the advance and clears this flag (AE5).
-   * Cleared early by SLIDES_SET / CHIP_TAPPED / SLIDE_SHOWN since an explicit
-   * move supersedes the deferred skip.
+   * Cleared early by SLIDES_SET, or by an explicit move (CHIP_TAPPED /
+   * SLIDE_SHOWN / SWIPED) to a DIFFERENT index — moveTo bails before
+   * clearing when the index is unchanged.
    */
   pendingSkip: boolean
   suspended: PagerSuspendReason | null
@@ -82,6 +83,11 @@ export type PagerEvent =
   | { type: "SLIDES_SET"; slides: readonly WatchHomeSlide[] }
   /** Swipe momentum settled on an index. */
   | { type: "SLIDE_SHOWN"; index: number }
+  /**
+   * User swipe gesture committed. Unlike CHIP_TAPPED it is NOT dropped during
+   * an in-flight swap — moveTo records the interrupted swap as pendingSwap.
+   */
+  | { type: "SWIPED"; index: number }
   | { type: "CHIP_TAPPED"; index: number }
   | { type: "STREAM_RESOLVING" }
   /** The active slide's stream resolved (only meaningful while suspended). */
@@ -205,6 +211,9 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
       }
 
     case "SLIDE_SHOWN":
+      return moveTo(state, event.index)
+
+    case "SWIPED":
       return moveTo(state, event.index)
 
     case "CHIP_TAPPED":

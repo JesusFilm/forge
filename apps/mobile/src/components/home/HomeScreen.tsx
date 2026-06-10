@@ -9,9 +9,9 @@
  * absolute positioning). The chrome lives HERE, not in the pager — anything
  * tappable inside the hero layer sits behind the FlashList, which swallows
  * the taps. Hero swipes are claimed by a capture-phase PanResponder on the
- * root and forwarded to the pager's selectSlide.
+ * root and forwarded to the pager's swipeToSlide.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   type NativeScrollEvent,
@@ -47,13 +47,15 @@ import {
   type WatchHomeSlide,
 } from "../../lib/watchHome/carouselSequence"
 import type { WatchHomeSection } from "../../lib/watchHome/model"
+import { slideRouteArgs } from "../../lib/watchHome/slideRouteArgs"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import { feedback, layout, text } from "../../styles/shared"
 import { HomeHeader } from "../ui/HomeHeader"
 import { HomeChipRail } from "./HomeChipRail"
 import {
+  HERO_CHROME_BOTTOM,
+  HERO_CTA_HEIGHT,
   HomeHeroPager,
-  slideRouteArgs,
   type HomeHeroPagerHandle,
 } from "./HomeHeroPager"
 import { HomeMissionSection } from "./HomeMissionSection"
@@ -90,7 +92,6 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets()
   const navigation = useNavigation()
   const router = useRouter()
-  const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
   // Matches HomeHeroPager's default; computed here because the hero layer,
   // feed padding, and scroll brackets all share it.
@@ -142,6 +143,14 @@ export function HomeScreen() {
   } | null>(null)
   const prevSlideIdRef = useRef<string | null>(null)
 
+  // A queue rebuild resets the pager to slide 0 WITHOUT re-firing
+  // onSlideChange when the index is unchanged (its real-index-change guard),
+  // so the stored slide can go stale. Drop it so the chrome renders from
+  // heroSlides[0] instead of an evicted slide.
+  useEffect(() => {
+    setActiveHero(null)
+  }, [heroSlides])
+
   // Event-time mirrors for the once-created PanResponder (reading state
   // directly there would capture stale closures).
   const swipeStateRef = useRef({
@@ -174,11 +183,9 @@ export function HomeScreen() {
   }, [])
 
   const activeIndex = activeHero?.index ?? 0
-  // Chrome renders from the CURRENT queue at the active index: a model
-  // refresh can swap the slides identity while the pager stays on index 0
-  // WITHOUT re-firing onSlideChange (its real-index-change guard), so the
-  // stored slide object can go stale. The stored slide is only a fallback
-  // for the one commit where the index outlives a shorter new queue.
+  // Chrome renders from the CURRENT queue at the active index. The stored
+  // slide is only a fallback for the single commit where a stale index
+  // outlives a shorter new queue, before the reset effect above lands.
   const activeSlide = heroSlides[activeIndex] ?? activeHero?.slide ?? null
 
   // Mux overlay copy is time-of-day sensitive (Eastern-hour rule) — resolve
@@ -192,6 +199,11 @@ export function HomeScreen() {
   )
 
   // ── Hero swipe (capture-phase PanResponder on the screen root) ─────────────
+
+  // Index snapshot taken when the gesture claims: anchors the swipe intent to
+  // the slide the user SAW — an auto-advance landing mid-gesture must not
+  // retarget the release.
+  const gestureStartIndexRef = useRef(0)
 
   const heroPanResponder = useMemo(
     () =>
@@ -207,21 +219,25 @@ export function HomeScreen() {
           // false), so pageY maps straight onto hero coordinates: the visible
           // hero ends at heroHeight - scrollY, clamped at 0 once scrolled past.
           const visibleHeroBottom = Math.max(0, h - scrollY)
-          return (
+          const claims =
             evt.nativeEvent.pageY < visibleHeroBottom &&
             Math.abs(gesture.dx) >
               Math.abs(gesture.dy) * HERO_SWIPE_DOMINANCE &&
             Math.abs(gesture.dx) > HERO_SWIPE_ACTIVATE_PX
-          )
+          if (claims) {
+            gestureStartIndexRef.current = swipeStateRef.current.activeIndex
+          }
+          return claims
         },
         onPanResponderTerminationRequest: () => true,
         onPanResponderRelease: (_evt, gesture) => {
-          const { activeIndex: index, slideCount } = swipeStateRef.current
+          const { slideCount } = swipeStateRef.current
+          const index = gestureStartIndexRef.current
           if (slideCount === 0) return
           if (gesture.dx < -HERO_SWIPE_COMMIT_PX) {
-            pagerRef.current?.selectSlide(Math.min(index + 1, slideCount - 1))
+            pagerRef.current?.swipeToSlide(Math.min(index + 1, slideCount - 1))
           } else if (gesture.dx > HERO_SWIPE_COMMIT_PX) {
-            pagerRef.current?.selectSlide(Math.max(index - 1, 0))
+            pagerRef.current?.swipeToSlide(Math.max(index - 1, 0))
           }
           // Sub-threshold drag: no slide change.
         },
@@ -261,10 +277,11 @@ export function HomeScreen() {
       slideRouteArgs(activeSlide)
     if (slug == null) return
     // Same routing rule as HomeCard / Discover (series-shaped label → series
-    // page, else watch page), with a seed for instant paint.
+    // page, else watch page), with a seed for instant paint. navigate (not
+    // push) dedupes a double-tap into one screen.
     const seed = encodeWatchSeed({ slug, title, imageUrl, playbackId })
     const route = isSeriesLabel(label) ? "series" : "watch"
-    router.push(`/${route}/${encodeURIComponent(slug)}?seed=${seed}`)
+    router.navigate(`/${route}/${encodeURIComponent(slug)}?seed=${seed}`)
   }, [activeSlide, router])
 
   const handleInsertPress = useCallback(() => {
@@ -454,66 +471,103 @@ export function HomeScreen() {
           pointerEvents="box-none"
         >
           {activeSlide != null && (
-            <View
-              style={[styles.heroChrome, { opacity: chromeOpacity }]}
-              pointerEvents={chromeOpacity < 0.05 ? "none" : "box-none"}
-            >
-              <View style={styles.heroChromeLeft} pointerEvents="box-none">
-                {activeSlide.kind === "video" && activeSlide.slug != null && (
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.ctaButton,
-                      pressed && feedback.pressed,
-                    ]}
-                    onPress={handleWatchNow}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Watch ${activeSlide.title} now`}
-                  >
-                    <Text style={[styles.ctaText, typography.body]}>
-                      Watch Now
-                    </Text>
-                  </Pressable>
-                )}
-                {activeSlide.kind === "mux" && activeInsertAction != null && (
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.ctaButton,
-                      pressed && feedback.pressed,
-                    ]}
-                    onPress={handleInsertPress}
-                    accessibilityRole="link"
-                    accessibilityLabel={activeInsertAction.label}
-                  >
-                    <Text style={[styles.ctaText, typography.body]}>
-                      {activeInsertAction.label}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-              {activeSlide.kind === "video" && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.muteButton,
-                    pressed && feedback.pressed,
-                  ]}
-                  onPress={handleMuteToggle}
-                  accessibilityLabel={muted ? "Unmute video" : "Mute video"}
-                  accessibilityRole="button"
-                >
-                  <Ionicons
-                    name={muted ? "volume-mute" : "volume-high"}
-                    size={20}
-                    color={TEXT_ON_OVERLAY}
-                  />
-                </Pressable>
-              )}
-            </View>
+            <HeroChrome
+              opacity={chromeOpacity}
+              slide={activeSlide}
+              insertAction={activeInsertAction}
+              muted={muted}
+              onWatchNow={handleWatchNow}
+              onToggleMute={handleMuteToggle}
+              onInsertAction={handleInsertPress}
+            />
           )}
         </View>
       )}
     </View>
   )
 }
+
+// ── Hero chrome (memo'd: chromeOpacity steps re-render only this subtree) ───
+
+type HeroChromeProps = {
+  opacity: number
+  slide: WatchHomeSlide
+  insertAction: { label: string; url: string } | null
+  muted: boolean
+  onWatchNow: () => void
+  onToggleMute: () => void
+  onInsertAction: () => void
+}
+
+const HeroChrome = memo(function HeroChrome({
+  opacity,
+  slide,
+  insertAction,
+  muted,
+  onWatchNow,
+  onToggleMute,
+  onInsertAction,
+}: HeroChromeProps) {
+  const typography = useTypography()
+
+  return (
+    <View
+      style={[styles.heroChrome, { opacity }]}
+      // Stop taking touches once half-faded: feed content starts overlapping
+      // at ~25% fade, and half-visible buttons must not intercept taps aimed
+      // at the feed beneath them.
+      pointerEvents={opacity < 0.5 ? "none" : "box-none"}
+    >
+      <View style={styles.heroChromeLeft} pointerEvents="box-none">
+        {slide.kind === "video" && slide.slug != null && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.ctaButton,
+              pressed && feedback.pressed,
+            ]}
+            onPress={onWatchNow}
+            accessibilityRole="button"
+            accessibilityLabel={`Watch ${slide.title} now`}
+          >
+            <Text style={[styles.ctaText, typography.body]}>Watch Now</Text>
+          </Pressable>
+        )}
+        {slide.kind === "mux" && insertAction != null && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.ctaButton,
+              pressed && feedback.pressed,
+            ]}
+            onPress={onInsertAction}
+            accessibilityRole="link"
+            accessibilityLabel={insertAction.label}
+          >
+            <Text style={[styles.ctaText, typography.body]}>
+              {insertAction.label}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+      {slide.kind === "video" && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.muteButton,
+            pressed && feedback.pressed,
+          ]}
+          onPress={onToggleMute}
+          accessibilityLabel={muted ? "Unmute video" : "Mute video"}
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name={muted ? "volume-mute" : "volume-high"}
+            size={20}
+            color={TEXT_ON_OVERLAY}
+          />
+        </Pressable>
+      )}
+    </View>
+  )
+})
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -535,11 +589,12 @@ const styles = StyleSheet.create({
   heroChrome: {
     // Mirrors the chrome's old in-pager position: CTA bottom-left with the
     // content column's 16 padding, mute circle bottom-right at right 16 —
-    // both bottom edges 44 above the hero bottom.
+    // both bottom edges HERO_CHROME_BOTTOM above the hero bottom (shared
+    // geometry with the pager's reserved text-block padding).
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 44,
+    bottom: HERO_CHROME_BOTTOM,
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 16,
@@ -553,7 +608,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 6,
     backgroundColor: ACCENT,
-    minHeight: 48,
+    minHeight: HERO_CTA_HEIGHT,
     justifyContent: "center",
   },
   ctaText: {
@@ -562,9 +617,9 @@ const styles = StyleSheet.create({
     fontFamily: "System",
   },
   muteButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: HERO_CTA_HEIGHT,
+    height: HERO_CTA_HEIGHT,
+    borderRadius: HERO_CTA_HEIGHT / 2,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",

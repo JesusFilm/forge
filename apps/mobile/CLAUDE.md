@@ -45,7 +45,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **Flat-video posture**: Admin blocks carry `videoId` and `streamingUrl` but no nested video object. Renderers use block-level `imageUrl`/`titleOverride` for display. VideoHero derives poster from Mux thumbnail URL.
 - **Flat container model**: Admin's `ContainerBlock` uses flat `content[]` with `ContainerSlotBlock` markers instead of nested `slots[].slotContent`. `groupBySlotMarker()` reconstructs slot groups.
 - **ExperienceProvider at root layout**: Wraps the root Stack so both tabs and video detail route have access.
-- **Three-layer hero**: VideoHero (zIndex 0) is absolutely-positioned behind FlashList. An interactive overlay (zIndex 2, `pointerEvents="box-none"`) sits above for touch targets (e.g., mute button) that must be tappable above the scroll view. Visual elements render in the hero layer; invisible Pressable hit targets render in the overlay, positioned via `measureLayout`.
+- **Three-layer hero**: the hero (zIndex 0) is absolutely-positioned behind FlashList, with an interactive overlay (zIndex 2, `pointerEvents="box-none"`) above the scroll view for anything tappable. SDUI/CuratedHomeLayout path: visual elements render in the hero layer and invisible overlay Pressables are positioned over them via `measureLayout`. HomeScreen path: visible chrome Pressables (Watch Now / insert CTA / mute) render directly in the overlay and fade with scroll, while hero swipes are claimed by a capture-phase PanResponder on the screen root and forwarded to the pager.
 - **VideoDecoderBudget**: Global context limiting concurrent video decoder slots on Android.
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 

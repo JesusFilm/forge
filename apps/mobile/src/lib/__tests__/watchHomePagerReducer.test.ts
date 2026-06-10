@@ -196,6 +196,27 @@ describe("swipe settling (SLIDE_SHOWN)", () => {
   })
 })
 
+// ── Swipe gesture (SWIPED) ──────────────────────────────────────────────────
+
+describe("swipe gesture (SWIPED)", () => {
+  it("commits the move during an in-flight swap and records pendingSwap", () => {
+    const next = run(
+      createInitialPagerState(twoVideos),
+      { type: "SWAP_STARTED" },
+      { type: "SWIPED", index: 1 },
+    )
+    // Unlike CHIP_TAPPED, the swipe is never dropped: the user physically
+    // moved the pager, so the reducer must follow.
+    expect(next.currentIndex).toBe(1)
+    expect(next.pendingSwap).toBe(true)
+  })
+
+  it("is an identity no-op on the current index", () => {
+    const initial = createInitialPagerState(twoVideos)
+    expect(pagerReducer(initial, { type: "SWIPED", index: 0 })).toBe(initial)
+  })
+})
+
 // ── Auto-advance ────────────────────────────────────────────────────────────
 
 describe("auto-advance", () => {
@@ -518,5 +539,35 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     )
     expect(resumed.currentIndex).toBe(1)
     expect(resumed.pendingSkip).toBe(false)
+  })
+
+  it("SLIDE_SHOWN to a different index clears pendingSkip; RESUME does not advance again", () => {
+    const afterError = run(
+      createInitialPagerState(mixedQueue),
+      { type: "SUSPEND", reason: "scroll" },
+      { type: "STREAM_ERROR" },
+    )
+    expect(afterError.pendingSkip).toBe(true)
+
+    const shown = pagerReducer(afterError, { type: "SLIDE_SHOWN", index: 1 })
+    expect(shown.currentIndex).toBe(1)
+    expect(shown.pendingSkip).toBe(false)
+
+    const resumed = pagerReducer(shown, { type: "RESUME" })
+    expect(resumed.currentIndex).toBe(1) // no double-advance
+    expect(resumed.pendingSkip).toBe(false)
+  })
+
+  it("SLIDES_SET with a new queue clears pendingSkip", () => {
+    const afterError = run(
+      createInitialPagerState(twoVideos),
+      { type: "SUSPEND", reason: "scroll" },
+      { type: "STREAM_ERROR" },
+    )
+    expect(afterError.pendingSkip).toBe(true)
+
+    const fresh = [videoSlide("v3"), videoSlide("v4")]
+    const next = pagerReducer(afterError, { type: "SLIDES_SET", slides: fresh })
+    expect(next.pendingSkip).toBe(false)
   })
 })
