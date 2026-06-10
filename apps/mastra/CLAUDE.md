@@ -125,6 +125,7 @@ pnpm --filter @forge/mastra lint
 | `FIRECRAWL_TIMEOUT_MS`                    | Default Firecrawl request timeout. Defaults to `60000`.                                                                    |
 | `FIRECRAWL_MAX_SEARCH_RESULTS`            | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                           |
 | `FIRECRAWL_MAX_MARKDOWN_CHARS`            | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                           |
+| `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`        | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                      |
 | `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
@@ -360,6 +361,43 @@ Production imports are disabled by default through
 returned JSON artifact in the approved secure handoff location, then import it
 into local Mastra so native Evaluation and local artifacts can compare future
 search work against the same seed snapshot without logging into production.
+
+## Instagram AI/Christian discovery
+
+The service route `POST /forge-instagram-discovery` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `instagram-ai-christian-discovery`
+workflow. It discovers AI-generated Christian videos on Instagram using
+the shared **Firecrawl web search** client (`POST /v2/search`) — Instagram is
+heavily gated, so direct crawling is unreliable; search returns post/reel URLs
+plus title/snippet that the keyword heuristic acts on.
+
+Input is Studio-friendly with defaults (runs with no hand-written JSON):
+`queries` (defaults to two Instagram-targeted AI/Christian queries),
+`limitPerQuery` (5, max 20), `scrapeMetadata` (false — set true to request bounded
+markdown hydration for each search hit, slower), `maxResults` (50),
+`persistArtifact` (true). The
+workflow searches each query (tolerant to per-query failures), parses Instagram
+permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
+signal **both** AI-generation and Christian content.
+
+Results are returned in the response and, by default, written to a validated
+JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
+(`<storage>/instagram-discovery/reports/<runId>.json`).
+
+Limitations to keep in mind:
+
+- **Keyword classification is heuristic and noisy.** It flags keyword signals,
+  not verified AI-generation or Christian intent. An optional LLM confirmation
+  step is deferred follow-up work.
+- **`publishedAt` is best-effort.** Instagram rarely exposes a reliable
+  timestamp through search snippets, so it is frequently `null` unless scrape
+  metadata includes it.
+
+Failure reasons: `invalid_input` (400), `config_missing` (503, when
+`FIRECRAWL_API_KEY` is unset in a non-production/dev-style runtime),
+`all_queries_failed` (502, only when every query errors), `artifact_failed`
+(500, when report persistence fails). Production already requires the shared
+Firecrawl env vars for Mastra's web-data surface.
 
 ## Railway Storage
 

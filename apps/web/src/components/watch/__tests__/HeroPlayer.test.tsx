@@ -265,7 +265,7 @@ async function fireError(code: string) {
 }
 
 describe("HeroPlayer — initial mount", () => {
-  it("mounts MuxPlayer with playbackId, autoplay-muted, loop, and chrome-hide CSS variables", () => {
+  it("mounts MuxPlayer with LCP poster, bounded HLS config, and chrome-hide CSS variables", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -276,6 +276,16 @@ describe("HeroPlayer — initial mount", () => {
     expect(props.autoPlay).toBe("muted")
     expect(props.muted).toBe(true)
     expect(props.loop).toBe(true)
+    // Must match the server-rendered <link rel="preload"> URL exactly so the
+    // flag-off MuxPlayer deployment reuses the LCP poster request.
+    expect(props.poster).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+    )
+    expect(props._hlsConfig).toEqual({
+      maxBufferLength: 10,
+      maxBufferSize: 5_000_000,
+      backBufferLength: 5,
+    })
     const style = props.style as Record<string, string | undefined>
     expect(style?.["--controls"]).toBe("none")
     expect(style?.["--top-controls"]).toBe("none")

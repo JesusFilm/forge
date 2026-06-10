@@ -76,6 +76,10 @@ import {
   smartCropQaWorkflow,
 } from "./workflows/smart-crop-qa"
 import {
+  handleInstagramDiscoveryRouteRequest,
+  instagramAiChristianDiscoveryWorkflow,
+} from "./workflows/instagram-ai-christian-discovery"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -127,6 +131,7 @@ export const mastra = new Mastra({
     smartCropPlanWorkflow,
     smartCropAlignWorkflow,
     smartCropQaWorkflow,
+    instagramAiChristianDiscoveryWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -375,6 +380,21 @@ export const mastra = new Mastra({
               request: c.req.raw,
             },
           )
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-instagram-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleInstagramDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
 
           return new Response(JSON.stringify(outcome.body), {
             status: outcome.status,
