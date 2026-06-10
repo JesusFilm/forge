@@ -1,10 +1,13 @@
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { GlassView } from "expo-glass-effect"
+import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
+// Copy of apps/web/public/images/footer/jesus-film-logo.png — keep in sync.
+import jesusFilmLogo from "../../../assets/jesus-film-logo.png"
 import {
   ACCENT,
   BLACK,
@@ -17,11 +20,53 @@ import { HORIZONTAL_PADDING } from "../../styles/shared"
 type HomeHeaderProps = {
   title: string | null
   titleOpacity: number
+  /**
+   * Home-tab variant: JesusFilm wordmark on the LEFT, search + profile
+   * grouped on the right. Default (Experience screens) keeps the original
+   * layout — search left, profile right.
+   */
+  showWordmark?: boolean
 }
 
-export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
+export function HomeHeader({
+  title,
+  titleOpacity,
+  showWordmark = false,
+}: HomeHeaderProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+
+  const searchButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Search"
+      onPress={() => router.navigate("/(tabs)/watch")}
+    >
+      <GlassView
+        style={styles.glassButton}
+        glassEffectStyle="regular"
+        colorScheme="dark"
+      >
+        <Ionicons name="search" size={22} color={ACCENT} />
+      </GlassView>
+    </Pressable>
+  )
+
+  const profileButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Profile"
+      onPress={() => router.navigate("/(tabs)/profile")}
+    >
+      <GlassView
+        style={styles.glassButton}
+        glassEffectStyle="regular"
+        colorScheme="dark"
+      >
+        <Ionicons name="person" size={16} color={ACCENT} />
+      </GlassView>
+    </Pressable>
+  )
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
@@ -30,19 +75,16 @@ export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Search"
-        onPress={() => router.navigate("/(tabs)/watch")}
-      >
-        <GlassView
-          style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
-        >
-          <Ionicons name="search" size={22} color={ACCENT} />
-        </GlassView>
-      </Pressable>
+      {showWordmark ? (
+        <Image
+          source={jesusFilmLogo}
+          style={styles.wordmark}
+          contentFit="contain"
+          accessibilityLabel="Jesus Film Project"
+        />
+      ) : (
+        searchButton
+      )}
 
       {title != null && titleOpacity > 0 && (
         <GlassView
@@ -56,19 +98,14 @@ export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
         </GlassView>
       )}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Profile"
-        onPress={() => router.navigate("/(tabs)/profile")}
-      >
-        <GlassView
-          style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
-        >
-          <Ionicons name="person" size={16} color={ACCENT} />
-        </GlassView>
-      </Pressable>
+      {showWordmark ? (
+        <View style={styles.buttonRow}>
+          {searchButton}
+          {profileButton}
+        </View>
+      ) : (
+        profileButton
+      )}
     </View>
   )
 }
@@ -85,6 +122,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingBottom: 8,
+  },
+  wordmark: {
+    // Source asset is 489x487; aspectRatio derives the width from the fixed
+    // height (expo-image has no auto width).
+    height: 24,
+    aspectRatio: 489 / 487,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   glassPill: {
     flexShrink: 1,
