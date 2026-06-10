@@ -4,6 +4,12 @@ Shared domain vocabulary for this project — entities, named processes, and sta
 
 ## Video & media
 
+### Core ID
+
+The stable identifier from the Core API for a Core-sourced entity. For source
+video attribution, `Video.coreId` is the canonical video answer and
+`VideoDub.coreId` is Core's `videoVariantId`.
+
 ### Video
 
 A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their episodes — and "Up Next" siblings — are formed.
@@ -21,7 +27,41 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons — persisting or re-selecting a user's chosen language — key on the slug; the BCP-47 tag is only for best-effort device-locale matching.
 
+## Video source mapper
+
+### Video Source Mapper
+
+A prototype attribution service that accepts an externally uploaded or reuploaded video and maps it back to the official source Video and likely Dub it came from.
+
+### Mapper Catalog
+
+A mapper-owned projection of official Forge/Admin media records and matchable media signals used for attribution. The Mapper Catalog is an index for matching, not the source of truth for Videos, Dubs, or Video Editions.
+
+Mapper Catalog rows are shaped around matchable variants: the source Video
+identity stays anchored by Core ID, while each Dub contributes the variant
+identity the mapper uses to compare uploaded media against official media.
+
+### Match Job
+
+An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
+
+### Match Candidate
+
+A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
+
 ## Search & embeddings
+
+### Search Pipeline Mode
+
+A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
+
+### Keyword-First Search
+
+A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
+
+### Search Degradation Signal
+
+The response-side state that says whether semantic retrieval actually contributed to a search response. It reflects runtime embedding availability, not the requested Search Pipeline Mode.
 
 ### Content Embedding
 

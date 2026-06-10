@@ -14,6 +14,7 @@ function setRequiredWebEnv() {
   delete process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT
   delete process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT
   delete process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT
+  delete process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO
 }
@@ -108,6 +109,22 @@ describe("web feature flag helpers", () => {
     await expect(enabledWithFallback()).resolves.toBe(true)
   })
 
+  it("evaluates the watch Bible Quotes visibility flag from the server-side fallback and defaults off", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+
+    const { isWatchHideBibleQuotesEnabled } = await import("./feature-flags")
+
+    await expect(isWatchHideBibleQuotesEnabled()).resolves.toBe(false)
+
+    vi.resetModules()
+    process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT = "true"
+
+    const { isWatchHideBibleQuotesEnabled: enabledWithFallback } =
+      await import("./feature-flags")
+
+    await expect(enabledWithFallback()).resolves.toBe(true)
+  })
+
   it("keeps the watch question panel disabled by default", async () => {
     delete process.env.LAUNCHDARKLY_SDK_KEY
 
@@ -134,6 +151,7 @@ describe("web feature flag helpers", () => {
     process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT = "false"
     process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT = "true"
     process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT = "true"
+    process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT = "false"
     const booleanVariation = vi.fn(async () => false)
     const createFeatureFlagClient = vi.fn(() => ({ booleanVariation }))
 
@@ -160,6 +178,7 @@ describe("web feature flag helpers", () => {
           FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: "false",
           FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: "true",
           FORGE_WATCH_QUESTION_PANEL_DEFAULT: "true",
+          FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: "false",
         },
         defaultValues: {
           "forge.watch.playerMigration": false,
@@ -168,6 +187,7 @@ describe("web feature flag helpers", () => {
           "forge.watch.downloadAccountGate": false,
           "forge.watch.youVersionBibleQuotes": false,
           "forge.watch.questionPanel": false,
+          "forge.watch.hideBibleQuotes": false,
         },
       }),
     )

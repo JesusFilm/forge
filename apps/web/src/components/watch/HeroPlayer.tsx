@@ -81,6 +81,36 @@ const CHROME_HIDE_STYLE: MuxCSSProperties = {
   "--bottom-controls": "none",
 }
 
+// Full-width 16:9 frame, capped to the visible viewport height. This keeps
+// the sound-on player as tall as the browser can show without exceeding the
+// video aspect ratio's needed height.
+const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
+
+// Pulls the body/episode rail over the muted preview only when the rail would
+// not otherwise fit below the 16:9 hero. This preserves the full muted preview
+// on smaller/taller viewports while still keeping the episode rail in the
+// first viewport on squat windows.
+const HERO_PREVIEW_PANEL_BOTTOM_PADDING_PX = 32
+const HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX = 50
+const HERO_PREVIEW_BODY_OVERLAP_MIN_PX = 160
+const HERO_PREVIEW_BODY_OVERLAP_MAX_PX = 288
+
+function canScrollWindowTo(windowRef: Window): boolean {
+  if (typeof windowRef.scrollTo !== "function") return false
+  const scrollTo = windowRef.scrollTo as typeof windowRef.scrollTo & {
+    _isMockFunction?: boolean
+    mock?: unknown
+  }
+  if (
+    windowRef.navigator.userAgent.toLowerCase().includes("jsdom") &&
+    scrollTo._isMockFunction !== true &&
+    scrollTo.mock == null
+  ) {
+    return false
+  }
+  return true
+}
+
 // Object-fit modes per playback phase:
 //   pre-reveal (muted preview) → cover: fills the hero box, may crop;
 //   chrome-revealed (sound on) → contain: never crops. The wrapper is
@@ -230,34 +260,35 @@ export function HeroPlayer({
   }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
-  const [controlsChromeVisible, setControlsChromeVisible] = useState(true)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
 
-  const publishChromeVisibility = useCallback((visible: boolean) => {
-    if (typeof window === "undefined") return
-    window.dispatchEvent(
-      new CustomEvent<WatchPlayerChromeVisibilityDetail>(
-        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
-        { detail: { visible } },
-      ),
-    )
-  }, [])
+  const publishChromeVisibility = useCallback(
+    (detail: WatchPlayerChromeVisibilityDetail) => {
+      if (typeof window === "undefined") return
+      window.dispatchEvent(
+        new CustomEvent<WatchPlayerChromeVisibilityDetail>(
+          WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+          { detail },
+        ),
+      )
+    },
+    [],
+  )
 
   const handleControlsVisibilityChange = useCallback(
-    (visible: boolean) => {
-      setControlsChromeVisible(visible)
-      publishChromeVisibility(visible)
+    (detail: WatchPlayerChromeVisibilityDetail) => {
+      publishChromeVisibility(detail)
     },
     [publishChromeVisibility],
   )
 
   useEffect(() => {
     if (!chromeRevealed) {
-      publishChromeVisibility(true)
+      publishChromeVisibility({ visible: true, opacity: 1 })
     }
     return () => {
-      publishChromeVisibility(true)
+      publishChromeVisibility({ visible: true, opacity: 1 })
     }
   }, [chromeRevealed, publishChromeVisibility])
 
@@ -289,8 +320,8 @@ export function HeroPlayer({
   // Tracks the first paint where Mux Player has buffered enough to render the
   // muted-loop preview. Without this, the wrapper sits at the player's initial
   // min-height (~200px) during the buffer phase and the title overflows the
-  // hero — `aspect-video` below pins the layout, this hides the empty box
-  // behind a spinner until there's something to show.
+  // hero — the viewport/aspect-ratio height class below pins the layout, this
+  // hides the empty box behind a spinner until there's something to show.
   const [videoReady, setVideoReady] = useState(false)
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
@@ -303,15 +334,15 @@ export function HeroPlayer({
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
   )
+  const [previewBodyOverlapPx, setPreviewBodyOverlapPx] = useState(0)
 
   // Measured rendered height drives the sticky `top` so the player pins
-  // exactly when its bottom reaches the viewport bottom. Aspect-ratio is
-  // determined by mux-player at runtime, so we measure rather than guess.
+  // exactly when its bottom reaches the viewport bottom.
   const [heroHeight, setHeroHeight] = useState<number | null>(null)
-  // useLayoutEffect: aspect-video on the wrapper means we have a real
-  // measurable height before paint, so we can install the ResizeObserver
-  // (and seed heroHeight) without flashing the fallback `top: 0px` for a
-  // frame.
+  // useLayoutEffect: the viewport/aspect-ratio height class on the wrapper
+  // means we have a real measurable height before paint, so we can install
+  // the ResizeObserver (and seed heroHeight) without flashing the fallback
+  // `top: 0px` for a frame.
   useLayoutEffect(() => {
     const el = wrapperRef.current
     if (!el) return
@@ -328,11 +359,91 @@ export function HeroPlayer({
     return () => observer.disconnect()
   }, [])
 
+  useLayoutEffect(() => {
+    if (chromeRevealed || heroHeight == null) return
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+
+    let rafHandle = 0
+    const calculateMaxOverlap = () =>
+      Math.min(
+        HERO_PREVIEW_BODY_OVERLAP_MAX_PX,
+        Math.max(HERO_PREVIEW_BODY_OVERLAP_MIN_PX, window.innerHeight * 0.24),
+      ) + HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX
+
+    const sync = () => {
+      rafHandle = 0
+      const bodyZone = document.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement | null
+      const siblingRail = document.querySelector(
+        '[data-block-type="SiblingCarousel"]',
+      ) as HTMLElement | null
+      if (!bodyZone || !siblingRail) {
+        setPreviewBodyOverlapPx(0)
+        return
+      }
+
+      const bodyRect = bodyZone.getBoundingClientRect()
+      const railRect = siblingRail.getBoundingClientRect()
+      const railOffsetFromBody = Math.max(0, railRect.top - bodyRect.top)
+      const panelHeightNeeded =
+        railOffsetFromBody +
+        railRect.height +
+        HERO_PREVIEW_PANEL_BOTTOM_PADDING_PX
+      const spaceBelowHero = Math.max(0, window.innerHeight - heroHeight)
+      const neededOverlap = Math.ceil(panelHeightNeeded - spaceBelowHero)
+      const nextOverlap = Math.max(
+        0,
+        Math.min(neededOverlap, calculateMaxOverlap()),
+      )
+      setPreviewBodyOverlapPx(nextOverlap)
+    }
+
+    const scheduleSync = () => {
+      if (rafHandle !== 0) return
+      rafHandle = window.requestAnimationFrame(sync)
+    }
+
+    scheduleSync()
+    window.addEventListener("resize", scheduleSync, { passive: true })
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(scheduleSync)
+    observer?.observe(wrapper)
+    const bodyZone = document.querySelector(
+      '[data-testid="watch-body-zone"]',
+    ) as HTMLElement | null
+    const siblingRail = document.querySelector(
+      '[data-block-type="SiblingCarousel"]',
+    ) as HTMLElement | null
+    if (bodyZone) observer?.observe(bodyZone)
+    if (siblingRail) observer?.observe(siblingRail)
+    return () => {
+      window.removeEventListener("resize", scheduleSync)
+      observer?.disconnect()
+      if (rafHandle !== 0) window.cancelAnimationFrame(rafHandle)
+    }
+  }, [chromeRevealed, heroHeight])
+
   // Tracks whether the current paused state was caused by THIS scroll
   // listener, so the auto-resume on scroll-back only fires when WE
   // paused. If the user paused manually (chrome button, keyboard) and
   // then scrolled away, scrolling back must not override their intent.
   const pausedByScrollRef = useRef(false)
+
+  useEffect(() => {
+    if (!chromeRevealed) return
+    if (typeof window === "undefined") return
+    if (window.scrollY <= 0) return
+    if (!canScrollWindowTo(window)) return
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [chromeRevealed])
 
   // Pause the player when the user has scrolled enough that the body
   // section covers >=60% of the visible video, resume when scrolling
@@ -373,11 +484,20 @@ export function HeroPlayer({
       const viewportHeight = window.innerHeight
       const visibleVideoHeight = Math.min(heroHeight, viewportHeight)
       // The body section sits right after the hero in flow at doc-y =
-      // heroHeight; in the viewport its top is heroHeight - scrollY.
+      // heroHeight plus the current bottom margin; in the muted-preview
+      // layout that margin is negative so the episode rail starts above
+      // the hero's natural bottom edge.
       // Body covers everything BELOW that line; the unobscured part of
       // the visible video is from the wrapper's visible top down to
       // that line.
-      const bodyTopInViewport = heroHeight - window.scrollY
+      const wrapper = wrapperRef.current
+      const computedMarginBottom = wrapper
+        ? Number.parseFloat(window.getComputedStyle(wrapper).marginBottom)
+        : 0
+      const bodyOverlap = Number.isFinite(computedMarginBottom)
+        ? Math.max(0, -computedMarginBottom)
+        : 0
+      const bodyTopInViewport = heroHeight - bodyOverlap - window.scrollY
       const unobscuredHeight = Math.max(
         0,
         Math.min(visibleVideoHeight, bodyTopInViewport),
@@ -426,7 +546,7 @@ export function HeroPlayer({
       // pause/play on the player).
       if (rafHandle !== 0) cancelAnimationFrame(rafHandle)
     }
-  }, [heroHeight, player])
+  }, [chromeRevealed, heroHeight, player])
 
   const viewerUserId = useSyncExternalStore(
     subscribeViewerId,
@@ -628,10 +748,12 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" &&
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
-  const showTopLanguageSwitch =
-    showLanguageSwitch && (!chromeRevealed || controlsChromeVisible)
+  const showTopLanguageSwitch = showLanguageSwitch
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
+  const effectivePreviewBodyOverlapPx = chromeRevealed
+    ? 0
+    : previewBodyOverlapPx
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -663,8 +785,12 @@ export function HeroPlayer({
         data-block-type="HeroPlayer"
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
+        data-preview-overlap={
+          effectivePreviewBodyOverlapPx > 0 ? "true" : "false"
+        }
+        data-preview-overlap-px={effectivePreviewBodyOverlapPx}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky w-full h-[calc(100svh-300px)] min-h-[400px] bg-black ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
+        className={`sticky w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -675,6 +801,10 @@ export function HeroPlayer({
             heroHeight != null
               ? `min(0px, calc(100svh - ${heroHeight}px))`
               : "0px",
+          marginBottom:
+            effectivePreviewBodyOverlapPx <= 0
+              ? "0px"
+              : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
         {env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO ? (

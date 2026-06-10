@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  WATCH_PLAYER_CHROME_REVEAL_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   WATCH_PLAYER_PLAYBACK_STATE_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
@@ -43,11 +44,11 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
-function dispatchChromeVisibility(visible: boolean) {
+function dispatchChromeVisibility(visible: boolean, opacity?: number) {
   window.dispatchEvent(
     new CustomEvent<WatchPlayerChromeVisibilityDetail>(
       WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
-      { detail: { visible } },
+      { detail: { visible, opacity } },
     ),
   )
 }
@@ -246,7 +247,69 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(mobileSearchButton?.className).toContain("opacity-100")
   })
 
-  it("reveals the floating search bar while hovering the header after the player chrome hides", () => {
+  it("dims the floating search bar when player chrome publishes 30% opacity", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchChromeVisibility(true, 0.3)
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    const mobileSearchButton = document.querySelector(
+      '[data-testid="floating-search-mobile-button"]',
+    )
+    expect(searchButton?.className).toContain("opacity-30")
+    expect(searchButton?.className).toContain("pointer-events-auto")
+    expect(mobileSearchButton?.className).toContain("opacity-30")
+    expect(mobileSearchButton?.className).toContain("pointer-events-auto")
+  })
+
+  it("keeps the floating search bar dimmed and asks the player to brighten while hovering during player dim state", () => {
+    const revealListener = vi.fn()
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchChromeVisibility(true, 0.3)
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    const mobileSearchButton = document.querySelector(
+      '[data-testid="floating-search-mobile-button"]',
+    )
+    const hoverZone = document.querySelector(
+      '[data-testid="floating-header-hover-zone"]',
+    )
+
+    act(() => {
+      hoverZone?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    expect(searchButton?.className).toContain("opacity-30")
+    expect(mobileSearchButton?.className).toContain("opacity-30")
+    expect(revealListener).toHaveBeenCalled()
+    window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+  })
+
+  it("reveals the floating search bar and emits a player reveal request while hovering the header after player chrome hides", () => {
+    const revealListener = vi.fn()
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -286,6 +349,8 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 
     expect(searchButton?.className).toContain("opacity-0")
     expect(mobileSearchButton?.className).toContain("opacity-0")
+    expect(revealListener).toHaveBeenCalled()
+    window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
 })
 
@@ -371,6 +436,30 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(
       document.querySelector('[data-testid="floating-header-animated-icon"]'),
     ).toBeNull()
+  })
+
+  it("dims the floating language globe and logo with player chrome opacity", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: vi.fn() })
+      dispatchChromeVisibility(true, 0.3)
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(languageButton?.className).toContain("opacity-30")
+    expect(languageButton?.className).not.toContain("pointer-events-none")
+    expect(logo?.className).toContain("opacity-30")
+    expect(logo?.className).not.toContain("pointer-events-none")
   })
 })
 

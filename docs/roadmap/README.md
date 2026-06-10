@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (June 4, 2026)
 
-- **Total tickets:** 185
-- **Complete:** 111
-- **In progress:** 8
+- **Total tickets:** 188
+- **Complete:** 113
+- **In progress:** 9
 - **Not started:** 21
 - **Blocked:** 43
 - **Overdue and not complete:** 46
@@ -66,6 +66,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-155](content-discovery/feat-155-remove-legacy-admin-search-eval-harness.md)                              | Remove legacy Admin search eval harness                                                         | nisal     | P1       | 2026-06-01 | 1    | 2026-06-01 | complete    |
 | [feat-045](content-discovery/feat-045-pipeline-integration.md)                                                 | Video Vectorization — Pipeline Integration                                                      | nisal     | P1       | 2026-06-04 | 7    | 2026-06-10 | complete    |
 | [feat-046](content-discovery/feat-046-recommendations-demo-experience.md)                                      | Video Vectorization — Recommendations Demo Experience                                           | nisal     | P1       | 2026-06-04 | 7    | 2026-06-10 | complete    |
+| [feat-170](content-discovery/feat-170-yt-video-mapper-backend-scaffold.md)                                     | YouTube video mapper backend scaffold                                                           | nisal     | P1       | 2026-06-08 | 1    | 2026-06-08 | complete    |
+| [feat-171](content-discovery/feat-171-yt-video-mapper-broad-catalog-prototype.md)                              | YouTube video mapper broad-catalog prototype                                                    | nisal     | P1       | 2026-06-08 | 10   | 2026-06-17 | in-progress |
+| [feat-172](content-discovery/feat-172-web-search-keyword-first-opt-in.md)                                      | Web search keyword-first opt-in                                                                 | nisal     | P1       | 2026-06-09 | 1    | 2026-06-09 | complete    |
 | [feat-058](content-discovery/feat-058-deploy-semantic-search-architecture.md)                                  | Deploy Semantic Search Architecture                                                             | tataihono | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal     | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal     | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |

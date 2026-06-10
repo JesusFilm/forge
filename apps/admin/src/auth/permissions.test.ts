@@ -72,6 +72,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:reference", role: "PUBLIC", expected: true },
       { key: "read:experiences", role: "PUBLIC", expected: false },
       { key: "read:videos", role: "PUBLIC", expected: false },
+      { key: "read:video-mapper-catalog", role: "PUBLIC", expected: false },
       { key: "read:media-assets", role: "PUBLIC", expected: false },
       { key: "access:manager", role: "PUBLIC", expected: false },
       { key: "read:manager-read-models", role: "PUBLIC", expected: false },
@@ -84,6 +85,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:reference", role: "VIEWER", expected: true },
       { key: "read:experiences", role: "VIEWER", expected: true },
       { key: "read:videos", role: "VIEWER", expected: true },
+      { key: "read:video-mapper-catalog", role: "VIEWER", expected: false },
       { key: "read:media-assets", role: "VIEWER", expected: false },
       { key: "access:manager", role: "VIEWER", expected: false },
       { key: "read:manager-read-models", role: "VIEWER", expected: false },
@@ -109,6 +111,7 @@ describe("hasPermission — tier-based gate", () => {
 
       // ADMIN gets everything editorial + sync triggers + admin:all
       { key: "read:experiences", role: "ADMIN", expected: true },
+      { key: "read:video-mapper-catalog", role: "ADMIN", expected: true },
       { key: "write:experiences", role: "ADMIN", expected: true },
       { key: "write:videos", role: "ADMIN", expected: true },
       { key: "read:media-assets", role: "ADMIN", expected: true },
@@ -129,6 +132,7 @@ describe("hasPermission — tier-based gate", () => {
 
       // SYSTEM is workflow-only — never satisfies editorial gates.
       { key: "read:experiences", role: "SYSTEM", expected: false },
+      { key: "read:video-mapper-catalog", role: "SYSTEM", expected: false },
       { key: "write:experiences", role: "SYSTEM", expected: false },
       { key: "read:media-assets", role: "SYSTEM", expected: false },
       { key: "write:media-assets", role: "SYSTEM", expected: false },
@@ -396,6 +400,7 @@ describe("permission matrix completeness", () => {
       "read:experiences",
       "read:videos",
       "read:video-metadata",
+      "read:video-mapper-catalog",
       "read:reference",
       "read:media-assets",
       "access:manager",
@@ -517,6 +522,12 @@ describe("permission matrix completeness", () => {
       expect(hasPermission(WORKFLOW_TRIGGER, "read:video-metadata")).toBe(true)
     })
 
+    it("does NOT satisfy read:video-mapper-catalog", () => {
+      expect(hasPermission(WORKFLOW_TRIGGER, "read:video-mapper-catalog")).toBe(
+        false,
+      )
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -535,6 +546,7 @@ describe("permission matrix completeness", () => {
         "read:experiences": true,
         "read:videos": true,
         "read:video-metadata": true,
+        "read:video-mapper-catalog": true,
         "read:reference": true,
         "read:media-assets": true,
         "access:manager": true,
@@ -571,6 +583,7 @@ describe("permission matrix completeness", () => {
         "read:experiences": true,
         "read:videos": true,
         "read:video-metadata": true,
+        "read:video-mapper-catalog": true,
         "read:reference": true,
         "read:media-assets": true,
         "access:manager": true,
@@ -597,6 +610,47 @@ describe("permission matrix completeness", () => {
     })
   })
 
+  describe("VIDEO_MAPPER (service-account, catalog sync)", () => {
+    const VIDEO_MAPPER: Principal = {
+      id: null,
+      role: "VIDEO_MAPPER",
+    }
+
+    it("satisfies only read:video-mapper-catalog", () => {
+      const allowedKeys: ReadonlySet<PermissionKey> = new Set([
+        "read:video-mapper-catalog",
+      ])
+      const allKeys: Record<PermissionKey, true> = {
+        "read:experiences": true,
+        "read:videos": true,
+        "read:video-metadata": true,
+        "read:video-mapper-catalog": true,
+        "read:reference": true,
+        "read:media-assets": true,
+        "access:manager": true,
+        "read:manager-read-models": true,
+        "write:experiences": true,
+        "write:videos": true,
+        "write:media-assets": true,
+        "write:scene-embeddings": true,
+        "write:transcript-embeddings": true,
+        "write:experience-embeddings": true,
+        "write:manager-enrichment-trigger": true,
+        "write:manager-jobs": true,
+        "delete:media-assets": true,
+        "publish:experiences": true,
+        "archive:experiences": true,
+        "system:trigger-workflow": true,
+        "system:write-derived": true,
+        "admin:all": true,
+      }
+      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+        const expected = allowedKeys.has(key)
+        expect(hasPermission(VIDEO_MAPPER, key)).toBe(expected)
+      }
+    })
+  })
+
   // ---------------------------------------------------------------------------
   // CONSUMER_BEARER (plan 003) — rate-limit-only identity; ZERO permissions.
   //
@@ -619,6 +673,7 @@ describe("permission matrix completeness", () => {
         "read:experiences": true,
         "read:videos": true,
         "read:video-metadata": true,
+        "read:video-mapper-catalog": true,
         "read:reference": true,
         "read:media-assets": true,
         "access:manager": true,
@@ -694,6 +749,10 @@ describe("permission matrix completeness", () => {
         fileURLToPath(new URL("./workflow-bearer.ts", import.meta.url)),
         "utf8",
       )
+      const videoMapperSource = await readFile(
+        fileURLToPath(new URL("./video-mapper-bearer.ts", import.meta.url)),
+        "utf8",
+      )
       const searchSource = await readFile(
         fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
         "utf8",
@@ -701,9 +760,12 @@ describe("permission matrix completeness", () => {
       // Each narrow file references its own env var…
       expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(videoMapperSource).toMatch(/env\.VIDEO_MAPPER_ADMIN_API_KEYS/)
       // …and NOT the others'.
       expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      expect(videoMapperSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(videoMapperSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
       // The composer reads NO env CSV directly — it only imports the
       // narrow validators + verifyPartnerToken. Source MUST NOT
       // reference env CSV names; a regression that re-introduced a

@@ -2,13 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState, type FormEvent } from "react"
-import { executeGraphQL } from "./graphql-client"
-import {
-  SEARCH_OPERATION,
-  type DemoSearchData,
-  type SearchResponse,
-  type SearchResult,
-} from "./search-operation"
+import { type SearchResponse, type SearchResult } from "./search-operation"
+import { searchAdminGraphQL } from "./search-action"
 import {
   buildProvenanceMap,
   computeThreeWayDiff,
@@ -213,7 +208,7 @@ export function DemoSearchClient() {
         onSubmit={handleSubmit}
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 120px 100px 100px auto",
+          gridTemplateColumns: "minmax(220px, 1fr) 120px 100px 100px auto",
           gap: 8,
           alignItems: "end",
           marginBottom: 16,
@@ -305,14 +300,7 @@ async function runSearch(args: {
   limit: number
   mode: ModeKey
 }): Promise<SearchResponse> {
-  const result = await executeGraphQL<DemoSearchData, typeof args>(
-    SEARCH_OPERATION,
-    args,
-  )
-  if (!result.ok) {
-    throw new Error(result.errors.map((e) => e.message).join("; "))
-  }
-  return result.data.search
+  return await searchAdminGraphQL(args)
 }
 
 function toPaneState(settled: PromiseSettledResult<SearchResponse>): PaneState {
