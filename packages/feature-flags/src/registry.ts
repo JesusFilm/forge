@@ -34,6 +34,13 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the watch-page YouVersion Bible Quotes panel.",
   },
+  watchHideBibleQuotes: {
+    key: "forge.watch.hideBibleQuotes",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT",
+    description:
+      "Runtime rollout gate for hiding the watch-page Bible Quotes section.",
+  },
   watchQuestionPanel: {
     key: "forge.watch.questionPanel",
     defaultValue: false,

@@ -236,8 +236,9 @@ and `dilutionCapApplied`. The retriever labels are explicitly
 - **Real-DB integration tests** gated on R0 (Core sync entity coverage):
   EXPLAIN-based GIN verification, Bible Project headline against seeded
   data, canary diff vs cms keyword-first.
-- **R8 cutover** — apps/web / mobile / tv keep calling cms's search
-  during the R3 → R8 window. R8 is a separate one-shot.
+- **Consumer opt-ins** — apps/web now opts into Admin keyword-first at
+  its shared search boundary; mobile and TV cutovers remain separate
+  consumer-surface decisions.
 - **Deprecating cms keyword-first** — happens at R8 alongside the rest
   of cms search deprecation. This work does NOT delete cms code.
 - **`statement_timeout` for SQL retrievers** — pre-existing R4 concern;
@@ -253,6 +254,7 @@ and `dilutionCapApplied`. The retriever labels are explicitly
 - `apps/cms` source-side: feat-109 (PR #852).
 - Plan: `docs/plans/2026-04-29-002-feat-search-cms-to-admin-keyword-first-port-plan.md`.
 - R4 sibling: `docs/solutions/platform/admin-hybrid-search-r4-pattern.md`.
+- Web consumer opt-in: `docs/solutions/web/web-search-admin-keyword-first-opt-in.md`.
 - Workflow miss this corrects:
   `docs/solutions/workflow-issues/check-migration-playbook-before-extending-source-side-20260429.md`.
 - Inherited-assumption discipline:

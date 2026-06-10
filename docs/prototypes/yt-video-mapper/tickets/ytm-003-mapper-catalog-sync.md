@@ -1,7 +1,7 @@
 ---
 id: YTM-003
 title: "Sync Admin catalog projection into mapper tables"
-status: todo
+status: complete
 priority: P1
 depends_on:
   - YTM-002

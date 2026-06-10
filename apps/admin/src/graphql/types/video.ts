@@ -4,13 +4,21 @@
 // docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import type { Prisma } from "@prisma/client"
+import { GraphQLError } from "graphql"
 
 import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+import {
+  VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
+  VideoLookupValidationError as VideoLookupValidationErrorClass,
+} from "@/services/video.service"
 import type {
   ChildDubLanguageRow,
+  VideoMapperCatalogConnection,
+  VideoMapperCatalogItem,
+  VideoMapperCatalogPageInfo,
   VideoForEnrichment,
 } from "@/services/video.service"
 
@@ -143,6 +151,19 @@ const VideoSourceEnum = builder.enumType("VideoSourceHost", {
     MUX: { value: "MUX" },
   } as const,
 })
+
+const VideoMapperCatalogMediaSourceTypeEnum = builder.enumType(
+  "VideoMapperCatalogMediaSourceType",
+  {
+    description: "Primary media source selected for mapper catalog indexing.",
+    values: {
+      DOWNLOAD: { value: "DOWNLOAD" },
+      HLS: { value: "HLS" },
+      DASH: { value: "DASH" },
+      NONE: { value: "NONE" },
+    } as const,
+  },
+)
 
 /** @classification public-shape */
 builder.prismaObject("VideoOrigin", {
@@ -527,6 +548,128 @@ VideoForEnrichmentRef.implement({
   }),
 })
 
+// VideoMapperCatalog* — service-mediated projection for mapper sync.
+//
+// @classification public-shape
+//
+// The auth boundary lives on Query.videoMapperCatalog via the dedicated
+// `read:video-mapper-catalog` permission. classification.test.ts walks
+// prismaObject + t.relation only, so objectRefs stay manually tagged.
+
+const VideoMapperCatalogItemRef = builder.objectRef<VideoMapperCatalogItem>(
+  "VideoMapperCatalogItem",
+)
+
+VideoMapperCatalogItemRef.implement({
+  description:
+    "Flat VideoDub-level projection for yt-video-mapper catalog sync. Uses Core-facing `coreId` and `videoVariantId` terminology while retaining Admin ids for diagnostics.",
+  fields: (t) => ({
+    coreId: t.exposeString("coreId", {
+      nullable: false,
+      description: "Admin Video.coreId: the canonical source video answer.",
+    }),
+    sourceTitle: t.exposeString("sourceTitle", {
+      nullable: false,
+      description:
+        "Selected source-video title for the mapper's lightweight coreId/title map.",
+    }),
+    sourceTitleLocale: t.exposeString("sourceTitleLocale", {
+      nullable: true,
+      description:
+        "Locale of the selected source title, null when the title fell back to slug/coreId.",
+    }),
+    videoVariantId: t.exposeString("videoVariantId", {
+      nullable: false,
+      description: "Core videoVariant.id, stored in Admin as VideoDub.coreId.",
+    }),
+    adminVideoId: t.exposeID("adminVideoId", {
+      nullable: false,
+      description: "Admin Video.id for diagnostics.",
+    }),
+    adminDubId: t.exposeID("adminDubId", {
+      nullable: false,
+      description: "Admin VideoDub.id for diagnostics and cursor ordering.",
+    }),
+    languageId: t.exposeString("languageId", {
+      nullable: true,
+      description: "Core Language.coreId for the dub language.",
+    }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    locale: t.exposeString("locale", {
+      nullable: true,
+      description: "BCP-47 tag for the dub language.",
+    }),
+    editionCoreId: t.exposeString("editionCoreId", { nullable: true }),
+    editionName: t.exposeString("editionName", { nullable: true }),
+    durationSeconds: t.exposeInt("durationSeconds", { nullable: true }),
+    lengthInMilliseconds: t.exposeString("lengthInMilliseconds", {
+      nullable: true,
+    }),
+    hlsUrl: t.exposeString("hlsUrl", { nullable: true }),
+    dashUrl: t.exposeString("dashUrl", { nullable: true }),
+    shareUrl: t.exposeString("shareUrl", {
+      nullable: true,
+      description:
+        "Share/playback URL exposed for diagnostics. Not selected as mediaSourceUrl in YTM-002 because mapper MediaSourceType has no SHARE value.",
+    }),
+    downloadUrl: t.exposeString("downloadUrl", { nullable: true }),
+    downloadQuality: t.exposeString("downloadQuality", { nullable: true }),
+    downloadWidth: t.exposeInt("downloadWidth", { nullable: true }),
+    downloadHeight: t.exposeInt("downloadHeight", { nullable: true }),
+    mediaSourceType: t.field({
+      type: VideoMapperCatalogMediaSourceTypeEnum,
+      nullable: false,
+      resolve: (row) => row.mediaSourceType,
+    }),
+    mediaSourceUrl: t.exposeString("mediaSourceUrl", { nullable: true }),
+    videoPublished: t.exposeBoolean("videoPublished", { nullable: false }),
+    dubPublished: t.exposeBoolean("dubPublished", { nullable: false }),
+    videoNoIndex: t.exposeBoolean("videoNoIndex", { nullable: false }),
+    videoDeleted: t.exposeBoolean("videoDeleted", { nullable: false }),
+    dubDeleted: t.exposeBoolean("dubDeleted", { nullable: false }),
+    deletedAt: t.exposeString("deletedAt", { nullable: true }),
+    indexable: t.exposeBoolean("indexable", { nullable: false }),
+    nonIndexableReason: t.exposeString("nonIndexableReason", {
+      nullable: true,
+      description: `Machine-readable reason when indexable=false. Current values: ${VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS.join(", ")}.`,
+    }),
+  }),
+})
+
+const VideoMapperCatalogPageInfoRef =
+  builder.objectRef<VideoMapperCatalogPageInfo>("VideoMapperCatalogPageInfo")
+
+VideoMapperCatalogPageInfoRef.implement({
+  description: "Forward cursor pagination state for mapper catalog sync.",
+  fields: (t) => ({
+    startCursor: t.exposeString("startCursor", { nullable: true }),
+    endCursor: t.exposeString("endCursor", { nullable: true }),
+    hasNextPage: t.exposeBoolean("hasNextPage", { nullable: false }),
+  }),
+})
+
+const VideoMapperCatalogConnectionRef =
+  builder.objectRef<VideoMapperCatalogConnection>(
+    "VideoMapperCatalogConnection",
+  )
+
+VideoMapperCatalogConnectionRef.implement({
+  description:
+    "Bounded page of flat mapper catalog rows. Does not expose nested Video or VideoDub relation graphs.",
+  fields: (t) => ({
+    nodes: t.field({
+      type: [VideoMapperCatalogItemRef],
+      nullable: false,
+      resolve: (row) => row.nodes,
+    }),
+    pageInfo: t.field({
+      type: VideoMapperCatalogPageInfoRef,
+      nullable: false,
+      resolve: (row) => row.pageInfo,
+    }),
+  }),
+})
+
 // Root queries — PUBLIC since consumer-migration U2 (2026-05-11).
 builder.queryFields((t) => ({
   video: t.prismaField({
@@ -571,6 +714,40 @@ builder.queryFields((t) => ({
         id: String(args.id),
         query,
       }),
+  }),
+  videoMapperCatalog: t.field({
+    type: VideoMapperCatalogConnectionRef,
+    nullable: false,
+    authScopes: { hasPermission: "read:video-mapper-catalog" },
+    description:
+      "Bounded, flat VideoDub-level catalog projection for yt-video-mapper sync. Service-readable only; callers page with `first` + `after` and receive Core-facing `coreId`/`videoVariantId` fields plus indexability state.",
+    args: {
+      first: t.arg.int({
+        required: false,
+        description:
+          "Page size. Defaults to 100 and is capped at 250 for broad sync safety.",
+      }),
+      after: t.arg.string({
+        required: false,
+        description:
+          "Opaque cursor from pageInfo.endCursor. Pages forward by Admin VideoDub.id.",
+      }),
+    },
+    resolve: async (_root, args, ctx) => {
+      try {
+        return await ctx.services.video.listMapperCatalogVariants({
+          first: args.first,
+          after: args.after,
+        })
+      } catch (error) {
+        if (error instanceof VideoLookupValidationErrorClass) {
+          throw new GraphQLError(error.message, {
+            extensions: { code: "BAD_USER_INPUT" },
+          })
+        }
+        throw error
+      }
+    },
   }),
   videos: t.prismaField({
     type: ["Video"],

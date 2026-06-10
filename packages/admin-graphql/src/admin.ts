@@ -1,5 +1,5 @@
 import { initGraphQLTada } from "gql.tada"
-import type { introspection } from "./admin-graphql-env"
+import type { introspection } from "./admin-graphql-env.js"
 
 export const adminGraphql = initGraphQLTada<{
   introspection: introspection

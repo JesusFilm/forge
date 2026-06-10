@@ -21,6 +21,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
+import { WATCH_PLAYER_CHROME_REVEAL_EVENT } from "@/lib/watch-player-chrome-events"
 import { WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND } from "@/lib/watch-production-overlays"
 
 let container: HTMLDivElement
@@ -426,7 +427,8 @@ describe("HeroPlayerControls — chrome layout", () => {
 })
 
 describe("HeroPlayerControls — visibility callback", () => {
-  it("reports the initial visible state", () => {
+  it("reports dimmed state, ignores pointer movement for 5s, and wakes dim after later video movement", async () => {
+    vi.useFakeTimers()
     const wrapperEl = document.createElement("div")
     const overlayAnchor = document.createElement("div")
     document.body.appendChild(wrapperEl)
@@ -443,18 +445,119 @@ describe("HeroPlayerControls — visibility callback", () => {
     })
     const onVisibilityChange = vi.fn()
 
-    act(() => {
-      root.render(
-        <HeroPlayerControls
-          player={playerRef.current}
-          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
-          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
-          overlayAnchor={overlayAnchor}
-          onVisibilityChange={onVisibilityChange}
-        />,
-      )
-    })
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayerControls
+            player={playerRef.current}
+            playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+            wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+            overlayAnchor={overlayAnchor}
+            onVisibilityChange={onVisibilityChange}
+          />,
+        )
+      })
 
-    expect(onVisibilityChange).toHaveBeenCalledWith(true)
+      expect(onVisibilityChange).toHaveBeenCalledWith({
+        visible: true,
+        opacity: 0.3,
+      })
+
+      await act(async () => {
+        window.dispatchEvent(
+          new MouseEvent("pointermove", { clientX: 100, clientY: 100 }),
+        )
+        window.dispatchEvent(
+          new MouseEvent("pointermove", { clientX: 124, clientY: 100 }),
+        )
+      })
+
+      expect(onVisibilityChange).not.toHaveBeenCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(5001)
+      })
+
+      expect(onVisibilityChange).toHaveBeenCalledWith({
+        visible: false,
+        opacity: 0,
+      })
+
+      await act(async () => {
+        window.dispatchEvent(
+          new MouseEvent("pointermove", { clientX: 100, clientY: 100 }),
+        )
+      })
+
+      expect(onVisibilityChange).toHaveBeenLastCalledWith({
+        visible: true,
+        opacity: 0.3,
+      })
+      expect(onVisibilityChange).not.toHaveBeenCalledWith(
+        expect.objectContaining({ opacity: 1 }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("ignores header reveal requests during the 5s lockout and accepts them after", async () => {
+    vi.useFakeTimers()
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: makePlayer(),
+    })
+    const onVisibilityChange = vi.fn()
+
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayerControls
+            player={playerRef.current}
+            playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+            wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+            overlayAnchor={overlayAnchor}
+            onVisibilityChange={onVisibilityChange}
+          />,
+        )
+      })
+
+      await act(async () => {
+        window.dispatchEvent(new Event(WATCH_PLAYER_CHROME_REVEAL_EVENT))
+      })
+
+      expect(onVisibilityChange).not.toHaveBeenCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(5001)
+      })
+
+      await act(async () => {
+        window.dispatchEvent(new Event(WATCH_PLAYER_CHROME_REVEAL_EVENT))
+      })
+
+      expect(onVisibilityChange).toHaveBeenCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

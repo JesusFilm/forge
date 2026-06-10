@@ -297,7 +297,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("uses the sound-on player height before reveal so Play with Sound does not resize the hero", async () => {
+  it("uses the viewport/aspect-ratio height before and after reveal so Play with Sound does not resize the hero", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -305,10 +305,13 @@ describe("HeroPlayer — initial mount", () => {
     const wrapper = container.querySelector(
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLDivElement
-    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
-    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-x-clip")
-    expect(wrapper.className).not.toContain("md:max-w-[calc(100svh*16/9)]")
+    expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+    expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+    expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -317,9 +320,134 @@ describe("HeroPlayer — initial mount", () => {
       pill.click()
     })
 
-    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
-    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-hidden")
+    expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+    expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+    expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
+  })
+
+  it("pulls the episode rail over the muted preview only by the measured amount needed to fit", async () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 900,
+    })
+    const ro = installResizeObserverStub()
+
+    const setRect = (
+      el: Element,
+      rect: { top: number; bottom: number; height: number; width?: number },
+    ) => {
+      Object.defineProperty(el, "getBoundingClientRect", {
+        configurable: true,
+        value: () =>
+          ({
+            x: 0,
+            y: rect.top,
+            top: rect.top,
+            bottom: rect.bottom,
+            left: 0,
+            right: rect.width ?? 1000,
+            width: rect.width ?? 1000,
+            height: rect.height,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      })
+    }
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        root.render(
+          <>
+            <HeroPlayer block={makeBlock()} />
+            <section data-testid="watch-body-zone">
+              <div data-block-type="SiblingCarousel" />
+            </section>
+          </>,
+        )
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      const body = container.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement
+      const rail = container.querySelector(
+        '[data-block-type="SiblingCarousel"]',
+      ) as HTMLElement
+
+      setRect(body, { top: 600, bottom: 1000, height: 400 })
+      setRect(rail, { top: 616, bottom: 856, height: 240 })
+
+      await ro.setHeight(600)
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: 700,
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("resize"))
+        await vi.runOnlyPendingTimersAsync()
+      })
+
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("true")
+      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("188")
+      expect(wrapper.getAttribute("style")).toContain("margin-bottom: -188px")
+    } finally {
+      vi.useRealTimers()
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
+  })
+
+  it("clears the muted-preview overlap and scrolls back to the hero when sound starts from a scrolled page", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 240,
+    })
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {})
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+
+      const pill = container.querySelector(
+        '[data-testid="hero-player-unmute-pill"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        pill.click()
+      })
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync()
+      })
+
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+      expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" })
+    } finally {
+      scrollTo.mockRestore()
+      vi.useRealTimers()
+      Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        value: 0,
+      })
+    }
   })
 
   it("renders a 'Play with Sound' pill (default state) above the player", () => {
@@ -600,7 +728,7 @@ describe("HeroPlayer — fallback HLS source", () => {
 // ---------------------------------------------------------------------------
 // Custom chrome (HeroPlayerControls) — added in the chrome-revamp work.
 // Helpers + suite cover render, button wiring, timeline keyboard seek,
-// volume slider mute/unmute heuristics, and the auto-hide timer lifecycle.
+// volume slider mute/unmute heuristics, and the auto-dim timer lifecycle.
 // ---------------------------------------------------------------------------
 
 async function revealChrome(): Promise<void> {
@@ -624,6 +752,11 @@ describe("HeroPlayer — custom chrome render", () => {
     expect(
       container.querySelector('[data-testid="hero-player-click-surface"]'),
     ).not.toBeNull()
+    const clickSurface = container.querySelector(
+      '[data-testid="hero-player-click-surface"]',
+    ) as HTMLButtonElement
+    expect(clickSurface.className).toContain("cursor-default")
+    expect(clickSurface.className).not.toContain("cursor-none")
     expect(
       container.querySelector('[data-testid="hero-chrome-play"]'),
     ).not.toBeNull()
@@ -913,7 +1046,7 @@ describe("HeroPlayer — volume slider keyboard", () => {
   })
 })
 
-describe("HeroPlayer — auto-hide timer", () => {
+describe("HeroPlayer — fade timer", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
@@ -921,26 +1054,95 @@ describe("HeroPlayer — auto-hide timer", () => {
     vi.useRealTimers()
   })
 
-  it("auto-hides chrome 3s after reveal while playing", async () => {
+  it("starts at 30%, ignores pointer movement for 5s, then video mouse movement wakes the dim rail", async () => {
     await revealChrome()
     if (mockPlayerRef.current) mockPlayerRef.current.paused = false
     const chrome = container.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
     ) as HTMLElement
     expect(chrome.getAttribute("data-visible")).toBe("true")
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
     await act(async () => {
-      vi.advanceTimersByTime(3001)
+      window.dispatchEvent(
+        new MouseEvent("pointermove", {
+          clientX: 100,
+          clientY: 100,
+        }),
+      )
+      window.dispatchEvent(
+        new MouseEvent("pointermove", {
+          clientX: 124,
+          clientY: 100,
+        }),
+      )
     })
+
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      chrome.dispatchEvent(makePointerEvent("pointermove"))
+    })
+
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      vi.advanceTimersByTime(5001)
+    })
+
     expect(chrome.getAttribute("data-visible")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+    expect(chrome.className).toContain("opacity-0")
+
+    await act(async () => {
+      window.dispatchEvent(
+        new MouseEvent("pointermove", {
+          clientX: 100,
+          clientY: 100,
+        }),
+      )
+    })
+
+    expect(chrome.getAttribute("data-visible")).toBe("true")
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      chrome.dispatchEvent(makePointerEvent("pointermove"))
+    })
+
+    expect(chrome.getAttribute("data-visible")).toBe("true")
+    expect(chrome.getAttribute("data-bright")).toBe("true")
+    expect(chrome.getAttribute("data-visibility")).toBe("bright")
+    expect(chrome.className).toContain("opacity-100")
+
+    await act(async () => {
+      chrome.dispatchEvent(makePointerEvent("pointerout"))
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(4001)
+    })
+
+    expect(chrome.getAttribute("data-visible")).toBe("false")
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+    expect(chrome.className).toContain("opacity-0")
   })
 
-  it("hides the top language button and publishes header visibility when chrome auto-hides", async () => {
-    const visibilityEvents: boolean[] = []
+  it("keeps the top language button mounted during the 30% grace state and publishes hidden opacity after 5s", async () => {
+    const visibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
     const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
     const onVisibility = (event: Event) => {
       visibilityEvents.push(
-        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
-          .visible,
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
       )
     }
     const onLanguageSwitcher = (event: Event) => {
@@ -972,18 +1174,19 @@ describe("HeroPlayer — auto-hide timer", () => {
       })
 
       expect(languageEvents.at(-1)?.visible).toBe(true)
+      expect(visibilityEvents.some((event) => event.opacity === 0.3)).toBe(true)
 
       await act(async () => {
-        vi.advanceTimersByTime(3001)
+        vi.advanceTimersByTime(5001)
       })
 
       expect(
         container
           .querySelector('[data-testid="hero-player-custom-chrome"]')
-          ?.getAttribute("data-visible"),
-      ).toBe("false")
-      expect(languageEvents.at(-1)?.visible).toBe(false)
-      expect(visibilityEvents).toContain(false)
+          ?.getAttribute("data-visibility"),
+      ).toBe("hidden")
+      expect(languageEvents.at(-1)?.visible).toBe(true)
+      expect(visibilityEvents.at(-1)?.opacity).toBe(0)
     } finally {
       window.removeEventListener(
         WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -996,13 +1199,12 @@ describe("HeroPlayer — auto-hide timer", () => {
     }
   })
 
-  it("reveals controls, language button, and header visibility when scrolling back to the very top", async () => {
-    const visibilityEvents: boolean[] = []
+  it("brightens controls and header visibility when scrolling back to the very top", async () => {
+    const visibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
     const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
     const onVisibility = (event: Event) => {
       visibilityEvents.push(
-        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
-          .visible,
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
       )
     }
     const onLanguageSwitcher = (event: Event) => {
@@ -1034,14 +1236,14 @@ describe("HeroPlayer — auto-hide timer", () => {
       })
 
       await act(async () => {
-        vi.advanceTimersByTime(3001)
+        vi.advanceTimersByTime(5001)
       })
 
       const chrome = container.querySelector(
         '[data-testid="hero-player-custom-chrome"]',
       )
-      expect(chrome?.getAttribute("data-visible")).toBe("false")
-      expect(languageEvents.at(-1)?.visible).toBe(false)
+      expect(chrome?.getAttribute("data-visibility")).toBe("hidden")
+      expect(languageEvents.at(-1)?.visible).toBe(true)
 
       Object.defineProperty(window, "scrollY", {
         configurable: true,
@@ -1051,10 +1253,11 @@ describe("HeroPlayer — auto-hide timer", () => {
         window.dispatchEvent(new Event("scroll"))
       })
 
-      expect(chrome?.getAttribute("data-visible")).toBe("true")
+      expect(chrome?.getAttribute("data-bright")).toBe("true")
+      expect(chrome?.getAttribute("data-visibility")).toBe("bright")
       expect(languageEvents.at(-1)?.visible).toBe(true)
-      expect(visibilityEvents).toContain(false)
-      expect(visibilityEvents.at(-1)).toBe(true)
+      expect(visibilityEvents.some((event) => event.opacity === 0)).toBe(true)
+      expect(visibilityEvents.at(-1)?.opacity).toBe(1)
     } finally {
       window.removeEventListener(
         WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -1069,6 +1272,49 @@ describe("HeroPlayer — auto-hide timer", () => {
         value: 0,
       })
     }
+  })
+
+  it("ignores controls hover during the 5s lockout, then reveals and does not hide while hovered", async () => {
+    await revealChrome()
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+
+    await act(async () => {
+      chrome.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      vi.advanceTimersByTime(5001)
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+
+    await act(async () => {
+      chrome.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("bright")
+    expect(chrome.className).toContain("opacity-100")
+
+    await act(async () => {
+      vi.advanceTimersByTime(4001)
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("bright")
+
+    await act(async () => {
+      chrome.dispatchEvent(new MouseEvent("pointerout", { bubbles: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(4001)
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+    expect(chrome.className).toContain("opacity-0")
   })
 
   it.todo(
