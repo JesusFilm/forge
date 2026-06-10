@@ -29,7 +29,10 @@ import type {
   WatchHomeTvCarouselVideoSlide,
 } from "@/lib/watch-home-carousel-sequence"
 import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
-import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import {
+  WATCH_CACHE_TAGS,
+  WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
+} from "@/lib/watch-cache-tags"
 
 type WatchHomeVideosData = AdminResultOf<typeof getWatchHomeVideosOperation>
 type AdminHomeVideo = WatchHomeVideosData["watchHomeVideos"][number]
@@ -706,7 +709,10 @@ async function fetchWatchHomeModel(
 const getCachedWatchHomeModel = unstable_cache(
   fetchWatchHomeModel,
   ["watch-home", WATCH_HOME_CACHE_VERSION],
-  { revalidate: 60, tags: [WATCH_CACHE_TAGS.home, WATCH_CACHE_TAGS.video] },
+  {
+    revalidate: WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
+    tags: [WATCH_CACHE_TAGS.home, WATCH_CACHE_TAGS.video],
+  },
 )
 
 export const resolveWatchHome = cache(

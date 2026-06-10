@@ -8,6 +8,8 @@ export const WATCH_CACHE_TAGS = {
   routeManifest: "watch:route-manifest",
 } as const
 
+export const WATCH_RENDER_CACHE_REVALIDATE_SECONDS = 3600
+
 export type WatchCacheTag =
   (typeof WATCH_CACHE_TAGS)[keyof typeof WATCH_CACHE_TAGS]
 

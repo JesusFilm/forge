@@ -67,8 +67,8 @@ invalidation for visible video/dub/subtitle/image changes.
 5. Distinguish route-manifest-relevant Core sync phases from watch-render-
    relevant phases and emit broad video invalidation for render-relevant phases.
 6. Keep route-level watch `revalidate` at 60 seconds in the correctness slice;
-   after production webhook/topology proof, raise it to 3600 seconds in the
-   follow-up.
+   after production webhook/topology proof, raise route-level and route-render
+   resolver `revalidate` to 3600 seconds in the follow-up.
 7. Update web/admin docs with the cache contract and remaining multi-instance
    cache-topology limitation.
 
