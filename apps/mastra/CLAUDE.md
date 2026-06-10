@@ -373,7 +373,7 @@ plus title/snippet that the keyword heuristic acts on.
 
 Input is Studio-friendly with defaults (runs with no hand-written JSON):
 `queries` (defaults to two Instagram-targeted AI/Christian queries),
-`limitPerQuery` (10), `scrapeMetadata` (false — set true to request bounded
+`limitPerQuery` (5, max 20), `scrapeMetadata` (false — set true to request bounded
 markdown hydration for each search hit, slower), `maxResults` (50),
 `persistArtifact` (true). The
 workflow searches each query (tolerant to per-query failures), parses Instagram

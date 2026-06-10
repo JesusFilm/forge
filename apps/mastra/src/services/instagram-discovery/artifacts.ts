@@ -5,26 +5,19 @@ import path from "node:path"
 import { z } from "zod"
 
 import { env, getMastraStorageDir } from "../../config/env"
-import type { DiscoveryReport } from "./types"
+import {
+  DISCOVERY_QUERY_FAILURE_CODES,
+  MAX_DISCOVERY_TEXT_LENGTH,
+  MAX_INSTAGRAM_HASHTAGS,
+  type DiscoveryReport,
+} from "./types"
 
 const SAFE_ARTIFACT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/
 const MAX_POSTS = 200
 const MAX_QUERIES = 20
 const MAX_QUERY_FAILURES = 20
-const MAX_HASHTAGS = 30
-const MAX_SAFE_TEXT = 1024
 const MAX_URL = 512
 const MAX_SHORT_TEXT = 256
-const DISCOVERY_QUERY_FAILURE_CODES = [
-  "config_missing",
-  "auth_failed",
-  "network_error",
-  "rate_limited",
-  "rejected",
-  "parse_error",
-  "invalid_response",
-  "search_failed",
-] as const
 
 export const InstagramPostSchema = z
   .object({
@@ -33,8 +26,8 @@ export const InstagramPostSchema = z
     mediaType: z.enum(["post", "reel", "tv"]),
     authorHandle: z.string().max(MAX_SHORT_TEXT).nullable(),
     authorName: z.string().max(MAX_SHORT_TEXT).nullable(),
-    caption: z.string().max(MAX_SAFE_TEXT),
-    hashtags: z.array(z.string().max(128)).max(MAX_HASHTAGS),
+    caption: z.string().max(MAX_DISCOVERY_TEXT_LENGTH),
+    hashtags: z.array(z.string().max(128)).max(MAX_INSTAGRAM_HASHTAGS),
     publishedAt: z.string().max(64).nullable(),
     thumbnailUrl: z.string().max(MAX_URL).nullable(),
     matchedAi: z.array(z.string().max(64)).max(64),
@@ -44,9 +37,9 @@ export const InstagramPostSchema = z
 
 export const DiscoveryQueryFailureSchema = z
   .object({
-    query: z.string().max(MAX_SAFE_TEXT),
+    query: z.string().max(MAX_DISCOVERY_TEXT_LENGTH),
     code: z.enum(DISCOVERY_QUERY_FAILURE_CODES),
-    message: z.string().max(MAX_SAFE_TEXT),
+    message: z.string().max(MAX_DISCOVERY_TEXT_LENGTH),
   })
   .strict()
 
@@ -67,7 +60,9 @@ export const DiscoveryReportSchema = z
     mastraRunId: z.string().max(128),
     startedAt: z.string().max(64),
     finishedAt: z.string().max(64),
-    queries: z.array(z.string().max(MAX_SAFE_TEXT)).max(MAX_QUERIES),
+    queries: z
+      .array(z.string().max(MAX_DISCOVERY_TEXT_LENGTH))
+      .max(MAX_QUERIES),
     totals: DiscoveryTotalsSchema,
     queryFailures: z.array(DiscoveryQueryFailureSchema).max(MAX_QUERY_FAILURES),
     posts: z.array(InstagramPostSchema).max(MAX_POSTS),

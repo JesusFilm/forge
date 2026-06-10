@@ -27,6 +27,10 @@ import type {
   DiscoveryTotals,
   InstagramPost,
 } from "../../services/instagram-discovery/types"
+import {
+  MAX_DISCOVERY_TEXT_LENGTH,
+  MAX_INSTAGRAM_HASHTAGS,
+} from "../../services/instagram-discovery/types"
 import { isValidServiceBearer } from "../../server/service-bearer"
 
 const WORKFLOW_FAILURE_ERROR_PREFIX = "INSTAGRAM_DISCOVERY_WORKFLOW_FAILED:"
@@ -35,11 +39,22 @@ const DEFAULT_QUERIES = [
   "AI generated Jesus video site:instagram.com",
   "AI generated Christian reel site:instagram.com",
 ]
+const DEFAULT_LIMIT_PER_QUERY = 5
+const MAX_LIMIT_PER_QUERY = 20
 
 export const InstagramDiscoveryWorkflowInputSchema = z
   .object({
-    queries: z.array(z.string().min(1)).min(1).max(20).default(DEFAULT_QUERIES),
-    limitPerQuery: z.number().int().positive().max(50).default(10),
+    queries: z
+      .array(z.string().trim().min(1).max(MAX_DISCOVERY_TEXT_LENGTH))
+      .min(1)
+      .max(20)
+      .default(DEFAULT_QUERIES),
+    limitPerQuery: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_LIMIT_PER_QUERY)
+      .default(DEFAULT_LIMIT_PER_QUERY),
     scrapeMetadata: z.boolean().default(false),
     maxResults: z.number().int().positive().max(200).default(50),
     persistArtifact: z.boolean().default(true),
@@ -95,15 +110,25 @@ export type InstagramDiscoverySearchHit = {
   metadata?: Record<string, unknown>
 }
 
+type DedupeCandidate = {
+  post: InstagramPost
+  matchedAi: string[]
+  matchedChristian: string[]
+}
+
 // Step-boundary projection of Firecrawl results. Deliberately .strict():
 // searchStep maps each hit to exactly these fields, so unknown upstream fields
 // are intentionally dropped before crossing the Mastra serialization boundary.
 const FirecrawlHitSchema = z
   .object({
-    url: z.string(),
-    title: z.string().nullable().optional(),
-    description: z.string().nullable().optional(),
-    markdown: z.string().nullable().optional(),
+    url: z.string().max(512),
+    title: z.string().max(MAX_DISCOVERY_TEXT_LENGTH).nullable().optional(),
+    description: z
+      .string()
+      .max(MAX_DISCOVERY_TEXT_LENGTH)
+      .nullable()
+      .optional(),
+    markdown: z.string().max(MAX_DISCOVERY_TEXT_LENGTH).nullable().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
@@ -175,6 +200,28 @@ function artifactFailure(
     retryable,
     details: error instanceof Error ? error.message : String(error),
   })
+}
+
+function boundedText(value: string): string {
+  if (value.length <= MAX_DISCOVERY_TEXT_LENGTH) return value
+  return `${value.slice(0, MAX_DISCOVERY_TEXT_LENGTH - 3)}...`
+}
+
+function boundedOptionalText(value: string | null | undefined): string | null {
+  if (value == null) return null
+  return boundedText(value)
+}
+
+function sanitizeSearchHit(
+  hit: InstagramDiscoverySearchHit,
+): InstagramDiscoverySearchHit {
+  return {
+    url: hit.url.slice(0, 512),
+    title: boundedOptionalText(hit.title),
+    description: boundedOptionalText(hit.description),
+    markdown: boundedOptionalText(hit.markdown),
+    metadata: hit.metadata,
+  }
 }
 
 function discoveryFailureFromUnknown(
@@ -287,7 +334,7 @@ export async function searchInstagramCandidates(
         limit: input.limitPerQuery,
         includeMarkdown: input.scrapeMetadata,
       })
-      hits.push(...queryHits)
+      hits.push(...queryHits.map(sanitizeSearchHit))
     } catch (error) {
       const code =
         error instanceof InstagramDiscoverySearchError
@@ -299,7 +346,9 @@ export async function searchInstagramCandidates(
       queryFailures.push({
         query,
         code,
-        message: error instanceof Error ? error.message : String(error),
+        message: boundedText(
+          error instanceof Error ? error.message : String(error),
+        ),
       })
     }
   }
@@ -335,20 +384,47 @@ export function selectQualifyingPosts(
     if (post) parsed.push(post)
   }
 
-  const byShortcode = new Map<string, InstagramPost>()
+  const byShortcode = new Map<string, DedupeCandidate>()
   for (const post of parsed) {
-    if (!byShortcode.has(post.shortcode)) byShortcode.set(post.shortcode, post)
+    const signals = classifyPost(post)
+    const existing = byShortcode.get(post.shortcode)
+    byShortcode.set(
+      post.shortcode,
+      existing
+        ? {
+            post: mergeDuplicatePost(existing.post, post),
+            matchedAi: mergeStrings(existing.matchedAi, signals.matchedAi, 64),
+            matchedChristian: mergeStrings(
+              existing.matchedChristian,
+              signals.matchedChristian,
+              64,
+            ),
+          }
+        : {
+            post,
+            matchedAi: signals.matchedAi,
+            matchedChristian: signals.matchedChristian,
+          },
+    )
   }
   const deduped = [...byShortcode.values()]
 
   const qualified: InstagramPost[] = []
-  for (const post of deduped) {
-    const signals = classifyPost(post)
-    if (!qualifies(signals)) continue
+  for (const { post, matchedAi, matchedChristian } of deduped) {
+    if (
+      !qualifies({
+        isAiGenerated: matchedAi.length > 0,
+        isChristian: matchedChristian.length > 0,
+        matchedAi,
+        matchedChristian,
+      })
+    ) {
+      continue
+    }
     qualified.push({
       ...post,
-      matchedAi: signals.matchedAi,
-      matchedChristian: signals.matchedChristian,
+      matchedAi,
+      matchedChristian,
     })
     if (qualified.length >= input.maxResults) break
   }
@@ -362,6 +438,39 @@ export function selectQualifyingPosts(
       qualified: qualified.length,
     },
   }
+}
+
+function mergeDuplicatePost(
+  existing: InstagramPost,
+  next: InstagramPost,
+): InstagramPost {
+  return {
+    ...existing,
+    authorHandle: existing.authorHandle ?? next.authorHandle,
+    authorName: existing.authorName ?? next.authorName,
+    caption: mergeText(existing.caption, next.caption),
+    hashtags: mergeStrings(
+      existing.hashtags,
+      next.hashtags,
+      MAX_INSTAGRAM_HASHTAGS,
+    ),
+    publishedAt: existing.publishedAt ?? next.publishedAt,
+    thumbnailUrl: existing.thumbnailUrl ?? next.thumbnailUrl,
+  }
+}
+
+function mergeText(first: string, second: string): string {
+  if (first.includes(second)) return first
+  if (second.includes(first)) return second.slice(0, MAX_DISCOVERY_TEXT_LENGTH)
+  return `${first}\n${second}`.slice(0, MAX_DISCOVERY_TEXT_LENGTH)
+}
+
+function mergeStrings(
+  first: readonly string[],
+  second: readonly string[],
+  maxItems: number,
+): string[] {
+  return [...new Set([...first, ...second])].slice(0, maxItems)
 }
 
 function buildReport(args: {
@@ -605,21 +714,24 @@ export async function launchInstagramDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
-  const run = await instagramAiChristianDiscoveryWorkflow.createRun({ runId })
-  let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: parsed.data })
+    const run = await instagramAiChristianDiscoveryWorkflow.createRun({ runId })
+    const result = await run.start({ inputData: parsed.data })
+    if (result.status === "success") return result.result
+    return (
+      discoveryFailureFromRunResult(result) ??
+      failure("all_queries_failed", { mastraRunId: runId, retryable: true })
+    )
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??
-      failure("all_queries_failed", { mastraRunId: runId, retryable: true })
+      failure("all_queries_failed", {
+        mastraRunId: runId,
+        retryable: true,
+        details: error instanceof Error ? error.message : String(error),
+      })
     )
   }
-  if (result.status === "success") return result.result
-  return (
-    discoveryFailureFromRunResult(result) ??
-    failure("all_queries_failed", { mastraRunId: runId, retryable: true })
-  )
 }
 
 // --- Route handler ----------------------------------------------------------
@@ -664,7 +776,13 @@ export async function handleInstagramDiscoveryRouteRequest({
   const result =
     body === undefined
       ? failure("invalid_input", { mastraRunId: runId, retryable: false })
-      : await launch(body, { runId })
+      : await launch(body, { runId }).catch((error: unknown) =>
+          failure("all_queries_failed", {
+            mastraRunId: runId,
+            retryable: true,
+            details: error instanceof Error ? error.message : String(error),
+          }),
+        )
 
   return { status: routeStatusForResult(result), body: { result } }
 }

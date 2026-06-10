@@ -12,6 +12,21 @@ import {
   runInstagramDiscovery,
   type InstagramDiscoveryWorkflowResult,
 } from "./instagram-ai-christian-discovery"
+import { MAX_DISCOVERY_TEXT_LENGTH } from "../../services/instagram-discovery/types"
+
+class TestWorkflowError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "TestWorkflowError"
+  }
+}
+
+function expectSuccess(
+  result: InstagramDiscoveryWorkflowResult,
+): asserts result is Extract<InstagramDiscoveryWorkflowResult, { ok: true }> {
+  expect(result.ok).toBe(true)
+  if (!result.ok) throw new TestWorkflowError("expected success")
+}
 
 const CONFIG: FirecrawlConfig = {
   apiKey: "fc-key",
@@ -34,7 +49,7 @@ function fakeStore(): InstagramDiscoveryArtifactStore & {
       return { path: `/tmp/fake/reports/${report.reportId}.json` }
     },
     async readReport() {
-      throw new Error("not used")
+      throw new TestWorkflowError("not used")
     },
   }
 }
@@ -70,8 +85,7 @@ describe("runInstagramDiscovery", () => {
       },
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) throw new Error("expected success")
+    expectSuccess(result)
     expect(result.posts).toHaveLength(1)
     expect(result.posts[0]!.shortcode).toBe("ABC123")
     expect(result.posts[0]!.matchedChristian).toContain("jesus")
@@ -101,8 +115,7 @@ describe("runInstagramDiscovery", () => {
       },
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) throw new Error("expected success")
+    expectSuccess(result)
     expect(result.posts).toHaveLength(1)
     expect(result.totals.candidates).toBe(2)
     expect(result.totals.deduped).toBe(1)
@@ -120,8 +133,7 @@ describe("runInstagramDiscovery", () => {
       },
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) throw new Error("expected success")
+    expectSuccess(result)
     expect(result.artifactPath).toBeUndefined()
     expect(store.written).toHaveLength(0)
   })
@@ -165,6 +177,39 @@ describe("runInstagramDiscovery", () => {
     expect(searchQuery).not.toHaveBeenCalled()
   })
 
+  it("rejects queries that exceed the artifact text bound before search", async () => {
+    const searchQuery = vi.fn()
+    const result = await runInstagramDiscovery(
+      { queries: ["q".repeat(MAX_DISCOVERY_TEXT_LENGTH + 1)] },
+      {
+        runId: "run-long-query",
+        firecrawlConfig: CONFIG,
+        searchQuery: searchQuery as never,
+        artifactStore: fakeStore(),
+      },
+    )
+
+    expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
+    expect(searchQuery).not.toHaveBeenCalled()
+  })
+
+  it("accepts queries at the artifact text bound", async () => {
+    const store = fakeStore()
+    const query = "q".repeat(MAX_DISCOVERY_TEXT_LENGTH)
+    const result = await runInstagramDiscovery(
+      { queries: [query] },
+      {
+        runId: "run-max-query",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit],
+        artifactStore: store,
+      },
+    )
+
+    expectSuccess(result)
+    expect(store.written[0]!.queries[0]).toBe(query)
+  })
+
   it("returns all_queries_failed when every query errors", async () => {
     const result = await runInstagramDiscovery(
       { queries: ["a", "b"] },
@@ -204,8 +249,7 @@ describe("runInstagramDiscovery", () => {
       },
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) throw new Error("expected success")
+    expectSuccess(result)
     expect(result.queryFailures).toHaveLength(1)
     expect(result.queryFailures[0]!.code).toBe("auth_failed")
     expect(result.posts).toHaveLength(1)
@@ -227,19 +271,100 @@ describe("runInstagramDiscovery", () => {
       },
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) throw new Error("expected success")
+    expectSuccess(result)
     expect(result.posts).toHaveLength(1)
     expect(result.totals.deduped).toBe(2)
     expect(result.totals.qualified).toBe(1)
   })
 
-  it("returns invalid_input for an out-of-range limit", async () => {
+  it("merges duplicate shortcode variants before classification", async () => {
+    const store = fakeStore()
     const result = await runInstagramDiscovery(
-      { queries: ["q"], limitPerQuery: 0 },
-      { runId: "run-7", firecrawlConfig: CONFIG, artifactStore: fakeStore() },
+      { queries: ["q"] },
+      {
+        runId: "run-duplicate-merge",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [
+          {
+            url: "https://www.instagram.com/reel/DUPLICATE/",
+            description: "Beautiful sunset over the hills",
+          },
+          {
+            url: "https://www.instagram.com/reel/DUPLICATE/",
+            description: "AI generated film of Jesus #aiart #faith",
+          },
+        ],
+        artifactStore: store,
+      },
     )
-    expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
+
+    expectSuccess(result)
+    expect(result.posts).toHaveLength(1)
+    expect(result.posts[0]!.matchedAi).toContain("ai generated")
+    expect(result.posts[0]!.matchedChristian).toContain("jesus")
+    expect(result.totals).toMatchObject({
+      candidates: 2,
+      deduped: 1,
+      qualified: 1,
+    })
+  })
+
+  it("bounds hydrated markdown before selecting and persisting posts", async () => {
+    const store = fakeStore()
+    const result = await runInstagramDiscovery(
+      { queries: ["q"], scrapeMetadata: true },
+      {
+        runId: "run-bounded-markdown",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [
+          {
+            url: "https://www.instagram.com/reel/LONGMD/",
+            markdown: `AI generated Jesus ${"x".repeat(MAX_DISCOVERY_TEXT_LENGTH + 500)}`,
+          },
+        ],
+        artifactStore: store,
+      },
+    )
+
+    expectSuccess(result)
+    expect(result.posts[0]!.caption).toHaveLength(MAX_DISCOVERY_TEXT_LENGTH)
+    expect(store.written[0]!.posts[0]!.caption).toHaveLength(
+      MAX_DISCOVERY_TEXT_LENGTH,
+    )
+  })
+
+  it.each([0, 21])(
+    "returns invalid_input for out-of-range limitPerQuery %i",
+    async (limitPerQuery) => {
+      const result = await runInstagramDiscovery(
+        { queries: ["q"], limitPerQuery },
+        {
+          runId: `run-limit-${limitPerQuery}`,
+          firecrawlConfig: CONFIG,
+          artifactStore: fakeStore(),
+        },
+      )
+      expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
+    },
+  )
+
+  it("uses the shared Firecrawl default cap as the default query limit", async () => {
+    const searchQuery = vi.fn(async () => [aiChristianHit])
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-default-limit",
+        firecrawlConfig: CONFIG,
+        searchQuery,
+        artifactStore: fakeStore(),
+      },
+    )
+
+    expectSuccess(result)
+    expect(searchQuery).toHaveBeenCalledWith(
+      "q",
+      expect.objectContaining({ limit: 5 }),
+    )
   })
 })
 
@@ -281,7 +406,7 @@ describe("handleInstagramDiscoveryRouteRequest", () => {
       authHeader: "Bearer right",
       serviceKeys: ["right"],
       readJson: async () => {
-        throw new Error("bad json")
+        throw new TestWorkflowError("bad json")
       },
       launch: launch as never,
     })
@@ -333,5 +458,24 @@ describe("handleInstagramDiscoveryRouteRequest", () => {
       }),
     })
     expect(outcome.status).toBe(500)
+  })
+
+  it("maps launch rejections to a typed failure response", async () => {
+    const outcome = await handleInstagramDiscoveryRouteRequest({
+      authHeader: "Bearer right",
+      serviceKeys: ["right"],
+      readJson: async () => ({}),
+      launch: async () => {
+        throw new TestWorkflowError("storage unavailable")
+      },
+    })
+
+    expect(outcome.status).toBe(502)
+    expect(outcome.body.result).toMatchObject({
+      ok: false,
+      reason: "all_queries_failed",
+      retryable: true,
+      details: "storage unavailable",
+    })
   })
 })

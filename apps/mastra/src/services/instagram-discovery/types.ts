@@ -1,5 +1,18 @@
 import type { FirecrawlClientFailure } from "../firecrawl-client"
 
+export const MAX_DISCOVERY_TEXT_LENGTH = 1024
+export const MAX_INSTAGRAM_HASHTAGS = 30
+export const DISCOVERY_QUERY_FAILURE_CODES = [
+  "config_missing",
+  "auth_failed",
+  "network_error",
+  "rate_limited",
+  "rejected",
+  "parse_error",
+  "invalid_response",
+  "search_failed",
+] as const
+
 export type InstagramMediaType = "post" | "reel" | "tv"
 
 /** Signals from the keyword classifier for a single post. */
