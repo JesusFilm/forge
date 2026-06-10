@@ -3,7 +3,7 @@ id: "feat-170"
 title: "Seeker Agent Skeleton"
 owner: "jianwei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-06-09"
 duration: 3
 depends_on:
@@ -13,6 +13,12 @@ tags:
   - "ai-chat"
   - "agent"
 ---
+
+> **Plan / implementation record:**
+> `docs/plans/2026-06-08-003-feat-seeker-agent-skeleton-plan.md` is the
+> authoritative record of technical decisions and what actually shipped. Where
+> it and this ticket differ, the plan wins (e.g. the dedicated-store note on
+> "What To Build" item 3 below).
 
 ## Problem
 
@@ -90,6 +96,10 @@ is a reference to mirror, not a dependency.
    `InMemoryStore`. The `InMemoryStore` is app-level storage, not the Memory
    primitive — the storage tier is free, the primitive is new work. Memory
    wipes on process restart, not per session.
+   **Superseded by plan KTD1:** the shipped implementation wires a **dedicated**
+   `InMemoryStore` in `memory.ts` (not the app-level store) — so the seeker's
+   memory physically cannot persist to Postgres and there is no circular import.
+   See the plan's KTD1 for the rationale.
 4. Add a single commented guardrail attach-point in the agent/tool flow marking
    where later honesty / crisis-deferral checks will hook (breadcrumb, no logic).
 5. Route-isolation test: assert the seeker agent is NOT attached to any
