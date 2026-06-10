@@ -20,19 +20,16 @@ import { scale } from "../../lib/scale"
 import { WATCH_THEME } from "./watchDetailTheme"
 import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
-
-type IconName = React.ComponentProps<typeof Ionicons>["name"]
-
-const ICON_SIZE = Math.round(scale(26))
-
 // Deterministic single-line row height so virtualized lists (FlatList
 // getItemLayout / initialScrollIndex) can compute offsets without measuring.
 // Every text child pins lineHeight to ROW_LINE_HEIGHT and rows are
 // numberOfLines={1}, so height = vertical padding + line height exactly.
-const ROW_VERTICAL_PADDING = scale(16)
-const ROW_LINE_HEIGHT = Math.round(scale(32))
-export const WATCH_OPTION_ROW_HEIGHT =
-  ROW_VERTICAL_PADDING * 2 + ROW_LINE_HEIGHT
+// Tokens live in watchMenuLayout.ts (React-free, unit-tested).
+import { ROW_LINE_HEIGHT, WATCH_OPTION_ROW_HEIGHT } from "./watchMenuLayout"
+
+type IconName = React.ComponentProps<typeof Ionicons>["name"]
+
+const ICON_SIZE = Math.round(scale(26))
 
 export function WatchOptionRow({
   icon,
@@ -41,6 +38,7 @@ export function WatchOptionRow({
   selected = false,
   disabled = false,
   onPress,
+  onFocus,
   hasTVPreferredFocus,
   accessibilityLabel,
 }: {
@@ -54,6 +52,9 @@ export function WatchOptionRow({
   /** Unplayable dub → inert, non-focusable, muted "Unavailable" row. */
   disabled?: boolean
   onPress: () => void
+  /** Chained after the row's own focus handling (used to disarm one-shot
+   *  preferred focus in the virtualized lists). */
+  onFocus?: () => void
   hasTVPreferredFocus?: boolean
   accessibilityLabel?: string
 }) {
@@ -138,7 +139,10 @@ export function WatchOptionRow({
   return (
     <Pressable
       onPress={onPress}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        setFocused(true)
+        onFocus?.()
+      }}
       onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"

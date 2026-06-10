@@ -21,13 +21,14 @@
 // (unit-tested there — jest-expo can't load this .tsx). The Close affordance is
 // always focusable so the viewer is never trapped.
 
-import { useCallback, useMemo } from "react"
+import { useMemo } from "react"
 import { FlatList, Modal, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { annotateVariantRows, type AnnotatedVariantRow } from "./panelState"
-import { WATCH_OPTION_ROW_HEIGHT, WatchOptionRow } from "./WatchOptionRow"
+import { annotateVariantRows } from "./panelState"
+import { useVariantList } from "./useVariantList"
+import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
 
 export function LanguagePanel({
@@ -42,55 +43,21 @@ export function LanguagePanel({
     () => annotateVariantRows(video?.variants ?? [], activeVariantIndex),
     [video?.variants, activeVariantIndex],
   )
-  // Display position of the active dub in the sorted list — the sheet opens
-  // scrolled here so the checked row is visible and takes initial focus.
-  const activeDisplayIndex = useMemo(
-    () => rows.findIndex((row) => row.active),
-    [rows],
-  )
 
-  const renderRow = useCallback(
-    ({ item: row }: { item: AnnotatedVariantRow }) => {
-      const name =
-        row.variant.languageName ?? row.variant.languageSlug ?? row.variant.slug
-      return (
-        <WatchOptionRow
-          icon="globe-outline"
-          label={name}
-          note={row.variant.languageNameNative}
-          selected={row.active}
-          disabled={row.disabled}
-          hasTVPreferredFocus={row.active}
-          onPress={() => {
-            setActiveVariantIndex(row.index)
-            onClose()
-          }}
-          accessibilityLabel={name}
-        />
-      )
-    },
-    [setActiveVariantIndex, onClose],
-  )
-
-  const keyExtractor = useCallback(
-    (row: AnnotatedVariantRow) =>
-      `variant-${row.variant.documentId ?? ""}-${row.index}`,
-    [],
-  )
-
-  // Fixed-height rows → exact offsets without measuring (required for
-  // initialScrollIndex on a virtualized list).
-  const getItemLayout = useCallback(
-    (
-      _data: ArrayLike<AnnotatedVariantRow> | null | undefined,
-      index: number,
-    ) => ({
-      length: WATCH_OPTION_ROW_HEIGHT,
-      offset: index * WATCH_OPTION_ROW_HEIGHT,
-      index,
-    }),
-    [],
-  )
+  // Shared virtualized-list wiring: scroll-to-active on every open + one-shot
+  // preferred focus (see useVariantList).
+  const {
+    listRef,
+    renderRow,
+    keyExtractor,
+    getItemLayout,
+    initialScrollIndex,
+  } = useVariantList({
+    rows,
+    onSelect: setActiveVariantIndex,
+    onClose,
+    visible,
+  })
 
   return (
     <Modal
@@ -118,13 +85,12 @@ export function LanguagePanel({
           </View>
 
           <FlatList
+            ref={listRef}
             data={rows}
             renderItem={renderRow}
             keyExtractor={keyExtractor}
             getItemLayout={getItemLayout}
-            initialScrollIndex={
-              activeDisplayIndex > 0 ? activeDisplayIndex : undefined
-            }
+            initialScrollIndex={initialScrollIndex}
             initialNumToRender={14}
             windowSize={7}
             showsVerticalScrollIndicator={false}

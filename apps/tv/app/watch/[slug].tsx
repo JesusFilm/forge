@@ -17,7 +17,7 @@
 // sections render only once the full query has resolved (the seed paints
 // title/poster first; no per-section spinners).
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Dimensions,
   Pressable,
@@ -125,6 +125,10 @@ export default function WatchVideoScreen() {
   }, [setVideo])
 
   const [activePanel, setActivePanel] = useState<ActivePanel>("none")
+  // Stable identity: this lands in the panels' renderRow useCallback deps —
+  // an inline arrow would rebuild renderRow (re-rendering all mounted FlatList
+  // rows) on every screen render while a sheet is open.
+  const closePanel = useCallback(() => setActivePanel("none"), [])
 
   const hasVideo = video != null
 
@@ -271,11 +275,11 @@ export default function WatchVideoScreen() {
 
       <LanguagePanel
         visible={activePanel === "language"}
-        onClose={() => setActivePanel("none")}
+        onClose={closePanel}
       />
       <SubtitlePanel
         visible={activePanel === "subtitle"}
-        onClose={() => setActivePanel("none")}
+        onClose={closePanel}
       />
     </View>
   )

@@ -26,7 +26,7 @@
 // subtitle rendering. The Close affordance stays focusable in every state so the
 // viewer is never trapped in a loading/error/empty menu.
 
-import { useCallback, useEffect, useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
@@ -37,14 +37,11 @@ import {
   annotateVariantRows,
   deriveSubtitlePanelState,
   isSubtitleRowActive,
-  type AnnotatedVariantRow,
 } from "./panelState"
-import { WATCH_OPTION_ROW_HEIGHT, WatchOptionRow } from "./WatchOptionRow"
+import { useVariantList } from "./useVariantList"
+import { MENU_HEADING_HEIGHT } from "./watchMenuLayout"
+import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
-
-// Fixed heading height so getItemLayout can compute exact offsets for rows
-// below the ListHeaderComponent (offset = heading + index * row height).
-const HEADING_HEIGHT = scale(64)
 
 export function InPlayerMenu({ onClose }: { onClose: () => void }) {
   const {
@@ -69,53 +66,25 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
     () => annotateVariantRows(video?.variants ?? [], activeVariantIndex),
     [video?.variants, activeVariantIndex],
   )
-  const activeDisplayIndex = useMemo(
-    () => languageRows.findIndex((row) => row.active),
-    [languageRows],
-  )
 
   const subtitleState = deriveSubtitlePanelState(activeVariantMediaState)
 
-  const renderRow = useCallback(
-    ({ item: row }: { item: AnnotatedVariantRow }) => {
-      const name =
-        row.variant.languageName ?? row.variant.languageSlug ?? row.variant.slug
-      return (
-        <WatchOptionRow
-          icon="globe-outline"
-          label={name}
-          note={row.variant.languageNameNative}
-          selected={row.active}
-          disabled={row.disabled}
-          hasTVPreferredFocus={row.active}
-          onPress={() => {
-            setActiveVariantIndex(row.index)
-            onClose()
-          }}
-          accessibilityLabel={name}
-        />
-      )
-    },
-    [setActiveVariantIndex, onClose],
-  )
-
-  const keyExtractor = useCallback(
-    (row: AnnotatedVariantRow) =>
-      `variant-${row.variant.documentId ?? ""}-${row.index}`,
-    [],
-  )
-
-  const getItemLayout = useCallback(
-    (
-      _data: ArrayLike<AnnotatedVariantRow> | null | undefined,
-      index: number,
-    ) => ({
-      length: WATCH_OPTION_ROW_HEIGHT,
-      offset: HEADING_HEIGHT + index * WATCH_OPTION_ROW_HEIGHT,
-      index,
-    }),
-    [],
-  )
+  // Shared virtualized-list wiring (one-shot preferred focus, scroll-to-active,
+  // fixed-height offsets). The menu unmounts on close, so each open is a fresh
+  // mount and `visible` can stay at its default. headerHeight shifts the row
+  // offsets below the in-list "Audio Language" heading.
+  const {
+    listRef,
+    renderRow,
+    keyExtractor,
+    getItemLayout,
+    initialScrollIndex,
+  } = useVariantList({
+    rows: languageRows,
+    onSelect: setActiveVariantIndex,
+    onClose,
+    headerHeight: MENU_HEADING_HEIGHT,
+  })
 
   return (
     // Absolute-fill scrim INSIDE the overlay's content layer. Its own
@@ -132,13 +101,12 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
         style={watchMenuStyles.panel}
       >
         <FlatList
+          ref={listRef}
           data={languageRows}
           renderItem={renderRow}
           keyExtractor={keyExtractor}
           getItemLayout={getItemLayout}
-          initialScrollIndex={
-            activeDisplayIndex > 0 ? activeDisplayIndex : undefined
-          }
+          initialScrollIndex={initialScrollIndex}
           initialNumToRender={14}
           windowSize={7}
           showsVerticalScrollIndicator={false}
@@ -248,10 +216,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 50,
   },
-  // Fixed-height heading container (see HEADING_HEIGHT above) so the dub
-  // FlatList's getItemLayout offsets stay exact below the list header.
+  // Fixed-height heading container (MENU_HEADING_HEIGHT, watchMenuLayout.ts)
+  // so the dub FlatList's getItemLayout offsets stay exact below the header.
   headingBox: {
-    height: HEADING_HEIGHT,
+    height: MENU_HEADING_HEIGHT,
     justifyContent: "flex-end",
     paddingBottom: scale(12),
     paddingHorizontal: scale(20),

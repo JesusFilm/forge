@@ -14,7 +14,10 @@
 import { StyleSheet } from "react-native"
 
 import { scale } from "../../lib/scale"
-import { WATCH_OPTION_ROW_HEIGHT } from "./WatchOptionRow"
+import {
+  MENU_LIST_VISIBLE_ROWS,
+  WATCH_OPTION_ROW_HEIGHT,
+} from "./watchMenuLayout"
 import { WATCH_THEME } from "./watchDetailTheme"
 
 export const watchMenuStyles = StyleSheet.create({
@@ -53,7 +56,7 @@ export const watchMenuStyles = StyleSheet.create({
   // panel's overflow hidden). A node's own maxHeight is always honored.
   list: {
     flexGrow: 0,
-    maxHeight: 9 * WATCH_OPTION_ROW_HEIGHT,
+    maxHeight: MENU_LIST_VISIBLE_ROWS * WATCH_OPTION_ROW_HEIGHT,
   },
   // Design `.mhead` — padding 14/20/16, no per-item background.
   header: {

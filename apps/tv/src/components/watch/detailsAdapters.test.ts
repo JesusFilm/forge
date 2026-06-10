@@ -4,6 +4,7 @@ import {
   buildRelatedQuestionsBlock,
   formatCitationReference,
 } from "./detailsAdapters"
+import { JOIN_BIBLE_STUDY_URL, PROMO_IMAGE_URL } from "../../lib/bibleContent"
 import type {
   WatchBibleCitation,
   WatchStudyQuestion,
@@ -168,8 +169,10 @@ describe("buildBibleQuotesBlock", () => {
       reference: "Free Resources",
       ctaLabel: "Join Our Bible Study",
     })
-    expect(quotes[1].ctaLink).toEqual(expect.stringContaining("https://"))
-    expect(quotes[1].imageUrl).toEqual(expect.stringContaining("https://"))
+    // Exact constants (not stringContaining): pins the adapter-to-constant
+    // wiring so a mixed-up URL (e.g. the chat CTA on the promo card) fails.
+    expect(quotes[1].ctaLink).toBe(JOIN_BIBLE_STUDY_URL)
+    expect(quotes[1].imageUrl).toBe(PROMO_IMAGE_URL)
   })
 
   it("drops citations with no usable reference and returns null if all are dropped", () => {
