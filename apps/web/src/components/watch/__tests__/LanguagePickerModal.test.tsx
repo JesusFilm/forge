@@ -65,7 +65,11 @@ function $$(selector: string): HTMLElement[] {
   return Array.from(document.querySelectorAll(selector)) as HTMLElement[]
 }
 
-function expectMultilingualTooltip(testId: string, expected: string[]) {
+function expectMultilingualTooltip(
+  testId: string,
+  expected: string[],
+  omitted: string[] = [],
+) {
   const target = $(`[data-testid="${testId}"]`)
   expect(target).not.toBeNull()
   act(() => {
@@ -85,7 +89,7 @@ function expectMultilingualTooltip(testId: string, expected: string[]) {
   expect(tooltip?.className).toContain("absolute")
   expect(tooltip?.className).toContain("bottom-full")
   expect(tooltip?.className).toContain("pointer-events-none")
-  expect(tooltip?.className).toContain("opacity-100")
+  expect(tooltip?.className).toContain("opacity-75")
   expect(tooltip?.className).toContain("min-h-12")
   expect(tooltip?.className).not.toContain("border")
   expect(tooltip?.className).not.toContain("bg-sky")
@@ -105,6 +109,9 @@ function expectMultilingualTooltip(testId: string, expected: string[]) {
   }
   for (const text of expected) {
     expect(tooltip?.textContent).toContain(text)
+  }
+  for (const text of omitted) {
+    expect(tooltip?.textContent).not.toContain(text)
   }
   return target
 }
@@ -438,7 +445,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(defaultTooltipPanel?.getAttribute("aria-hidden")).toBe("true")
     const languageTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-language",
-      ["Language", "语言", "भाषा", "Idioma", "اللغة"],
+      ["语言", "भाषा", "Idioma", "اللغة"],
+      ["Language"],
     )
     const trigger = $('[data-testid="language-combobox-trigger"]')
     expect(trigger?.className).toContain("w-full")
@@ -461,7 +469,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(languageTooltip?.contains(trigger)).toBe(false)
     const languageSelectTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-language-select",
-      ["Language", "语言", "भाषा", "Idioma", "اللغة"],
+      ["语言", "भाषा", "Idioma", "اللغة"],
+      ["Language"],
     )
     expect(languageSelectTooltip?.className).toContain("w-full")
     expect(languageSelectTooltip?.contains(trigger)).toBe(true)
@@ -474,6 +483,20 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-tooltip-audio-language"]'),
     ).toBeNull()
+  })
+
+  it("omits the currently selected language from tooltip translations", () => {
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      currentLanguageSlug: "spanish",
+    })
+
+    expectMultilingualTooltip(
+      "watch-language-picker-tooltip-language",
+      ["Language", "语言", "भाषा", "اللغة"],
+      ["Idioma"],
+    )
   })
 
   it("matches the production overlay shell and renders subtitle selector data", () => {
@@ -535,7 +558,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(subtitlesIcon?.className).not.toContain("bg-stone-950")
     const subtitlesTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles",
-      ["Subtitles", "字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
+      ["字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
+      ["Subtitles"],
     )
     expect(subtitlesTooltip?.className).toContain("flex-1")
     expect(subtitlesTooltip?.contains(subtitlesIcon)).toBe(true)
@@ -569,12 +593,12 @@ describe("LanguagePickerModal — globe overlay", () => {
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
       [
-        "Turn subtitles off",
         "关闭字幕",
         "उपशीर्षक बंद करें",
         "Desactivar subtítulos",
         "أوقف الترجمة",
       ],
+      ["Turn subtitles off"],
     )
 
     const triggers = $$('[data-testid="language-combobox-trigger"]')
@@ -584,7 +608,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(triggers[1]?.className).toContain("min-h-12")
     const subtitlesSelectTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-select",
-      ["Subtitles", "字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
+      ["字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
+      ["Subtitles"],
     )
     expect(subtitlesSelectTooltip?.className).toContain("w-full")
     expect(subtitlesSelectTooltip?.contains(triggers[1])).toBe(true)
@@ -607,20 +632,16 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-apply"]')?.className,
     ).toContain("px-5")
-    expectMultilingualTooltip("watch-language-picker-tooltip-close", [
-      "Close",
-      "关闭",
-      "बंद करें",
-      "Cerrar",
-      "إغلاق",
-    ])
-    expectMultilingualTooltip("watch-language-picker-tooltip-apply", [
-      "Apply",
-      "应用",
-      "लागू करें",
-      "Aplicar",
-      "تطبيق",
-    ])
+    expectMultilingualTooltip(
+      "watch-language-picker-tooltip-close",
+      ["关闭", "बंद करें", "Cerrar", "إغلاق"],
+      ["Close"],
+    )
+    expectMultilingualTooltip(
+      "watch-language-picker-tooltip-apply",
+      ["应用", "लागू करें", "Aplicar", "تطبيق"],
+      ["Apply"],
+    )
     expect(
       $('[data-testid="watch-language-picker-request-ai-translation"]'),
     ).toBeNull()
@@ -650,13 +671,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(toggleState?.className).toContain("right-1")
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
-      [
-        "Turn subtitles on",
-        "打开字幕",
-        "उपशीर्षक चालू करें",
-        "Activar subtítulos",
-        "شغّل الترجمة",
-      ],
+      ["打开字幕", "उपशीर्षक चालू करें", "Activar subtítulos", "شغّل الترجمة"],
+      ["Turn subtitles on"],
     )
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
 
@@ -675,12 +691,12 @@ describe("LanguagePickerModal — globe overlay", () => {
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
       [
-        "Turn subtitles off",
         "关闭字幕",
         "उपशीर्षक बंद करें",
         "Desactivar subtítulos",
         "أوقف الترجمة",
       ],
+      ["Turn subtitles off"],
     )
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
@@ -706,12 +722,12 @@ describe("LanguagePickerModal — globe overlay", () => {
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-request-subtitles",
       [
-        "Request subtitles",
         "请求字幕",
         "उपशीर्षक का अनुरोध करें",
         "Solicitar subtítulos",
         "اطلب الترجمة",
       ],
+      ["Request subtitles"],
     )
     const count = $('[data-testid="watch-language-picker-subtitle-count"]')
     expect(count?.parentElement?.textContent).toContain("Subtitles")
@@ -724,12 +740,12 @@ describe("LanguagePickerModal — globe overlay", () => {
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
       [
-        "Subtitles unavailable",
         "没有字幕",
         "उपशीर्षक उपलब्ध नहीं हैं",
         "Subtítulos no disponibles",
         "الترجمة غير متاحة",
       ],
+      ["Subtitles unavailable"],
     )
     expect(button.parentElement?.parentElement?.contains(toggle)).toBe(true)
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)

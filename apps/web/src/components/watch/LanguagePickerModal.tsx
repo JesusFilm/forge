@@ -85,6 +85,14 @@ const TOOLTIP_LANGUAGES = [
 
 type TooltipLanguageKey = (typeof TOOLTIP_LANGUAGES)[number]["key"]
 
+const TOOLTIP_LANGUAGE_ALIASES: Record<TooltipLanguageKey, string[]> = {
+  english: ["en", "english"],
+  mandarin: ["zh", "chinese", "mandarin", "中文", "普通话"],
+  hindi: ["hi", "hindi", "हिन्दी"],
+  spanish: ["es", "spanish", "español"],
+  arabic: ["ar", "arabic", "العربية", "عربي"],
+}
+
 const MULTILINGUAL_TOOLTIPS: Record<
   string,
   Record<TooltipLanguageKey, string>
@@ -149,6 +157,43 @@ const MULTILINGUAL_TOOLTIPS: Record<
 
 type OpenCombobox = "language" | "subtitles" | null
 
+function normalizedTooltipLanguage(value: string | null | undefined) {
+  return value?.trim().toLowerCase().replace(/_/g, "-") ?? null
+}
+
+function tooltipLanguageKeyForCurrentLanguage({
+  bcp47,
+  name,
+  nativeName,
+  slug,
+}: {
+  bcp47?: string | null
+  name?: string | null
+  nativeName?: string | null
+  slug?: string | null
+}): TooltipLanguageKey | null {
+  const candidates = [slug, bcp47, bcp47?.split(/[-_]/)[0], name, nativeName]
+
+  for (const candidate of candidates) {
+    const normalized = normalizedTooltipLanguage(candidate)
+    if (!normalized) continue
+
+    for (const [languageKey, aliases] of Object.entries(
+      TOOLTIP_LANGUAGE_ALIASES,
+    ) as [TooltipLanguageKey, string[]][]) {
+      if (
+        aliases.some(
+          (alias) => normalized === alias || normalized.startsWith(`${alias}-`),
+        )
+      ) {
+        return languageKey
+      }
+    }
+  }
+
+  return null
+}
+
 function MultilingualTooltip({
   children,
   copy,
@@ -182,11 +227,16 @@ function MultilingualTooltip({
 
 function MultilingualTooltipPanel({
   copy,
+  excludedLanguage,
 }: {
   copy: Record<TooltipLanguageKey, string> | null
+  excludedLanguage: TooltipLanguageKey | null
 }) {
   const visible = copy !== null
   const tooltipCopy = copy ?? MULTILINGUAL_TOOLTIPS.language
+  const tooltipLanguages = excludedLanguage
+    ? TOOLTIP_LANGUAGES.filter((language) => language.key !== excludedLanguage)
+    : TOOLTIP_LANGUAGES
 
   return (
     <div
@@ -194,7 +244,7 @@ function MultilingualTooltipPanel({
       aria-hidden={visible ? undefined : true}
       data-testid="watch-language-picker-tooltip-panel"
       className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-opacity duration-150 ${
-        visible ? "opacity-100" : "opacity-0"
+        visible ? "opacity-75" : "opacity-0"
       }`}
     >
       <Info
@@ -203,7 +253,7 @@ function MultilingualTooltipPanel({
         className="mt-0.5 size-4 shrink-0 text-stone-300"
       />
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-        {TOOLTIP_LANGUAGES.map((language, index) => (
+        {tooltipLanguages.map((language, index) => (
           <span
             key={language.key}
             className="inline-flex items-center gap-2 whitespace-nowrap"
@@ -282,6 +332,21 @@ export function LanguagePickerModal({
   const clearActiveTooltip = useCallback(() => {
     setActiveTooltipCopy(null)
   }, [])
+
+  const draftLanguageOption = useMemo(
+    () => options.find((option) => option.slug === draftSlug) ?? null,
+    [draftSlug, options],
+  )
+  const excludedTooltipLanguage = useMemo(
+    () =>
+      tooltipLanguageKeyForCurrentLanguage({
+        bcp47: draftLanguageOption?.bcp47,
+        name: draftLanguageOption?.name,
+        nativeName: draftLanguageOption?.nativeName,
+        slug: draftSlug,
+      }),
+    [draftLanguageOption, draftSlug],
+  )
 
   const setOpenComboboxState = useCallback((next: OpenCombobox) => {
     openComboboxRef.current = next
@@ -535,7 +600,10 @@ export function LanguagePickerModal({
         </DialogTitle>
 
         <div className="relative flex flex-col gap-10">
-          <MultilingualTooltipPanel copy={activeTooltipCopy} />
+          <MultilingualTooltipPanel
+            copy={activeTooltipCopy}
+            excludedLanguage={excludedTooltipLanguage}
+          />
           <div className="flex flex-col gap-4">
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.language}
