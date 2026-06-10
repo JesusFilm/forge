@@ -6,6 +6,8 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
+import { runSearch } from "@/lib/search-actions"
+import type { SearchResult } from "@/lib/search"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_REVEAL_EVENT,
@@ -42,7 +44,11 @@ afterEach(() => {
   })
   container.remove()
   document.body.innerHTML = ""
+  vi.clearAllMocks()
+  vi.useRealTimers()
 })
+
+const mockedRunSearch = vi.mocked(runSearch)
 
 function dispatchChromeVisibility(visible: boolean, opacity?: number) {
   window.dispatchEvent(
@@ -69,6 +75,88 @@ function dispatchLanguageSwitcher(detail: WatchHeaderLanguageSwitcherDetail) {
       { detail },
     ),
   )
+}
+
+function makeSearchResult(id: string, title: string): SearchResult {
+  return {
+    type: "video",
+    id,
+    slug: `${id}-slug`,
+    title,
+    imageUrl: null,
+    snippet: `${title} snippet`,
+    startSeconds: null,
+    playbackId: `playback-${id}`,
+    score: 1,
+    label: null,
+    durationSeconds: 120,
+    childCount: 0,
+  }
+}
+
+function makeSearchResponse(results: SearchResult[], hasMore: boolean) {
+  return {
+    results,
+    hasMore,
+    query: "the bible project",
+    searchMode: "hybrid",
+    latencyMs: 12,
+  }
+}
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set
+  valueSetter?.call(input, value)
+  input.dispatchEvent(new Event("input", { bubbles: true }))
+}
+
+async function openSearchOverlay(): Promise<HTMLInputElement> {
+  act(() => {
+    root.render(
+      <FloatingSearchProvider>
+        <main>Page</main>
+      </FloatingSearchProvider>,
+    )
+  })
+  await act(async () => {
+    await Promise.resolve()
+  })
+
+  const searchButton = document.querySelector(
+    '[aria-label="Search videos"]',
+  ) as HTMLButtonElement
+  act(() => {
+    searchButton.click()
+  })
+
+  const input = document.querySelector(
+    'input[aria-label="Search videos by keyword"]',
+  ) as HTMLInputElement | null
+  if (input === null) {
+    throw new Error("Expected search overlay input to render")
+  }
+  return input
+}
+
+async function submitDebouncedSearch(input: HTMLInputElement, query: string) {
+  act(() => {
+    setInputValue(input, query)
+  })
+  await act(async () => {
+    vi.advanceTimersByTime(300)
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
+async function flushResolvedSearch() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
 }
 
 function PlaybackStatePublisher({
@@ -539,5 +627,72 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(close?.className).toContain("z-[60]")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("h-6")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("w-6")
+  })
+})
+
+describe("FloatingSearchProvider — search pagination", () => {
+  it("requests the initial Watch search page with limit 10 and offset 0", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockResolvedValueOnce(
+      makeSearchResponse(
+        [makeSearchResult("first-result", "The Bible Project Result")],
+        false,
+      ),
+    )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith({
+      query: "the bible project",
+      limit: 10,
+      offset: 0,
+    })
+    expect(document.body.textContent).toContain("The Bible Project Result")
+  })
+
+  it("loads the next Watch search page with limit 10, current offset, and appends results", async () => {
+    vi.useFakeTimers()
+    const initialResults = Array.from({ length: 7 }, (_, index) =>
+      makeSearchResult(
+        `initial-${index + 1}`,
+        `Initial Bible Project Result ${index + 1}`,
+      ),
+    )
+    const nextResults = [
+      makeSearchResult("next-1", "Next Bible Project Result 1"),
+    ]
+    mockedRunSearch
+      .mockResolvedValueOnce(makeSearchResponse(initialResults, true))
+      .mockResolvedValueOnce(makeSearchResponse(nextResults, false))
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+
+    const loadMore = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Load more",
+    )
+    expect(loadMore).not.toBeUndefined()
+
+    act(() => {
+      loadMore?.click()
+    })
+    await flushResolvedSearch()
+
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(1, {
+      query: "the bible project",
+      limit: 10,
+      offset: 0,
+    })
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(2, {
+      query: "the bible project",
+      limit: 10,
+      offset: 7,
+    })
+    expect(document.body.textContent).toContain(
+      "Initial Bible Project Result 1",
+    )
+    expect(document.body.textContent).toContain("Next Bible Project Result 1")
   })
 })
