@@ -60,4 +60,26 @@ describe("executeGraphQL", () => {
       "Bearer search-token",
     )
   })
+
+  it("supports server-side endpoint and origin options", async () => {
+    const fetchMock = mockGraphQLResponse()
+
+    await executeGraphQL<{ ok: boolean }, { q: string }>(
+      "query",
+      { q: "jesus" },
+      {
+        endpoint: "https://admin.example/api/graphql",
+        bearerToken: "search-token",
+        origin: "https://admin.example",
+      },
+    )
+
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toBe("https://admin.example/api/graphql")
+    expect((init as RequestInit).cache).toBe("no-store")
+    expect(lastFetchHeaders(fetchMock)).toMatchObject({
+      Authorization: "Bearer search-token",
+      Origin: "https://admin.example",
+    })
+  })
 })
