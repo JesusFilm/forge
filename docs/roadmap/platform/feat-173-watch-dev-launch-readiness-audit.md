@@ -3,7 +3,7 @@ id: "feat-173"
 title: "Watch dev launch-readiness audit fixes"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-10"
 duration: 2
 depends_on: []

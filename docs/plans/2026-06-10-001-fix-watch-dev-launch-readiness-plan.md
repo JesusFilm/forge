@@ -1,7 +1,7 @@
 ---
 title: "fix: Watch Dev Launch Readiness"
 type: "fix"
-status: "active"
+status: "completed"
 date: "2026-06-10"
 roadmap: "docs/roadmap/platform/feat-173-watch-dev-launch-readiness-audit.md"
 ---
