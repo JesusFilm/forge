@@ -172,6 +172,13 @@ const workflowStepSchema = z.enum([
   "theology_validation_bible_quotes",
   "seo_improvements",
   "cms_notify",
+  "smart_crop_fingerprint",
+  "smart_crop_plan",
+  "smart_crop_align",
+  "smart_crop_preview_render",
+  "smart_crop_qa",
+  "smart_crop_render",
+  "smart_crop_mux_output",
 ])
 
 const optionalStringFromNullable = z

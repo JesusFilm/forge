@@ -160,6 +160,9 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
+  SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: z.string().min(1).optional(),
+  SMART_CROP_PLAN_MODEL: z.string().min(1).optional(),
+  SMART_CROP_QA_MODEL: z.string().min(1).optional(),
   SCENE_EMBEDDING_MODEL: z
     .string()
     .min(1)
@@ -281,6 +284,11 @@ export const env = envSchema.parse({
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
+  SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.SMART_CROP_IMAGE_URL_ALLOWED_HOSTS,
+  ),
+  SMART_CROP_PLAN_MODEL: emptyToUndefined(process.env.SMART_CROP_PLAN_MODEL),
+  SMART_CROP_QA_MODEL: emptyToUndefined(process.env.SMART_CROP_QA_MODEL),
   SCENE_EMBEDDING_MODEL: emptyToUndefined(process.env.SCENE_EMBEDDING_MODEL),
   SCENE_EMBEDDING_PROVIDER: emptyToUndefined(
     process.env.SCENE_EMBEDDING_PROVIDER,
