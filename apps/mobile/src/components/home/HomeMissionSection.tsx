@@ -54,7 +54,7 @@ type MissionCardSpec = {
   icon: React.ComponentProps<typeof Ionicons>["name"]
   /** Gradient pair behind the card content. */
   wash: [string, string]
-  action: "mission" | "beta"
+  action: "mission" | "roadmap" | "beta"
   accessibilityHint: string
 }
 
@@ -74,8 +74,9 @@ const CARDS: readonly MissionCardSpec[] = [
     title: HIGHLIGHTS_LABEL,
     icon: "construct-outline",
     wash: [MISSION_WASH.purple, MISSION_WASH.burgundy],
-    action: "mission",
-    accessibilityHint: "Opens the Jesus Film mission page",
+    action: "roadmap",
+    accessibilityHint:
+      "Opens the Jesus Film mission page at the roadmap section",
   },
   {
     key: "beta",
@@ -99,7 +100,9 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
       openExternalUrl(BETA_SIGNUP_URL)
       return
     }
-    router.push("/mission")
+    router.push(
+      spec.action === "roadmap" ? "/mission?section=roadmap" : "/mission",
+    )
   }
 
   return (

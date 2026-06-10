@@ -6,7 +6,9 @@
  * beta invitation. Reached from the Home mission rail; the native stack
  * header supplies back navigation.
  */
+import { useCallback, useRef } from "react"
 import {
+  type LayoutChangeEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +18,7 @@ import {
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
+import { useLocalSearchParams } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useTypography } from "../src/hooks/useTypography"
@@ -51,6 +54,23 @@ import {
 export default function MissionScreen() {
   const typography = useTypography()
   const insets = useSafeAreaInsets()
+  const { section } = useLocalSearchParams<{ section?: string }>()
+
+  // Land pre-scrolled on the requested section: the roadmap header's
+  // onLayout y is relative to the scroll content (it is a direct child),
+  // so one unanimated scrollTo on first layout puts it at the top.
+  const scrollRef = useRef<ScrollView>(null)
+  const didScrollToSectionRef = useRef(false)
+
+  const handleRoadmapLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      if (section !== "roadmap" || didScrollToSectionRef.current) return
+      didScrollToSectionRef.current = true
+      const y = Math.max(0, event.nativeEvent.layout.y - 12)
+      scrollRef.current?.scrollTo({ y, animated: false })
+    },
+    [section],
+  )
 
   const handleBetaPress = () => {
     openExternalUrl(BETA_SIGNUP_URL)
@@ -70,6 +90,7 @@ export default function MissionScreen() {
         pointerEvents="none"
       />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: insets.bottom + 48 },
@@ -108,6 +129,7 @@ export default function MissionScreen() {
         <Text
           style={[styles.buildingNextLabel, typography.titleSmall]}
           accessibilityRole="header"
+          onLayout={handleRoadmapLayout}
         >
           {HIGHLIGHTS_LABEL}
         </Text>
