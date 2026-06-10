@@ -352,18 +352,30 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
     return undefined
   }
 
-  const candidate = raw as { languageResults?: unknown }
+  const candidate = raw as {
+    languageResults?: unknown
+    progress?: unknown
+    message?: unknown
+  }
   const languageResults = Array.isArray(candidate.languageResults)
     ? candidate.languageResults
         .map(normalizeTranslationLanguageResult)
         .filter((result): result is TranslationLanguageResult => result != null)
     : []
+  const progress =
+    typeof candidate.progress === "number" ? candidate.progress : undefined
+  const message =
+    typeof candidate.message === "string" ? candidate.message : undefined
 
-  if (languageResults.length === 0) {
+  if (languageResults.length === 0 && progress === undefined && !message) {
     return undefined
   }
 
-  return { languageResults }
+  return {
+    ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(progress !== undefined ? { progress } : {}),
+    ...(message !== undefined ? { message } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -377,9 +389,15 @@ export async function createJob(
   options?: {
     videoDocumentId?: string
     initialArtifacts?: JobArtifactManifest
+    // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
+    // custom step inventory (smart-crop jobs persist smart_crop_* steps
+    // instead of the enrichment FORGE_WORKFLOW_STEPS).
+    jobOptions?: JobRecord["options"]
+    steps?: JobStepState[]
   },
 ): Promise<JobRecord> {
-  const steps = buildInitialSteps()
+  const steps = options?.steps ?? buildInitialSteps()
+  const jobOptions = options?.jobOptions ?? {}
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
 
@@ -413,7 +431,7 @@ export async function createJob(
       resolvedTargetLanguageCodes: languages,
       sourceCollectionTitle: sourceCollection?.title ?? undefined,
       sourceMediaTitle: sourceVideo?.title ?? undefined,
-      options: {},
+      options: jobOptions,
       status: "pending",
       retries: 0,
       createdAt: now,
@@ -442,7 +460,7 @@ export async function createJob(
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
-      options: {},
+      options: jobOptions,
       artifacts: initialArtifacts,
       errors: [],
       steps,
