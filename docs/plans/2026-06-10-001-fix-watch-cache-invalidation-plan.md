@@ -58,7 +58,7 @@ There is no production `emitRevalidateWebhook({ model: "video", ... })` call for
 1. Keep the public watch URL contract unchanged; cache fixes must work with the internal `/{locale}/{htmlLang}` rewrite and the existing `.html` public URLs.
 2. Preserve current `revalidatePath` coverage for Full Route Cache invalidation across public, internal, generated-UI-locale, and legacy path shapes.
 3. Add tag invalidation for every `unstable_cache` entry that can feed watch home, watch experience, collection, video, episode, series, and child-dub language UI.
-4. Use the supported Route Handler API: `revalidateTag(tag, "max")`, not `updateTag`, because `updateTag` is server-action-only.
+4. Use the supported Route Handler API: `revalidateTag(tag, { expire: 0 })`, not `updateTag`, because `updateTag` is server-action-only and `profile="max"` serves stale data before background refresh.
 5. Ensure Admin Experience publishing, Watch settings changes, watch route manifest refreshes, and render-relevant Core sync phases all invalidate both route output and resolver data.
 6. Treat webhook delivery as best-effort but observable. Failures may still be swallowed to avoid blocking Admin writes, but logs/tests must make it obvious what was attempted.
 7. Do not increase data-cache TTLs in the first correctness slice. Longer data TTLs are only safe after tag coverage and production cache topology are confirmed.
@@ -86,7 +86,7 @@ There is no production `emitRevalidateWebhook({ model: "video", ... })` call for
 
 Official Next.js docs shape the implementation:
 
-- [`revalidateTag`](https://nextjs.org/docs/app/api-reference/functions/revalidateTag) invalidates cached data by tag. In current docs, `profile="max"` is recommended for stale-while-revalidate semantics; calling without the second argument is deprecated.
+- [`revalidateTag`](https://nextjs.org/docs/app/api-reference/functions/revalidateTag) invalidates cached data by tag. `profile="max"` is stale-while-revalidate; webhook-driven watch invalidation uses `{ expire: 0 }` so the first render after the webhook does not rehydrate the route from stale resolver data. Calling without the second argument is deprecated.
 - [`revalidatePath`](https://nextjs.org/docs/app/api-reference/functions/revalidatePath) revalidates route output and can be called from Route Handlers. In Route Handlers, it marks a path for revalidation and regeneration happens on the next visit.
 - [`unstable_cache`](https://nextjs.org/docs/app/api-reference/functions/unstable_cache) supports a `tags` option; tags are not part of the cache key but are used for invalidation.
 - [`updateTag`](https://nextjs.org/docs/app/api-reference/functions/updateTag) is server-action-only, so it should not be used in `/api/revalidate`.
@@ -112,9 +112,9 @@ flowchart LR
   C --> D["validate shared secret"]
   D --> E["clearWatchRouteManifestCache when needed"]
   D --> F["revalidatePath for Full Route Cache"]
-  D --> G["revalidateTag profile=max for Data Cache"]
+  D --> G["revalidateTag expire=0 for Data Cache"]
   F --> H["next visit regenerates route output"]
-  G --> I["next read refreshes stale resolver data"]
+  G --> I["next read recomputes expired resolver data"]
   E --> J["local process manifest cache cleared; other processes rely on TTL/shared cache"]
 ```
 
@@ -203,24 +203,24 @@ Keep the existing `revalidate` values unchanged:
 
 **Approach**
 
-Import `revalidateTag` from `next/cache`. Keep the existing path push helpers, then add tag push helpers that dedupe tag names and call `revalidateTag(tag, "max")`.
+Import `revalidateTag` from `next/cache`. Keep the existing path push helpers, then add tag push helpers that dedupe tag names and call `revalidateTag(tag, { expire: 0 })`.
 
 Map semantic models to tags:
 
 - `watch-setting`: `watch:home`, `watch:settings`, and broad experience/video tags if homepage composition can include either.
 - `experience`: broad experience tag, plus home/settings tags if homepage changes are indicated by payload.
 - `video`: broad video, series, and child-dub tags.
-- `watch-route-manifest`: clear process manifest cache and invalidate `watch:route-manifest`; consider broad video/experience/home tags only when the Admin payload says render-relevant Core sync phases ran.
+- `watch-route-manifest`: clear process manifest cache, invalidate `watch:route-manifest`, and revalidate watch layouts; consider broad video/experience/home tags only when the Admin payload says render-relevant Core sync phases ran.
 
-Support `video` payloads without a slug as broad invalidations. The current path logic can stay no-op for missing slug, but tag logic must still run.
+Support `video` payloads without a slug as broad invalidations. Missing-slug video events must still invalidate broad tags and the watch layouts.
 
 **Test scenarios**
 
-- Authorized `experience` payload calls both `revalidatePath` for the existing path matrix and `revalidateTag(..., "max")` for broad experience tags.
+- Authorized `experience` payload calls both `revalidatePath` for the existing path matrix and `revalidateTag(..., { expire: 0 })` for broad experience tags.
 - Authorized `video` payload with slug/language calls the existing path matrix and broad video tags.
-- Authorized `video` payload without slug calls broad tags and does not throw.
+- Authorized `video` payload without slug calls broad tags, revalidates watch layouts, and does not throw.
 - Authorized `watch-setting` payload invalidates home/settings tags and existing homepage/layout paths.
-- Authorized `watch-route-manifest` payload clears the manifest cache and invalidates the manifest tag.
+- Authorized `watch-route-manifest` payload clears the manifest cache, invalidates the manifest tag, and revalidates watch layouts.
 - Unauthorized, invalid secret, and invalid JSON requests call neither `revalidatePath` nor `revalidateTag`.
 - Repeated path/tag candidates are deduped before invoking Next cache APIs.
 
@@ -287,7 +287,7 @@ Do not increase resolver/data-cache TTLs in this unit. The Data Cache should sta
 Document the exact cache contract:
 
 - Route paths are invalidated with `revalidatePath`.
-- Resolver data is invalidated with `revalidateTag(tag, "max")`.
+- Resolver data is invalidated with `revalidateTag(tag, { expire: 0 })`.
 - Admin webhooks are best-effort and require matching `REVALIDATION_SECRET`.
 - In-process route manifest caches clear only in the process that receives the webhook; other processes rely on TTL unless production uses a shared cache/instance fan-out.
 - If Railway runs more than one Next instance, instant global invalidation requires a shared cache handler or all-instance webhook delivery.
@@ -345,7 +345,7 @@ Then run a preview smoke:
 
 ## Acceptance Criteria
 
-- `/api/revalidate` calls `revalidateTag(tag, "max")` for all relevant semantic models while preserving existing `revalidatePath` behavior.
+- `/api/revalidate` calls `revalidateTag(tag, { expire: 0 })` for all relevant semantic models while preserving existing `revalidatePath` behavior.
 - Watch resolver `unstable_cache` declarations include tags that correspond to the route-handler invalidation map.
 - Broad `video` invalidation works even when Admin/Core sync cannot provide a slug.
 - Core sync emits watch-render invalidation for render-relevant phases, including at least `video-images`, `video-editions`, `video-subtitles`, and `video-dub-downloads`.

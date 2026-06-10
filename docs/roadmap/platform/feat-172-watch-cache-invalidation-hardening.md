@@ -60,8 +60,8 @@ invalidation for visible video/dub/subtitle/image changes.
 1. Add a web-owned watch cache tag helper with coarse tags for home, settings,
    experience, video, series, child-dub languages, and the route manifest.
 2. Add matching `tags` arrays to every watch `unstable_cache` wrapper.
-3. Extend `/api/revalidate` to call `revalidateTag(tag, "max")` while preserving
-   the existing public/internal/legacy `revalidatePath` matrix.
+3. Extend `/api/revalidate` to call `revalidateTag(tag, { expire: 0 })` while
+   preserving the existing public/internal/legacy `revalidatePath` matrix.
 4. Support broad `video` invalidation payloads with no slug so Core sync can
    refresh rendered watch video data even without per-slug change summaries.
 5. Distinguish route-manifest-relevant Core sync phases from watch-render-

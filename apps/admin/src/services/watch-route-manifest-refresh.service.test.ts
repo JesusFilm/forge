@@ -185,6 +185,36 @@ describe("watch route manifest refresh", () => {
     })
   })
 
+  it("emits broad video invalidation for soft-deleted render data", async () => {
+    const emitWebhook = vi
+      .fn()
+      .mockResolvedValue({ status: "sent", httpStatus: 200 })
+
+    const phases = [
+      { phase: "video-subtitles", created: 0, updated: 0, softDeleted: 1 },
+    ]
+
+    expect(shouldInvalidateWatchRenderDataAfterCoreSync(phases)).toBe(true)
+
+    const outcome = await refreshWatchRouteManifestAfterCoreSync({
+      prisma: {} as never,
+      phases,
+      emitWebhook,
+    })
+
+    expect(outcome).toEqual({
+      status: "skipped",
+      reason: "no-route-relevant-core-sync-phases",
+    })
+    expect(generateMock).not.toHaveBeenCalled()
+    expect(upsertLatestMock).not.toHaveBeenCalled()
+    expect(emitWebhook).toHaveBeenCalledWith({
+      model: "video",
+      slug: null,
+      locale: null,
+    })
+  })
+
   it("does not emit broad video invalidation for no-op scheduled Core sync phases", async () => {
     const emitWebhook = vi.fn()
 

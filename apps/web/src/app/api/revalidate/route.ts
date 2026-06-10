@@ -19,6 +19,7 @@ import { clearWatchRouteManifestCache } from "@/lib/watch-route-manifest"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
 const BEARER_PREFIX = "Bearer "
+const REVALIDATE_TAG_PROFILE = { expire: 0 } as const
 
 interface RevalidateWebhookPayload {
   model: RevalidateModel
@@ -168,19 +169,16 @@ export async function POST(request: Request) {
     if (seenTags.has(tag)) return
     seenTags.add(tag)
     try {
-      revalidateTag(tag, "max")
+      revalidateTag(tag, REVALIDATE_TAG_PROFILE)
       revalidatedTags.push(tag)
     } catch (error) {
       tagErrors.push(tag)
+      const detail =
+        error instanceof Error
+          ? error.message.slice(0, 500)
+          : String(error).slice(0, 500)
       console.warn(
-        JSON.stringify({
-          event: "watch_revalidate.tag.failed",
-          tag,
-          detail:
-            error instanceof Error
-              ? error.message.slice(0, 500)
-              : String(error),
-        }),
+        `[revalidate] event=watch_revalidate.tag.failed tag=${tag} detail=${detail}`,
       )
     }
   }
@@ -256,6 +254,7 @@ export async function POST(request: Request) {
   if (model === "watch-route-manifest") {
     pushTags(WATCH_CACHE_TAG_GROUPS.watchRouteManifest)
     clearWatchRouteManifestCache()
+    revalidateAllWatchPages()
     return NextResponse.json(
       responsePayload({
         manifestCacheCleared: true,
@@ -276,6 +275,9 @@ export async function POST(request: Request) {
 
   if (model === "video") {
     pushTags(WATCH_CACHE_TAG_GROUPS.video)
+    if (!slug) {
+      revalidateAllWatchPages()
+    }
   }
 
   revalidateSlugPaths()

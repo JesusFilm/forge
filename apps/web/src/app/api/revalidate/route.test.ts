@@ -94,14 +94,24 @@ describe("POST /api/revalidate", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/en/en/english.html")
     expect(revalidatePathMock).toHaveBeenCalledWith("/english")
     expect(revalidatePathMock).not.toHaveBeenCalledWith("/en.html")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", "max")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:settings", "max")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:experience", "max")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:video", "max")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:series", "max")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
+      expire: 0,
+    })
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:settings", {
+      expire: 0,
+    })
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:experience", {
+      expire: 0,
+    })
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:video", {
+      expire: 0,
+    })
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:series", {
+      expire: 0,
+    })
     expect(revalidateTagMock).toHaveBeenCalledWith(
       "watch:child-dub-languages",
-      "max",
+      { expire: 0 },
     )
   })
 
@@ -177,8 +187,12 @@ describe("POST /api/revalidate", () => {
     expect(revalidatePathMock).not.toHaveBeenCalledWith(
       "/en/en/jesus.html/en.html",
     )
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:experience", "max")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", "max")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:experience", {
+      expire: 0,
+    })
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
+      expire: 0,
+    })
   })
 
   it("keeps path invalidation working when tag invalidation fails", async () => {
@@ -274,13 +288,19 @@ describe("POST /api/revalidate", () => {
     expect(revalidatePathMock).not.toHaveBeenCalledWith(
       "/jesus.html/german.html",
     )
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:video", "max")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:series", "max")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:video", {
+      expire: 0,
+    })
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:series", {
+      expire: 0,
+    })
     expect(revalidateTagMock).toHaveBeenCalledWith(
       "watch:child-dub-languages",
-      "max",
+      { expire: 0 },
     )
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", "max")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
+      expire: 0,
+    })
   })
 
   it("supports broad video data invalidation without a slug", async () => {
@@ -303,7 +323,7 @@ describe("POST /api/revalidate", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
       revalidated: true,
-      paths: [],
+      paths: ["/[locale]/[htmlLang] (layout)", "/ (layout)"],
       tags: [
         "watch:video",
         "watch:series",
@@ -311,14 +331,24 @@ describe("POST /api/revalidate", () => {
         "watch:home",
       ],
     })
-    expect(revalidatePathMock).not.toHaveBeenCalled()
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:video", "max")
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:series", "max")
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/[locale]/[htmlLang]",
+      "layout",
+    )
+    expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:video", {
+      expire: 0,
+    })
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:series", {
+      expire: 0,
+    })
     expect(revalidateTagMock).toHaveBeenCalledWith(
       "watch:child-dub-languages",
-      "max",
+      { expire: 0 },
     )
-    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", "max")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
+      expire: 0,
+    })
   })
 
   it("infers public audio slugs for generated catalog locales outside the original core set", async () => {
@@ -413,15 +443,18 @@ describe("POST /api/revalidate", () => {
     await expect(response.json()).resolves.toEqual({
       revalidated: true,
       manifestCacheCleared: true,
-      paths: [],
+      paths: ["/[locale]/[htmlLang] (layout)", "/ (layout)"],
       tags: ["watch:route-manifest"],
     })
     expect(clearWatchRouteManifestCacheMock).toHaveBeenCalledTimes(1)
-    expect(revalidatePathMock).not.toHaveBeenCalled()
-    expect(revalidateTagMock).toHaveBeenCalledWith(
-      "watch:route-manifest",
-      "max",
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/[locale]/[htmlLang]",
+      "layout",
     )
+    expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:route-manifest", {
+      expire: 0,
+    })
   })
 
   it("rejects requests with no auth header", async () => {

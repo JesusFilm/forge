@@ -225,7 +225,7 @@ reason=config_missing`).
    such as `/watch/jesus.html/english.html`, and confirm refresh. Tail admin logs for
    `event=web_revalidate.sent httpStatus=200`. Web's receiver invalidates
    route paths with `revalidatePath` and resolver Data Cache entries with
-   `revalidateTag(tag, "max")`.
+   `revalidateTag(tag, { expire: 0 })`.
 
 Reversing the order produces a dead minute where admin's first call 401s
 against an unconfigured web. The webhook itself swallows the 401, so the

@@ -39,7 +39,7 @@ Required env vars (both flipped from `.optional()` in U13):
 - `'use client'` is a boundary — everything imported below it is also client.
 - The admin bearer (`WEB_ADMIN_API_KEYS`) is in the server-only env block. Never reference it from a client component or `NEXT_PUBLIC_*` var.
 - For browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. The browser hits the action; the action hits admin with the bearer.
-- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` currently use route-level `revalidate = 60`. Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, "max")` for resolver data. Raise route-level TTL toward `3600` only after preview/topology proof; do not raise resolver TTLs until production cache topology and webhook reliability are proven.
+- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` currently use route-level `revalidate = 60`. Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. Raise route-level TTL toward `3600` only after preview/topology proof; do not raise resolver TTLs until production cache topology and webhook reliability are proven.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
 - **Static locale root layout**: cacheable watch surfaces live under the internal route tree `src/app/[locale]/[htmlLang]/**`. `src/proxy.ts` rewrites public `/watch` URLs into that tree, so the root layout gets static params for both the next-intl message catalog key (`[locale]`) and `<html lang>` (`[htmlLang]`) without calling `headers()` or `cookies()`. Keep request-time dynamic APIs out of this tree unless the route is intentionally dynamic.
 
@@ -60,8 +60,8 @@ The receiver maps each semantic model to both paths and Data Cache tags:
 
 - `watch-setting` invalidates home/settings/experience/video/series/child-dub tags plus the watch layouts and homepage paths.
 - `experience` invalidates experience/home tags plus the current slug matrix.
-- `video` invalidates video/series/child-dub/home tags; slug-less payloads are valid broad invalidations for Core sync.
-- `watch-route-manifest` clears the receiving process's in-memory manifest cache and invalidates the route-manifest tag.
+- `video` invalidates video/series/child-dub/home tags; slug-less payloads are valid broad invalidations for Core sync and revalidate the watch layouts.
+- `watch-route-manifest` clears the receiving process's in-memory manifest cache, invalidates the route-manifest tag, and revalidates the watch layouts.
 
 The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
 
