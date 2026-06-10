@@ -34,6 +34,7 @@ export type LanguageComboboxProps = {
   placeholder?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  compact?: boolean
   triggerWrapper?: (trigger: ReactNode) => ReactNode
 }
 
@@ -424,17 +425,18 @@ function LanguageFlag({
   size = "option",
 }: {
   option: LanguageComboboxOption
-  size?: "trigger" | "option"
+  size?: "trigger" | "triggerCompact" | "option"
 }) {
   const flagPath = flagPathForOption(option)
   const compact = size === "trigger"
+  const extraCompact = size === "triggerCompact"
   return (
     <span
       aria-hidden
       data-testid="language-combobox-option-flag"
       data-flag-src={flagPath ?? undefined}
       className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 bg-white/10 shadow-[inset_0_0_18px_rgba(255,255,255,0.08)] ${
-        compact ? "size-8" : "size-10"
+        extraCompact ? "size-7" : compact ? "size-8" : "size-10"
       }`}
     >
       {flagPath ? (
@@ -445,7 +447,11 @@ function LanguageFlag({
       ) : (
         <span
           className={`font-bold tracking-wide text-stone-200 ${
-            compact ? "text-[10px]" : "text-[11px]"
+            extraCompact
+              ? "text-[9px]"
+              : compact
+                ? "text-[10px]"
+                : "text-[11px]"
           }`}
         >
           {initialsForOption(option)}
@@ -464,6 +470,7 @@ export function LanguageCombobox({
   placeholder,
   open: controlledOpen,
   onOpenChange,
+  compact = false,
   triggerWrapper,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
@@ -684,6 +691,9 @@ export function LanguageCombobox({
   )
 
   const selectedNativeName = selected ? nativeNameForOption(selected) : null
+  const triggerClassName = compact
+    ? "flex min-h-12 w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-left text-sm font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    : "flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
   const triggerButton = (
     <button
       ref={triggerRef}
@@ -697,13 +707,23 @@ export function LanguageCombobox({
       aria-expanded={open}
       aria-haspopup="listbox"
       disabled={disabled}
-      className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      className={triggerClassName}
     >
-      <span className="flex min-w-0 items-center gap-3">
+      <span
+        className={`flex min-w-0 items-center ${compact ? "gap-2.5" : "gap-3"}`}
+      >
         {selected ? (
-          <LanguageFlag option={selected} size="trigger" />
+          <LanguageFlag
+            option={selected}
+            size={compact ? "triggerCompact" : "trigger"}
+          />
         ) : (
-          <Icon aria-hidden className="h-5 w-5 shrink-0 text-stone-400" />
+          <Icon
+            aria-hidden
+            className={`shrink-0 text-stone-400 ${
+              compact ? "h-4 w-4" : "h-5 w-5"
+            }`}
+          />
         )}
         <span className="min-w-0">
           <span className="block truncate leading-tight">
@@ -712,14 +732,19 @@ export function LanguageCombobox({
           {selectedNativeName ? (
             <span
               data-testid="language-combobox-trigger-native"
-              className="mt-0.5 block truncate text-xs leading-tight text-stone-400"
+              className={`mt-0.5 block truncate leading-tight text-stone-400 ${
+                compact ? "text-[11px]" : "text-xs"
+              }`}
             >
               {selectedNativeName}
             </span>
           ) : null}
         </span>
       </span>
-      <ChevronsUpDown aria-hidden className="h-5 w-5 text-stone-500" />
+      <ChevronsUpDown
+        aria-hidden
+        className={`text-stone-500 ${compact ? "h-4 w-4" : "h-5 w-5"}`}
+      />
     </button>
   )
 

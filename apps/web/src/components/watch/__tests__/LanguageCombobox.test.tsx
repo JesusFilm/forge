@@ -82,6 +82,34 @@ describe("LanguageCombobox", () => {
     expect(trigger?.className).toContain("min-h-16")
   })
 
+  it("can render a compact trigger for modal surfaces", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="spanish"
+          onChange={vi.fn()}
+          compact
+        />,
+      )
+    })
+
+    const trigger = $('[data-testid="language-combobox-trigger"]')
+    expect(trigger?.className).toContain("rounded-xl")
+    expect(trigger?.className).toContain("px-4")
+    expect(trigger?.className).toContain("py-2.5")
+    expect(trigger?.className).toContain("text-sm")
+    expect(trigger?.className).toContain("min-h-12")
+    expect(trigger?.className).not.toContain("rounded-2xl")
+    expect(trigger?.className).not.toContain("min-h-16")
+
+    const triggerFlag = $(
+      '[data-testid="language-combobox-trigger"] [data-testid="language-combobox-option-flag"]',
+    )
+    expect(triggerFlag?.className).toContain("size-7")
+    expect(triggerFlag?.className).not.toContain("size-8")
+  })
+
   it("uses a dark translucent selected option state", () => {
     act(() => {
       root.render(
