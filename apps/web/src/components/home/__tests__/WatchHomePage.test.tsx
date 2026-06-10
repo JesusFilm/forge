@@ -179,6 +179,19 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelectorAll("a[href='/jesus.html/english.html']"),
     ).toHaveLength(4)
+    const textureClassNames = Array.from(
+      container.querySelectorAll("[class*='overlay.svg']"),
+    ).map((element) => element.getAttribute("class") ?? "")
+    expect(textureClassNames).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("bg-[url(/watch/images/overlay.svg)]"),
+      ]),
+    )
+    expect(
+      textureClassNames.some((className) =>
+        className.includes("/assets/overlay.svg"),
+      ),
+    ).toBe(false)
     expect(
       JSON.parse(window.localStorage.getItem("carousel-played-ids") ?? "{}")
         .ids,
