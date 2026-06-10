@@ -16,9 +16,22 @@ From the Forge repo root:
 
 ```sh
 pnpm --filter @forge/yt-video-mapper-backend dev
+pnpm --filter @forge/yt-video-mapper-backend sync:catalog
 pnpm --filter @forge/yt-video-mapper-backend test
 pnpm --filter @forge/yt-video-mapper-backend typecheck
 ```
+
+## Catalog Sync
+
+`sync:catalog` reads Admin's `videoMapperCatalog(first, after)` GraphQL
+projection and upserts mapper-owned `CatalogVideo`, `CatalogVariant`, and
+`CatalogSyncRun` rows. It requires:
+
+- `ADMIN_GRAPHQL_URL`
+- `ADMIN_SERVICE_BEARER_TOKEN`
+
+Admin remains the catalog source of truth. The mapper tables are a local
+projection for matching and indexing.
 
 ## Current Artifacts
 
