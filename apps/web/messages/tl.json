@@ -100,7 +100,7 @@
     "fallbackBody": "Magsimula ng pribadong usapan sa taong handang makinig.",
     "questionsShort": "Mga tanong",
     "questions": "Mga kaugnay na tanong",
-    "askYours": "Itanong ang tanong mo",
+    "askYours": "Tanong mo",
     "chatWithPerson": "Makipag-usap sa tao",
     "askBibleQuestion": "Magtanong tungkol sa Bibliya"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "Pasko"
   },
   "HeroPlayer": {
-    "playWithSound": "I-play na may tunog",
+    "playWithSound": "Manood ngayon",
     "tapToUnmute": "I-unmute"
   },
   "ExperienceSkeleton": {

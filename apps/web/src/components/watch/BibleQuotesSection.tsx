@@ -288,10 +288,16 @@ export function BibleQuotesSection({
                   sizes={BIBLE_QUOTE_IMAGE_SIZES}
                 />
                 <div className="z-1 p-8 pt-0 md:p-10 md:pt-0">
-                  <span className="mb-3 block text-sm font-bold tracking-normal text-white/80 uppercase">
+                  <span
+                    data-testid="watch-bible-quotes-promo-eyebrow"
+                    className="mb-3 block text-sm font-medium tracking-[0.18em] text-white/80 uppercase"
+                  >
                     {t("freeResources")}
                   </span>
-                  <h3 className="mb-6 max-w-[19ch] text-3xl leading-tight font-black text-balance text-white md:text-4xl">
+                  <h3
+                    data-testid="watch-bible-quotes-promo-heading"
+                    className="mb-6 max-w-[19ch] text-2xl leading-tight font-semibold text-balance text-white md:text-3xl"
+                  >
                     {t("promoHeading")}
                   </h3>
                   <Button
@@ -579,7 +585,7 @@ function BibleCitationCard({
         {scripture != null && (
           <p
             data-testid="watch-bible-quotes-verse"
-            className="relative max-w-[20ch] text-2xl leading-[1.22] font-semibold text-balance text-white/95 drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] md:text-3xl"
+            className="relative max-w-[20ch] text-xl leading-[1.22] font-semibold text-balance text-white/95 drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] md:text-2xl"
           >
             {formatScripture(scripture.text)}
           </p>

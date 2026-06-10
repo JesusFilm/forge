@@ -94,8 +94,8 @@ export function SiblingCarousel({
       aria-label={ariaLabel}
     >
       <header className="mb-4 px-10 md:px-0">
-        <p className="text-sm font-medium text-stone-300">
-          <span className="text-stone-100">{parentTitle}</span>
+        <p className="text-sm font-normal text-stone-300">
+          <span className="font-medium text-stone-100">{parentTitle}</span>
           <span className="px-2 text-stone-500">·</span>
           <span data-testid="sibling-carousel-label">
             {isParentMode ? (
@@ -124,9 +124,9 @@ export function SiblingCarousel({
           startIndex: initialCarouselIndex,
         }}
         setApi={setApi}
-        className="w-full"
+        className="w-full pl-10 md:pl-0"
       >
-        <CarouselContent className="pl-10 md:pl-0">
+        <CarouselContent>
           {children.map((child, index) => {
             const isActive = index === activeIndex
             // `resolvePosterUrl` codifies the editorial-cinematic priority
@@ -206,9 +206,9 @@ export function SiblingCarousel({
                     landscape tile. */}
                 <div
                   data-testid="sibling-carousel-caption"
-                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-1.5 bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
+                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
                 >
-                  <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
+                  <span className="text-[10px] font-normal tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
                     {t("chapter")}
                   </span>
                   {/* Card title rendered as <span>, not <h3>: the cards are
@@ -217,7 +217,7 @@ export function SiblingCarousel({
                       skipped the heading order (WCAG 1.3.1) and would
                       require an artificial sr-only section header. The
                       Link's accessible name covers the card's title. */}
-                  <span className="line-clamp-2 text-sm leading-tight font-bold text-white drop-shadow-md sm:text-base">
+                  <span className="line-clamp-2 text-sm leading-tight font-semibold text-white drop-shadow-md sm:text-base">
                     {child.title ?? ""}
                   </span>
                 </div>

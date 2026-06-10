@@ -100,7 +100,7 @@
     "fallbackBody": "Have a private discussion with someone who is ready to listen.",
     "questionsShort": "Questions",
     "questions": "Related Questions",
-    "askYours": "Ask your question",
+    "askYours": "Ask yours",
     "chatWithPerson": "Chat with a person",
     "askBibleQuestion": "Ask a Bible question"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "Christmas"
   },
   "HeroPlayer": {
-    "playWithSound": "Play with Sound",
+    "playWithSound": "Urmărește acum",
     "tapToUnmute": "Tap to Unmute"
   },
   "ExperienceSkeleton": {

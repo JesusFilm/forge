@@ -100,7 +100,7 @@
     "fallbackBody": "Bắt đầu cuộc trò chuyện riêng với một người sẵn sàng lắng nghe.",
     "questionsShort": "Câu hỏi",
     "questions": "Câu hỏi liên quan",
-    "askYours": "Đặt câu hỏi của bạn",
+    "askYours": "Câu hỏi của bạn",
     "chatWithPerson": "Trò chuyện với một người",
     "askBibleQuestion": "Đặt câu hỏi về Kinh Thánh"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "Giáng sinh"
   },
   "HeroPlayer": {
-    "playWithSound": "Phát có âm thanh",
+    "playWithSound": "Xem ngay",
     "tapToUnmute": "Bật tiếng"
   },
   "ExperienceSkeleton": {

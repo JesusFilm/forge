@@ -100,7 +100,7 @@
     "fallbackBody": "Mulakan perbualan peribadi dengan seseorang yang sedia mendengar.",
     "questionsShort": "Soalan",
     "questions": "Soalan berkaitan",
-    "askYours": "Ajukan soalan anda",
+    "askYours": "Soalan anda",
     "chatWithPerson": "Bercakap dengan seseorang",
     "askBibleQuestion": "Ajukan soalan tentang Alkitab"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "Krismas"
   },
   "HeroPlayer": {
-    "playWithSound": "Mainkan dengan bunyi",
+    "playWithSound": "Tonton sekarang",
     "tapToUnmute": "Nyahredam"
   },
   "ExperienceSkeleton": {

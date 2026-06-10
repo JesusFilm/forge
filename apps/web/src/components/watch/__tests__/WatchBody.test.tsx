@@ -149,20 +149,29 @@ describe("WatchBody — two-column layout", () => {
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
 
-    // Title and Download are grouped together. On mobile they stack so the
-    // title can use the full rail; md+ restores the side-by-side layout.
+    // Title and Download follow the same right-aligned wrapping header pattern
+    // as Related Questions and Bible Quotes.
     const titleRow = container.querySelector(
       '[data-testid="watch-body-title-row"]',
     )
     expect(titleRow).not.toBeNull()
     expect(titleRow!.className).toContain("flex")
-    expect(titleRow!.className).toContain("flex-col")
-    expect(titleRow!.className).toContain("items-start")
-    expect(titleRow!.className).toContain("md:flex-row")
-    expect(titleRow!.className).toContain("md:justify-between")
+    expect(titleRow!.className).toContain("flex-wrap")
+    expect(titleRow!.className).toContain("items-center")
+    expect(titleRow!.className).toContain("justify-between")
+    expect(titleRow!.className).toContain("gap-3")
+    expect(titleRow!.className).not.toContain("flex-col")
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)
+    expect(titleEl?.className).toContain("text-[27px]")
+    expect(titleEl?.className).toContain("leading-[1.08]")
+    expect(titleEl?.className).toContain("font-semibold")
+    expect(titleEl?.className).not.toContain("text-3xl")
+    expect(titleEl?.className).not.toContain("font-bold")
     expect(dl!.closest('[data-testid="watch-body-title-row"]')).toBe(titleRow)
+    const downloadGroup = dl!.parentElement
+    expect(downloadGroup?.className).toContain("ml-auto")
+    expect(downloadGroup?.className).toContain("items-end")
 
     // Right-column header top padding is alignment-critical: the right
     // header row should start flush with the title / Download row.
@@ -196,6 +205,8 @@ describe("WatchBody — two-column layout", () => {
       '[data-testid="watch-body-description"]',
     )
     expect(description?.className).toContain("md:mt-6")
+    expect(description?.className).toContain("font-normal")
+    expect(description?.className).not.toContain("font-medium")
   })
 
   it("does not render the duplicated body label tag when present", () => {
@@ -465,6 +476,8 @@ describe("WatchBody — modal trigger integration", () => {
       "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
     )
     expect(ay!.getAttribute("target")).toBe("_blank")
+    expect(ay!.getAttribute("aria-label")).toBe("Ask yours")
+    expect(ay!.textContent).toContain("Ask yours")
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(ay!.className).toContain(token)
     }

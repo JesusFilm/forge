@@ -100,7 +100,7 @@
     "fallbackBody": "Führen Sie ein privates Gespräch mit jemandem, der bereit ist zuzuhören.",
     "questionsShort": "Fragen",
     "questions": "Verwandte Fragen",
-    "askYours": "Stellen Sie Ihre Frage",
+    "askYours": "Ihre Frage",
     "chatWithPerson": "Mit jemandem sprechen",
     "askBibleQuestion": "Eine Bibelfrage stellen"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "Weihnachten"
   },
   "HeroPlayer": {
-    "playWithSound": "Mit Ton abspielen",
+    "playWithSound": "Jetzt ansehen",
     "tapToUnmute": "Ton einschalten"
   },
   "ExperienceSkeleton": {

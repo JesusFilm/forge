@@ -100,7 +100,7 @@
     "fallbackBody": "Ayez une discussion privée avec quelqu'un prêt à écouter.",
     "questionsShort": "Questions utiles",
     "questions": "Questions connexes",
-    "askYours": "Posez votre question",
+    "askYours": "Votre question",
     "chatWithPerson": "Parler avec quelqu’un",
     "askBibleQuestion": "Poser une question biblique"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "Noël"
   },
   "HeroPlayer": {
-    "playWithSound": "Lire avec le son",
+    "playWithSound": "Regarder",
     "tapToUnmute": "Activer le son"
   },
   "ExperienceSkeleton": {

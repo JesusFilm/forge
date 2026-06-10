@@ -100,7 +100,7 @@
     "fallbackBody": "เริ่มการสนทนาส่วนตัวกับคนที่พร้อมรับฟัง",
     "questionsShort": "คำถาม",
     "questions": "คำถามที่เกี่ยวข้อง",
-    "askYours": "ถามคำถามของคุณ",
+    "askYours": "ถามเอง",
     "chatWithPerson": "คุยกับคนจริง",
     "askBibleQuestion": "ถามคำถามเกี่ยวกับพระคัมภีร์"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "คริสต์มาส"
   },
   "HeroPlayer": {
-    "playWithSound": "เล่นพร้อมเสียง",
+    "playWithSound": "ดูตอนนี้",
     "tapToUnmute": "เปิดเสียง"
   },
   "ExperienceSkeleton": {

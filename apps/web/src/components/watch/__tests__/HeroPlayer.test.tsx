@@ -96,7 +96,7 @@ vi.mock("next-intl", () => ({
     (namespace: "HeroPlayer" | "VideoLabels") => (key: string) => {
       const catalogs = {
         HeroPlayer: {
-          playWithSound: "Play with Sound",
+          playWithSound: "Watch now",
           tapToUnmute: "Tap to Unmute",
         },
         VideoLabels: {
@@ -297,7 +297,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("uses the viewport/aspect-ratio height before and after reveal so Play with Sound does not resize the hero", async () => {
+  it("uses the viewport/aspect-ratio height before and after reveal so Watch now does not resize the hero", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -309,9 +309,29 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-x-clip")
+    expect(wrapper.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
+    )
+    expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("true")
     expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
     expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
     expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
+
+    const band = container.querySelector(
+      '[data-testid="hero-player-mobile-header-band"]',
+    )
+    expect(band).not.toBeNull()
+
+    const mediaFrame = container.querySelector(
+      '[data-testid="hero-player-media-frame"]',
+    ) as HTMLDivElement
+    expect(mediaFrame.className).toContain("relative")
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -324,9 +344,101 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-hidden")
+    expect(wrapper.className).not.toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
+    )
+    expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
     expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
     expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
     expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
+    expect(
+      container.querySelector('[data-testid="hero-player-mobile-header-band"]'),
+    ).toBeNull()
+    expect(mediaFrame.className).not.toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
+    )
+  })
+
+  it("adds a mobile portrait-only black band and square media frame for the default muted preview", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLDivElement
+    const band = container.querySelector(
+      '[data-testid="hero-player-mobile-header-band"]',
+    ) as HTMLDivElement
+    const mediaFrame = container.querySelector(
+      '[data-testid="hero-player-media-frame"]',
+    ) as HTMLDivElement
+    const clickSurface = container.querySelector(
+      '[data-testid="hero-player-pre-reveal-click-surface"]',
+    )
+    const loading = container.querySelector(
+      '[data-testid="hero-player-loading"]',
+    )
+    const backdrop = container.querySelector(
+      '[data-testid="hero-player-muted-backdrop"]',
+    )
+
+    expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("true")
+    expect(band.className).toContain("h-24")
+    expect(band.className).toContain("bg-black")
+    expect(band.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:block",
+    )
+    expect(mediaFrame.className).toContain("w-full")
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
+    expect(lastMuxProps().className).toContain("scale-y-110")
+    expect(lastMuxProps().className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100",
+    )
+    expect(clickSurface?.parentElement).toBe(mediaFrame)
+    expect(loading?.parentElement).toBe(mediaFrame)
+    expect(backdrop?.parentElement).toBe(mediaFrame)
+  })
+
+  it("keeps custom overlay consumers on the existing muted preview frame", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          overlay={<div data-testid="custom-overlay">Custom</div>}
+        />,
+      )
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLDivElement
+    const mediaFrame = container.querySelector(
+      '[data-testid="hero-player-media-frame"]',
+    ) as HTMLDivElement
+
+    expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
+    expect(
+      container.querySelector('[data-testid="hero-player-mobile-header-band"]'),
+    ).toBeNull()
+    expect(mediaFrame.className).not.toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
+    )
+    expect(mediaFrame.className).not.toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
+    expect(lastMuxProps().className).toContain("scale-y-110")
+    expect(lastMuxProps().className).not.toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100",
+    )
   })
 
   it("pulls the episode rail over the muted preview only by the measured amount needed to fit", async () => {
@@ -450,7 +562,7 @@ describe("HeroPlayer — initial mount", () => {
     }
   })
 
-  it("renders a 'Play with Sound' pill (default state) above the player", () => {
+  it("renders a 'Watch now' pill (default state) above the player", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -463,13 +575,25 @@ describe("HeroPlayer — initial mount", () => {
     )
     expect(pill).not.toBeNull()
     expect(overlay?.getAttribute("class")).toContain("bottom-0")
+    expect(overlay?.getAttribute("class")).toContain("gap-3")
+    expect(overlay?.getAttribute("class")).not.toContain("gap-4")
     expect(overlay?.getAttribute("class")).toContain("pb-12")
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
-    expect(pill?.textContent).toContain("Play with Sound")
-    expect(pill?.getAttribute("class")).toContain("cursor-pointer")
-    expect(pill?.getAttribute("class")).toContain("bg-brand-red")
-    expect(pill?.getAttribute("class")).toContain("font-medium")
-    expect(pill?.getAttribute("class")).not.toContain("font-semibold")
+    expect(pill?.textContent).toContain("Watch now")
+    expect(pill?.querySelector("path")?.getAttribute("d")).toBe("M8 5v14l11-7z")
+    const pillClass = pill?.getAttribute("class") ?? ""
+    const pillClassTokens = pillClass.split(/\s+/)
+    expect(pillClassTokens).toContain("cursor-pointer")
+    expect(pillClassTokens).toContain("bg-brand-red")
+    expect(pillClassTokens).toContain("px-5")
+    expect(pillClassTokens).not.toContain("px-7")
+    expect(pillClassTokens).not.toContain("md:px-8")
+    expect(pillClassTokens.some((token) => token.startsWith("min-w"))).toBe(
+      false,
+    )
+    expect(pillClassTokens.some((token) => token.startsWith("w-"))).toBe(false)
+    expect(pillClassTokens).toContain("font-medium")
+    expect(pillClassTokens).not.toContain("font-semibold")
     const title = container.querySelector(
       '[data-testid="hero-player-overlay-title"]',
     )
@@ -483,9 +607,9 @@ describe("HeroPlayer — initial mount", () => {
     ).toBe(WATCH_SECTION_EYEBROW_CLASS)
     // WCAG 2.5.3 (Label in Name): accessible name must contain the
     // visible label as a substring. The aria-label must mirror the
-    // visible "Play with Sound" text so voice-control engines that
-    // match on accessible name still resolve "click play with sound".
-    expect(pill?.getAttribute("aria-label")).toBe("Play with Sound")
+    // visible "Watch now" text so voice-control engines that match on
+    // accessible name still resolve "click watch now".
+    expect(pill?.getAttribute("aria-label")).toBe("Watch now")
   })
 
   it("uses the production muted overlay backdrop before chrome is revealed", () => {
@@ -744,7 +868,7 @@ async function revealChrome(): Promise<void> {
 }
 
 describe("HeroPlayer — custom chrome render", () => {
-  it("renders the full chrome element set after Play with Sound", async () => {
+  it("renders the full chrome element set after Watch now", async () => {
     await revealChrome()
     expect(
       container.querySelector('[data-testid="hero-player-custom-chrome"]'),

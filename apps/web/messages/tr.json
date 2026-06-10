@@ -100,7 +100,7 @@
     "fallbackBody": "Dinlemeye hazır biriyle özel bir konuşma başlatın.",
     "questionsShort": "Sorular",
     "questions": "İlgili sorular",
-    "askYours": "Sorunuzu sorun",
+    "askYours": "Sorunuz",
     "chatWithPerson": "Biriyle sohbet edin",
     "askBibleQuestion": "Kutsal Kitap hakkında soru sorun"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "Noel"
   },
   "HeroPlayer": {
-    "playWithSound": "Sesli oynat",
+    "playWithSound": "Şimdi izle",
     "tapToUnmute": "Sesi aç"
   },
   "ExperienceSkeleton": {

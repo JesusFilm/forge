@@ -100,7 +100,7 @@
     "fallbackBody": "सुन्न तयार व्यक्तिसँग निजी कुराकानी सुरु गर्नुहोस्।",
     "questionsShort": "प्रश्नहरू",
     "questions": "सम्बन्धित प्रश्नहरू",
-    "askYours": "आफ्नो प्रश्न सोध्नुहोस्",
+    "askYours": "तपाईंको प्रश्न",
     "chatWithPerson": "कसैसँग कुरा गर्नुहोस्",
     "askBibleQuestion": "बाइबलबारे प्रश्न सोध्नुहोस्"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "क्रिसमस"
   },
   "HeroPlayer": {
-    "playWithSound": "आवाजसहित चलाउनुहोस्",
+    "playWithSound": "अहिले हेर्नुहोस्",
     "tapToUnmute": "आवाज खोल्नुहोस्"
   },
   "ExperienceSkeleton": {

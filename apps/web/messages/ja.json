@@ -100,7 +100,7 @@
     "fallbackBody": "話を聞く準備のある人と個人的に話せます。",
     "questionsShort": "質問",
     "questions": "関連する質問",
-    "askYours": "自分の質問をする",
+    "askYours": "質問する",
     "chatWithPerson": "人と話す",
     "askBibleQuestion": "聖書について質問する"
   },
@@ -185,7 +185,7 @@
     "categoryChristmas": "クリスマス"
   },
   "HeroPlayer": {
-    "playWithSound": "音声付きで再生",
+    "playWithSound": "今すぐ見る",
     "tapToUnmute": "ミュートを解除"
   },
   "ExperienceSkeleton": {
