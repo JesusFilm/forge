@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (June 4, 2026)
 
-- **Total tickets:** 189
-- **Complete:** 114
+- **Total tickets:** 190
+- **Complete:** 115
 - **In progress:** 9
 - **Not started:** 21
 - **Blocked:** 43
@@ -177,6 +177,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-166](platform/feat-166-manager-coverage-region-image-assets.md)            | Manager coverage region image assets                         | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-167](platform/feat-167-manager-coverage-video-aggregation.md)              | Manager coverage video aggregation                           | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-168](platform/feat-168-manager-coverage-title-locale-preference.md)        | Manager coverage title locale preference                     | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
+| [feat-175](platform/feat-175-watch-cold-path-performance-follow-up.md)           | Watch cold-path performance follow-up                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                                   | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                          | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                      | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

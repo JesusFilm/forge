@@ -133,6 +133,20 @@ const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
   objectFit: "contain",
 }
 
+const HERO_HLS_CONFIG = {
+  maxBufferLength: 10,
+  maxBufferSize: 5_000_000,
+  backBufferLength: 5,
+}
+
+function buildHeroPosterUrl(
+  playbackId: string | undefined,
+): string | undefined {
+  return playbackId
+    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
+    : undefined
+}
+
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
@@ -706,6 +720,7 @@ export function HeroPlayer({
 
   const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
+  const heroPosterUrl = buildHeroPosterUrl(playbackId)
 
   // Reset the buffered/ready spinner when the playable identity changes
   // (variant switch via the language picker, or new playback id), otherwise
@@ -823,11 +838,7 @@ export function HeroPlayer({
             // a regular IMG before the first frame paints, so the existing
             // <link rel="preload"> in page.tsx is reused and the LCP element
             // is discoverable in the initial HTML scan.
-            poster={
-              playbackId
-                ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
-                : undefined
-            }
+            poster={heroPosterUrl}
             envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             disableCookies={true}
             // Override the wrapper's default — the hero is the one MuxVideo
@@ -840,11 +851,7 @@ export function HeroPlayer({
               video_id: video.documentId,
               viewer_user_id: viewerUserId,
             }}
-            _hlsConfig={{
-              maxBufferLength: 10,
-              maxBufferSize: 5_000_000,
-              backBufferLength: 5,
-            }}
+            _hlsConfig={HERO_HLS_CONFIG}
             style={
               chromeRevealed
                 ? REVEALED_VIDEO_OBJECT_FIT_STYLE
@@ -867,6 +874,7 @@ export function HeroPlayer({
             autoPlay="muted"
             muted={muted}
             loop={loop}
+            poster={heroPosterUrl}
             envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             disableCookies={true}
             metadata={{
@@ -884,6 +892,7 @@ export function HeroPlayer({
             onLoadedMetadata={handleLoadedMetadata}
             onCanPlay={handleCanPlay}
             onError={handlePlayerError}
+            _hlsConfig={HERO_HLS_CONFIG}
             className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
           />
         )}
