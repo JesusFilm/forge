@@ -39,7 +39,7 @@ Required env vars (both flipped from `.optional()` in U13):
 - `'use client'` is a boundary — everything imported below it is also client.
 - The admin bearer (`WEB_ADMIN_API_KEYS`) is in the server-only env block. Never reference it from a client component or `NEXT_PUBLIC_*` var.
 - For browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. The browser hits the action; the action hits admin with the bearer.
-- ISR cache: `unstable_cache` wrappers in `src/lib/content.ts` use `revalidate: 60`. `revalidatePath` from `/api/revalidate` does NOT invalidate `unstable_cache` entries — tag-based invalidation is a known follow-up. Today the worst-case staleness is 60 s after a publish.
+- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` use route-level `revalidate = 3600`. Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. The 1 hour route TTL is the fallback for a missed webhook or process-local invalidation miss; do not raise resolver TTLs until production cache topology and webhook reliability are proven.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
 - **Static locale root layout**: cacheable watch surfaces live under the internal route tree `src/app/[locale]/[htmlLang]/**`. `src/proxy.ts` rewrites public `/watch` URLs into that tree, so the root layout gets static params for both the next-intl message catalog key (`[locale]`) and `<html lang>` (`[htmlLang]`) without calling `headers()` or `cookies()`. Keep request-time dynamic APIs out of this tree unless the route is intentionally dynamic.
 
@@ -53,7 +53,21 @@ Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forg
 
 Critical: `src/i18n/generated-ui-locales.ts` is the only catalog list safe to import from middleware, route helpers, and client-reachable modules. Do NOT copy filesystem discovery into request-path modules (filesystem I/O in the request path is a regression), and do NOT import `src/i18n/locales.ts` into middleware or client-safe helpers because it is a server-only re-export for next-intl request configuration. Keep the internal `[locale]` segment bounded to generated message catalogs; use `[htmlLang]` only for the static HTML language tag.
 
-See `docs/plans/2026-05-28-001-feat-i18n-migration-next-intl-plan.md`.
+## Watch cache invalidation
+
+Admin sends semantic revalidation webhooks to `src/app/api/revalidate/route.ts`.
+The receiver maps each semantic model to both paths and Data Cache tags:
+
+- `watch-setting` invalidates home/settings/experience/video/series/child-dub tags plus the watch layouts and homepage paths.
+- `experience` invalidates experience/home tags plus the current slug matrix.
+- `video` invalidates video/series/child-dub/home tags; slug-less payloads are valid broad invalidations for Core sync and revalidate the watch layouts.
+- `watch-route-manifest` clears the receiving process's in-memory manifest cache, invalidates the route-manifest tag, and revalidates the watch layouts.
+
+The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
+
+Production proof on 2026-06-10 showed `@forge/web` online in Railway US West behind Cloudflare, live watch HTML served with `cf-cache-status: DYNAMIC`, and authorized `experience`, broad `video`, and `watch-route-manifest` webhooks returning healthy first post-webhook renders. The Railway CLI path available here did not expose exact web replica count.
+
+See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.
 
 ## Feature flags
 

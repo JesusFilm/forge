@@ -1,17 +1,10 @@
-// The tada instance is defined INLINE here (duplicating ./admin.ts) instead of
-// being re-exported from it. Reason: this package ships TypeScript source to
-// two kinds of consumers with incompatible resolution rules —
-//   - NodeNext consumers (apps/yt-video-mapper-backend's tsc) REQUIRE relative
-//     ESM imports to carry a .js extension (TS2835),
-//   - bundler consumers (web's Turbopack, Metro, jest-expo) cannot resolve a
-//     relative `./admin.js` VALUE import back to admin.ts (web's prod build
-//     broke on exactly that — see PR #1188).
-// Type-only imports satisfy both (erased before any bundler sees them), so the
-// only safe shape is: no relative VALUE imports in any module a NodeNext
-// consumer reaches from ".". ./admin.ts stays as the instance the fragments
-// entry point uses internally (bundler-only path). KEEP THE TWO IN SYNC.
-
 import { initGraphQLTada } from "gql.tada"
+// Type-only import: erased at compile/bundle time, so the NodeNext-style
+// `.js` extension is safe for bundler consumers (web Turbopack, tv Jest,
+// mobile Metro) while satisfying NodeNext consumers' typecheck (TS2835).
+// Do NOT add value-level relative imports with `.js` extensions here —
+// Turbopack and Jest resolve this package as TS source and cannot map
+// `./x.js` → `./x.ts` (broke web build + tv tests on 2026-06-10).
 import type { introspection } from "./admin-graphql-env.js"
 
 export const adminGraphql = initGraphQLTada<{

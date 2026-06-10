@@ -72,6 +72,13 @@ export const env = createEnv({
       .positive()
       .default(120_000),
 
+    // Smart Crop (plan 2026-06-09-002). All optional opt-in scaffolding —
+    // default deploys must not require these. The smart-crop job creation
+    // route returns 503 config_missing when invoked without them.
+    CROP_WORKER_BASE_URL: z.string().url().optional(),
+    CROP_WORKER_API_KEY: z.string().min(1).optional(),
+    MASTRA_SMART_CROP_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
     // which admin's `triggerManagerEnrichment` GraphQL mutation calls
@@ -139,6 +146,9 @@ export const env = createEnv({
     MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    CROP_WORKER_BASE_URL: process.env.CROP_WORKER_BASE_URL,
+    CROP_WORKER_API_KEY: process.env.CROP_WORKER_API_KEY,
+    MASTRA_SMART_CROP_TIMEOUT_MS: process.env.MASTRA_SMART_CROP_TIMEOUT_MS,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:

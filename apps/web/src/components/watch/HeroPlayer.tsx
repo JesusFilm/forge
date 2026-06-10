@@ -8,8 +8,11 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type KeyboardEvent,
   type ReactNode,
 } from "react"
+import { flushSync } from "react-dom"
+import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
@@ -133,6 +136,40 @@ const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
   objectFit: "contain",
 }
 
+const HERO_HLS_CONFIG = {
+  maxBufferLength: 10,
+  maxBufferSize: 5_000_000,
+  backBufferLength: 5,
+}
+
+function buildHeroPosterUrl(
+  playbackId: string | undefined,
+): string | undefined {
+  return playbackId
+    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
+    : undefined
+}
+
+const IDLE_PREVIEW_FALLBACK_DELAY_MS = 1200
+const IDLE_PREVIEW_VIEWPORT_MARGIN_PX = 200
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions,
+  ) => number
+  cancelIdleCallback?: (handle: number) => void
+}
+
+function isHeroNearViewport(wrapper: HTMLElement, windowRef: Window): boolean {
+  const rect = wrapper.getBoundingClientRect()
+  const viewportHeight = windowRef.innerHeight
+  return (
+    rect.bottom >= -IDLE_PREVIEW_VIEWPORT_MARGIN_PX &&
+    rect.top <= viewportHeight + IDLE_PREVIEW_VIEWPORT_MARGIN_PX
+  )
+}
+
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
@@ -173,6 +210,12 @@ export function HeroPlayer({
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
+  const playbackId = variant.muxVideo?.playbackId ?? undefined
+  const hlsSrc = variant.hls ?? undefined
+  const heroPosterUrl = buildHeroPosterUrl(playbackId)
+  const searchParams = useSearchParams()
+  const tParam = searchParams?.get("t")
+  const autoplayParam = searchParams?.get("autoplay")
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
@@ -262,6 +305,10 @@ export function HeroPlayer({
   const [chromeRevealed, setChromeRevealed] = useState(false)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
+  const [playerActivated, setPlayerActivated] = useState(
+    () => autoplayParam === "1" || heroPosterUrl == null,
+  )
+  const pendingSoundIntentRef = useRef<PillState | null>(null)
 
   const publishChromeVisibility = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
@@ -326,6 +373,87 @@ export function HeroPlayer({
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
   }, [])
+
+  useEffect(() => {
+    if (playerActivated || autoplayParam === "1" || heroPosterUrl == null) {
+      return
+    }
+    if (typeof window === "undefined") return
+
+    let cancelled = false
+    let loadListenerInstalled = false
+    let idleHandle: number | null = null
+    let timeoutHandle: number | null = null
+    const idleWindow = window as IdleWindow
+
+    const clearScheduledWork = () => {
+      if (idleHandle != null && idleWindow.cancelIdleCallback) {
+        idleWindow.cancelIdleCallback(idleHandle)
+      }
+      idleHandle = null
+      if (timeoutHandle != null) {
+        window.clearTimeout(timeoutHandle)
+      }
+      timeoutHandle = null
+    }
+
+    const canActivatePreview = () => {
+      if (document.visibilityState === "hidden") return false
+      const wrapper = wrapperRef.current
+      return wrapper ? isHeroNearViewport(wrapper, window) : true
+    }
+
+    const tryActivatePreview = () => {
+      clearScheduledWork()
+      if (cancelled) return
+      if (!canActivatePreview()) return
+      setPlayerActivated(true)
+    }
+
+    const scheduleIdleActivation = () => {
+      if (cancelled || idleHandle != null || timeoutHandle != null) return
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(tryActivatePreview, {
+          timeout: IDLE_PREVIEW_FALLBACK_DELAY_MS,
+        })
+        return
+      }
+      timeoutHandle = window.setTimeout(
+        tryActivatePreview,
+        IDLE_PREVIEW_FALLBACK_DELAY_MS,
+      )
+    }
+
+    const scheduleAfterLoad = () => {
+      if (document.readyState === "complete") {
+        scheduleIdleActivation()
+        return
+      }
+      loadListenerInstalled = true
+      window.addEventListener("load", scheduleIdleActivation, { once: true })
+    }
+
+    const retryIfEligible = () => {
+      if (document.readyState !== "complete") return
+      scheduleIdleActivation()
+    }
+
+    scheduleAfterLoad()
+    document.addEventListener("visibilitychange", retryIfEligible)
+    window.addEventListener("scroll", retryIfEligible, { passive: true })
+    window.addEventListener("resize", retryIfEligible, { passive: true })
+
+    return () => {
+      cancelled = true
+      clearScheduledWork()
+      if (loadListenerInstalled) {
+        window.removeEventListener("load", scheduleIdleActivation)
+      }
+      document.removeEventListener("visibilitychange", retryIfEligible)
+      window.removeEventListener("scroll", retryIfEligible)
+      window.removeEventListener("resize", retryIfEligible)
+    }
+  }, [autoplayParam, heroPosterUrl, playerActivated])
 
   // Anchor for the title/pill overlay AND the chrome control bar — both live
   // in this zero-height div right after the sticky hero so they ride on the
@@ -554,9 +682,6 @@ export function HeroPlayer({
     getViewerIdServerSnapshot,
   )
 
-  const searchParams = useSearchParams()
-  const tParam = searchParams?.get("t")
-  const autoplayParam = searchParams?.get("autoplay")
   const handleLoadedMetadata = useCallback(() => {
     const player = playerRef.current
     if (!player) return
@@ -641,48 +766,90 @@ export function HeroPlayer({
     // re-run the effect after a successful attempt commits.
   }, [player, videoReady, autoplayParam, playerRef])
 
-  // iOS user-activation gate: NO `await` between click and play(), or
-  // play() will be rejected as not-from-user-gesture.
-  const handleUnmuteClick = useCallback(() => {
+  const runSoundIntent = useCallback(
+    (player: MuxPlayerRef, intent: PillState) => {
+      if (intent === "tap-to-unmute") {
+        // Autoplay was blocked — this gesture both unmutes AND starts playback
+        // since the user is now committed. Without play() the user just
+        // unmuted a still-paused video.
+        player.muted = false
+        const tapResult = player.play()
+        if (tapResult && typeof tapResult.then === "function") {
+          tapResult.catch((err: unknown) => {
+            console.warn("[HeroPlayer] tap-to-unmute play() rejected", err)
+          })
+        }
+        setChromeRevealed(true)
+        return
+      }
+
+      // Initial click commits playback from the beginning, not from wherever the
+      // muted preview loop happened to be when the user clicked.
+      player.currentTime = 0
+      player.muted = false
+      const result = player.play()
+      if (result && typeof result.then === "function") {
+        result
+          .then(() => {
+            setChromeRevealed(true)
+            setAutoplayBlocked(false)
+          })
+          .catch((err: unknown) => {
+            setPillState("tap-to-unmute")
+            if (isAutoplayBlockedError(err)) {
+              setAutoplayBlocked(true)
+            }
+          })
+      } else {
+        setChromeRevealed(true)
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
     const player = playerRef.current
+    const pendingIntent = pendingSoundIntentRef.current
+    if (!player || !pendingIntent) return
+    pendingSoundIntentRef.current = null
+    runSoundIntent(player, pendingIntent)
+  }, [player, runSoundIntent])
+
+  const activatePlayerForIntent = useCallback(() => {
+    if (playerActivated) return
+    flushSync(() => {
+      setPlayerActivated(true)
+    })
+  }, [playerActivated])
+
+  const handleIntentKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        activatePlayerForIntent()
+      }
+    },
+    [activatePlayerForIntent],
+  )
+
+  // iOS user-activation gate: NO `await` between click and play(), or
+  // play() will be rejected as not-from-user-gesture. When the poster-first
+  // path has not mounted Mux yet, flush the activation synchronously so the
+  // ref is available in the same click task whenever the dynamic chunk is
+  // already loaded; otherwise keep the user's intent queued for attach.
+  const handleUnmuteClick = useCallback(() => {
+    let player = playerRef.current
+    if (!playerActivated) {
+      activatePlayerForIntent()
+      player = playerRef.current
+      if (!player) {
+        pendingSoundIntentRef.current = pillState
+      }
+    }
     if (!player) return
 
-    if (pillState === "tap-to-unmute") {
-      // Autoplay was blocked — this gesture both unmutes AND starts playback
-      // since the user is now committed. Without play() the user just
-      // unmuted a still-paused video.
-      player.muted = false
-      const tapResult = player.play()
-      if (tapResult && typeof tapResult.then === "function") {
-        tapResult.catch((err: unknown) => {
-          console.warn("[HeroPlayer] tap-to-unmute play() rejected", err)
-        })
-      }
-      setChromeRevealed(true)
-      return
-    }
-
-    // Initial click commits playback from the beginning, not from wherever the
-    // muted preview loop happened to be when the user clicked.
-    player.currentTime = 0
-    player.muted = false
-    const result = player.play()
-    if (result && typeof result.then === "function") {
-      result
-        .then(() => {
-          setChromeRevealed(true)
-          setAutoplayBlocked(false)
-        })
-        .catch((err: unknown) => {
-          setPillState("tap-to-unmute")
-          if (isAutoplayBlockedError(err)) {
-            setAutoplayBlocked(true)
-          }
-        })
-    } else {
-      setChromeRevealed(true)
-    }
-  }, [pillState])
+    pendingSoundIntentRef.current = null
+    runSoundIntent(player, pillState)
+  }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
 
   const handlePlayerError = useCallback((event: Event) => {
     // MuxPlayer emits a CustomEvent with `detail.code === "autoplay-blocked"`.
@@ -704,9 +871,6 @@ export function HeroPlayer({
     setVideoReady(true)
   }, [])
 
-  const playbackId = variant.muxVideo?.playbackId ?? undefined
-  const hlsSrc = variant.hls ?? undefined
-
   // Reset the buffered/ready spinner when the playable identity changes
   // (variant switch via the language picker, or new playback id), otherwise
   // the spinner stays hidden during the next variant's pre-canplay buffer.
@@ -714,9 +878,13 @@ export function HeroPlayer({
   // setState) avoids the cascading-render warning the React Compiler raises
   // on a useEffect-driven reset, since the new state is queued before commit.
   const [prevVariantKey, setPrevVariantKey] = useState(variant.documentId)
+  if (autoplayParam === "1" && !playerActivated) {
+    setPlayerActivated(true)
+  }
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
+    setPlayerActivated(autoplayParam === "1" || heroPosterUrl == null)
   }
   // Variant-scope the autoplay one-shot — without this, a same-component
   // re-render with a new variant id (e.g. soft variant swap) would carry
@@ -790,7 +958,7 @@ export function HeroPlayer({
         }
         data-preview-overlap-px={effectivePreviewBodyOverlapPx}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
+        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -807,7 +975,7 @@ export function HeroPlayer({
               : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
-        {env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO ? (
+        {playerActivated && env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO ? (
           <MuxVideo
             ref={setPlayerRef as React.Ref<MuxVideoRef>}
             playbackId={playbackId}
@@ -823,11 +991,7 @@ export function HeroPlayer({
             // a regular IMG before the first frame paints, so the existing
             // <link rel="preload"> in page.tsx is reused and the LCP element
             // is discoverable in the initial HTML scan.
-            poster={
-              playbackId
-                ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
-                : undefined
-            }
+            poster={heroPosterUrl}
             envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             disableCookies={true}
             // Override the wrapper's default — the hero is the one MuxVideo
@@ -840,11 +1004,7 @@ export function HeroPlayer({
               video_id: video.documentId,
               viewer_user_id: viewerUserId,
             }}
-            _hlsConfig={{
-              maxBufferLength: 10,
-              maxBufferSize: 5_000_000,
-              backBufferLength: 5,
-            }}
+            _hlsConfig={HERO_HLS_CONFIG}
             style={
               chromeRevealed
                 ? REVEALED_VIDEO_OBJECT_FIT_STYLE
@@ -859,7 +1019,7 @@ export function HeroPlayer({
             onError={(event) => handlePlayerError(event as unknown as Event)}
             className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
           />
-        ) : (
+        ) : playerActivated ? (
           <MuxPlayer
             ref={setPlayerRef}
             playbackId={playbackId}
@@ -867,6 +1027,7 @@ export function HeroPlayer({
             autoPlay="muted"
             muted={muted}
             loop={loop}
+            poster={heroPosterUrl}
             envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             disableCookies={true}
             metadata={{
@@ -884,25 +1045,47 @@ export function HeroPlayer({
             onLoadedMetadata={handleLoadedMetadata}
             onCanPlay={handleCanPlay}
             onError={handlePlayerError}
+            _hlsConfig={HERO_HLS_CONFIG}
             className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
           />
-        )}
+        ) : null}
+
+        {heroPosterUrl ? (
+          <div
+            className={`pointer-events-none absolute inset-0 transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`}
+          >
+            <Image
+              data-testid="hero-player-poster"
+              src={heroPosterUrl}
+              alt=""
+              aria-hidden="true"
+              fill
+              unoptimized
+              loading="eager"
+              fetchPriority="high"
+              sizes="100vw"
+              className="object-cover"
+            />
+          </div>
+        ) : null}
 
         {!chromeRevealed && overlay == null ? (
           <button
             type="button"
             data-testid="hero-player-pre-reveal-click-surface"
             aria-label={preRevealActionLabel}
+            onPointerDown={activatePlayerForIntent}
+            onKeyDown={handleIntentKeyDown}
             onClick={handleUnmuteClick}
             className="absolute inset-0 z-1 cursor-pointer bg-transparent focus:outline-none"
           />
         ) : null}
 
-        {!videoReady ? (
+        {playerActivated && !videoReady ? (
           <div
             data-testid="hero-player-loading"
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35"
           >
             <SpinnerIcon className="h-12 w-12 animate-spin text-white/80" />
           </div>
@@ -988,6 +1171,8 @@ export function HeroPlayer({
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
+                  onPointerDown={activatePlayerForIntent}
+                  onKeyDown={handleIntentKeyDown}
                   onClick={handleUnmuteClick}
                   className={
                     pillState === "tap-to-unmute"

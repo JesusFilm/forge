@@ -117,6 +117,24 @@ type WatchMetadataImage = {
   type: "image/jpeg"
 }
 
+const MUX_SOCIAL_IMAGE_WIDTH = 1200
+const MUX_SOCIAL_IMAGE_HEIGHT = 630
+
+function buildMuxSocialImage(
+  playbackId: string | null | undefined,
+  alt: string,
+): WatchMetadataImage | null {
+  if (!playbackId) return null
+
+  return {
+    url: `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${MUX_SOCIAL_IMAGE_WIDTH}&height=${MUX_SOCIAL_IMAGE_HEIGHT}&fit_mode=smartcrop`,
+    width: MUX_SOCIAL_IMAGE_WIDTH,
+    height: MUX_SOCIAL_IMAGE_HEIGHT,
+    alt,
+    type: "image/jpeg",
+  }
+}
+
 export type WatchVideoMetadataModel = {
   title: string
   videoTitle: string
@@ -171,20 +189,27 @@ export function buildWatchVideoMetadataModel(
   const videoTitle = options.video.title || options.routeSlug || "Watch"
   const title = `${videoTitle} ${TITLE_SUFFIX}`
   const description = options.video.description ?? options.video.snippet ?? ""
+  const imageAlt =
+    options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
+  const muxSocialImage = buildMuxSocialImage(
+    options.selectedVariant.muxVideo?.playbackId,
+    imageAlt,
+  )
   const posterUrl = resolvePosterUrl(
     options.video.images?.[0],
     options.selectedVariant.muxVideo?.playbackId,
   )
-  const image = posterUrl
-    ? {
-        url: posterUrl,
-        width: DEFAULT_OG_IMAGE.width,
-        height: DEFAULT_OG_IMAGE.height,
-        alt:
-          options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt,
-        type: "image/jpeg" as const,
-      }
-    : DEFAULT_OG_IMAGE
+  const image =
+    muxSocialImage ??
+    (posterUrl
+      ? {
+          url: posterUrl,
+          width: DEFAULT_OG_IMAGE.width,
+          height: DEFAULT_OG_IMAGE.height,
+          alt: imageAlt,
+          type: "image/jpeg" as const,
+        }
+      : DEFAULT_OG_IMAGE)
 
   return {
     title,
