@@ -4,14 +4,19 @@
  * from the ported curation config via useWatchHome, not an Experience).
  *
  * Layer ordering (z-index): heroLayer (0) → FlashList feed (scrolls over the
- * hero) → heroInteractiveLayer (2, box-none, invisible mute target) →
- * HomeHeader (10, owns its own absolute positioning).
+ * hero) → heroInteractiveLayer (2, box-none, hosts the hero's interactive
+ * chrome: Watch Now / insert CTA / mute) → HomeHeader (10, owns its own
+ * absolute positioning). The chrome lives HERE, not in the pager — anything
+ * tappable inside the hero layer sits behind the FlashList, which swallows
+ * the taps. Hero swipes are claimed by a capture-phase PanResponder on the
+ * root and forwarded to the pager's selectSlide.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  PanResponder,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -21,9 +26,11 @@ import {
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
 import { LinearGradient } from "expo-linear-gradient"
-import { useNavigation } from "expo-router"
+import { useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTypography } from "../../hooks/useTypography"
 import { useWatchHome } from "../../hooks/useWatchHome"
 import {
   ACCENT,
@@ -32,15 +39,23 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
+import { openExternalUrl } from "../../lib/openExternalUrl"
 import {
   buildWatchHomeHeroQueue,
+  muxSlideDisplayCopy,
   type WatchHomeSlide,
 } from "../../lib/watchHome/carouselSequence"
 import type { WatchHomeSection } from "../../lib/watchHome/model"
+import { encodeWatchSeed } from "../../lib/watchSeed"
 import { feedback, layout, text } from "../../styles/shared"
 import { HomeHeader } from "../ui/HomeHeader"
 import { HomeChipRail } from "./HomeChipRail"
-import { HomeHeroPager, type HomeHeroPagerHandle } from "./HomeHeroPager"
+import {
+  HomeHeroPager,
+  slideRouteArgs,
+  type HomeHeroPagerHandle,
+} from "./HomeHeroPager"
 import { HomeMissionSection } from "./HomeMissionSection"
 import { HomeShelf } from "./HomeShelf"
 
@@ -50,8 +65,6 @@ type HomeFeedItem =
   | { kind: "chips" }
   | { kind: "section"; section: WatchHomeSection }
   | { kind: "mission" }
-
-type MuteButtonRect = { x: number; y: number; w: number; h: number }
 
 // Stable empty queue so the no-model render keeps one slides identity (a new
 // array identity resets the pager to slide 0 by design).
@@ -64,11 +77,20 @@ const EMPTY_SLIDES: readonly WatchHomeSlide[] = []
  */
 const HEADER_ALLOWANCE = 52
 
+/** Hero swipe: |dx| must beat |dy| by this ratio before the capture claims. */
+const HERO_SWIPE_DOMINANCE = 1.5
+/** Hero swipe: minimum |dx| before the capture-phase responder claims. */
+const HERO_SWIPE_ACTIVATE_PX = 12
+/** Hero swipe: |dx| at release that commits a slide change. */
+const HERO_SWIPE_COMMIT_PX = 40
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function HomeScreen() {
   const insets = useSafeAreaInsets()
   const navigation = useNavigation()
+  const router = useRouter()
+  const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
   // Matches HomeHeroPager's default; computed here because the hero layer,
   // feed padding, and scroll brackets all share it.
@@ -114,12 +136,29 @@ export function HomeScreen() {
   // ── Pager wiring ───────────────────────────────────────────────────────────
 
   const pagerRef = useRef<HomeHeroPagerHandle>(null)
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeHero, setActiveHero] = useState<{
+    index: number
+    slide: WatchHomeSlide
+  } | null>(null)
   const prevSlideIdRef = useRef<string | null>(null)
+
+  // Event-time mirrors for the once-created PanResponder (reading state
+  // directly there would capture stale closures).
+  const swipeStateRef = useRef({
+    scrollY: 0,
+    activeIndex: 0,
+    slideCount: 0,
+    heroHeight,
+  })
+  useEffect(() => {
+    swipeStateRef.current.slideCount = heroSlides.length
+    swipeStateRef.current.heroHeight = heroHeight
+  }, [heroSlides.length, heroHeight])
 
   const handleSlideChange = useCallback(
     (index: number, slide: WatchHomeSlide) => {
-      setActiveIndex(index)
+      setActiveHero({ index, slide })
+      swipeStateRef.current.activeIndex = index
       // Mark the slide we LEFT as played so queue rebuilds (pull-to-refresh
       // producing a new model) lead with unseen content. Mux insert ids never
       // appear in the pools, so collecting them here is harmless.
@@ -133,6 +172,62 @@ export function HomeScreen() {
   const handleChipPress = useCallback((index: number) => {
     pagerRef.current?.selectSlide(index)
   }, [])
+
+  const activeIndex = activeHero?.index ?? 0
+  // Chrome renders from the CURRENT queue at the active index: a model
+  // refresh can swap the slides identity while the pager stays on index 0
+  // WITHOUT re-firing onSlideChange (its real-index-change guard), so the
+  // stored slide object can go stale. The stored slide is only a fallback
+  // for the one commit where the index outlives a shorter new queue.
+  const activeSlide = heroSlides[activeIndex] ?? activeHero?.slide ?? null
+
+  // Mux overlay copy is time-of-day sensitive (Eastern-hour rule) — resolve
+  // the CTA action at display time, per active-slide entry.
+  const activeInsertAction = useMemo(
+    () =>
+      activeSlide?.kind === "mux"
+        ? muxSlideDisplayCopy(activeSlide, new Date()).action
+        : null,
+    [activeSlide],
+  )
+
+  // ── Hero swipe (capture-phase PanResponder on the screen root) ─────────────
+
+  const heroPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        // Claim ONLY horizontal-dominant moves over the VISIBLE hero portion,
+        // before the FlashList can take them. Vertical drags and taps return
+        // false, so feed scrolling and every Pressable stay untouched. Never
+        // claims while the hero is hidden or has nothing to swipe to.
+        onMoveShouldSetPanResponderCapture: (evt, gesture) => {
+          const { scrollY, slideCount, heroHeight: h } = swipeStateRef.current
+          if (slideCount < 2) return false
+          // The Home tab is full-bleed from the window top (headerShown:
+          // false), so pageY maps straight onto hero coordinates: the visible
+          // hero ends at heroHeight - scrollY, clamped at 0 once scrolled past.
+          const visibleHeroBottom = Math.max(0, h - scrollY)
+          return (
+            evt.nativeEvent.pageY < visibleHeroBottom &&
+            Math.abs(gesture.dx) >
+              Math.abs(gesture.dy) * HERO_SWIPE_DOMINANCE &&
+            Math.abs(gesture.dx) > HERO_SWIPE_ACTIVATE_PX
+          )
+        },
+        onPanResponderTerminationRequest: () => true,
+        onPanResponderRelease: (_evt, gesture) => {
+          const { activeIndex: index, slideCount } = swipeStateRef.current
+          if (slideCount === 0) return
+          if (gesture.dx < -HERO_SWIPE_COMMIT_PX) {
+            pagerRef.current?.selectSlide(Math.min(index + 1, slideCount - 1))
+          } else if (gesture.dx > HERO_SWIPE_COMMIT_PX) {
+            pagerRef.current?.selectSlide(Math.max(index - 1, 0))
+          }
+          // Sub-threshold drag: no slide change.
+        },
+      }),
+    [],
+  )
 
   // ── Mute session rules (screen-owned; the pager is controlled) ─────────────
 
@@ -158,35 +253,45 @@ export function HomeScreen() {
     }
   }, [navigation])
 
-  const [muteButtonRect, setMuteButtonRect] = useState<MuteButtonRect | null>(
-    null,
-  )
-  const handleMuteButtonLayout = useCallback(
-    (x: number, y: number, w: number, h: number) => {
-      setMuteButtonRect({ x, y, w, h })
-    },
-    [],
-  )
+  // ── Hero chrome actions (overlay-layer Pressables) ─────────────────────────
 
-  // The pager shows its visual mute button only on video slides; keep the
-  // invisible overlay target in lockstep so mux slides aren't silently
-  // tappable through a stale rect.
-  const activeSlideIsVideo = heroSlides[activeIndex]?.kind === "video"
+  const handleWatchNow = useCallback(() => {
+    if (activeSlide?.kind !== "video") return
+    const { slug, title, label, imageUrl, playbackId } =
+      slideRouteArgs(activeSlide)
+    if (slug == null) return
+    // Same routing rule as HomeCard / Discover (series-shaped label → series
+    // page, else watch page), with a seed for instant paint.
+    const seed = encodeWatchSeed({ slug, title, imageUrl, playbackId })
+    const route = isSeriesLabel(label) ? "series" : "watch"
+    router.push(`/${route}/${encodeURIComponent(slug)}?seed=${seed}`)
+  }, [activeSlide, router])
+
+  const handleInsertPress = useCallback(() => {
+    // External destination — system browser via the shared validated helper.
+    if (activeInsertAction != null) openExternalUrl(activeInsertAction.url)
+  }, [activeInsertAction])
 
   // ── Scroll brackets (plain JS onScroll — CuratedHomeLayout pattern) ────────
 
   const [heroPaused, setHeroPaused] = useState(false)
   const [heroBlurOpacity, setHeroBlurOpacity] = useState(0)
+  const [chromeOpacity, setChromeOpacity] = useState(1)
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
+      swipeStateRef.current.scrollY = scrollY
       // Boolean state bails out of identical updates on its own.
       setHeroPaused(scrollY > heroHeight * 0.7)
       // Quantize the blur ramp to 1/20 steps so repeated identical values
       // bail out instead of re-rendering at 60fps.
       const blur = Math.min(1, Math.max(0, scrollY / (heroHeight * 0.5)))
       setHeroBlurOpacity(Math.round(blur * 20) / 20)
+      // Hero chrome fades faster than the blur ramp so the buttons are gone
+      // before feed content overlaps them. Same 1/20 quantization.
+      const fade = Math.min(1, Math.max(0, scrollY / (heroHeight * 0.3)))
+      setChromeOpacity(Math.round((1 - fade) * 20) / 20)
     },
     [heroHeight],
   )
@@ -303,7 +408,7 @@ export function HomeScreen() {
   }
 
   return (
-    <View style={layout.screenContainer}>
+    <View style={layout.screenContainer} {...heroPanResponder.panHandlers}>
       {heroVisible && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
           <HomeHeroPager
@@ -313,8 +418,6 @@ export function HomeScreen() {
             paused={heroPaused || !focused}
             blurOpacity={heroBlurOpacity}
             muted={muted}
-            onMuteToggle={handleMuteToggle}
-            onMuteButtonLayout={handleMuteButtonLayout}
             onSlideChange={handleSlideChange}
           />
         </View>
@@ -342,26 +445,69 @@ export function HomeScreen() {
       />
 
       {heroVisible && (
+        // The hero's interactive chrome. It must live ABOVE the FlashList
+        // (which swallows any tap aimed at the hero layer) but visually
+        // belong to the hero — so it fades out with scroll and stops taking
+        // touches once faded, letting feed taps pass through.
         <View
           style={[styles.heroInteractiveLayer, { height: heroHeight }]}
           pointerEvents="box-none"
         >
-          {muteButtonRect != null && activeSlideIsVideo && (
-            // Invisible touch target for the pager's visual mute button
-            // (hybrid-overlay pattern — FlashList swallows touches in its
-            // padding region, so the hero layer can't take them directly).
-            <Pressable
-              style={{
-                position: "absolute",
-                left: muteButtonRect.x,
-                top: muteButtonRect.y,
-                width: muteButtonRect.w,
-                height: muteButtonRect.h,
-              }}
-              onPress={handleMuteToggle}
-              accessibilityLabel={muted ? "Unmute video" : "Mute video"}
-              accessibilityRole="button"
-            />
+          {activeSlide != null && (
+            <View
+              style={[styles.heroChrome, { opacity: chromeOpacity }]}
+              pointerEvents={chromeOpacity < 0.05 ? "none" : "box-none"}
+            >
+              <View style={styles.heroChromeLeft} pointerEvents="box-none">
+                {activeSlide.kind === "video" && activeSlide.slug != null && (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.ctaButton,
+                      pressed && feedback.pressed,
+                    ]}
+                    onPress={handleWatchNow}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Watch ${activeSlide.title} now`}
+                  >
+                    <Text style={[styles.ctaText, typography.body]}>
+                      Watch Now
+                    </Text>
+                  </Pressable>
+                )}
+                {activeSlide.kind === "mux" && activeInsertAction != null && (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.ctaButton,
+                      pressed && feedback.pressed,
+                    ]}
+                    onPress={handleInsertPress}
+                    accessibilityRole="link"
+                    accessibilityLabel={activeInsertAction.label}
+                  >
+                    <Text style={[styles.ctaText, typography.body]}>
+                      {activeInsertAction.label}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+              {activeSlide.kind === "video" && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.muteButton,
+                    pressed && feedback.pressed,
+                  ]}
+                  onPress={handleMuteToggle}
+                  accessibilityLabel={muted ? "Unmute video" : "Mute video"}
+                  accessibilityRole="button"
+                >
+                  <Ionicons
+                    name={muted ? "volume-mute" : "volume-high"}
+                    size={20}
+                    color={TEXT_ON_OVERLAY}
+                  />
+                </Pressable>
+              )}
+            </View>
           )}
         </View>
       )}
@@ -385,6 +531,43 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
+  },
+  heroChrome: {
+    // Mirrors the chrome's old in-pager position: CTA bottom-left with the
+    // content column's 16 padding, mute circle bottom-right at right 16 —
+    // both bottom edges 44 above the hero bottom.
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 44,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+  },
+  heroChromeLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  ctaButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 6,
+    backgroundColor: ACCENT,
+    minHeight: 48,
+    justifyContent: "center",
+  },
+  ctaText: {
+    fontWeight: "600",
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+  },
+  muteButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   feedItemBackground: {
     backgroundColor: hexToRgba(BG_COLOR, 0.9),

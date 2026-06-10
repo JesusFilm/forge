@@ -14,7 +14,6 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -25,24 +24,17 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
 import { useVideoPlayer, VideoView, type VideoPlayer } from "expo-video"
-import { useRouter } from "expo-router"
-import Ionicons from "@expo/vector-icons/Ionicons"
 
 import {
-  ACCENT,
   BG_COLOR,
   SURFACE_COLOR,
   TEXT_ON_OVERLAY,
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
-import { feedback } from "../../styles/shared"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { openExternalUrl } from "../../lib/openExternalUrl"
-import { isSeriesLabel } from "../../lib/isSeriesRecord"
-import { encodeWatchSeed } from "../../lib/watchSeed"
 import {
   muxSlideDisplayCopy,
   type WatchHomeSlide,
@@ -83,19 +75,39 @@ export type HomeHeroPagerProps = {
   paused?: boolean
   blurOpacity?: number
   /**
-   * Mute is a CONTROLLED prop: the screen owns the state and the invisible
-   * overlay touch target (hybrid-overlay pattern, see
-   * docs/solutions/mobile/hero-mute-button-hybrid-overlay-touch-target.md).
-   * The session rules — unmute persists across advances, tab blur resets to
-   * muted — are implemented by the screen's state (HomeScreen).
+   * Mute is a CONTROLLED prop: the screen owns the state AND the mute button
+   * itself (rendered in HomeScreen's zIndex-2 touch overlay — the pager hosts
+   * no interactive chrome; the FlashList above it would swallow the taps).
+   * The pager only syncs this prop onto player.muted. The session rules —
+   * unmute persists across advances, tab blur resets to muted — are
+   * implemented by the screen's state (HomeScreen).
    */
   muted?: boolean
-  onMuteToggle?: () => void
-  /** Visual mute button rect (relative to the pager container) for the U7 overlay. */
-  onMuteButtonLayout?: (x: number, y: number, w: number, h: number) => void
-  /** Fires whenever the active slide settles (swipe, chip, or auto-advance). */
+  /** Fires whenever the active slide settles (chip, swipe, or auto-advance). */
   onSlideChange?: (index: number, slide: WatchHomeSlide) => void
   ref?: Ref<HomeHeroPagerHandle>
+}
+
+/**
+ * What HomeScreen's overlay "Watch Now" button needs to build the watch-seed
+ * route for a video slide. Keeps slide-shape knowledge (poster fallback
+ * chain, series-label routing input) in one place instead of leaking it into
+ * the screen.
+ */
+export function slideRouteArgs(slide: WatchHomeVideoSlide): {
+  slug: string | null
+  title: string
+  label: string
+  imageUrl: string | null
+  playbackId: string | null
+} {
+  return {
+    slug: slide.slug,
+    title: slide.title,
+    label: slide.label,
+    imageUrl: slide.posterUrl ?? slide.thumbnailUrl,
+    playbackId: slide.playbackId,
+  }
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -106,14 +118,11 @@ export function HomeHeroPager({
   paused,
   blurOpacity = 0,
   muted = true,
-  onMuteToggle,
-  onMuteButtonLayout,
   onSlideChange,
   ref,
 }: HomeHeroPagerProps) {
   const { width: screenWidth } = useWindowDimensions()
   const typography = useTypography()
-  const router = useRouter()
 
   const pageHeight = heroHeight ?? Math.round(screenWidth * 1.2)
 
@@ -402,6 +411,12 @@ export function HomeHeroPager({
     }
   }, [state.currentIndex, state.slides.length])
 
+  // The list is scrollEnabled={false} (slide changes are programmatic only:
+  // chips, auto-advance, and HomeScreen's capture-phase swipe all go through
+  // selectSlide / the reducer). Animated scrollToIndex still fires momentum
+  // end; SLIDE_SHOWN on the settled index is a no-op when it matches
+  // currentIndex (moveTo's equal-index bail), and re-syncs the reducer if the
+  // list ever settles off-page.
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
@@ -454,49 +469,6 @@ export function HomeHeroPager({
     onSlideChangeRef.current?.(state.currentIndex, slide)
   }, [state.currentIndex, state.slides])
 
-  // ── Actions ───────────────────────────────────────────────────────────────
-
-  const handleWatchNow = useCallback(
-    (slide: WatchHomeVideoSlide) => {
-      if (!slide.slug) return
-      // Series/watch routing rule shared with Discover (watch.tsx
-      // handleSelectResult): series-shaped label → series page, else watch
-      // page, with a seed for instant paint. playbackId may be null.
-      const seed = encodeWatchSeed({
-        slug: slide.slug,
-        title: slide.title,
-        imageUrl: slide.posterUrl ?? slide.thumbnailUrl,
-        playbackId: slide.playbackId,
-      })
-      const route = isSeriesLabel(slide.label) ? "series" : "watch"
-      router.push(`/${route}/${encodeURIComponent(slide.slug)}?seed=${seed}`)
-    },
-    [router],
-  )
-
-  const handleInsertAction = useCallback((url: string) => {
-    // External destination — system browser via the shared validated helper.
-    openExternalUrl(url)
-  }, [])
-
-  // ── Mute button layout reporting (hybrid-overlay pattern) ─────────────────
-
-  const containerRef = useRef<View>(null)
-  const muteButtonRef = useRef<View>(null)
-
-  const handleMuteButtonLayout = useCallback(() => {
-    if (onMuteButtonLayout && containerRef.current && muteButtonRef.current) {
-      muteButtonRef.current.measureLayout(
-        containerRef.current,
-        (x, y, w, h) => onMuteButtonLayout(x, y, w, h),
-        () => {
-          if (__DEV__)
-            console.warn("[HomeHeroPager] measureLayout failed for mute button")
-        },
-      )
-    }
-  }, [onMuteButtonLayout])
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   const renderItem = useCallback(
@@ -510,8 +482,6 @@ export function HomeHeroPager({
         width={screenWidth}
         height={pageHeight}
         typography={typography}
-        onWatchNow={handleWatchNow}
-        onInsertAction={handleInsertAction}
       />
     ),
     [
@@ -522,18 +492,15 @@ export function HomeHeroPager({
       screenWidth,
       pageHeight,
       typography,
-      handleWatchNow,
-      handleInsertAction,
     ],
   )
 
   if (state.slides.length === 0) return null
 
   const chrome = showsPagerChrome(state)
-  const showMuteButton = onMuteToggle != null && activeKind === "video"
 
   return (
-    <View ref={containerRef} style={[styles.container, { height: pageHeight }]}>
+    <View style={[styles.container, { height: pageHeight }]}>
       <FlatList
         ref={listRef}
         data={state.slides}
@@ -548,7 +515,10 @@ export function HomeHeroPager({
         getItemLayout={getItemLayout}
         initialNumToRender={1}
         windowSize={3}
-        scrollEnabled={chrome}
+        // Never user-scrollable: the vertical FlashList above the hero claims
+        // direct drags anyway. Hero swipes are claimed by HomeScreen's
+        // capture-phase PanResponder and arrive via selectSlide.
+        scrollEnabled={false}
       />
 
       {blurOpacity > 0 && (
@@ -567,23 +537,6 @@ export function HomeHeroPager({
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
           )}
-        </View>
-      )}
-
-      {showMuteButton && (
-        // Visual only — the tappable target is U7's invisible overlay
-        // Pressable, positioned from onMuteButtonLayout (the FlashList feed
-        // above the hero would swallow direct touches).
-        <View
-          ref={muteButtonRef}
-          onLayout={handleMuteButtonLayout}
-          style={styles.muteButton}
-        >
-          <Ionicons
-            name={muted ? "volume-mute" : "volume-high"}
-            size={20}
-            color={TEXT_ON_OVERLAY}
-          />
         </View>
       )}
 
@@ -610,8 +563,6 @@ type HeroPageProps = {
   width: number
   height: number
   typography: TypographyScale
-  onWatchNow: (slide: WatchHomeVideoSlide) => void
-  onInsertAction: (url: string) => void
 }
 
 const HeroPage = memo(function HeroPage({
@@ -623,8 +574,6 @@ const HeroPage = memo(function HeroPage({
   width,
   height,
   typography,
-  onWatchNow,
-  onInsertAction,
 }: HeroPageProps) {
   const posterUrl = resolveImageUrl(slide.posterUrl ?? slide.thumbnailUrl)
   const isVideo = slide.kind === "video"
@@ -648,6 +597,14 @@ const HeroPage = memo(function HeroPage({
   const eyebrow = muxCopy?.label ?? slide.label
   const title = muxCopy?.title ?? slide.title
   const insertAction = muxCopy?.action ?? null
+
+  // Pages host DISPLAY content only — the interactive chrome (Watch Now,
+  // insert CTA, mute) lives in HomeScreen's zIndex-2 touch overlay, because
+  // the FlashList scrolling over the hero swallows any tap aimed here. The
+  // text block reserves the overlay CTA's footprint so the layout matches
+  // the old in-page Pressable exactly.
+  const reservesCtaSpace =
+    (slide.kind === "video" && slide.slug != null) || insertAction != null
 
   return (
     // Plain tap on a slide does nothing (mux slides advance via CTA only) —
@@ -682,7 +639,13 @@ const HeroPage = memo(function HeroPage({
         pointerEvents="none"
       />
 
-      <View style={[StyleSheet.absoluteFill, styles.pageContent]}>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.pageContent,
+          reservesCtaSpace && styles.pageContentWithCta,
+        ]}
+      >
         {slide.kind === "mux" && slide.logo && (
           <Text style={[styles.wordmark, typography.caption]}>
             JESUS FILM PROJECT
@@ -706,36 +669,6 @@ const HeroPage = memo(function HeroPage({
             {muxCopy.description}
           </Text>
         )}
-
-        {slide.kind === "video" && slide.slug != null && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.ctaButton,
-              pressed && feedback.pressed,
-            ]}
-            onPress={() => onWatchNow(slide)}
-            accessibilityRole="button"
-            accessibilityLabel={`Watch ${slide.title} now`}
-          >
-            <Text style={[styles.ctaText, typography.body]}>Watch Now</Text>
-          </Pressable>
-        )}
-
-        {insertAction != null && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.ctaButton,
-              pressed && feedback.pressed,
-            ]}
-            onPress={() => onInsertAction(insertAction.url)}
-            accessibilityRole="link"
-            accessibilityLabel={insertAction.label}
-          >
-            <Text style={[styles.ctaText, typography.body]}>
-              {insertAction.label}
-            </Text>
-          </Pressable>
-        )}
       </View>
     </View>
   )
@@ -756,8 +689,14 @@ const styles = StyleSheet.create({
   pageContent: {
     justifyContent: "flex-end",
     paddingLeft: 16,
-    paddingRight: 76, // clears the fixed mute button at the right edge
+    // Clears HomeScreen's overlay mute circle at the right edge (48 + 16 + margin).
+    paddingRight: 76,
     paddingBottom: 44,
+  },
+  pageContentWithCta: {
+    // Reserve the overlay CTA's footprint (48 pill + 16 gap above it) so the
+    // title block sits exactly where it did when the Pressable was in-page.
+    paddingBottom: 44 + 48 + 16,
   },
   wordmark: {
     color: TEXT_ON_OVERLAY,
@@ -782,32 +721,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontFamily: "System",
     marginTop: 6,
-  },
-  ctaButton: {
-    marginTop: 16,
-    alignSelf: "flex-start",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 6,
-    backgroundColor: ACCENT,
-    minHeight: 48,
-    justifyContent: "center",
-  },
-  ctaText: {
-    fontWeight: "600",
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-  },
-  muteButton: {
-    position: "absolute",
-    right: 16,
-    bottom: 44,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   dotsOverlay: {
     position: "absolute",
