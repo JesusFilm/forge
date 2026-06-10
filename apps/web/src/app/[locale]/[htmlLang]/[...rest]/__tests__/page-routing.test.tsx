@@ -27,6 +27,7 @@ const {
   experienceErrorMock,
   isWatchCtaTextCopyEnabledMock,
   isWatchYouVersionBibleQuotesEnabledMock,
+  isWatchHideBibleQuotesEnabledMock,
   fetchYouVersionBibleQuotePassagesMock,
   isWatchQuestionPanelEnabledMock,
 } = vi.hoisted(() => ({
@@ -53,6 +54,7 @@ const {
   experienceErrorMock: vi.fn(() => null),
   isWatchCtaTextCopyEnabledMock: vi.fn(async () => false),
   isWatchYouVersionBibleQuotesEnabledMock: vi.fn(async () => false),
+  isWatchHideBibleQuotesEnabledMock: vi.fn(async () => false),
   fetchYouVersionBibleQuotePassagesMock: vi.fn(),
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
 }))
@@ -114,6 +116,7 @@ vi.mock("@/components/sections", () => ({
 vi.mock("@/lib/feature-flags", () => ({
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
   isWatchYouVersionBibleQuotesEnabled: isWatchYouVersionBibleQuotesEnabledMock,
+  isWatchHideBibleQuotesEnabled: isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
 }))
 
@@ -167,6 +170,8 @@ beforeEach(() => {
   isWatchCtaTextCopyEnabledMock.mockResolvedValue(false)
   isWatchYouVersionBibleQuotesEnabledMock.mockReset()
   isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(false)
+  isWatchHideBibleQuotesEnabledMock.mockReset()
+  isWatchHideBibleQuotesEnabledMock.mockResolvedValue(false)
   fetchYouVersionBibleQuotePassagesMock.mockReset()
   fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([])
   isWatchQuestionPanelEnabledMock.mockReset()
@@ -477,6 +482,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
+        hideBibleQuotes: false,
         questionPanelEnabled: false,
       }),
     )
@@ -571,6 +577,30 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         reference: "JHN.3.16",
       }),
     ])
+  })
+
+  it("passes the Bible Quotes hide flag to WatchPageClient and skips YouVersion fetches when enabled", async () => {
+    isWatchHideBibleQuotesEnabledMock.mockResolvedValue(true)
+    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const bibleCitations = makeBibleCitations()
+    ;(
+      watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
+    ).bibleCitations = bibleCitations
+    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+
+    await render2Seg("jesus.html", "english.html")
+
+    expect(isWatchHideBibleQuotesEnabledMock).toHaveBeenCalledWith({
+      custom: { route: "/watch/jesus.html/english.html" },
+    })
+    expect(isWatchYouVersionBibleQuotesEnabledMock).not.toHaveBeenCalled()
+    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        hideBibleQuotes: true,
+      }),
+    )
   })
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
@@ -975,6 +1005,29 @@ describe("Catch-all routing — 3-seg episode branch", () => {
         reference: "JHN.3.16",
       }),
     ])
+  })
+
+  it("passes the Bible Quotes hide flag to episode WatchPageClient when enabled", async () => {
+    isWatchHideBibleQuotesEnabledMock.mockResolvedValue(true)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+    await render3Seg(
+      "lumo-the-gospel-of-john.html",
+      "wedding-in-cana",
+      "english.html",
+    )
+
+    expect(isWatchHideBibleQuotesEnabledMock).toHaveBeenCalledWith({
+      custom: {
+        route:
+          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      },
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        hideBibleQuotes: true,
+      }),
+    )
   })
 
   it("passes the LaunchDarkly question panel flag to WatchPageClient when enabled", async () => {
