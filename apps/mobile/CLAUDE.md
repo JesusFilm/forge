@@ -15,6 +15,19 @@
 This is a Server-Driven UI (SDUI) app. Admin controls the content
 blocks and their order via the Experience content type. The app renders them.
 
+**Exception — the Home tab is config-curated, not Experience-driven.**
+`watchSetting.homepageExperience` is null in prod and web's `/watch` home is
+likewise config-curated, so Home renders from a local curation config instead
+(feat-172). The config + pure model/queue logic live in `src/lib/watchHome/`
+and are an adapted copy of `apps/web/src/lib/watch-home-config.ts` (+ the two
+sibling web modules) — **any curation change on web must be mirrored here**
+until feat-160 moves curation into admin. Data flows
+`useWatchHome` (lean `watchHomeVideos` fetch — never select `dubs` in the bulk
+fragment; a jest guard enforces this) → `buildWatchHomeModelFromVideos` →
+`HomeScreen` (three-layer hero pager / shelves / overlay). Hero streams
+resolve lazily per slide via `useHeroStream`. Experiences still render via the
+SDUI pipeline below, hosted at `/experience/[slug]`.
+
 ### SDUI Pipeline
 
 ```
