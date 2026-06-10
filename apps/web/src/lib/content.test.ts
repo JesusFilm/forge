@@ -1,11 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { queryMock } = vi.hoisted(() => ({
+const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  unstableCacheCalls: [] as {
+    keyParts: unknown[]
+    options: { revalidate?: unknown; tags?: unknown }
+  }[],
 }))
 
 vi.mock("next/cache", () => ({
-  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(
+    fn: T,
+    keyParts: unknown[],
+    options?: { revalidate?: unknown; tags?: unknown },
+  ) => {
+    unstableCacheCalls.push({ keyParts, options: options ?? {} })
+    return fn
+  },
 }))
 
 vi.mock("react", async () => {
@@ -74,7 +85,55 @@ function makeAdminVideo(
 describe("resolveWatchPage", () => {
   afterEach(() => {
     queryMock.mockReset()
+    unstableCacheCalls.length = 0
     vi.resetModules()
+  })
+
+  it("declares tags on every watch resolver cache", async () => {
+    await import("./content")
+
+    expect(unstableCacheCalls).toEqual(
+      expect.arrayContaining([
+        {
+          keyParts: ["watch-page"],
+          options: {
+            revalidate: 60,
+            tags: [
+              "watch:home",
+              "watch:settings",
+              "watch:experience",
+              "watch:video",
+            ],
+          },
+        },
+        {
+          keyParts: ["watch-experience-page"],
+          options: { revalidate: 60, tags: ["watch:experience"] },
+        },
+        {
+          keyParts: ["watch-video"],
+          options: { revalidate: 60, tags: ["watch:video"] },
+        },
+        {
+          keyParts: ["video-child-dub-languages"],
+          options: {
+            revalidate: 3600,
+            tags: ["watch:child-dub-languages"],
+          },
+        },
+        {
+          keyParts: ["watch-video-by-slug"],
+          options: { revalidate: 60, tags: ["watch:video"] },
+        },
+        {
+          keyParts: ["series-by-slug"],
+          options: {
+            revalidate: 60,
+            tags: ["watch:series", "watch:video"],
+          },
+        },
+      ]),
+    )
   })
 
   it("returns the homepage Experience from watchSetting", async () => {
