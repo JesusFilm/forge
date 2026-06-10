@@ -80,8 +80,13 @@ function expectMultilingualTooltip(testId: string, expected: string[]) {
   const tooltip = $('[data-testid="watch-language-picker-tooltip-panel"]')
   expect(tooltip).not.toBeNull()
   expect(tooltip?.getAttribute("role")).toBe("tooltip")
+  expect(tooltip?.getAttribute("aria-hidden")).not.toBe("true")
   expect(tooltip?.className).toContain("w-full")
-  expect(tooltip?.className).toContain("bg-sky-950/35")
+  expect(tooltip?.className).toContain("opacity-100")
+  expect(tooltip?.className).not.toContain("border")
+  expect(tooltip?.className).not.toContain("bg-sky")
+  expect(tooltip?.className).not.toContain("shadow")
+  expect(tooltip?.className).not.toContain("ring")
   expect(
     tooltip?.querySelector(
       '[data-testid="watch-language-picker-tooltip-info-icon"]',
@@ -407,7 +412,12 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(languageIcon?.className).not.toContain("rounded-full")
     expect(languageIcon?.className).not.toContain("border")
     expect(languageIcon?.className).not.toContain("bg-stone-950")
-    expect($('[data-testid="watch-language-picker-tooltip-panel"]')).toBeNull()
+    const defaultTooltipPanel = $(
+      '[data-testid="watch-language-picker-tooltip-panel"]',
+    )
+    expect(defaultTooltipPanel).not.toBeNull()
+    expect(defaultTooltipPanel?.className).toContain("opacity-0")
+    expect(defaultTooltipPanel?.getAttribute("aria-hidden")).toBe("true")
     const languageTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-language",
       ["Language", "语言", "भाषा", "Idioma", "اللغة"],

@@ -185,30 +185,39 @@ function MultilingualTooltipPanel({
 }: {
   copy: Record<TooltipLanguageKey, string> | null
 }) {
-  if (copy === null) return null
+  const visible = copy !== null
+  const tooltipCopy = copy ?? MULTILINGUAL_TOOLTIPS.language
 
   return (
     <div
       role="tooltip"
+      aria-hidden={visible ? undefined : true}
       data-testid="watch-language-picker-tooltip-panel"
-      className="flex w-full items-start gap-3 rounded-xl border border-sky-300/40 bg-sky-950/35 px-4 py-3 text-sm leading-5 font-semibold text-sky-50 shadow-2xl shadow-black/30 ring-1 ring-sky-100/10 backdrop-blur-md sm:px-5"
+      className={`flex h-8 w-full items-center gap-2 px-2 text-sm leading-5 font-semibold text-stone-200 transition-opacity duration-150 ${
+        visible ? "opacity-100" : "pointer-events-none opacity-0"
+      }`}
     >
-      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-sky-200/35 bg-sky-100/10 text-sky-100">
-        <Info
-          aria-hidden
-          data-testid="watch-language-picker-tooltip-info-icon"
-          className="size-4"
-        />
-      </span>
-      <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-5">
-        {TOOLTIP_LANGUAGES.map((language) => (
-          <div
+      <Info
+        aria-hidden
+        data-testid="watch-language-picker-tooltip-info-icon"
+        className="size-4 shrink-0 text-stone-300"
+      />
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap">
+        {TOOLTIP_LANGUAGES.map((language, index) => (
+          <span
             key={language.key}
-            dir={language.dir}
-            className="min-w-0 break-words"
+            className="inline-flex min-w-0 items-center gap-2"
           >
-            <span>{copy[language.key]}</span>
-          </div>
+            {index > 0 ? (
+              <span
+                aria-hidden
+                className="size-1 shrink-0 rounded-full bg-stone-500/80"
+              />
+            ) : null}
+            <span dir={language.dir} className="min-w-0 truncate">
+              {tooltipCopy[language.key]}
+            </span>
+          </span>
         ))}
       </div>
     </div>
