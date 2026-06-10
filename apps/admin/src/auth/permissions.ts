@@ -43,6 +43,7 @@ export type PermissionKey =
   | "read:experiences"
   | "read:videos"
   | "read:video-metadata"
+  | "read:video-mapper-catalog"
   | "read:media-assets"
   | "read:reference"
   | "access:manager"
@@ -90,6 +91,11 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // gating happens via the `WORKFLOW_TRIGGER_PERMISSIONS` allowlist
   // below so manager's bearer call is the intended caller.
   "read:video-metadata": "VIEWER",
+  // YTM-002 — whole-catalog mapper sync projection, including media URLs.
+  // Human ADMINs may inspect it, and the dedicated VIDEO_MAPPER bearer role
+  // below may page it for sync. Do not reuse `read:video-metadata`: that key
+  // is VIEWER-tier and workflow-bearer-callable for manager lookups.
+  "read:video-mapper-catalog": "ADMIN",
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
@@ -171,6 +177,9 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // MANAGER_BACKEND is gated by `MANAGER_BACKEND_PERMISSIONS`; it never
   // satisfies human panel access or editorial tier checks.
   if (role === "MANAGER_BACKEND") return false
+  // VIDEO_MAPPER is gated by `VIDEO_MAPPER_PERMISSIONS`; it never satisfies
+  // human panel access or editorial tier checks.
+  if (role === "VIDEO_MAPPER") return false
   // CONSUMER_BEARER is gated by `CONSUMER_BEARER_PERMISSIONS` (empty set)
   // in `hasPermission` via early-return; it never satisfies tier-based
   // checks. The bearer's sole purpose is rate-limit bucketing, not
@@ -255,6 +264,10 @@ const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "write:manager-jobs",
 ])
 
+const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:video-mapper-catalog",
+])
+
 const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "access:manager",
 ])
@@ -282,6 +295,9 @@ export function hasPermission(
   }
   if (role === "MANAGER_BACKEND") {
     return MANAGER_BACKEND_PERMISSIONS.has(key)
+  }
+  if (role === "VIDEO_MAPPER") {
+    return VIDEO_MAPPER_PERMISSIONS.has(key)
   }
   // CONSUMER_BEARER's permission set is intentionally empty; this
   // early-return makes the contract explicit at the call site so a

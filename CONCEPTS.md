@@ -37,6 +37,19 @@ A prototype attribution service that accepts an externally uploaded or reuploade
 
 A mapper-owned projection of official Forge/Admin media records and matchable media signals used for attribution. The Mapper Catalog is an index for matching, not the source of truth for Videos, Dubs, or Video Editions.
 
+Mapper Catalog rows are shaped around matchable variants: the source Video
+identity stays anchored by Core ID, while each Dub contributes the variant
+identity the mapper uses to compare uploaded media against official media.
+
+### Catalog Sync Run
+
+A durable record of one Mapper Catalog refresh from Admin into mapper-owned
+projection rows.
+
+A Catalog Sync Run tracks page progress, counts, terminal status, and safe
+failure summaries so broad catalog refreshes can be inspected and retried
+without treating Admin as the mapper's database.
+
 ### Match Job
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
@@ -46,6 +59,18 @@ An asynchronous attribution request that owns an uploaded media input until the 
 A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
 
 ## Search & embeddings
+
+### Search Pipeline Mode
+
+A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
+
+### Keyword-First Search
+
+A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
+
+### Search Degradation Signal
+
+The response-side state that says whether semantic retrieval actually contributed to a search response. It reflects runtime embedding availability, not the requested Search Pipeline Mode.
 
 ### Content Embedding
 
@@ -86,3 +111,9 @@ The single Experience designated as the watch home for a given locale — the la
 The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it.
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches.
+
+### Watch Session
+
+The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
+
+A Watch Session belongs to the currently-viewed Video: it is published when the details screen resolves its Video and cleared when that screen goes away, and switching the active Dub mid-playback updates the session rather than restarting playback. Player features that depend on it (the in-player language/subtitle menu, subtitle rendering) gate on the session matching what is actually playing, so playback started outside a details screen runs without them.

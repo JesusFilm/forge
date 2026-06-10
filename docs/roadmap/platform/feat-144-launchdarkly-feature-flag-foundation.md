@@ -9,6 +9,7 @@ duration: 2
 depends_on: []
 blocks:
   - "feat-146"
+  - "feat-169"
 tags:
   - platform
   - web

@@ -1,11 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { queryMock } = vi.hoisted(() => ({
+const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  unstableCacheCalls: [] as {
+    keyParts: unknown[]
+    options: { revalidate?: unknown; tags?: unknown }
+  }[],
 }))
 
 vi.mock("next/cache", () => ({
-  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(
+    fn: T,
+    keyParts: unknown[],
+    options?: { revalidate?: unknown; tags?: unknown },
+  ) => {
+    unstableCacheCalls.push({ keyParts, options: options ?? {} })
+    return fn
+  },
 }))
 
 vi.mock("react", async () => {
@@ -117,6 +128,24 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
 }
 
 describe("buildWatchHomeModelFromVideos", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    unstableCacheCalls.length = 0
+    vi.resetModules()
+  })
+
+  it("declares tags on the cached watch home model", async () => {
+    await import("../watch-home")
+
+    expect(unstableCacheCalls).toContainEqual({
+      keyParts: ["watch-home", "v3-carousel-sequence"],
+      options: {
+        revalidate: 60,
+        tags: ["watch:home", "watch:video"],
+      },
+    })
+  })
+
   it("maps admin videos into hero slides and configured sections with safe watch URLs", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 
@@ -329,6 +358,7 @@ describe("buildWatchHomeModelFromVideos", () => {
 describe("resolveWatchHome", () => {
   afterEach(() => {
     queryMock.mockReset()
+    unstableCacheCalls.length = 0
     vi.resetModules()
   })
 

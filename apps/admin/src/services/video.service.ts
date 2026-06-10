@@ -48,6 +48,72 @@ export type VideoForEnrichment = {
   subtitleUrl: string | null
 }
 
+export type VideoMapperCatalogMediaSourceType =
+  | "DOWNLOAD"
+  | "HLS"
+  | "DASH"
+  | "NONE"
+
+export const VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS = [
+  "dub_deleted",
+  "video_deleted",
+  "video_no_index",
+  "video_unpublished",
+  "dub_unpublished",
+  "language_missing",
+  "language_deleted",
+  "edition_deleted",
+  "media_missing",
+] as const
+
+export type VideoMapperCatalogNonIndexableReason =
+  (typeof VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS)[number]
+
+export type VideoMapperCatalogItem = {
+  coreId: string
+  sourceTitle: string
+  sourceTitleLocale: string | null
+  videoVariantId: string
+  adminVideoId: string
+  adminDubId: string
+  languageId: string | null
+  languageSlug: string | null
+  locale: string | null
+  editionCoreId: string | null
+  editionName: string | null
+  durationSeconds: number | null
+  lengthInMilliseconds: string | null
+  hlsUrl: string | null
+  dashUrl: string | null
+  // Diagnostic only in YTM-002: mapper MediaSourceType has no SHARE value.
+  shareUrl: string | null
+  downloadUrl: string | null
+  downloadQuality: string | null
+  downloadWidth: number | null
+  downloadHeight: number | null
+  mediaSourceType: VideoMapperCatalogMediaSourceType
+  mediaSourceUrl: string | null
+  videoPublished: boolean
+  dubPublished: boolean
+  videoNoIndex: boolean
+  videoDeleted: boolean
+  dubDeleted: boolean
+  deletedAt: string | null
+  indexable: boolean
+  nonIndexableReason: VideoMapperCatalogNonIndexableReason | null
+}
+
+export type VideoMapperCatalogPageInfo = {
+  startCursor: string | null
+  endCursor: string | null
+  hasNextPage: boolean
+}
+
+export type VideoMapperCatalogConnection = {
+  nodes: VideoMapperCatalogItem[]
+  pageInfo: VideoMapperCatalogPageInfo
+}
+
 export class VideoLookupValidationError extends Error {
   constructor(message: string) {
     super(message)
@@ -80,6 +146,12 @@ export const VIDEOS_BY_CORE_IDS_MAX = 100
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS = 8_000
 const VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS = 9_000
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS}ms'`
+export const VIDEO_MAPPER_CATALOG_DEFAULT_PAGE_SIZE = 100
+export const VIDEO_MAPPER_CATALOG_MAX_PAGE_SIZE = 250
+const VIDEO_MAPPER_CATALOG_CURSOR_PREFIX = "video-dub:"
+const VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_MS = 10_000
+const VIDEO_MAPPER_CATALOG_TRANSACTION_TIMEOUT_MS = 11_000
+const VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_MS}ms'`
 
 const VIDEO_LABEL_SEARCH_TOKENS = {
   COLLECTION: ["collection"],
@@ -543,6 +615,196 @@ export class VideoService {
     })
   }
 
+  async listMapperCatalogVariants({
+    first,
+    after,
+  }: {
+    first?: number | null
+    after?: string | null
+  }): Promise<VideoMapperCatalogConnection> {
+    const pageSize = normalizeMapperCatalogPageSize(first)
+    const afterId = decodeMapperCatalogCursor(after)
+    await this.assertMapperCatalogCursorExists(afterId)
+    const cursorFilter =
+      afterId == null ? Prisma.empty : Prisma.sql`WHERE d.id > ${afterId}::text`
+    const rows = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_SQL)
+        return tx.$queryRaw<VideoMapperCatalogItem[]>`
+      WITH paged_dubs AS (
+        SELECT d.*
+        FROM video_dub d
+        ${cursorFilter}
+        ORDER BY d.id ASC
+        LIMIT ${pageSize + 1}
+      ),
+      paged_video_ids AS (
+        SELECT DISTINCT d.video_id
+        FROM paged_dubs d
+      ),
+      published_state_by_video AS (
+        SELECT
+          paged_video_ids.video_id,
+          EXISTS (
+            SELECT 1
+            FROM video_locale published_locale
+            WHERE published_locale.video_id = paged_video_ids.video_id
+              AND published_locale.deleted_at IS NULL
+              AND published_locale.status = 'published'
+          ) AS video_published
+        FROM paged_video_ids
+      ),
+      selected_title_by_video AS (
+        SELECT DISTINCT ON (locale.video_id)
+          locale.video_id,
+          locale.title,
+          locale.locale
+        FROM video_locale locale
+        JOIN paged_video_ids
+          ON paged_video_ids.video_id = locale.video_id
+        WHERE locale.deleted_at IS NULL
+          AND NULLIF(locale.title, '') IS NOT NULL
+        ORDER BY
+          locale.video_id ASC,
+          CASE WHEN locale.status = 'published' THEN 0 ELSE 1 END ASC,
+          CASE WHEN locale.locale = 'en' THEN 0 ELSE 1 END ASC,
+          locale.locale ASC NULLS LAST,
+          locale.id ASC
+      )
+      SELECT
+        v.core_id AS "coreId",
+        COALESCE(selected_title.title, v.slug, v.core_id) AS "sourceTitle",
+        selected_title.locale AS "sourceTitleLocale",
+        d.core_id AS "videoVariantId",
+        v.id AS "adminVideoId",
+        d.id AS "adminDubId",
+        language.core_id AS "languageId",
+        language.slug AS "languageSlug",
+        language.bcp47 AS "locale",
+        edition.core_id AS "editionCoreId",
+        edition.name AS "editionName",
+        d.duration AS "durationSeconds",
+        d.length_in_milliseconds::text AS "lengthInMilliseconds",
+        NULLIF(d.hls, '') AS "hlsUrl",
+        NULLIF(d.dash, '') AS "dashUrl",
+        NULLIF(d.share, '') AS "shareUrl",
+        selected_download.url AS "downloadUrl",
+        selected_download.quality AS "downloadQuality",
+        selected_download.width AS "downloadWidth",
+        selected_download.height AS "downloadHeight",
+        CASE
+          WHEN selected_download.url IS NOT NULL THEN 'DOWNLOAD'
+          WHEN NULLIF(d.hls, '') IS NOT NULL THEN 'HLS'
+          WHEN NULLIF(d.dash, '') IS NOT NULL THEN 'DASH'
+          ELSE 'NONE'
+        END AS "mediaSourceType",
+        COALESCE(
+          selected_download.url,
+          NULLIF(d.hls, ''),
+          NULLIF(d.dash, '')
+        ) AS "mediaSourceUrl",
+        COALESCE(published_state.video_published, FALSE) AS "videoPublished",
+        d.published AS "dubPublished",
+        v.no_index AS "videoNoIndex",
+        (v.deleted_at IS NOT NULL) AS "videoDeleted",
+        (d.deleted_at IS NOT NULL) AS "dubDeleted",
+        COALESCE(d.deleted_at, v.deleted_at)::text AS "deletedAt",
+        (
+          d.deleted_at IS NULL
+          AND v.deleted_at IS NULL
+          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
+          AND language.id IS NOT NULL
+          AND language.deleted_at IS NULL
+          AND d.published = TRUE
+          AND v.no_index = FALSE
+          AND COALESCE(published_state.video_published, FALSE) = TRUE
+          AND (
+            selected_download.url IS NOT NULL
+            OR NULLIF(d.hls, '') IS NOT NULL
+            OR NULLIF(d.dash, '') IS NOT NULL
+          )
+        ) AS "indexable",
+        CASE
+          WHEN d.deleted_at IS NOT NULL THEN 'dub_deleted'
+          WHEN v.deleted_at IS NOT NULL THEN 'video_deleted'
+          WHEN v.no_index = TRUE THEN 'video_no_index'
+          WHEN COALESCE(published_state.video_published, FALSE) = FALSE
+            THEN 'video_unpublished'
+          WHEN d.published = FALSE THEN 'dub_unpublished'
+          WHEN language.id IS NULL THEN 'language_missing'
+          WHEN language.deleted_at IS NOT NULL THEN 'language_deleted'
+          WHEN edition.id IS NOT NULL AND edition.deleted_at IS NOT NULL
+            THEN 'edition_deleted'
+          WHEN selected_download.url IS NULL
+            AND NULLIF(d.hls, '') IS NULL
+            AND NULLIF(d.dash, '') IS NULL
+            THEN 'media_missing'
+          ELSE NULL
+        END AS "nonIndexableReason"
+      FROM paged_dubs d
+      JOIN video v
+        ON v.id = d.video_id
+      LEFT JOIN language
+        ON language.id = d.language_id
+      LEFT JOIN video_edition edition
+        ON edition.id = d.video_edition_id
+      LEFT JOIN published_state_by_video published_state
+        ON published_state.video_id = v.id
+      LEFT JOIN selected_title_by_video selected_title
+        ON selected_title.video_id = v.id
+      LEFT JOIN LATERAL (
+        SELECT
+          download.url,
+          download.quality,
+          download.width,
+          download.height
+        FROM video_dub_download download
+        WHERE download.video_dub_id = d.id
+          AND d.downloadable = TRUE
+          AND download.deleted_at IS NULL
+          AND NULLIF(download.url, '') IS NOT NULL
+          AND download.url ~* '^https?://'
+        ORDER BY
+          download.width DESC NULLS LAST,
+          download.height DESC NULLS LAST,
+          download.updated_at DESC
+        LIMIT 1
+      ) selected_download ON TRUE
+      ORDER BY d.id ASC
+    `
+      },
+      { timeout: VIDEO_MAPPER_CATALOG_TRANSACTION_TIMEOUT_MS },
+    )
+
+    const nodes = rows.slice(0, pageSize)
+    return {
+      nodes,
+      pageInfo: {
+        startCursor:
+          nodes.length === 0
+            ? null
+            : encodeMapperCatalogCursor(nodes[0].adminDubId),
+        endCursor:
+          nodes.length === 0
+            ? null
+            : encodeMapperCatalogCursor(nodes[nodes.length - 1].adminDubId),
+        hasNextPage: rows.length > pageSize,
+      },
+    }
+  }
+
+  private async assertMapperCatalogCursorExists(adminDubId: string | null) {
+    if (adminDubId == null) return
+
+    const row = await this.prisma.videoDub.findUnique({
+      where: { id: adminDubId },
+      select: { id: true },
+    })
+    if (row == null) {
+      throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+    }
+  }
+
   async getWatchHomeVideos({
     coreIds,
     query,
@@ -812,6 +1074,45 @@ export class VideoService {
 }
 
 type VideoForEnrichmentRow = VideoForEnrichment
+
+function normalizeMapperCatalogPageSize(first: number | null | undefined) {
+  const value = first ?? VIDEO_MAPPER_CATALOG_DEFAULT_PAGE_SIZE
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new VideoLookupValidationError(
+      "videoMapperCatalog.first must be a positive integer",
+    )
+  }
+  return Math.min(value, VIDEO_MAPPER_CATALOG_MAX_PAGE_SIZE)
+}
+
+function encodeMapperCatalogCursor(adminDubId: string) {
+  return Buffer.from(
+    `${VIDEO_MAPPER_CATALOG_CURSOR_PREFIX}${adminDubId}`,
+    "utf8",
+  ).toString("base64url")
+}
+
+function decodeMapperCatalogCursor(cursor: string | null | undefined) {
+  const normalized = cursor?.trim()
+  if (!normalized) return null
+
+  let decoded: string
+  try {
+    decoded = Buffer.from(normalized, "base64url").toString("utf8")
+  } catch {
+    throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+  }
+
+  if (!decoded.startsWith(VIDEO_MAPPER_CATALOG_CURSOR_PREFIX)) {
+    throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+  }
+
+  const adminDubId = decoded.slice(VIDEO_MAPPER_CATALOG_CURSOR_PREFIX.length)
+  if (adminDubId.length === 0) {
+    throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+  }
+  return adminDubId
+}
 
 function withVideoCoreIdForOrdering(query: object): object {
   const prismaQuery = query as { select?: Record<string, unknown> }

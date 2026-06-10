@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-04-28"
 duration: 3
 depends_on: []
-blocks: []
+blocks:
+  - "feat-172"
 tags:
   - "cms"
   - "search"

@@ -18,6 +18,7 @@ function subtitle(slug: string): WatchSubtitle {
     documentId: `sub-${slug}`,
     languageSlug: slug,
     languageName: slug,
+    languageNameNative: null,
     languageBcp47: slug,
     vttSrc: `https://example.test/${slug}.vtt`,
     primary: false,
@@ -85,15 +86,40 @@ describe("deriveSubtitlePanelState", () => {
     ).toEqual({ kind: "loaded", subtitles: [] })
   })
 
-  it("maps loaded-list → loaded with the subtitle rows", () => {
-    const subs = [subtitle("spanish"), subtitle("french")]
+  it("maps loaded-list → loaded with the subtitle rows, sorted A→Z by name", () => {
+    // Source order is spanish-then-french; the panel state returns them sorted.
     expect(
       deriveSubtitlePanelState({
-        media: media(subs),
+        media: media([subtitle("spanish"), subtitle("french")]),
         loading: false,
         error: false,
       }),
-    ).toEqual({ kind: "loaded", subtitles: subs })
+    ).toEqual({
+      kind: "loaded",
+      subtitles: [subtitle("french"), subtitle("spanish")],
+    })
+  })
+
+  it("sorts an unordered subtitle list A→Z by display name", () => {
+    const result = deriveSubtitlePanelState({
+      media: media([subtitle("zulu"), subtitle("arabic"), subtitle("french")]),
+      loading: false,
+      error: false,
+    })
+    expect(result).toEqual({
+      kind: "loaded",
+      subtitles: [subtitle("arabic"), subtitle("french"), subtitle("zulu")],
+    })
+  })
+
+  it("does not mutate the source subtitle array when sorting", () => {
+    const subs = [subtitle("zulu"), subtitle("arabic")]
+    deriveSubtitlePanelState({
+      media: media(subs),
+      loading: false,
+      error: false,
+    })
+    expect(subs.map((s) => s.languageSlug)).toEqual(["zulu", "arabic"])
   })
 })
 
@@ -179,5 +205,42 @@ describe("annotateVariantRows", () => {
 
   it("returns an empty list for no variants", () => {
     expect(annotateVariantRows([], 0)).toEqual([])
+  })
+
+  it("sorts rows A→Z by display name while preserving each row's source index", () => {
+    // Source order: Spanish(0), Arabic(1), French(2); French is the active dub.
+    const rows = annotateVariantRows(
+      [
+        variant({ documentId: "v1", languageName: "Spanish" }),
+        variant({ documentId: "v2", languageName: "Arabic" }),
+        variant({ documentId: "v3", languageName: "French" }),
+      ],
+      2,
+    )
+    // Display order is alphabetical…
+    expect(rows.map((r) => r.variant.languageName)).toEqual([
+      "Arabic",
+      "French",
+      "Spanish",
+    ])
+    // …but each row keeps its ORIGINAL index, so selection writes back the
+    // right variant: French stays index 2 (the active one), Spanish stays 0.
+    expect(rows.map((r) => r.index)).toEqual([1, 2, 0])
+    expect(rows.map((r) => r.active)).toEqual([false, true, false])
+  })
+
+  it("falls back to slug, then slug-derived name, when languageName is null", () => {
+    const rows = annotateVariantRows(
+      [
+        variant({ documentId: "v1", languageName: null, languageSlug: "zulu" }),
+        variant({
+          documentId: "v2",
+          languageName: null,
+          languageSlug: "amharic",
+        }),
+      ],
+      0,
+    )
+    expect(rows.map((r) => r.variant.languageSlug)).toEqual(["amharic", "zulu"])
   })
 })

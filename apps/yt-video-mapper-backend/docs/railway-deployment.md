@@ -50,7 +50,7 @@ Required for production:
 - `JOB_RESULT_RETENTION_HOURS=168`
 - `JOB_RUNNING_STALE_MINUTES=30`
 
-Prepared for later catalog sync, but optional until YTM-002/YTM-003:
+Required when running catalog sync:
 
 - `ADMIN_GRAPHQL_URL=<admin GraphQL URL>`
 - `ADMIN_SERVICE_BEARER_TOKEN=<admin service bearer token>`
@@ -87,6 +87,18 @@ Expected results:
 - `POST /match-jobs` without a bearer token returns `401`.
 - `POST /match-jobs` with an invalid bearer token returns `401`.
 - `POST /match-jobs` with the valid mapper token returns `202` and a `jobId`.
+
+## Catalog Sync
+
+Run one Admin-to-mapper catalog projection sync with:
+
+```bash
+pnpm --filter @forge/yt-video-mapper-backend sync:catalog
+```
+
+The command uses Admin GraphQL only. It writes mapper-owned `CatalogVideo`,
+`CatalogVariant`, and `CatalogSyncRun` rows, prints safe counters, and exits
+non-zero if the sync run records a failed status.
 
 ## 2026-06-09 Provisioning Notes
 

@@ -516,6 +516,22 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     const img = activeImage()
     expect(img).not.toBeNull()
     expect(img!.getAttribute("data-src")).toBe("https://cdn.test/high.jpg")
+    expect(img!.getAttribute("data-alt")).toBe("Child 1 thumbnail")
+  })
+
+  it("uses a non-empty fallback alt for informative thumbnails without titles", () => {
+    const block = singleChildBlock({
+      thumbnail: "https://cdn.test/thumb.jpg",
+    })
+    block.canonicalParent.children[0]!.title = null
+
+    act(() => {
+      root.render(<SiblingCarousel languageSlug="english" block={block} />)
+    })
+
+    expect(activeImage()!.getAttribute("data-alt")).toBe(
+      "Related video thumbnail",
+    )
   })
 
   it("falls through to mobileCinematicLow when mobileCinematicHigh is absent", () => {

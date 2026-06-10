@@ -184,6 +184,27 @@ function setHeroMuxVideoFlag(value: boolean) {
     env as unknown as MutableHeroPlayerEnv
   ).NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO = value
 }
+
+type TestMockPlayer = NonNullable<typeof mockPlayerRef.current>
+
+function makeTestPlayer(
+  overrides: Partial<TestMockPlayer> = {},
+): TestMockPlayer {
+  return {
+    muted: true,
+    currentTime: 0,
+    paused: false,
+    duration: 60,
+    volume: 1,
+    loop: true,
+    buffered: null,
+    play: vi.fn(() => Promise.resolve()),
+    pause: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    ...overrides,
+  } as TestMockPlayer
+}
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
 import {
@@ -245,6 +266,77 @@ function lastMuxProps(): MuxPlayerCapturedProps {
   return calls[calls.length - 1]?.[0] as MuxPlayerCapturedProps
 }
 
+type TestIdleDeadline = {
+  didTimeout: boolean
+  timeRemaining: () => number
+}
+
+function installIdleCallbackStub() {
+  const idleCallbacks: Array<(deadline: TestIdleDeadline) => void> = []
+  const windowWithIdle = window as Window & {
+    requestIdleCallback?: (
+      callback: (deadline: TestIdleDeadline) => void,
+    ) => number
+    cancelIdleCallback?: (handle: number) => void
+  }
+  const originalRequestIdleCallback = windowWithIdle.requestIdleCallback
+  const originalCancelIdleCallback = windowWithIdle.cancelIdleCallback
+
+  Object.defineProperty(windowWithIdle, "requestIdleCallback", {
+    configurable: true,
+    value: vi.fn((callback: (deadline: TestIdleDeadline) => void) => {
+      idleCallbacks.push(callback)
+      return idleCallbacks.length
+    }),
+  })
+  Object.defineProperty(windowWithIdle, "cancelIdleCallback", {
+    configurable: true,
+    value: vi.fn((handle: number) => {
+      idleCallbacks.splice(Math.max(0, handle - 1), 1)
+    }),
+  })
+
+  return {
+    get pending() {
+      return idleCallbacks.length
+    },
+    runNext: async () => {
+      const callback = idleCallbacks.shift()
+      await act(async () => {
+        callback?.({
+          didTimeout: false,
+          timeRemaining: () => 50,
+        })
+      })
+    },
+    restore: () => {
+      if (originalRequestIdleCallback) {
+        windowWithIdle.requestIdleCallback = originalRequestIdleCallback
+      } else {
+        Reflect.deleteProperty(windowWithIdle, "requestIdleCallback")
+      }
+      if (originalCancelIdleCallback) {
+        windowWithIdle.cancelIdleCallback = originalCancelIdleCallback
+      } else {
+        Reflect.deleteProperty(windowWithIdle, "cancelIdleCallback")
+      }
+    },
+  }
+}
+
+async function activateMutedPreviewFromIdle() {
+  const idle = installIdleCallbackStub()
+  try {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    expect(idle.pending).toBeGreaterThan(0)
+    await idle.runNext()
+  } finally {
+    idle.restore()
+  }
+}
+
 // Helpers for firing the captured event handlers — the mock doesn't render
 // a real Mux Player so the consumer-side `onCanPlay` / `onError` paths are
 // otherwise unobservable.
@@ -265,10 +357,29 @@ async function fireError(code: string) {
 }
 
 describe("HeroPlayer — initial mount", () => {
-  it("mounts MuxPlayer with playbackId, autoplay-muted, loop, and chrome-hide CSS variables", () => {
+  it("renders the LCP poster first without mounting a Mux backend", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
+
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    expect(poster).not.toBeNull()
+    expect(poster.getAttribute("src")).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+    )
+    expect(poster.getAttribute("loading")).toBe("eager")
+    expect(poster.getAttribute("fetchpriority")).toBe("high")
+    expect(muxPlayerMock).not.toHaveBeenCalled()
+    expect(muxVideoMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("mounts MuxPlayer with LCP poster, bounded HLS config, and chrome-hide CSS variables after idle activation", async () => {
+    await activateMutedPreviewFromIdle()
 
     const props = lastMuxProps()
     expect(props).toBeDefined()
@@ -276,6 +387,16 @@ describe("HeroPlayer — initial mount", () => {
     expect(props.autoPlay).toBe("muted")
     expect(props.muted).toBe(true)
     expect(props.loop).toBe(true)
+    // Must match the server-rendered <link rel="preload"> URL exactly so the
+    // flag-off MuxPlayer deployment reuses the LCP poster request.
+    expect(props.poster).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+    )
+    expect(props._hlsConfig).toEqual({
+      maxBufferLength: 10,
+      maxBufferSize: 5_000_000,
+      backBufferLength: 5,
+    })
     const style = props.style as Record<string, string | undefined>
     expect(style?.["--controls"]).toBe("none")
     expect(style?.["--top-controls"]).toBe("none")
@@ -283,10 +404,97 @@ describe("HeroPlayer — initial mount", () => {
     expect(style?.["--bottom-controls"]).toBe("none")
   })
 
-  it("wires Mux Data metadata: player_name, video_title, viewer_user_id; disableCookies=true", () => {
+  it("defers idle muted activation while the document is hidden", async () => {
+    const idle = installIdleCallbackStub()
+    const originalVisibility = document.visibilityState
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    })
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      await idle.runNext()
+      expect(muxPlayerMock).not.toHaveBeenCalled()
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "visible",
+      })
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      expect(idle.pending).toBeGreaterThan(0)
+      await idle.runNext()
+      expect(muxPlayerMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => originalVisibility,
+      })
+      idle.restore()
+    }
+  })
+
+  it("defers idle muted activation while the hero is away from the viewport", async () => {
+    const idle = installIdleCallbackStub()
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLDivElement
+    Object.defineProperty(wrapper, "getBoundingClientRect", {
+      configurable: true,
+      value: () =>
+        ({
+          x: 0,
+          y: 3000,
+          top: 3000,
+          bottom: 3300,
+          left: 0,
+          right: 1000,
+          width: 1000,
+          height: 300,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    })
+
+    try {
+      await idle.runNext()
+      expect(muxPlayerMock).not.toHaveBeenCalled()
+
+      Object.defineProperty(wrapper, "getBoundingClientRect", {
+        configurable: true,
+        value: () =>
+          ({
+            x: 0,
+            y: 0,
+            top: 0,
+            bottom: 300,
+            left: 0,
+            right: 1000,
+            width: 1000,
+            height: 300,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("scroll"))
+      })
+      expect(idle.pending).toBeGreaterThan(0)
+      await idle.runNext()
+      expect(muxPlayerMock).toHaveBeenCalled()
+    } finally {
+      idle.restore()
+    }
+  })
+
+  it("wires Mux Data metadata after activation: player_name, video_title, viewer_user_id; disableCookies=true", async () => {
+    await activateMutedPreviewFromIdle()
 
     const props = lastMuxProps()
     expect(props.disableCookies).toBe(true)
@@ -297,7 +505,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("uses the sound-on player height before reveal so Play with Sound does not resize the hero", async () => {
+  it("uses the viewport/aspect-ratio height before and after reveal so Play with Sound does not resize the hero", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -305,10 +513,13 @@ describe("HeroPlayer — initial mount", () => {
     const wrapper = container.querySelector(
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLDivElement
-    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
-    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-x-clip")
-    expect(wrapper.className).not.toContain("md:max-w-[calc(100svh*16/9)]")
+    expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+    expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+    expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -317,9 +528,134 @@ describe("HeroPlayer — initial mount", () => {
       pill.click()
     })
 
-    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
-    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-hidden")
+    expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+    expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+    expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
+  })
+
+  it("pulls the episode rail over the muted preview only by the measured amount needed to fit", async () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 900,
+    })
+    const ro = installResizeObserverStub()
+
+    const setRect = (
+      el: Element,
+      rect: { top: number; bottom: number; height: number; width?: number },
+    ) => {
+      Object.defineProperty(el, "getBoundingClientRect", {
+        configurable: true,
+        value: () =>
+          ({
+            x: 0,
+            y: rect.top,
+            top: rect.top,
+            bottom: rect.bottom,
+            left: 0,
+            right: rect.width ?? 1000,
+            width: rect.width ?? 1000,
+            height: rect.height,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      })
+    }
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        root.render(
+          <>
+            <HeroPlayer block={makeBlock()} />
+            <section data-testid="watch-body-zone">
+              <div data-block-type="SiblingCarousel" />
+            </section>
+          </>,
+        )
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      const body = container.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement
+      const rail = container.querySelector(
+        '[data-block-type="SiblingCarousel"]',
+      ) as HTMLElement
+
+      setRect(body, { top: 600, bottom: 1000, height: 400 })
+      setRect(rail, { top: 616, bottom: 856, height: 240 })
+
+      await ro.setHeight(600)
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: 700,
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("resize"))
+        await vi.runOnlyPendingTimersAsync()
+      })
+
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("true")
+      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("188")
+      expect(wrapper.getAttribute("style")).toContain("margin-bottom: -188px")
+    } finally {
+      vi.useRealTimers()
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
+  })
+
+  it("clears the muted-preview overlap and scrolls back to the hero when sound starts from a scrolled page", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 240,
+    })
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {})
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+
+      const pill = container.querySelector(
+        '[data-testid="hero-player-unmute-pill"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        pill.click()
+      })
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync()
+      })
+
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+      expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" })
+    } finally {
+      scrollTo.mockRestore()
+      vi.useRealTimers()
+      Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        value: 0,
+      })
+    }
   })
 
   it("renders a 'Play with Sound' pill (default state) above the player", () => {
@@ -377,6 +713,8 @@ describe("HeroPlayer — initial mount", () => {
 
 describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
   it("synchronously seeks to 0, unmutes, then calls play() inside the click task", async () => {
+    mockPlayerRef.current = makeTestPlayer({ currentTime: 37 })
+
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -384,7 +722,6 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     // Snapshot pre-click state.
     expect(mockPlayerRef.current?.muted).toBe(true)
     expect(mockPlayerRef.current?.play).not.toHaveBeenCalled()
-    if (mockPlayerRef.current) mockPlayerRef.current.currentTime = 37
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -433,15 +770,14 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
   })
 
   it("pre-reveal video click starts playback from 0 with sound", async () => {
+    mockPlayerRef.current = makeTestPlayer({ currentTime: 24 })
+
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
 
     expect(mockPlayerRef.current?.muted).toBe(true)
-    if (mockPlayerRef.current) {
-      mockPlayerRef.current.currentTime = 24
-      mockPlayerRef.current.play.mockClear()
-    }
+    mockPlayerRef.current?.play.mockClear()
 
     const surface = container.querySelector(
       '[data-testid="hero-player-pre-reveal-click-surface"]',
@@ -455,6 +791,33 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(mockPlayerRef.current?.currentTime).toBe(0)
     expect(mockPlayerRef.current?.muted).toBe(false)
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("primes the player on pointerdown before the sound-intent click", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const surface = container.querySelector(
+      '[data-testid="hero-player-pre-reveal-click-surface"]',
+    ) as HTMLButtonElement
+    expect(surface).not.toBeNull()
+    expect(muxPlayerMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      surface.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+    })
+
+    expect(muxPlayerMock).toHaveBeenCalled()
+    expect(mockPlayerRef.current).not.toBeNull()
+    mockPlayerRef.current?.play.mockClear()
+
+    await act(async () => {
+      surface.click()
+    })
+
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    expect(mockPlayerRef.current?.muted).toBe(false)
   })
 
   it("on play() success: reveals custom chrome (data-chrome-revealed=true), disables loop, and keeps Mux chrome hidden", async () => {
@@ -493,19 +856,9 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 
   it("on play() rejection (iOS NotAllowedError): pill switches to 'Tap to Unmute' (visually distinct)", async () => {
     // Override the mocked play() to reject, simulating iOS unmute-with-no-gesture.
-    mockPlayerRef.current = {
-      muted: true,
-      currentTime: 0,
-      paused: false,
-      duration: 60,
-      volume: 1,
-      loop: true,
-      buffered: null,
+    mockPlayerRef.current = makeTestPlayer({
       play: vi.fn(() => Promise.reject(new Error("NotAllowedError"))),
-      pause: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    } as never
+    })
 
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
@@ -530,19 +883,24 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 })
 
 describe("HeroPlayer — loading spinner lifecycle", () => {
-  it("renders the spinner overlay on mount", () => {
+  it("does not render the spinner during the poster-only initial state", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("renders the spinner after player activation while media is not ready", async () => {
+    await activateMutedPreviewFromIdle()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).not.toBeNull()
   })
 
   it("removes the spinner once onCanPlay fires", async () => {
-    act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
-    })
+    await activateMutedPreviewFromIdle()
     await fireCanPlay()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
@@ -552,9 +910,7 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
   it("removes the spinner on a non-autoplay-blocked error so Mux's own error UI is visible", async () => {
     // F1 verification: a network/decode/manifest error never fires onCanPlay,
     // so without this fallback the spinner sits over a black box forever.
-    act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
-    })
+    await activateMutedPreviewFromIdle()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).not.toBeNull()
@@ -565,9 +921,7 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
   })
 
   it("keeps the spinner up when the error is autoplay-blocked (recovery path is the unmute pill, not the player UI)", async () => {
-    act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
-    })
+    await activateMutedPreviewFromIdle()
     await fireError("autoplay-blocked")
     // Spinner stays only until onCanPlay fires (which it will once the muted
     // loop buffers). The autoplay-blocked branch must NOT pre-emptively hide
@@ -600,7 +954,7 @@ describe("HeroPlayer — fallback HLS source", () => {
 // ---------------------------------------------------------------------------
 // Custom chrome (HeroPlayerControls) — added in the chrome-revamp work.
 // Helpers + suite cover render, button wiring, timeline keyboard seek,
-// volume slider mute/unmute heuristics, and the auto-hide timer lifecycle.
+// volume slider mute/unmute heuristics, and the auto-dim timer lifecycle.
 // ---------------------------------------------------------------------------
 
 async function revealChrome(): Promise<void> {
@@ -624,6 +978,11 @@ describe("HeroPlayer — custom chrome render", () => {
     expect(
       container.querySelector('[data-testid="hero-player-click-surface"]'),
     ).not.toBeNull()
+    const clickSurface = container.querySelector(
+      '[data-testid="hero-player-click-surface"]',
+    ) as HTMLButtonElement
+    expect(clickSurface.className).toContain("cursor-default")
+    expect(clickSurface.className).not.toContain("cursor-none")
     expect(
       container.querySelector('[data-testid="hero-chrome-play"]'),
     ).not.toBeNull()
@@ -913,7 +1272,7 @@ describe("HeroPlayer — volume slider keyboard", () => {
   })
 })
 
-describe("HeroPlayer — auto-hide timer", () => {
+describe("HeroPlayer — fade timer", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
@@ -921,26 +1280,95 @@ describe("HeroPlayer — auto-hide timer", () => {
     vi.useRealTimers()
   })
 
-  it("auto-hides chrome 3s after reveal while playing", async () => {
+  it("starts at 30%, ignores pointer movement for 5s, then video mouse movement wakes the dim rail", async () => {
     await revealChrome()
     if (mockPlayerRef.current) mockPlayerRef.current.paused = false
     const chrome = container.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
     ) as HTMLElement
     expect(chrome.getAttribute("data-visible")).toBe("true")
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
     await act(async () => {
-      vi.advanceTimersByTime(3001)
+      window.dispatchEvent(
+        new MouseEvent("pointermove", {
+          clientX: 100,
+          clientY: 100,
+        }),
+      )
+      window.dispatchEvent(
+        new MouseEvent("pointermove", {
+          clientX: 124,
+          clientY: 100,
+        }),
+      )
     })
+
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      chrome.dispatchEvent(makePointerEvent("pointermove"))
+    })
+
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      vi.advanceTimersByTime(5001)
+    })
+
     expect(chrome.getAttribute("data-visible")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+    expect(chrome.className).toContain("opacity-0")
+
+    await act(async () => {
+      window.dispatchEvent(
+        new MouseEvent("pointermove", {
+          clientX: 100,
+          clientY: 100,
+        }),
+      )
+    })
+
+    expect(chrome.getAttribute("data-visible")).toBe("true")
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      chrome.dispatchEvent(makePointerEvent("pointermove"))
+    })
+
+    expect(chrome.getAttribute("data-visible")).toBe("true")
+    expect(chrome.getAttribute("data-bright")).toBe("true")
+    expect(chrome.getAttribute("data-visibility")).toBe("bright")
+    expect(chrome.className).toContain("opacity-100")
+
+    await act(async () => {
+      chrome.dispatchEvent(makePointerEvent("pointerout"))
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(4001)
+    })
+
+    expect(chrome.getAttribute("data-visible")).toBe("false")
+    expect(chrome.getAttribute("data-bright")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+    expect(chrome.className).toContain("opacity-0")
   })
 
-  it("hides the top language button and publishes header visibility when chrome auto-hides", async () => {
-    const visibilityEvents: boolean[] = []
+  it("keeps the top language button mounted during the 30% grace state and publishes hidden opacity after 5s", async () => {
+    const visibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
     const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
     const onVisibility = (event: Event) => {
       visibilityEvents.push(
-        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
-          .visible,
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
       )
     }
     const onLanguageSwitcher = (event: Event) => {
@@ -972,18 +1400,19 @@ describe("HeroPlayer — auto-hide timer", () => {
       })
 
       expect(languageEvents.at(-1)?.visible).toBe(true)
+      expect(visibilityEvents.some((event) => event.opacity === 0.3)).toBe(true)
 
       await act(async () => {
-        vi.advanceTimersByTime(3001)
+        vi.advanceTimersByTime(5001)
       })
 
       expect(
         container
           .querySelector('[data-testid="hero-player-custom-chrome"]')
-          ?.getAttribute("data-visible"),
-      ).toBe("false")
-      expect(languageEvents.at(-1)?.visible).toBe(false)
-      expect(visibilityEvents).toContain(false)
+          ?.getAttribute("data-visibility"),
+      ).toBe("hidden")
+      expect(languageEvents.at(-1)?.visible).toBe(true)
+      expect(visibilityEvents.at(-1)?.opacity).toBe(0)
     } finally {
       window.removeEventListener(
         WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -996,13 +1425,12 @@ describe("HeroPlayer — auto-hide timer", () => {
     }
   })
 
-  it("reveals controls, language button, and header visibility when scrolling back to the very top", async () => {
-    const visibilityEvents: boolean[] = []
+  it("brightens controls and header visibility when scrolling back to the very top", async () => {
+    const visibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
     const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
     const onVisibility = (event: Event) => {
       visibilityEvents.push(
-        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
-          .visible,
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
       )
     }
     const onLanguageSwitcher = (event: Event) => {
@@ -1034,14 +1462,14 @@ describe("HeroPlayer — auto-hide timer", () => {
       })
 
       await act(async () => {
-        vi.advanceTimersByTime(3001)
+        vi.advanceTimersByTime(5001)
       })
 
       const chrome = container.querySelector(
         '[data-testid="hero-player-custom-chrome"]',
       )
-      expect(chrome?.getAttribute("data-visible")).toBe("false")
-      expect(languageEvents.at(-1)?.visible).toBe(false)
+      expect(chrome?.getAttribute("data-visibility")).toBe("hidden")
+      expect(languageEvents.at(-1)?.visible).toBe(true)
 
       Object.defineProperty(window, "scrollY", {
         configurable: true,
@@ -1051,10 +1479,11 @@ describe("HeroPlayer — auto-hide timer", () => {
         window.dispatchEvent(new Event("scroll"))
       })
 
-      expect(chrome?.getAttribute("data-visible")).toBe("true")
+      expect(chrome?.getAttribute("data-bright")).toBe("true")
+      expect(chrome?.getAttribute("data-visibility")).toBe("bright")
       expect(languageEvents.at(-1)?.visible).toBe(true)
-      expect(visibilityEvents).toContain(false)
-      expect(visibilityEvents.at(-1)).toBe(true)
+      expect(visibilityEvents.some((event) => event.opacity === 0)).toBe(true)
+      expect(visibilityEvents.at(-1)?.opacity).toBe(1)
     } finally {
       window.removeEventListener(
         WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -1069,6 +1498,49 @@ describe("HeroPlayer — auto-hide timer", () => {
         value: 0,
       })
     }
+  })
+
+  it("ignores controls hover during the 5s lockout, then reveals and does not hide while hovered", async () => {
+    await revealChrome()
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+
+    await act(async () => {
+      chrome.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("dim")
+    expect(chrome.className).toContain("opacity-30")
+
+    await act(async () => {
+      vi.advanceTimersByTime(5001)
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+
+    await act(async () => {
+      chrome.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("bright")
+    expect(chrome.className).toContain("opacity-100")
+
+    await act(async () => {
+      vi.advanceTimersByTime(4001)
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("bright")
+
+    await act(async () => {
+      chrome.dispatchEvent(new MouseEvent("pointerout", { bubbles: true }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(4001)
+    })
+
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+    expect(chrome.className).toContain("opacity-0")
   })
 
   it.todo(
@@ -1385,14 +1857,13 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
     // mockPlayerRef.current is null until the muxPlayerMock factory runs
     // during render — so we have to render first, then swap play() to
     // reject (driving the pill into 'tap-to-unmute' state on click 1).
+    mockPlayerRef.current = makeTestPlayer({
+      play: vi.fn(() => Promise.reject(new Error("NotAllowedError"))),
+    })
+
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
-    if (mockPlayerRef.current) {
-      mockPlayerRef.current.play = vi.fn(() =>
-        Promise.reject(new Error("NotAllowedError")),
-      )
-    }
 
     const pillFirst = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -1945,12 +2416,10 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
-    await fireCanPlay()
     await nextTick()
 
-    const player = mockPlayerRef.current!
-    expect(player.play).not.toHaveBeenCalled()
-    expect(player.muted).toBe(true)
+    expect(muxPlayerMock).not.toHaveBeenCalled()
+    expect(mockPlayerRef.current).toBeNull()
   })
 
   it("strips ?autoplay=1 from the URL after the attempt (refresh-safe)", async () => {
@@ -1993,10 +2462,8 @@ describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () =
     setHeroMuxVideoFlag(true)
   })
 
-  it("mounts <MuxVideo> instead of <MuxPlayer> with parity props", () => {
-    act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
-    })
+  it("mounts <MuxVideo> instead of <MuxPlayer> with parity props after idle activation", async () => {
+    await activateMutedPreviewFromIdle()
 
     expect(muxVideoMock).toHaveBeenCalled()
     expect(muxPlayerMock).not.toHaveBeenCalled()
@@ -2037,9 +2504,7 @@ describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () =
   })
 
   it("flips videoReady via onCanPlay and unmounts the spinner overlay", async () => {
-    act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
-    })
+    await activateMutedPreviewFromIdle()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).not.toBeNull()
@@ -2090,9 +2555,7 @@ describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () =
   })
 
   it("treats a generic onError event as a videoReady fallback (no autoplay-blocked flag)", async () => {
-    act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
-    })
+    await activateMutedPreviewFromIdle()
 
     // Spinner visible before the error escape fires.
     expect(

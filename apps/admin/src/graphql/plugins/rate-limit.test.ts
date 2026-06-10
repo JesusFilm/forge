@@ -151,6 +151,17 @@ describe("identifyForRateLimit", () => {
     ).toBe("public:1.2.3.4")
   })
 
+  it("buckets VIDEO_MAPPER principals by service class", () => {
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: { id: null, role: "VIDEO_MAPPER" },
+          request: makeRequest({ "cf-connecting-ip": "1.2.3.4" }),
+        }),
+      ),
+    ).toBe("service:video-mapper")
+  })
+
   // ---------------------------------------------------------------------------
   // Authenticated principals → user.id
   // ---------------------------------------------------------------------------
@@ -178,7 +189,8 @@ describe("identifyForRateLimit", () => {
     const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {})
     const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
     try {
-      // Walk every branch — anonymous IP, CONSUMER_BEARER, authenticated.
+      // Walk every branch — anonymous IP, CONSUMER_BEARER, VIDEO_MAPPER,
+      // authenticated.
       identifyForRateLimit(
         makeCtx({
           user: null,
@@ -197,6 +209,14 @@ describe("identifyForRateLimit", () => {
           },
           request: makeRequest({
             authorization: "Bearer raw-header-secret",
+          }),
+        }),
+      )
+      identifyForRateLimit(
+        makeCtx({
+          user: { id: null, role: "VIDEO_MAPPER" },
+          request: makeRequest({
+            authorization: "Bearer mapper-secret",
           }),
         }),
       )

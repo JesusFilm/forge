@@ -4,6 +4,8 @@ import {
   resolveWatchPage,
   type ResolvedSeriesBySlug,
   type ResolvedWatchPage,
+  type WatchVariant,
+  type WatchVideoRecord,
 } from "@/lib/content"
 import {
   WATCH_BASE_PATH,
@@ -11,6 +13,7 @@ import {
   localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
+  watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
 import { getSocialConfig } from "@/lib/social-config"
@@ -67,6 +70,26 @@ function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
   return root
 }
 
+function buildEpisodeCanonicalUrl(
+  seriesSlug: string,
+  episodeSlug: string,
+  pathLocale: string,
+): string {
+  const root = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}`
+  const series = stripHtmlSuffix(seriesSlug)
+  const episode = stripHtmlSuffix(episodeSlug)
+  const locale = stripHtmlSuffix(pathLocale)
+
+  const seriesContentSlug = tryAsContentSlug(series)
+  const episodeContentSlug = tryAsContentSlug(episode)
+  const localeSlug = tryAsLocaleSlug(locale)
+  if (seriesContentSlug && episodeContentSlug && localeSlug) {
+    return `${root}${watchEpisodePath(seriesContentSlug, episodeContentSlug, localeSlug)}`
+  }
+
+  return `${root}/${series}/${episode}/${locale}`
+}
+
 const OG_LOCALE_OVERRIDES: Record<string, string> = {
   en: "en_US",
   pt: "pt_BR",
@@ -84,6 +107,169 @@ const DEFAULT_OG_IMAGE = {
   height: 933,
   alt: "Jesus Film Project",
   type: "image/jpeg" as const,
+}
+
+type WatchMetadataImage = {
+  url: string
+  width: number
+  height: number
+  alt: string
+  type: "image/jpeg"
+}
+
+const MUX_SOCIAL_IMAGE_WIDTH = 1200
+const MUX_SOCIAL_IMAGE_HEIGHT = 630
+
+function buildMuxSocialImage(
+  playbackId: string | null | undefined,
+  alt: string,
+): WatchMetadataImage | null {
+  if (!playbackId) return null
+
+  return {
+    url: `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${MUX_SOCIAL_IMAGE_WIDTH}&height=${MUX_SOCIAL_IMAGE_HEIGHT}&fit_mode=smartcrop`,
+    width: MUX_SOCIAL_IMAGE_WIDTH,
+    height: MUX_SOCIAL_IMAGE_HEIGHT,
+    alt,
+    type: "image/jpeg",
+  }
+}
+
+export type WatchVideoMetadataModel = {
+  title: string
+  videoTitle: string
+  description: string
+  canonicalUrl: string
+  image: WatchMetadataImage
+  noIndex: boolean
+  inLanguage: string | null
+  durationSeconds: number | null
+  alternatesLanguages?: Record<string, string>
+}
+
+type WatchVideoMetadataOptions = {
+  video: WatchVideoRecord
+  selectedVariant: WatchVariant
+  routeSlug: string
+  pathLocale: string
+  seriesSlug?: string
+}
+
+function buildWatchVideoAlternateLanguages(
+  options: WatchVideoMetadataOptions,
+): Record<string, string> | undefined {
+  const languages: Record<string, string> = {}
+  const episodeSlug = options.video.slug ?? options.routeSlug
+
+  for (const variant of options.video.variants ?? []) {
+    if (variant.published !== true || !variant.hls) continue
+    const slug = variant.language?.slug
+    const bcp47 = variant.language?.bcp47
+    if (!slug || !bcp47 || languages[bcp47]) continue
+
+    languages[bcp47] = options.seriesSlug
+      ? buildEpisodeCanonicalUrl(options.seriesSlug, episodeSlug, slug)
+      : buildCanonicalUrl(options.routeSlug, slug)
+  }
+
+  return Object.keys(languages).length ? languages : undefined
+}
+
+export function buildWatchVideoMetadataModel(
+  options: WatchVideoMetadataOptions,
+): WatchVideoMetadataModel {
+  const episodeSlug = options.video.slug ?? options.routeSlug
+  const canonicalUrl = options.seriesSlug
+    ? buildEpisodeCanonicalUrl(
+        options.seriesSlug,
+        episodeSlug,
+        options.pathLocale,
+      )
+    : buildCanonicalUrl(options.routeSlug, options.pathLocale)
+  const videoTitle = options.video.title || options.routeSlug || "Watch"
+  const title = `${videoTitle} ${TITLE_SUFFIX}`
+  const description = options.video.description ?? options.video.snippet ?? ""
+  const imageAlt =
+    options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
+  const muxSocialImage = buildMuxSocialImage(
+    options.selectedVariant.muxVideo?.playbackId,
+    imageAlt,
+  )
+  const posterUrl = resolvePosterUrl(
+    options.video.images?.[0],
+    options.selectedVariant.muxVideo?.playbackId,
+  )
+  const image =
+    muxSocialImage ??
+    (posterUrl
+      ? {
+          url: posterUrl,
+          width: DEFAULT_OG_IMAGE.width,
+          height: DEFAULT_OG_IMAGE.height,
+          alt: imageAlt,
+          type: "image/jpeg" as const,
+        }
+      : DEFAULT_OG_IMAGE)
+
+  return {
+    title,
+    videoTitle,
+    description,
+    canonicalUrl,
+    image,
+    noIndex: options.video.noIndex ?? false,
+    inLanguage:
+      options.selectedVariant.language?.bcp47 ??
+      options.selectedVariant.language?.slug ??
+      null,
+    durationSeconds: options.selectedVariant.duration ?? null,
+    alternatesLanguages: buildWatchVideoAlternateLanguages(options),
+  }
+}
+
+export function generateWatchVideoMetadata(
+  locale: string,
+  options: WatchVideoMetadataOptions,
+): Metadata {
+  const model = buildWatchVideoMetadataModel(options)
+  const { fbAppId } = getSocialConfig()
+
+  return {
+    title: model.title,
+    description: model.description || undefined,
+    openGraph: {
+      title: model.title,
+      description: model.description || undefined,
+      url: model.canonicalUrl,
+      siteName: "Jesus Film Project",
+      locale: getOgLocale(locale),
+      type: "website" as const,
+      images: [model.image],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      site: "@JesusFilm",
+      creator: "@JesusFilm",
+      title: model.title,
+      description: model.description || undefined,
+      images: [
+        {
+          url: model.image.url,
+          alt: model.image.alt,
+        },
+      ],
+    },
+    robots: model.noIndex
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
+    ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
+    alternates: {
+      canonical: model.canonicalUrl,
+      ...(model.alternatesLanguages && {
+        languages: model.alternatesLanguages,
+      }),
+    },
+  }
 }
 
 function toMetadata(
@@ -139,6 +325,14 @@ function toMetadata(
         card: "summary_large_image" as const,
         site: "@JesusFilm",
         creator: "@JesusFilm",
+        title,
+        description: description || undefined,
+        images: [
+          {
+            url: ogImage.url,
+            alt: ogImage.alt,
+          },
+        ],
       },
       robots: resolvedPage.routeVideo.noIndex
         ? { index: false, follow: false }
@@ -190,6 +384,14 @@ function toMetadata(
       card: "summary_large_image" as const,
       site: "@JesusFilm",
       creator: "@JesusFilm",
+      title: ogTitle,
+      description: ogDescription || undefined,
+      images: [
+        {
+          url: ogImage.url,
+          alt: ogImage.alt,
+        },
+      ],
     },
     // Explicit index/follow default. Without this, no <meta name="robots">
     // is emitted — Google still defaults to index,follow, but explicit is
@@ -260,6 +462,14 @@ export function generateSeriesMetadata(
       card: "summary_large_image" as const,
       site: "@JesusFilm",
       creator: "@JesusFilm",
+      title,
+      description: description || undefined,
+      images: [
+        {
+          url: ogImage.url,
+          alt: ogImage.alt,
+        },
+      ],
     },
     robots: series.noIndex
       ? { index: false, follow: false }

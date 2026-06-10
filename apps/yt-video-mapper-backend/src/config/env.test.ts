@@ -20,7 +20,7 @@ describe("runtime env", () => {
     resetProcessEnv()
   })
 
-  it("allows production startup without future admin sync vars", async () => {
+  it("allows production startup without catalog sync vars", async () => {
     const { assertRuntimeEnv, env } = await loadEnv({
       NODE_ENV: "production",
       DATABASE_URL: "postgresql://forge:forge@localhost:5432/mapper",
@@ -32,6 +32,38 @@ describe("runtime env", () => {
     expect(env.ADMIN_GRAPHQL_URL).toBeUndefined()
     expect(env.ADMIN_SERVICE_BEARER_TOKEN).toBeUndefined()
     expect(assertRuntimeEnv).not.toThrow()
+  })
+
+  it("requires the Admin GraphQL URL when running catalog sync", async () => {
+    const { assertAdminCatalogSyncEnv } = await loadEnv({
+      ADMIN_SERVICE_BEARER_TOKEN: "service-token",
+    })
+
+    expect(assertAdminCatalogSyncEnv).toThrow(
+      "ADMIN_GRAPHQL_URL is required to sync the yt-video-mapper catalog",
+    )
+  })
+
+  it("requires the Admin service bearer token when running catalog sync", async () => {
+    const { assertAdminCatalogSyncEnv } = await loadEnv({
+      ADMIN_GRAPHQL_URL: "https://admin.example.com/graphql",
+    })
+
+    expect(assertAdminCatalogSyncEnv).toThrow(
+      "ADMIN_SERVICE_BEARER_TOKEN is required to sync the yt-video-mapper catalog",
+    )
+  })
+
+  it("returns Admin catalog sync configuration when both sync vars are set", async () => {
+    const { assertAdminCatalogSyncEnv } = await loadEnv({
+      ADMIN_GRAPHQL_URL: "https://admin.example.com/graphql",
+      ADMIN_SERVICE_BEARER_TOKEN: "service-token",
+    })
+
+    expect(assertAdminCatalogSyncEnv()).toEqual({
+      adminGraphqlUrl: "https://admin.example.com/graphql",
+      adminServiceBearerToken: "service-token",
+    })
   })
 
   it("requires DATABASE_URL in production", async () => {
