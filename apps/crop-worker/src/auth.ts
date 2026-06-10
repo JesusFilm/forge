@@ -48,9 +48,12 @@ export function validateBearer(
     : authorizationHeader
   if (!header) return "unauthorized"
 
-  const match = /^Bearer\s+(.+)$/.exec(header)
-  if (!match?.[1]) return "unauthorized"
-  const presented = match[1]
+  // Linear-time parse (no `\s+(.+)$`-style regex — an attacker-controlled
+  // header of repeated whitespace makes that backtrack polynomially).
+  const prefix = /^Bearer[ \t]+/.exec(header)
+  if (!prefix) return "unauthorized"
+  const presented = header.slice(prefix[0].length).trim()
+  if (!presented) return "unauthorized"
 
   // Compare against the FULL allowlist without short-circuiting so timing
   // does not reveal which entry (if any) matched.
