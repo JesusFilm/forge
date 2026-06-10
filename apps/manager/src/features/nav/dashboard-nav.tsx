@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { BarChart2, Bot, ListChecks, LogOut } from "lucide-react"
+import { BarChart2, Bot, Crop, ListChecks, LogOut } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
 
 type NavUser = { username: string; email: string }
@@ -28,6 +28,7 @@ export function DashboardNav({ user }: { user: NavUser }) {
   const isJobs =
     pathname.startsWith("/dashboard/jobs") || pathname === "/dashboard"
   const isAgents = pathname.startsWith("/dashboard/agents")
+  const isSmartCrop = pathname.startsWith("/dashboard/smart-crop")
 
   useEffect(() => {
     let cancelled = false
@@ -109,6 +110,16 @@ export function DashboardNav({ user }: { user: NavUser }) {
           <Bot size={16} />
         </span>
         <span>Agents</span>
+      </Link>
+      <Link
+        href="/dashboard/smart-crop"
+        className={`header-nav-link${isSmartCrop ? " is-active" : ""}`}
+        {...(isSmartCrop ? { "aria-current": "page" as const } : {})}
+      >
+        <span className="header-nav-link-icon" aria-hidden="true">
+          <Crop size={16} />
+        </span>
+        <span>Smart Crop</span>
       </Link>
       <div className="user-menu-wrap" ref={menuRef}>
         <button

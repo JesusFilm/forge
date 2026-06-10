@@ -27,9 +27,46 @@ export function buildInitialSteps(): JobStepState[] {
   }))
 }
 
+// Smart Crop step inventories (plan 2026-06-09-002 "Durable workflows").
+// Persisted at smart-crop job creation; FORGE_WORKFLOW_STEPS is unchanged.
+export const SMART_CROP_CANONICAL_STEPS: WorkflowStepName[] = [
+  "smart_crop_fingerprint",
+  "smart_crop_plan",
+  "smart_crop_preview_render",
+  "smart_crop_qa",
+]
+
+export const SMART_CROP_LOCALIZED_STEPS: WorkflowStepName[] = [
+  "smart_crop_fingerprint",
+  "smart_crop_align",
+  "smart_crop_preview_render",
+  "smart_crop_qa",
+  "smart_crop_render",
+  "smart_crop_mux_output",
+]
+
+export function buildSmartCropInitialSteps(
+  kind: "canonical" | "localized",
+): JobStepState[] {
+  const names =
+    kind === "canonical"
+      ? SMART_CROP_CANONICAL_STEPS
+      : SMART_CROP_LOCALIZED_STEPS
+
+  return names.map((name) => ({
+    name,
+    status: "pending" as const,
+    retries: 0,
+  }))
+}
+
 export function formatStepName(step: WorkflowStepName): string {
   if (step === "seo_improvements") {
     return "SEO Improvements"
+  }
+
+  if (step === "smart_crop_qa") {
+    return "Smart Crop QA"
   }
 
   return step

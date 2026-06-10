@@ -377,9 +377,15 @@ export async function createJob(
   options?: {
     videoDocumentId?: string
     initialArtifacts?: JobArtifactManifest
+    // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
+    // custom step inventory (smart-crop jobs persist smart_crop_* steps
+    // instead of the enrichment FORGE_WORKFLOW_STEPS).
+    jobOptions?: JobRecord["options"]
+    steps?: JobStepState[]
   },
 ): Promise<JobRecord> {
-  const steps = buildInitialSteps()
+  const steps = options?.steps ?? buildInitialSteps()
+  const jobOptions = options?.jobOptions ?? {}
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
 
@@ -413,7 +419,7 @@ export async function createJob(
       resolvedTargetLanguageCodes: languages,
       sourceCollectionTitle: sourceCollection?.title ?? undefined,
       sourceMediaTitle: sourceVideo?.title ?? undefined,
-      options: {},
+      options: jobOptions,
       status: "pending",
       retries: 0,
       createdAt: now,
@@ -442,7 +448,7 @@ export async function createJob(
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
-      options: {},
+      options: jobOptions,
       artifacts: initialArtifacts,
       errors: [],
       steps,

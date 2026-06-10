@@ -1,0 +1,446 @@
+import type { IncomingMessage } from "node:http"
+import { Readable, Writable } from "node:stream"
+import { describe, expect, it } from "vitest"
+import { createJobQueue } from "../jobs.js"
+import type { runFingerprint } from "../fingerprint.js"
+import type { runRender, RunRenderInput } from "../render.js"
+import { createHandleRequest } from "../server.js"
+import type { FingerprintSummary, RenderReport } from "../types.js"
+
+class TestResponse extends Writable {
+  statusCode = 200
+  headers: Record<string, string> = {}
+  body = ""
+
+  _write(
+    chunk: Buffer | string,
+    _encoding: BufferEncoding,
+    callback: () => void,
+  ): void {
+    this.body += chunk.toString()
+    callback()
+  }
+
+  writeHead(statusCode: number, headers: Record<string, string>): this {
+    this.statusCode = statusCode
+    this.headers = headers
+    return this
+  }
+}
+
+type RequestOptions = {
+  method: string
+  url: string
+  headers?: Record<string, string>
+  body?: unknown
+  rawBody?: string
+  contentType?: string
+}
+
+function makeRequest({
+  method,
+  url,
+  headers = {},
+  body,
+  rawBody,
+  contentType,
+}: RequestOptions): IncomingMessage {
+  const payload =
+    rawBody !== undefined
+      ? [Buffer.from(rawBody)]
+      : body !== undefined
+        ? [Buffer.from(JSON.stringify(body))]
+        : []
+  const stream = Readable.from(payload)
+  return Object.assign(stream, {
+    method,
+    url,
+    headers: {
+      ...(body !== undefined || rawBody !== undefined
+        ? { "content-type": contentType ?? "application/json" }
+        : {}),
+      ...headers,
+    },
+  }) as unknown as IncomingMessage
+}
+
+type Handler = ReturnType<typeof createHandleRequest>
+
+async function dispatch(
+  handler: Handler,
+  options: RequestOptions,
+): Promise<{ statusCode: number; body: Record<string, unknown> }> {
+  const response = new TestResponse()
+  await handler(makeRequest(options), response as never)
+  return {
+    statusCode: response.statusCode,
+    body: JSON.parse(response.body) as Record<string, unknown>,
+  }
+}
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+const summary: FingerprintSummary = {
+  shotCount: 2,
+  durationSeconds: 10,
+  width: 1920,
+  height: 1080,
+}
+
+const renderReport: RenderReport = {
+  version: 1,
+  kind: "smart-crop-render-report",
+  assetId: "asset456",
+  mode: "preview",
+  target: { aspectRatio: "9:16", width: 1080, height: 1920 },
+  segmentsRendered: 1,
+  segmentsPlanned: 1,
+  outputDurationSeconds: 10,
+  outputBytes: 1000,
+  renderSeconds: 1.5,
+  previewFrameArtifactTypes: [],
+  warnings: [],
+  tool: "crop-worker-render-v1",
+  generatedAt: "2026-06-09T00:00:00.000Z",
+}
+
+const fingerprintBody = {
+  kind: "fingerprint",
+  jobId: "manager-job-1",
+  assetId: "asset123",
+  source: { url: "https://stream.mux.com/pb_abc.m3u8" },
+}
+
+const authedHeaders = { authorization: "Bearer test-key" }
+const auth = { apiKeysCsv: "test-key", nodeEnv: "production" }
+
+describe("POST /jobs auth", () => {
+  it("returns 401 unauthorized for a missing or wrong bearer", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+    })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        body: fingerprintBody,
+      }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: { authorization: "Bearer wrong" },
+        body: fingerprintBody,
+      }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+  })
+
+  it("returns 503 config_missing in production when the allowlist is unset", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth: { apiKeysCsv: undefined, nodeEnv: "production" },
+    })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: fingerprintBody,
+      }),
+    ).resolves.toEqual({ statusCode: 503, body: { error: "config_missing" } })
+  })
+
+  it("also guards GET /jobs/{id}", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+    })
+
+    await expect(
+      dispatch(handler, { method: "GET", url: "/jobs/wj_x" }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+  })
+})
+
+describe("POST /jobs validation", () => {
+  it("rejects schema-invalid bodies with 400", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+    })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: { kind: "transcode", jobId: "x", assetId: "y" },
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: { ...fingerprintBody, source: {} },
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+  })
+
+  it("rejects non-JSON content types and malformed JSON with 400", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+    })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        rawBody: "kind=fingerprint",
+        contentType: "text/plain",
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        rawBody: "{not json",
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+  })
+})
+
+describe("fingerprint job lifecycle", () => {
+  it("accepts with 202 and completes with the contract result shape", async () => {
+    const calls: Array<{ assetId: string; sourceUrl: string }> = []
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runFingerprintImpl: (async (input) => {
+        calls.push({ assetId: input.assetId, sourceUrl: input.sourceUrl })
+        return summary
+      }) as typeof runFingerprint,
+    })
+
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+
+    expect(submit.statusCode).toBe(202)
+    expect(submit.body.status).toBe("queued")
+    const workerJobId = submit.body.workerJobId as string
+    expect(workerJobId).toMatch(/^wj_/)
+
+    await settle()
+    expect(calls).toEqual([
+      {
+        assetId: "asset123",
+        sourceUrl: "https://stream.mux.com/pb_abc.m3u8",
+      },
+    ])
+
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${workerJobId}`,
+      headers: authedHeaders,
+    })
+
+    expect(status.statusCode).toBe(200)
+    expect(status.body).toEqual({
+      workerJobId,
+      kind: "fingerprint",
+      status: "completed",
+      progress: 1,
+      message: null,
+      error: null,
+      result: {
+        artifacts: [
+          {
+            assetId: "asset123",
+            artifactType: "smart-crop-fingerprint-v1",
+            ext: "json",
+          },
+        ],
+        report: summary,
+      },
+    })
+  })
+})
+
+describe("render job lifecycle", () => {
+  it("maps the request body onto runRender input", async () => {
+    const inputs: RunRenderInput[] = []
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runRenderImpl: (async (input) => {
+        inputs.push(input)
+        return {
+          artifacts: [
+            {
+              assetId: input.assetId,
+              artifactType: "smart-crop-preview-9x16",
+              ext: "mp4",
+            },
+          ],
+          report: renderReport,
+        }
+      }) as typeof runRender,
+    })
+
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        kind: "render",
+        jobId: "manager-job-2",
+        assetId: "asset456",
+        source: { url: "https://stream.mux.com/pb_uk.m3u8" },
+        render: {
+          mode: "preview",
+          cropPlan: { assetId: "asset123" },
+          timelineMap: { assetId: "asset456" },
+          previewFrameCount: 6,
+        },
+      },
+    })
+
+    expect(submit.statusCode).toBe(202)
+    await settle()
+
+    expect(inputs).toHaveLength(1)
+    expect(inputs[0]).toMatchObject({
+      assetId: "asset456",
+      sourceUrl: "https://stream.mux.com/pb_uk.m3u8",
+      mode: "preview",
+      cropPlanAssetId: "asset123",
+      timelineMapAssetId: "asset456",
+      previewFrameCount: 6,
+    })
+    expect(inputs[0]!.onProgress).toBeTypeOf("function")
+  })
+
+  it("defaults previewFrameCount to 0 and timelineMap to undefined", async () => {
+    const inputs: RunRenderInput[] = []
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runRenderImpl: (async (input) => {
+        inputs.push(input)
+        return { artifacts: [], report: renderReport }
+      }) as typeof runRender,
+    })
+
+    await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        kind: "render",
+        jobId: "manager-job-3",
+        assetId: "asset123",
+        source: { url: "https://stream.mux.com/pb_abc.m3u8" },
+        render: { mode: "full", cropPlan: { assetId: "asset123" } },
+      },
+    })
+    await settle()
+
+    expect(inputs[0]).toMatchObject({
+      mode: "full",
+      previewFrameCount: 0,
+    })
+    expect(inputs[0]!.timelineMapAssetId).toBeUndefined()
+  })
+
+  it("surfaces job failure through GET /jobs/{id}", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runRenderImpl: (async () => {
+        throw new Error("ffmpeg is required for crop-worker.")
+      }) as typeof runRender,
+    })
+
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        kind: "render",
+        jobId: "manager-job-4",
+        assetId: "asset123",
+        source: { url: "https://stream.mux.com/pb_abc.m3u8" },
+        render: { mode: "preview", cropPlan: { assetId: "asset123" } },
+      },
+    })
+    await settle()
+
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${submit.body.workerJobId as string}`,
+      headers: authedHeaders,
+    })
+
+    expect(status.body.status).toBe("failed")
+    expect(status.body.error).toContain("ffmpeg is required")
+    expect(status.body.result).toBeNull()
+  })
+})
+
+describe("queue limits and unknown jobs", () => {
+  it("returns 409 queue_full when the bounded queue is full", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 1 }),
+      auth,
+      runFingerprintImpl: (async () =>
+        new Promise(() => {})) as unknown as typeof runFingerprint,
+    })
+
+    const first = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    expect(first.statusCode).toBe(202)
+
+    const second = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: fingerprintBody,
+    })
+    expect(second).toEqual({ statusCode: 409, body: { error: "queue_full" } })
+  })
+
+  it("returns 404 for unknown worker job ids", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+    })
+
+    await expect(
+      dispatch(handler, {
+        method: "GET",
+        url: "/jobs/wj_unknown",
+        headers: authedHeaders,
+      }),
+    ).resolves.toEqual({ statusCode: 404, body: { error: "not_found" } })
+  })
+})

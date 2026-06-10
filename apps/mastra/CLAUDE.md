@@ -115,6 +115,9 @@ pnpm --filter @forge/mastra lint
 | `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
 | `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.       |
 | `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
+| `SMART_CROP_PLAN_MODEL`                   | OpenRouter vision model for smart-crop plan intents. Defaults to `qwen/qwen2.5-vl-72b-instruct`.                           |
+| `SMART_CROP_QA_MODEL`                     | OpenRouter vision model for smart-crop preview QA. Defaults to `google/gemini-2.5-flash`.                                  |
+| `SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`      | CSV host allowlist for smart-crop frame URLs. Defaults to `image.mux.com`.                                                 |
 | `FIRECRAWL_API_KEY`                       | Firecrawl bearer key for Mastra-owned web search/scrape tools. Required in production runtime.                             |
 | `FIRECRAWL_API_URL`                       | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`; production must use HTTPS and an allowlisted host.        |
 | `FIRECRAWL_ALLOWED_HOSTS`                 | CSV host allowlist for production Firecrawl egress. Defaults to `api.firecrawl.dev`.                                       |
@@ -262,6 +265,42 @@ explicit seed-only payload:
   "syncPromoted": false
 }
 ```
+
+## Smart crop workflows
+
+Smart crop (plan: `docs/plans/2026-06-09-002-feat-smart-crop-plan.md`) splits
+ownership across three apps; Mastra owns the AI decisions only. Manager owns
+job orchestration, artifact storage addressing, and Mux; crop-worker owns
+ffprobe/FFmpeg and S3 bytes. This runtime never touches S3 or Mux credentials —
+frames arrive as caller-provided, host-allowlisted https URLs
+(`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`, default `image.mux.com`; https only,
+exact hostname match).
+
+Three bounded synchronous workflows, each with a service route protected by
+`MASTRA_SERVICE_API_KEYS`:
+
+- `smart-crop-plan` / `POST /forge-smart-crop-plan` — one OpenRouter vision
+  call covering up to 8 shots (max 3 frame URLs each) produces per-shot crop
+  intents; the deterministic planner (`smart-crop-planner-v1`,
+  `src/services/smart-crop/planner.ts`) converts intents into 9:16 crop
+  keyframes (full source height, even crop width, 8% dead zone, 240 px/s max
+  pan scaled by source width, center fallback below confidence 0.5,
+  slide_aware stays static centered in MVP).
+- `smart-crop-align` / `POST /forge-smart-crop-align` — pure deterministic
+  alignment (`src/services/smart-crop/alignment.ts`) between canonical and
+  localized `smart-crop-fingerprint` artifacts: tier-1 identical-duration or
+  tier-2 monotonic shot-sequence matching (duration similarity + dhash
+  Hamming), plus confidence gates with stable failure literals. No model call.
+- `smart-crop-qa` / `POST /forge-smart-crop-qa` — one OpenRouter vision call
+  reviews up to 8 rendered preview frames against the plan summary and returns
+  `pass | needs_repair | fail` plus structured issues.
+
+Results use a discriminated `{ ok: true, ... } | { ok: false, reason,
+retryable, message, mastraRunId }` envelope with the shared reasons
+`invalid_input | provider_config_missing | provider_auth_failed |
+provider_failed | provider_invalid_output | frame_host_not_allowed`. The
+planner and alignment modules are pure functions — keep them free of I/O and
+env reads so they stay property-testable.
 
 ## Firecrawl web data
 

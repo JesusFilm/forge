@@ -220,6 +220,50 @@ THEN set `MANAGER_API_BASE_URL` + `MANAGER_TRIGGER_API_KEY` on
 admin and accept-deploy. Reverse order produces a dead minute
 where admin's first call 401s.
 
+## Smart Crop
+
+AI-assisted 9:16 reframing (plan
+`docs/plans/2026-06-09-002-feat-smart-crop-plan.md` — the authoritative
+architecture reference and wire-contract source). Manager owns the operator
+UI, the durable orchestration (`src/workflows/smartCrop.ts` +
+`launchSmartCrop.ts`), job state (`options.smartCrop` discriminator on the
+existing `ManagerEnrichmentJob` contract + a `smartCrop` metadata artifact
+entry), Mux output asset creation, and artifact addressing. apps/mastra owns
+the three AI decisions (`/forge-smart-crop-{plan,align,qa}` — client:
+`src/services/mastra-smart-crop.ts`); apps/crop-worker owns
+ffprobe/FFmpeg bytes (fingerprint + render — client:
+`src/services/crop-worker.ts`, submit + poll with bounded resubmit on 404
+job-loss).
+
+- Routes: `POST/GET /api/smart-crop/jobs`,
+  `POST /api/smart-crop/jobs/{id}/approve` (canonical plan qa block),
+  `POST /api/smart-crop/jobs/{id}/retry` (failed jobs; idempotent steps skip
+  completed artifacts). UI at `/dashboard/smart-crop`.
+- Steps are `smart_crop_*` members of `WorkflowStepName`; initial inventories
+  come from `buildSmartCropInitialSteps(kind)` in `src/lib/workflow-steps.ts`.
+- **Storage prefix caveat:** smart-crop artifacts live under
+  `options.smartCrop.assetId` (NOT necessarily `job.muxAssetId`). The artifact
+  download route resolves the prefix via `getJobArtifactStorageAssetId` in
+  `src/lib/job-artifacts.ts`.
+- Local mode degradation: `createPresignedArtifactUrl` returns `null` without
+  `RAILWAY_S3_BUCKET`; the QA and Mux-output steps then mark themselves
+  skipped with reason `storage_presign_unavailable`.
+
+Env (all optional at schema load; job creation returns 503 `config_missing`
+when unset):
+
+| Variable                     | Description                                         |
+| ---------------------------- | --------------------------------------------------- |
+| CROP_WORKER_BASE_URL         | crop-worker base URL                                |
+| CROP_WORKER_API_KEY          | caller-side single bearer for crop-worker           |
+| MASTRA_SMART_CROP_TIMEOUT_MS | per-call mastra smart-crop timeout (default 120000) |
+
+**Deploy ordering (receiver first):** set `CROP_WORKER_API_KEYS` on
+crop-worker, verify a wrong bearer gets 401 (not 503), THEN set manager's
+`CROP_WORKER_BASE_URL` + `CROP_WORKER_API_KEY`. Reverse order produces a dead
+minute where manager's first call 401s. Mastra needs no new bearer (existing
+`MASTRA_SERVICE_API_KEY` pair).
+
 ## Common pitfalls
 
 - The workflow SDK package is `workflow` (not `@workflowdev/sdk`). See https://useworkflow.dev/.
@@ -263,6 +307,9 @@ where admin's first call 401s.
 | MASTRA_BASE_URL                        | Internal Mastra runtime URL for transcript embedding launches                  |
 | MASTRA_SERVICE_API_KEY                 | Bearer key Manager presents to Mastra service routes                           |
 | MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS | Optional timeout for the Manager to Mastra transcript launch call              |
+| CROP_WORKER_BASE_URL                   | crop-worker base URL (optional — enables Smart Crop)                           |
+| CROP_WORKER_API_KEY                    | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)     |
+| MASTRA_SMART_CROP_TIMEOUT_MS           | Optional per-call timeout for Mastra smart-crop launches (default 120000)      |
 | NEXT_PUBLIC_WATCH_URL                  | Public video watch URL (optional)                                              |
 
 ## Standalone smoke
