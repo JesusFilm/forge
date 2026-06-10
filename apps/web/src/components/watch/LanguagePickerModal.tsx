@@ -193,20 +193,20 @@ function MultilingualTooltipPanel({
       role="tooltip"
       aria-hidden={visible ? undefined : true}
       data-testid="watch-language-picker-tooltip-panel"
-      className={`flex h-8 w-full items-center gap-2 px-2 text-sm leading-5 font-semibold text-stone-200 transition-opacity duration-150 ${
+      className={`flex min-h-12 w-full items-start gap-2 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-opacity duration-150 ${
         visible ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >
       <Info
         aria-hidden
         data-testid="watch-language-picker-tooltip-info-icon"
-        className="size-4 shrink-0 text-stone-300"
+        className="mt-0.5 size-4 shrink-0 text-stone-300"
       />
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
         {TOOLTIP_LANGUAGES.map((language, index) => (
           <span
             key={language.key}
-            className="inline-flex min-w-0 items-center gap-2"
+            className="inline-flex items-center gap-2 whitespace-nowrap"
           >
             {index > 0 ? (
               <span
@@ -214,9 +214,7 @@ function MultilingualTooltipPanel({
                 className="size-1 shrink-0 rounded-full bg-stone-500/80"
               />
             ) : null}
-            <span dir={language.dir} className="min-w-0 truncate">
-              {tooltipCopy[language.key]}
-            </span>
+            <span dir={language.dir}>{tooltipCopy[language.key]}</span>
           </span>
         ))}
       </div>

@@ -83,10 +83,15 @@ function expectMultilingualTooltip(testId: string, expected: string[]) {
   expect(tooltip?.getAttribute("aria-hidden")).not.toBe("true")
   expect(tooltip?.className).toContain("w-full")
   expect(tooltip?.className).toContain("opacity-100")
+  expect(tooltip?.className).toContain("min-h-12")
   expect(tooltip?.className).not.toContain("border")
   expect(tooltip?.className).not.toContain("bg-sky")
   expect(tooltip?.className).not.toContain("shadow")
   expect(tooltip?.className).not.toContain("ring")
+  expect(tooltip?.querySelector(".flex-wrap")).not.toBeNull()
+  expect(tooltip?.querySelector(".truncate")).toBeNull()
+  expect(tooltip?.querySelector(".overflow-hidden")).toBeNull()
+  expect(tooltip?.querySelector(".whitespace-nowrap")).not.toBeNull()
   expect(
     tooltip?.querySelector(
       '[data-testid="watch-language-picker-tooltip-info-icon"]',
