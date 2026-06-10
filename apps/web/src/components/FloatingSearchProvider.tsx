@@ -37,6 +37,7 @@ import { FloatingSearchBar } from "./FloatingSearchBar"
 import { SearchOverlay } from "./SearchOverlay"
 
 const HEADER_HOVER_HEIGHT_PX = 144
+const SEARCH_PAGE_SIZE = 10
 
 export type FloatingSearchContextValue = {
   open: boolean
@@ -369,7 +370,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       try {
         const data = await runSearch({
           query: trimmed.slice(0, 200),
-          limit: 20,
+          limit: SEARCH_PAGE_SIZE,
           offset: 0,
         })
 
@@ -409,7 +410,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     try {
       const data = await runSearch({
         query: query.trim().slice(0, 200),
-        limit: 20,
+        limit: SEARCH_PAGE_SIZE,
         offset: results.length,
       })
       if (requestIdRef.current !== thisRequest) return

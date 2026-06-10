@@ -14,33 +14,15 @@ export type GraphQLResult<T> =
   | { ok: true; data: T }
   | { ok: false; errors: Array<{ message: string }> }
 
-export type ExecuteGraphQLOptions = {
-  bearerToken?: string
-}
-
-function authorizationHeaderValue(token: string | undefined): string | null {
-  const trimmed = token?.trim()
-  if (!trimmed) return null
-  return /^Bearer\s+/i.test(trimmed) ? trimmed : `Bearer ${trimmed}`
-}
-
 export async function executeGraphQL<
   TData,
   TVars extends Record<string, unknown>,
->(
-  query: string,
-  variables: TVars,
-  options: ExecuteGraphQLOptions = {},
-): Promise<GraphQLResult<TData>> {
+>(query: string, variables: TVars): Promise<GraphQLResult<TData>> {
   let response: Response
-  const authorization = authorizationHeaderValue(options.bearerToken)
   try {
     response = await fetch("/api/graphql", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authorization ? { Authorization: authorization } : {}),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, variables }),
     })
   } catch (error) {

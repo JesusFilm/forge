@@ -69,8 +69,6 @@ export function DemoSearchClient() {
   const [algoliaPane, setAlgoliaPane] = useState<AlgoliaPaneState>({
     status: "idle",
   })
-  const [bearerTokenInput, setBearerTokenInput] = useState("")
-  const [submittedBearerToken, setSubmittedBearerToken] = useState("")
 
   // Fire on URL change (effective query). Empty q skips.
   useEffect(() => {
@@ -99,14 +97,12 @@ export function DemoSearchClient() {
         locale: urlLocale,
         limit: urlLimit,
         mode: "hybrid",
-        bearerToken: submittedBearerToken,
       }),
       runSearch({
         q: trimmed,
         locale: urlLocale,
         limit: urlLimit,
         mode: "keyword-first",
-        bearerToken: submittedBearerToken,
       }),
       searchAlgolia({ q: trimmed, locale: urlLocale, limit: urlLimit }),
     ]).then((settled) => {
@@ -127,7 +123,7 @@ export function DemoSearchClient() {
     return () => {
       cancelled = true
     }
-  }, [urlQ, urlLocale, urlLimit, submittedBearerToken])
+  }, [urlQ, urlLocale, urlLimit])
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -140,7 +136,6 @@ export function DemoSearchClient() {
     )
     next.set("limit", String(form.get("limit") ?? DEFAULTS.limit))
     next.set("k", String(form.get("k") ?? DEFAULTS.k))
-    setSubmittedBearerToken(bearerTokenInput.trim())
     router.push(`?${next.toString()}`)
   }
 
@@ -218,8 +213,7 @@ export function DemoSearchClient() {
         onSubmit={handleSubmit}
         style={{
           display: "grid",
-          gridTemplateColumns:
-            "minmax(220px, 1fr) 120px 100px 100px minmax(220px, 0.7fr) auto",
+          gridTemplateColumns: "1fr 120px 100px 100px auto",
           gap: 8,
           alignItems: "end",
           marginBottom: 16,
@@ -258,18 +252,6 @@ export function DemoSearchClient() {
             min={1}
             max={50}
             defaultValue={urlK}
-            style={inputStyle}
-          />
-        </Field>
-        <Field label="Bearer token">
-          <input
-            name="bearerToken"
-            type="password"
-            value={bearerTokenInput}
-            onChange={(e) => setBearerTokenInput(e.currentTarget.value)}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="optional"
             style={inputStyle}
           />
         </Field>
@@ -322,13 +304,10 @@ async function runSearch(args: {
   locale: string
   limit: number
   mode: ModeKey
-  bearerToken: string
 }): Promise<SearchResponse> {
-  const { bearerToken, ...variables } = args
-  const result = await executeGraphQL<DemoSearchData, typeof variables>(
+  const result = await executeGraphQL<DemoSearchData, typeof args>(
     SEARCH_OPERATION,
-    variables,
-    { bearerToken },
+    args,
   )
   if (!result.ok) {
     throw new Error(result.errors.map((e) => e.message).join("; "))

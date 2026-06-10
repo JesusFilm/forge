@@ -945,9 +945,15 @@ importers:
 
   apps/yt-video-mapper-backend:
     dependencies:
+      '@forge/admin-graphql':
+        specifier: workspace:*
+        version: link:../../packages/admin-graphql
       '@prisma/client':
         specifier: ^6
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      graphql:
+        specifier: 16.13.1
+        version: 16.13.1
       zod:
         specifier: ^4.3.6
         version: 4.3.6

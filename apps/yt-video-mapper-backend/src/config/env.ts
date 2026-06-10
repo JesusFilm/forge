@@ -64,3 +64,30 @@ export function assertRuntimeEnv(): void {
     )
   }
 }
+
+export type AdminCatalogSyncEnv = {
+  adminGraphqlUrl: string
+  adminServiceBearerToken: string
+}
+
+export function assertAdminCatalogSyncEnv(): AdminCatalogSyncEnv {
+  const missing = [
+    ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
+    ["ADMIN_SERVICE_BEARER_TOKEN", env.ADMIN_SERVICE_BEARER_TOKEN],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name)
+
+  if (missing.length > 0) {
+    throw new RuntimeEnvError(
+      `${missing.join(", ")} ${
+        missing.length === 1 ? "is" : "are"
+      } required to sync the yt-video-mapper catalog`,
+    )
+  }
+
+  return {
+    adminGraphqlUrl: env.ADMIN_GRAPHQL_URL!,
+    adminServiceBearerToken: env.ADMIN_SERVICE_BEARER_TOKEN!,
+  }
+}

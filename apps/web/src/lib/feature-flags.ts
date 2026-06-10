@@ -26,6 +26,8 @@ const webFeatureFlagClient = createFeatureFlagClient({
       env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
     FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
       env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
+    FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
+      env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
   },
   defaultValues: {
@@ -34,6 +36,7 @@ const webFeatureFlagClient = createFeatureFlagClient({
     "forge.watch.ctaTextCopy": false,
     "forge.watch.downloadAccountGate": false,
     "forge.watch.youVersionBibleQuotes": false,
+    "forge.watch.hideBibleQuotes": false,
     "forge.watch.questionPanel": false,
   },
   timeoutSeconds: 0.25,
@@ -98,6 +101,15 @@ export async function isWatchYouVersionBibleQuotesEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchYouVersionBibleQuotes,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchHideBibleQuotesEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchHideBibleQuotes,
     createWebFeatureFlagContext(context),
   )
 }
