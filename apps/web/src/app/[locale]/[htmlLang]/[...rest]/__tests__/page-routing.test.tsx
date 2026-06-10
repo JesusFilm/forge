@@ -523,7 +523,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
       images: [
         {
-          url: "https://cdn.example/storyclubs-thumb.jpg",
+          url: "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
           alt: "StoryClubs poster",
         },
       ],
@@ -532,7 +532,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       title: "StoryClubs | Jesus Film Project",
       images: [
         {
-          url: "https://cdn.example/storyclubs-thumb.jpg",
+          url: "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
           alt: "StoryClubs poster",
         },
       ],
@@ -613,7 +613,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       url: "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
       images: [
         {
-          url: "https://image.mux.com/pb-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop",
+          url: "https://image.mux.com/pb-1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
           alt: "Wedding in Cana poster",
         },
       ],
@@ -674,7 +674,9 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       name: "Story < Clubs",
       description: "Story < Clubs description",
       url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
-      thumbnailUrl: ["https://cdn.example/storyclubs-thumb.jpg"],
+      thumbnailUrl: [
+        "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+      ],
       inLanguage: "en",
       duration: "PT30S",
     })
