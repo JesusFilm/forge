@@ -14,6 +14,7 @@
 import { StyleSheet } from "react-native"
 
 import { scale } from "../../lib/scale"
+import { WATCH_OPTION_ROW_HEIGHT } from "./WatchOptionRow"
 import { WATCH_THEME } from "./watchDetailTheme"
 
 export const watchMenuStyles = StyleSheet.create({
@@ -26,7 +27,9 @@ export const watchMenuStyles = StyleSheet.create({
     justifyContent: "center",
   },
   // Design `.menu`: translucent dark, 24px radius, 1px hairline border, hugging
-  // padding (14px), and a deep drop shadow.
+  // padding (14px), and a deep drop shadow. overflow hidden: the row list can
+  // exceed maxHeight, and without clipping the overflowing rows paint past the
+  // rounded panel edge (rows + Close rendering outside the dialog).
   panel: {
     width: scale(600),
     maxHeight: scale(820),
@@ -35,11 +38,22 @@ export const watchMenuStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
     padding: scale(14),
+    overflow: "hidden",
     // Approximates `box-shadow: 0 40px 90px -24px rgba(0,0,0,.85)`.
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: scale(28) },
     shadowRadius: scale(45),
     shadowOpacity: 0.85,
+  },
+  // The scrolling row list is capped by ITS OWN maxHeight (exactly 9 rows) so
+  // the header above and the Close footer below always keep their space inside
+  // the panel. Capping via the panel's maxHeight + flexShrink does NOT work:
+  // Yoga doesn't shrink children against a parent max-constraint, so the list
+  // takes its full content height and pushes the footer out (clipped by the
+  // panel's overflow hidden). A node's own maxHeight is always honored.
+  list: {
+    flexGrow: 0,
+    maxHeight: 9 * WATCH_OPTION_ROW_HEIGHT,
   },
   // Design `.mhead` — padding 14/20/16, no per-item background.
   header: {

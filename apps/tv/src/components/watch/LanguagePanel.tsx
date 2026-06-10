@@ -128,6 +128,7 @@ export function LanguagePanel({
             initialNumToRender={14}
             windowSize={7}
             showsVerticalScrollIndicator={false}
+            style={watchMenuStyles.list}
             contentContainerStyle={watchMenuStyles.listContent}
           />
 

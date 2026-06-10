@@ -142,6 +142,7 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
           initialNumToRender={14}
           windowSize={7}
           showsVerticalScrollIndicator={false}
+          style={watchMenuStyles.list}
           contentContainerStyle={watchMenuStyles.listContent}
           ListHeaderComponent={
             <View style={styles.headingBox}>
