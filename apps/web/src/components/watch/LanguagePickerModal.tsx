@@ -558,7 +558,7 @@ export function LanguagePickerModal({
                 </div>
                 <span
                   data-testid="watch-language-picker-count"
-                  className="text-lg font-normal text-stone-400"
+                  className="text-xs font-normal text-stone-400 sm:text-sm"
                 >
                   {t("languageCount", { count: options.length })}
                 </span>
@@ -609,7 +609,7 @@ export function LanguagePickerModal({
                   </div>
                   <span
                     data-testid="watch-language-picker-subtitle-count"
-                    className="text-lg font-normal text-stone-400"
+                    className="text-xs font-normal text-stone-400 sm:text-sm"
                   >
                     {t("languageCount", { count: subtitleOptions.length })}
                   </span>

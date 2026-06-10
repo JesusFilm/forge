@@ -405,6 +405,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     })
     const count = $('[data-testid="watch-language-picker-count"]')
     expect(count?.textContent).toBe("3 languages")
+    expect(count?.className).toContain("text-xs")
+    expect(count?.className).toContain("sm:text-sm")
+    expect(count?.className).not.toContain("text-lg")
     expect(count?.className).toContain("font-normal")
     expect(count?.className).not.toContain("font-semibold")
     expect(count?.parentElement?.textContent).toContain("Language")
@@ -498,6 +501,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     const subtitleCount = $(
       '[data-testid="watch-language-picker-subtitle-count"]',
     )
+    expect(subtitleCount?.className).toContain("text-xs")
+    expect(subtitleCount?.className).toContain("sm:text-sm")
+    expect(subtitleCount?.className).not.toContain("text-lg")
     expect(subtitleCount?.className).toContain("font-normal")
     expect(subtitleCount?.parentElement?.textContent).toContain("Subtitles")
     expect(subtitleCount?.parentElement?.className).toContain("items-center")
