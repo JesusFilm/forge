@@ -46,7 +46,7 @@ already-accepted convention in this app (cf.
 `docs/solutions/architecture-patterns/mastra-seed-baseline-portability-pattern.md`).
 
 The seeker audience — people exploring Christianity and who Jesus is — is
-**sensitive**. The skeleton is *not* for real seekers; it is exercised by the
+**sensitive**. The skeleton is _not_ for real seekers; it is exercised by the
 team in Studio only, and ships with a hard safety line in its placeholder
 instructions to bound the blast radius of any leaked/screenshotted test output
 before the guardrail release gate is met.
@@ -60,7 +60,7 @@ the code layer (per
 calls work). So "Studio-only" means "reachable only by whoever can reach the
 Mastra HTTP surface" — the actual boundary is `apps/mastra-gateway` + Railway
 networking, NOT the route-isolation test. The route-isolation test (R5) proves
-only that no *custom* `/forge-*` route exposes the agent; it does not and cannot
+only that no _custom_ `/forge-*` route exposes the agent; it does not and cannot
 make the built-in agent API private. This is acceptable at skeleton scale
 (internal service, behind the gateway) but the safety argument must name its
 real control. Promotion to a real public surface requires both the deferred
@@ -153,7 +153,7 @@ remain stateless. There is no global memory switch.
 
 ### KTD4 — Route-isolation as a source-text assertion (scoped to custom routes)
 
-**What this test does and does not prove.** It proves no *custom* `/forge-*`
+**What this test does and does not prove.** It proves no _custom_ `/forge-*`
 route in `index.ts` wires up the seeker agent. It does NOT prove the agent is
 unreachable — Mastra's framework-generated `/api/agents/*` surface exposes any
 registered agent regardless of custom routes (see Problem Frame). The real
@@ -165,7 +165,7 @@ The mechanism is a **source-text assertion** on `index.ts` (read via `node:fs`),
 asserting the seeker agent symbol appears in the `agents: {}` registration but
 **not** within the `apiRoutes` array region. Source-text over runtime
 introspection because route handlers are opaque closures (`.handler` is a
-function — a runtime route list can prove no seeker *path* exists, but cannot
+function — a runtime route list can prove no seeker _path_ exists, but cannot
 prove a handler doesn't internally call the agent), and because importing
 `index.ts` eagerly constructs the entire Mastra instance (DuckDB store,
 observability, all workflows) at module load. Same family as admin's migration
@@ -233,7 +233,7 @@ exposed as a lazy singleton for the seeker agent to consume.
 **Dependencies:** U1.
 **Files:** `apps/mastra/src/mastra/memory.ts`,
 `apps/mastra/src/mastra/memory.test.ts`.
-**Approach:** Mirror the *shape* of `apps/admin/src/mastra/memory.ts` (lazy
+**Approach:** Mirror the _shape_ of `apps/admin/src/mastra/memory.ts` (lazy
 singleton factory + a test-only reset hook) but stripped to in-memory only — no
 Postgres, no PgVector, no embedder, no env reads. Construct one
 `InMemoryStore` (from `@mastra/core/storage`, the same class `index.ts` uses) and
@@ -243,6 +243,7 @@ the pattern (KTD1).
 **Patterns to follow:** `apps/admin/src/mastra/memory.ts` lazy-singleton +
 `__reset*ForTesting` shape (mirror, do not import).
 **Test scenarios:**
+
 - Happy path: `getSeekerMemory()` returns a `Memory` instance; calling it twice
   returns the same singleton (identity check).
 - The Memory is backed by an `InMemoryStore` (assert the constructed store is an
@@ -265,16 +266,16 @@ the pattern (KTD1).
      its own `threadId`/`resourceId`**; there is no top-level `threadId` arg.
   3. `recall({ threadId: A })` → assert ≥1 message; `recall({ threadId: B })` →
      assert 0 messages. (Confirm exact `recall`/`saveMessages` argument shapes
-     against the installed dist types when implementing — the method *names* are
+     against the installed dist types when implementing — the method _names_ are
      verified, the precise option objects should be double-checked.)
-  Fallback (last resort, only if the round-trip proves intractable at
-  implementation time): the store-type + singleton assertions above plus U4's
-  agent-attachment assertion. Taking the fallback downgrades thread-scoping
-  evidence to the manual Studio step only (not in CI) — attempt the round-trip
-  first; it is the assertion that makes the Studio memory-recall criterion
-  non-vacuous.
-**Verification:** `memory.test.ts` passes, including the cross-thread isolation
-case (both threads created, A has the message, B is empty); `typecheck` clean.
+     Fallback (last resort, only if the round-trip proves intractable at
+     implementation time): the store-type + singleton assertions above plus U4's
+     agent-attachment assertion. Taking the fallback downgrades thread-scoping
+     evidence to the manual Studio step only (not in CI) — attempt the round-trip
+     first; it is the assertion that makes the Studio memory-recall criterion
+     non-vacuous.
+     **Verification:** `memory.test.ts` passes, including the cross-thread isolation
+     case (both threads created, A has the message, B is empty); `typecheck` clean.
 
 ### U3. Stub `retrieve-answer` tool + guardrail breadcrumb
 
@@ -303,6 +304,7 @@ keep it to a single attach-point.)
 **Patterns to follow:** `apps/mastra/src/mastra/tools/firecrawl.ts`
 (pure-`execute`-fn + `createTool` wrapper; `.strict()` zod schemas).
 **Test scenarios:**
+
 - Happy path: `executeRetrieveAnswer({ query: "who is Jesus?" })` returns
   `{ answer: <non-empty string>, sources: [] }` (deterministic — assert exact
   shape and that `sources` is empty).
@@ -319,7 +321,7 @@ keep it to a single attach-point.)
   without a test failing. The stub text and the asserted substring are the same
   source of truth (e.g. the answer contains a "stub"/"placeholder" marker); this
   is a sensitive-audience guard, cheap to keep green.
-**Verification:** `retrieve-answer.test.ts` passes; `typecheck` clean.
+  **Verification:** `retrieve-answer.test.ts` passes; `typecheck` clean.
 
 ### U4. Seeker agent + registration + guardrail breadcrumb
 
@@ -347,6 +349,7 @@ changes**.
 (Agent + tools shape, instructions-array join); `smoke-agent.test.ts` for test
 style.
 **Test scenarios:**
+
 - `seekerAgent.name` is `"Seeker Agent"` (stable id/name — mirror smoke test).
 - Instructions include the safety line: assert the rendered instructions string
   contains the non-production-prototype / no-invented-scripture phrasing (assert
@@ -356,12 +359,12 @@ style.
 - Memory is attached (assert the agent's `memory` is defined / is the
   `getSeekerMemory()` singleton). This is the unit-level companion to U2's
   cross-thread test.
-**Verification:** `seeker-agent.test.ts` passes; agent appears in Studio under
-the `agents` list when the dev server boots; `typecheck` clean.
+  **Verification:** `seeker-agent.test.ts` passes; agent appears in Studio under
+  the `agents` list when the dev server boots; `typecheck` clean.
 
 ### U5. Route-isolation test (no custom public route)
 
-**Goal:** A self-enforcing regression guard that no *custom* `registerApiRoute`
+**Goal:** A self-enforcing regression guard that no _custom_ `registerApiRoute`
 wires up the seeker agent. NOT a proof of full Studio-only containment — the
 built-in `/api/agents/*` surface exposes any registered agent; the real boundary
 is gateway/network (KTD4, Problem Frame).
@@ -385,6 +388,7 @@ exposure and the gateway boundary are out of its scope), cross-referencing
 (`hybrid-search-sql.test.ts`) — read a source/migration file and assert on its
 text.
 **Test scenarios:**
+
 - `seekerAgent` is present in the `agents: {}` registration block (guards against
   the test passing because the agent was never registered — a vacuous-pass
   guard).
@@ -393,8 +397,8 @@ text.
 - (Defensive) the `apiRoutes` region was actually located and is non-empty
   before asserting absence — so a parsing miss can't make the negative assertion
   pass vacuously.
-**Verification:** `seeker-route-isolation.test.ts` passes; deliberately wiring
-the agent into a route (local experiment) makes it fail.
+  **Verification:** `seeker-route-isolation.test.ts` passes; deliberately wiring
+  the agent into a route (local experiment) makes it fail.
 
 ### U6. `apps/mastra/CLAUDE.md` "Seeker agent" section
 
@@ -433,10 +437,12 @@ implemented behavior; deferred set matches the origin doc.
 ## Scope Boundaries
 
 ### In scope
+
 R1–R7 above: the seeker agent, the stub tool, in-memory Memory, the guardrail
 breadcrumb, the route-isolation test, the CLAUDE.md section, and colocated tests.
 
 ### Deferred for later (origin: requirements doc "Out of Scope")
+
 - **Real RAG / actual retrieval backend.** The stub's I/O shape is provisional,
   not a contract the real system is bound to.
 - **Full persona + safety guardrails** — a release gate, not skeleton work. Must
@@ -451,6 +457,7 @@ breadcrumb, the route-isolation test, the CLAUDE.md section, and colocated tests
   to the guardrail gate.
 
 ### Deferred to follow-up work (plan-local)
+
 - Whether the two Mastra setups (admin + this app) should later share Memory
   code — open question, not decided here. Divergence accepted as a one-time
   bootstrap; maintained independently.
@@ -459,6 +466,7 @@ breadcrumb, the route-isolation test, the CLAUDE.md section, and colocated tests
   this specific wiring).
 
 ### Hard constraints (do NOT do)
+
 - **Do NOT push this branch to `main`** until the `ai-chat` roadmap-lane team
   decision lands.
 - **Do NOT apply** the roadmap-doc / roadmap-app lane edits recipe'd in
@@ -481,7 +489,7 @@ breadcrumb, the route-isolation test, the CLAUDE.md section, and colocated tests
   the manual Studio step.
 - **"Studio-only" containment is weaker than it reads.** The built-in
   `/api/agents/*` surface exposes any registered agent; the route-isolation test
-  only guards against *custom* routes, and the real boundary is the
+  only guards against _custom_ routes, and the real boundary is the
   gateway/network layer (KTD4, Problem Frame). Mitigation: the plan names the
   actual control rather than over-claiming the test; the agent is an internal
   service behind the gateway at skeleton scale; promotion to a public surface

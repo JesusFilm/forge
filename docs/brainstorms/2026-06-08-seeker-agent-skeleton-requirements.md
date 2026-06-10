@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-08
 - **Status:** Ready for planning
-- **Lane (proposed):** `ai-chat` — *Jesus Film AI Chat*, the headless multi-agent system (pending team decision — see Dependencies)
+- **Lane (proposed):** `ai-chat` — _Jesus Film AI Chat_, the headless multi-agent system (pending team decision — see Dependencies)
 - **Roadmap ticket:** `docs/roadmap/ai-chat/feat-170-seeker-agent-skeleton.md`
 - **Branch:** `feat/seeker-agent-skeleton` (do not push to `main` until the lane decision lands)
 
@@ -20,7 +20,7 @@ Stand up a **seeker agent** in `apps/mastra` with one stub retrieval tool and Ma
 
 ## Audience
 
-People seeking to understand Christianity and who Jesus is. This is a **sensitive audience** — see the guardrail gate under Constraints. The skeleton is *not* for real seekers yet; it is exercised by the team in Studio only.
+People seeking to understand Christianity and who Jesus is. This is a **sensitive audience** — see the guardrail gate under Constraints. The skeleton is _not_ for real seekers yet; it is exercised by the team in Studio only.
 
 ## Approach — follow the in-app pattern; admin for Memory wiring only
 
@@ -28,7 +28,7 @@ People seeking to understand Christianity and who Jesus is. This is a **sensitiv
 
 The one piece the in-app pattern does **not** cover is **Mastra Memory** — `web-research-agent` has no memory. For that, `apps/admin/src/mastra/memory.ts` is the reference (Postgres/PgVector there, but the `Memory` wiring shape transfers). `apps/mastra` architecture rules **forbid importing from `apps/admin`**, so admin is a **reference to mirror, not a dependency**. **Sync stance:** divergence is accepted as a one-time bootstrap; this skeleton is maintained independently. (Whether the two Mastra setups should later share code is an open question for another day — not decided here.)
 
-The local **storage backend** already exists, but the **Memory primitive does not**: `apps/mastra` wires `MASTRA_STORAGE_BACKEND=memory` → `InMemoryStore` today (`apps/mastra/src/mastra/index.ts` + `apps/mastra/src/config/env.ts`), and production rejects `memory`. That `InMemoryStore` is *app-level Mastra storage* — it is **not** the `@mastra/memory` `Memory` primitive an agent needs for thread recall, and `@mastra/memory` is **not yet a dependency of `apps/mastra`** (only `apps/admin` has it). So the skeleton must add the `@mastra/memory` dependency and wire a `Memory` instance against the existing `InMemoryStore`: the storage tier is free, the Memory primitive is new work.
+The local **storage backend** already exists, but the **Memory primitive does not**: `apps/mastra` wires `MASTRA_STORAGE_BACKEND=memory` → `InMemoryStore` today (`apps/mastra/src/mastra/index.ts` + `apps/mastra/src/config/env.ts`), and production rejects `memory`. That `InMemoryStore` is _app-level Mastra storage_ — it is **not** the `@mastra/memory` `Memory` primitive an agent needs for thread recall, and `@mastra/memory` is **not yet a dependency of `apps/mastra`** (only `apps/admin` has it). So the skeleton must add the `@mastra/memory` dependency and wire a `Memory` instance against the existing `InMemoryStore`: the storage tier is free, the Memory primitive is new work.
 
 ## In Scope
 
@@ -36,9 +36,9 @@ The local **storage backend** already exists, but the **Memory primitive does no
 2. **One stub tool in the existing `apps/mastra/src/mastra/tools/` folder** (working name `retrieve-answer`) built with `createTool`, following the same-app `tools/firecrawl.ts` shape. Its I/O is a **provisional placeholder, NOT a finalized RAG contract** (RAG is undesigned — do not treat this as a drop-in):
    - input: `{ query: string, locale?: string }`
    - output: `{ answer: string, sources: [] }` — hard-coded answer + empty `sources`.
-   Real retrieval will likely return passage-shaped `sources` (`{ text, ref, score? }`, cf. admin's `search-videos` / `lookup-bible-verse`, which return structured results rather than a finished answer). The final shape is deferred to RAG design; this stub exists only to prove the agent calls *a* tool.
+     Real retrieval will likely return passage-shaped `sources` (`{ text, ref, score? }`, cf. admin's `search-videos` / `lookup-bible-verse`, which return structured results rather than a finished answer). The final shape is deferred to RAG design; this stub exists only to prove the agent calls _a_ tool.
 3. **Mastra Memory** attached to the seeker agent — add the `@mastra/memory` dependency to `apps/mastra` and wire a `Memory` instance against the existing `InMemoryStore`. Verified via the in-memory backend, which **wipes on process restart (not per user-session)** — see Constraints for the threadId implication.
-4. **Guardrail attach-point breadcrumb**: a single commented marker in the agent/tool flow showing *where* later guardrail checks (honesty / crisis-deferral) will hook. No logic — just a breadcrumb so the deferred gate has a visible home in the code.
+4. **Guardrail attach-point breadcrumb**: a single commented marker in the agent/tool flow showing _where_ later guardrail checks (honesty / crisis-deferral) will hook. No logic — just a breadcrumb so the deferred gate has a visible home in the code.
 5. **Route-isolation test**: a unit test asserting the seeker agent is **not** attached to any `registerApiRoute` (it stays Studio-only). Cheap, self-enforcing guard for the release gate; the heavier enforcement mechanism (boot assertion / verified flag) is deferred until a public surface is actually built.
 6. **`apps/mastra/CLAUDE.md`: a new "Seeker agent" section** documenting how to stand it up locally — the `MASTRA_STORAGE_BACKEND=memory pnpm --filter @forge/mastra dev` command + Studio steps — plus a brief "not wired yet" note pointing at the deferred set below. Also note that observability traces appear in Studio automatically (inherited from the instance-level `Observability` config; the `redactPromptBodies` span processor blanks `input`/`output` on **all** spans, tool spans included — well-aligned with the sensitive audience). No observability code is added for the skeleton.
 7. **Verification = Studio**: it converses; the `retrieve-answer` tool visibly fires on a factual question; earlier turns are remembered within a thread (assert correct `threadId` scoping so the memory check can't pass by accident on a shared thread).
@@ -51,7 +51,7 @@ These are recorded here so planning does not pull them in, and so the deferral i
 - **Public-facing web surface.** Today `apps/mastra` is an internal Railway service — every route is service-bearer-protected. A public seeker surface is a separate, later piece.
 - **Persisted Postgres memory.** Local skeleton uses the in-memory backend. Admin already proves the Postgres + PgVector path when we want persistence.
 - **Full persona + safety guardrails.** See Constraints — this is a release gate, not skeleton work.
-- **Agent evals.** Faithfulness/groundedness once RAG lands; safety scoring tied to the guardrail gate. Investigate Mastra's eval/scorer options when this arises — the existing `search-eval` suite and `chat-thumb-rating` scorer are useful reference for *how Mastra evals are wired in this repo*, but a seeker agent's eval criteria are their own problem and shouldn't be assumed to copy that shape.
+- **Agent evals.** Faithfulness/groundedness once RAG lands; safety scoring tied to the guardrail gate. Investigate Mastra's eval/scorer options when this arises — the existing `search-eval` suite and `chat-thumb-rating` scorer are useful reference for _how Mastra evals are wired in this repo_, but a seeker agent's eval criteria are their own problem and shouldn't be assumed to copy that shape.
 
 ## Constraints
 

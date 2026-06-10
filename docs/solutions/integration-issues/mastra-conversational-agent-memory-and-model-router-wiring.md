@@ -90,7 +90,11 @@ await memory.saveThread({
 await memory.saveMessages({
   messages: [
     {
-      id, role: "user", threadId, resourceId, createdAt,
+      id,
+      role: "user",
+      threadId,
+      resourceId,
+      createdAt,
       content: { format: 2, parts: [{ type: "text", text }], content: text },
     },
   ],
@@ -117,7 +121,9 @@ import { InMemoryStore } from "@mastra/core/storage"
 let cached: Memory | null = null
 export function getSeekerMemory(): Memory {
   if (cached === null) {
-    cached = new Memory({ storage: new InMemoryStore({ id: "seeker-memory-storage" }) })
+    cached = new Memory({
+      storage: new InMemoryStore({ id: "seeker-memory-storage" }),
+    })
   }
   return cached
 }

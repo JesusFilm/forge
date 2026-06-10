@@ -87,10 +87,10 @@ is a reference to mirror, not a dependency.
    - input: `{ query: string, locale?: string }`
    - output: `{ answer: string, sources: [] }` — hard-coded answer, empty
      `sources`.
-   Real retrieval will likely return passage-shaped `sources`
-   (`{ text, ref, score? }`, cf. admin's `search-videos` / `lookup-bible-verse`,
-   which return structured results, not a finished answer). Final shape deferred
-   to RAG design. Wire it onto the agent via `tools: { retrieveAnswer }`.
+     Real retrieval will likely return passage-shaped `sources`
+     (`{ text, ref, score? }`, cf. admin's `search-videos` / `lookup-bible-verse`,
+     which return structured results, not a finished answer). Final shape deferred
+     to RAG design. Wire it onto the agent via `tools: { retrieveAnswer }`.
 3. Add the `@mastra/memory` dependency to `apps/mastra` (NOT yet present — only
    `apps/admin` has it) and wire a `Memory` instance against the existing
    `InMemoryStore`. The `InMemoryStore` is app-level storage, not the Memory
