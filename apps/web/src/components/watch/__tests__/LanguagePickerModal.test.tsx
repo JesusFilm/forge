@@ -66,16 +66,28 @@ function $$(selector: string): HTMLElement[] {
 }
 
 function expectMultilingualTooltip(testId: string, expected: string[]) {
-  const tooltip = $(`[data-testid="${testId}"]`)
+  const target = $(`[data-testid="${testId}"]`)
+  expect(target).not.toBeNull()
+  act(() => {
+    target?.dispatchEvent(
+      new MouseEvent("mouseover", {
+        bubbles: true,
+        relatedTarget: null,
+      }),
+    )
+  })
+
+  const tooltip = $('[data-testid="watch-language-picker-tooltip-panel"]')
   expect(tooltip).not.toBeNull()
   expect(tooltip?.getAttribute("role")).toBe("tooltip")
+  expect(tooltip?.className).toContain("w-full")
   for (const label of ["English", "中文", "हिन्दी", "Español", "العربية"]) {
     expect(tooltip?.textContent).not.toContain(label)
   }
   for (const text of expected) {
     expect(tooltip?.textContent).toContain(text)
   }
-  return tooltip
+  return target
 }
 
 function makeVariant(
@@ -395,22 +407,28 @@ describe("LanguagePickerModal — globe overlay", () => {
     )
     const trigger = $('[data-testid="language-combobox-trigger"]')
     expect(trigger?.className).toContain("w-full")
-    expect(languageTooltip?.parentElement?.className).toContain("w-full")
-    expect(languageTooltip?.parentElement?.contains(languageIcon)).toBe(true)
-    expect(languageTooltip?.parentElement?.contains(count)).toBe(true)
-    expect(languageTooltip?.parentElement?.contains(trigger)).toBe(false)
+    const tooltipPanel = $(
+      '[data-testid="watch-language-picker-tooltip-panel"]',
+    )
+    expect(tooltipPanel?.compareDocumentPosition(trigger!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(languageTooltip?.className).toContain("w-full")
+    expect(languageTooltip?.contains(languageIcon)).toBe(true)
+    expect(languageTooltip?.contains(count)).toBe(true)
+    expect(languageTooltip?.contains(trigger)).toBe(false)
     const languageSelectTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-language-select",
       ["Language", "语言", "भाषा", "Idioma", "اللغة"],
     )
-    expect(languageSelectTooltip?.parentElement?.className).toContain("w-full")
-    expect(languageSelectTooltip?.parentElement?.contains(trigger)).toBe(true)
+    expect(languageSelectTooltip?.className).toContain("w-full")
+    expect(languageSelectTooltip?.contains(trigger)).toBe(true)
     act(() => {
       trigger?.click()
     })
     const popover = $('[data-testid="language-combobox-popover"]')
     expect(popover).not.toBeNull()
-    expect(languageSelectTooltip?.parentElement?.contains(popover)).toBe(false)
+    expect(languageSelectTooltip?.contains(popover)).toBe(false)
     expect(
       $('[data-testid="watch-language-picker-tooltip-audio-language"]'),
     ).toBeNull()
@@ -469,9 +487,9 @@ describe("LanguagePickerModal — globe overlay", () => {
       "watch-language-picker-tooltip-subtitles",
       ["Subtitles", "字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
     )
-    expect(subtitlesTooltip?.parentElement?.className).toContain("flex-1")
-    expect(subtitlesTooltip?.parentElement?.contains(subtitlesIcon)).toBe(true)
-    expect(subtitlesTooltip?.parentElement?.contains(subtitleCount)).toBe(true)
+    expect(subtitlesTooltip?.className).toContain("flex-1")
+    expect(subtitlesTooltip?.contains(subtitlesIcon)).toBe(true)
+    expect(subtitlesTooltip?.contains(subtitleCount)).toBe(true)
     const toggle = $(
       '[data-testid="watch-language-picker-subtitles-toggle"]',
     ) as HTMLButtonElement
@@ -517,18 +535,14 @@ describe("LanguagePickerModal — globe overlay", () => {
       "watch-language-picker-tooltip-subtitles-select",
       ["Subtitles", "字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
     )
-    expect(subtitlesSelectTooltip?.parentElement?.className).toContain("w-full")
-    expect(subtitlesSelectTooltip?.parentElement?.contains(triggers[1])).toBe(
-      true,
-    )
+    expect(subtitlesSelectTooltip?.className).toContain("w-full")
+    expect(subtitlesSelectTooltip?.contains(triggers[1])).toBe(true)
     act(() => {
       triggers[1]?.click()
     })
     const subtitlePopover = $('[data-testid="language-combobox-popover"]')
     expect(subtitlePopover).not.toBeNull()
-    expect(
-      subtitlesSelectTooltip?.parentElement?.contains(subtitlePopover),
-    ).toBe(false)
+    expect(subtitlesSelectTooltip?.contains(subtitlePopover)).toBe(false)
     expect(
       $('[data-testid="watch-language-picker-tooltip-subtitle-language"]'),
     ).toBeNull()

@@ -149,52 +149,55 @@ const MULTILINGUAL_TOOLTIPS: Record<
 
 type OpenCombobox = "language" | "subtitles" | null
 
-function tooltipPositionClass(side: "top" | "bottom") {
-  return side === "bottom" ? "top-full mt-3" : "bottom-full mb-3"
-}
-
-function tooltipAlignClass(align: "start" | "center" | "end") {
-  if (align === "start") return "left-0"
-  if (align === "end") return "right-0"
-  return "left-1/2 -translate-x-1/2"
-}
-
 function MultilingualTooltip({
   children,
   copy,
   testId,
   className = "",
-  side = "top",
-  align = "center",
+  onActivate,
 }: {
   children: ReactNode
   copy: Record<TooltipLanguageKey, string>
   testId: string
   className?: string
-  side?: "top" | "bottom"
-  align?: "start" | "center" | "end"
+  onActivate: (copy: Record<TooltipLanguageKey, string>) => void
+}) {
+  const activate = useCallback(() => onActivate(copy), [copy, onActivate])
+
+  return (
+    <div
+      data-testid={testId}
+      onFocusCapture={activate}
+      onMouseEnter={activate}
+      onPointerEnter={activate}
+      className={`inline-flex ${className}`}
+    >
+      {children}
+    </div>
+  )
+}
+
+function MultilingualTooltipPanel({
+  copy,
+}: {
+  copy: Record<TooltipLanguageKey, string>
 }) {
   return (
-    <div className={`group/tooltip relative inline-flex ${className}`}>
-      {children}
-      <div
-        role="tooltip"
-        data-testid={testId}
-        className={`pointer-events-none absolute z-[80] w-max max-w-[min(22rem,80vw)] rounded-md border border-stone-600/70 bg-stone-950/95 px-3 py-2 text-left text-[11px] leading-4 font-semibold text-stone-100 opacity-0 shadow-2xl shadow-black/40 backdrop-blur-md transition-opacity duration-150 group-hover/tooltip:opacity-100 ${tooltipPositionClass(
-          side,
-        )} ${tooltipAlignClass(align)}`}
-      >
-        <div className="flex flex-col gap-1">
-          {TOOLTIP_LANGUAGES.map((language) => (
-            <div
-              key={language.key}
-              dir={language.dir}
-              className="whitespace-nowrap"
-            >
-              <span>{copy[language.key]}</span>
-            </div>
-          ))}
-        </div>
+    <div
+      role="tooltip"
+      data-testid="watch-language-picker-tooltip-panel"
+      className="w-full rounded-xl border border-stone-600/70 bg-stone-950/80 px-4 py-3 text-sm leading-5 font-semibold text-stone-100 shadow-2xl shadow-black/30 backdrop-blur-md sm:px-5"
+    >
+      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-5">
+        {TOOLTIP_LANGUAGES.map((language) => (
+          <div
+            key={language.key}
+            dir={language.dir}
+            className="min-w-0 break-words"
+          >
+            <span>{copy[language.key]}</span>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -249,6 +252,9 @@ export function LanguagePickerModal({
   )
   const [translationRequestSent, setTranslationRequestSent] = useState(false)
   const [openCombobox, setOpenCombobox] = useState<OpenCombobox>(null)
+  const [activeTooltipCopy, setActiveTooltipCopy] = useState<
+    Record<TooltipLanguageKey, string>
+  >(MULTILINGUAL_TOOLTIPS.language)
   const openComboboxRef = useRef<OpenCombobox>(null)
   const pointerStartedWithComboboxOpenRef = useRef(false)
   const escapeStartedWithComboboxOpenRef = useRef(false)
@@ -353,6 +359,7 @@ export function LanguagePickerModal({
       setDraftSubtitleSlug(currentSubtitleSlugRef.current)
       setTranslationRequestSent(false)
       setOpenComboboxState(null)
+      setActiveTooltipCopy(MULTILINGUAL_TOOLTIPS.language)
       pointerStartedWithComboboxOpenRef.current = false
       escapeStartedWithComboboxOpenRef.current = false
       navigatingRef.current.inFlight = false
@@ -508,8 +515,8 @@ export function LanguagePickerModal({
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.language}
               testId="watch-language-picker-tooltip-language"
-              align="start"
               className="w-full"
+              onActivate={setActiveTooltipCopy}
             >
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
@@ -531,6 +538,7 @@ export function LanguagePickerModal({
                 </span>
               </div>
             </MultilingualTooltip>
+            <MultilingualTooltipPanel copy={activeTooltipCopy} />
             <LanguageCombobox
               options={options}
               value={draftSlug}
@@ -543,8 +551,8 @@ export function LanguagePickerModal({
                 <MultilingualTooltip
                   copy={MULTILINGUAL_TOOLTIPS.language}
                   testId="watch-language-picker-tooltip-language-select"
-                  align="start"
                   className="w-full"
+                  onActivate={setActiveTooltipCopy}
                 >
                   {trigger}
                 </MultilingualTooltip>
@@ -557,8 +565,8 @@ export function LanguagePickerModal({
               <MultilingualTooltip
                 copy={MULTILINGUAL_TOOLTIPS.subtitles}
                 testId="watch-language-picker-tooltip-subtitles"
-                align="start"
                 className="min-w-0 flex-1"
+                onActivate={setActiveTooltipCopy}
               >
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-3">
@@ -585,6 +593,7 @@ export function LanguagePickerModal({
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}
                     testId="watch-language-picker-tooltip-request-subtitles"
+                    onActivate={setActiveTooltipCopy}
                   >
                     <Button
                       type="button"
@@ -610,7 +619,7 @@ export function LanguagePickerModal({
                 <MultilingualTooltip
                   copy={subtitleToggleTooltip}
                   testId="watch-language-picker-tooltip-subtitles-toggle"
-                  align="end"
+                  onActivate={setActiveTooltipCopy}
                 >
                   <button
                     type="button"
@@ -664,8 +673,8 @@ export function LanguagePickerModal({
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.subtitles}
                     testId="watch-language-picker-tooltip-subtitles-select"
-                    align="start"
                     className="w-full"
+                    onActivate={setActiveTooltipCopy}
                   >
                     {trigger}
                   </MultilingualTooltip>
@@ -678,6 +687,7 @@ export function LanguagePickerModal({
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.close}
               testId="watch-language-picker-tooltip-close"
+              onActivate={setActiveTooltipCopy}
             >
               <Button
                 variant="ghost"
@@ -696,7 +706,7 @@ export function LanguagePickerModal({
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.apply}
               testId="watch-language-picker-tooltip-apply"
-              align="end"
+              onActivate={setActiveTooltipCopy}
             >
               <Button
                 variant="pill"
