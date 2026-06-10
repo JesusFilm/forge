@@ -182,7 +182,17 @@
     "categoryAnimated": "애니메이션",
     "categoryStudy": "공부",
     "categoryFamily": "가족",
-    "categoryChristmas": "크리스마스"
+    "categoryChristmas": "크리스마스",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "소리 켜고 재생",

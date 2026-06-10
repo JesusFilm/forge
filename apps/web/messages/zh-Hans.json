@@ -182,7 +182,17 @@
     "categoryAnimated": "动画",
     "categoryStudy": "学习",
     "categoryFamily": "家庭",
-    "categoryChristmas": "圣诞节"
+    "categoryChristmas": "圣诞节",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "打开声音播放",
