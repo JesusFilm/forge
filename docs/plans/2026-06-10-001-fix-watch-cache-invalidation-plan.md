@@ -1,7 +1,7 @@
 ---
 title: "fix: Harden watch cache invalidation"
 type: fix
-status: planned
+status: complete
 date: 2026-06-10
 ---
 
@@ -13,7 +13,7 @@ The watch pages are now static/ISR-style routes after the internal locale rewrit
 
 The blocker is not whether these pages can be cached. They can. The blocker is that the current invalidation only clears the Full Route Cache via `revalidatePath`, while the watch resolvers also sit behind `unstable_cache` entries that have no tags. If we simply raise `revalidate` / `s-maxage` from 60 seconds to 1 hour or 1 day, stale resolver data can survive until its own TTL expires, and some Core sync updates do not currently emit any video-page invalidation at all.
 
-This plan fixes cache correctness first, then cautiously raises route TTLs once the invalidation path is provably coherent.
+This plan fixes cache correctness first, then cautiously raises route TTLs once the invalidation path is provably coherent. U1-U4 shipped first with a 60 second route TTL; after production webhook and topology proof on 2026-06-10, U5 raised the route TTL to 3600 seconds while keeping resolver TTLs unchanged.
 
 ## Problem Statement
 
@@ -24,7 +24,7 @@ The public watch route renders through `apps/web/src/app/[locale]/[htmlLang]/**`
 - `apps/web/src/app/[locale]/[htmlLang]/page.tsx`
 - `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx`
 
-Both page routes currently export `revalidate = 60`, `dynamic = "force-static"`, and `dynamicParams = true`. Live probing earlier in this thread showed `x-nextjs-prerender: 1`, a stale-then-hit `x-nextjs-cache` pattern, and compressed HTML around 43 KB for the Gospel of John URL, which matches the intended ISR behavior.
+The page routes export `revalidate = 3600`, `dynamic = "force-static"`, and `dynamicParams = true`. Live probing before the TTL follow-up showed `x-nextjs-prerender: 1`, a stale-then-hit `x-nextjs-cache` pattern, and compressed HTML around 43 KB for the Gospel of John URL, which matches the intended ISR behavior.
 
 The render tree then calls resolver helpers in:
 
@@ -62,7 +62,7 @@ There is no production `emitRevalidateWebhook({ model: "video", ... })` call for
 5. Ensure Admin Experience publishing, Watch settings changes, watch route manifest refreshes, and render-relevant Core sync phases all invalidate both route output and resolver data.
 6. Treat webhook delivery as best-effort but observable. Failures may still be swallowed to avoid blocking Admin writes, but logs/tests must make it obvious what was attempted.
 7. Do not increase data-cache TTLs in the first correctness slice. Longer data TTLs are only safe after tag coverage and production cache topology are confirmed.
-8. Keep route-level `revalidate` at 60 seconds for the first correctness PR; raise it toward 1 hour only after preview/topology proof, rather than jumping straight to 1 day.
+8. Keep route-level `revalidate` at 60 seconds for the first correctness PR; raise it toward 1 hour only after preview/topology proof, rather than jumping straight to 1 day. Completed on 2026-06-10 after production webhook and topology proof.
 9. Document the remaining multi-instance/self-hosted cache risk before declaring invalidation "instant" in production.
 
 ## Context & Research
@@ -100,7 +100,7 @@ Context7 could not be used during research because its OAuth token was expired, 
 2. **Use a small tag helper module in web.** Add a single web-owned helper such as `apps/web/src/lib/watch-cache-tags.ts` so cache declarations and `/api/revalidate` use the same tag names.
 3. **Use coarse tags in the first PR.** The existing `unstable_cache` wrappers are module-level declarations, so their `tags` options should be treated as static. Coarse tags guarantee correctness for broad Core sync events without reshaping cache wrappers. Scoped tags can be a later optimization if the implementation deliberately moves to a cache-factory pattern or a newer dynamic tagging API.
 4. **Treat Core sync render relevance separately from manifest route relevance.** The manifest only needs refreshing for route admission changes, but rendered page data changes for more phases. Core sync should emit a broad watch-data invalidation whenever render-relevant phases ran, even if the manifest did not change.
-5. **Do not lengthen TTLs in the same correctness slice.** Leave route-level `revalidate` at 60 seconds and leave `unstable_cache` `revalidate` values at 60 seconds / 1 hour initially. After tag invalidation is tested in preview and production topology is understood, route-level `revalidate` can move to 3600 seconds.
+5. **Do not lengthen TTLs in the same correctness slice.** Leave route-level `revalidate` at 60 seconds and leave `unstable_cache` `revalidate` values at 60 seconds / 1 hour initially. After tag invalidation is tested in preview and production topology is understood, route-level `revalidate` can move to 3600 seconds. U5 completed this follow-up after production proof.
 6. **Production multi-instance behavior is an ops decision, not a code assumption.** If Railway runs multiple isolated Next instances without a shared cache handler, tag invalidation may not fan out immediately everywhere. The plan must document that limitation and keep a TTL fallback.
 
 ## High-Level Technical Design
@@ -266,6 +266,8 @@ If route-manifest and render-relevant phases overlap, send both semantic events 
 
 After U1-U4 pass and preview/topology proof is collected, change route-level `revalidate` from 60 to 3600 seconds for the static watch page routes. This targets fast repeat loads while keeping a 1 hour fallback if a webhook is missed or a process does not receive tag invalidation.
 
+Completed on 2026-06-10 after authorized production webhook smoke for `experience`, broad `video`, and `watch-route-manifest` payloads plus Helium smoke of representative live watch pages.
+
 Do not increase resolver/data-cache TTLs in this unit. The Data Cache should stay short until production invalidation evidence is collected.
 
 **Test scenarios**
@@ -337,8 +339,8 @@ Then run a preview smoke:
 
 ## Open Questions
 
-1. How many `apps/web` instances run in production, and do they share Next cache storage? This affects whether invalidation is instant globally or only eventually consistent by TTL.
-2. Does Cloudflare currently cache any watch HTML, or is it only proxying dynamic responses? Earlier probing showed `cf-cache-status: DYNAMIC`, but production edge rules should be checked before rollout.
+1. How many `apps/web` instances run in production, and do they share Next cache storage? Railway showed `@forge/web` online in one visible US West region, but the available CLI path did not expose exact replica count. The 1 hour route TTL remains the fallback if invalidation does not reach every process immediately.
+2. Does Cloudflare currently cache any watch HTML, or is it only proxying dynamic responses? Production probing on 2026-06-10 showed `cf-cache-status: DYNAMIC`, so Cloudflare was proxying watch HTML rather than serving an HTML edge cache hit.
 3. Can Core sync cheaply report changed video slugs per phase, or should the first implementation intentionally stay broad?
 4. Should `watch-route-manifest` remain admission-only, or should Admin send a second broad `video` event whenever manifest-relevant phases also changed rendered data? This plan recommends the second event for clarity.
 5. After route TTL moves to 3600, what stale-content SLO is acceptable for a missed webhook: 1 hour, 6 hours, or 24 hours?
@@ -350,16 +352,16 @@ Then run a preview smoke:
 - Broad `video` invalidation works even when Admin/Core sync cannot provide a slug.
 - Core sync emits watch-render invalidation for render-relevant phases, including at least `video-images`, `video-editions`, `video-subtitles`, and `video-dub-downloads`.
 - Unauthorized revalidation calls do not invalidate paths or tags.
-- Route-level `revalidate` is not raised in the first correctness PR; it remains gated on path + tag invalidation tests, preview smoke, and topology proof.
-- When route-level `revalidate` is raised, the initial target is 3600 seconds.
+- Route-level `revalidate` was not raised in the first correctness PR; U5 raised it only after path + tag invalidation tests, production smoke, and topology proof.
+- Route-level `revalidate` is now 3600 seconds.
 - Documentation names the residual multi-instance/process-local manifest cache limitation.
 
 ## Recommended TTL Policy
 
 For the current product shape:
 
-- **Now:** keep route-level `revalidate = 60` until tag invalidation lands.
-- **After U1-U4 plus preview/topology proof:** move route-level watch pages to `revalidate = 3600`.
+- **Now:** route-level watch pages use `revalidate = 3600` after U1-U4 plus production smoke/topology proof.
+- **Fallback:** missed route-output invalidation can leave a route stale for up to 1 hour.
 - **Data caches:** keep main resolver `unstable_cache` TTLs at 60 seconds for the first correctness rollout; keep child-dub language data at 1 hour.
 - **Later:** consider 6 to 24 hour route TTLs after production invalidation evidence, not before.
 

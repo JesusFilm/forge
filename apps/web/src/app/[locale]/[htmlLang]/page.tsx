@@ -7,7 +7,7 @@ import { WatchHomePage } from "@/components/home/WatchHomePage"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
-export const revalidate = 60
+export const revalidate = 3600
 export const dynamic = "force-static"
 export const dynamicParams = true
 

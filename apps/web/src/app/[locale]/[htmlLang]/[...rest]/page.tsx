@@ -53,14 +53,16 @@ import {
 import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
-// ISR: pages cached for 60 seconds. Cookie-driven language redirect lives in
+// ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
 // route preserves ISR for the majority of traffic without the preference
-// cookie. Admin revalidation clears both route paths and tagged resolver data.
+// cookie. Admin revalidation clears both route paths and tagged resolver data;
+// the route TTL is the fallback when a webhook or process-local invalidation is
+// missed.
 // Keep the build output clean so runtime ISR artifacts from old deploys cannot
 // be packaged as fresh pages. See
 // docs/solutions/web/nextjs-headers-defeats-route-cache.md.
-export const revalidate = 60
+export const revalidate = 3600
 export const dynamic = "force-static"
 export const dynamicParams = true
 
