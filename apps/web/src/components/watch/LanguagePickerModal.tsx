@@ -243,8 +243,8 @@ function MultilingualTooltipPanel({
       role="tooltip"
       aria-hidden={visible ? undefined : true}
       data-testid="watch-language-picker-tooltip-panel"
-      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-[opacity,transform] duration-200 ease-out motion-reduce:translate-y-0 motion-reduce:transition-none ${
-        visible ? "translate-y-0 opacity-75" : "translate-y-2 opacity-0"
+      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-[opacity,translate] duration-300 ease-out ${
+        visible ? "translate-y-0 opacity-75" : "translate-y-4 opacity-0"
       }`}
     >
       <Info
