@@ -17,6 +17,7 @@ import {
   watchVideoFragment,
 } from "@/lib/fragments"
 import { slugToBcp47Tag } from "@/lib/locale"
+import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 
 // Keep gql.tada introspection types live for the watch-page fragment.
 void watchVideoFragment
@@ -872,7 +873,15 @@ const fetchResolvedWatchPage = unstable_cache(
     }
   },
   ["watch-page"],
-  { revalidate: 60 },
+  {
+    revalidate: 60,
+    tags: [
+      WATCH_CACHE_TAGS.home,
+      WATCH_CACHE_TAGS.settings,
+      WATCH_CACHE_TAGS.experience,
+      WATCH_CACHE_TAGS.video,
+    ],
+  },
 )
 
 /** Shared watch-page resolver for page rendering and metadata generation. */
@@ -904,7 +913,7 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
     }
   },
   ["watch-experience-page"],
-  { revalidate: 60 },
+  { revalidate: 60, tags: [WATCH_CACHE_TAGS.experience] },
 )
 
 /**
@@ -1319,7 +1328,7 @@ async function tryResolveWatchVideo(
 const fetchResolvedWatchVideo = unstable_cache(
   tryResolveWatchVideo,
   ["watch-video"],
-  { revalidate: 60 },
+  { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
 )
 
 /**
@@ -1406,7 +1415,10 @@ const fetchVideoChildDubLanguages = unstable_cache(
       .filter((v): v is WatchChildLanguage => v != null)
   },
   ["video-child-dub-languages"],
-  { revalidate: CHILD_DUB_LANGUAGES_REVALIDATE_SECONDS },
+  {
+    revalidate: CHILD_DUB_LANGUAGES_REVALIDATE_SECONDS,
+    tags: [WATCH_CACHE_TAGS.childDubLanguages],
+  },
 )
 
 // Sentinel thrown by the cached inner so unstable_cache never persists a
@@ -1492,7 +1504,7 @@ async function tryResolveWatchVideoBySlug(
 const fetchResolvedWatchVideoBySlug = unstable_cache(
   tryResolveWatchVideoBySlug,
   ["watch-video-by-slug"],
-  { revalidate: 60 },
+  { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
 )
 
 // Returns null when the slug doesn't match a record OR the video has no
@@ -1642,7 +1654,7 @@ async function tryResolveSeriesBySlug(
 const fetchResolvedSeriesBySlug = unstable_cache(
   tryResolveSeriesBySlug,
   ["series-by-slug"],
-  { revalidate: 60 },
+  { revalidate: 60, tags: [WATCH_CACHE_TAGS.series, WATCH_CACHE_TAGS.video] },
 )
 
 // Returns null when the slug doesn't match a record OR the record is not

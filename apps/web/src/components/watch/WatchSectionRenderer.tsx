@@ -38,6 +38,7 @@ export function WatchSectionRenderer({
   locale,
   languageSlug,
   subtitleVttSrc,
+  hideBibleQuotes = false,
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
@@ -48,6 +49,7 @@ export function WatchSectionRenderer({
   locale?: string
   languageSlug?: string
   subtitleVttSrc?: string | null
+  hideBibleQuotes?: boolean
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -83,6 +85,7 @@ export function WatchSectionRenderer({
           locale={locale}
           languageSlug={languageSlug}
           subtitleVttSrc={subtitleVttSrc}
+          hideBibleQuotes={hideBibleQuotes}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -118,6 +121,7 @@ export function WatchSectionRenderer({
                   onPlayerReady={onPlayerReady}
                   locale={locale}
                   languageSlug={languageSlug}
+                  hideBibleQuotes={hideBibleQuotes}
                 />
               ))}
             </div>
@@ -140,6 +144,7 @@ function WatchBlockEntry({
   locale,
   languageSlug,
   subtitleVttSrc,
+  hideBibleQuotes,
 }: {
   block: MergedWatchBlock
   index: number
@@ -152,6 +157,7 @@ function WatchBlockEntry({
   locale?: string
   languageSlug?: string
   subtitleVttSrc?: string | null
+  hideBibleQuotes: boolean
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -166,6 +172,7 @@ function WatchBlockEntry({
         locale={locale}
         languageSlug={languageSlug}
         subtitleVttSrc={subtitleVttSrc}
+        hideBibleQuotes={hideBibleQuotes}
       />
     )
   }
@@ -183,6 +190,7 @@ function SyntheticBlock({
   locale,
   languageSlug,
   subtitleVttSrc,
+  hideBibleQuotes,
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
@@ -194,6 +202,7 @@ function SyntheticBlock({
   locale?: string
   languageSlug?: string
   subtitleVttSrc?: string | null
+  hideBibleQuotes: boolean
 }) {
   switch (block.kind) {
     case "HeroPlayer": {
@@ -238,6 +247,7 @@ function SyntheticBlock({
         />
       )
     case "BibleQuotes":
+      if (hideBibleQuotes) return null
       return (
         <BibleQuotesSection
           bibleCitations={block.bibleCitations}

@@ -27,6 +27,7 @@ const {
   experienceErrorMock,
   isWatchCtaTextCopyEnabledMock,
   isWatchYouVersionBibleQuotesEnabledMock,
+  isWatchHideBibleQuotesEnabledMock,
   fetchYouVersionBibleQuotePassagesMock,
   isWatchQuestionPanelEnabledMock,
 } = vi.hoisted(() => ({
@@ -53,6 +54,7 @@ const {
   experienceErrorMock: vi.fn(() => null),
   isWatchCtaTextCopyEnabledMock: vi.fn(async () => false),
   isWatchYouVersionBibleQuotesEnabledMock: vi.fn(async () => false),
+  isWatchHideBibleQuotesEnabledMock: vi.fn(async () => false),
   fetchYouVersionBibleQuotePassagesMock: vi.fn(),
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
 }))
@@ -114,6 +116,7 @@ vi.mock("@/components/sections", () => ({
 vi.mock("@/lib/feature-flags", () => ({
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
   isWatchYouVersionBibleQuotesEnabled: isWatchYouVersionBibleQuotesEnabledMock,
+  isWatchHideBibleQuotesEnabled: isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
 }))
 
@@ -167,6 +170,8 @@ beforeEach(() => {
   isWatchCtaTextCopyEnabledMock.mockResolvedValue(false)
   isWatchYouVersionBibleQuotesEnabledMock.mockReset()
   isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(false)
+  isWatchHideBibleQuotesEnabledMock.mockReset()
+  isWatchHideBibleQuotesEnabledMock.mockResolvedValue(false)
   fetchYouVersionBibleQuotePassagesMock.mockReset()
   fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([])
   isWatchQuestionPanelEnabledMock.mockReset()
@@ -191,26 +196,56 @@ function makeWatchVideoResult(
     name: "English",
   },
 ) {
+  const selectedVariant = {
+    documentId: "var1",
+    hls: "https://cdn.example/storyclubs.m3u8",
+    muxVideo: { playbackId: "pb1" },
+    language: variantLang,
+    published: true,
+    duration: 30,
+    downloads: [],
+  }
   return {
     video: {
       documentId: "v1",
       slug: "storyclubs",
       title: "StoryClubs",
+      snippet: "StoryClubs snippet",
+      description: "StoryClubs description",
+      noIndex: false,
       label,
-      images: [],
+      imageAlt: "StoryClubs poster",
+      images: [
+        {
+          documentId: "img-1",
+          url: null,
+          thumbnail: "https://cdn.example/storyclubs-thumb.jpg",
+          mobileCinematicHigh: null,
+          mobileCinematicLow: null,
+        },
+      ],
+      primaryLanguage: null,
+      parents: [],
       children: [],
-      variants: [],
+      childDubLanguages: [],
+      variants: [
+        selectedVariant,
+        {
+          ...selectedVariant,
+          documentId: "var-es",
+          language: {
+            slug: "spanish-castilian",
+            bcp47: "es",
+            name: "Spanish, Castilian",
+          },
+        },
+      ],
+      subtitles: [],
+      studyQuestions: [],
+      bibleCitations: [],
     },
     canonicalParent: null,
-    selectedVariant: {
-      documentId: "var1",
-      hls: "https://cdn.example/storyclubs.m3u8",
-      muxVideo: { playbackId: "pb1" },
-      language: variantLang,
-      published: true,
-      duration: 30,
-      downloads: [],
-    },
+    selectedVariant,
   }
 }
 
@@ -259,15 +294,36 @@ function makeEpisodeResult(
     name: "English",
   },
 ) {
+  const selectedVariant = {
+    documentId: "var-1",
+    hls: "https://cdn.example/ep.m3u8",
+    muxVideo: { playbackId: "pb-1" },
+    language: variantLang,
+    published: true,
+    duration: 30,
+    downloads: [],
+  }
   return {
     video: {
       documentId: "ep-1",
       slug: "wedding-in-cana",
       title: "Wedding in Cana",
+      snippet: "Wedding in Cana snippet",
+      description: "Wedding in Cana description",
+      noIndex: false,
       label: "episode",
-      images: [],
+      imageAlt: "Wedding in Cana poster",
+      images: [
+        {
+          documentId: "img-ep-1",
+          url: null,
+          thumbnail: null,
+          mobileCinematicHigh: null,
+          mobileCinematicLow: null,
+        },
+      ],
       children: [],
-      variants: [],
+      childDubLanguages: [],
       parents: [
         {
           documentId: "series-1",
@@ -278,6 +334,11 @@ function makeEpisodeResult(
           children: [],
         },
       ],
+      primaryLanguage: null,
+      variants: [selectedVariant],
+      subtitles: [],
+      studyQuestions: [],
+      bibleCitations: [],
     },
     canonicalParent: {
       documentId: "series-1",
@@ -295,15 +356,7 @@ function makeEpisodeResult(
       images: [],
       children: [],
     },
-    selectedVariant: {
-      documentId: "var-1",
-      hls: "https://cdn.example/ep.m3u8",
-      muxVideo: { playbackId: "pb-1" },
-      language: variantLang,
-      published: true,
-      duration: 30,
-      downloads: [],
-    },
+    selectedVariant,
   }
 }
 
@@ -449,6 +502,128 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
   })
 })
 
+describe("Catch-all routing — metadata for playable watch pages", () => {
+  it("uses resolved video data for two-segment metadata before falling back to the template resolver", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm"),
+    )
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: ["storyclubs.html", "english.html"],
+      }),
+    })
+
+    expect(metadata.title).toBe("StoryClubs | Jesus Film Project")
+    expect(metadata.description).toBe("StoryClubs description")
+    expect(metadata.openGraph).toMatchObject({
+      title: "StoryClubs | Jesus Film Project",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      images: [
+        {
+          url: "https://cdn.example/storyclubs-thumb.jpg",
+          alt: "StoryClubs poster",
+        },
+      ],
+    })
+    expect(metadata.twitter).toMatchObject({
+      title: "StoryClubs | Jesus Film Project",
+      images: [
+        {
+          url: "https://cdn.example/storyclubs-thumb.jpg",
+          alt: "StoryClubs poster",
+        },
+      ],
+    })
+    expect(metadata.alternates).toMatchObject({
+      canonical: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      languages: {
+        en: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+        es: "https://www.jesusfilm.org/watch/storyclubs.html/spanish-castilian.html",
+      },
+    })
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("en", "storyclubs")
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "storyclubs",
+      "english",
+    )
+  })
+
+  it("keeps curated Experience metadata ahead of same-slug video metadata", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter Watch",
+          metaDescription: "Curated Easter page.",
+          ogTitle: "Easter OG",
+          ogDescription: "Curated Easter OG.",
+          ogImageUrl: "https://cdn.example/easter-og.jpg",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm"),
+    )
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: ["easter.html", "english.html"],
+      }),
+    })
+
+    expect(metadata.title).toBe("Easter Watch")
+    expect(metadata.openGraph).toMatchObject({
+      title: "Easter OG",
+      url: "https://www.jesusfilm.org/watch/easter.html/english.html",
+      images: [
+        {
+          url: "https://cdn.example/easter-og.jpg",
+        },
+      ],
+    })
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("uses the three-segment production URL for episode metadata", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: [
+          "lumo-the-gospel-of-john.html",
+          "wedding-in-cana",
+          "english.html",
+        ],
+      }),
+    })
+
+    expect(metadata.title).toBe("Wedding in Cana | Jesus Film Project")
+    expect(metadata.openGraph).toMatchObject({
+      url: "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      images: [
+        {
+          url: "https://image.mux.com/pb-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop",
+          alt: "Wedding in Cana poster",
+        },
+      ],
+    })
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+    )
+  })
+})
+
 describe("Catch-all routing — series branch (2-seg)", () => {
   it("renders SeriesPageClient when video resolver returns a COLLECTION-labeled record", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
@@ -477,10 +652,32 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
+        hideBibleQuotes: false,
         questionPanelEnabled: false,
       }),
     )
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+  })
+
+  it("renders a sanitized VideoObject JSON-LD script for playable videos", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    watchVideoResult.video.title = "Story < Clubs"
+    watchVideoResult.video.description = "Story < Clubs description"
+    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    const script = container.querySelector('script[type="application/ld+json"]')
+    expect(script?.textContent).not.toContain("<")
+    expect(JSON.parse(script?.textContent ?? "{}")).toMatchObject({
+      "@type": "VideoObject",
+      name: "Story < Clubs",
+      description: "Story < Clubs description",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      thumbnailUrl: ["https://cdn.example/storyclubs-thumb.jpg"],
+      inLanguage: "en",
+      duration: "PT30S",
+    })
   })
 
   it("404s bcp47 catalog keys in public audio slots", async () => {
@@ -571,6 +768,30 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         reference: "JHN.3.16",
       }),
     ])
+  })
+
+  it("passes the Bible Quotes hide flag to WatchPageClient and skips YouVersion fetches when enabled", async () => {
+    isWatchHideBibleQuotesEnabledMock.mockResolvedValue(true)
+    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const bibleCitations = makeBibleCitations()
+    ;(
+      watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
+    ).bibleCitations = bibleCitations
+    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+
+    await render2Seg("jesus.html", "english.html")
+
+    expect(isWatchHideBibleQuotesEnabledMock).toHaveBeenCalledWith({
+      custom: { route: "/watch/jesus.html/english.html" },
+    })
+    expect(isWatchYouVersionBibleQuotesEnabledMock).not.toHaveBeenCalled()
+    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        hideBibleQuotes: true,
+      }),
+    )
   })
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
@@ -975,6 +1196,29 @@ describe("Catch-all routing — 3-seg episode branch", () => {
         reference: "JHN.3.16",
       }),
     ])
+  })
+
+  it("passes the Bible Quotes hide flag to episode WatchPageClient when enabled", async () => {
+    isWatchHideBibleQuotesEnabledMock.mockResolvedValue(true)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+    await render3Seg(
+      "lumo-the-gospel-of-john.html",
+      "wedding-in-cana",
+      "english.html",
+    )
+
+    expect(isWatchHideBibleQuotesEnabledMock).toHaveBeenCalledWith({
+      custom: {
+        route:
+          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      },
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        hideBibleQuotes: true,
+      }),
+    )
   })
 
   it("passes the LaunchDarkly question panel flag to WatchPageClient when enabled", async () => {

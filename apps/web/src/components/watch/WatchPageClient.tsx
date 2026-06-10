@@ -92,6 +92,7 @@ type WatchPageClientProps = {
    * BibleGateway "Read more..." link pick the right translation.
    */
   locale?: string
+  hideBibleQuotes?: boolean
   questionPanelEnabled?: boolean
 }
 
@@ -102,6 +103,7 @@ export function WatchPageClient({
   video,
   languageSlug,
   locale,
+  hideBibleQuotes = false,
   questionPanelEnabled = false,
 }: WatchPageClientProps) {
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
@@ -308,6 +310,7 @@ export function WatchPageClient({
         locale={locale}
         languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
+        hideBibleQuotes={hideBibleQuotes}
       />
 
       <SubtitleTranscript

@@ -20,12 +20,15 @@ import {
   resolveWatchVideoBySlug,
 } from "@/lib/content"
 import {
+  buildWatchVideoMetadataModel,
   generateSeriesMetadata,
+  generateWatchVideoMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
 import {
   isWatchCtaTextCopyEnabled,
+  isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
   isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
@@ -47,13 +50,15 @@ import {
   SAFE_SLUG_PATTERN,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
+import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
-// ISR: pages cached for 60s. Cookie-driven language redirect lives in
+// ISR: pages cached for 60 seconds. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
 // route preserves ISR for the majority of traffic without the preference
-// cookie. Keep the build output clean so runtime ISR artifacts from old
-// deploys cannot be packaged as fresh pages. See
+// cookie. Admin revalidation clears both route paths and tagged resolver data.
+// Keep the build output clean so runtime ISR artifacts from old deploys cannot
+// be packaged as fresh pages. See
 // docs/solutions/web/nextjs-headers-defeats-route-cache.md.
 export const revalidate = 60
 export const dynamic = "force-static"
@@ -189,6 +194,12 @@ async function getQuestionPanelEnabled(route: string): Promise<boolean> {
   })
 }
 
+async function getHideBibleQuotesEnabled(route: string): Promise<boolean> {
+  return isWatchHideBibleQuotesEnabled({
+    custom: { route },
+  })
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -212,10 +223,26 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
+      const watchPage = await resolveWatchPage(locale, slug)
+      if (watchPage.data?.kind === "experience") {
+        return getWatchPageMetadata(locale, {
+          slug,
+          pathLocale: rawLocale,
+        })
+      }
+
       const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
       if (watchVideo && isSeriesRecord(watchVideo.video)) {
         return generateSeriesMetadata(locale, {
           series: watchVideo.video,
+          pathLocale: rawLocale,
+        })
+      }
+      if (watchVideo) {
+        return generateWatchVideoMetadata(locale, {
+          video: watchVideo.video,
+          selectedVariant: watchVideo.selectedVariant,
+          routeSlug: slug,
           pathLocale: rawLocale,
         })
       }
@@ -238,9 +265,27 @@ export async function generateMetadata({
   }
 
   if (shape.kind === "episode") {
-    const { episodeSlug, rawLocale, locale } = shape
-    // The episode IS the playable video; OG/canonical metadata follows
-    // the episode's slug. Series-context enrichment is Phase 5 work.
+    const { seriesSlug, episodeSlug, rawLocale, locale } = shape
+    // The episode IS the playable video; keep metadata on the verified
+    // three-segment public URL when the series parent resolves.
+    try {
+      const resolved = await resolveSeriesEpisodeBySlug(
+        seriesSlug,
+        episodeSlug,
+        rawLocale,
+      )
+      if (resolved) {
+        return generateWatchVideoMetadata(locale, {
+          video: resolved.video,
+          selectedVariant: resolved.selectedVariant,
+          routeSlug: episodeSlug,
+          pathLocale: rawLocale,
+          seriesSlug,
+        })
+      }
+    } catch {
+      // Fall through to the safe template metadata path.
+    }
     return getWatchPageMetadata(locale, {
       slug: episodeSlug,
       pathLocale: rawLocale,
@@ -248,6 +293,21 @@ export async function generateMetadata({
   }
 
   return {}
+}
+
+function WatchVideoStructuredData({
+  model,
+}: {
+  model: ReturnType<typeof buildWatchVideoMetadataModel>
+}) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: watchVideoStructuredDataJson(model),
+      }}
+    />
+  )
 }
 
 export default async function SlugRestPage({ params }: PageProps) {
@@ -364,12 +424,18 @@ async function renderEpisode(shape: {
   }
 
   const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
-  const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+  const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
     await Promise.all([
       getDownloadButtonLabel(route, locale),
       getQuestionPanelEnabled(route),
-      getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
+      getHideBibleQuotesEnabled(route),
     ])
+  const youVersionPassages = hideBibleQuotes
+    ? []
+    : await getYouVersionBibleQuotePassages(
+        route,
+        resolved.video.bibleCitations,
+      )
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
@@ -378,9 +444,17 @@ async function renderEpisode(shape: {
   })
   if (!mergedBlocks.length) return <ExperienceEmpty />
   const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
+  const metadataModel = buildWatchVideoMetadataModel({
+    video: resolved.video,
+    selectedVariant: resolved.selectedVariant,
+    routeSlug: episodeSlug,
+    pathLocale: rawLocale,
+    seriesSlug,
+  })
 
   return (
     <>
+      <WatchVideoStructuredData model={metadataModel} />
       {lcpPlaybackId ? (
         <link
           rel="preload"
@@ -396,6 +470,7 @@ async function renderEpisode(shape: {
         video={resolved.video}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
         locale={locale}
+        hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
       />
     </>
@@ -480,12 +555,18 @@ async function renderVideo(shape: {
         />
       )
     }
-    const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+    const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
       await Promise.all([
         getDownloadButtonLabel(route, locale),
         getQuestionPanelEnabled(route),
-        getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations),
+        getHideBibleQuotesEnabled(route),
       ])
+    const youVersionPassages = hideBibleQuotes
+      ? []
+      : await getYouVersionBibleQuotePassages(
+          route,
+          watchVideo.video.bibleCitations,
+        )
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
@@ -494,8 +575,15 @@ async function renderVideo(shape: {
     })
     const lcpPlaybackId =
       watchVideo.selectedVariant.muxVideo?.playbackId ?? null
+    const metadataModel = buildWatchVideoMetadataModel({
+      video: watchVideo.video,
+      selectedVariant: watchVideo.selectedVariant,
+      routeSlug: slug,
+      pathLocale: rawLocale,
+    })
     return (
       <>
+        <WatchVideoStructuredData model={metadataModel} />
         {lcpPlaybackId ? (
           <link
             rel="preload"
@@ -511,6 +599,7 @@ async function renderVideo(shape: {
           video={watchVideo.video}
           languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
           locale={locale}
+          hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
         />
       </>
