@@ -33,6 +33,7 @@ import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
 import { buildShareUrl } from "./detailsHelpers"
 import { WATCH_THEME } from "./watchDetailTheme"
 import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
+import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -247,7 +248,7 @@ function SecondaryPill({
       accessibilityLabel={sub ? `${label}, ${sub}` : label}
     >
       <Animated.View style={[styles.pill, animatedStyle]}>
-        <AnimatedIcon name={icon} progress={progress} />
+        <AnimatedFocusIcon name={icon} progress={progress} size={ICON_SIZE} />
         <View style={styles.cap}>
           <Animated.Text style={[styles.pillLabel, { color: ink }]}>
             {label}
@@ -263,37 +264,6 @@ function SecondaryPill({
         </View>
       </Animated.View>
     </Pressable>
-  )
-}
-
-// Ionicons' glyph colour is a prop, not an animatable style, so the white→ink
-// flip is a cross-fade of two stacked copies (opacity is animatable).
-function AnimatedIcon({
-  name,
-  progress,
-}: {
-  name: IconName
-  progress: Animated.Value
-}) {
-  return (
-    <View style={styles.iconBox}>
-      <Animated.View
-        style={[
-          styles.iconLayer,
-          {
-            opacity: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [1, 0],
-            }),
-          },
-        ]}
-      >
-        <Ionicons name={name} size={ICON_SIZE} color={WATCH_THEME.text} />
-      </Animated.View>
-      <Animated.View style={[styles.iconLayer, { opacity: progress }]}>
-        <Ionicons name={name} size={ICON_SIZE} color={WATCH_THEME.focusInk} />
-      </Animated.View>
-    </View>
   )
 }
 
@@ -361,16 +331,6 @@ const styles = StyleSheet.create({
 
   cap: {
     alignItems: "flex-start",
-    justifyContent: "center",
-  },
-
-  iconBox: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
-  },
-  iconLayer: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
     justifyContent: "center",
   },
 })

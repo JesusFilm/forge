@@ -419,6 +419,14 @@ describe("normalizeDubMedia (lazy per-dub media)", () => {
     expect(media.subtitles[1].aiGenerated).toBe(true)
   })
 
+  it("computes subtitle languageNameNative like audio dubs (null for English, native otherwise)", () => {
+    const media = normalizeDubMedia(makeRawDub())
+    // English subtitle (bcp47 "en") → no redundant native label.
+    expect(media.subtitles[0].languageNameNative).toBeNull()
+    // Spanish subtitle has a distinct native name in its locale map → returned.
+    expect(media.subtitles[1].languageNameNative).toBe("Español")
+  })
+
   it("returns a fresh empty record for a missing dub", () => {
     expect(normalizeDubMedia(null)).toEqual({ downloads: [], subtitles: [] })
     expect(normalizeDubMedia(undefined)).toEqual({
