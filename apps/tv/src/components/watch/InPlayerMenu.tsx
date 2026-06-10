@@ -1,7 +1,11 @@
-// In-player language (audio dub) + subtitle menu for the FULLSCREEN overlay
+// In-player language (audio dub) / subtitle menu for the FULLSCREEN overlay
 // player (R10, R11). Shown ONLY when the overlay's currently-playing URL is the
 // watch session's active dub (the inPlayerMenuVisible gate in playerSwitch.ts) —
 // so experience-card playback, which has no session, never mounts it.
+//
+// U8 split: the overlay has separate Language / Subtitles pills (mirroring the
+// details page's two pickers), so this menu renders ONE section at a time via
+// the `section` prop — the dub list OR the subtitle list, never both stacked.
 //
 // Unlike the on-page LanguagePanel/SubtitlePanel (which are React-Native Modals),
 // this menu renders INSIDE the overlay's existing TVFocusGuideView focus trap as
@@ -15,8 +19,8 @@
 // design language across every watch menu. The dub section is a VIRTUALIZED
 // FlatList (a video like the JESUS film carries ~2,259 dubs; mounting them all
 // froze the menu open). Headings and rows are fixed-height, so getItemLayout +
-// initialScrollIndex open the menu AT the active dub. The small subtitle
-// section rides in ListFooterComponent (not virtualized — typically tens).
+// initialScrollIndex open the menu AT the active dub. The subtitle section is
+// a plain ScrollView (typically tens of rows) mirroring SubtitlePanel's body.
 //
 // Rows reuse the SAME pure helpers as U6's on-page panels (panelState.ts):
 //   - language rows: annotateVariantRows (hls==null → disabled, non-selectable),
@@ -27,7 +31,7 @@
 // viewer is never trapped in a loading/error/empty menu.
 
 import { useEffect, useMemo } from "react"
-import { FlatList, StyleSheet, Text, View } from "react-native"
+import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { TVFocusGuideView } from "../TVFocusGuideView"
@@ -42,8 +46,15 @@ import { useVariantList } from "./useVariantList"
 import { MENU_HEADING_HEIGHT } from "./watchMenuLayout"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
+import type { InPlayerMenuSection } from "./useSessionPlayback"
 
-export function InPlayerMenu({ onClose }: { onClose: () => void }) {
+export function InPlayerMenu({
+  section,
+  onClose,
+}: {
+  section: InPlayerMenuSection
+  onClose: () => void
+}) {
   const {
     video,
     activeVariantIndex,
@@ -56,11 +67,12 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
     setActiveSubtitleSlug,
   } = useWatchSession()
 
-  // Lazy-fetch the active dub's media (subtitles) once the menu is mounted —
-  // the menu only mounts while open, so this is the "on open" trigger.
+  // Lazy-fetch the active dub's media (subtitles) when the subtitle section
+  // mounts — the menu only mounts while open, so this is the "on open"
+  // trigger. The language section doesn't need per-dub media.
   useEffect(() => {
-    ensureActiveVariantMedia()
-  }, [ensureActiveVariantMedia])
+    if (section === "subtitles") ensureActiveVariantMedia()
+  }, [section, ensureActiveVariantMedia])
 
   const languageRows = useMemo(
     () => annotateVariantRows(video?.variants ?? [], activeVariantIndex),
@@ -100,39 +112,47 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
         trapFocusRight
         style={watchMenuStyles.panel}
       >
-        <FlatList
-          ref={listRef}
-          data={languageRows}
-          renderItem={renderRow}
-          keyExtractor={keyExtractor}
-          getItemLayout={getItemLayout}
-          initialScrollIndex={initialScrollIndex}
-          initialNumToRender={14}
-          windowSize={7}
-          showsVerticalScrollIndicator={false}
-          style={watchMenuStyles.list}
-          contentContainerStyle={watchMenuStyles.listContent}
-          ListHeaderComponent={
-            <View style={styles.headingBox}>
-              <Text style={watchMenuStyles.title} accessibilityRole="header">
-                Audio Language
-              </Text>
-            </View>
-          }
-          ListFooterComponent={
-            <>
-              {/* ── Subtitles (small list — rides unvirtualized) ─────────── */}
+        {section === "language" ? (
+          // ── Language: virtualized dub list (opens AT the active dub) ────
+          <FlatList
+            ref={listRef}
+            data={languageRows}
+            renderItem={renderRow}
+            keyExtractor={keyExtractor}
+            getItemLayout={getItemLayout}
+            initialScrollIndex={initialScrollIndex}
+            initialNumToRender={14}
+            windowSize={7}
+            showsVerticalScrollIndicator={false}
+            style={watchMenuStyles.list}
+            contentContainerStyle={watchMenuStyles.listContent}
+            ListHeaderComponent={
               <View style={styles.headingBox}>
                 <Text style={watchMenuStyles.title} accessibilityRole="header">
-                  Subtitles
+                  Audio Language
                 </Text>
               </View>
-
+            }
+          />
+        ) : (
+          // ── Subtitles: small list, mirrors SubtitlePanel's body ─────────
+          <>
+            <View style={styles.headingBox}>
+              <Text style={watchMenuStyles.title} accessibilityRole="header">
+                Subtitles
+              </Text>
+            </View>
+            <ScrollView
+              style={watchMenuStyles.list}
+              contentContainerStyle={watchMenuStyles.listContent}
+              showsVerticalScrollIndicator={false}
+            >
               {/* Off row — always present, always focusable, in every state. */}
               <WatchOptionRow
                 icon="text-outline"
                 label="Subtitles off"
                 selected={!subtitleEnabled}
+                hasTVPreferredFocus={!subtitleEnabled}
                 onPress={() => {
                   setSubtitleEnabled(false)
                   onClose()
@@ -176,6 +196,7 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
                         label={name}
                         note={subtitle.languageNameNative}
                         selected={isActive}
+                        hasTVPreferredFocus={isActive}
                         onPress={() => {
                           setActiveSubtitleSlug(subtitle.languageSlug)
                           setSubtitleEnabled(true)
@@ -186,9 +207,9 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
                     )
                   })
                 : null}
-            </>
-          }
-        />
+            </ScrollView>
+          </>
+        )}
 
         {/* Dismiss affordance stays focusable in EVERY state so the viewer is
             never trapped. Closing returns focus to play/pause via the parent's

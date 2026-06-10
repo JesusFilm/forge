@@ -18,16 +18,3 @@ export function composePlayerStatusChip(
     ? `${audioLabel} · CC ${subtitleLabel}`
     : audioLabel
 }
-
-/**
- * The two-line "Audio & Subtitles" pill's sub-caption ("English · CC Off").
- * Unlike the chip, subtitles-off is stated explicitly — the pill is the
- * affordance for changing it, so "Off" is information, not noise.
- */
-export function composeAudioSubsPillSub(
-  audioLabel: string | null,
-  subtitleLabel: string | null,
-): string | null {
-  if (audioLabel == null) return null
-  return `${audioLabel} · CC ${subtitleLabel ?? "Off"}`
-}

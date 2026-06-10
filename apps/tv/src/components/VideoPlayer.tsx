@@ -27,18 +27,19 @@ import { InPlayerMenu } from "./watch/InPlayerMenu"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
 import { focusTransform, useFocusAnimation } from "./watch/useFocusAnimation"
-import {
-  composeAudioSubsPillSub,
-  composePlayerStatusChip,
-} from "./watch/playerChrome"
+import { AnimatedFocusIcon } from "./watch/AnimatedFocusIcon"
+import { composePlayerStatusChip } from "./watch/playerChrome"
+
+type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
 // ── Visual language (U8) ───────────────────────────────────────────────────
 // The player chrome is the "Forge TV Video Page" handoff's player redesign
 // (chats/chat2): full-bleed scrims, a glass Back pill + quiet status chip up
-// top, eyebrow + title / circular glass transport / Audio & Subtitles pill in
-// a three-column bottom row, and a focusable scrubber with thumb + time
-// bubble. It shares WATCH_THEME + useFocusAnimation with the details page so
-// the screen → fullscreen transition reads as one surface.
+// top, eyebrow + title / circular glass transport / Language + Subtitles
+// pills in a three-column bottom row, and a focusable scrubber with thumb +
+// time bubble. It shares WATCH_THEME + useFocusAnimation with the details
+// page so the screen → fullscreen transition reads as one surface — the two
+// pills carry the SAME icons as the details page's pickers (globe / Aa).
 
 // ── SVG-free Icon Components ───────────────────────────────────────────────
 
@@ -155,40 +156,6 @@ function FocusCrossfade({
       <Animated.View style={[styles.crossfadeLayer, { opacity: progress }]}>
         {render(WATCH_THEME.focusInk)}
       </Animated.View>
-    </View>
-  )
-}
-
-/** The handoff's bespoke audio-bars + captions-box glyph for the Audio &
-    Subtitles pill — composed from Views (the TV app is SVG-free). */
-function AudioSubsGlyph({ color, size }: { color: string; size: number }) {
-  const u = size / 24 // design glyph is on a 24-unit box
-  const bar = (h: number) => ({
-    width: Math.max(2, Math.round(2.2 * u)),
-    height: h * u,
-    borderRadius: u,
-    backgroundColor: color,
-  })
-  return (
-    <View style={{ width: size, height: size, justifyContent: "center" }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 * u }}>
-        <View style={bar(6)} />
-        <View style={bar(11)} />
-        <View style={bar(16)} />
-      </View>
-      <View
-        style={{
-          position: "absolute",
-          right: 0,
-          bottom: 1.5 * u,
-          width: 8.5 * u,
-          height: 6.5 * u,
-          borderRadius: 2 * u,
-          borderWidth: Math.max(1, Math.round(1.6 * u)),
-          borderColor: color,
-          backgroundColor: "#00000000",
-        }}
-      />
     </View>
   )
 }
@@ -378,15 +345,20 @@ function PlayCircle({
   )
 }
 
-/** "Audio & Subtitles" glass pill, bottom-right — the in-player menu trigger
-    (replaces the bare CC button). Two-line cap: label + current selection. */
-function AudioSubsPill({
+/** Two-line glass menu pill, bottom-right — the in-player menu triggers
+    (Language / Subtitles). Carries the SAME Ionicons as the details page's
+    pickers (AnimatedFocusIcon) so the two surfaces read as one grammar. */
+function MenuPill({
+  icon,
+  label,
   sub,
   onPress,
   onFocusActivity,
   focusable,
   dimmed,
 }: {
+  icon: IconName
+  label: string
   sub: string | null
   onPress: () => void
   onFocusActivity: () => void
@@ -403,9 +375,10 @@ function AudioSubsPill({
       }}
       onBlur={() => setFocused(false)}
       focusable={focusable}
-      accessibilityLabel={
-        sub ? `Audio and subtitles, ${sub}` : "Audio and subtitles"
-      }
+      // Fold the visible sub-value into the label so VoiceOver and automated
+      // D-pad drivers can read the state without activating the picker
+      // (mirrors DetailsActionRow's SecondaryPill).
+      accessibilityLabel={sub ? `${label}, ${sub}` : label}
       accessibilityRole="button"
       style={dimmed && styles.controlDisabled}
     >
@@ -425,11 +398,7 @@ function AudioSubsPill({
           },
         ]}
       >
-        <FocusCrossfade
-          progress={progress}
-          size={scale(26)}
-          render={(color) => <AudioSubsGlyph color={color} size={scale(26)} />}
-        />
+        <AnimatedFocusIcon name={icon} progress={progress} size={scale(26)} />
         <View style={styles.asCap}>
           <Animated.Text
             style={[
@@ -443,7 +412,7 @@ function AudioSubsPill({
             ]}
             numberOfLines={1}
           >
-            Audio & Subtitles
+            {label}
           </Animated.Text>
           {sub != null && (
             <Animated.Text
@@ -1018,6 +987,7 @@ export function VideoPlayer({
   const {
     menuActive,
     menuOpen,
+    menuSection,
     menuOpenRef,
     openMenu,
     closeMenu,
@@ -1341,7 +1311,9 @@ export function VideoPlayer({
   // Top-bar status chip + pill sub-caption (null hides each — no-session
   // playback shows neither, matching the gated CC button it replaces).
   const statusChip = composePlayerStatusChip(audioLabel, subtitleLabel)
-  const audioSubsSub = composeAudioSubsPillSub(audioLabel, subtitleLabel)
+  // Pill sub-captions mirror the details page: Language shows the active dub's
+  // name; Subtitles shows the active track's name, or "Off".
+  const subtitlePillSub = menuActive ? (subtitleLabel ?? "Off") : null
   const remainingLabel =
     duration > 0
       ? `−${formatTime(Math.max(0, duration - currentTime))}`
@@ -1653,22 +1625,36 @@ export function VideoPlayer({
               />
             </View>
 
-            {/* ── In-player menu trigger (U7→U8) ───────────────────────
-                The Audio & Subtitles pill replaces the bare CC button.
+            {/* ── In-player menu triggers (U7→U8) ───────────────────────
+                Separate Language / Subtitles pills (same icons as the
+                details page's pickers), each opening its own menu section.
                 Rendered ONLY when the session is driving this overlay
-                (menuActive) — experience-card playback never shows it.
+                (menuActive) — experience-card playback never shows them.
                 No scheduleHide() on press: openMenu() sets
                 menuOpenRef.current=true synchronously and scheduleHide
                 early-returns while the menu is open. */}
             <View style={styles.rightCol}>
               {menuActive && (
-                <AudioSubsPill
-                  sub={audioSubsSub}
-                  onPress={openMenu}
-                  onFocusActivity={scheduleHide}
-                  focusable={controlsFocusable && !hasError}
-                  dimmed={hasError}
-                />
+                <>
+                  <MenuPill
+                    icon="globe-outline"
+                    label="Language"
+                    sub={audioLabel}
+                    onPress={() => openMenu("language")}
+                    onFocusActivity={scheduleHide}
+                    focusable={controlsFocusable && !hasError}
+                    dimmed={hasError}
+                  />
+                  <MenuPill
+                    icon="text-outline"
+                    label="Subtitles"
+                    sub={subtitlePillSub}
+                    onPress={() => openMenu("subtitles")}
+                    onFocusActivity={scheduleHide}
+                    focusable={controlsFocusable && !hasError}
+                    dimmed={hasError}
+                  />
+                </>
               )}
             </View>
           </View>
@@ -1707,7 +1693,9 @@ export function VideoPlayer({
             menu's writes feed the live dub-switch + subtitle layer above.
             Mounted only when the session drives this overlay AND the menu is
             open — never for experience-card playback. */}
-        {menuActive && menuOpen && <InPlayerMenu onClose={closeMenu} />}
+        {menuActive && menuOpen && (
+          <InPlayerMenu section={menuSection} onClose={closeMenu} />
+        )}
       </TVFocusGuideView>
 
       {/* ── Loading veil (U8) ─────────────────────────────────────────────
@@ -1871,9 +1859,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: scale(22),
   },
+  // Two side-by-side menu pills, right-aligned (Language · Subtitles).
   rightCol: {
     flex: 1,
-    alignItems: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: scale(14),
   },
 
   // Error-state ghost treatment: controls remain mounted (so the spatial

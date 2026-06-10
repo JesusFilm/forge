@@ -35,6 +35,9 @@ import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { inPlayerMenuVisible, shouldReplaceSource } from "./playerSwitch"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 
+/** The two sections of the in-player menu (split pills, U8). */
+export type InPlayerMenuSection = "language" | "subtitles"
+
 export type UseSessionPlaybackParams = {
   /**
    * The expo-video player instance created by the host's useVideoPlayer. The
@@ -93,12 +96,18 @@ export type UseSessionPlaybackResult = {
   /** Whether the in-player menu is currently open. */
   menuOpen: boolean
   /**
+   * Which section the open menu shows — "language" (dub list) or "subtitles".
+   * Set by openMenu; meaningless while menuOpen is false. Mirrors the details
+   * page's separate Language / Subtitles pickers (U8 split pills).
+   */
+  menuSection: InPlayerMenuSection
+  /**
    * Ref mirror of menuOpen, read synchronously by the host's scheduleHide guard
    * (which runs from native event callbacks before React commits state).
    */
   menuOpenRef: MutableRefObject<boolean>
-  /** Open the in-player menu — suppresses auto-hide (stops in-flight hide). */
-  openMenu: () => void
+  /** Open the in-player menu on a section — suppresses auto-hide. */
+  openMenu: (section: InPlayerMenuSection) => void
   /** Close the in-player menu — re-arms auto-hide + restores focus. */
   closeMenu: () => void
   /**
@@ -162,9 +171,12 @@ export function useSessionPlayback({
 
   // In-player menu open/closed. Opening suppresses auto-hide; closing returns
   // focus to play/pause via the one-shot revealFocusPending claim (set in the
-  // close handler below). Only ever true while menuActive (the open control is
-  // only rendered then), but we still gate the render on both for safety.
+  // close handler below). Only ever true while menuActive (the open controls
+  // are only rendered then), but we still gate the render on both for safety.
+  // menuSection records which pill opened it (Language vs Subtitles).
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuSection, setMenuSection] =
+    useState<InPlayerMenuSection>("language")
   const menuOpenRef = useRef(false)
   useEffect(() => {
     menuOpenRef.current = menuOpen
@@ -331,21 +343,25 @@ export function useSessionPlayback({
   // scheduleHideRef).
   const onRequestRevealFocusRef = useRef(onRequestRevealFocus)
   onRequestRevealFocusRef.current = onRequestRevealFocus
-  const openMenu = useCallback(() => {
-    // Stop any in-flight hide so its completion callback can't flip
-    // controlsVisible=false after the menu opens (captured-handle pattern,
-    // mirrors revealControls / the error + foreground paths).
-    if (hideAnimRef.current != null) {
-      hideAnimRef.current.stop()
-      hideAnimRef.current = null
-    }
-    if (inactivityTimerRef.current != null) {
-      clearTimeout(inactivityTimerRef.current)
-      inactivityTimerRef.current = null
-    }
-    menuOpenRef.current = true
-    setMenuOpen(true)
-  }, [hideAnimRef, inactivityTimerRef])
+  const openMenu = useCallback(
+    (section: InPlayerMenuSection) => {
+      // Stop any in-flight hide so its completion callback can't flip
+      // controlsVisible=false after the menu opens (captured-handle pattern,
+      // mirrors revealControls / the error + foreground paths).
+      if (hideAnimRef.current != null) {
+        hideAnimRef.current.stop()
+        hideAnimRef.current = null
+      }
+      if (inactivityTimerRef.current != null) {
+        clearTimeout(inactivityTimerRef.current)
+        inactivityTimerRef.current = null
+      }
+      setMenuSection(section)
+      menuOpenRef.current = true
+      setMenuOpen(true)
+    },
+    [hideAnimRef, inactivityTimerRef],
+  )
   const closeMenu = useCallback(() => {
     menuOpenRef.current = false
     setMenuOpen(false)
@@ -357,6 +373,7 @@ export function useSessionPlayback({
   return {
     menuActive,
     menuOpen,
+    menuSection,
     menuOpenRef,
     openMenu,
     closeMenu,
