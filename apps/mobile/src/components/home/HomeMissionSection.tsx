@@ -7,7 +7,15 @@
  * transparent-feed convention.
  */
 import { type ComponentProps, memo, useCallback } from "react"
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  FlatList,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
 
@@ -21,9 +29,15 @@ import {
 import { openExternalUrl } from "../../lib/openExternalUrl"
 import {
   CARD_BORDER_RADIUS,
+  CARD_GAP,
   HORIZONTAL_PADDING,
   feedback,
 } from "../../styles/shared"
+
+// Wide card with a peek of the next one — affords horizontal swiping while
+// keeping each group one card tall instead of three stacked (less vertical
+// scrolling to traverse the section).
+const CARD_WIDTH_RATIO = 0.78
 
 const BETA_SIGNUP_URL = "https://mailchi.mp/jesusfilm/beta"
 
@@ -85,6 +99,8 @@ const HIGHLIGHTS: readonly Highlight[] = [
 
 export const HomeMissionSection = memo(function HomeMissionSection() {
   const typography = useTypography()
+  const { width: screenWidth } = useWindowDimensions()
+  const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
 
   const handleBetaPress = useCallback(() => {
     openExternalUrl(BETA_SIGNUP_URL)
@@ -120,9 +136,12 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
           already gather, watch, and share.
         </Text>
 
-        <View style={styles.cardStack}>
-          {MISSION_POINTS.map((point) => (
-            <View key={point.title} style={styles.pointCard}>
+        <FlatList
+          horizontal
+          data={MISSION_POINTS}
+          keyExtractor={(point) => point.title}
+          renderItem={({ item: point }) => (
+            <View style={[styles.pointCard, { width: cardWidth }]}>
               <Ionicons
                 name={point.icon}
                 size={28}
@@ -135,15 +154,25 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
                 {point.description}
               </Text>
             </View>
-          ))}
-        </View>
+          )}
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={cardWidth + CARD_GAP}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          style={styles.carousel}
+          contentContainerStyle={styles.carouselContent}
+          accessibilityLabel={`${MISSION_POINTS.length} mission points`}
+        />
 
         <Text style={[styles.buildingNextLabel, typography.titleSmall]}>
           What we are building next
         </Text>
-        <View style={styles.cardStack}>
-          {HIGHLIGHTS.map((highlight) => (
-            <View key={highlight.title} style={styles.highlightCard}>
+        <FlatList
+          horizontal
+          data={HIGHLIGHTS}
+          keyExtractor={(highlight) => highlight.title}
+          renderItem={({ item: highlight }) => (
+            <View style={[styles.highlightCard, { width: cardWidth }]}>
               <Text
                 style={[
                   styles.cardTitle,
@@ -157,8 +186,15 @@ export const HomeMissionSection = memo(function HomeMissionSection() {
                 {highlight.description}
               </Text>
             </View>
-          ))}
-        </View>
+          )}
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={cardWidth + CARD_GAP}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          style={styles.carousel}
+          contentContainerStyle={styles.carouselContent}
+          accessibilityLabel={`${HIGHLIGHTS.length} upcoming products`}
+        />
 
         <View style={styles.invite}>
           <Text
@@ -229,8 +265,14 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     marginBottom: 28,
   },
-  cardStack: {
-    gap: 12,
+  carousel: {
+    // Escape the content padding so cards can bleed to the screen edge while
+    // the first card still aligns with the padded text above it.
+    marginHorizontal: -HORIZONTAL_PADDING,
+  },
+  carouselContent: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    gap: CARD_GAP,
   },
   pointCard: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
