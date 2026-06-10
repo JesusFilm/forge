@@ -193,8 +193,8 @@ function MultilingualTooltipPanel({
       role="tooltip"
       aria-hidden={visible ? undefined : true}
       data-testid="watch-language-picker-tooltip-panel"
-      className={`flex min-h-12 w-full items-start gap-2 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-opacity duration-150 ${
-        visible ? "opacity-100" : "pointer-events-none opacity-0"
+      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-opacity duration-150 ${
+        visible ? "opacity-100" : "opacity-0"
       }`}
     >
       <Info
@@ -534,9 +534,9 @@ export function LanguagePickerModal({
             : t("dialogTitle")}
         </DialogTitle>
 
-        <div className="flex flex-col gap-10">
+        <div className="relative flex flex-col gap-10">
+          <MultilingualTooltipPanel copy={activeTooltipCopy} />
           <div className="flex flex-col gap-4">
-            <MultilingualTooltipPanel copy={activeTooltipCopy} />
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.language}
               testId="watch-language-picker-tooltip-language"

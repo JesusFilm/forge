@@ -82,6 +82,9 @@ function expectMultilingualTooltip(testId: string, expected: string[]) {
   expect(tooltip?.getAttribute("role")).toBe("tooltip")
   expect(tooltip?.getAttribute("aria-hidden")).not.toBe("true")
   expect(tooltip?.className).toContain("w-full")
+  expect(tooltip?.className).toContain("absolute")
+  expect(tooltip?.className).toContain("bottom-full")
+  expect(tooltip?.className).toContain("pointer-events-none")
   expect(tooltip?.className).toContain("opacity-100")
   expect(tooltip?.className).toContain("min-h-12")
   expect(tooltip?.className).not.toContain("border")
@@ -430,6 +433,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     )
     expect(defaultTooltipPanel).not.toBeNull()
     expect(defaultTooltipPanel?.className).toContain("opacity-0")
+    expect(defaultTooltipPanel?.className).toContain("absolute")
+    expect(defaultTooltipPanel?.className).toContain("bottom-full")
     expect(defaultTooltipPanel?.getAttribute("aria-hidden")).toBe("true")
     const languageTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-language",
