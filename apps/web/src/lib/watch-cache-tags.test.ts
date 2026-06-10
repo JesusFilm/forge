@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
   WATCH_CACHE_TAG_GROUPS,
   WATCH_CACHE_TAGS,
   uniqueWatchCacheTags,
@@ -16,6 +17,10 @@ describe("watch cache tags", () => {
       childDubLanguages: "watch:child-dub-languages",
       routeManifest: "watch:route-manifest",
     })
+  })
+
+  it("keeps route-render cache TTL aligned with the static route TTL", () => {
+    expect(WATCH_RENDER_CACHE_REVALIDATE_SECONDS).toBe(3600)
   })
 
   it("dedupes grouped tag lists while preserving order", () => {

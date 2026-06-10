@@ -17,7 +17,10 @@ import {
   watchVideoFragment,
 } from "@/lib/fragments"
 import { slugToBcp47Tag } from "@/lib/locale"
-import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import {
+  WATCH_CACHE_TAGS,
+  WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
+} from "@/lib/watch-cache-tags"
 
 // Keep gql.tada introspection types live for the watch-page fragment.
 void watchVideoFragment
@@ -874,7 +877,7 @@ const fetchResolvedWatchPage = unstable_cache(
   },
   ["watch-page"],
   {
-    revalidate: 60,
+    revalidate: WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
     tags: [
       WATCH_CACHE_TAGS.home,
       WATCH_CACHE_TAGS.settings,
@@ -913,7 +916,10 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
     }
   },
   ["watch-experience-page"],
-  { revalidate: 60, tags: [WATCH_CACHE_TAGS.experience] },
+  {
+    revalidate: WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
+    tags: [WATCH_CACHE_TAGS.experience],
+  },
 )
 
 /**
@@ -1328,7 +1334,10 @@ async function tryResolveWatchVideo(
 const fetchResolvedWatchVideo = unstable_cache(
   tryResolveWatchVideo,
   ["watch-video"],
-  { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
+  {
+    revalidate: WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
+    tags: [WATCH_CACHE_TAGS.video],
+  },
 )
 
 /**
@@ -1381,11 +1390,10 @@ const fetchWatchVideoBySlug = cache(
 
 // How long the series-page language union is cached (seconds). The set of
 // languages a series is dubbed into changes only when a new dub is published
-// — far rarer than the title/episode edits the 60 s series-content cache
-// targets — so it gets its own longer-lived cache. Caps the per-language
-// DISTINCT-ON scan on heavy collections (Jesus film: ~137k dub rows) to once
-// an hour instead of once a minute.
-const CHILD_DUB_LANGUAGES_REVALIDATE_SECONDS = 60 * 60
+// — far rarer than title/episode edits. Caps the per-language DISTINCT-ON scan
+// on heavy collections (Jesus film: ~137k dub rows) to once an hour.
+const CHILD_DUB_LANGUAGES_REVALIDATE_SECONDS =
+  WATCH_RENDER_CACHE_REVALIDATE_SECONDS
 
 // Series-only fetch for the cross-episode language picker. Kept separate from
 // fetchWatchVideoBySlug (and out of the WatchVideo fragment) so the watch page
@@ -1395,8 +1403,8 @@ const CHILD_DUB_LANGUAGES_REVALIDATE_SECONDS = 60 * 60
 // guaranteed playable and carries only display fields.
 //
 // `unstable_cache` (not React `cache()`) so the result is cached cross-request
-// at its own long TTL — invoked from resolveSeriesBySlug as a SIBLING of the
-// 60 s series-content cache, never nested inside it.
+// at its own TTL — invoked from resolveSeriesBySlug as a SIBLING of the
+// series-content cache, never nested inside it.
 const fetchVideoChildDubLanguages = unstable_cache(
   async (videoSlug: string): Promise<WatchChildLanguage[]> => {
     const result = await client.query({
@@ -1504,7 +1512,10 @@ async function tryResolveWatchVideoBySlug(
 const fetchResolvedWatchVideoBySlug = unstable_cache(
   tryResolveWatchVideoBySlug,
   ["watch-video-by-slug"],
-  { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
+  {
+    revalidate: WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
+    tags: [WATCH_CACHE_TAGS.video],
+  },
 )
 
 // Returns null when the slug doesn't match a record OR the video has no
@@ -1641,9 +1652,9 @@ async function tryResolveSeriesBySlug(
     ? stripNonSelectedVariantFields(record, selectedVariant.documentId)
     : record
 
-  // `childDubLanguages` is merged on in resolveSeriesBySlug (a sibling fetch
-  // with its own longer-lived cache), not here — keeps the language union out
-  // of this 60 s series-content cache and avoids nesting two unstable_caches.
+  // `childDubLanguages` is merged on in resolveSeriesBySlug (a sibling fetch),
+  // not here — keeps the language union out of this series-content cache and
+  // avoids nesting two unstable_caches.
   const resolved: ResolvedSeriesBySlug = {
     video: narrowedRecord,
     selectedVariant,
@@ -1654,7 +1665,10 @@ async function tryResolveSeriesBySlug(
 const fetchResolvedSeriesBySlug = unstable_cache(
   tryResolveSeriesBySlug,
   ["series-by-slug"],
-  { revalidate: 60, tags: [WATCH_CACHE_TAGS.series, WATCH_CACHE_TAGS.video] },
+  {
+    revalidate: WATCH_RENDER_CACHE_REVALIDATE_SECONDS,
+    tags: [WATCH_CACHE_TAGS.series, WATCH_CACHE_TAGS.video],
+  },
 )
 
 // Returns null when the slug doesn't match a record OR the record is not

@@ -97,7 +97,7 @@ describe("resolveWatchPage", () => {
         {
           keyParts: ["watch-page"],
           options: {
-            revalidate: 60,
+            revalidate: 3600,
             tags: [
               "watch:home",
               "watch:settings",
@@ -108,11 +108,11 @@ describe("resolveWatchPage", () => {
         },
         {
           keyParts: ["watch-experience-page"],
-          options: { revalidate: 60, tags: ["watch:experience"] },
+          options: { revalidate: 3600, tags: ["watch:experience"] },
         },
         {
           keyParts: ["watch-video"],
-          options: { revalidate: 60, tags: ["watch:video"] },
+          options: { revalidate: 3600, tags: ["watch:video"] },
         },
         {
           keyParts: ["video-child-dub-languages"],
@@ -123,12 +123,12 @@ describe("resolveWatchPage", () => {
         },
         {
           keyParts: ["watch-video-by-slug"],
-          options: { revalidate: 60, tags: ["watch:video"] },
+          options: { revalidate: 3600, tags: ["watch:video"] },
         },
         {
           keyParts: ["series-by-slug"],
           options: {
-            revalidate: 60,
+            revalidate: 3600,
             tags: ["watch:series", "watch:video"],
           },
         },

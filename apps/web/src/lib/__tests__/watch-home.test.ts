@@ -140,7 +140,7 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(unstableCacheCalls).toContainEqual({
       keyParts: ["watch-home", "v3-carousel-sequence"],
       options: {
-        revalidate: 60,
+        revalidate: 3600,
         tags: ["watch:home", "watch:video"],
       },
     })
