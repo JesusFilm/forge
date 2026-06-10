@@ -11,7 +11,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest"
 import {
   calculateVideoSemanticMixedScore,
   mixVideoSemanticEvidenceRows,
-  resolveSemanticEmbeddingColumn,
   searchVideoSemantic,
   searchVideoKeyword,
   searchExperienceSemantic,
@@ -51,9 +50,8 @@ function latestRawValues(prisma: ReturnType<typeof mockPrisma>): unknown[] {
  * interpolated `Prisma.raw(...)` fragments. `latestRawSql` above joins
  * only the static template strings (`call[0]`); a `Prisma.raw` value is
  * passed as an interpolated argument (in `call.slice(1)`), carrying its
- * literal text on `.sql`. The U3 column injection (`vsl.embedding_qwen`
- * etc.) flows through that path, so column-selection assertions must
- * fold the raw fragments back in.
+ * literal text on `.sql`. Provenance filters are interpolated fragments,
+ * so assertions that inspect those predicates fold the fragments back in.
  */
 function latestRawSqlWithFragments(
   prisma: ReturnType<typeof mockPrisma>,
@@ -274,9 +272,6 @@ describe("searchVideoSemantic", () => {
     const sql = latestRawSql(prisma)
     expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(2)
     expect((sql.match(/vl\.status = 'published'/g) ?? []).length).toBe(2)
-    // The `<col> IS NOT NULL` gate's column is now a Prisma.raw fragment
-    // (U3), so fold the fragments back in. The default column is
-    // `embedding` and the `IS NOT NULL` gate is present for both sources.
     const sqlWithFragments = latestRawSqlWithFragments(prisma)
     expect((sqlWithFragments.match(/IS NOT NULL/g) ?? []).length).toBe(2)
     expect(sqlWithFragments).toContain("vsl.embedding")
@@ -318,34 +313,14 @@ describe("searchVideoSemantic", () => {
   })
 })
 
-describe("resolveSemanticEmbeddingColumn (U3 allowlist)", () => {
-  it("maps 'gateway' to embedding_qwen", () => {
-    expect(resolveSemanticEmbeddingColumn("gateway")).toBe("embedding_qwen")
-  })
-
-  it("maps 'openrouter' to embedding", () => {
-    expect(resolveSemanticEmbeddingColumn("openrouter")).toBe("embedding")
-  })
-
-  it("maps undefined to embedding (fail-safe default)", () => {
-    expect(resolveSemanticEmbeddingColumn(undefined)).toBe("embedding")
-  })
-
-  it("maps any unknown value to embedding (closed allowlist)", () => {
-    expect(
-      resolveSemanticEmbeddingColumn("../../etc; DROP TABLE" as never),
-    ).toBe("embedding")
-  })
-})
-
-describe("searchVideoSemantic embeddingSource column selection (U3)", () => {
+describe("searchVideoSemantic embedding column selection", () => {
   let prisma: ReturnType<typeof mockPrisma>
 
   beforeEach(() => {
     prisma = mockPrisma()
   })
 
-  it("reads vsl.embedding / vtc.embedding by default (no source)", async () => {
+  it("reads vsl.embedding / vtc.embedding and never the removed qwen columns", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
     await searchVideoSemantic(prisma, {
       queryEmbedding: "[0.1]",
@@ -359,57 +334,6 @@ describe("searchVideoSemantic embeddingSource column selection (U3)", () => {
     expect(sql).toContain("vsl.embedding_provider")
     expect(sql).toContain("vt.embedding_provider")
     expect(sql).not.toContain("embedding_qwen")
-  })
-
-  it("reads vsl.embedding / vtc.embedding when source='openrouter'", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([])
-    await searchVideoSemantic(prisma, {
-      queryEmbedding: "[0.1]",
-      locale: "en",
-      limit: 5,
-      embeddingSource: "openrouter",
-    })
-
-    const sql = latestRawSqlWithFragments(prisma)
-    expect(sql).toContain("vsl.embedding")
-    expect(sql).toContain("vtc.embedding")
-    expect(sql).toContain("vsl.embedding_provider")
-    expect(sql).toContain("vt.embedding_provider")
-    expect(sql).not.toContain("embedding_qwen")
-  })
-
-  it("reads vsl.embedding_qwen / vtc.embedding_qwen when source='gateway'", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([])
-    await searchVideoSemantic(prisma, {
-      queryEmbedding: "[0.1]",
-      locale: "en",
-      limit: 5,
-      embeddingSource: "gateway",
-    })
-
-    const sql = latestRawSqlWithFragments(prisma)
-    expect(sql).toContain("vsl.embedding_qwen")
-    expect(sql).toContain("vtc.embedding_qwen")
-    expect(sql).not.toContain("vsl.embedding_provider")
-    expect(sql).not.toContain("vt.embedding_provider")
-  })
-
-  it("falls back to the embedding column for an unknown source (allowlist guard)", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([])
-    await searchVideoSemantic(prisma, {
-      queryEmbedding: "[0.1]",
-      locale: "en",
-      limit: 5,
-      embeddingSource: "../../injection" as never,
-    })
-
-    const sql = latestRawSqlWithFragments(prisma)
-    expect(sql).toContain("vsl.embedding")
-    expect(sql).toContain("vtc.embedding")
-    expect(sql).toContain("vsl.embedding_provider")
-    expect(sql).toContain("vt.embedding_provider")
-    expect(sql).not.toContain("embedding_qwen")
-    expect(sql).not.toContain("injection")
   })
 })
 
@@ -426,7 +350,6 @@ describe("semantic retriever provenance gates", () => {
       queryEmbedding: "[0.1]",
       locale: "en",
       limit: 5,
-      embeddingSource: "openrouter",
     })
 
     const sql = latestRawSqlWithFragments(prisma)
@@ -448,7 +371,6 @@ describe("semantic retriever provenance gates", () => {
       queryEmbedding: "[0.1]",
       locale: "en",
       limit: 5,
-      embeddingSource: "openrouter",
     })
 
     const sql = latestRawSqlWithFragments(prisma)

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act } from "react"
+import { act, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -39,6 +39,11 @@ const OPTIONS = [
   { slug: "french", name: "French" },
   { slug: "german", name: "German" },
 ]
+
+const MANY_OPTIONS = Array.from({ length: 200 }, (_, index) => ({
+  slug: `language-${index}`,
+  name: `Language ${String(index).padStart(3, "0")}`,
+}))
 
 describe("LanguageCombobox", () => {
   it("renders the currently selected option label in the trigger", () => {
@@ -159,6 +164,127 @@ describe("LanguageCombobox", () => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
     expect($('[data-testid="language-combobox-popover"]')).not.toBeNull()
+  })
+
+  it("allows callers to wrap the trigger without wrapping the open popover", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="spanish"
+          onChange={vi.fn()}
+          triggerWrapper={(trigger) => (
+            <div data-testid="language-combobox-trigger-wrapper">{trigger}</div>
+          )}
+        />,
+      )
+    })
+
+    const wrapper = $('[data-testid="language-combobox-trigger-wrapper"]')
+    const trigger = $('[data-testid="language-combobox-trigger"]')
+    expect(wrapper?.contains(trigger)).toBe(true)
+
+    act(() => {
+      trigger?.click()
+    })
+
+    const popover = $('[data-testid="language-combobox-popover"]')
+    expect(popover).not.toBeNull()
+    expect(wrapper?.contains(popover)).toBe(false)
+  })
+
+  it("supports controlled open state", () => {
+    function ControlledCombobox() {
+      const [open, setOpen] = useState(false)
+      return (
+        <div>
+          <button
+            type="button"
+            data-testid="external-close"
+            onClick={() => setOpen(false)}
+          >
+            Close
+          </button>
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+            open={open}
+            onOpenChange={setOpen}
+          />
+        </div>
+      )
+    }
+
+    act(() => {
+      root.render(<ControlledCombobox />)
+    })
+
+    expect($('[data-testid="language-combobox-popover"]')).toBeNull()
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    expect($('[data-testid="language-combobox-popover"]')).not.toBeNull()
+    act(() => {
+      $('[data-testid="external-close"]')?.click()
+    })
+    expect($('[data-testid="language-combobox-popover"]')).toBeNull()
+  })
+
+  it("windows large option sets on open so the popover appears immediately", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={MANY_OPTIONS}
+          value="language-0"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const listbox = $('[role="listbox"]')
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(listbox?.getAttribute("data-virtualized")).toBe("true")
+    expect(items.length).toBeLessThan(20)
+    expect(items[0]?.getAttribute("aria-setsize")).toBe("200")
+    expect(items[0]?.getAttribute("aria-posinset")).toBe("1")
+    expect(
+      items.some((item) => item.textContent?.includes("Language 199")),
+    ).toBe(false)
+  })
+
+  it("searches the full large option set even when only the first window is mounted", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={MANY_OPTIONS}
+          value="language-0"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "Language 199"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect($('[role="listbox"]')?.getAttribute("data-virtualized")).toBe(
+      "false",
+    )
+    expect(items).toHaveLength(1)
+    expect(items[0]?.getAttribute("data-language-slug")).toBe("language-199")
   })
 
   it("filters the list as the user types (case-insensitive)", () => {

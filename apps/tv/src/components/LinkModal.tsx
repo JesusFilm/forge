@@ -202,6 +202,7 @@ export function LinkModal({
             onPress={onClose}
             hasTVPreferredFocus
             style={styles.closeButton}
+            accessibilityLabel="Close"
           >
             <Text style={styles.closeIcon}>{"\u2715"}</Text>
           </FocusableCard>

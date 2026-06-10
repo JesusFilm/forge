@@ -6,9 +6,10 @@
  * and a top-K overlap/divergence panel.
  *
  * Public route — no requireSession() gate. Public-shape data only.
- * The `debug` payload is origin-gated server-side; same-origin
- * requests pass the gate by default in dev/preview, and prod
- * requires SEARCH_DEBUG_ALLOWED_ORIGINS to include admin's origin.
+ * The browser calls a server action, and that action attaches the
+ * configured server-side search bearer before hitting Admin GraphQL.
+ * The `debug` payload is still origin-gated server-side; prod requires
+ * SEARCH_DEBUG_ALLOWED_ORIGINS to include admin's origin.
  *
  * See docs/plans/2026-04-29-005-feat-admin-keyword-search-demo-route-plan.md
  */

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = vi.hoisted(() => ({
   env: {
@@ -31,10 +31,29 @@ vi.mock("@/services/search-trace-retention/job", () => ({
 
 describe("workflow instrumentation", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.useRealTimers()
+    vi.resetModules()
+    worldStart.mockReset()
+    getWorld.mockReset()
+    getWorld.mockImplementation(() => ({ start: worldStart }))
+    startWorkflowWorkerHeartbeat.mockReset()
+    ensureVideoDbBackupSchedulerStarted.mockReset()
+    ensureSearchTraceRetentionSchedulerStarted.mockReset()
+    delete (
+      globalThis as typeof globalThis & {
+        __forgeAdminWorkflowStartup?: unknown
+      }
+    ).__forgeAdminWorkflowStartup
     process.env.NEXT_RUNTIME = "nodejs"
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "false"
     mockEnv.env.WORKFLOW_TARGET_WORLD = undefined
+    delete process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS
+    delete process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS
+  })
+
+  afterEach(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
   })
 
   it("does not start a world when Postgres World is not selected", async () => {
@@ -98,5 +117,46 @@ describe("workflow instrumentation", () => {
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
+  })
+
+  it("schedules a retry instead of throwing on transient startup saturation", async () => {
+    process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = "1"
+    const saturationError = Object.assign(
+      new Error("sorry, too many clients already"),
+      { code: "53300" },
+    )
+    worldStart
+      .mockRejectedValueOnce(saturationError)
+      .mockResolvedValueOnce(null)
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    const { register, isTransientWorkflowStartupError } =
+      await import("./instrumentation")
+
+    expect(isTransientWorkflowStartupError(saturationError)).toBe(true)
+    await expect(register()).resolves.toBeUndefined()
+    expect(worldStart).toHaveBeenCalledTimes(1)
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    expect(worldStart).toHaveBeenCalledTimes(2)
+    expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
+    expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
+    expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
+  })
+
+  it("throws non-transient startup errors", async () => {
+    const configError = new Error("workflow secret missing")
+    worldStart.mockRejectedValueOnce(configError)
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    const { register, isTransientWorkflowStartupError } =
+      await import("./instrumentation")
+
+    expect(isTransientWorkflowStartupError(configError)).toBe(false)
+    await expect(register()).rejects.toThrow("workflow secret missing")
+
+    expect(worldStart).toHaveBeenCalledTimes(1)
+    expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
   })
 })

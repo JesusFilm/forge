@@ -16,7 +16,9 @@ import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND } from "@/lib/watch-production-overlays"
 import {
+  WATCH_PLAYER_CHROME_REVEAL_EVENT,
   WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+  type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { ChromeButton, formatTime } from "./ChromeButton"
@@ -30,6 +32,11 @@ import {
 } from "./chrome-icons"
 
 const TOP_SCROLL_CHROME_REVEAL_THRESHOLD_PX = 8
+const CHROME_DIMMED_OPACITY = 0.3
+const CHROME_IDLE_HIDE_DELAY_MS = 4000
+const CHROME_INITIAL_POINTER_LOCK_MS = 5000
+
+type ChromeVisibility = "dim" | "hidden" | "bright"
 
 export function HeroPlayerControls({
   player,
@@ -60,7 +67,7 @@ export function HeroPlayerControls({
    * a callback is provided), so both surfaces appear together.
    */
   showLanguageButton?: boolean
-  onVisibilityChange?: (visible: boolean) => void
+  onVisibilityChange?: (detail: WatchPlayerChromeVisibilityDetail) => void
 }) {
   const t = useTranslations("HeroPlayerControls")
   const [playing, setPlaying] = useState(false)
@@ -82,7 +89,8 @@ export function HeroPlayerControls({
   useEffect(() => {
     setWrapperEl(wrapperRef.current)
   }, [wrapperRef])
-  const [controlsVisible, setControlsVisible] = useState(true)
+  const [chromeVisibility, setChromeVisibility] =
+    useState<ChromeVisibility>("dim")
   const [hoveringControls, setHoveringControls] = useState(false)
   const [volumeOpen, setVolumeOpen] = useState(false)
   const [volumeDragging, setVolumeDragging] = useState(false)
@@ -94,10 +102,33 @@ export function HeroPlayerControls({
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const volumeTrackRef = useRef<HTMLDivElement | null>(null)
   const hideTimerRef = useRef<number | null>(null)
+  const chromeVisibilityRef = useRef<ChromeVisibility>("dim")
+  const pointerRevealLockedRef = useRef(true)
+  const pointerRevealLockTimerRef = useRef<number | null>(null)
+  useEffect(() => {
+    chromeVisibilityRef.current = chromeVisibility
+  }, [chromeVisibility])
+
+  const chromeOpacity =
+    chromeVisibility === "bright"
+      ? 1
+      : chromeVisibility === "dim"
+        ? CHROME_DIMMED_OPACITY
+        : 0
+  const chromeVisible = chromeVisibility !== "hidden"
+  const chromeOpacityClass =
+    chromeVisibility === "bright"
+      ? "opacity-100"
+      : chromeVisibility === "dim"
+        ? "opacity-30"
+        : "opacity-0"
 
   useEffect(() => {
-    onVisibilityChange?.(controlsVisible)
-  }, [controlsVisible, onVisibilityChange])
+    onVisibilityChange?.({
+      visible: chromeVisible,
+      opacity: chromeOpacity,
+    })
+  }, [chromeOpacity, chromeVisible, onVisibilityChange])
 
   useEffect(() => {
     window.dispatchEvent(
@@ -119,15 +150,11 @@ export function HeroPlayerControls({
     }
   }, [])
 
-  // Refs let scheduleHide read the latest playing/hovering state without
+  // Refs let scheduleHide read the latest hovering state without
   // resubscribing the wrapper-level mousemove listener on every render.
   // Writes happen in commit-phase effects so concurrent rendering replays
   // can't leave the refs in interim/abandoned states.
-  const playingRef = useRef(false)
   const hoveringControlsRef = useRef(false)
-  useEffect(() => {
-    playingRef.current = playing
-  }, [playing])
   useEffect(() => {
     hoveringControlsRef.current = hoveringControls
   }, [hoveringControls])
@@ -177,16 +204,30 @@ export function HeroPlayerControls({
     timelineDraggingRef.current = timelineDragging
   }, [timelineDragging])
 
-  const scheduleHide = useCallback(() => {
+  useEffect(() => {
+    pointerRevealLockedRef.current = true
+    pointerRevealLockTimerRef.current = window.setTimeout(() => {
+      pointerRevealLockedRef.current = false
+      pointerRevealLockTimerRef.current = null
+    }, CHROME_INITIAL_POINTER_LOCK_MS)
+    return () => {
+      if (pointerRevealLockTimerRef.current != null) {
+        window.clearTimeout(pointerRevealLockTimerRef.current)
+        pointerRevealLockTimerRef.current = null
+      }
+      pointerRevealLockedRef.current = false
+    }
+  }, [])
+
+  const scheduleHide = useCallback((delayMs = CHROME_IDLE_HIDE_DELAY_MS) => {
     if (hideTimerRef.current != null) {
       window.clearTimeout(hideTimerRef.current)
       hideTimerRef.current = null
     }
-    // Don't auto-hide while paused, while user hovers controls, or while user
+    // Don't auto-dim while user hovers controls, or while user
     // is actively dragging either the volume slider or the timeline — losing
     // either mid-drag drops pointer capture and leaves the drag flag stuck.
     if (
-      !playingRef.current ||
       hoveringControlsRef.current ||
       volumeDraggingRef.current ||
       timelineDraggingRef.current
@@ -194,15 +235,60 @@ export function HeroPlayerControls({
       return
     }
     hideTimerRef.current = window.setTimeout(() => {
-      setControlsVisible(false)
+      setChromeVisibility("hidden")
       hideTimerRef.current = null
-    }, 3000)
+    }, delayMs)
   }, [])
 
-  const showControls = useCallback(() => {
-    setControlsVisible(true)
-    scheduleHide()
-  }, [scheduleHide])
+  const revealControls = useCallback(
+    ({ pointerDriven = false }: { pointerDriven?: boolean } = {}) => {
+      if (pointerDriven && pointerRevealLockedRef.current) return false
+      setChromeVisibility("bright")
+      scheduleHide()
+      return true
+    },
+    [scheduleHide],
+  )
+
+  const revealDimmedControls = useCallback(
+    ({ pointerDriven = false }: { pointerDriven?: boolean } = {}) => {
+      if (pointerDriven && pointerRevealLockedRef.current) return false
+      setChromeVisibility("dim")
+      scheduleHide()
+      return true
+    },
+    [scheduleHide],
+  )
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      if (pointerRevealLockedRef.current) return
+
+      const wrapper = wrapperRef.current
+      if (wrapper) {
+        const rect = wrapper.getBoundingClientRect()
+        const hasMeasurableRect = rect.width > 0 && rect.height > 0
+        const insideWrapper =
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        if (hasMeasurableRect && !insideWrapper) return
+      }
+
+      const currentVisibility = chromeVisibilityRef.current
+      if (currentVisibility === "bright") {
+        scheduleHide()
+        return
+      }
+
+      if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
+        return
+      }
+      revealDimmedControls({ pointerDriven: true })
+    },
+    [revealDimmedControls, scheduleHide, wrapperRef],
+  )
 
   useEffect(() => {
     if (!player || typeof player.addEventListener !== "function") return
@@ -247,79 +333,75 @@ export function HeroPlayerControls({
   // Fullscreen state now comes from useIsFullscreen() above — no
   // component-local listener needed.
 
-  // When playing/hovering state changes, reschedule (or cancel) the hide
-  // timer. The mousemove listener also calls scheduleHide on every move,
-  // which is what actually keeps the auto-hide working repeatedly. Cleanup
-  // also covers unmount — scheduleHide cancels any pending timer.
+  // When hover state changes, reschedule (or cancel) the hide timer. Pointer
+  // movement also calls scheduleHide after reveal, which keeps the bright/
+  // hidden cycle working repeatedly.
   useEffect(() => {
-    scheduleHide()
+    if (chromeVisibilityRef.current === "hidden") return
+    scheduleHide(
+      chromeVisibilityRef.current === "dim"
+        ? CHROME_INITIAL_POINTER_LOCK_MS
+        : CHROME_IDLE_HIDE_DELAY_MS,
+    )
     return () => {
       if (hideTimerRef.current != null) {
         window.clearTimeout(hideTimerRef.current)
         hideTimerRef.current = null
       }
     }
-  }, [playing, hoveringControls, scheduleHide])
+  }, [chromeVisibility, hoveringControls, scheduleHide])
 
   // Reveal chrome on any user interaction inside the player wrapper OR on
   // the overlay anchor (where the chrome bar is portaled). Native listeners
   // only see events bubbling through their own DOM subtree; without binding
   // to the anchor, hovering / keyboard-focusing the portaled chrome bar
-  // never triggers reveal, and the bar can't be re-summoned after auto-hide.
+  // never triggers reveal, and the bar can't be brightened after auto-dim.
   useEffect(() => {
-    const reveal = () => showControls()
+    const reveal = () => revealControls()
+    const revealFromPointer = () => {
+      revealControls({ pointerDriven: true })
+    }
     const targets = [wrapperRef.current, overlayAnchor].filter(
       (t): t is HTMLDivElement => t != null,
     )
     for (const target of targets) {
-      target.addEventListener("pointermove", reveal)
       target.addEventListener("touchmove", reveal)
       target.addEventListener("touchstart", reveal)
       target.addEventListener("click", reveal)
       target.addEventListener("keydown", reveal)
+      target.addEventListener("focusin", reveal)
     }
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: true,
+    })
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealFromPointer)
     return () => {
       for (const target of targets) {
-        target.removeEventListener("pointermove", reveal)
         target.removeEventListener("touchmove", reveal)
         target.removeEventListener("touchstart", reveal)
         target.removeEventListener("click", reveal)
         target.removeEventListener("keydown", reveal)
+        target.removeEventListener("focusin", reveal)
       }
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_REVEAL_EVENT,
+        revealFromPointer,
+      )
     }
-  }, [wrapperRef, overlayAnchor, showControls])
+  }, [wrapperRef, overlayAnchor, revealControls, handlePointerMove])
 
-  // If chrome auto-hid while the user was watching, scrolling back to the
+  // If chrome auto-dimmed while the user was watching, scrolling back to the
   // absolute top should restore the full hero affordance: player controls
   // and the header chrome that listens to the visibility event.
   useEffect(() => {
     const revealAtTop = () => {
       if (window.scrollY > TOP_SCROLL_CHROME_REVEAL_THRESHOLD_PX) return
-      showControls()
+      revealControls()
     }
     window.addEventListener("scroll", revealAtTop, { passive: true })
     return () => window.removeEventListener("scroll", revealAtTop)
-  }, [showControls])
-
-  // Hide the OS cursor when chrome auto-hides — sibling cursor styles aren't
-  // enough to win over mux-player's own shadow-DOM styling, so set cursor on
-  // the wrapper element directly. Cursor inherits to descendants by default.
-  // Snapshot any prior cursor value so cleanup restores the wrapper to the
-  // state it was in (rather than clobbering an external writer's value).
-  const wrapperCursorRef = useRef<string | null>(null)
-  useEffect(() => {
-    const wrapper = wrapperRef.current
-    if (!wrapper) return
-    if (wrapperCursorRef.current === null) {
-      wrapperCursorRef.current = wrapper.style.cursor
-    }
-    wrapper.style.cursor = controlsVisible ? wrapperCursorRef.current : "none"
-    return () => {
-      if (wrapperCursorRef.current !== null) {
-        wrapper.style.cursor = wrapperCursorRef.current
-      }
-    }
-  }, [controlsVisible, wrapperRef])
+  }, [revealControls])
 
   const togglePlay = useCallback(() => {
     const p = playerRef.current
@@ -413,7 +495,7 @@ export function HeroPlayerControls({
 
   // If the OS revokes pointer capture (page hidden, touch preempted,
   // container collapses) the regular pointerup never fires — reset the
-  // drag flag explicitly so auto-hide can resume and the next pointerdown
+  // drag flag explicitly so auto-dim can resume and the next pointerdown
   // works correctly.
   const handleVolumeLostPointerCapture = useCallback(() => {
     setVolumeDragging(false)
@@ -620,7 +702,7 @@ export function HeroPlayerControls({
   // If the OS revokes pointer capture mid-drag (page hidden, touch preempted,
   // container collapses), pointerup never fires — reset the drag flag, drop
   // any pending coalesced seek, and resume playback if the user was playing
-  // before, so the player doesn't sit stuck-paused with the auto-hide guard
+  // before, so the player doesn't sit stuck-paused with the auto-dim guard
   // latched on.
   const handleTimelineLostPointerCapture = useCallback(() => {
     if (scrubRafRef.current != null) {
@@ -702,7 +784,7 @@ export function HeroPlayerControls({
       aria-hidden="true"
       data-testid="hero-player-chrome-backdrop"
       className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[28vh] min-h-36 max-h-72 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
-        controlsVisible ? "opacity-100" : "opacity-0"
+        chromeOpacityClass
       }`}
       style={
         {
@@ -719,11 +801,23 @@ export function HeroPlayerControls({
   const chromeBar = (
     <div
       data-testid="hero-player-custom-chrome"
-      data-visible={controlsVisible ? "true" : "false"}
-      onMouseEnter={() => setHoveringControls(true)}
-      onMouseLeave={() => setHoveringControls(false)}
+      data-visible={chromeVisible ? "true" : "false"}
+      data-bright={chromeVisibility === "bright" ? "true" : "false"}
+      data-visibility={chromeVisibility}
+      onPointerEnter={() => {
+        if (revealControls({ pointerDriven: true })) {
+          setHoveringControls(true)
+        }
+      }}
+      onPointerMove={(event) => {
+        event.stopPropagation()
+        if (revealControls({ pointerDriven: true })) {
+          setHoveringControls(true)
+        }
+      }}
+      onPointerLeave={() => setHoveringControls(false)}
       className={`absolute inset-x-0 bottom-0 z-10 flex w-full items-center gap-3 pb-6 transition-opacity duration-300 md:gap-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
-        controlsVisible ? "opacity-100" : "opacity-0"
+        chromeOpacityClass
       }`}
     >
       <ChromeButton
@@ -874,13 +968,12 @@ export function HeroPlayerControls({
         data-testid="hero-player-click-surface"
         data-playing={playing ? "true" : "false"}
         onClick={togglePlay}
-        className={`absolute inset-0 z-0 focus:outline-none ${
-          controlsVisible ? "cursor-pointer" : "cursor-none"
-        }`}
+        className="absolute inset-0 z-0 cursor-default focus:outline-none"
       />
-      {/* Chrome stays pointer-active even when invisible so agent-driven and
-          keyboard interactions reach the controls — the wrapper-level reveal
-          listeners then bring it back to opacity-100 on the next interaction.
+      {/* Chrome stays pointer-active even when dimmed so agent-driven and
+          keyboard interactions reach the controls — pointer movement
+          brings it back to the dim rail, while hovering the controls
+          themselves brings it back to opacity-100.
           Backdrop + chrome bar share one portal so the gradient travels
           with the controls as the body section slides up.
 
