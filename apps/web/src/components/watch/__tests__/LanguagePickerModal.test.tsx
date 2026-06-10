@@ -410,6 +410,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     const tooltipPanel = $(
       '[data-testid="watch-language-picker-tooltip-panel"]',
     )
+    expect(tooltipPanel?.compareDocumentPosition(languageTooltip!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
     expect(tooltipPanel?.compareDocumentPosition(trigger!)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )

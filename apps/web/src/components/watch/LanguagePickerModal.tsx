@@ -512,6 +512,7 @@ export function LanguagePickerModal({
 
         <div className="flex flex-col gap-14">
           <div className="flex flex-col gap-5">
+            <MultilingualTooltipPanel copy={activeTooltipCopy} />
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.language}
               testId="watch-language-picker-tooltip-language"
@@ -538,7 +539,6 @@ export function LanguagePickerModal({
                 </span>
               </div>
             </MultilingualTooltip>
-            <MultilingualTooltipPanel copy={activeTooltipCopy} />
             <LanguageCombobox
               options={options}
               value={draftSlug}
