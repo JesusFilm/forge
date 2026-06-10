@@ -81,6 +81,12 @@ function expectMultilingualTooltip(testId: string, expected: string[]) {
   expect(tooltip).not.toBeNull()
   expect(tooltip?.getAttribute("role")).toBe("tooltip")
   expect(tooltip?.className).toContain("w-full")
+  expect(tooltip?.className).toContain("bg-sky-950/35")
+  expect(
+    tooltip?.querySelector(
+      '[data-testid="watch-language-picker-tooltip-info-icon"]',
+    ),
+  ).not.toBeNull()
   for (const label of ["English", "中文", "हिन्दी", "Español", "العربية"]) {
     expect(tooltip?.textContent).not.toContain(label)
   }
@@ -401,6 +407,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(languageIcon?.className).not.toContain("rounded-full")
     expect(languageIcon?.className).not.toContain("border")
     expect(languageIcon?.className).not.toContain("bg-stone-950")
+    expect($('[data-testid="watch-language-picker-tooltip-panel"]')).toBeNull()
     const languageTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-language",
       ["Language", "语言", "भाषा", "Idioma", "اللغة"],
