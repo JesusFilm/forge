@@ -74,6 +74,16 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   seo_improvements:
     "Future SEO optimization phase. No SEO actions run in this version.",
   cms_notify: "Notifies downstream CMS integrations of completion.",
+  smart_crop_fingerprint:
+    "Builds the visual fingerprint (shot boundaries + perceptual hashes).",
+  smart_crop_plan: "Generates the AI canonical 9:16 crop plan per shot batch.",
+  smart_crop_align:
+    "Aligns localized shots to the canonical fingerprint with confidence gates.",
+  smart_crop_preview_render:
+    "Renders a sampled 9:16 preview through the crop worker.",
+  smart_crop_qa: "Runs AI review over the rendered preview frames.",
+  smart_crop_render: "Renders the full 9:16 output through the crop worker.",
+  smart_crop_mux_output: "Creates the Mux output asset from the rendered file.",
 }
 
 function formatDuration(startedAt?: string, finishedAt?: string): string {
