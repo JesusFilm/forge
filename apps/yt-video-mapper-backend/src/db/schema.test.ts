@@ -10,13 +10,40 @@ describe("mapper Prisma schema", () => {
   it("keeps the public Core identifiers unique in the catalog map", () => {
     expect(schema).toContain('coreId       String    @unique @map("core_id")')
     expect(schema).toContain(
-      'videoVariantId         String          @unique @map("video_variant_id")',
+      'videoVariantId         String          @map("video_variant_id")',
+    )
+    expect(schema).toContain("@@unique([coreId, videoVariantId])")
+  })
+
+  it("stores Admin catalog projection state needed for sync/indexing decisions", () => {
+    expect(schema).toContain(
+      'editionName            String?         @map("edition_name")',
+    )
+    expect(schema).toContain(
+      'videoPublished         Boolean         @default(false) @map("video_published")',
+    )
+    expect(schema).toContain(
+      'dubPublished           Boolean         @default(false) @map("dub_published")',
+    )
+    expect(schema).toContain(
+      'videoNoIndex           Boolean         @default(false) @map("video_no_index")',
+    )
+    expect(schema).toContain(
+      'videoDeleted           Boolean         @default(false) @map("video_deleted")',
+    )
+    expect(schema).toContain(
+      'dubDeleted             Boolean         @default(false) @map("dub_deleted")',
+    )
+    expect(schema).toContain(
+      'nonIndexableReason     String?         @map("non_indexable_reason")',
     )
   })
 
   it("allows multiple ranked variants under the same coreId for one job", () => {
     expect(schema).toContain("@@unique([jobId, rank])")
-    expect(schema).toContain("@@unique([jobId, videoVariantId])")
+    expect(schema).toContain(
+      '@@unique([jobId, coreId, videoVariantId], map: "mapper_match_candidate_job_variant_key")',
+    )
     expect(schema).toContain("@@index([coreId])")
   })
 
@@ -32,7 +59,7 @@ describe("mapper Prisma schema", () => {
 
   it("can rerun an indexer version without duplicating timecoded signatures", () => {
     expect(schema).toContain(
-      "@@unique([videoVariantId, signatureType, algorithmVersion, offsetMilliseconds])",
+      '@@unique([coreId, videoVariantId, signatureType, algorithmVersion, offsetMilliseconds], map: "mapper_media_signature_variant_signature_key")',
     )
   })
 })

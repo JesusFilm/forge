@@ -298,6 +298,55 @@ describe("toJobRecord", () => {
     })
   })
 
+  // Read-back contract for smart-crop render progress: admin-mode jobs round-
+  // trip step details through normalizeStepDetails, which must preserve
+  // progress/message (it used to strip everything except languageResults).
+  it("preserves step-detail progress and message on read-back", () => {
+    const record = toJobRecord({
+      documentId: "job-progress",
+      muxAssetId: "asset-1",
+      muxPlaybackId: "playback-1",
+      languages: [],
+      status: "running",
+      currentStep: "smart_crop_render",
+      retries: 0,
+      createdAt: "2026-06-09T00:00:00.000Z",
+      updatedAt: "2026-06-09T00:01:00.000Z",
+      startedAt: "2026-06-09T00:00:10.000Z",
+      completedAt: null,
+      artifacts: {},
+      errors: [],
+      steps: [
+        {
+          name: "smart_crop_render",
+          status: "running",
+          retries: 0,
+          startedAt: "2026-06-09T00:00:10.000Z",
+          finishedAt: null,
+          error: null,
+          details: { progress: 0.42, message: "Rendering segment 42 of 100" },
+        },
+        {
+          name: "smart_crop_mux_output",
+          status: "pending",
+          retries: 0,
+          startedAt: null,
+          finishedAt: null,
+          error: null,
+          details: { progress: "not-a-number", message: 7 },
+        },
+      ],
+    } as unknown as Parameters<typeof toJobRecord>[0])
+
+    expect(record.steps[0]?.details).toEqual({
+      progress: 0.42,
+      message: "Rendering segment 42 of 100",
+    })
+    // Wrong-typed fields are dropped; an all-invalid payload reads back as
+    // undefined details.
+    expect(record.steps[1]?.details).toBeUndefined()
+  })
+
   it("promotes the related CMS video document id when present", () => {
     expect(
       toJobRecord({

@@ -65,6 +65,22 @@ import {
   handleFirecrawlWebDataRouteRequest,
 } from "./workflows/firecrawl-web-data"
 import {
+  handleSmartCropPlanRouteRequest,
+  smartCropPlanWorkflow,
+} from "./workflows/smart-crop-plan"
+import {
+  handleSmartCropAlignRouteRequest,
+  smartCropAlignWorkflow,
+} from "./workflows/smart-crop-align"
+import {
+  handleSmartCropQaRouteRequest,
+  smartCropQaWorkflow,
+} from "./workflows/smart-crop-qa"
+import {
+  handleInstagramDiscoveryRouteRequest,
+  instagramAiChristianDiscoveryWorkflow,
+} from "./workflows/instagram-ai-christian-discovery"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -113,6 +129,10 @@ export const mastra = new Mastra({
     searchEvalOrchestratorWorkflow,
     searchEvalBaselinePortabilityWorkflow,
     firecrawlWebDataWorkflow,
+    smartCropPlanWorkflow,
+    smartCropAlignWorkflow,
+    smartCropQaWorkflow,
+    instagramAiChristianDiscoveryWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -306,6 +326,51 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-smart-crop-plan", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSmartCropPlanRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-smart-crop-align", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSmartCropAlignRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-smart-crop-qa", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSmartCropQaRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
       registerApiRoute("/forge-search-eval-baseline-portability", {
         method: "POST",
         handler: async (c) => {
@@ -316,6 +381,21 @@ export const mastra = new Mastra({
               request: c.req.raw,
             },
           )
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-instagram-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleInstagramDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
 
           return new Response(JSON.stringify(outcome.body), {
             status: outcome.status,

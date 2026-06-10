@@ -115,6 +115,9 @@ pnpm --filter @forge/mastra lint
 | `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage.                                                             |
 | `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.                                                                   |
 | `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                                                                                 |
+| `SMART_CROP_PLAN_MODEL`                   | OpenRouter vision model for smart-crop plan intents. Defaults to `qwen/qwen2.5-vl-72b-instruct`.                                                                                       |
+| `SMART_CROP_QA_MODEL`                     | OpenRouter vision model for smart-crop preview QA. Defaults to `google/gemini-2.5-flash`.                                                                                              |
+| `SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`      | CSV host allowlist for smart-crop frame URLs. Defaults to `image.mux.com`.                                                                                                             |
 | `FIRECRAWL_API_KEY`                       | Firecrawl bearer key for Mastra-owned web search/scrape tools. Required in production runtime.                                                                                         |
 | `FIRECRAWL_API_URL`                       | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`; production must use HTTPS and an allowlisted host.                                                                    |
 | `FIRECRAWL_ALLOWED_HOSTS`                 | CSV host allowlist for production Firecrawl egress. Defaults to `api.firecrawl.dev`.                                                                                                   |
@@ -122,6 +125,7 @@ pnpm --filter @forge/mastra lint
 | `FIRECRAWL_TIMEOUT_MS`                    | Default Firecrawl request timeout. Defaults to `60000`.                                                                                                                                |
 | `FIRECRAWL_MAX_SEARCH_RESULTS`            | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                                                                                       |
 | `FIRECRAWL_MAX_MARKDOWN_CHARS`            | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                                                                                       |
+| `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`        | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                                                                                  |
 | `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                      |
 | `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                      |
 
@@ -263,6 +267,50 @@ explicit seed-only payload:
 }
 ```
 
+## Smart crop workflows
+
+Smart crop (plan: `docs/plans/2026-06-09-002-feat-smart-crop-plan.md`) splits
+ownership across three apps; Mastra owns the AI decisions only. Manager owns
+job orchestration, artifact storage addressing, and Mux; crop-worker owns
+ffprobe/FFmpeg and S3 bytes. This runtime never touches S3 or Mux credentials —
+frames arrive as caller-provided, host-allowlisted https URLs
+(`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`, default `image.mux.com`; https only,
+exact hostname match).
+
+**Production precondition for QA:** the `smart-crop-qa` route receives
+presigned Railway S3 URLs for preview frames, so production must extend
+`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS` with the Railway S3 endpoint hostname
+(the host of manager's `RAILWAY_S3_ENDPOINT`) alongside `image.mux.com`.
+Without it the QA route rejects every frame with `frame_host_not_allowed`;
+manager degrades that to a skipped QA step rather than a failed job, but no
+QA report is produced.
+
+Three bounded synchronous workflows, each with a service route protected by
+`MASTRA_SERVICE_API_KEYS`:
+
+- `smart-crop-plan` / `POST /forge-smart-crop-plan` — one OpenRouter vision
+  call covering up to 8 shots (max 3 frame URLs each) produces per-shot crop
+  intents; the deterministic planner (`smart-crop-planner-v1`,
+  `src/services/smart-crop/planner.ts`) converts intents into 9:16 crop
+  keyframes (full source height, even crop width, 8% dead zone, 240 px/s max
+  pan scaled by source width, center fallback below confidence 0.5,
+  slide_aware stays static centered in MVP).
+- `smart-crop-align` / `POST /forge-smart-crop-align` — pure deterministic
+  alignment (`src/services/smart-crop/alignment.ts`) between canonical and
+  localized `smart-crop-fingerprint` artifacts: tier-1 identical-duration or
+  tier-2 monotonic shot-sequence matching (duration similarity + dhash
+  Hamming), plus confidence gates with stable failure literals. No model call.
+- `smart-crop-qa` / `POST /forge-smart-crop-qa` — one OpenRouter vision call
+  reviews up to 8 rendered preview frames against the plan summary and returns
+  `pass | needs_repair | fail` plus structured issues.
+
+Results use a discriminated `{ ok: true, ... } | { ok: false, reason,
+retryable, message, mastraRunId }` envelope with the shared reasons
+`invalid_input | provider_config_missing | provider_auth_failed |
+provider_failed | provider_invalid_output | frame_host_not_allowed`. The
+planner and alignment modules are pure functions — keep them free of I/O and
+env reads so they stay property-testable.
+
 ## Firecrawl web data
 
 Firecrawl web data access is Mastra-owned. The runtime exposes:
@@ -362,6 +410,43 @@ Production imports are disabled by default through
 returned JSON artifact in the approved secure handoff location, then import it
 into local Mastra so native Evaluation and local artifacts can compare future
 search work against the same seed snapshot without logging into production.
+
+## Instagram AI/Christian discovery
+
+The service route `POST /forge-instagram-discovery` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `instagram-ai-christian-discovery`
+workflow. It discovers AI-generated Christian videos on Instagram using
+the shared **Firecrawl web search** client (`POST /v2/search`) — Instagram is
+heavily gated, so direct crawling is unreliable; search returns post/reel URLs
+plus title/snippet that the keyword heuristic acts on.
+
+Input is Studio-friendly with defaults (runs with no hand-written JSON):
+`queries` (defaults to two Instagram-targeted AI/Christian queries),
+`limitPerQuery` (5, max 20), `scrapeMetadata` (false — set true to request bounded
+markdown hydration for each search hit, slower), `maxResults` (50),
+`persistArtifact` (true). The
+workflow searches each query (tolerant to per-query failures), parses Instagram
+permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
+signal **both** AI-generation and Christian content.
+
+Results are returned in the response and, by default, written to a validated
+JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
+(`<storage>/instagram-discovery/reports/<runId>.json`).
+
+Limitations to keep in mind:
+
+- **Keyword classification is heuristic and noisy.** It flags keyword signals,
+  not verified AI-generation or Christian intent. An optional LLM confirmation
+  step is deferred follow-up work.
+- **`publishedAt` is best-effort.** Instagram rarely exposes a reliable
+  timestamp through search snippets, so it is frequently `null` unless scrape
+  metadata includes it.
+
+Failure reasons: `invalid_input` (400), `config_missing` (503, when
+`FIRECRAWL_API_KEY` is unset in a non-production/dev-style runtime),
+`all_queries_failed` (502, only when every query errors), `artifact_failed`
+(500, when report persistence fails). Production already requires the shared
+Firecrawl env vars for Mastra's web-data surface.
 
 ## Railway Storage
 

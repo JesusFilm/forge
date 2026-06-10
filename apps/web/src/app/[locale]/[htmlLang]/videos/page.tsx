@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 
-export const revalidate = 60
+export const revalidate = 3600
 export const dynamic = "force-static"
 export const dynamicParams = true
 

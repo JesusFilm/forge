@@ -24,6 +24,7 @@ import {
   Captions,
   ChevronDown,
   ChevronRight,
+  Crop,
   ExternalLink,
   FileAudio2,
   FileJson2,
@@ -112,6 +113,12 @@ const navItems: Array<{
     icon: ListChecks,
   },
   {
+    key: "smart-crop",
+    href: "/dashboard/smart-crop",
+    label: "Smart Crop",
+    icon: Crop,
+  },
+  {
     key: "agents",
     href: "/dashboard/agents",
     label: "Agents",
@@ -165,6 +172,10 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/agents")) {
     return ["Studio", "Agents"]
+  }
+
+  if (pathname.startsWith("/dashboard/smart-crop")) {
+    return ["Studio", "Smart Crop"]
   }
 
   return ["Studio", "Coverage"]

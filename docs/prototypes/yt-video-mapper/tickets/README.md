@@ -17,7 +17,7 @@ roadmap tickets broad; keep this folder practical and close to the mapper code.
 | -------------------------------------------------------------- | -------- | -------- | -------------------------------------------- |
 | [YTM-001](./ytm-001-deploy-service-and-database.md)            | complete | P1       | Deploy service and database                  |
 | [YTM-002](./ytm-002-admin-flat-catalog-projection.md)          | complete | P1       | Admin flat catalog projection                |
-| [YTM-003](./ytm-003-mapper-catalog-sync.md)                    | todo     | P1       | Mapper catalog sync                          |
+| [YTM-003](./ytm-003-mapper-catalog-sync.md)                    | complete | P1       | Mapper catalog sync                          |
 | [YTM-004](./ytm-004-official-media-signature-indexing.md)      | todo     | P1       | Official media signature indexing            |
 | [YTM-005](./ytm-005-replace-placeholders-with-real-matcher.md) | todo     | P1       | Replace placeholders with real matcher       |
 | [YTM-006](./ytm-006-evaluation-harness-and-thresholds.md)      | todo     | P1       | Evaluation harness and confidence thresholds |
