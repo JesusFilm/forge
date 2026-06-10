@@ -41,6 +41,15 @@ Mapper Catalog rows are shaped around matchable variants: the source Video
 identity stays anchored by Core ID, while each Dub contributes the variant
 identity the mapper uses to compare uploaded media against official media.
 
+### Catalog Sync Run
+
+A durable record of one Mapper Catalog refresh from Admin into mapper-owned
+projection rows.
+
+A Catalog Sync Run tracks page progress, counts, terminal status, and safe
+failure summaries so broad catalog refreshes can be inspected and retried
+without treating Admin as the mapper's database.
+
 ### Match Job
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.

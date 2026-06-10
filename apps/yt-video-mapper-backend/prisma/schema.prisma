@@ -82,10 +82,11 @@ model CatalogVariant {
   id                     String          @id @default(cuid())
   coreId                 String          @map("core_id")
   catalogVideo           CatalogVideo    @relation(fields: [coreId], references: [coreId], onDelete: Cascade)
-  videoVariantId         String          @unique @map("video_variant_id")
+  videoVariantId         String          @map("video_variant_id")
   adminVideoId           String?         @map("admin_video_id")
   adminDubId             String?         @map("admin_dub_id")
   editionCoreId          String?         @map("edition_core_id")
+  editionName            String?         @map("edition_name")
   languageId             String?         @map("language_id")
   languageSlug           String?         @map("language_slug")
   locale                 String?
@@ -103,6 +104,11 @@ model CatalogVariant {
   indexable              Boolean         @default(false)
   nonIndexableReason     String?         @map("non_indexable_reason")
   published              Boolean         @default(true)
+  videoPublished         Boolean         @default(false) @map("video_published")
+  dubPublished           Boolean         @default(false) @map("dub_published")
+  videoNoIndex           Boolean         @default(false) @map("video_no_index")
+  videoDeleted           Boolean         @default(false) @map("video_deleted")
+  dubDeleted             Boolean         @default(false) @map("dub_deleted")
   deletedAt              DateTime?       @map("deleted_at")
   lastSyncedAt           DateTime?       @map("last_synced_at")
   createdAt              DateTime        @default(now()) @map("created_at")
@@ -170,7 +176,7 @@ model MediaSignature {
   sourceMediaHash      String?        @map("source_media_hash")
   createdAt            DateTime       @default(now()) @map("created_at")
 
-  @@unique([videoVariantId, signatureType, algorithmVersion, offsetMilliseconds])
+  @@unique([coreId, videoVariantId, signatureType, algorithmVersion, offsetMilliseconds], map: "mapper_media_signature_variant_signature_key")
   @@index([coreId, signatureType])
   @@map("mapper_media_signature")
 }
@@ -216,7 +222,7 @@ model MatchCandidate {
   evidence MatchEvidence[]
 
   @@unique([jobId, rank])
-  @@unique([jobId, videoVariantId])
+  @@unique([jobId, coreId, videoVariantId], map: "mapper_match_candidate_job_variant_key")
   @@unique([id, jobId])
   @@index([coreId])
   @@map("mapper_match_candidate")
