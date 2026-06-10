@@ -106,6 +106,18 @@ export type UseSessionPlaybackResult = {
    * SubtitleOverlay renders nothing (also the no-session value).
    */
   activeVttSrc: string | null
+  /**
+   * Display name of the active dub's language ("English"), or null when the
+   * session isn't driving this overlay. Feeds the top-bar status chip and the
+   * Audio & Subtitles pill sub-caption (U8 player chrome).
+   */
+  audioLabel: string | null
+  /**
+   * Display name of the active subtitle language, or null when subtitles are
+   * off / unresolved. Resolution mirrors activeVttSrc (active dub's loaded
+   * media), falling back to the slug so the chip never lies about CC being on.
+   */
+  subtitleLabel: string | null
 }
 
 export function useSessionPlayback({
@@ -288,6 +300,23 @@ export function useSessionPlayback({
         )?.vttSrc ?? null)
       : null
 
+  // Display names for the U8 chrome (status chip + Audio & Subtitles pill).
+  // Same gating as the rest of the session-driven surface: null when the
+  // session isn't driving this overlay, so no-session playback shows nothing.
+  const audioLabel = menuActive
+    ? (session.activeVariant?.languageName ?? null)
+    : null
+  const activeSubtitle =
+    menuActive && session.subtitleEnabled && session.activeSubtitleSlug != null
+      ? session.activeVariantMedia?.subtitles.find(
+          (s) => s.languageSlug === session.activeSubtitleSlug,
+        )
+      : null
+  const subtitleLabel =
+    menuActive && session.subtitleEnabled && session.activeSubtitleSlug != null
+      ? (activeSubtitle?.languageName ?? session.activeSubtitleSlug)
+      : null
+
   // ── In-player menu open/close (U7) ──────────────────────────────────
   // Opening from a hidden-chrome state is not supported (the open control is
   // only focusable while controls are visible) — the viewer reveals the chrome
@@ -332,5 +361,7 @@ export function useSessionPlayback({
     openMenu,
     closeMenu,
     activeVttSrc,
+    audioLabel,
+    subtitleLabel,
   }
 }

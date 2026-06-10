@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { ReactNode } from "react"
 import {
   AccessibilityInfo,
   Animated,
@@ -16,27 +17,35 @@ import {
   View,
 } from "react-native"
 import { useVideoPlayer, VideoView, type VideoPlayerStatus } from "expo-video"
+import { LinearGradient } from "expo-linear-gradient"
+import Ionicons from "@expo/vector-icons/Ionicons"
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { TVFocusGuideView } from "./TVFocusGuideView"
-import { COLORS, hexToRgba } from "../lib/colors"
 import { scale } from "../lib/scale"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
+import { WATCH_THEME } from "./watch/watchDetailTheme"
+import { focusTransform, useFocusAnimation } from "./watch/useFocusAnimation"
+import {
+  composeAudioSubsPillSub,
+  composePlayerStatusChip,
+} from "./watch/playerChrome"
 
-// ── Shared Visual Tokens ───────────────────────────────────────────────────
-// Player chrome uses the app-wide Crimson Gallery tokens (see ../lib/colors).
-// The warm-salmon palette previously pinned here (from an early Stitch
-// mockup) has been retired — the player now visually matches the rest of
-// the TV app (FocusableCard, ContentRail, etc.).
-const TRACK_BG = COLORS.surfaceContainerHighest // progress track fill
-const GLASS_BG = hexToRgba(COLORS.surfaceContainer, 0.8) // frosted-glass panel
+// ── Visual language (U8) ───────────────────────────────────────────────────
+// The player chrome is the "Forge TV Video Page" handoff's player redesign
+// (chats/chat2): full-bleed scrims, a glass Back pill + quiet status chip up
+// top, eyebrow + title / circular glass transport / Audio & Subtitles pill in
+// a three-column bottom row, and a focusable scrubber with thumb + time
+// bubble. It shares WATCH_THEME + useFocusAnimation with the details page so
+// the screen → fullscreen transition reads as one surface.
 
 // ── SVG-free Icon Components ───────────────────────────────────────────────
 
 /** Two vertical bars — pure View-based pause icon */
 function PauseIcon({
   size = 24,
-  color = COLORS.text,
+  color = WATCH_THEME.accentText,
 }: {
   size?: number
   color?: string
@@ -78,7 +87,7 @@ function PauseIcon({
 /** Right-pointing triangle — pure View-based play icon */
 function PlayIcon({
   size = 24,
-  color = COLORS.text,
+  color = WATCH_THEME.accentText,
 }: {
   size?: number
   color?: string
@@ -110,6 +119,488 @@ function PlayIcon({
   )
 }
 
+// ── Chrome building blocks (U8) ─────────────────────────────────────────────
+// Module-level components (NOT defined inside VideoPlayer) so their identity is
+// stable across host re-renders — an inline component would remount per render
+// and drop tvOS focus. Each owns its useFocusAnimation; the host only threads
+// scheduleHide via onFocus and reads focus through callbacks where it must.
+
+/** Rest→ink icon cross-fade. Icon colour is a prop (not an animatable style),
+    so the flip is two stacked copies with opposing opacity — same trick as
+    AnimatedFocusIcon, generalised to any glyph via a render prop. */
+function FocusCrossfade({
+  progress,
+  size,
+  render,
+}: {
+  progress: Animated.Value
+  size: number
+  render: (color: string) => ReactNode
+}) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Animated.View
+        style={[
+          styles.crossfadeLayer,
+          {
+            opacity: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 0],
+            }),
+          },
+        ]}
+      >
+        {render(WATCH_THEME.text)}
+      </Animated.View>
+      <Animated.View style={[styles.crossfadeLayer, { opacity: progress }]}>
+        {render(WATCH_THEME.focusInk)}
+      </Animated.View>
+    </View>
+  )
+}
+
+/** The handoff's bespoke audio-bars + captions-box glyph for the Audio &
+    Subtitles pill — composed from Views (the TV app is SVG-free). */
+function AudioSubsGlyph({ color, size }: { color: string; size: number }) {
+  const u = size / 24 // design glyph is on a 24-unit box
+  const bar = (h: number) => ({
+    width: Math.max(2, Math.round(2.2 * u)),
+    height: h * u,
+    borderRadius: u,
+    backgroundColor: color,
+  })
+  return (
+    <View style={{ width: size, height: size, justifyContent: "center" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 * u }}>
+        <View style={bar(6)} />
+        <View style={bar(11)} />
+        <View style={bar(16)} />
+      </View>
+      <View
+        style={{
+          position: "absolute",
+          right: 0,
+          bottom: 1.5 * u,
+          width: 8.5 * u,
+          height: 6.5 * u,
+          borderRadius: 2 * u,
+          borderWidth: Math.max(1, Math.round(1.6 * u)),
+          borderColor: color,
+          backgroundColor: "#00000000",
+        }}
+      />
+    </View>
+  )
+}
+
+/** Glass Back pill, top-left. The Pressable spans the full row width so the
+    tvOS spatial engine can traverse DOWN into the transport column (same
+    full-width-hit pattern as before the restyle); only the pill is visible. */
+function BackPill({
+  onPress,
+  onFocusActivity,
+  focusable,
+  hasTVPreferredFocus,
+  accessibilityLabel,
+}: {
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  hasTVPreferredFocus: boolean
+  accessibilityLabel: string
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      focusable={focusable}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      style={styles.backHit}
+    >
+      <Animated.View
+        style={[
+          styles.backPill,
+          {
+            backgroundColor: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+            }),
+            shadowOpacity: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.5],
+            }),
+            transform: focusTransform(progress),
+          },
+        ]}
+      >
+        <FocusCrossfade
+          progress={progress}
+          size={scale(24)}
+          render={(color) => (
+            <Ionicons name="chevron-back" size={scale(24)} color={color} />
+          )}
+        />
+        <Animated.Text
+          style={[
+            styles.backText,
+            {
+              color: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+              }),
+            },
+          ]}
+        >
+          Back
+        </Animated.Text>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** 84px circular glass transport button (−10 / +10). White-fill focus. */
+function CircleControl({
+  icon,
+  onPress,
+  onFocusActivity,
+  focusable,
+  dimmed,
+  accessibilityLabel,
+}: {
+  icon: "replay-10" | "forward-10"
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  dimmed: boolean
+  accessibilityLabel: string
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      focusable={focusable}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      style={dimmed && styles.controlDisabled}
+    >
+      <Animated.View
+        style={[
+          styles.circleBtn,
+          {
+            backgroundColor: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+            }),
+            shadowOpacity: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.6],
+            }),
+            transform: focusTransform(progress),
+          },
+        ]}
+      >
+        <FocusCrossfade
+          progress={progress}
+          size={scale(38)}
+          render={(color) => (
+            <MaterialIcons name={icon} size={scale(38)} color={color} />
+          )}
+        />
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** 98px accent play/pause circle. Stays accent-filled when focused; the focus
+    signal is a white ring (animated borderColor — constant width, no layout
+    shift) + the shared lift/magnify, mirroring the details page's PlayPill. */
+function PlayCircle({
+  isPaused,
+  onPress,
+  onFocusActivity,
+  focusable,
+  dimmed,
+  hasTVPreferredFocus,
+}: {
+  isPaused: boolean
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  dimmed: boolean
+  hasTVPreferredFocus: boolean
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      focusable={focusable}
+      accessibilityLabel={isPaused ? "Play" : "Pause"}
+      accessibilityRole="button"
+      style={dimmed && styles.controlDisabled}
+    >
+      <Animated.View
+        style={[
+          styles.playBtn,
+          {
+            borderColor: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.85)"],
+            }),
+            transform: focusTransform(progress),
+          },
+        ]}
+      >
+        {isPaused ? (
+          <PlayIcon size={scale(42)} color={WATCH_THEME.accentText} />
+        ) : (
+          <PauseIcon size={scale(42)} color={WATCH_THEME.accentText} />
+        )}
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** "Audio & Subtitles" glass pill, bottom-right — the in-player menu trigger
+    (replaces the bare CC button). Two-line cap: label + current selection. */
+function AudioSubsPill({
+  sub,
+  onPress,
+  onFocusActivity,
+  focusable,
+  dimmed,
+}: {
+  sub: string | null
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  dimmed: boolean
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      focusable={focusable}
+      accessibilityLabel={
+        sub ? `Audio and subtitles, ${sub}` : "Audio and subtitles"
+      }
+      accessibilityRole="button"
+      style={dimmed && styles.controlDisabled}
+    >
+      <Animated.View
+        style={[
+          styles.asPill,
+          {
+            backgroundColor: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+            }),
+            shadowOpacity: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.5],
+            }),
+            transform: focusTransform(progress),
+          },
+        ]}
+      >
+        <FocusCrossfade
+          progress={progress}
+          size={scale(26)}
+          render={(color) => <AudioSubsGlyph color={color} size={scale(26)} />}
+        />
+        <View style={styles.asCap}>
+          <Animated.Text
+            style={[
+              styles.asLabel,
+              {
+                color: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+                }),
+              },
+            ]}
+            numberOfLines={1}
+          >
+            Audio & Subtitles
+          </Animated.Text>
+          {sub != null && (
+            <Animated.Text
+              style={[
+                styles.asSub,
+                {
+                  color: progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [WATCH_THEME.text62, "rgba(0,0,0,0.5)"],
+                  }),
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {sub}
+            </Animated.Text>
+          )}
+        </View>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** Focusable scrubber. At rest it's the thin accent-filled track; focused, the
+    track thickens and a white thumb + time bubble appear (the handoff's
+    .pl-scrub states). Left/right seeking while focused is handled by the
+    host's TV-event listener (focus is trapped horizontally by the wrapper, so
+    the press can't move focus — it becomes a seek). */
+function PlayerScrubber({
+  progressPct,
+  bufferedPct,
+  bubbleText,
+  onPress,
+  onFocusChange,
+  focusable,
+  dimmed,
+}: {
+  progressPct: number
+  bufferedPct: number
+  bubbleText: string
+  onPress: () => void
+  onFocusChange: (focused: boolean) => void
+  focusable: boolean
+  dimmed: boolean
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  return (
+    <TVFocusGuideView trapFocusLeft trapFocusRight>
+      <Pressable
+        onPress={onPress}
+        onFocus={() => {
+          setFocused(true)
+          onFocusChange(true)
+        }}
+        onBlur={() => {
+          setFocused(false)
+          onFocusChange(false)
+        }}
+        focusable={focusable}
+        accessibilityLabel={`Seek bar, ${bubbleText}`}
+        accessibilityRole="adjustable"
+        style={[styles.scrubWrap, dimmed && styles.controlDisabled]}
+      >
+        <Animated.View
+          style={[
+            styles.scrubTrack,
+            {
+              height: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [scale(8), scale(13)],
+              }),
+            },
+          ]}
+        >
+          <View style={[styles.scrubBuf, { width: `${bufferedPct}%` }]} />
+          <View style={[styles.scrubFill, { width: `${progressPct}%` }]} />
+        </Animated.View>
+        <Animated.View
+          style={[
+            styles.scrubThumb,
+            {
+              left: `${progressPct}%`,
+              transform: [
+                {
+                  scale: progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.scrubBubble,
+            {
+              left: `${progressPct}%`,
+              opacity: progress,
+              transform: [
+                {
+                  translateY: progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [scale(6), 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.scrubBubbleText}>{bubbleText}</Text>
+        </Animated.View>
+      </Pressable>
+    </TVFocusGuideView>
+  )
+}
+
+/** Pre-playback veil: dim layer + rotating accent ring. pointerEvents="none"
+    so the focus engine and the autoplay retry keep working beneath it.
+    Looped single timing + interpolation on the native driver — a looped
+    Animated.sequence runs once on Fabric. */
+function LoadingVeil() {
+  const spin = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [spin])
+  return (
+    <View style={styles.veil} pointerEvents="none">
+      <Animated.View
+        style={[
+          styles.veilRing,
+          {
+            transform: [
+              {
+                rotate: spin.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["0deg", "360deg"],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Text style={styles.veilText}>Starting playback…</Text>
+    </View>
+  )
+}
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type VideoPlayerProps = {
@@ -130,13 +621,19 @@ export function VideoPlayer({
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  // Buffered head (seconds) from timeUpdate — drives the scrubber's buffer
+  // hint. -1 from native means "unknown"; we clamp at render.
+  const [buffered, setBuffered] = useState(0)
+  // First playingChange(true) drops the loading veil for good — buffering
+  // stalls later in playback must NOT bring the full veil back (U5's
+  // statusChange path owns mid-play buffering UX).
+  const [hasStarted, setHasStarted] = useState(false)
 
-  // Focus states for each interactive element
-  const [backFocused, setBackFocused] = useState(false)
-  const [playFocused, setPlayFocused] = useState(false)
-  const [rewindFocused, setRewindFocused] = useState(false)
-  const [forwardFocused, setForwardFocused] = useState(false)
-  const [menuFocused, setMenuFocused] = useState(false)
+  // Per-control focus visuals live inside the chrome components
+  // (useFocusAnimation). The host only tracks scrubber focus, via a ref,
+  // because the TV-event listener turns left/right into seeks while the
+  // scrubber owns focus.
+  const scrubFocusedRef = useRef(false)
 
   // Fix #5: One-shot flag so `hasTVPreferredFocus` is only true on the
   // first render. Moved out of the render body into useEffect so React
@@ -204,6 +701,10 @@ export function VideoPlayer({
   // the underlying native event emitter. Mirrors Fix #15's `onDismissRef`.
   const scheduleHideRef = useRef<() => void>(() => {})
   const revealControlsRef = useRef<() => void>(() => {})
+  // Seek handlers behind refs so the ref-stable TV-event callback can seek
+  // (scrub-focused left/right) without re-binding on duration changes.
+  const seekBackwardRef = useRef<() => void>(() => {})
+  const seekForwardRef = useRef<() => void>(() => {})
   const controlsVisibleRef = useRef(true)
   const isScreenReaderEnabledRef = useRef(false)
   const menuKeyEnabledRef = useRef(false)
@@ -404,6 +905,22 @@ export function VideoPlayer({
         revealControlsRef.current()
         return
       }
+      // Scrubber-focused left/right = seek (U8). The scrubber wrapper traps
+      // horizontal focus (it spans the full row), so the press can't move
+      // focus — we translate it into a ±10s seek instead, matching the
+      // handoff's scrub region behavior.
+      if (scrubFocusedRef.current) {
+        if (type === "left" || type === "swipeLeft") {
+          seekBackwardRef.current()
+          scheduleHideRef.current()
+          return
+        }
+        if (type === "right" || type === "swipeRight") {
+          seekForwardRef.current()
+          scheduleHideRef.current()
+          return
+        }
+      }
       // Visible state: Siri-remote swipes don't fire Pressable.onFocus,
       // so they won't reset the timer via the usual D14 path. Catch them
       // here so every D-pad activity resets the timer as D14 requires.
@@ -505,6 +1022,8 @@ export function VideoPlayer({
     openMenu,
     closeMenu,
     activeVttSrc,
+    audioLabel,
+    subtitleLabel,
   } = useSessionPlayback({
     player,
     streamingUrl,
@@ -609,6 +1128,8 @@ export function VideoPlayer({
         isPausedRef.current = !isPlaying
         setIsPaused(!isPlaying)
         if (isPlaying) {
+          // First confirmed playback drops the loading veil permanently (U8).
+          setHasStarted(true)
           scheduleHideRef.current()
         } else if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
@@ -641,6 +1162,14 @@ export function VideoPlayer({
   // pre-seek timeUpdate events overwrite the optimistic position.
   useEffect(() => {
     const subscription = player.addListener("timeUpdate", (payload) => {
+      // Buffer head feeds the scrubber's buffer hint regardless of the seek
+      // guard — it's not a playhead value, so stale emissions can't lie.
+      if (
+        typeof payload.bufferedPosition === "number" &&
+        payload.bufferedPosition >= 0
+      ) {
+        setBuffered(payload.bufferedPosition)
+      }
       const target = seekTargetRef.current
       if (target != null) {
         if (payload.currentTime >= target - 0.1) {
@@ -807,6 +1336,16 @@ export function VideoPlayer({
   }
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
+  const bufferedPct =
+    duration > 0 ? Math.min(100, (buffered / duration) * 100) : 0
+  // Top-bar status chip + pill sub-caption (null hides each — no-session
+  // playback shows neither, matching the gated CC button it replaces).
+  const statusChip = composePlayerStatusChip(audioLabel, subtitleLabel)
+  const audioSubsSub = composeAudioSubsPillSub(audioLabel, subtitleLabel)
+  const remainingLabel =
+    duration > 0
+      ? `−${formatTime(Math.max(0, duration - currentTime))}`
+      : "--:--"
 
   // ── Auto-hide helpers (U2) ──────────────────────────────────────────
   // hideControls: releases focusability → runs the 150 ms ease-out fade
@@ -867,7 +1406,8 @@ export function VideoPlayer({
     ) {
       return
     }
-    inactivityTimerRef.current = setTimeout(hideControls, 3000)
+    // 3.5s per the handoff's player spec (was 3s pre-redesign).
+    inactivityTimerRef.current = setTimeout(hideControls, 3500)
   }
 
   // revealControls: early-return when already visible to neutralize the
@@ -905,6 +1445,8 @@ export function VideoPlayer({
   // mirrors Fix #15's `onDismissRef` assignment pattern.
   scheduleHideRef.current = scheduleHide
   revealControlsRef.current = revealControls
+  seekBackwardRef.current = seekBackward
+  seekForwardRef.current = seekForward
 
   return (
     <View style={styles.overlay}>
@@ -933,9 +1475,38 @@ export function VideoPlayer({
         <SubtitleOverlay player={player} vttSrc={activeVttSrc} />
       )}
 
-      {/* Controls have their own glass backgrounds (GLASS_BG on the
-          controls panel, semi-transparent on the back button pill), so
-          no full-screen scrim is needed. */}
+      {/* ── Scrims (U8) ──────────────────────────────────────────────────
+          The handoff replaces the old glass panel with full-bleed top/bottom
+          gradients that fade with the chrome (shared opacityAnim).
+          collapsable={false} keeps them above the Android TV VideoView
+          surface; pointerEvents="none" keeps them out of the focus engine. */}
+      <Animated.View
+        style={[styles.scrimTop, { opacity: opacityAnim }]}
+        pointerEvents="none"
+        collapsable={false}
+      >
+        <LinearGradient
+          colors={[WATCH_THEME.scrim(0.78), WATCH_THEME.scrim(0)]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      </Animated.View>
+      <Animated.View
+        style={[styles.scrimBottom, { opacity: opacityAnim }]}
+        pointerEvents="none"
+        collapsable={false}
+      >
+        <LinearGradient
+          colors={[
+            WATCH_THEME.scrim(0),
+            WATCH_THEME.scrim(0.55),
+            WATCH_THEME.scrim(0.94),
+          ]}
+          locations={[0, 0.54, 1]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      </Animated.View>
 
       {/* trapFocus* props prevent focus from escaping to the underlying
           Stack navigator (which is still mounted behind this overlay).
@@ -975,239 +1546,156 @@ export function VideoPlayer({
           />
         )}
 
-        {/* ── Top Bar ──────────────────────────────────────────────── */}
-        {/* Animated.View wraps the top pill so it fades with the shared
-            opacityAnim. collapsable={false} keeps the RN view in the
-            native hierarchy above the Android TV VideoView surface. */}
+        {/* ── Top Bar (U8) ─────────────────────────────────────────────
+            Glass Back pill (full-width hit region preserves the vertical
+            spatial column down to the transport) + the quiet audio/CC
+            status chip on the right. Fades with the shared opacityAnim;
+            collapsable={false} for Android TV z-order. */}
         <Animated.View
           style={[styles.topBar, { opacity: opacityAnim }]}
           collapsable={false}
         >
-          {/* Full-width Pressable is the focusable/hit region (needed
-              for tvOS spatial focus traversal to reach play below). The
-              inner View is the visible pill, which hugs its text content. */}
-          <Pressable
+          <BackPill
             onPress={onDismiss}
-            onFocus={() => {
-              setBackFocused(true)
-              scheduleHide()
-            }}
-            onBlur={() => setBackFocused(false)}
+            onFocusActivity={scheduleHide}
             hasTVPreferredFocus={errorFocusPending}
             focusable={controlsFocusable}
             accessibilityLabel={
               subtitle != null ? `Back to ${subtitle}` : "Back"
             }
-            accessibilityRole="button"
-            style={styles.backButtonHit}
-          >
-            <View
-              style={[
-                styles.backButtonPill,
-                backFocused && styles.backButtonPillFocused,
-              ]}
-            >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.backButtonText,
-                  backFocused && styles.backButtonTextFocused,
-                ]}
-              >
-                {"←  Back" + (subtitle ? ` to ${subtitle}` : "")}
+          />
+          {statusChip != null && (
+            <View style={styles.statusChip}>
+              <Text style={styles.statusChipText} numberOfLines={1}>
+                {statusChip}
               </Text>
             </View>
-          </Pressable>
+          )}
         </Animated.View>
 
-        {/* Empty middle spacer — the full-width backButtonHit above and
+        {/* Empty middle spacer — the full-width back hit above and
             centered play button below still share a spatial column, so
             tvOS's UIFocusEngine can traverse DOWN/UP between them. */}
         <View style={styles.spacer} />
 
-        {/* ── Bottom Controls Panel ──────────────────────────────── */}
-        {/* Animated.View wraps the bottom panel so it fades with the
-            shared opacityAnim. collapsable={false} preserves z-order on
-            Android TV above the VideoView surface. */}
+        {/* ── Bottom Controls (U8) ─────────────────────────────────────
+            Three-column row over the bottom scrim — eyebrow + title left,
+            circular transport centered, Audio & Subtitles pill right — then
+            the scrubber and the times row. Fades with the shared opacityAnim;
+            collapsable={false} preserves z-order on Android TV. */}
         <Animated.View
-          style={[styles.controlsContainer, { opacity: opacityAnim }]}
+          style={[styles.bottomPanel, { opacity: opacityAnim }]}
           collapsable={false}
         >
-          {/* Title area. On error, the error label replaces the title
-              inline — keeps the bottom-panel layout stable and avoids
-              introducing a separate error overlay. Subtitle stays so
-              the user retains context about what failed. */}
-          <View style={styles.titleRow}>
-            {hasError ? (
-              <Text style={styles.videoTitle} numberOfLines={2}>
-                Playback failed — press Back to exit.
-              </Text>
-            ) : (
-              title != null && (
-                <Text style={styles.videoTitle} numberOfLines={1}>
-                  {title}
+          <View style={styles.infoRow}>
+            {/* Title column. On error, the error label replaces the title
+                inline — keeps the layout stable, no separate error overlay.
+                The subtitle prop renders as the accent eyebrow above. */}
+            <View style={styles.titleCol}>
+              {subtitle != null && !hasError && (
+                <Text style={styles.eyebrow} numberOfLines={1}>
+                  {subtitle}
                 </Text>
-              )
-            )}
-            {subtitle != null && (
-              <Text style={styles.videoSubtitle} numberOfLines={1}>
-                {subtitle}
-              </Text>
-            )}
-          </View>
-
-          {/* Playback controls: rewind, play/pause, forward.
-              When hasError (U5), all three are ghosted (opacity 0.3) and
-              unfocusable — the spatial layout is preserved so the user's
-              mental model ("back is top-left") doesn't shift, but the
-              only meaningful action is Back. */}
-          <View style={styles.controlsRow}>
-            {/* Rewind 10s */}
-            <Pressable
-              onPress={() => {
-                seekBackward()
-                scheduleHide()
-              }}
-              onFocus={() => {
-                setRewindFocused(true)
-                scheduleHide()
-              }}
-              onBlur={() => setRewindFocused(false)}
-              focusable={controlsFocusable && !hasError}
-              accessibilityLabel="Rewind 10 seconds"
-              accessibilityRole="button"
-              style={[
-                styles.skipButton,
-                rewindFocused && styles.skipButtonFocused,
-                hasError && styles.controlDisabled,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.skipText,
-                  rewindFocused && styles.skipTextFocused,
-                ]}
-              >
-                {"↺ 10"}
-              </Text>
-            </Pressable>
-
-            {/* Play / Pause.
-                U4 focus-restore on reveal: we rely on mitigation (b) from
-                the plan — each reveal flips `controlsFocusable` false→true,
-                which re-adds this Pressable to UIFocusEngine as a "new"
-                focus target, letting hasTVPreferredFocus take effect per
-                cycle. If device QA shows focus doesn't transfer, fall back
-                to mitigation (a) by adding `key={revealCycleCount}`. */}
-            <Pressable
-              onPress={() => {
-                togglePlayPause()
-                scheduleHide()
-              }}
-              onFocus={() => {
-                setPlayFocused(true)
-                scheduleHide()
-              }}
-              onBlur={() => setPlayFocused(false)}
-              hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
-              focusable={controlsFocusable && !hasError}
-              accessibilityLabel={isPaused ? "Play" : "Pause"}
-              accessibilityRole="button"
-              style={[
-                styles.playPauseButton,
-                playFocused && styles.playPauseButtonFocused,
-                hasError && styles.controlDisabled,
-              ]}
-            >
-              {isPaused ? (
-                <PlayIcon size={scale(28)} color={COLORS.text} />
-              ) : (
-                <PauseIcon size={scale(28)} color={COLORS.text} />
               )}
-            </Pressable>
+              {hasError ? (
+                <Text style={styles.videoTitle} numberOfLines={2}>
+                  Playback failed — press Back to exit.
+                </Text>
+              ) : (
+                title != null && (
+                  <Text style={styles.videoTitle} numberOfLines={1}>
+                    {title}
+                  </Text>
+                )
+              )}
+            </View>
 
-            {/* Forward 10s */}
-            <Pressable
-              onPress={() => {
-                seekForward()
-                scheduleHide()
-              }}
-              onFocus={() => {
-                setForwardFocused(true)
-                scheduleHide()
-              }}
-              onBlur={() => setForwardFocused(false)}
-              focusable={controlsFocusable && !hasError}
-              accessibilityLabel="Forward 10 seconds"
-              accessibilityRole="button"
-              style={[
-                styles.skipButton,
-                forwardFocused && styles.skipButtonFocused,
-                hasError && styles.controlDisabled,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.skipText,
-                  forwardFocused && styles.skipTextFocused,
-                ]}
-              >
-                {"10 ↻"}
-              </Text>
-            </Pressable>
-
-            {/* ── In-player menu open control (U7) ─────────────────────────
-                Rendered ONLY when the session is driving this overlay
-                (menuActive) — experience-card playback never shows it.
-                Opening suppresses auto-hide; opening from a hidden-chrome
-                state is unsupported (it's only focusable while controls are
-                visible, like its siblings). */}
-            {menuActive && (
-              <Pressable
+            {/* Transport: −10 / play-pause / +10. When hasError (U5) all
+                are ghosted and unfocusable — layout preserved, the only
+                meaningful action is Back.
+                U4 focus-restore on reveal: each reveal flips
+                `controlsFocusable` false→true, re-adding the play Pressable
+                to UIFocusEngine as a "new" target so hasTVPreferredFocus
+                takes effect per cycle. */}
+            <View style={styles.transport}>
+              <CircleControl
+                icon="replay-10"
                 onPress={() => {
-                  // No scheduleHide() here: openMenu() sets
-                  // menuOpenRef.current=true synchronously and scheduleHide
-                  // early-returns while the menu is open, so it would be a
-                  // guaranteed no-op.
-                  openMenu()
-                }}
-                onFocus={() => {
-                  setMenuFocused(true)
+                  seekBackward()
                   scheduleHide()
                 }}
-                onBlur={() => setMenuFocused(false)}
+                onFocusActivity={scheduleHide}
                 focusable={controlsFocusable && !hasError}
-                accessibilityLabel="Audio and subtitles"
-                accessibilityRole="button"
-                style={[
-                  styles.skipButton,
-                  menuFocused && styles.skipButtonFocused,
-                  hasError && styles.controlDisabled,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.skipText,
-                    menuFocused && styles.skipTextFocused,
-                  ]}
-                >
-                  {"CC"}
-                </Text>
-              </Pressable>
-            )}
+                dimmed={hasError}
+                accessibilityLabel="Rewind 10 seconds"
+              />
+              <PlayCircle
+                isPaused={isPaused}
+                onPress={() => {
+                  togglePlayPause()
+                  scheduleHide()
+                }}
+                onFocusActivity={scheduleHide}
+                hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
+                focusable={controlsFocusable && !hasError}
+                dimmed={hasError}
+              />
+              <CircleControl
+                icon="forward-10"
+                onPress={() => {
+                  seekForward()
+                  scheduleHide()
+                }}
+                onFocusActivity={scheduleHide}
+                focusable={controlsFocusable && !hasError}
+                dimmed={hasError}
+                accessibilityLabel="Forward 10 seconds"
+              />
+            </View>
+
+            {/* ── In-player menu trigger (U7→U8) ───────────────────────
+                The Audio & Subtitles pill replaces the bare CC button.
+                Rendered ONLY when the session is driving this overlay
+                (menuActive) — experience-card playback never shows it.
+                No scheduleHide() on press: openMenu() sets
+                menuOpenRef.current=true synchronously and scheduleHide
+                early-returns while the menu is open. */}
+            <View style={styles.rightCol}>
+              {menuActive && (
+                <AudioSubsPill
+                  sub={audioSubsSub}
+                  onPress={openMenu}
+                  onFocusActivity={scheduleHide}
+                  focusable={controlsFocusable && !hasError}
+                  dimmed={hasError}
+                />
+              )}
+            </View>
           </View>
 
-          {/* Progress bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
-            </View>
-            <View style={styles.timeRow}>
-              <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-              <Text style={styles.timeText}>
-                {duration > 0 ? formatTime(duration) : "--:--"}
-              </Text>
-            </View>
+          {/* Scrubber + times. The scrubber is focusable (Down from the
+              transport lands here); while it owns focus, left/right are
+              seeks (host TV-event listener) and Select toggles play. */}
+          <PlayerScrubber
+            progressPct={progress}
+            bufferedPct={bufferedPct}
+            bubbleText={formatTime(currentTime)}
+            onPress={() => {
+              togglePlayPause()
+              scheduleHide()
+            }}
+            onFocusChange={(focused) => {
+              scrubFocusedRef.current = focused
+              if (focused) scheduleHide()
+            }}
+            focusable={controlsFocusable && !hasError}
+            dimmed={hasError}
+          />
+          <View style={styles.timesRow}>
+            <Text style={[styles.timeText, styles.timeCurrent]}>
+              {formatTime(currentTime)}
+            </Text>
+            <Text style={styles.timeText}>{remainingLabel}</Text>
           </View>
         </Animated.View>
 
@@ -1221,6 +1709,12 @@ export function VideoPlayer({
             open — never for experience-card playback. */}
         {menuActive && menuOpen && <InPlayerMenu onClose={closeMenu} />}
       </TVFocusGuideView>
+
+      {/* ── Loading veil (U8) ─────────────────────────────────────────────
+          Mounted until the first confirmed playback (playingChange true),
+          never on error (the inline error treatment owns that). Conditionally
+          mounted — not faded — so it can never linger over the player. */}
+      {!hasStarted && !hasError && <LoadingVeil />}
     </View>
   )
 }
@@ -1236,20 +1730,23 @@ function formatTime(seconds: number): string {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  // Pure black behind the video — the handoff's .player surface (the old
+  // Crimson Gallery warm-stone bg read as a tint behind letterboxing).
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.surface,
+    backgroundColor: "#000000",
     zIndex: 1000,
   },
 
   // Flex column layout spanning the overlay so D-pad can move
-  // between the top back button and bottom controls
+  // between the top back button and bottom controls. Insets per the
+  // handoff: 54 top, 80 sides, 46 bottom.
   contentLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
-    paddingTop: scale(40),
-    paddingBottom: scale(40),
-    paddingHorizontal: scale(48),
+    paddingTop: scale(54),
+    paddingBottom: scale(46),
+    paddingHorizontal: scale(80),
   },
 
   spacer: {
@@ -1266,83 +1763,117 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
 
+  // Stacked-copy icon cross-fade layers (FocusCrossfade).
+  crossfadeLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // ── Scrims ─────────────────────────────────────────────────────────────────
+  scrimTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: scale(280),
+  },
+  scrimBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: scale(520),
+  },
+
   // ── Top Bar ────────────────────────────────────────────────────────────────
-  // `backButtonHit` is the full-width Pressable — invisible but provides
-  // the spatial column that overlaps with the play button below, so
+  // `backHit` (inside BackPill) is the full-width Pressable — invisible but
+  // provides the spatial column that overlaps with the play button below, so
   // tvOS's UIFocusEngine can traverse DOWN from back to play via pure
-  // spatial navigation. `backButtonPill` is the visible compact pill
-  // containing the "← Back" text, hugging its content on the left.
+  // spatial navigation. The status chip rides at the row's right edge.
   topBar: {
     flexDirection: "row",
-    alignItems: "stretch",
+    alignItems: "center",
   },
-  backButtonHit: {
+  backHit: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
   },
-  backButtonPill: {
+  backPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: scale(20),
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
-    backgroundColor: hexToRgba(COLORS.surfaceContainer, 0.6),
+    gap: scale(8),
+    height: scale(58),
+    paddingLeft: scale(16),
+    paddingRight: scale(24),
+    borderRadius: scale(15),
     alignSelf: "flex-start",
+    shadowColor: "#000000",
+    shadowRadius: scale(22),
+    shadowOffset: { width: 0, height: scale(9) },
   },
-  backButtonPillFocused: {
-    backgroundColor: COLORS.surfaceContainerHigh,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: scale(30),
-    elevation: 8,
-    transform: [{ scale: 1.05 }],
-  },
-  backButtonText: {
+  backText: {
     fontFamily: "System",
-    fontSize: scale(20),
-    color: COLORS.text,
-    fontWeight: "500",
+    fontSize: Math.round(scale(21)),
+    fontWeight: "600",
   },
-  backButtonTextFocused: {
-    color: COLORS.text,
+  statusChip: {
+    backgroundColor: "rgba(0,0,0,0.35)",
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(18),
+    borderRadius: scale(13),
+    maxWidth: scale(640),
+  },
+  statusChipText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(19)),
+    fontWeight: "600",
+    color: WATCH_THEME.text66,
+    letterSpacing: scale(0.2),
   },
 
   // ── Bottom Controls ────────────────────────────────────────────────────────
-  // NOTE: `backdrop-filter` isn't available in RN StyleSheet — we rely on
-  // background opacity against the scrim to get the frosted-glass look.
-  controlsContainer: {
-    backgroundColor: GLASS_BG,
-    borderRadius: scale(16),
-    paddingHorizontal: scale(32),
-    paddingVertical: scale(24),
+  bottomPanel: {
+    width: "100%",
   },
-
-  titleRow: {
-    marginBottom: scale(20),
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(24),
+    marginBottom: scale(30),
+  },
+  titleCol: {
+    flex: 1,
+  },
+  eyebrow: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(18)),
+    fontWeight: "700",
+    letterSpacing: scale(2.9),
+    textTransform: "uppercase",
+    color: WATCH_THEME.accent,
+    marginBottom: scale(8),
   },
   videoTitle: {
     fontFamily: "System",
-    fontSize: scale(24),
-    fontWeight: "600",
-    color: COLORS.text,
+    fontSize: Math.round(scale(42)),
+    fontWeight: "800",
+    letterSpacing: -scale(0.7),
+    color: WATCH_THEME.text,
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowOffset: { width: 0, height: scale(3) },
+    textShadowRadius: scale(22),
   },
-  videoSubtitle: {
-    fontFamily: "System",
-    fontSize: scale(16),
-    color: COLORS.muted,
-    marginTop: scale(4),
-  },
-
-  // ── Playback Controls ──────────────────────────────────────────────────────
-  controlsRow: {
+  transport: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: scale(32),
-    marginBottom: scale(20),
+    gap: scale(22),
+  },
+  rightCol: {
+    flex: 1,
+    alignItems: "flex-end",
   },
 
   // Error-state ghost treatment: controls remain mounted (so the spatial
@@ -1351,74 +1882,153 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 
-  skipButton: {
-    width: scale(52),
-    height: scale(52),
-    borderRadius: scale(26),
+  circleBtn: {
+    width: scale(84),
+    height: scale(84),
+    borderRadius: scale(42),
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: hexToRgba(COLORS.surface, 0),
+    shadowColor: "#000000",
+    shadowRadius: scale(22),
+    shadowOffset: { width: 0, height: scale(9) },
   },
-  skipButtonFocused: {
-    backgroundColor: hexToRgba(COLORS.primary, 0.15),
-    transform: [{ scale: 1.1 }],
+  playBtn: {
+    width: scale(98),
+    height: scale(98),
+    borderRadius: scale(49),
+    backgroundColor: WATCH_THEME.accent,
+    borderWidth: scale(4),
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: WATCH_THEME.accent,
+    shadowRadius: scale(19),
+    shadowOpacity: 0.55,
+    shadowOffset: { width: 0, height: scale(7) },
   },
-  skipText: {
-    fontFamily: "System",
-    fontSize: scale(18),
-    fontWeight: "600",
-    color: COLORS.primary,
-  },
-  skipTextFocused: {
-    color: COLORS.text,
-  },
-
-  playPauseButton: {
-    width: scale(64),
+  asPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(12),
     height: scale(64),
-    borderRadius: scale(32),
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: scale(16),
-    elevation: 8,
+    paddingHorizontal: scale(22),
+    borderRadius: scale(16),
+    shadowColor: "#000000",
+    shadowRadius: scale(22),
+    shadowOffset: { width: 0, height: scale(9) },
   },
-  playPauseButtonFocused: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: scale(30),
-    elevation: 12,
-    transform: [{ scale: 1.1 }],
+  asCap: {
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  asLabel: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(20)),
+    fontWeight: "600",
+  },
+  asSub: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(14)),
+    fontWeight: "600",
+    marginTop: scale(2),
   },
 
-  // ── Progress Bar ───────────────────────────────────────────────────────────
-  progressContainer: {
-    width: "100%",
+  // ── Scrubber ───────────────────────────────────────────────────────────────
+  scrubWrap: {
+    height: scale(36),
+    justifyContent: "center",
   },
-  progressTrack: {
-    height: scale(6),
-    backgroundColor: TRACK_BG,
-    borderRadius: scale(3),
+  scrubTrack: {
+    width: "100%",
+    borderRadius: scale(5),
+    backgroundColor: "rgba(255,255,255,0.18)",
     overflow: "hidden",
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: COLORS.primary,
-    borderRadius: scale(3),
+  scrubBuf: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: scale(5),
   },
-  timeRow: {
+  scrubFill: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: WATCH_THEME.accent,
+    borderRadius: scale(5),
+  },
+  scrubThumb: {
+    position: "absolute",
+    top: "50%",
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(11),
+    marginTop: -scale(11),
+    marginLeft: -scale(11),
+    backgroundColor: WATCH_THEME.focusFill,
+    shadowColor: "#000000",
+    shadowRadius: scale(14),
+    shadowOpacity: 0.55,
+    shadowOffset: { width: 0, height: scale(4) },
+  },
+  scrubBubble: {
+    position: "absolute",
+    bottom: scale(42),
+    width: scale(110),
+    marginLeft: -scale(55),
+    alignItems: "center",
+    paddingVertical: scale(7),
+    borderRadius: scale(11),
+    backgroundColor: "rgba(28,28,30,0.92)",
+  },
+  scrubBubbleText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(19)),
+    fontWeight: "700",
+    color: WATCH_THEME.text,
+    fontVariant: ["tabular-nums"],
+  },
+
+  // ── Times ──────────────────────────────────────────────────────────────────
+  timesRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: scale(8),
+    marginTop: scale(10),
   },
   timeText: {
     fontFamily: "System",
-    fontSize: scale(14),
-    color: COLORS.muted,
+    fontSize: Math.round(scale(20)),
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.55)",
     fontVariant: ["tabular-nums"],
+  },
+  timeCurrent: {
+    color: WATCH_THEME.text,
+  },
+
+  // ── Loading veil ───────────────────────────────────────────────────────────
+  veil: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(24),
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  veilRing: {
+    width: scale(84),
+    height: scale(84),
+    borderRadius: scale(42),
+    borderWidth: scale(5),
+    borderColor: "rgba(255,255,255,0.18)",
+    borderTopColor: WATCH_THEME.accent,
+  },
+  veilText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(21)),
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.6)",
   },
 })
