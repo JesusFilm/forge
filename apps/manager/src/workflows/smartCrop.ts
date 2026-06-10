@@ -171,8 +171,28 @@ function addUsage(
   }
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error"
+// Exported for tests: the production failure mode (FatalError not being an
+// `instanceof Error` in the Next.js workflow runtime) does not reproduce in
+// vitest, where `workflow`'s FatalError IS an instanceof Error. Testing this
+// helper directly against the non-Error shape is the only realm-independent
+// pin for the "Unknown error" regression.
+export function errorMessage(error: unknown): string {
+  // Read `.message` defensively rather than gating on `instanceof Error`: the
+  // `workflow` SDK's FatalError (thrown by throwStepFailure for deterministic
+  // failures) is NOT an `instanceof Error` in this runtime — it surfaces as
+  // `{ fatal: true, name: "FatalError" }` with the message on a non-enumerable
+  // getter. Gating on instanceof discarded the operator-actionable message
+  // (crop-worker/mastra failure detail) and showed "Unknown error" instead.
+  if (typeof error === "string" && error.length > 0) {
+    return error
+  }
+  if (error && typeof error === "object") {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === "string" && message.length > 0) {
+      return message
+    }
+  }
+  return "Unknown error"
 }
 
 // ---------------------------------------------------------------------------

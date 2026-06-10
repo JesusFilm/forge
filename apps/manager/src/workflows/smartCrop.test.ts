@@ -79,6 +79,7 @@ vi.mock("@/services/mux", () => ({
 }))
 
 import {
+  errorMessage,
   runSmartCropCanonical,
   runSmartCropLocalized,
   SmartCropStepError,
@@ -899,5 +900,37 @@ describe("force retry", () => {
       name: "SmartCropStepError",
     })
     expect(launchSmartCropQaMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("errorMessage (operator-actionable error extraction)", () => {
+  it("extracts .message from a FatalError-shaped object that is NOT instanceof Error", () => {
+    // Reproduces the Next.js workflow runtime shape: FatalError surfaces as a
+    // plain object with name/message, not an `instanceof Error`. Gating on
+    // instanceof discarded the message and showed "Unknown error".
+    const fatalLike = {
+      name: "FatalError",
+      fatal: true,
+      message:
+        "crop-worker fingerprint failed (worker_error): Command ffprobe failed with code 1: 404 Not Found",
+    }
+    expect(fatalLike instanceof Error).toBe(false)
+    expect(errorMessage(fatalLike)).toBe(fatalLike.message)
+  })
+
+  it("returns the message of a real Error", () => {
+    expect(errorMessage(new Error("boom"))).toBe("boom")
+  })
+
+  it("returns a plain string error as-is", () => {
+    expect(errorMessage("raw failure text")).toBe("raw failure text")
+  })
+
+  it("falls back to 'Unknown error' for null/undefined/empty/messageless", () => {
+    expect(errorMessage(null)).toBe("Unknown error")
+    expect(errorMessage(undefined)).toBe("Unknown error")
+    expect(errorMessage("")).toBe("Unknown error")
+    expect(errorMessage({ name: "FatalError" })).toBe("Unknown error")
+    expect(errorMessage({ message: 42 })).toBe("Unknown error")
   })
 })

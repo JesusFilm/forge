@@ -280,6 +280,24 @@ localizedFingerprintGeneratedAt }` into the timeline-map artifact and only
 - Local mode degradation: `createPresignedArtifactUrl` returns `null` without
   `RAILWAY_S3_BUCKET`; the QA and Mux-output steps then mark themselves
   skipped with reason `storage_presign_unavailable`.
+- **Operator-actionable errors:** `errorMessage()` (exported from
+  `smartCrop.ts`) reads `.message` defensively rather than gating on
+  `instanceof Error` — the SDK's `FatalError` is NOT an `instanceof Error` in
+  the Next.js workflow runtime (it surfaces as `{ fatal: true, name }` with the
+  message on a non-enumerable getter), so an instanceof gate showed
+  "Unknown error" instead of the crop-worker/mastra failure detail. The bug
+  does not reproduce under vitest (where `FatalError` IS an instanceof Error),
+  so the regression is pinned by a direct `errorMessage` unit test against the
+  non-Error shape.
+- **Local mock-mode testing caveat (`MANAGER_DATA_MODE=mock`):** the job
+  **detail** page (`/dashboard/smart-crop/[id]`) may 404 for jobs created after
+  the dev server started. `MockCmsStore` (`src/cms/mock-store.ts`) caches state
+  in-memory and never re-reads the file, and Next dev hands the route handler
+  and the page server-component separate module instances — so a freshly
+  created job is visible in the list (fresh-read request) but missing from the
+  detail render's stale cache until restart. This is pre-existing mock-store
+  behavior, NOT a Smart Crop bug: production runs `admin` mode where `getJob`
+  hits the live Admin DB with no staleness.
 
 Env (all optional at schema load; job creation returns 503 `config_missing`
 when unset):
