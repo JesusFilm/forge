@@ -371,6 +371,38 @@ function nativeNameForOption(option: LanguageComboboxOption): string | null {
   }
 }
 
+const SEARCH_WORD_SEPARATOR = /[\s,.;:!?()[\]{}"'/\\|_-]+/u
+
+function searchMatchTierForText(
+  value: string | null | undefined,
+  query: string,
+): number | null {
+  const text = value?.trim().toLowerCase()
+  if (!text || !text.includes(query)) return null
+  if (text.startsWith(query)) return 0
+  if (
+    text
+      .split(SEARCH_WORD_SEPARATOR)
+      .filter(Boolean)
+      .some((word) => word.startsWith(query))
+  ) {
+    return 1
+  }
+  return 2
+}
+
+function searchMatchTierForOption(
+  option: LanguageComboboxOption,
+  query: string,
+): number | null {
+  const tiers = [
+    searchMatchTierForText(option.name, query),
+    searchMatchTierForText(nativeNameForOption(option), query),
+  ].filter((tier): tier is number => tier != null)
+
+  return tiers.length > 0 ? Math.min(...tiers) : null
+}
+
 function initialsForOption(option: LanguageComboboxOption): string {
   const words = option.name.split(/\s+/).filter(Boolean).slice(0, 2)
   const initials = words.map((word) => word[0]).join("")
@@ -447,12 +479,23 @@ export function LanguageCombobox({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return options
-    return options.filter((o) => {
-      const nativeName = nativeNameForOption(o)
-      if (o.name.toLowerCase().includes(q)) return true
-      if (nativeName?.toLowerCase().includes(q)) return true
-      return false
-    })
+    return options
+      .map((option, index) => ({
+        option,
+        index,
+        tier: searchMatchTierForOption(option, q),
+      }))
+      .filter(
+        (
+          entry,
+        ): entry is {
+          option: LanguageComboboxOption
+          index: number
+          tier: number
+        } => entry.tier != null,
+      )
+      .sort((a, b) => a.tier - b.tier || a.index - b.index)
+      .map((entry) => entry.option)
   }, [options, query])
 
   // Keep ref in sync with state

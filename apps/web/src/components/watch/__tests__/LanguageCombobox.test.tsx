@@ -188,6 +188,74 @@ describe("LanguageCombobox", () => {
     expect(items[0]?.textContent).toContain("Spanish")
   })
 
+  it("ranks label-prefix matches before word-prefix and substring matches", () => {
+    const OPTIONS_WITH_RUSSIAN = [
+      { slug: "belorussian", name: "Belorussian" },
+      { slug: "buriat-russia", name: "Buriat, Russia" },
+      { slug: "central-asian-russian", name: "Central Asian Russian" },
+      { slug: "russian", name: "Russian" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_RUSSIAN}
+          value="central-asian-russian"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "russi"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(
+      items.map((item) => item.getAttribute("data-language-slug")),
+    ).toEqual([
+      "russian",
+      "buriat-russia",
+      "central-asian-russian",
+      "belorussian",
+    ])
+    expect(items[0]?.getAttribute("aria-selected")).toBe("false")
+    expect(items[2]?.getAttribute("aria-selected")).toBe("true")
+  })
+
+  it("keeps the original option order for empty searches", () => {
+    const UNSORTED_OPTIONS = [
+      { slug: "zulu", name: "Zulu" },
+      { slug: "english", name: "English" },
+      { slug: "arabic", name: "Arabic" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={UNSORTED_OPTIONS}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(
+      items.map((item) => item.getAttribute("data-language-slug")),
+    ).toEqual(["zulu", "english", "arabic"])
+  })
+
   it("calls onChange and closes the popover when an option is clicked", () => {
     const onChange = vi.fn()
     act(() => {
@@ -242,6 +310,43 @@ describe("LanguageCombobox", () => {
     })
 
     expect(onChange).toHaveBeenCalledWith("spanish")
+  })
+
+  it("Enter selects the first ranked option after search filtering", () => {
+    const onChange = vi.fn()
+    const OPTIONS_WITH_RUSSIAN = [
+      { slug: "belorussian", name: "Belorussian" },
+      { slug: "central-asian-russian", name: "Central Asian Russian" },
+      { slug: "russian", name: "Russian" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_RUSSIAN}
+          value="central-asian-russian"
+          onChange={onChange}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "russi"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+
+    expect(onChange).toHaveBeenCalledWith("russian")
   })
 
   it("Escape closes the popover without calling onChange", () => {
@@ -608,6 +713,40 @@ describe("LanguageCombobox", () => {
     const items = $$('[data-testid="language-combobox-option"]')
     expect(items.length).toBe(1)
     expect(items[0]?.getAttribute("data-language-slug")).toBe("spanish")
+  })
+
+  it("ranks nativeName prefix matches before nativeName substring matches", () => {
+    const OPTIONS_WITH_NATIVE = [
+      { slug: "late-spanish", name: "Late Spanish", nativeName: "Neo Español" },
+      { slug: "spanish", name: "Spanish", nativeName: "Español" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_NATIVE}
+          value="late-spanish"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "Esp"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(
+      items.map((item) => item.getAttribute("data-language-slug")),
+    ).toEqual(["spanish", "late-spanish"])
+    expect(items[1]?.getAttribute("aria-selected")).toBe("true")
   })
 
   it("matches the search query against bcp47-derived native names", () => {
