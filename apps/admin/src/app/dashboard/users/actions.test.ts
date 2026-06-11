@@ -6,6 +6,7 @@ const revalidatePath = vi.fn()
 const approveUserRole = vi.fn()
 const grantManagerAccessForUser = vi.fn()
 const revokeManagerAccessForUser = vi.fn()
+const updateMastraStudioAccessByEmail = vi.fn()
 
 vi.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
@@ -23,7 +24,16 @@ vi.mock("@/services/user-access.service", () => ({
     revokeManagerAccessForUser(...args),
 }))
 
-import { approveUser, updateManagerAccess } from "@/app/dashboard/users/actions"
+vi.mock("@/services/mastra-studio-access.service", () => ({
+  updateMastraStudioAccessByEmail: (...args: unknown[]) =>
+    updateMastraStudioAccessByEmail(...args),
+}))
+
+import {
+  approveUser,
+  updateManagerAccess,
+  updateMastraStudioAccess,
+} from "@/app/dashboard/users/actions"
 
 const adminUser = { id: "admin-user-1", role: "ADMIN" }
 
@@ -42,6 +52,7 @@ describe("dashboard users server actions", () => {
     approveUserRole.mockReset()
     grantManagerAccessForUser.mockReset()
     revokeManagerAccessForUser.mockReset()
+    updateMastraStudioAccessByEmail.mockReset()
     requireAdminSession.mockResolvedValue(adminUser)
   })
 
@@ -108,6 +119,56 @@ describe("dashboard users server actions", () => {
     await expect(
       updateManagerAccess(form({ id: "target-user-1", role: "NO_ACCESS" })),
     ).rejects.toThrow("db failed")
+
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it("grants Mastra Studio access when Studio access is selected", async () => {
+    await updateMastraStudioAccess(
+      form({ email: "target@example.com", role: "STUDIO_ACCESS" }),
+    )
+
+    expect(updateMastraStudioAccessByEmail).toHaveBeenCalledWith({
+      email: "target@example.com",
+      role: "STUDIO_ACCESS",
+      approvedBy: "admin-user-1",
+    })
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/users")
+  })
+
+  it("revokes Mastra Studio access when No access is selected", async () => {
+    await updateMastraStudioAccess(
+      form({ email: "target@example.com", role: "NO_ACCESS" }),
+    )
+
+    expect(updateMastraStudioAccessByEmail).toHaveBeenCalledWith({
+      email: "target@example.com",
+      role: "NO_ACCESS",
+      approvedBy: "admin-user-1",
+    })
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/users")
+  })
+
+  it("does not write or revalidate Mastra Studio access for invalid form values", async () => {
+    await updateMastraStudioAccess(new FormData())
+    await updateMastraStudioAccess(
+      form({ email: "target@example.com", role: "ADMIN" }),
+    )
+
+    expect(updateMastraStudioAccessByEmail).not.toHaveBeenCalled()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it("rethrows Mastra Studio update failures", async () => {
+    updateMastraStudioAccessByEmail.mockRejectedValueOnce(
+      new Error("gateway failed"),
+    )
+
+    await expect(
+      updateMastraStudioAccess(
+        form({ email: "target@example.com", role: "STUDIO_ACCESS" }),
+      ),
+    ).rejects.toThrow("gateway failed")
 
     expect(revalidatePath).not.toHaveBeenCalled()
   })

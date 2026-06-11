@@ -953,12 +953,24 @@ async function resolveSlugPage(
   const templateSlug =
     settings?.defaultTemplateExperience?.slug?.toLowerCase() ?? null
 
-  // watchSetting.defaultTemplateExperience is the single source of truth for
-  // "this slug is the video-template route". Any other slug resolves first
-  // as a regular Experience and falls through to a template-rendered video
-  // when no Experience matches. Admin's `experienceBySlug` returns only
-  // non-template, published locales for PUBLIC callers, so a template hit
-  // at this slug naturally falls through to the video branch.
+  const routeVideoRecord = await getVideoBySlug(locale, slug)
+  if (routeVideoRecord) {
+    const templateExperience = settings?.defaultTemplateExperience ?? null
+    if (!templateExperience) return null
+
+    const routeVideo = normalizeRouteVideo(routeVideoRecord)
+    if (!routeVideo?.streamingUrl) return null
+
+    return {
+      kind: "video-template",
+      template: templateExperience,
+      routeVideo,
+    }
+  }
+
+  // watchSetting.defaultTemplateExperience is reserved for template
+  // rendering, not a public Experience page. Any non-template slug can still
+  // fall back to a curated Experience when no route video exists.
   if (slug.toLowerCase() !== templateSlug) {
     const experience = await getExperienceBySlug(locale, slug)
     if (experience) {
@@ -966,20 +978,7 @@ async function resolveSlugPage(
     }
   }
 
-  const routeVideoRecord = await getVideoBySlug(locale, slug)
-  if (!routeVideoRecord) return null
-
-  const templateExperience = settings?.defaultTemplateExperience ?? null
-  if (!templateExperience) return null
-
-  const routeVideo = normalizeRouteVideo(routeVideoRecord)
-  if (!routeVideo?.streamingUrl) return null
-
-  return {
-    kind: "video-template",
-    template: templateExperience,
-    routeVideo,
-  }
+  return null
 }
 
 const fetchResolvedWatchPage = unstable_cache(
