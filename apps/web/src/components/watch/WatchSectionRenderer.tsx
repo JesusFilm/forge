@@ -247,6 +247,8 @@ function SyntheticBlock({
           title: pendingChapter.title,
           label: pendingChapter.label,
           posterUrl: pendingChapter.posterUrl,
+          loading: true,
+          transitionKey: pendingChapter.targetVideoDocumentId,
         }
       : null
 
