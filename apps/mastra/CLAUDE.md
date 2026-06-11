@@ -90,7 +90,8 @@ pnpm --filter @forge/mastra lint
 | `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                         |
 | `MASTRA_STORAGE_DIR`                      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
 | `MASTRA_STORAGE_BACKEND`                  | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
-| `OPENROUTER_API_KEY`                      | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
+| `OPENROUTER_API_PAID_KEY`                 | Preferred OpenRouter key for eval generation, offline judging, and legacy embedding mode.                                  |
+| `OPENROUTER_API_KEY`                      | Legacy OpenRouter fallback for those paths when `OPENROUTER_API_PAID_KEY` is absent.                                       |
 | `OPENROUTER_EMBEDDINGS_BASE_URL`          | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
 | `OPENAI_API_KEY`                          | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |
 | `OPENAI_EMBEDDINGS_BASE_URL`              | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                               |

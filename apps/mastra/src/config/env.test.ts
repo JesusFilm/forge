@@ -412,6 +412,26 @@ describe("Mastra env", () => {
     })
   })
 
+  it("prefers OPENROUTER_API_PAID_KEY for legacy OpenRouter embedding config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENAI_API_KEY", "openai-key")
+    vi.stubEnv("OPENROUTER_API_PAID_KEY", "paid-openrouter-key")
+    vi.stubEnv("OPENROUTER_API_KEY", "legacy-openrouter-key")
+
+    const { getOpenRouterApiKey, getTranscriptEmbeddingProviderConfig } =
+      await import("./env")
+
+    expect(getOpenRouterApiKey()).toBe("paid-openrouter-key")
+    expect(getTranscriptEmbeddingProviderConfig()).toEqual({
+      apiKey: "paid-openrouter-key",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
+    })
+  })
+
   it("prefers AI Gateway config for content embedding provider config", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
