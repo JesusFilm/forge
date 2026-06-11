@@ -7,7 +7,14 @@
 // measuring pass. Renders nothing for an empty section: the model already
 // drops them (R12), this is defensive — no empty focus container.
 
-import { FlatList, StyleSheet, Text, View } from "react-native"
+import { memo, useCallback } from "react"
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+  type ListRenderItemInfo,
+} from "react-native"
 
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
@@ -16,6 +23,22 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { HOME_CARD_WIDTH, HomeCard } from "./HomeCard"
 
 const ITEM_GAP = scale(28)
+
+const keyExtractor = (item: WatchHomeCard, index: number) =>
+  `home-card-${item.id}-${index}`
+
+// Fixed card dims → no measuring pass. The last item has no trailing gap, so
+// its length is overstated by ITEM_GAP — harmless for virtualization and
+// scrollToIndex (same note as EpisodeRail). Module-scope: pure function of
+// module constants.
+const getItemLayout = (
+  _: ArrayLike<WatchHomeCard> | null | undefined,
+  index: number,
+) => ({
+  length: HOME_CARD_WIDTH + ITEM_GAP,
+  offset: (HOME_CARD_WIDTH + ITEM_GAP) * index,
+  index,
+})
 
 type HomeRailProps = {
   eyebrow: string
@@ -26,13 +49,32 @@ type HomeRailProps = {
   onCardPress: (card: WatchHomeCard) => void
 }
 
-export function HomeRail({
+export const HomeRail = memo(function HomeRail({
   eyebrow,
   title,
   cards,
   onCardFocus,
   onCardPress,
 }: HomeRailProps) {
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<WatchHomeCard>) => (
+      <View
+        style={[styles.itemWrapper, index < cards.length - 1 && styles.itemGap]}
+      >
+        {/* HomeCard re-emits its `card` prop from onFocus/onPress —
+            never re-index into `data` from an async focus callback
+            (the array can shrink under it). */}
+        <HomeCard
+          card={item}
+          index={index}
+          onFocus={onCardFocus}
+          onPress={onCardPress}
+        />
+      </View>
+    ),
+    [cards.length, onCardFocus, onCardPress],
+  )
+
   if (cards.length === 0) return null
 
   return (
@@ -52,39 +94,15 @@ export function HomeRail({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          keyExtractor={(item, index) => `home-card-${item.id}-${index}`}
+          keyExtractor={keyExtractor}
           onScrollToIndexFailed={() => {}}
-          // Fixed card dims → no measuring pass. The last item has no trailing
-          // gap, so its length is overstated by ITEM_GAP — harmless for
-          // virtualization and scrollToIndex (same note as EpisodeRail).
-          getItemLayout={(_, index) => ({
-            length: HOME_CARD_WIDTH + ITEM_GAP,
-            offset: (HOME_CARD_WIDTH + ITEM_GAP) * index,
-            index,
-          })}
-          renderItem={({ item, index }) => (
-            <View
-              style={[
-                styles.itemWrapper,
-                index < cards.length - 1 && styles.itemGap,
-              ]}
-            >
-              {/* HomeCard re-emits its `card` prop from onFocus/onPress —
-                  never re-index into `data` from an async focus callback
-                  (the array can shrink under it). */}
-              <HomeCard
-                card={item}
-                index={index}
-                onFocus={onCardFocus}
-                onPress={onCardPress}
-              />
-            </View>
-          )}
+          getItemLayout={getItemLayout}
+          renderItem={renderItem}
         />
       </TVFocusGuideView>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {

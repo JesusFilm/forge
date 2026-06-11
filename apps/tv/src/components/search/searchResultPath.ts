@@ -19,22 +19,15 @@ import { encodeWatchSeed } from "../../lib/watchSeed"
 export function searchResultPath(result: SearchResult): string {
   const slug = encodeURIComponent(result.slug)
   if (result.type === "VIDEO") {
-    if (isSeriesSearchResult(result)) {
-      const seed = encodeWatchSeed({
-        slug: result.slug,
-        title: result.title ?? null,
-        imageUrl: result.imageUrl ?? null,
-        playbackId: null,
-      })
-      return `/series/${slug}?seed=${seed}`
-    }
+    const isSeries = isSeriesSearchResult(result)
     const seed = encodeWatchSeed({
       slug: result.slug,
       title: result.title ?? null,
       imageUrl: result.imageUrl ?? null,
-      playbackId: result.playbackId ?? null,
+      playbackId: isSeries ? null : (result.playbackId ?? null),
     })
-    return `/watch/${slug}?seed=${seed}`
+    const base = isSeries ? "series" : "watch"
+    return `/${base}/${slug}?seed=${seed}`
   }
   return `/experience/${slug}`
 }

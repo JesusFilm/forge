@@ -10,7 +10,7 @@
 // can carry far more children than an Up Next rail, so the list virtualizes
 // without measuring every card.
 
-import { useMemo } from "react"
+import { memo, useCallback, useMemo } from "react"
 import {
   Animated,
   FlatList,
@@ -18,6 +18,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ListRenderItemInfo,
 } from "react-native"
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -37,6 +38,21 @@ const CARD_WIDTH = scale(360)
 const THUMB_HEIGHT = scale(202) // 16:9-ish, matches UpNextRail
 const ITEM_GAP = scale(30)
 
+const keyExtractor = (item: WatchEpisode, index: number) =>
+  `episode-${item.documentId}-${index}`
+
+// Fixed card dims → no measuring pass. The last item has no trailing gap, so
+// its length is overstated by ITEM_GAP — harmless for virtualization and
+// scrollToIndex. Module-scope: pure function of module constants.
+const getItemLayout = (
+  _: ArrayLike<WatchEpisode> | null | undefined,
+  index: number,
+) => ({
+  length: CARD_WIDTH + ITEM_GAP,
+  offset: (CARD_WIDTH + ITEM_GAP) * index,
+  index,
+})
+
 type EpisodeRailProps = {
   episodes: WatchEpisode[]
   /**
@@ -48,22 +64,42 @@ type EpisodeRailProps = {
   onEpisodePress?: (episode: WatchEpisode) => void
 }
 
-export function EpisodeRail({
+export const EpisodeRail = memo(function EpisodeRail({
   episodes,
   languageSlug,
   onEpisodePress,
 }: EpisodeRailProps) {
   const router = useRouter()
 
-  if (episodes.length === 0) return null
+  const handlePress = useCallback(
+    (episode: WatchEpisode) => {
+      if (onEpisodePress != null) {
+        onEpisodePress(episode)
+        return
+      }
+      router.push(episodeHref(resolveEpisodePath(episode, { languageSlug })))
+    },
+    [router, onEpisodePress, languageSlug],
+  )
 
-  const handlePress = (episode: WatchEpisode) => {
-    if (onEpisodePress != null) {
-      onEpisodePress(episode)
-      return
-    }
-    router.push(episodeHref(resolveEpisodePath(episode, { languageSlug })))
-  }
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<WatchEpisode>) => (
+      <View
+        style={[
+          styles.itemWrapper,
+          index < episodes.length - 1 && styles.itemGap,
+        ]}
+      >
+        {/* EpisodeCard re-emits its `episode` prop from onPress — never
+            re-index into `data` from an async focus/press callback (the
+            array can shrink under it). */}
+        <EpisodeCard episode={item} index={index} onPress={handlePress} />
+      </View>
+    ),
+    [episodes.length, handlePress],
+  )
+
+  if (episodes.length === 0) return null
 
   return (
     <View style={styles.container}>
@@ -82,46 +118,24 @@ export function EpisodeRail({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          keyExtractor={(item, index) => `episode-${item.documentId}-${index}`}
+          keyExtractor={keyExtractor}
           onScrollToIndexFailed={() => {}}
-          // Fixed card dims → no measuring pass. The last item has no trailing
-          // gap, so its length is overstated by ITEM_GAP — harmless for
-          // virtualization and scrollToIndex.
-          getItemLayout={(_, index) => ({
-            length: CARD_WIDTH + ITEM_GAP,
-            offset: (CARD_WIDTH + ITEM_GAP) * index,
-            index,
-          })}
-          renderItem={({ item, index }) => (
-            <View
-              style={[
-                styles.itemWrapper,
-                index < episodes.length - 1 && styles.itemGap,
-              ]}
-            >
-              {/* Closes over `item` — never re-index into `data` from an async
-                  focus/press callback (the array can shrink under it). */}
-              <EpisodeCard
-                episode={item}
-                index={index}
-                onPress={() => handlePress(item)}
-              />
-            </View>
-          )}
+          getItemLayout={getItemLayout}
+          renderItem={renderItem}
         />
       </TVFocusGuideView>
     </View>
   )
-}
+})
 
-function EpisodeCard({
+const EpisodeCard = memo(function EpisodeCard({
   episode,
   index,
   onPress,
 }: {
   episode: WatchEpisode
   index: number
-  onPress: () => void
+  onPress: (episode: WatchEpisode) => void
 }) {
   // Focus eases in (no "blink"): the card lifts + magnifies, the white glow
   // ramps up, and the overlay icon fades in over ~180ms.
@@ -135,8 +149,11 @@ function EpisodeCard({
     ? (episode.label ?? "")
     : `EPISODE ${index + 1}`
   // CMS poster URL is untrusted — sanitize before it reaches expo-image.
-  const poster =
-    episode.posterUrl != null ? resolveImageUrl(episode.posterUrl) : null
+  const poster = useMemo(
+    () =>
+      episode.posterUrl != null ? resolveImageUrl(episode.posterUrl) : null,
+    [episode.posterUrl],
+  )
 
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
@@ -158,7 +175,7 @@ function EpisodeCard({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onPress(episode)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       accessibilityRole="button"
@@ -204,7 +221,7 @@ function EpisodeCard({
       </Animated.View>
     </Pressable>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {

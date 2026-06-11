@@ -22,9 +22,8 @@ const RETRYABLE_ERROR_MESSAGE = "Couldn't load videos. Please try again."
 
 export type WatchHomeState = {
   model: WatchHomeModel | null
-  /** Initial load — no model yet. Refetch uses `refreshing` instead. */
+  /** Initial load — no model yet. */
   loading: boolean
-  refreshing: boolean
   error: string | null
   /** Network-only refetch suited to a retry action. */
   refetch: () => void
@@ -40,14 +39,12 @@ export type WatchHomeState = {
 export function useWatchHome(): WatchHomeState {
   const [model, setModel] = useState<WatchHomeModel | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const requestIdRef = useRef(0)
 
   const fetchHome = useCallback(async (mode: "initial" | "refresh") => {
     const thisRequest = ++requestIdRef.current
     if (mode === "initial") setLoading(true)
-    else setRefreshing(true)
     setError(null)
 
     try {
@@ -76,7 +73,6 @@ export function useWatchHome(): WatchHomeState {
     } finally {
       if (requestIdRef.current === thisRequest) {
         setLoading(false)
-        setRefreshing(false)
       }
     }
   }, [])
@@ -89,5 +85,5 @@ export function useWatchHome(): WatchHomeState {
     void fetchHome("refresh")
   }, [fetchHome])
 
-  return { model, loading, refreshing, error, refetch }
+  return { model, loading, error, refetch }
 }

@@ -7,6 +7,7 @@
 // tvOS decode slots are scarce and even a paused background VideoView holds
 // one (KTD: dwell-to-preview stays deferred).
 
+import { memo, useMemo } from "react"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { Dimensions, StyleSheet, Text, View } from "react-native"
@@ -30,16 +31,42 @@ const SHOWCASE_HEIGHT = Math.round(
 /** Crossfade between artworks as focus moves across cards. */
 const IMAGE_TRANSITION_MS = 250
 
+// Bottom + left scrims so the copy block reads over artwork. One gradient per
+// layer; hexToRgba (never "transparent") to avoid dark banding. Module-scope
+// (the inputs are module constants) so the gradient props keep one identity
+// across renders.
+const BOTTOM_SCRIM_COLORS = [
+  hexToRgba(COLORS.surface, 0.96),
+  hexToRgba(COLORS.surface, 0.45),
+  hexToRgba(COLORS.surface, 0),
+] as const
+const BOTTOM_SCRIM_LOCATIONS = [0, 0.3, 0.62] as const
+const BOTTOM_SCRIM_START = { x: 0.5, y: 1 }
+const BOTTOM_SCRIM_END = { x: 0.5, y: 0 }
+
+const LEFT_SCRIM_COLORS = [
+  hexToRgba(COLORS.surface, 0.88),
+  hexToRgba(COLORS.surface, 0.4),
+  hexToRgba(COLORS.surface, 0),
+] as const
+const LEFT_SCRIM_LOCATIONS = [0, 0.32, 0.6] as const
+const LEFT_SCRIM_START = { x: 0, y: 0.5 }
+const LEFT_SCRIM_END = { x: 1, y: 0.5 }
+
 type ShowcaseCanvasProps = {
   /** Null while the model loads — renders the background color only. */
   card: WatchHomeCard | null
 }
 
-export function ShowcaseCanvas({ card }: ShowcaseCanvasProps) {
+export const ShowcaseCanvas = memo(function ShowcaseCanvas({
+  card,
+}: ShowcaseCanvasProps) {
   // CMS-sourced URL is untrusted — sanitize before it reaches expo-image
   // (same gate as EpisodeRail's poster).
-  const imageUrl =
-    card?.imageUrl != null ? resolveImageUrl(card.imageUrl) : null
+  const imageUrl = useMemo(
+    () => (card?.imageUrl != null ? resolveImageUrl(card.imageUrl) : null),
+    [card?.imageUrl],
+  )
 
   return (
     <View style={styles.canvas} focusable={false} pointerEvents="none">
@@ -59,32 +86,22 @@ export function ShowcaseCanvas({ card }: ShowcaseCanvasProps) {
             <View style={[StyleSheet.absoluteFill, styles.artworkFallback]} />
           )}
 
-          {/* Bottom + left scrims so the copy block reads over artwork. One
-              gradient per layer; hexToRgba (never "transparent") to avoid
-              dark banding. collapsable={false} keeps them discrete native
-              views on Android TV. */}
+          {/* collapsable={false} keeps the scrims discrete native views on
+              Android TV. */}
           <LinearGradient
-            colors={[
-              hexToRgba(COLORS.surface, 0.96),
-              hexToRgba(COLORS.surface, 0.45),
-              hexToRgba(COLORS.surface, 0),
-            ]}
-            locations={[0, 0.3, 0.62]}
-            start={{ x: 0.5, y: 1 }}
-            end={{ x: 0.5, y: 0 }}
+            colors={BOTTOM_SCRIM_COLORS}
+            locations={BOTTOM_SCRIM_LOCATIONS}
+            start={BOTTOM_SCRIM_START}
+            end={BOTTOM_SCRIM_END}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
             collapsable={false}
           />
           <LinearGradient
-            colors={[
-              hexToRgba(COLORS.surface, 0.88),
-              hexToRgba(COLORS.surface, 0.4),
-              hexToRgba(COLORS.surface, 0),
-            ]}
-            locations={[0, 0.32, 0.6]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
+            colors={LEFT_SCRIM_COLORS}
+            locations={LEFT_SCRIM_LOCATIONS}
+            start={LEFT_SCRIM_START}
+            end={LEFT_SCRIM_END}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
             collapsable={false}
@@ -112,7 +129,7 @@ export function ShowcaseCanvas({ card }: ShowcaseCanvasProps) {
       ) : null}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   canvas: {

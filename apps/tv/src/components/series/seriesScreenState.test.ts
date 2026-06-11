@@ -1,6 +1,5 @@
 import {
   pickPlayableTrailer,
-  resolveInitialFocus,
   resolveLeafBounce,
   resolveScreenState,
 } from "./seriesScreenState"
@@ -100,23 +99,6 @@ describe("resolveLeafBounce", () => {
     expect(resolveLeafBounce(null, false)).toBe("pending")
     expect(resolveLeafBounce(null, true)).toBe("pending")
     expect(resolveLeafBounce(undefined, false)).toBe("pending")
-  })
-})
-
-// ── resolveInitialFocus ────────────────────────────────────────────
-
-describe("resolveInitialFocus", () => {
-  it("prefers the trailer whenever one exists", () => {
-    expect(resolveInitialFocus(true, true)).toBe("trailer")
-    expect(resolveInitialFocus(true, false)).toBe("trailer")
-  })
-
-  it("falls to the first episode when there is no trailer", () => {
-    expect(resolveInitialFocus(false, true)).toBe("episodes")
-  })
-
-  it("falls to Language when there is neither", () => {
-    expect(resolveInitialFocus(false, false)).toBe("language")
   })
 })
 

@@ -4,8 +4,15 @@
 // sanitized) seed for instant first paint, then fills in from
 // GET_SERIES_BY_SLUG (cache-first + returnPartialData so re-entry reads the
 // warm cache without a blocking refetch). No watch-session publish — trailer
-// playback uses the overlay's no-session path (see SeriesActionRow), and the
-// series language state arrives in U4 via a dedicated provider.
+// playback uses the overlay's no-session path (see SeriesActionRow).
+//
+// Language (U4): the screen's selection lives in SeriesLanguageProvider,
+// keyed by this series' documentId, so it survives episode push/pop and
+// nested series stacking. The screen registers itself ACTIVE on focus (the
+// watch session carries the active series' selection into opened episodes)
+// and deletes its entry on unmount. Selecting a language best-effort swaps
+// the trailer dub (resolveTrailerSwap) and threads the slug to the episode
+// rail's `lang` param.
 //
 // Layout (WATCH_THEME for visual continuity with the watch screen): a
 // full-height STATIC artwork hero — expo-image + the watch backdrop's ambient
@@ -21,11 +28,10 @@
 // resolveLeafBounce evaluates the same isSeriesRecord predicate as the watch
 // route's series redirect (U5), so the two seams can never disagree and loop.
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Dimensions,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,19 +39,24 @@ import {
 } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_SERIES_BY_SLUG } from "../../src/lib/videoQueries"
 import { normalizeSeries } from "../../src/lib/normalizeVideo"
+import type { WatchChildLanguage } from "../../src/lib/normalizeVideo"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
+import { useSeriesLanguage } from "../../src/contexts/SeriesLanguageContext"
+import { resolveTrailerSwap } from "../../src/contexts/seriesLanguageState"
 import {
   pickPlayableTrailer,
   resolveLeafBounce,
   resolveScreenState,
 } from "../../src/components/series/seriesScreenState"
 import { EpisodeRail } from "../../src/components/series/EpisodeRail"
+import { RetryButton } from "../../src/components/RetryButton"
 import { SeriesActionRow } from "../../src/components/series/SeriesActionRow"
+import { SeriesLanguagePanel } from "../../src/components/series/SeriesLanguagePanel"
 import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
 import { WATCH_THEME } from "../../src/components/watch/watchDetailTheme"
 import { COLORS } from "../../src/lib/colors"
@@ -53,6 +64,11 @@ import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
+
+// Stable fallback for the language panel while no record is resolved — a
+// fresh [] each render would re-run the panel's rows memo (the watch screen's
+// NO_CITATIONS precedent).
+const NO_LANGUAGES: WatchChildLanguage[] = []
 
 export default function SeriesScreen() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
@@ -103,11 +119,93 @@ export default function SeriesScreen() {
 
   const screenState = resolveScreenState({ record, seed, error, loading })
 
-  // Trailer: the series' own first playable dub (R4). U4 swaps this per the
-  // selected language; until then the Language pill captions the trailer
-  // dub's language — the dub Play Trailer will actually start.
-  const trailer = pickPlayableTrailer(record)
-  const languageName = trailer?.languageName ?? "English"
+  // ── Series language (U4) ───────────────────────────────────────────
+
+  const { selections, setSelection, setActive, clearSeries } =
+    useSeriesLanguage()
+  const seriesId = record?.documentId ?? null
+
+  // Register as the ACTIVE series screen on focus (and again when the record's
+  // identity resolves while focused). Deliberately NO blur cleanup: pushing an
+  // episode blurs this screen but must keep it active so the watch session
+  // carries its selection; a nested series screen takes over by registering
+  // itself on its own focus.
+  useFocusEffect(
+    useCallback(() => {
+      if (seriesId != null) setActive(seriesId)
+    }, [seriesId, setActive]),
+  )
+
+  // Teardown on UNMOUNT only (pop) — never on blur, or the selection would
+  // die the moment an episode opens. Ref-read so the cleanup registered at
+  // mount sees the id even when the record resolved later.
+  const seriesIdRef = useRef<string | null>(seriesId)
+  useEffect(() => {
+    seriesIdRef.current = seriesId
+  }, [seriesId])
+  useEffect(() => {
+    return () => {
+      if (seriesIdRef.current != null) clearSeries(seriesIdRef.current)
+    }
+  }, [clearSeries])
+
+  // This screen's own selection (per-series keyed, so a nested series can't
+  // clobber it). Survives episode push/pop — the provider outlives the screen.
+  const selectedSlug =
+    seriesId != null ? (selections.get(seriesId) ?? null) : null
+
+  const [languagePanelVisible, setLanguagePanelVisible] = useState(false)
+  // Incremented on every panel close to re-arm the action row's one-shot
+  // preferred focus, so the D-pad lands back on the first pill instead of
+  // dropping when the Modal's focus trap releases.
+  const [actionRowRefocusKey, setActionRowRefocusKey] = useState(0)
+  const openLanguagePanel = useCallback(() => {
+    setLanguagePanelVisible(true)
+  }, [])
+  const closeLanguagePanel = useCallback(() => {
+    setLanguagePanelVisible(false)
+    setActionRowRefocusKey((key) => key + 1)
+  }, [])
+
+  // Trailer (R4 / AE9): default = the series' own first playable dub; a
+  // selection swaps it ONLY when that language has a playable dub on the
+  // series record. `trailerSlug` remembers the last selection that DID swap,
+  // so a later no-trailer selection keeps the PREVIOUS trailer (not the
+  // default) and the Play Trailer action never disappears under focus. On
+  // re-entry (trailerSlug reset) the surviving selection seeds the swap.
+  const [trailerSlug, setTrailerSlug] = useState<string | null>(null)
+  const defaultTrailer = useMemo(() => pickPlayableTrailer(record), [record])
+  const trailer = useMemo(
+    () =>
+      resolveTrailerSwap(record, trailerSlug ?? selectedSlug, defaultTrailer),
+    [record, trailerSlug, selectedSlug, defaultTrailer],
+  )
+
+  const handleLanguageSelect = useCallback(
+    (slug: string) => {
+      if (seriesId != null) setSelection(seriesId, slug)
+      // Probe with a null current so "no playable match" is distinguishable —
+      // an unplayable selection must not clear the previous swap.
+      if (resolveTrailerSwap(record, slug, null) != null) setTrailerSlug(slug)
+      closeLanguagePanel()
+    },
+    [seriesId, record, setSelection, closeLanguagePanel],
+  )
+
+  // Pill sub-caption ALWAYS reflects the SELECTION (AE9 — even when the
+  // trailer stayed on a prior dub), falling back to the dub Play Trailer will
+  // actually start, then "English".
+  const selectedLanguage = useMemo(
+    () =>
+      selectedSlug != null
+        ? (record?.languages.find((lang) => lang.slug === selectedSlug) ?? null)
+        : null,
+    [record?.languages, selectedSlug],
+  )
+  const languageName =
+    selectedLanguage != null
+      ? (selectedLanguage.name ?? selectedLanguage.slug)
+      : (trailer?.languageName ?? "English")
 
   // First paint prefers resolved data, falling back to the seed. CMS posterUrl
   // is untrusted — sanitize before it reaches expo-image (the seed.imageUrl
@@ -155,6 +253,7 @@ export default function SeriesScreen() {
           onPress={() => {
             void refetch()
           }}
+          accessibilityHint="Reloads this series"
         />
       </View>
     )
@@ -248,6 +347,8 @@ export default function SeriesScreen() {
               trailerHls={trailer?.hls ?? null}
               title={displayTitle}
               languageName={languageName}
+              onLanguagePress={openLanguagePanel}
+              refocusKey={actionRowRefocusKey}
             />
           </View>
         </View>
@@ -260,40 +361,33 @@ export default function SeriesScreen() {
             same structure the watch screen ships (DetailsActionRow ↔
             UpNextRail), no explicit destinations needed. Initial focus stays
             with the action row even when no trailer exists (the Language
-            pill): resolveInitialFocus's "episodes" branch is intentionally
+            pill): a first-episode initial-focus branch is intentionally
             unwired — arming hasTVPreferredFocus inside the rail would fight
             the action row's one-shot, and landing focus below the fold
             would scroll past the hero on entry. */}
         <View style={styles.below}>
-          {record != null ? <EpisodeRail episodes={record.episodes} /> : null}
+          {record != null ? (
+            <EpisodeRail
+              episodes={record.episodes}
+              languageSlug={selectedSlug}
+            />
+          ) : null}
         </View>
       </ScrollView>
-    </View>
-  )
-}
 
-/**
- * Focusable "Try again" control for the error state. Mirrors the watch
- * screen's RetryButton (not exported there): onFocus / onBlur + state rather
- * than the `({ focused }) => [...]` callback — `focused` is exposed at runtime
- * by react-native-tvos but not by the upstream PressableStateCallbackType, so
- * the callback form fails the strict tsc check.
- */
-function RetryButton({ onPress }: { onPress: () => void }) {
-  const [isFocused, setIsFocused] = useState(false)
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Try again"
-      accessibilityHint="Reloads this series"
-      hasTVPreferredFocus
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
-      style={[styles.retryButton, isFocused && styles.retryButtonFocused]}
-      onPress={onPress}
-    >
-      <Text style={styles.retryText}>Try again</Text>
-    </Pressable>
+      {/* activeSlug falls back to the trailer dub's language so the first
+          open lands on (and scrolls to) what currently plays. The screen owns
+          closing: handleLanguageSelect persists the pick, swaps the trailer
+          when playable, and funnels into closeLanguagePanel — one close path,
+          one refocusKey increment. */}
+      <SeriesLanguagePanel
+        visible={languagePanelVisible}
+        languages={record?.languages ?? NO_LANGUAGES}
+        activeSlug={selectedSlug ?? trailer?.languageSlug ?? null}
+        onSelect={handleLanguageSelect}
+        onClose={closeLanguagePanel}
+      />
+    </View>
   )
 }
 
@@ -395,24 +489,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.text,
     textAlign: "center",
-  },
-  retryButton: {
-    paddingHorizontal: scale(32),
-    paddingVertical: scale(14),
-    borderRadius: scale(24),
-    backgroundColor: COLORS.primary,
-  },
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(20),
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  retryText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(18)),
-    fontWeight: "600",
-    color: COLORS.text,
   },
 })

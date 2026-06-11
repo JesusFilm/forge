@@ -18,14 +18,7 @@
 // title/poster first; no per-section spinners).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  Dimensions,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native"
+import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
@@ -37,6 +30,7 @@ import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
+import { RetryButton } from "../../src/components/RetryButton"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
@@ -213,6 +207,7 @@ export default function WatchVideoScreen() {
           onPress={() => {
             void refetch()
           }}
+          accessibilityHint="Reloads this video"
         />
       </View>
     )
@@ -315,32 +310,6 @@ export default function WatchVideoScreen() {
         onClose={closePanel}
       />
     </View>
-  )
-}
-
-/**
- * Focusable "Try again" control for the error state. Uses the
- * onFocus / onBlur + state pattern (matching SearchResultsGrid's
- * RetryButton) rather than the `({ focused }) => [...]` callback —
- * `focused` is exposed at runtime by react-native-tvos but not by the
- * upstream PressableStateCallbackType, so the callback form fails the
- * strict tsc check.
- */
-function RetryButton({ onPress }: { onPress: () => void }) {
-  const [isFocused, setIsFocused] = useState(false)
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Try again"
-      accessibilityHint="Reloads this video"
-      hasTVPreferredFocus
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
-      style={[styles.retryButton, isFocused && styles.retryButtonFocused]}
-      onPress={onPress}
-    >
-      <Text style={styles.retryText}>Try again</Text>
-    </Pressable>
   )
 }
 
@@ -459,24 +428,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.text,
     textAlign: "center",
-  },
-  retryButton: {
-    paddingHorizontal: scale(32),
-    paddingVertical: scale(14),
-    borderRadius: scale(24),
-    backgroundColor: COLORS.primary,
-  },
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(20),
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  retryText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(18)),
-    fontWeight: "600",
-    color: COLORS.text,
   },
 })

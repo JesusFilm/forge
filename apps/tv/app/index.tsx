@@ -79,9 +79,8 @@ export default function HomeScreen() {
   )
   useFocusEffect(
     useCallback(() => {
-      setFeaturedTitle(
-        resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date()),
-      )
+      const next = resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date())
+      setFeaturedTitle((prev) => (prev === next ? prev : next))
     }, []),
   )
 
@@ -221,9 +220,9 @@ export default function HomeScreen() {
         onCardPress={handleCardPress}
       />
 
-      {model.sections.map((section, index) => (
+      {model.sections.map((section) => (
         <HomeRail
-          key={`home-rail-${section.id}-${index}`}
+          key={section.id}
           eyebrow={section.eyebrow}
           title={section.title}
           cards={section.cards}

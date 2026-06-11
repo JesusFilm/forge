@@ -1,7 +1,7 @@
 // Pure, React-free decision helpers for the /series/[slug] screen. Extracted
 // (like panelState.ts / detailsHelpers.ts) so the bug-prone branches — trailer
-// pick, leaf bounce, initial focus, state selection — are unit-testable under
-// jest-expo, which cannot load .tsx.
+// pick, leaf bounce, state selection — are unit-testable under jest-expo,
+// which cannot load .tsx.
 
 import { isSeriesRecord } from "../../lib/isSeriesRecord"
 
@@ -52,23 +52,6 @@ export function resolveLeafBounce(
   return "pending"
 }
 
-// ── Initial focus chain ────────────────────────────────────────────
-
-/**
- * Where initial D-pad focus should land: Play Trailer → first episode →
- * Language. The action row consumes the trailer/language branches (its first
- * pill arms a one-shot hasTVPreferredFocus); the "episodes" branch is wired
- * in U3 when the episode rail mounts.
- */
-export function resolveInitialFocus(
-  hasTrailer: boolean,
-  hasEpisodes: boolean,
-): "trailer" | "episodes" | "language" {
-  if (hasTrailer) return "trailer"
-  if (hasEpisodes) return "episodes"
-  return "language"
-}
-
 // ── Screen state (R16) ─────────────────────────────────────────────
 
 /**
@@ -84,7 +67,7 @@ export function resolveScreenState(input: {
   error: unknown
   loading: boolean
 }): "content" | "loading" | "error" {
-  if (input.record != null || (input.seed ?? null) != null) return "content"
+  if (input.record != null || input.seed != null) return "content"
   if (input.error != null && !input.loading) return "error"
   return "loading"
 }

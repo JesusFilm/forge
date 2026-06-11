@@ -12,7 +12,7 @@
 // never re-indexed from the rail's data array, which can shrink between a
 // queued focus event and its handler (patterns doc §7).
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
@@ -26,6 +26,18 @@ import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 export const HOME_CARD_WIDTH = scale(400)
 export const HOME_CARD_HEIGHT = scale(225) // 16:9 of the width
 
+// Bottom scrim so the overlaid title reads over artwork. Module-scope (the
+// inputs are module constants) so the gradient props keep one identity across
+// renders.
+const TITLE_SCRIM_COLORS = [
+  hexToRgba(COLORS.surface, 0.92),
+  hexToRgba(COLORS.surface, 0.35),
+  hexToRgba(COLORS.surface, 0),
+] as const
+const TITLE_SCRIM_LOCATIONS = [0, 0.5, 1] as const
+const TITLE_SCRIM_START = { x: 0.5, y: 1 }
+const TITLE_SCRIM_END = { x: 0.5, y: 0 }
+
 type HomeCardProps = {
   card: WatchHomeCard
   onFocus: (card: WatchHomeCard) => void
@@ -33,10 +45,18 @@ type HomeCardProps = {
   index: number
 }
 
-export function HomeCard({ card, onFocus, onPress, index }: HomeCardProps) {
+export const HomeCard = memo(function HomeCard({
+  card,
+  onFocus,
+  onPress,
+  index,
+}: HomeCardProps) {
   const { setFocused, progress } = useFocusAnimation()
   // CMS-sourced URL is untrusted — sanitize before it reaches expo-image.
-  const imageUrl = card.imageUrl != null ? resolveImageUrl(card.imageUrl) : null
+  const imageUrl = useMemo(
+    () => (card.imageUrl != null ? resolveImageUrl(card.imageUrl) : null),
+    [card.imageUrl],
+  )
   const isSeriesShaped = card.childCount > 0
 
   // Memoized: progress is a stable ref, so the interpolations are built once
@@ -86,16 +106,11 @@ export function HomeCard({ card, onFocus, onPress, index }: HomeCardProps) {
               <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
             )}
 
-            {/* Bottom scrim so the overlaid title reads over artwork. */}
             <LinearGradient
-              colors={[
-                hexToRgba(COLORS.surface, 0.92),
-                hexToRgba(COLORS.surface, 0.35),
-                hexToRgba(COLORS.surface, 0),
-              ]}
-              locations={[0, 0.5, 1]}
-              start={{ x: 0.5, y: 1 }}
-              end={{ x: 0.5, y: 0 }}
+              colors={TITLE_SCRIM_COLORS}
+              locations={TITLE_SCRIM_LOCATIONS}
+              start={TITLE_SCRIM_START}
+              end={TITLE_SCRIM_END}
               style={styles.titleScrim}
               pointerEvents="none"
               collapsable={false}
@@ -119,7 +134,7 @@ export function HomeCard({ card, onFocus, onPress, index }: HomeCardProps) {
       </Animated.View>
     </Pressable>
   )
-}
+})
 
 const styles = StyleSheet.create({
   card: {

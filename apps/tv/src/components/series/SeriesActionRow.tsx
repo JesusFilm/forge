@@ -18,7 +18,7 @@
 // fight subsequent user navigation.
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import { Animated, Pressable, StyleSheet, Text } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -27,7 +27,7 @@ import { scale } from "../../lib/scale"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
-import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
+import { SecondaryPill } from "../watch/DetailsActionRow"
 
 type SeriesActionRowProps = {
   /**
@@ -106,7 +106,9 @@ export function SeriesActionRow({
           hasTVPreferredFocus={firstPillPreferredFocus}
         />
       ) : null}
-      <LanguagePill
+      <SecondaryPill
+        icon="globe-outline"
+        label="Language"
         sub={languageName}
         onPress={() => onLanguagePress?.()}
         hasTVPreferredFocus={!hasTrailer && firstPillPreferredFocus}
@@ -117,9 +119,10 @@ export function SeriesActionRow({
 
 // ── Pills ───────────────────────────────────────────────────────────
 //
-// Mirrors DetailsActionRow's PlayPill / SecondaryPill (not exported there):
-// focus eases in via useFocusAnimation's 0→1 `progress` — lift + magnify, and
-// the highlight (Play's white ring; Language's glass→white fill) cross-fades.
+// TrailerPill mirrors DetailsActionRow's PlayPill (not exported there): focus
+// eases in via useFocusAnimation's 0→1 `progress` — lift + magnify, and the
+// white-ring highlight cross-fades. The Language pill is the shared
+// SecondaryPill imported from DetailsActionRow.
 
 const ICON_SIZE = Math.round(scale(30))
 
@@ -160,80 +163,6 @@ function TrailerPill({
   )
 }
 
-function LanguagePill({
-  sub,
-  onPress,
-  hasTVPreferredFocus,
-}: {
-  sub: string
-  onPress: () => void
-  hasTVPreferredFocus: boolean
-}) {
-  const { setFocused, progress } = useFocusAnimation()
-  const ink = useMemo(
-    () =>
-      progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
-      }),
-    [progress],
-  )
-  const subInk = useMemo(
-    () =>
-      progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [WATCH_THEME.text62, "rgba(0,0,0,0.5)"],
-      }),
-    [progress],
-  )
-  const animatedStyle = useMemo(
-    () => ({
-      backgroundColor: progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
-      }),
-      shadowOpacity: progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 0.5],
-      }),
-      transform: focusTransform(progress),
-    }),
-    [progress],
-  )
-  return (
-    <Pressable
-      onPress={onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      hasTVPreferredFocus={hasTVPreferredFocus}
-      accessibilityRole="button"
-      // Fold the visible sub-value (current language) into the label so
-      // VoiceOver and automated D-pad drivers can read the state without
-      // activating the picker.
-      accessibilityLabel={`Language, ${sub}`}
-    >
-      <Animated.View style={[styles.pill, animatedStyle]}>
-        <AnimatedFocusIcon
-          name="globe-outline"
-          progress={progress}
-          size={ICON_SIZE}
-        />
-        <View style={styles.cap}>
-          <Animated.Text style={[styles.pillLabel, { color: ink }]}>
-            Language
-          </Animated.Text>
-          <Animated.Text
-            style={[styles.pillSub, { color: subInk }]}
-            numberOfLines={1}
-          >
-            {sub}
-          </Animated.Text>
-        </View>
-      </Animated.View>
-    </Pressable>
-  )
-}
-
 const PILL_HEIGHT = scale(76)
 const PILL_RADIUS = scale(18)
 
@@ -268,34 +197,5 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(28)),
     fontWeight: "700",
     color: WATCH_THEME.accentText,
-  },
-
-  // Language (glass → white-fill on focus).
-  pill: {
-    height: PILL_HEIGHT,
-    paddingHorizontal: scale(26),
-    borderRadius: PILL_RADIUS,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(13),
-    shadowColor: "#000000",
-    shadowRadius: scale(22),
-    shadowOffset: { width: 0, height: scale(14) },
-  },
-  pillLabel: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(23)),
-    fontWeight: "600",
-  },
-  pillSub: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(15)),
-    fontWeight: "600",
-    marginTop: scale(2),
-  },
-
-  cap: {
-    alignItems: "flex-start",
-    justifyContent: "center",
   },
 })
