@@ -83,6 +83,23 @@ export function buildShortsInitialSteps(
   }))
 }
 
+// Lifecycle contract (plan 2026-06-11-002 decision 2): a launch
+// resets/replaces ITS step subset in place — the other kind's steps are
+// preserved as history, and no duplicate step rows accumulate across
+// re-launches. Render steps live after prepare steps; the prepare subset is
+// re-inserted at the head so the visual order stays prepare → render.
+export function resetShortsStepsForLaunch(
+  existing: JobStepState[],
+  kind: "prepare" | "render",
+): JobStepState[] {
+  const names: WorkflowStepName[] =
+    kind === "prepare" ? SHORTS_PREPARE_STEPS : SHORTS_RENDER_STEPS
+  const kept = existing.filter((step) => !names.includes(step.name))
+  const fresh = buildShortsInitialSteps(kind)
+
+  return kind === "prepare" ? [...fresh, ...kept] : [...kept, ...fresh]
+}
+
 export function formatStepName(step: WorkflowStepName): string {
   if (step === "seo_improvements") {
     return "SEO Improvements"
