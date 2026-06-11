@@ -39,12 +39,11 @@ export function WatchBody({
         data-testid="watch-body-left"
         className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-7"
       >
-        {/* Match the Related Questions / Bible Quotes header pattern: keep the
-            CTA right-aligned, wrapping only when a narrow rail or long
-            localized title actually needs it. */}
+        {/* Keep Download beside the title; the title wraps inside the
+            remaining width instead of forcing the CTA onto a new row. */}
         <div
           data-testid="watch-body-title-row"
-          className="flex flex-wrap items-center justify-between gap-3"
+          className="flex flex-nowrap items-center justify-between gap-3"
         >
           {/* The HeroPlayer overlay already renders the canonical <h1> for
               this video. The body title repeats that text for visual
@@ -52,7 +51,7 @@ export function WatchBody({
               one <h1> per page (WCAG 1.3.1). Visual styling is unchanged. */}
           <h2
             data-testid="watch-body-title"
-            className="min-w-0 text-[27px] leading-[1.08] font-semibold text-stone-100 md:text-4xl xl:text-5xl"
+            className="min-w-0 flex-1 text-[27px] leading-[1.08] font-semibold text-stone-100 md:text-4xl xl:text-5xl"
           >
             {video.title ?? ""}
           </h2>

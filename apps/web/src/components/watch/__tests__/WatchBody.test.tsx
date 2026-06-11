@@ -149,20 +149,21 @@ describe("WatchBody — two-column layout", () => {
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
 
-    // Title and Download follow the same right-aligned wrapping header pattern
-    // as Related Questions and Bible Quotes.
+    // Title and Download stay on one row; the title wraps inside the remaining
+    // space instead of pushing Download below it.
     const titleRow = container.querySelector(
       '[data-testid="watch-body-title-row"]',
     )
     expect(titleRow).not.toBeNull()
     expect(titleRow!.className).toContain("flex")
-    expect(titleRow!.className).toContain("flex-wrap")
+    expect(titleRow!.className).toContain("flex-nowrap")
     expect(titleRow!.className).toContain("items-center")
     expect(titleRow!.className).toContain("justify-between")
     expect(titleRow!.className).toContain("gap-3")
     expect(titleRow!.className).not.toContain("flex-col")
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)
+    expect(titleEl?.className).toContain("flex-1")
     expect(titleEl?.className).toContain("text-[27px]")
     expect(titleEl?.className).toContain("leading-[1.08]")
     expect(titleEl?.className).toContain("font-semibold")
