@@ -964,7 +964,7 @@ export function ExperienceEditor({
   videoLibrary: VideoLibraryItem[]
   mediaLibrary: MediaLibraryItem[]
   calendarDate: string
-  /** Public watch-site origin (env.WEB_CANONICAL_ORIGIN) for preview links. */
+  /** Forge watch-app origin (env.WATCH_CANONICAL_ORIGIN) for preview links. */
   watchOrigin: string
   initialValues: {
     localeId: string
