@@ -1,7 +1,7 @@
 ---
 title: "fix: Restrict Watch subtitle overlay to Forge-selected tracks"
 type: "fix"
-status: active
+status: completed
 date: 2026-06-11
 origin: docs/brainstorms/2026-05-25-web-video-subtitle-controls-requirements.md
 roadmap: docs/roadmap/media-generation/feat-177-watch-subtitle-overlay-forge-track.md
@@ -128,3 +128,9 @@ Out of scope:
 - `apps/web/src/components/watch/HeroPlayer.tsx`
 - `apps/web/src/components/watch/SubtitleOverlay.tsx`
 - `apps/web/src/components/watch/WatchPageClient.tsx`
+
+## Completion Notes
+
+- Added a shared Forge subtitle track label and restricted `SubtitleOverlay` to the Forge-injected track.
+- Added focused coverage for ignoring Mux-generated native subtitle tracks, rendering Forge cues, and clearing stale cue text.
+- Verified with focused Watch tests, `@forge/web` typecheck, `@forge/web` lint, and browser proof on `https://watch.jesusfilm.org/watch/jesus.html/english.html` showing a native `Generated subtitles` English track while the Forge modal has no English subtitle option.

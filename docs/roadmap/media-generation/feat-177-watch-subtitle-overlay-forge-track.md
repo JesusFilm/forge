@@ -3,7 +3,7 @@ id: "feat-177"
 title: "Watch Subtitle Overlay Forge Track Guard"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-11"
 duration: 1
 depends_on:
