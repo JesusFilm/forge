@@ -912,6 +912,7 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            reason: "state",
           },
         },
       ),
@@ -920,7 +921,7 @@ export function HeroPlayer({
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null } },
+          { detail: { visible: false, onClick: null, reason: "cleanup" } },
         ),
       )
     }

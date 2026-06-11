@@ -34,6 +34,7 @@ import {
   type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
+import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
 
 export {
   useFloatingSearch,
@@ -45,6 +46,29 @@ export type {
 } from "./FloatingSearchContext"
 
 const HEADER_HOVER_HEIGHT_PX = 144
+
+function stripWatchBasePath(pathname: string): string {
+  if (pathname === WATCH_BASE_PATH) return "/"
+  if (pathname.startsWith(`${WATCH_BASE_PATH}/`)) {
+    return pathname.slice(WATCH_BASE_PATH.length) || "/"
+  }
+  return pathname
+}
+
+function isWatchMediaPathname(pathname: string): boolean {
+  const segments = stripWatchBasePath(pathname).split("/").filter(Boolean)
+  if (segments.length === 2) {
+    return Boolean(
+      segments[0]?.endsWith(".html") && segments[1]?.endsWith(".html"),
+    )
+  }
+  if (segments.length === 3) {
+    return Boolean(
+      segments[0]?.endsWith(".html") && segments[2]?.endsWith(".html"),
+    )
+  }
+  return false
+}
 
 const LazyFloatingSearchController = dynamic<FloatingSearchControllerProps>(
   () =>
@@ -210,6 +234,14 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       const detail = (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>)
         .detail
       if (typeof detail?.visible !== "boolean") return
+      const currentPathname =
+        typeof window !== "undefined" ? window.location.pathname : pathname
+      if (
+        detail.reason === "cleanup" &&
+        isWatchMediaPathname(currentPathname)
+      ) {
+        return
+      }
       setHeaderLanguageSwitcher({
         visible: detail.visible && typeof detail.onClick === "function",
         onClick: typeof detail.onClick === "function" ? detail.onClick : null,
@@ -226,7 +258,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         handleLanguageSwitcherChange,
       )
     }
-  }, [])
+  }, [pathname])
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return
@@ -265,7 +297,9 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       setPlayerChromeVisible(true)
       setPlayerChromeOpacity(1)
       setPlayerPlaybackState({ playing: false, muted: true, preview: false })
-      setHeaderLanguageSwitcher({ visible: false, onClick: null })
+      if (!isWatchMediaPathname(pathname)) {
+        setHeaderLanguageSwitcher({ visible: false, onClick: null })
+      }
       setHeaderHovered(false)
     })
     return () => window.cancelAnimationFrame(frame)

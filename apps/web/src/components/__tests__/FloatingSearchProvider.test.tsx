@@ -27,8 +27,12 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 
+const navigationMockState = vi.hoisted(() => ({
+  pathname: "/",
+}))
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
+  usePathname: () => navigationMockState.pathname,
   useRouter: () => ({
     replace: vi.fn(),
   }),
@@ -55,6 +59,7 @@ let root: Root
 
 beforeEach(() => {
   vi.clearAllMocks()
+  navigationMockState.pathname = "/"
   window.history.replaceState(null, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -98,6 +103,11 @@ function dispatchLanguageSwitcher(detail: WatchHeaderLanguageSwitcherDetail) {
       { detail },
     ),
   )
+}
+
+function setMockPathname(pathname: string) {
+  navigationMockState.pathname = pathname
+  window.history.replaceState(null, "", pathname)
 }
 
 function searchResult(
@@ -914,6 +924,107 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(languageButton?.className).not.toContain("pointer-events-none")
     expect(logo?.className).toContain("opacity-30")
     expect(logo?.className).not.toContain("pointer-events-none")
+  })
+
+  it("retains the previous language globe through watch media cleanup during route loading", () => {
+    const onLanguageClick = vi.fn()
+    setMockPathname("/watch/death-of-jesus.html/english.html")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        reason: "state",
+      })
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        reason: "cleanup",
+      })
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement | null
+    expect(languageButton).not.toBeNull()
+
+    act(() => {
+      languageButton?.click()
+    })
+
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("lets loaded watch media state hide a stale language globe", () => {
+    setMockPathname("/watch/death-of-jesus.html/english.html")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        reason: "state",
+      })
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        reason: "state",
+      })
+    })
+
+    expect(
+      document.querySelector('[data-testid="floating-header-language-button"]'),
+    ).toBeNull()
+  })
+
+  it("clears the stale language globe when cleanup happens off a watch media route", () => {
+    const onLanguageClick = vi.fn()
+    setMockPathname("/watch/death-of-jesus.html/english.html")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        reason: "state",
+      })
+    })
+
+    setMockPathname("/watch/videos")
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        reason: "cleanup",
+      })
+    })
+
+    expect(
+      document.querySelector('[data-testid="floating-header-language-button"]'),
+    ).toBeNull()
   })
 })
 
