@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { type MouseEvent, useCallback, useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { Play } from "lucide-react"
+import { LoaderCircle, Play } from "lucide-react"
 
 import {
   Carousel,
@@ -57,7 +57,30 @@ export function SiblingCarousel({
   // compete with the LCP poster fetch on the critical chain.
 
   const [api, setApi] = useState<CarouselApi | null>(null)
+  const [pendingNavigation, setPendingNavigation] = useState<{
+    href: string
+    languageSlug: string
+    sourceVideoDocumentId: string
+  } | null>(null)
   const initialCarouselIndex = activeIndex >= 0 ? activeIndex : 0
+
+  const handleCardClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, href: string, isActive: boolean) => {
+      if (isActive) return
+      if (event.defaultPrevented) return
+      if (event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return
+      }
+
+      setPendingNavigation({
+        href,
+        languageSlug,
+        sourceVideoDocumentId: currentVideoDocumentId,
+      })
+    },
+    [currentVideoDocumentId, languageSlug],
+  )
 
   // Snap to the active item whenever it changes (or when `api` first
   // becomes available). Re-keying on `activeIndex` covers variant-switch
@@ -141,6 +164,13 @@ export function SiblingCarousel({
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
             const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+            const isPending =
+              pendingNavigation != null &&
+              pendingNavigation.href === href &&
+              pendingNavigation.languageSlug === languageSlug &&
+              pendingNavigation.sourceVideoDocumentId ===
+                currentVideoDocumentId &&
+              !isActive
             const thumbnailAlt = child.title
               ? `${child.title} thumbnail`
               : "Related video thumbnail"
@@ -150,6 +180,8 @@ export function SiblingCarousel({
               isActive
                 ? "border-4 border-white"
                 : "opacity-70 hover:outline-4 hover:outline-offset-[-4px] hover:outline-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+              isPending &&
+                "opacity-100 outline-4 outline-offset-[-4px] outline-brand-red shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
             )
 
             // Card contents are identical whether the card is a routable
@@ -193,10 +225,23 @@ export function SiblingCarousel({
                   <div
                     aria-hidden="true"
                     data-testid="sibling-carousel-play-overlay"
-                    className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+                    data-pending={isPending ? "true" : "false"}
+                    className={cn(
+                      "pointer-events-none absolute inset-0 z-30 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100",
+                      isPending && "opacity-100",
+                    )}
                   >
                     <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-red text-white shadow-lg ring-1 ring-black/20">
-                      <Play size={20} fill="currentColor" stroke="none" />
+                      {isPending ? (
+                        <LoaderCircle
+                          aria-hidden="true"
+                          data-testid="sibling-carousel-loading-icon"
+                          size={22}
+                          className="animate-spin"
+                        />
+                      ) : (
+                        <Play size={20} fill="currentColor" stroke="none" />
+                      )}
                     </span>
                   </div>
                 ) : null}
@@ -259,8 +304,11 @@ export function SiblingCarousel({
                     href={href}
                     data-testid="sibling-carousel-item"
                     data-active={isActive ? "true" : "false"}
+                    data-pending={isPending ? "true" : "false"}
                     data-href={href}
+                    aria-busy={isPending ? "true" : undefined}
                     className={cardClassName}
+                    onClick={(event) => handleCardClick(event, href, isActive)}
                   >
                     {cardInner}
                   </Link>
