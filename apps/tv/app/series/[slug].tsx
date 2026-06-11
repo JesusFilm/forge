@@ -44,6 +44,7 @@ import {
   resolveLeafBounce,
   resolveScreenState,
 } from "../../src/components/series/seriesScreenState"
+import { EpisodeRail } from "../../src/components/series/EpisodeRail"
 import { SeriesActionRow } from "../../src/components/series/SeriesActionRow"
 import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
 import { WATCH_THEME } from "../../src/components/watch/watchDetailTheme"
@@ -252,10 +253,20 @@ export default function SeriesScreen() {
         </View>
 
         {/* Below the fold — opaque so it covers the artwork as the user
-            scrolls. TODO(U3): the EpisodeRail mounts inside this View (the
-            series' children as a D-pad-navigable horizontal rail).
-            Intentionally empty until then — no empty focus container. */}
-        <View style={styles.below} />
+            scrolls. The rail's TVFocusGuideView sits vertically adjacent to
+            the action row's inside this same ScrollView and they overlap
+            horizontally (both start at the scale(80) gutter), so default
+            D-pad traversal crosses between them in both directions — the
+            same structure the watch screen ships (DetailsActionRow ↔
+            UpNextRail), no explicit destinations needed. Initial focus stays
+            with the action row even when no trailer exists (the Language
+            pill): resolveInitialFocus's "episodes" branch is intentionally
+            unwired — arming hasTVPreferredFocus inside the rail would fight
+            the action row's one-shot, and landing focus below the fold
+            would scroll past the hero on entry. */}
+        <View style={styles.below}>
+          {record != null ? <EpisodeRail episodes={record.episodes} /> : null}
+        </View>
       </ScrollView>
     </View>
   )
@@ -371,7 +382,7 @@ const styles = StyleSheet.create({
     color: WATCH_THEME.text74,
   },
 
-  // ── Below the fold (U3's episode rail mounts here) ────────────────
+  // ── Below the fold (episode rail) ─────────────────────────────────
   below: {
     backgroundColor: WATCH_THEME.below,
     paddingTop: scale(48),
