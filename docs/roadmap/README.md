@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (June 4, 2026)
 
-- **Total tickets:** 190
-- **Complete:** 115
+- **Total tickets:** 191
+- **Complete:** 116
 - **In progress:** 9
 - **Not started:** 21
 - **Blocked:** 43
@@ -182,6 +182,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-175](platform/feat-175-watch-cold-path-performance-follow-up.md)           | Watch cold-path performance follow-up                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-176](platform/feat-176-watch-hero-poster-idle-autoplay.md)                 | Watch hero poster-first idle autoplay                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-178](platform/feat-178-watch-staged-client-loading.md)                     | Watch staged client interaction loading                      | vlad      | P1       | 2026-06-11 | 2    | 2026-06-12 | complete    |
+| [feat-179](platform/feat-179-watch-header-language-switcher-loading.md)          | Watch header language switcher during route loading          | vlad      | P1       | 2026-06-11 | 1    | 2026-06-11 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                                   | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                          | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                      | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

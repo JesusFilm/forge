@@ -2382,6 +2382,7 @@ describe("HeroPlayer — language switch button", () => {
       )
     })
     expect(listener.updates.at(-1)?.visible).toBe(false)
+    expect(listener.updates.at(-1)?.reason).toBe("state")
     listener.cleanup()
   })
 
@@ -2400,8 +2401,36 @@ describe("HeroPlayer — language switch button", () => {
     const latest = listener.updates.at(-1)
     expect(latest?.visible).toBe(true)
     expect(latest?.onClick).toBe(onLanguageClick)
+    expect(latest?.reason).toBe("state")
     latest?.onClick?.()
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
+    listener.cleanup()
+  })
+
+  it("publishes a cleanup hide when the hero unmounts", () => {
+    const onLanguageClick = vi.fn()
+    const listener = listenForLanguageSwitcher()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={2}
+        />,
+      )
+    })
+
+    expect(listener.updates.at(-1)?.visible).toBe(true)
+
+    act(() => {
+      root.render(<div />)
+    })
+
+    expect(listener.updates.at(-1)).toMatchObject({
+      visible: false,
+      onClick: null,
+      reason: "cleanup",
+    })
     listener.cleanup()
   })
 
@@ -2435,6 +2464,7 @@ describe("HeroPlayer — language switch button", () => {
     })
 
     expect(listener.updates.at(-1)?.visible).toBe(false)
+    expect(listener.updates.at(-1)?.reason).toBe("state")
 
     // Reset jsdom state for subsequent tests
     Object.defineProperty(document, "fullscreenElement", {

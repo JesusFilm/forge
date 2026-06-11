@@ -23,4 +23,5 @@ export const WATCH_HEADER_LANGUAGE_SWITCHER_EVENT =
 export type WatchHeaderLanguageSwitcherDetail = {
   visible: boolean
   onClick: (() => void) | null
+  reason?: "state" | "cleanup"
 }
