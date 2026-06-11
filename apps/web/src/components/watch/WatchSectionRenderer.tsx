@@ -14,6 +14,7 @@ import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
+import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 
@@ -39,6 +40,8 @@ export function WatchSectionRenderer({
   languageSlug,
   subtitleVttSrc,
   hideBibleQuotes = false,
+  pendingChapter,
+  onChapterNavigateIntent,
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
@@ -50,6 +53,8 @@ export function WatchSectionRenderer({
   languageSlug?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
+  pendingChapter?: WatchChapterNavigationIntent | null
+  onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -86,6 +91,8 @@ export function WatchSectionRenderer({
           languageSlug={languageSlug}
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
+          pendingChapter={pendingChapter}
+          onChapterNavigateIntent={onChapterNavigateIntent}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -122,6 +129,8 @@ export function WatchSectionRenderer({
                   locale={locale}
                   languageSlug={languageSlug}
                   hideBibleQuotes={hideBibleQuotes}
+                  pendingChapter={pendingChapter}
+                  onChapterNavigateIntent={onChapterNavigateIntent}
                 />
               ))}
             </div>
@@ -145,6 +154,8 @@ function WatchBlockEntry({
   languageSlug,
   subtitleVttSrc,
   hideBibleQuotes,
+  pendingChapter,
+  onChapterNavigateIntent,
 }: {
   block: MergedWatchBlock
   index: number
@@ -158,6 +169,8 @@ function WatchBlockEntry({
   languageSlug?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
+  pendingChapter?: WatchChapterNavigationIntent | null
+  onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -173,6 +186,8 @@ function WatchBlockEntry({
         languageSlug={languageSlug}
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
+        pendingChapter={pendingChapter}
+        onChapterNavigateIntent={onChapterNavigateIntent}
       />
     )
   }
@@ -191,6 +206,8 @@ function SyntheticBlock({
   languageSlug,
   subtitleVttSrc,
   hideBibleQuotes,
+  pendingChapter,
+  onChapterNavigateIntent,
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
@@ -203,7 +220,18 @@ function SyntheticBlock({
   languageSlug?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
+  pendingChapter?: WatchChapterNavigationIntent | null
+  onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
+  const optimisticVisual =
+    pendingChapter != null
+      ? {
+          title: pendingChapter.title,
+          label: pendingChapter.label,
+          posterUrl: pendingChapter.posterUrl,
+        }
+      : null
+
   switch (block.kind) {
     case "HeroPlayer": {
       const playableLanguageCount =
@@ -216,11 +244,19 @@ function SyntheticBlock({
           onLanguageClick={modalCallbacks?.openLanguage}
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
+          optimisticVisual={optimisticVisual}
         />
       )
     }
     case "SiblingCarousel":
-      return <SiblingCarousel block={block} languageSlug={languageSlug ?? ""} />
+      return (
+        <SiblingCarousel
+          block={block}
+          languageSlug={languageSlug ?? ""}
+          pendingNavigation={pendingChapter ?? null}
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />
+      )
 
     case "WatchBody":
       return (
@@ -231,6 +267,7 @@ function SyntheticBlock({
           downloadPending={downloadPending}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
+          optimisticTitle={pendingChapter?.title ?? null}
         />
       )
     case "StudyQuestions":

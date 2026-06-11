@@ -106,6 +106,29 @@ function makeStudyQuestions(values: string[]): WatchStudyQuestionsBlock {
 }
 
 describe("WatchBody — two-column layout", () => {
+  it("renders an optimistic title without replacing route-owned description", () => {
+    const block = makeBlock({ title: "Current Video" })
+
+    act(() => {
+      root.render(
+        <WatchBody
+          block={block}
+          studyQuestions={null}
+          onDownloadClick={vi.fn()}
+          optimisticTitle="Clicked Video"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-body-title"]')?.textContent,
+    ).toBe("Clicked Video")
+    expect(
+      container.querySelector('[data-testid="watch-body-description"]')
+        ?.textContent,
+    ).toBe("A description.")
+  })
+
   it("happy path: video with 3 study questions + 5 downloads renders two columns, bullet list, and Download button", () => {
     const block = makeBlock({ downloadCount: 5 })
     const sq = makeStudyQuestions(["Q1?", "Q2?", "Q3?"])

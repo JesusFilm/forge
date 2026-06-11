@@ -336,6 +336,78 @@ describe("HeroPlayer — initial mount", () => {
     ).toBeNull()
   })
 
+  it("renders optimistic title and poster on the pre-reveal shell only", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+          }}
+        />,
+      )
+    })
+
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    expect(poster).not.toBeNull()
+    expect(poster.getAttribute("src")).toBe("https://cdn.test/clicked.jpg")
+    expect(poster.parentElement?.className).not.toContain("transition-opacity")
+    expect(poster.parentElement?.className).toContain("opacity-100")
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]')
+        ?.textContent,
+    ).toBe("Clicked Chapter")
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]')
+        ?.textContent,
+    ).toBe("Segment")
+    expect(muxVideoMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps an optimistic poster visible after the muted preview is ready", async () => {
+    const idle = installIdleCallbackStub()
+    const block = makeBlock()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={block} />)
+      })
+      await idle.runNext()
+      await fireCanPlay()
+
+      const routePoster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      )
+      expect(routePoster?.parentElement?.className).toContain("opacity-0")
+
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={block}
+            optimisticVisual={{
+              title: "Clicked Chapter",
+              label: "SEGMENT",
+              posterUrl: "https://cdn.test/clicked.jpg",
+            }}
+          />,
+        )
+      })
+
+      const optimisticPoster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      ) as HTMLImageElement
+      expect(optimisticPoster.getAttribute("src")).toBe(
+        "https://cdn.test/clicked.jpg",
+      )
+      expect(optimisticPoster.parentElement?.className).toContain("opacity-100")
+    } finally {
+      idle.restore()
+    }
+  })
+
   it("mounts MuxVideo with LCP poster, bounded HLS config, and Mux Data after idle activation", async () => {
     await activateMutedPreviewFromIdle()
 

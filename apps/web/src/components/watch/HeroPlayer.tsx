@@ -44,6 +44,7 @@ import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-producti
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
+import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
 import { MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
@@ -168,6 +169,7 @@ export function HeroPlayer({
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
+  optimisticVisual,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -176,6 +178,7 @@ export function HeroPlayer({
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
+  optimisticVisual?: WatchChapterOptimisticVisual | null
 }) {
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
@@ -864,6 +867,23 @@ export function HeroPlayer({
 
   const loop = !chromeRevealed
   const muted = !chromeRevealed
+  const canUseOptimisticVisual = !chromeRevealed
+  const visualHeroPosterUrl = canUseOptimisticVisual
+    ? (optimisticVisual?.posterUrl ?? heroPosterUrl)
+    : heroPosterUrl
+  const visualTitle = canUseOptimisticVisual
+    ? (optimisticVisual?.title ?? video.title)
+    : video.title
+  const visualLabel = canUseOptimisticVisual
+    ? (optimisticVisual?.label ?? video.label)
+    : video.label
+  const showOptimisticPoster =
+    canUseOptimisticVisual && optimisticVisual?.posterUrl != null
+  const posterOpacityClass =
+    videoReady && !showOptimisticPoster ? "opacity-0" : "opacity-100"
+  const posterTransitionClass = showOptimisticPoster
+    ? ""
+    : "transition-opacity duration-300"
 
   // Hide the language-switch globe while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
@@ -1021,13 +1041,13 @@ export function HeroPlayer({
             />
           ) : null}
 
-          {heroPosterUrl ? (
+          {visualHeroPosterUrl ? (
             <div
-              className={`pointer-events-none absolute inset-0 transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`}
+              className={`pointer-events-none absolute inset-0 ${posterTransitionClass} ${posterOpacityClass}`}
             >
               <Image
                 data-testid="hero-player-poster"
-                src={heroPosterUrl}
+                src={visualHeroPosterUrl}
                 alt=""
                 aria-hidden="true"
                 fill
@@ -1125,20 +1145,20 @@ export function HeroPlayer({
                 data-testid="hero-player-overlay"
                 className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-3 pb-12 md:right-auto`}
               >
-                {video.label ? (
+                {visualLabel ? (
                   <span
                     data-testid="hero-player-overlay-label"
                     className={WATCH_SECTION_EYEBROW_CLASS}
                   >
-                    {videoLabels(videoLabelMessageKey(video.label))}
+                    {videoLabels(videoLabelMessageKey(visualLabel))}
                   </span>
                 ) : null}
-                {video.title ? (
+                {visualTitle ? (
                   <h1
                     data-testid="hero-player-overlay-title"
                     className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"
                   >
-                    {video.title}
+                    {visualTitle}
                   </h1>
                 ) : null}
                 <button

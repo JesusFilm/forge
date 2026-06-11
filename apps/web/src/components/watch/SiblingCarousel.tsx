@@ -18,13 +18,18 @@ import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
+import type { WatchChapterNavigationIntent } from "./chapter-navigation"
 
 export function SiblingCarousel({
   block,
   languageSlug,
+  pendingNavigation,
+  onChapterNavigateIntent,
 }: {
   block: WatchSiblingCarouselBlock
   languageSlug: string
+  pendingNavigation?: WatchChapterNavigationIntent | null
+  onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   const t = useTranslations("SiblingCarousel")
   const videoLabels = useTranslations("VideoLabels")
@@ -55,18 +60,15 @@ export function SiblingCarousel({
   // compete with the LCP poster fetch on the critical chain.
 
   const [api, setApi] = useState<CarouselApi | null>(null)
-  const [pendingNavigation, setPendingNavigation] = useState<{
-    href: string
-    languageSlug: string
-    sourceVideoDocumentId: string
-    targetVideoDocumentId: string
-  } | null>(null)
+  const [localPendingNavigation, setLocalPendingNavigation] =
+    useState<WatchChapterNavigationIntent | null>(null)
+  const effectivePendingNavigation =
+    pendingNavigation === undefined ? localPendingNavigation : pendingNavigation
 
   const handleCardClick = useCallback(
     (
       event: MouseEvent<HTMLAnchorElement>,
-      href: string,
-      targetVideoDocumentId: string,
+      intent: WatchChapterNavigationIntent,
       isActive: boolean,
     ) => {
       if (isActive) return
@@ -76,21 +78,19 @@ export function SiblingCarousel({
         return
       }
 
-      setPendingNavigation({
-        href,
-        languageSlug,
-        sourceVideoDocumentId: currentVideoDocumentId,
-        targetVideoDocumentId,
-      })
+      if (pendingNavigation === undefined) {
+        setLocalPendingNavigation(intent)
+      }
+      onChapterNavigateIntent?.(intent)
     },
-    [currentVideoDocumentId, languageSlug],
+    [onChapterNavigateIntent, pendingNavigation],
   )
 
   const validPendingNavigation =
-    pendingNavigation != null &&
-    pendingNavigation.languageSlug === languageSlug &&
-    pendingNavigation.sourceVideoDocumentId === currentVideoDocumentId
-      ? pendingNavigation
+    effectivePendingNavigation != null &&
+    effectivePendingNavigation.languageSlug === languageSlug &&
+    effectivePendingNavigation.sourceVideoDocumentId === currentVideoDocumentId
+      ? effectivePendingNavigation
       : null
   const pendingActiveIndex =
     validPendingNavigation != null
@@ -327,9 +327,22 @@ export function SiblingCarousel({
                     data-href={href}
                     aria-busy={isPending ? "true" : undefined}
                     className={cardClassName}
-                    onClick={(event) =>
-                      handleCardClick(event, href, child.documentId, isActive)
-                    }
+                    onClick={(event) => {
+                      handleCardClick(
+                        event,
+                        {
+                          href,
+                          languageSlug,
+                          sourceVideoDocumentId: currentVideoDocumentId,
+                          targetVideoDocumentId: child.documentId,
+                          title: child.title ?? null,
+                          slug: child.slug,
+                          label: child.label ?? null,
+                          posterUrl: thumb,
+                        },
+                        isActive,
+                      )
+                    }}
                   >
                     {cardInner}
                   </Link>
