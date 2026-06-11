@@ -12,6 +12,7 @@ import {
 import { HomeHeader } from "../src/components/HomeHeader"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import { MissionSection } from "../src/components/home/MissionSection"
 import { ShowcaseCanvas } from "../src/components/home/ShowcaseCanvas"
 import {
   createShowcaseFocusDebouncer,
@@ -231,10 +232,10 @@ export default function HomeScreen() {
         />
       ))}
 
-      {/* TODO(U8): mission tail — MissionSection + QrPanel close the feed
-          here (focusable, non-actioning QR card so D-pad can scroll it into
-          view; the showcase retains the last card per R10). */}
-      <View />
+      {/* Mission tail (R15): storytelling cards + beta-signup QR close the
+          feed. Its QR wrapper is focusable but non-actioning, and never
+          dispatches card-focus — the showcase retains the last card (R10). */}
+      <MissionSection />
     </ScrollView>
   )
 }
@@ -256,9 +257,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   listContent: {
-    // Breathing room below the last rail; U8's mission tail replaces most of
-    // this with real content.
-    paddingBottom: scale(120),
+    // Breathing room below the mission tail.
+    paddingBottom: scale(80),
   },
   // ── Error state ──
   errorText: {
