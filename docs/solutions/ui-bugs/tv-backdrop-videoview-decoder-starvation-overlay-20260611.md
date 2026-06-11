@@ -84,6 +84,12 @@ The backdrop sits entirely behind the overlay (zIndex 1000) while it plays, so u
 
 Drive via `idb ui key 40` (Select) / `41` (Menu) + `xcrun simctl io <udid> screenshot`.
 
+## Dev-loop look-alike: the Fast-Refresh zombie (don't debug the wrong bug)
+
+The SAME symptom (plays for a tick -> stalls black at 0:00, pause icon flips back to play) reappears in **dev** whenever Metro Fast Refresh applies an edit to any player file (`VideoPlayer.tsx`, `VideoBackdrop.tsx`, `SubtitleOverlay.tsx`, `useSessionPlayback.ts`) while the app is running — including indirect writes like the pre-commit prettier hook rewriting staged files AFTER you finished testing. The hot reload tears through the mounted player tree and orphans the old native `AVPlayer`, which keeps its decode slot until process death; the next play wedges exactly like the production bug above. It hit three separate times during this branch's development.
+
+**Rule: after any edit lands in a player file, cold-relaunch the app before judging playback** (`xcrun simctl terminate <udid> org.jesusfilm.forgetv` + relaunch + reconnect Metro). If a cold launch plays and a hot-reloaded session doesn't, it's the zombie — not a code regression. Verify fixes only from cold launches.
+
 ## Prevention
 
 - **On tvOS, free a concurrent player by UNMOUNTING its `VideoView`, not just `pause()`.** When a fullscreen player must coexist with a background/inline player (hero, backdrop, card autoplay), gate the background `VideoView`'s mount on `!overlayVisible`. Pause alone leaves the decode slot allocated.
