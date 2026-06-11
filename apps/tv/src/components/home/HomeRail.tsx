@@ -6,6 +6,10 @@
 // Fixed card dims → getItemLayout, so a long section virtualizes without a
 // measuring pass. Renders nothing for an empty section: the model already
 // drops them (R12), this is defensive — no empty focus container.
+//
+// Redesign: the rail also reports WHICH row gained focus (onRowFocus) so the
+// screen can drive its row-anchored scroll + deep/browse chrome state. The
+// onCardFocus(card) contract is unchanged.
 
 import { memo, useCallback } from "react"
 import {
@@ -16,10 +20,10 @@ import {
   type ListRenderItemInfo,
 } from "react-native"
 
-import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { TVFocusGuideView } from "../TVFocusGuideView"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { HOME_CARD_WIDTH, HomeCard } from "./HomeCard"
 
 const ITEM_GAP = scale(28)
@@ -44,8 +48,13 @@ type HomeRailProps = {
   eyebrow: string
   title: string
   cards: WatchHomeCard[]
+  /** This rail's position in the feed (featured = 0). */
+  rowIndex: number
   /** Re-emits the focused card object (closed over per-card in HomeCard). */
   onCardFocus: (card: WatchHomeCard) => void
+  /** Fires alongside onCardFocus with this rail's rowIndex — drives the
+   *  screen's row-anchored scrolling and deep/browse chrome state. */
+  onRowFocus?: (rowIndex: number) => void
   onCardPress: (card: WatchHomeCard) => void
 }
 
@@ -53,9 +62,19 @@ export const HomeRail = memo(function HomeRail({
   eyebrow,
   title,
   cards,
+  rowIndex,
   onCardFocus,
+  onRowFocus,
   onCardPress,
 }: HomeRailProps) {
+  const handleCardFocus = useCallback(
+    (card: WatchHomeCard) => {
+      onRowFocus?.(rowIndex)
+      onCardFocus(card)
+    },
+    [onCardFocus, onRowFocus, rowIndex],
+  )
+
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<WatchHomeCard>) => (
       <View
@@ -67,12 +86,12 @@ export const HomeRail = memo(function HomeRail({
         <HomeCard
           card={item}
           index={index}
-          onFocus={onCardFocus}
+          onFocus={handleCardFocus}
           onPress={onCardPress}
         />
       </View>
     ),
-    [cards.length, onCardFocus, onCardPress],
+    [cards.length, handleCardFocus, onCardPress],
   )
 
   if (cards.length === 0) return null
@@ -110,30 +129,31 @@ const styles = StyleSheet.create({
   },
   head: {
     paddingHorizontal: scale(80),
-    marginBottom: scale(4),
   },
   eyebrow: {
     fontFamily: "System",
-    fontSize: Math.round(scale(18)),
+    fontSize: Math.round(scale(17)),
     fontWeight: "700",
-    letterSpacing: scale(1.8),
+    // .16em of the 17px eyebrow.
+    letterSpacing: scale(2.7),
     textTransform: "uppercase",
-    color: COLORS.primary,
-    marginBottom: scale(8),
+    color: WATCH_THEME.accent,
+    marginBottom: scale(6),
   },
   title: {
     fontFamily: "System",
-    fontSize: Math.round(scale(32)),
+    fontSize: Math.round(scale(34)),
     fontWeight: "700",
     letterSpacing: -scale(0.4),
-    color: COLORS.text,
+    color: WATCH_THEME.text,
   },
   listContent: {
     paddingHorizontal: scale(80),
   },
-  // Vertical room so the focus lift + glow never clip against neighbours.
+  // Vertical room so the focus lift + white ring + shadow never clip against
+  // neighbours; doubles as the design's head→cards gap (22px ≈ 24).
   itemWrapper: {
-    paddingVertical: scale(32),
+    paddingVertical: scale(24),
   },
   itemGap: {
     marginRight: ITEM_GAP,
