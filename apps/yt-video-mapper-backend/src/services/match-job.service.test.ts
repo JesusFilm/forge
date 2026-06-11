@@ -6,6 +6,12 @@ import {
   SafeMatchJobError,
   type Matcher,
 } from "./match-job.service.js"
+import {
+  InMemoryMediaSignatureMatchRepository,
+  MediaSignatureMatcher,
+  type MatchableMediaSignature,
+} from "./media-signature-matcher.js"
+import { DeterministicUploadSignalExtractor } from "./upload-signal-extraction.js"
 import type {
   UploadSignalExtractor,
   UploadSignals,
@@ -45,6 +51,42 @@ describe("MatchJobService", () => {
     expect(storage.has(job.uploadStorageKey!)).toBe(false)
     await expect(service.getJobResult(job.id)).resolves.toEqual({
       candidates: [candidate],
+    })
+  })
+
+  it("processes a job through real upload extraction and media signature matching", async () => {
+    const service = new MatchJobService(
+      new InMemoryMatchJobRepository(),
+      new InMemoryUploadStorage(),
+      new DeterministicUploadSignalExtractor(4),
+      new MediaSignatureMatcher(
+        new InMemoryMediaSignatureMatchRepository([
+          structuralSignature({
+            coreId: "core-jesus-film",
+            videoVariantId: "variant-en",
+            sha256:
+              "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a",
+          }),
+        ]),
+      ),
+      () => new Date("2026-06-08T00:00:00.000Z"),
+    )
+    const job = await service.createUploadJob({
+      bytes: Buffer.from([1, 2, 3, 4]),
+      contentType: "video/mp4",
+    })
+
+    await service.processJob(job.id)
+
+    await expect(service.getJobResult(job.id)).resolves.toEqual({
+      candidates: [
+        {
+          coreId: "core-jesus-film",
+          videoVariantId: "variant-en",
+          confidence: 1,
+          matchStrength: "high",
+        },
+      ],
     })
   })
 
@@ -263,5 +305,39 @@ class FailingCreateRepository extends InMemoryMatchJobRepository {
   ): Promise<never> {
     this.storedKey = job.uploadStorageKey
     throw new RepositoryCreateTestError()
+  }
+}
+
+function structuralSignature({
+  coreId,
+  videoVariantId,
+  sha256,
+}: {
+  coreId: string
+  videoVariantId: string
+  sha256: string
+}): MatchableMediaSignature {
+  return {
+    coreId,
+    videoVariantId,
+    signatureType: "STRUCTURAL_HINT",
+    offsetMilliseconds: 0,
+    durationMilliseconds: 120_000,
+    signature: {
+      kind: "structural_hint_v1",
+      byteSample: {
+        sha256,
+        byteLength: 4,
+        rangeStart: 0,
+        rangeEnd: 3,
+        complete: true,
+      },
+    },
+    catalogVariant: {
+      durationSeconds: 120,
+      lengthInMilliseconds: null,
+      languageSlug: "english",
+      locale: "en",
+    },
   }
 }

@@ -100,6 +100,60 @@ The command uses Admin GraphQL only. It writes mapper-owned `CatalogVideo`,
 `CatalogVariant`, and `CatalogSyncRun` rows, prints safe counters, and exits
 non-zero if the sync run records a failed status.
 
+## Media Indexing
+
+After catalog sync has populated indexable `CatalogVariant` rows, run:
+
+```bash
+pnpm --filter @forge/yt-video-mapper-backend index:media
+```
+
+The command writes versioned `MediaSignature` rows for the configured
+`MEDIA_SIGNATURE_ALGORITHM_VERSION`. Optional tuning vars are:
+
+- `MEDIA_INDEX_ALLOWED_HOSTS`
+- `MEDIA_INDEX_PAGE_SIZE`
+- `MEDIA_INDEX_MAX_FETCH_BYTES`
+- `MEDIA_INDEX_FETCH_TIMEOUT_MS`
+- `MEDIA_INDEX_RESUME_AFTER_VARIANT_ID`
+
+Keep `MEDIA_INDEX_ALLOWED_HOSTS` unset unless production media hosts are known,
+or set it to exact hostnames only. Do not store signed media URLs or secret
+values in docs, logs, or shell history.
+
+## Match Job Smoke After Deploy
+
+After a code deploy that includes matcher changes, the production data sequence
+is:
+
+```bash
+pnpm --filter @forge/yt-video-mapper-backend db:migrate:deploy
+pnpm --filter @forge/yt-video-mapper-backend sync:catalog
+pnpm --filter @forge/yt-video-mapper-backend index:media
+```
+
+Then submit an authenticated `/match-jobs` upload using a sample expected to
+overlap indexed official media, process the job, and poll it:
+
+```bash
+MAPPER_BASE_URL="https://forgeyt-video-mapper-backend-production.up.railway.app"
+
+curl -sS -X POST "$MAPPER_BASE_URL/match-jobs" \
+  -H "Authorization: Bearer $MAPPER_API_TOKEN" \
+  -H "Content-Type: video/mp4" \
+  --data-binary "@sample.mp4"
+
+curl -sS -X POST "$MAPPER_BASE_URL/match-jobs/$JOB_ID/process" \
+  -H "Authorization: Bearer $MAPPER_API_TOKEN"
+
+curl -sS "$MAPPER_BASE_URL/match-jobs/$JOB_ID" \
+  -H "Authorization: Bearer $MAPPER_API_TOKEN"
+```
+
+The public response must contain only `coreId`, `videoVariantId`, `confidence`,
+and `matchStrength` for each candidate. Do not paste bearer tokens, signed URLs,
+or large media payloads into tickets or commits.
+
 ## 2026-06-09 Provisioning Notes
 
 - Railway config is intended to be config-as-code via

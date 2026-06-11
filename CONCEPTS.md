@@ -76,6 +76,24 @@ An asynchronous attribution request that owns an uploaded media input until the 
 
 A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
 
+### Source Anchor Evidence
+
+Match evidence that supports which source Video an uploaded media input came
+from, before deciding which Dub or language-specific variant is most likely.
+
+Visual or structural media evidence usually acts as Source Anchor Evidence
+because re-upload metadata, audio language, and transcript text can drift while
+the underlying source footage stays recognizable.
+
+### Variant-Ranking Evidence
+
+Match evidence that helps choose the likely `videoVariantId` after Source
+Anchor Evidence has narrowed the source Video.
+
+Audio, text, language, and subtitle signals are usually Variant-Ranking
+Evidence: they can distinguish Dubs under the same source, but should not create
+a high-strength source attribution on their own.
+
 ## Search & embeddings
 
 ### Search Pipeline Mode

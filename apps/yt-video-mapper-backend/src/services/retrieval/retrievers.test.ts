@@ -59,6 +59,24 @@ describe("retrievers", () => {
     ])
   })
 
+  it("keeps retrieval keyed by coreId and videoVariantId together", () => {
+    expect(
+      retrieveVisualCandidates({
+        uploadFrameHashes: ["a"],
+        officialFrameSignatures: [
+          signature("core-a", "shared-variant", "a"),
+          signature("core-b", "shared-variant", "z"),
+        ],
+      }),
+    ).toEqual([
+      {
+        coreId: "core-a",
+        videoVariantId: "shared-variant",
+        visualScore: 1,
+      },
+    ])
+  })
+
   it("scores audio fingerprint overlap by variant", () => {
     expect(
       retrieveAudioCandidates({
