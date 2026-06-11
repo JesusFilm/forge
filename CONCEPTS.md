@@ -120,7 +120,15 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: it is empty on prod admin, and consumer clients' homes render the Home Curation instead — pointing all platforms back at a real Homepage Experience is a possible future consolidation, not the current state.
+
+### Home Curation
+
+The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Curation lives in code, not the CMS — changing the home's rows is a code release, not an admin edit. Each client (web, mobile, TV) carries the same set, so per-app copies must stay in sync.
+
+### Series-Shaped
+
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
 
 ## Home hero UI
 
@@ -134,6 +142,10 @@ Touches go to the topmost layer and are never re-offered downward, so anything i
 
 An editorial slide in the watch-home hero rotation sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
 _Avoid:_ Mux insert.
+
+### Focus-Driven Showcase
+
+The TV home's top-of-screen canvas that reflects whatever card currently holds D-pad focus — artwork, title, and description swap as focus moves through the rails. It defaults to the first featured item on load and retains the last focused card when focus leaves the rows. The inversion of an autoplay hero: the user's focus drives the canvas, and no background video player is mounted.
 
 ## Watch player UI
 
