@@ -144,7 +144,14 @@ export function LoginPageClient({
 
       const data = (await res.json()) as
         | { method: "password" }
+        | { method: "agent-handle" }
         | { method: "provider"; provider: LoginProviderId }
+
+      if (data.method === "agent-handle") {
+        const redeemed = await redeemAgentHandle()
+        if (redeemed) return
+        return
+      }
 
       if (data.method === "provider") {
         const started = await startSocialSignIn(data.provider)
@@ -158,6 +165,41 @@ export function LoginPageClient({
       })
     } catch {
       setError("lookup")
+    } finally {
+      if (!isRedirectingRef.current) setIsSubmitting(false)
+    }
+  }
+
+  async function redeemAgentHandle() {
+    try {
+      const res = await fetch("/api/auth/agent-login/redeem", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          handle: email,
+          oauth_query: oauthQuery,
+        }),
+      })
+
+      if (!res.ok) {
+        setError("lookup")
+        return false
+      }
+
+      const data = (await res.json()) as { callbackURL?: string }
+      if (!data.callbackURL) {
+        setError("lookup")
+        return false
+      }
+
+      isRedirectingRef.current = true
+      setIsRedirecting(true)
+      window.location.href = data.callbackURL
+      return true
+    } catch {
+      setError("lookup")
+      return false
     } finally {
       if (!isRedirectingRef.current) setIsSubmitting(false)
     }
