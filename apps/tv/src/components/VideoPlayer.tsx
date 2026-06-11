@@ -32,6 +32,13 @@ import { composePlayerStatusChip } from "./watch/playerChrome"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
+// Caption resting/lifted offsets (reference dp; SubtitleOverlay scales them).
+// Resting sits near the bottom edge; lifted clears the bottom chrome — the
+// content layer's 46 bottom inset + times row (~37) + scrubber (36) + its
+// 30 gap + the 98 play circle, plus breathing room.
+const SUBTITLE_BOTTOM_RESTING = 64
+const SUBTITLE_BOTTOM_LIFTED = 272
+
 // ── Visual language (U8) ───────────────────────────────────────────────────
 // The player chrome is the "Forge TV Video Page" handoff's player redesign
 // (chats/chat2): full-bleed scrims, a glass Back pill + quiet status chip up
@@ -1442,9 +1449,19 @@ export function VideoPlayer({
           when the session is driving this overlay AND captions are on AND a VTT
           track resolves (activeVttSrc). For experience-card playback
           (menuActive false) activeVttSrc is null and nothing mounts. It MUST
-          NOT touch the auto-hide state machine (it never does). */}
+          NOT touch the auto-hide state machine (it never does) — it only
+          FOLLOWS controlsVisible: while the chrome is up, the caption slides
+          above the bottom panel; when the chrome hides, it slides back down
+          (mirrors the web + mobile fullscreen caption lift). */}
       {menuActive && activeVttSrc != null && (
-        <SubtitleOverlay player={player} vttSrc={activeVttSrc} />
+        <SubtitleOverlay
+          player={player}
+          vttSrc={activeVttSrc}
+          bottomOffset={
+            controlsVisible ? SUBTITLE_BOTTOM_LIFTED : SUBTITLE_BOTTOM_RESTING
+          }
+          animate
+        />
       )}
 
       {/* ── Scrims (U8) ──────────────────────────────────────────────────
