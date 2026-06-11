@@ -58,6 +58,7 @@ describe("mapper Prisma schema", () => {
   })
 
   it("can rerun an indexer version without duplicating timecoded signatures", () => {
+    expect(schema).toContain('STRUCTURAL_HINT   @map("structural_hint")')
     expect(schema).toContain(
       '@@unique([coreId, videoVariantId, signatureType, algorithmVersion, offsetMilliseconds], map: "mapper_media_signature_variant_signature_key")',
     )

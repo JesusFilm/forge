@@ -1,37 +1,31 @@
 /**
- * ExperienceShell — wraps the root layout to provide Experience data
- * to both (tabs) and video/[sectionKey] routes.
+ * ExperienceShell — wraps the root layout to provide Experience data to the
+ * routes that read it (/experience/[slug], /video/[sectionKey],
+ * /collection/[sectionKey], Library's active entry).
  *
- * Reads the active slug from ExperienceSelectionProvider.
- * On first launch (no persisted slug), resolves the homepage via
- * admin's watchSetting query.
+ * Never blocks rendering: children always mount, and ExperienceProvider is
+ * always present. With no selected slug the context is simply empty
+ * (experience=null, loading=false) — Home and the tabs do not depend on it.
+ *
+ * Reads the active slug from ExperienceSelectionProvider. On first launch
+ * (no persisted slug) it best-effort resolves the homepage via admin's
+ * watchSetting query; a null or failed resolve is silent — the context just
+ * stays empty.
  */
 import { useEffect, useRef, type ReactNode } from "react"
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native"
 import { useQuery } from "@apollo/client/react"
 import { useExperience } from "../hooks/useExperience"
 import { GET_WATCH_SETTING } from "../lib/queries"
-import { TEXT_PRIMARY, TEXT_SECONDARY } from "../lib/color"
-import { layout, button } from "../styles/shared"
 import { ExperienceProvider } from "./ExperienceProvider"
 import { useExperienceSelection } from "./ExperienceSelectionProvider"
+
+const noopRefetch = () => {}
 
 export function ExperienceShell({ children }: { children: ReactNode }) {
   const { currentSlug, selectExperience, isReady } = useExperienceSelection()
 
   const needsDefault = isReady && currentSlug === null
-  const {
-    data: settingData,
-    loading: settingLoading,
-    error: settingError,
-    refetch: settingRefetch,
-  } = useQuery(GET_WATCH_SETTING, {
+  const { data: settingData } = useQuery(GET_WATCH_SETTING, {
     variables: { locale: "en" },
     skip: !needsDefault,
     fetchPolicy: "cache-and-network",
@@ -51,32 +45,17 @@ export function ExperienceShell({ children }: { children: ReactNode }) {
     }
   }, [needsDefault, settingData, selectExperience])
 
-  if (!isReady) return null
-
   if (currentSlug === null) {
-    if (settingError) {
-      return (
-        <View style={layout.centered}>
-          <Text style={styles.errorText}>Unable to load experiences</Text>
-          <Pressable
-            onPress={() => settingRefetch()}
-            style={button.accent}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading experiences"
-          >
-            <Text style={button.accentText}>Try Again</Text>
-          </Pressable>
-        </View>
-      )
-    }
-    if (settingLoading || needsDefault) {
-      return (
-        <View style={layout.centered}>
-          <ActivityIndicator size="small" color={TEXT_SECONDARY} />
-        </View>
-      )
-    }
-    return null
+    return (
+      <ExperienceProvider
+        experience={null}
+        loading={false}
+        error={null}
+        refetch={noopRefetch}
+      >
+        {children}
+      </ExperienceProvider>
+    )
   }
 
   return (
@@ -104,12 +83,3 @@ function ExperienceShellInner({
     </ExperienceProvider>
   )
 }
-
-const styles = StyleSheet.create({
-  errorText: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    fontSize: 16,
-    marginBottom: 16,
-  },
-})

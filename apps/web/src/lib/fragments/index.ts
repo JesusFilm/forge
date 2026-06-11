@@ -5,6 +5,10 @@ export {
 } from "./watch-home"
 export {
   getVideoChildDubLanguagesBySlugOperation,
-  getWatchVideoBySlugOperation,
-  watchVideoFragment,
+  getWatchVideoDubDetailOperation,
+  getWatchVideoLocalizedCopyBySlugOperation,
+  getWatchVideoShellBySlugOperation,
+  watchVideoDubDetailFragment,
+  watchVideoLocalizedCopyFragment,
+  watchVideoShellFragment,
 } from "./watch-video"

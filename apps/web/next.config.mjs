@@ -35,11 +35,7 @@ const nextConfig = {
     }
   },
   experimental: {
-    optimizePackageImports: [
-      "lucide-react",
-      "@mux/mux-player-react",
-      "@mux/mux-video-react",
-    ],
+    optimizePackageImports: ["lucide-react", "@mux/mux-video-react"],
   },
   images: {
     remotePatterns: [

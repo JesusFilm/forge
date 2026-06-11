@@ -1,8 +1,7 @@
 import { adminGraphql } from "@forge/admin-graphql"
 
 /**
- * WatchVideo fragment over admin's `Video` type plus the two query operations
- * that consume it.
+ * WatchVideo GraphQL operations over admin's `Video` and `VideoDub` types.
  *
  * Field aliases bridge admin's native field names to the watch-page consumer
  * vocabulary that pre-dates this rewrite (e.g. `variants`, `documentId`,
@@ -20,11 +19,10 @@ import { adminGraphql } from "@forge/admin-graphql"
  *     panel both read `q.value`.
  *
  * Locale-varying fields (`title`, `description`, `snippet`, `imageAlt`)
- * live on `VideoLocale` in admin, not on the parent `Video`. The
- * fragment projects them via `locales(locale: $locale) { ... }`
- * (single-element array per the U6 locale-narrowed read). The resolver
- * flattens the locale row onto the record so consumers keep reading
- * `video.title` etc. directly.
+ * live on `VideoLocale` in admin, not on the parent `Video`. They are
+ * fetched separately by `getWatchVideoLocalizedCopyBySlugOperation` so
+ * non-English fallback can retry text-only payloads instead of repeating
+ * the heavy slug-level shell and Dub detail projections.
  *
  * `VideoRelation` is admin's join shape for `parents` / `children`. The
  * fragment projects the related Video through `parent { ... }` /
@@ -36,8 +34,8 @@ import { adminGraphql } from "@forge/admin-graphql"
  * Core's localised display name). The renderer treats it loosely and the
  * citation card stringifies it; no client-side type narrowing here.
  */
-export const watchVideoFragment = adminGraphql(`
-  fragment WatchVideo on Video @_unmask {
+export const watchVideoShellFragment = adminGraphql(`
+  fragment WatchVideoShell on Video @_unmask {
     documentId: id
     slug
     noIndex
@@ -53,25 +51,12 @@ export const watchVideoFragment = adminGraphql(`
       coreId
       bcp47
     }
-    locales(locale: $locale, languageSlug: $languageSlug) {
-      documentId: id
-      languageSlug
-      title
-      description
-      snippet
-      imageAlt
-    }
     parents {
       parent {
         documentId: id
         slug
         noIndex
         label
-        locales(locale: $locale, languageSlug: $languageSlug) {
-          documentId: id
-          languageSlug
-          title
-        }
         images {
           documentId: id
           url
@@ -84,11 +69,6 @@ export const watchVideoFragment = adminGraphql(`
             documentId: id
             slug
             label
-            locales(locale: $locale, languageSlug: $languageSlug) {
-              documentId: id
-              languageSlug
-              title
-            }
             images {
               documentId: id
               url
@@ -105,11 +85,6 @@ export const watchVideoFragment = adminGraphql(`
         documentId: id
         slug
         label
-        locales(locale: $locale, languageSlug: $languageSlug) {
-          documentId: id
-          languageSlug
-          title
-        }
         images {
           documentId: id
           url
@@ -137,35 +112,6 @@ export const watchVideoFragment = adminGraphql(`
         slug
         name
       }
-      downloads {
-        documentId: id
-        quality
-        size
-      }
-      muxVideo {
-        playbackId
-      }
-      videoEdition {
-        subtitles {
-          documentId: id
-          vttSrc
-          srtSrc
-          primary
-          aiGenerated
-          language {
-            coreId
-            slug
-            name
-            bcp47
-          }
-        }
-      }
-    }
-    studyQuestions(locale: $locale, languageSlug: $languageSlug) {
-      documentId: id
-      languageSlug
-      value: text
-      order
     }
     bibleCitations {
       documentId: id
@@ -183,28 +129,134 @@ export const watchVideoFragment = adminGraphql(`
   }
 `)
 
-// Locale narrowing happens via the `$locale` arg passed to `Video.locales`,
-// `VideoRelation.parent.locales`, etc. — admin's U6 widening accepts the arg
-// per relation, so the projection only ships the active locale's row in
-// each `locales[]` array. Admin's `videoBySlug` resolves the video record
-// by slug only; both watch routes (3-segment collection-scoped and
-// 2-segment slug-only) share this single operation — the resolver verifies
-// the collection-slug match by walking `video.parents` client-side when
-// the URL carries a collection segment, otherwise picks `parents[0]` as
-// canonical.
-export const getWatchVideoBySlugOperation = adminGraphql(
+export const watchVideoLocalizedCopyFragment = adminGraphql(`
+  fragment WatchVideoLocalizedCopy on Video @_unmask {
+    documentId: id
+    locales(locale: $locale, languageSlug: $languageSlug) {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+    parents {
+      parent {
+        documentId: id
+        locales(locale: $locale, languageSlug: $languageSlug) {
+          documentId: id
+          languageSlug
+          title
+        }
+        children {
+          child {
+            documentId: id
+            locales(locale: $locale, languageSlug: $languageSlug) {
+              documentId: id
+              languageSlug
+              title
+            }
+          }
+        }
+      }
+    }
+    children {
+      child {
+        documentId: id
+        locales(locale: $locale, languageSlug: $languageSlug) {
+          documentId: id
+          languageSlug
+          title
+        }
+      }
+    }
+    studyQuestions(locale: $locale, languageSlug: $languageSlug) {
+      documentId: id
+      languageSlug
+      value: text
+      order
+    }
+  }
+`)
+
+export const watchVideoDubDetailFragment = adminGraphql(`
+  fragment WatchVideoDubDetail on VideoDub @_unmask {
+    documentId: id
+    slug
+    published
+    hls
+    duration
+    language {
+      coreId
+      bcp47
+      slug
+      name
+    }
+    downloads {
+      documentId: id
+      quality
+      size
+    }
+    muxVideo {
+      playbackId
+    }
+    videoEdition {
+      subtitles {
+        documentId: id
+        vttSrc
+        srtSrc
+        primary
+        aiGenerated
+        language {
+          coreId
+          slug
+          name
+          bcp47
+        }
+      }
+    }
+  }
+`)
+
+// Admin's `videoBySlug` resolves the video record by slug only; both watch
+// routes (3-segment collection-scoped and 2-segment slug-only) share this
+// shell operation. Locale copy and selected Dub detail are fetched by the
+// dedicated operations below.
+export const getWatchVideoShellBySlugOperation = adminGraphql(
   `
-    query GetWatchVideoBySlug(
+    query GetWatchVideoShellBySlug($videoSlug: String!) {
+      videoBySlug(slug: $videoSlug) {
+        ...WatchVideoShell
+      }
+    }
+  `,
+  [watchVideoShellFragment],
+)
+
+export const getWatchVideoLocalizedCopyBySlugOperation = adminGraphql(
+  `
+    query GetWatchVideoLocalizedCopyBySlug(
       $locale: String!
       $languageSlug: String
       $videoSlug: String!
     ) {
       videoBySlug(slug: $videoSlug) {
-        ...WatchVideo
+        ...WatchVideoLocalizedCopy
       }
     }
   `,
-  [watchVideoFragment],
+  [watchVideoLocalizedCopyFragment],
+)
+
+export const getWatchVideoDubDetailOperation = adminGraphql(
+  `
+    query GetWatchVideoDubDetail($id: ID!) {
+      videoDub(id: $id) {
+        ...WatchVideoDubDetail
+      }
+    }
+  `,
+  [watchVideoDubDetailFragment],
 )
 
 // Distinct playable dub languages aggregated across a video's children, one

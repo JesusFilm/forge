@@ -309,3 +309,81 @@ export const GET_VIDEO_DUB = adminGraphql(
 )
 
 export type WatchDubData = AdminResultOf<typeof GET_VIDEO_DUB>
+
+// ── Watch Home bulk query (card-lean by design) ─────────────────────
+//
+// Adapted from web's WatchHomeVideo fragment (apps/web/src/lib/fragments/
+// watch-home.ts) MINUS its `variants: dubs` selection. The home query fetches
+// ~30 core IDs in one round trip, and the set includes the JESUS film whose
+// ~2,259 dubs re-create the 9.5MB payload incident if projected in bulk
+// (KTD-2). Cards need only ids/slug/label/duration/images/locales; the hero
+// resolves a playable HLS lazily per slide via GET_VIDEO_BY_SLUG (see
+// useHeroStream). NEVER add `dubs` here — watchHomeQueries.test.ts guards it.
+// The shape must satisfy WatchHomeVideoInput in src/lib/watchHome/model.ts.
+export const watchHomeVideoFragment = adminGraphql(`
+  fragment WatchHomeVideo on Video @_unmask {
+    documentId: id
+    coreId
+    slug
+    label
+    durationSeconds
+    images {
+      documentId: id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+      videoStill
+    }
+    locales(locale: $locale, languageSlug: $languageSlug) {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+    children {
+      child {
+        documentId: id
+        coreId
+        slug
+        label
+        durationSeconds
+        images {
+          documentId: id
+          url
+          thumbnail
+          mobileCinematicHigh
+          mobileCinematicLow
+          videoStill
+        }
+        locales(locale: $locale, languageSlug: $languageSlug) {
+          documentId: id
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+      }
+    }
+  }
+`)
+
+export const GET_WATCH_HOME_VIDEOS = adminGraphql(
+  `
+    query GetWatchHomeVideos(
+      $coreIds: [String!]!
+      $locale: String!
+      $languageSlug: String
+    ) {
+      watchHomeVideos(coreIds: $coreIds) {
+        ...WatchHomeVideo
+      }
+    }
+  `,
+  [watchHomeVideoFragment],
+)
+
+export type WatchHomeVideosData = AdminResultOf<typeof GET_WATCH_HOME_VIDEOS>

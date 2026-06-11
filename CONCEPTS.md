@@ -50,6 +50,24 @@ A Catalog Sync Run tracks page progress, counts, terminal status, and safe
 failure summaries so broad catalog refreshes can be inspected and retried
 without treating Admin as the mapper's database.
 
+### Media Signature
+
+A compact, versioned media signal derived from an official catalog variant and
+stored for future content-first retrieval.
+
+A Media Signature is keyed by the source `coreId`, the variant
+`videoVariantId`, signature type, algorithm version, and time offset. It is
+evidence for matching, not catalog metadata.
+
+### Index Run
+
+A durable record of one pass that turns indexable Mapper Catalog variants into
+Media Signatures.
+
+An Index Run tracks algorithm version, cursor, counts, terminal status, and
+safe failure summaries so broad indexing can be resumed or inspected without
+reprocessing the whole catalog.
+
 ### Match Job
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
@@ -104,13 +122,26 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
 
+## Home hero UI
+
+### Three-Layer Hero
+
+The mobile layering pattern for a screen whose feed scrolls over a full-bleed video hero: a display-only hero layer behind the feed, the scrolling feed itself, and a touch overlay above the feed that owns every tappable hero control.
+
+Touches go to the topmost layer and are never re-offered downward, so anything interactive placed in the hero layer is unreachable — the hero's Chrome must live in the overlay, which passes gestures it doesn't own through to the feed. When the hero itself needs a gesture (such as swiping between paged slides), a shared ancestor intercepts it before the feed's scroll can claim it, taking only gestures whose direction marks them as the hero's.
+
+### Hero Insert
+
+An editorial slide in the watch-home hero rotation sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
+_Avoid:_ Mux insert.
+
 ## Watch player UI
 
 ### Chrome
 
 The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it.
 
-The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches.
+The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 
 ### Watch Session
 
