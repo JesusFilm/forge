@@ -206,9 +206,9 @@ function SyntheticBlock({
 }) {
   switch (block.kind) {
     case "HeroPlayer": {
-      const playableLanguageCount = (block.video.variants ?? []).filter(
-        isPlayableLanguageVariant,
-      ).length
+      const playableLanguageCount =
+        block.playableLanguageCount ??
+        (block.video.variants ?? []).filter(isPlayableLanguageVariant).length
       return (
         <HeroPlayer
           block={block}

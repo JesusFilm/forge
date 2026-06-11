@@ -102,7 +102,6 @@ export const env = createEnv({
     // before LaunchDarkly is provisioned.
     LAUNCHDARKLY_SDK_KEY: z.string().optional(),
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
-    FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
     FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: z.string().optional(),
@@ -175,16 +174,6 @@ export const env = createEnv({
     // R19 trigger: drop `video.js` from apps/web after this has been `true`
     // in production for one stable release.
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: booleanEnv(false),
-    // Watch-hero MuxPlayer → MuxVideo migration flag. Boolean (true|false).
-    // Per-environment value, no per-user targeting. When `true`, the watch
-    // page's HeroPlayer renders `@mux/mux-video-react` instead of
-    // `@mux/mux-player-react`, dropping ~420 KB gzip of player chrome +
-    // cast support that the existing React-rendered HeroPlayerControls
-    // already replaces. Default `false` keeps the existing path live until
-    // rollout. After one stable release at `true` in prod, follow-up PR
-    // removes the flag-off branch from HeroPlayer.tsx.
-    // See docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md
-    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: booleanEnv(false),
     // U5 — Mux Data env key for the watch-page Mux Player. Optional because
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
@@ -224,8 +213,6 @@ export const env = createEnv({
     LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
       process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT,
-    FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT:
-      process.env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT,
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT:
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
@@ -248,8 +235,6 @@ export const env = createEnv({
     YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
-    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO:
-      process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },

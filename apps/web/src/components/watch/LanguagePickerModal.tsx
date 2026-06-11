@@ -1,7 +1,16 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Captions, Check, Globe, Languages, Sparkles, X } from "lucide-react"
+import {
+  Captions,
+  Check,
+  Globe,
+  Languages,
+  LoaderCircle,
+  RefreshCw,
+  Sparkles,
+  X,
+} from "lucide-react"
 import { useTranslations } from "next-intl"
 import type { ReactNode, RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -11,7 +20,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
-import type { WatchSubtitle } from "@/lib/content"
+import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
@@ -19,32 +28,7 @@ import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
-export type LanguagePickerVariant = {
-  documentId: string
-  hls: string | null
-  published: boolean | null
-  language: {
-    coreId?: string | null
-    bcp47?: string | null
-    slug: string | null
-    name: string | null
-    nativeName?: string | null
-  } | null
-  videoEdition?: {
-    subtitles?:
-      | {
-          vttSrc?: string | null
-          srtSrc?: string | null
-          language?: {
-            coreId?: string | null
-            bcp47?: string | null
-            slug: string | null
-            name: string | null
-          } | null
-        }[]
-      | null
-  } | null
-}
+export type LanguagePickerVariant = WatchLanguagePickerVariant
 
 export type LanguagePickerModalProps = {
   open: boolean
@@ -66,6 +50,9 @@ export type LanguagePickerModalProps = {
   currentSubtitleEnabled?: boolean
   currentSubtitleSlug?: string | null
   onSubtitleChange?: (enabled: boolean, languageSlug: string | null) => void
+  languageOptionsLoading?: boolean
+  languageOptionsError?: boolean
+  onRetryLanguageOptions?: () => void
 }
 
 // Safety cap on the in-flight navigation guard. router.push is fire-and-
@@ -286,6 +273,9 @@ export function LanguagePickerModal({
   currentSubtitleEnabled = false,
   currentSubtitleSlug = null,
   onSubtitleChange,
+  languageOptionsLoading = false,
+  languageOptionsError = false,
+  onRetryLanguageOptions,
 }: LanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
   const router = useRouter()
@@ -632,29 +622,61 @@ export function LanguagePickerModal({
                 >
                   {t("languageCount", { count: options.length })}
                 </span>
+                {languageOptionsLoading ? (
+                  <LoaderCircle
+                    aria-hidden
+                    data-testid="watch-language-picker-loading"
+                    className="size-5 animate-spin text-stone-400"
+                  />
+                ) : null}
               </div>
             </MultilingualTooltip>
-            <LanguageCombobox
-              options={options}
-              value={draftSlug}
-              onChange={setDraftSlug}
-              compact
-              open={openCombobox === "language"}
-              onOpenChange={(next) =>
-                setOpenComboboxState(next ? "language" : null)
-              }
-              triggerWrapper={(trigger) => (
-                <MultilingualTooltip
-                  copy={MULTILINGUAL_TOOLTIPS.language}
-                  testId="watch-language-picker-tooltip-language-select"
-                  className="w-full"
-                  onActivate={setActiveTooltipCopy}
-                  onDeactivate={clearActiveTooltip}
+            {languageOptionsError ? (
+              <div
+                data-testid="watch-language-picker-load-error"
+                className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3"
+              >
+                <span className="flex items-center gap-3 text-base font-semibold text-stone-400">
+                  <Languages aria-hidden className="size-5" />
+                  {t("languageHeading")}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label="Retry loading languages"
+                  title="Retry loading languages"
+                  data-testid="watch-language-picker-retry-languages"
+                  onClick={onRetryLanguageOptions}
+                  className="size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white"
                 >
-                  {trigger}
-                </MultilingualTooltip>
-              )}
-            />
+                  <RefreshCw aria-hidden className="size-4" />
+                </Button>
+              </div>
+            ) : (
+              <LanguageCombobox
+                options={options}
+                value={draftSlug}
+                onChange={setDraftSlug}
+                disabled={languageOptionsLoading}
+                placeholder={t("languageHeading")}
+                compact
+                open={openCombobox === "language"}
+                onOpenChange={(next) =>
+                  setOpenComboboxState(next ? "language" : null)
+                }
+                triggerWrapper={(trigger) => (
+                  <MultilingualTooltip
+                    copy={MULTILINGUAL_TOOLTIPS.language}
+                    testId="watch-language-picker-tooltip-language-select"
+                    className="w-full"
+                    onActivate={setActiveTooltipCopy}
+                    onDeactivate={clearActiveTooltip}
+                  >
+                    {trigger}
+                  </MultilingualTooltip>
+                )}
+              />
+            )}
           </div>
 
           <div className="flex flex-col gap-4">

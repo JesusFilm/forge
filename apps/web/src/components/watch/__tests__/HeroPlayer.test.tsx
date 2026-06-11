@@ -3,30 +3,29 @@
  *
  * U5 — HeroPlayer tests.
  *
- * The Mux Player is mocked at the module boundary so we can:
- *   - Capture the props passed to `<MuxPlayer>` (Mux Data wiring, chrome-hide
- *     CSS variables, playback id).
+ * The MuxVideo backend is mocked at the module boundary so we can:
+ *   - Capture the props passed to `<MuxVideo>` (Mux Data wiring, poster,
+ *     bounded HLS config, playback id).
  *   - Stub the ref with a controllable shape so the iOS-safe click sequence
  *     is observable (synchronous `.muted` / `.currentTime` assignments
  *     followed by `.play()` returning a Promise).
  *
- * These tests do not assert anything that requires real Mux Player chrome
- * (which jsdom cannot render — see U1 spike comment block); the
- * Playwright production-stack smoke owns chrome reveal verification.
+ * These tests do not assert real Mux media playback; browser smoke owns that
+ * integration surface.
  */
 
 import { act, useImperativeHandle } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-type MuxPlayerCapturedProps = Record<string, unknown> & {
+type MuxVideoCapturedProps = Record<string, unknown> & {
   ref?: React.Ref<unknown>
   onLoadedMetadata?: (event: Event) => void
   onCanPlay?: (event: Event) => void
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
-const { muxPlayerMock, muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
+const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
   type MockPlayer = {
     muted: boolean
     currentTime: number
@@ -59,22 +58,7 @@ const { muxPlayerMock, muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
     }
   }
 
-  const muxPlayerMock = vi.fn((props: MuxPlayerCapturedProps) => {
-    const { ref } = props
-    // Install the singleton on the ref the consumer passed.
-    mockPlayerRef.current ??= makePlayer()
-    // Mirror React's ref-installation behavior so the consumer sees the
-    // mock player on `playerRef.current` after mount.
-    useImperativeHandle(ref as React.RefObject<unknown>, () => {
-      return mockPlayerRef.current
-    })
-    return null
-  })
-
-  // Parallel mock for the flag-on MuxVideo branch. Shares the singleton
-  // ref proxy so HeroPlayerControls / play() assertions don't care which
-  // backend rendered.
-  const muxVideoMock = vi.fn((props: MuxPlayerCapturedProps) => {
+  const muxVideoMock = vi.fn((props: MuxVideoCapturedProps) => {
     const { ref } = props
     mockPlayerRef.current ??= makePlayer()
     useImperativeHandle(ref as React.RefObject<unknown>, () => {
@@ -83,11 +67,10 @@ const { muxPlayerMock, muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
     return null
   })
 
-  return { muxPlayerMock, muxVideoMock, mockPlayerRef }
+  return { muxVideoMock, mockPlayerRef }
 })
 
 vi.mock("@forge/video-player", () => ({
-  MuxPlayer: muxPlayerMock,
   MuxVideo: muxVideoMock,
 }))
 
@@ -111,14 +94,8 @@ vi.mock("next-intl", () => ({
     },
 }))
 
-// HeroPlayer's runtime branch wraps each backend in `next/dynamic(() =>
-// import("@forge/video-player/mux-{player,video}"), { ssr: false })` so
-// the inactive backend is build-time DCE'd out of the route chunk.
-// Mock both subpath specifiers so jsdom renders the same `muxPlayerMock`
-// / `muxVideoMock` synchronously instead of awaiting a lazy loader.
-vi.mock("@forge/video-player/mux-player", () => ({
-  default: muxPlayerMock,
-}))
+// HeroPlayer wraps the MuxVideo backend in `next/dynamic(() =>
+// import("@forge/video-player/mux-video"), { ssr: false })`.
 vi.mock("@forge/video-player/mux-video", () => ({
   default: muxVideoMock,
 }))
@@ -146,12 +123,8 @@ vi.mock("next/dynamic", async () => {
   }
 })
 
-// Mock the env module so individual tests can flip the migration flag
-// without shadowing the module-scope mock. The default keeps the flag
-// off so the bulk of the suite continues exercising the MuxPlayer path.
 vi.mock("@/env", () => ({
   env: {
-    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: false,
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: undefined,
   },
 }))
@@ -171,19 +144,7 @@ function setSearchParams(query: string) {
   mockSearchParams.current = new URLSearchParams(query)
 }
 
-import { env } from "@/env"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
-
-type MutableHeroPlayerEnv = {
-  NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: boolean
-  NEXT_PUBLIC_MUX_DATA_ENV_KEY: string | undefined
-}
-
-function setHeroMuxVideoFlag(value: boolean) {
-  ;(
-    env as unknown as MutableHeroPlayerEnv
-  ).NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO = value
-}
 
 type TestMockPlayer = NonNullable<typeof mockPlayerRef.current>
 
@@ -219,9 +180,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
-  muxPlayerMock.mockClear()
   muxVideoMock.mockClear()
-  setHeroMuxVideoFlag(false)
   mockPlayerRef.current = null
   mockSearchParams.current = new URLSearchParams()
   container = document.createElement("div")
@@ -261,9 +220,9 @@ function makeBlock(): WatchHeroPlayerBlock {
   }
 }
 
-function lastMuxProps(): MuxPlayerCapturedProps {
-  const calls = muxPlayerMock.mock.calls
-  return calls[calls.length - 1]?.[0] as MuxPlayerCapturedProps
+function lastMuxProps(): MuxVideoCapturedProps {
+  const calls = muxVideoMock.mock.calls
+  return calls[calls.length - 1]?.[0] as MuxVideoCapturedProps
 }
 
 type TestIdleDeadline = {
@@ -371,37 +330,40 @@ describe("HeroPlayer — initial mount", () => {
     )
     expect(poster.getAttribute("loading")).toBe("eager")
     expect(poster.getAttribute("fetchpriority")).toBe("high")
-    expect(muxPlayerMock).not.toHaveBeenCalled()
     expect(muxVideoMock).not.toHaveBeenCalled()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).toBeNull()
   })
 
-  it("mounts MuxPlayer with LCP poster, bounded HLS config, and chrome-hide CSS variables after idle activation", async () => {
+  it("mounts MuxVideo with LCP poster, bounded HLS config, and Mux Data after idle activation", async () => {
     await activateMutedPreviewFromIdle()
 
     const props = lastMuxProps()
     expect(props).toBeDefined()
     expect(props.playbackId).toBe("playback-id-123")
-    expect(props.autoPlay).toBe("muted")
+    expect(props.autoPlay).toBe(true)
     expect(props.muted).toBe(true)
     expect(props.loop).toBe(true)
+    expect(props.preload).toBe("metadata")
     // Must match the server-rendered <link rel="preload"> URL exactly so the
-    // flag-off MuxPlayer deployment reuses the LCP poster request.
+    // MuxVideo poster reuses the LCP poster request.
     expect(props.poster).toBe(
       "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
     )
+    expect(props.disableTracking).toBe(false)
+    expect(props.disableCookies).toBe(true)
+    expect(props.metadata).toMatchObject({
+      player_name: "forge-web-watch",
+      video_title: "Jesus",
+      video_id: "video-1",
+    })
     expect(props._hlsConfig).toEqual({
       maxBufferLength: 10,
       maxBufferSize: 5_000_000,
       backBufferLength: 5,
     })
-    const style = props.style as Record<string, string | undefined>
-    expect(style?.["--controls"]).toBe("none")
-    expect(style?.["--top-controls"]).toBe("none")
-    expect(style?.["--center-controls"]).toBe("none")
-    expect(style?.["--bottom-controls"]).toBe("none")
+    expect(props.style).toEqual({ objectFit: "cover" })
   })
 
   it("defers idle muted activation while the document is hidden", async () => {
@@ -417,7 +379,7 @@ describe("HeroPlayer — initial mount", () => {
       })
 
       await idle.runNext()
-      expect(muxPlayerMock).not.toHaveBeenCalled()
+      expect(muxVideoMock).not.toHaveBeenCalled()
 
       Object.defineProperty(document, "visibilityState", {
         configurable: true,
@@ -428,7 +390,7 @@ describe("HeroPlayer — initial mount", () => {
       })
       expect(idle.pending).toBeGreaterThan(0)
       await idle.runNext()
-      expect(muxPlayerMock).toHaveBeenCalled()
+      expect(muxVideoMock).toHaveBeenCalled()
     } finally {
       Object.defineProperty(document, "visibilityState", {
         configurable: true,
@@ -465,7 +427,7 @@ describe("HeroPlayer — initial mount", () => {
 
     try {
       await idle.runNext()
-      expect(muxPlayerMock).not.toHaveBeenCalled()
+      expect(muxVideoMock).not.toHaveBeenCalled()
 
       Object.defineProperty(wrapper, "getBoundingClientRect", {
         configurable: true,
@@ -487,7 +449,7 @@ describe("HeroPlayer — initial mount", () => {
       })
       expect(idle.pending).toBeGreaterThan(0)
       await idle.runNext()
-      expect(muxPlayerMock).toHaveBeenCalled()
+      expect(muxVideoMock).toHaveBeenCalled()
     } finally {
       idle.restore()
     }
@@ -802,13 +764,13 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       '[data-testid="hero-player-pre-reveal-click-surface"]',
     ) as HTMLButtonElement
     expect(surface).not.toBeNull()
-    expect(muxPlayerMock).not.toHaveBeenCalled()
+    expect(muxVideoMock).not.toHaveBeenCalled()
 
     await act(async () => {
       surface.dispatchEvent(new Event("pointerdown", { bubbles: true }))
     })
 
-    expect(muxPlayerMock).toHaveBeenCalled()
+    expect(muxVideoMock).toHaveBeenCalled()
     expect(mockPlayerRef.current).not.toBeNull()
     mockPlayerRef.current?.play.mockClear()
 
@@ -846,12 +808,11 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       container.querySelector('[data-testid="hero-player-custom-chrome"]'),
     ).not.toBeNull()
 
-    // Re-rendered MuxPlayer should now have `loop=false`, but Mux's native
-    // chrome stays hidden — we render our own React-based chrome on top.
+    // Re-rendered MuxVideo should now have `loop=false` and switch from the
+    // cover preview crop to contained sound-on playback.
     const props = lastMuxProps()
     expect(props.loop).toBe(false)
-    const style = (props.style as Record<string, string | undefined>) ?? {}
-    expect(style?.["--controls"]).toBe("none")
+    expect(props.style).toEqual({ objectFit: "contain" })
   })
 
   it("on play() rejection (iOS NotAllowedError): pill switches to 'Tap to Unmute' (visually distinct)", async () => {
@@ -1854,7 +1815,7 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
   })
 
   it("tap-to-unmute branch calls play() without resetting currentTime", async () => {
-    // mockPlayerRef.current is null until the muxPlayerMock factory runs
+    // mockPlayerRef.current is null until the muxVideoMock factory runs
     // during render — so we have to render first, then swap play() to
     // reject (driving the pill into 'tap-to-unmute' state on click 1).
     mockPlayerRef.current = makeTestPlayer({
@@ -2374,7 +2335,7 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     // Re-prime the player factory: install a play() that rejects on the
     // FIRST call only (the autoplay attempt). Subsequent calls (e.g. the
     // unmute pill click) resolve normally.
-    muxPlayerMock.mockImplementationOnce((props) => {
+    muxVideoMock.mockImplementationOnce((props) => {
       const { ref } = props
       const player = {
         muted: true,
@@ -2418,7 +2379,7 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     })
     await nextTick()
 
-    expect(muxPlayerMock).not.toHaveBeenCalled()
+    expect(muxVideoMock).not.toHaveBeenCalled()
     expect(mockPlayerRef.current).toBeNull()
   })
 
@@ -2448,68 +2409,14 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
   })
 })
 
-// MuxVideo branch — exercises the flag-on path that replaces
-// `<MuxPlayer>` (`@mux/mux-player-react`) with `<MuxVideo>`
-// (`@mux/mux-video-react`). See
-// docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md.
-function lastMuxVideoProps(): MuxPlayerCapturedProps {
-  const calls = muxVideoMock.mock.calls
-  return calls[calls.length - 1]?.[0] as MuxPlayerCapturedProps
-}
-
-describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () => {
-  beforeEach(() => {
-    setHeroMuxVideoFlag(true)
-  })
-
-  it("mounts <MuxVideo> instead of <MuxPlayer> with parity props after idle activation", async () => {
-    await activateMutedPreviewFromIdle()
-
-    expect(muxVideoMock).toHaveBeenCalled()
-    expect(muxPlayerMock).not.toHaveBeenCalled()
-
-    const props = lastMuxVideoProps()
-    // Identity props mirror the MuxPlayer path.
-    expect(props.playbackId).toBe("playback-id-123")
-    expect(props.autoPlay).toBe(true)
-    expect(props.muted).toBe(true)
-    expect(props.loop).toBe(true)
-    expect(props.preload).toBe("metadata")
-    // Light-DOM poster URL must match the <link rel="preload"> in
-    // page.tsx so the preloaded image is reused by <video poster=...>.
-    expect(props.poster).toBe(
-      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
-    )
-    // Override of the @forge/video-player wrapper default — hero needs
-    // Mux Data attribution even though other MuxVideo callsites disable it.
-    expect(props.disableTracking).toBe(false)
-    expect(props.disableCookies).toBe(true)
-    // Mux Data metadata payload is forwarded verbatim so the watch
-    // surface continues to attribute beacons under the same player_name.
-    expect(props.metadata).toMatchObject({
-      player_name: "forge-web-watch",
-      video_title: "Jesus",
-      video_id: "video-1",
-    })
-    // HLS buffer cap matches the perf-iteration tuning (≤10s lookahead,
-    // 5 MB cap) so the simulator-mobile waterfall stays bounded.
-    expect(props._hlsConfig).toEqual({
-      maxBufferLength: 10,
-      maxBufferSize: 5_000_000,
-      backBufferLength: 5,
-    })
-    // No CHROME_HIDE_STYLE under MuxVideo — bare <video> has no chrome
-    // shadow DOM to suppress. Object-fit lives on plain `style` instead.
-    expect(props.style).toEqual({ objectFit: "cover" })
-  })
-
+describe("HeroPlayer — MuxVideo backend events", () => {
   it("flips videoReady via onCanPlay and unmounts the spinner overlay", async () => {
     await activateMutedPreviewFromIdle()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).not.toBeNull()
 
-    const handler = lastMuxVideoProps()?.onCanPlay
+    const handler = lastMuxProps()?.onCanPlay
     await act(async () => {
       handler?.(new Event("canplay"))
     })
@@ -2538,7 +2445,7 @@ describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () =
       mockPlayerRef.current.play = vi.fn(() => Promise.reject(notAllowed))
     }
 
-    const handler = lastMuxVideoProps()?.onCanPlay
+    const handler = lastMuxProps()?.onCanPlay
     await act(async () => {
       handler?.(new Event("canplay"))
     })
@@ -2562,7 +2469,7 @@ describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () =
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).not.toBeNull()
 
-    const handler = lastMuxVideoProps()?.onError
+    const handler = lastMuxProps()?.onError
     await act(async () => {
       handler?.(new Event("error"))
     })

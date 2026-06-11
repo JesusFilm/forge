@@ -13,11 +13,14 @@ import {
   isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
+  type MergedWatchBlock,
   resolveSeriesBySlug,
   resolveSeriesEpisodeBySlug,
   resolveWatchExperiencePage,
   resolveWatchPage,
   resolveWatchVideoBySlug,
+  type WatchVariant,
+  type WatchVideoRecord,
 } from "@/lib/content"
 import {
   buildWatchVideoMetadataModel,
@@ -51,6 +54,7 @@ import {
   stripHtmlSuffix,
 } from "@/lib/url-shape"
 import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
+import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
@@ -72,6 +76,37 @@ export function generateStaticParams(): Array<{
   rest: string[]
 }> {
   return []
+}
+
+function pruneWatchVideoForClient(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): WatchVideoRecord {
+  const selected =
+    video.variants.find(
+      (variant) => variant.documentId === selectedVariant.documentId,
+    ) ?? selectedVariant
+  return { ...video, variants: [selected] }
+}
+
+function pruneMergedWatchBlocksForClient(
+  blocks: MergedWatchBlock[],
+  selectedVariant: WatchVariant,
+): MergedWatchBlock[] {
+  return blocks.map((block) => {
+    if (!("kind" in block)) return block
+    switch (block.kind) {
+      case "HeroPlayer":
+      case "WatchBody":
+      case "Share":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+        }
+      default:
+        return block
+    }
+  })
 }
 
 // Catch-all dispatcher for the one-, two-, and three-segment watch URL shapes.
@@ -432,18 +467,30 @@ async function renderEpisode(shape: {
       getQuestionPanelEnabled(route),
       getHideBibleQuotesEnabled(route),
     ])
-  const youVersionPassages = hideBibleQuotes
-    ? []
-    : await getYouVersionBibleQuotePassages(
-        route,
-        resolved.video.bibleCitations,
-      )
+  const [youVersionPassages, initialTranscript] = await Promise.all([
+    hideBibleQuotes
+      ? Promise.resolve([])
+      : getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
+    getInitialSubtitleTranscript({
+      subtitles: resolved.video.subtitles,
+      audioSlug: resolved.selectedVariant.language?.slug ?? rawLocale,
+      durationSeconds: resolved.selectedVariant.duration ?? null,
+    }),
+  ])
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
     youVersionPassages,
   })
+  const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+    mergedBlocks,
+    resolved.selectedVariant,
+  )
+  const clientVideo = pruneWatchVideoForClient(
+    resolved.video,
+    resolved.selectedVariant,
+  )
   if (!mergedBlocks.length) return <ExperienceEmpty />
   const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
   const metadataModel = buildWatchVideoMetadataModel({
@@ -467,13 +514,14 @@ async function renderEpisode(shape: {
       ) : null}
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
-        mergedBlocks={mergedBlocks}
+        mergedBlocks={clientMergedBlocks}
         variant={resolved.selectedVariant}
-        video={resolved.video}
+        video={clientVideo}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
         locale={locale}
         hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
+        initialTranscript={initialTranscript}
       />
     </>
   )
@@ -563,18 +611,33 @@ async function renderVideo(shape: {
         getQuestionPanelEnabled(route),
         getHideBibleQuotesEnabled(route),
       ])
-    const youVersionPassages = hideBibleQuotes
-      ? []
-      : await getYouVersionBibleQuotePassages(
-          route,
-          watchVideo.video.bibleCitations,
-        )
+    const [youVersionPassages, initialTranscript] = await Promise.all([
+      hideBibleQuotes
+        ? Promise.resolve([])
+        : getYouVersionBibleQuotePassages(
+            route,
+            watchVideo.video.bibleCitations,
+          ),
+      getInitialSubtitleTranscript({
+        subtitles: watchVideo.video.subtitles,
+        audioSlug: watchVideo.selectedVariant.language?.slug ?? rawLocale,
+        durationSeconds: watchVideo.selectedVariant.duration ?? null,
+      }),
+    ])
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
       youVersionPassages,
     })
+    const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+      mergedBlocks,
+      watchVideo.selectedVariant,
+    )
+    const clientVideo = pruneWatchVideoForClient(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
     const lcpPlaybackId =
       watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     const metadataModel = buildWatchVideoMetadataModel({
@@ -596,13 +659,14 @@ async function renderVideo(shape: {
         ) : null}
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
-          mergedBlocks={mergedBlocks}
+          mergedBlocks={clientMergedBlocks}
           variant={watchVideo.selectedVariant}
-          video={watchVideo.video}
+          video={clientVideo}
           languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
           locale={locale}
           hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
+          initialTranscript={initialTranscript}
         />
       </>
     )
