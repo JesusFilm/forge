@@ -416,6 +416,8 @@ export const SEMANTIC_SEARCH = graphql(`
         startSeconds
         playbackId
         score
+        label
+        childCount
       }
     }
   }

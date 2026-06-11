@@ -17,7 +17,7 @@
 // sections render only once the full query has resolved (the seed paints
 // title/poster first; no per-section spinners).
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Dimensions,
   Pressable,
@@ -26,12 +26,13 @@ import {
   Text,
   View,
 } from "react-native"
-import { useLocalSearchParams } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
 import { normalizeVideo } from "../../src/lib/normalizeVideo"
-import { decodeWatchSeed } from "../../src/lib/watchSeed"
+import { resolveWatchRedirect } from "../../src/lib/watchRedirect"
+import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
@@ -70,11 +71,12 @@ export default function WatchVideoScreen() {
     seed?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
+  const router = useRouter()
 
   const { video, setVideo, activeVariant } = useWatchSession()
   const { state: playerState } = useVideoPlayerContext()
 
-  const { data, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
+  const { data, error, loading, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { locale: "en", slug: decodedSlug },
     skip: !decodedSlug,
     // cache-first (NOT cache-and-network): the payload is large for videos with
@@ -102,6 +104,30 @@ export default function WatchVideoScreen() {
     () => muxHlsUrlFromPlaybackId(seed?.playbackId ?? null),
     [seed],
   )
+
+  // A series reached via /watch (deep link, stale recommendation) redirects to
+  // the dedicated series screen — replace (not push) so Menu pops to the
+  // pre-watch origin. resolveWatchRedirect decides only on complete data
+  // (never off a partial cache read); detection is label-only at this seam, so
+  // an unlabeled-with-children deep link stays here (accepted gap, mirrors
+  // mobile). Deep-linked series show one watch-skeleton frame before the
+  // replace lands (the render below skips the backdrop on that frame). The
+  // seed carries through with playbackId nulled so the series side never
+  // derives a stream from it. Once-guarded per slug so it can't loop.
+  const redirectDecision = resolveWatchRedirect(normalized, { loading })
+  const redirectedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (redirectDecision !== "redirect") return
+    if (redirectedRef.current === decodedSlug) return
+    redirectedRef.current = decodedSlug
+    const seriesSeed = seed
+      ? encodeWatchSeed({ ...seed, playbackId: null })
+      : null
+    const target = seriesSeed
+      ? `/series/${encodeURIComponent(decodedSlug)}?seed=${seriesSeed}`
+      : `/series/${encodeURIComponent(decodedSlug)}`
+    router.replace(target)
+  }, [redirectDecision, decodedSlug, seed, router])
 
   // Publish the fetched video into the shared session; keyed on the normalized
   // object so partial → full enrichment republishes (the session guards user
@@ -169,6 +195,13 @@ export default function WatchVideoScreen() {
   const bibleQuotesBlock = hasVideo
     ? buildBibleQuotesBlock(video.bibleCitations, bibleVerses)
     : null
+
+  // Redirect frame: a series record bound for /series renders only the screen
+  // background until the replace lands — mounting the VideoBackdrop here would
+  // grab a scarce tvOS decode slot it immediately drops.
+  if (redirectDecision === "redirect") {
+    return <View style={styles.screen} />
+  }
 
   if (showErrorState) {
     return (
