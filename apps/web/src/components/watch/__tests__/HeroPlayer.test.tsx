@@ -355,8 +355,20 @@ describe("HeroPlayer — initial mount", () => {
     ) as HTMLImageElement
     expect(poster).not.toBeNull()
     expect(poster.getAttribute("src")).toBe("https://cdn.test/clicked.jpg")
+    expect(poster.parentElement?.getAttribute("data-cover-loading")).toBe(
+      "false",
+    )
+    expect(poster.parentElement?.getAttribute("data-cover-transition")).toBe(
+      "none",
+    )
     expect(poster.parentElement?.className).not.toContain("transition-opacity")
     expect(poster.parentElement?.className).toContain("opacity-100")
+    expect(poster.getAttribute("class")).not.toContain(
+      "watch-hero-cover-reveal-pulse",
+    )
+    expect(
+      container.querySelector('[data-testid="hero-player-cover-black-bridge"]'),
+    ).toBeNull()
     expect(
       container.querySelector('[data-testid="hero-player-overlay-title"]')
         ?.textContent,
@@ -366,6 +378,41 @@ describe("HeroPlayer — initial mount", () => {
         ?.textContent,
     ).toBe("Segment")
     expect(muxVideoMock).not.toHaveBeenCalled()
+  })
+
+  it("bridges a pending optimistic poster through black and pulses the cover", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+            loading: true,
+            transitionKey: "chapter-2",
+          }}
+        />,
+      )
+    })
+
+    const layer = container.querySelector(
+      '[data-testid="hero-player-poster-layer"]',
+    )
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const bridge = container.querySelector(
+      '[data-testid="hero-player-cover-black-bridge"]',
+    )
+
+    expect(layer?.getAttribute("data-cover-loading")).toBe("true")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(poster.getAttribute("src")).toBe("https://cdn.test/clicked.jpg")
+    expect(poster.getAttribute("class")).toContain(
+      "watch-hero-cover-reveal-pulse",
+    )
+    expect(bridge).not.toBeNull()
   })
 
   it("keeps an optimistic poster visible after the muted preview is ready", async () => {
@@ -403,6 +450,41 @@ describe("HeroPlayer — initial mount", () => {
         "https://cdn.test/clicked.jpg",
       )
       expect(optimisticPoster.parentElement?.className).toContain("opacity-100")
+    } finally {
+      idle.restore()
+    }
+  })
+
+  it("pulses the route poster while an activated player waits for canplay", async () => {
+    const idle = installIdleCallbackStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await idle.runNext()
+
+      const layer = container.querySelector(
+        '[data-testid="hero-player-poster-layer"]',
+      )
+      const poster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      ) as HTMLImageElement
+      expect(layer?.getAttribute("data-cover-loading")).toBe("true")
+      expect(layer?.getAttribute("data-cover-transition")).toBe("none")
+      expect(poster.getAttribute("class")).toContain("watch-hero-cover-pulse")
+
+      await fireCanPlay()
+
+      const readyLayer = container.querySelector(
+        '[data-testid="hero-player-poster-layer"]',
+      )
+      const readyPoster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      ) as HTMLImageElement
+      expect(readyLayer?.getAttribute("data-cover-loading")).toBe("false")
+      expect(readyPoster.getAttribute("class")).not.toContain(
+        "watch-hero-cover-pulse",
+      )
     } finally {
       idle.restore()
     }

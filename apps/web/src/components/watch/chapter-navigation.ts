@@ -13,4 +13,6 @@ export type WatchChapterOptimisticVisual = {
   title: string | null
   label: string | null
   posterUrl: string | null
+  loading?: boolean
+  transitionKey?: string | null
 }

@@ -904,11 +904,23 @@ export function HeroPlayer({
     : video.label
   const showOptimisticPoster =
     canUseOptimisticVisual && optimisticVisual?.posterUrl != null
+  const showPendingPosterTransition =
+    showOptimisticPoster && optimisticVisual?.loading === true
+  const coverLoading =
+    showPendingPosterTransition || (playerActivated && !videoReady)
+  const posterLayerKey = showPendingPosterTransition
+    ? `pending-${optimisticVisual?.transitionKey ?? visualHeroPosterUrl}`
+    : `route-${visualHeroPosterUrl ?? "none"}`
   const posterOpacityClass =
     videoReady && !showOptimisticPoster ? "opacity-0" : "opacity-100"
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-300"
+  const posterImageMotionClass = showPendingPosterTransition
+    ? "watch-hero-cover-reveal-pulse"
+    : coverLoading
+      ? "watch-hero-cover-pulse"
+      : ""
 
   // Hide the language-switch globe while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
@@ -1070,6 +1082,12 @@ export function HeroPlayer({
 
           {visualHeroPosterUrl ? (
             <div
+              key={posterLayerKey}
+              data-testid="hero-player-poster-layer"
+              data-cover-loading={coverLoading ? "true" : "false"}
+              data-cover-transition={
+                showPendingPosterTransition ? "black-bridge" : "none"
+              }
               className={`pointer-events-none absolute inset-0 ${posterTransitionClass} ${posterOpacityClass}`}
             >
               <Image
@@ -1082,8 +1100,15 @@ export function HeroPlayer({
                 loading="eager"
                 fetchPriority="high"
                 sizes="100vw"
-                className="object-cover"
+                className={`object-cover ${posterImageMotionClass}`}
               />
+              {showPendingPosterTransition ? (
+                <div
+                  data-testid="hero-player-cover-black-bridge"
+                  aria-hidden="true"
+                  className="watch-hero-cover-black-bridge pointer-events-none absolute inset-0 bg-black"
+                />
+              ) : null}
             </div>
           ) : null}
 

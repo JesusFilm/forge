@@ -53,7 +53,6 @@ import type {
 import { isWatchBlock } from "@/lib/content"
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import {
   WATCH_BASE_PATH,
   tryAsContentSlug,

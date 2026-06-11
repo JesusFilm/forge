@@ -53,6 +53,8 @@ const {
         title: string | null
         label: string | null
         posterUrl: string | null
+        loading?: boolean
+        transitionKey?: string | null
       } | null
     }) => {
       // Mirror the original placeholder's data attributes so the renderer
@@ -457,6 +459,8 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       title: "Clicked Child",
       label: "SEGMENT",
       posterUrl: "https://cdn.test/clicked.jpg",
+      loading: true,
+      transitionKey: "child-2",
     })
     expect(carouselContent.pendingTargetVideoDocumentId).toBe("child-2")
     expect(bodyContent.optimisticTitle).toBe("Clicked Child")
