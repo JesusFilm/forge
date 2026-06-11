@@ -1,12 +1,19 @@
-import { LinearGradient } from "expo-linear-gradient"
 import { Image } from "expo-image"
-import { StyleSheet, Text, View } from "react-native"
+import { useRef, useState } from "react"
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 
 import { type SearchResult } from "../../lib/queries"
-import { COLORS, hexToRgba } from "../../lib/colors"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
-import { FocusableCard } from "../FocusableCard"
+import { resultChipLabel, resultKindLabel } from "./searchDisplay"
+import { SEARCH_THEME } from "./searchTheme"
 
 type Props = {
   result: SearchResult
@@ -17,16 +24,15 @@ type Props = {
   hasTVPreferredFocus?: boolean
 }
 
-const CARD_IMAGE_HEIGHT = scale(158)
-
 /**
- * Single search-result tile. Visually matches the home rail's
- * FocusableCard + image + title treatment, so results feel continuous
- * with the rest of the app.
+ * Single search-result tile (design: .card in the s-grid). 16:9 art with
+ * a 1px outline and an episode-count chip, labels below the art (title +
+ * kind line). Focus lifts the card (translateY −8, scale 1.06), swaps the
+ * title to full white, and draws a 5px white ring + deep shadow on the
+ * thumb.
  *
- * onFocus and hasTVPreferredFocus are passed through to the underlying
- * FocusableCard so the SearchResultsGrid can orchestrate focus claims
- * without this component knowing about the grid layout.
+ * onFocus and hasTVPreferredFocus pass through so SearchResultsGrid can
+ * orchestrate focus claims without this component knowing the grid layout.
  */
 export function ResultCard({
   result,
@@ -35,110 +41,181 @@ export function ResultCard({
   hasTVPreferredFocus,
 }: Props) {
   const imageUrl = resolveImageUrl(result.imageUrl)
+  const chip = resultChipLabel(result)
+  const kind = resultKindLabel(result)
+
   // Close over `result` rather than re-indexing by id in onFocus /
   // onPress — Apollo cache changes can shrink the results array
   // between render and callback invocation. See
   // docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md.
   const handlePress = () => onPress(result)
 
+  const [isFocused, setIsFocused] = useState(false)
+
+  // Native-driver lift: one value drives both translateY and scale,
+  // approximating the design's .18s ease-out transform transition.
+  const focusAnim = useRef(new Animated.Value(0)).current
+  const animateTo = (toValue: number) => {
+    Animated.timing(focusAnim, {
+      toValue,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+  }
+  const lift = focusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -scale(8)],
+  })
+  const cardScale = focusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.06],
+  })
+
   return (
-    <FocusableCard
+    <Pressable
       onPress={handlePress}
-      onFocus={onFocus}
+      onFocus={() => {
+        setIsFocused(true)
+        animateTo(1)
+        onFocus?.()
+      }}
+      onBlur={() => {
+        setIsFocused(false)
+        animateTo(0)
+      }}
       hasTVPreferredFocus={hasTVPreferredFocus}
+      accessibilityRole="button"
       accessibilityLabel={result.title}
       accessibilityHint="Opens this experience"
-      style={styles.card}
     >
-      {imageUrl != null ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={styles.image}
-          contentFit="cover"
-          recyclingKey={`search-${result.type}-${result.id}`}
-        />
-      ) : (
-        <View style={[styles.image, styles.imageFallback]} />
-      )}
-      {/* Cinematic title plate: vertical gradient from the lightest
-          surface container at the seam where the image ends down to
-          the darkest surface tone at the bottom of the card. The
-          gradient creates a "fading into shadow" feel and ALSO makes
-          the card visibly distinct from the right pane's solid
-          surfaceContainer background, which used to be the same
-          color and made cards blend into the panel. */}
-      <LinearGradient
-        colors={[
-          hexToRgba(COLORS.surfaceContainerHighest, 1),
-          hexToRgba(COLORS.surface, 1),
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.textContainer}
+      {/* Width comes from the grid cell wrapper via cross-axis stretch;
+          height is content-driven (16:9 art + two text lines). */}
+      <Animated.View
+        style={{ transform: [{ translateY: lift }, { scale: cardScale }] }}
       >
-        <Text style={styles.title} numberOfLines={2}>
-          {result.title}
-        </Text>
-        {result.snippet.length > 0 ? (
-          <Text style={styles.snippet} numberOfLines={2}>
-            {result.snippet}
+        {/* Outer/inner split (same pattern as FocusableCard): iOS sets
+            masksToBounds for overflow:"hidden", which would clip the
+            focused layer's own shadow — so the shadow lives on this
+            non-clipping wrapper and the art clips inside. */}
+        <View style={[styles.thumbShadow, isFocused && styles.thumbFocused]}>
+          <View style={styles.thumb}>
+            {imageUrl != null ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.image}
+                contentFit="cover"
+                recyclingKey={`search-${result.type}-${result.id}`}
+              />
+            ) : (
+              <View style={[styles.image, styles.imageFallback]} />
+            )}
+            {chip != null ? (
+              <View style={styles.chip} pointerEvents="none">
+                <Text style={styles.chipText}>{chip}</Text>
+              </View>
+            ) : null}
+          </View>
+          {/* Focus ring — decorative overlay, NOT a focusable. Drawn as
+              an absolute inset border so toggling it never reflows the
+              image underneath (a borderWidth change on the thumb itself
+              would shrink the art by 2×ring while focused). */}
+          {isFocused ? <View style={styles.ring} pointerEvents="none" /> : null}
+        </View>
+        <View style={styles.meta}>
+          <Text
+            style={[styles.title, isFocused && styles.titleFocused]}
+            numberOfLines={1}
+          >
+            {result.title}
           </Text>
-        ) : null}
-      </LinearGradient>
-    </FocusableCard>
+          <Text style={styles.kind} numberOfLines={1}>
+            {kind}
+          </Text>
+        </View>
+      </Animated.View>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
-    // Fill whatever width its parent (the cell wrapper in
-    // SearchResultsGrid) allots — the wrapper is set to 25% of the
-    // row so 4 cards occupy the full panel width with equal left
-    // and right gutters. A fixed CARD_WIDTH would leave dead space
-    // on the right.
-    flex: 1,
-    // Use the lightest surface tone behind the card so any pixel
-    // not covered by the image or the text-area gradient still reads
-    // as "card", not "panel". The image covers the top portion and
-    // the gradient covers the rest, but the bg shows through the
-    // borderRadius corners while the focus animation runs.
-    backgroundColor: COLORS.surfaceContainerHighest,
+  thumbShadow: {
+    width: "100%",
+    // Design thumb is 400×225 — exactly 16:9 — expressed as a ratio so
+    // the fluid cell width keeps the art proportionate.
+    aspectRatio: 16 / 9,
+    borderRadius: scale(16),
+    // Solid bg gives the iOS shadow a clean opaque shape to project.
+    backgroundColor: SEARCH_THEME.bg,
+  },
+  thumb: {
+    width: "100%",
+    height: "100%",
+    borderRadius: scale(16),
+    borderWidth: 1,
+    borderColor: SEARCH_THEME.thumbBorder,
     overflow: "hidden",
+    backgroundColor: SEARCH_THEME.keyBg,
+  },
+  thumbFocused: {
+    // Design: 0 24px 50px -16px rgba(0,0,0,.8).
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: scale(20) },
+    shadowRadius: scale(25),
+    shadowOpacity: 0.8,
+    elevation: 12,
   },
   image: {
-    // Stretches to the card's full width (parent View defaults to
-    // alignItems: "stretch" in column-flex direction). Height stays
-    // fixed so cards are uniform vertically regardless of how wide
-    // the panel becomes.
     width: "100%",
-    height: CARD_IMAGE_HEIGHT,
-    borderTopLeftRadius: scale(16),
-    borderTopRightRadius: scale(16),
+    height: "100%",
   },
   imageFallback: {
-    backgroundColor: COLORS.surfaceContainerHigh,
+    backgroundColor: SEARCH_THEME.keyBg,
   },
-  textContainer: {
-    padding: scale(12),
-    gap: scale(4),
+  chip: {
+    position: "absolute",
+    top: scale(12),
+    right: scale(12),
+    backgroundColor: SEARCH_THEME.chipBg,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  chipText: {
+    fontFamily: "System",
+    fontSize: scale(16),
+    fontWeight: "600",
+    color: SEARCH_THEME.text,
+  },
+  ring: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: scale(16),
+    borderWidth: scale(5),
+    borderColor: SEARCH_THEME.ring,
+  },
+  meta: {
+    paddingTop: scale(12),
+    paddingHorizontal: scale(4),
   },
   title: {
     fontFamily: "System",
-    // Bumped from scale(16) to scale(18). Title-to-snippet ratio is
-    // now 18/12 = 1.5, well above the impeccable design law's
-    // ≥1.25 hierarchy ratio. Pairs with the existing color contrast
-    // (full text vs muted) for a clearer information hierarchy.
-    fontSize: scale(18),
+    fontSize: scale(24),
     fontWeight: "600",
-    color: COLORS.text,
+    letterSpacing: scale(-0.2),
+    color: SEARCH_THEME.textDim(0.85),
   },
-  snippet: {
+  titleFocused: {
+    color: SEARCH_THEME.text,
+  },
+  kind: {
     fontFamily: "System",
-    fontSize: scale(12),
-    // Tighter line-height than RN's default (~1.4×) so the snippet
-    // reads as supporting metadata, not as a second equal-weight
-    // headline competing with the title above.
-    lineHeight: scale(15),
-    color: COLORS.muted,
+    fontSize: scale(17),
+    fontWeight: "500",
+    color: SEARCH_THEME.textDim(0.45),
+    marginTop: scale(3),
   },
 })

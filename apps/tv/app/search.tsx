@@ -1,31 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { StyleSheet, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 
 import { QueryDisplay } from "../src/components/search/QueryDisplay"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
+import { resolveSearchMeta } from "../src/components/search/searchDisplay"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
+import { SEARCH_THEME } from "../src/components/search/searchTheme"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
-import { COLORS } from "../src/lib/colors"
 import { scale } from "../src/lib/scale"
 import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
- * /search route — TV search surface.
+ * /search route — TV search surface, redesigned to the "Forge TV Home"
+ * search-layer mockup.
  *
- * Two-pane layout:
- *   Left pane: QueryDisplay above SearchKeyboard.
- *   Right pane: placeholder today — U6 fills with SearchResultsGrid
- *   when the query is non-empty, U7 fills with SearchBrowse (Recent +
- *   Categories + Popular) when the query is empty.
+ * Vertical stack on a near-black full-bleed surface:
+ *   Query line (big type + blinking caret)
+ *   → horizontal letter strip (A–Z + space + delete + ⏎)
+ *   → meta line (BROWSE / N RESULTS)
+ *   → results region (SearchResultsGrid when the query is non-empty,
+ *     SearchBrowse — Recent + Categories — when it's empty).
  *
  * Owns `query` state and routes all writes through sanitizeQuery so
  * the backend never sees control chars, RTL overrides, or anything
  * beyond 256 chars. useSemanticSearch handles debounce, stale-guard,
  * and the state machine.
  *
- * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5.
+ * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5 for
+ * the data flow; the layout follows the Claude Design handoff.
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -74,31 +78,40 @@ export default function SearchScreen() {
   )
 
   const showResultsGrid = query.length > 0
+  const meta = resolveSearchMeta(state, results.length)
 
   return (
     <View style={styles.screen}>
-      <View style={styles.leftPane}>
+      <View style={styles.queryLine}>
         <QueryDisplay value={query} />
-        {/* SearchKeyboard intentionally does not get a dynamic key:
-            unmounting it on a state change kills focus on the
-            currently-pressed letter, and the tvOS focus engine then
-            visibly hops through a fallback before any new
-            preferred-focus claim lands. The earlier "remount on empty
-            state to refocus the ⏎ key" mechanism actively fought
-            typing — it fired on every debounced keystroke that came
-            back empty. Keep the keyboard mounted; let the user type
-            without the rug being pulled. */}
+      </View>
+      {/* SearchKeyboard intentionally does not get a dynamic key:
+          unmounting it on a state change kills focus on the
+          currently-pressed letter, and the tvOS focus engine then
+          visibly hops through a fallback before any new
+          preferred-focus claim lands. The earlier "remount on empty
+          state to refocus the ⏎ key" mechanism actively fought
+          typing — it fired on every debounced keystroke that came
+          back empty. Keep the keyboard mounted; let the user type
+          without the rug being pulled. */}
+      <View style={styles.stripLine}>
         <SearchKeyboard
           value={query}
           onChange={setSanitizedQuery}
           onSubmit={submit}
         />
       </View>
-      {/* No trapFocusLeft: D-pad-left from the leftmost cell of any
-          right-pane rail must be able to return to the keyboard. The
-          tvOS focus engine handles this naturally as long as no focus
-          guide intercepts the leftward press. */}
-      <TVFocusGuideView style={styles.rightPane}>
+      {/* Fixed-height meta line (design .s-meta) so flipping between
+          BROWSE / silence / N RESULTS never shifts the grid below. */}
+      <View style={styles.metaLine}>
+        <Text style={styles.metaText}>{meta}</Text>
+      </View>
+      {/* No focus traps on the results region: D-pad-up from the grid's
+          first row (or the browse rails) must reach the letter strip so
+          the user can refine the query without re-entering the screen.
+          The strip sits directly above, so the focus engine handles the
+          vertical hop naturally. */}
+      <TVFocusGuideView style={styles.resultsRegion}>
         {showResultsGrid ? (
           <SearchResultsGrid
             state={state}
@@ -119,22 +132,38 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Full-bleed near-black surface — solid stand-in for the design's
+  // blur-over-home search layer.
   screen: {
     flex: 1,
-    flexDirection: "row",
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: scale(48),
-    paddingVertical: scale(48),
-    gap: scale(32),
+    backgroundColor: SEARCH_THEME.bg,
   },
-  leftPane: {
-    flexDirection: "column",
+  // Design .s-query: padding 78px 80px 0.
+  queryLine: {
+    paddingTop: scale(78),
+    paddingHorizontal: scale(80),
   },
-  rightPane: {
+  // Design .s-keys: padding 14px 80px 0.
+  stripLine: {
+    paddingTop: scale(14),
+    paddingHorizontal: scale(80),
+  },
+  // Design .s-meta: padding 38px 80px 0, min-height 24.
+  metaLine: {
+    paddingTop: scale(38),
+    paddingHorizontal: scale(80),
+    minHeight: scale(38) + scale(24),
+  },
+  metaText: {
+    fontFamily: "System",
+    fontSize: scale(18),
+    fontWeight: "700",
+    letterSpacing: scale(2.9),
+    color: SEARCH_THEME.textDim(0.45),
+  },
+  // Design .s-gridwrap: fills the remainder, 14px of headroom.
+  resultsRegion: {
     flex: 1,
-    backgroundColor: COLORS.surfaceContainer,
-    borderRadius: scale(16),
-    padding: scale(32),
-    justifyContent: "center",
+    paddingTop: scale(14),
   },
 })
