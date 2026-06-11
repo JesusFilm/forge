@@ -222,11 +222,8 @@ describe("LanguageCombobox", () => {
       value: 800,
     })
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function getBoundingClientRectMock() {
-        const element = this as HTMLElement
-        if (
-          element.getAttribute("data-testid") === "language-combobox-trigger"
-        ) {
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
           return makeRect({
             bottom: 714,
             height: 64,
@@ -236,8 +233,7 @@ describe("LanguageCombobox", () => {
           })
         }
         if (
-          element ===
-          $('[data-testid="language-combobox-search"]')?.parentElement
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
         ) {
           return makeRect({ bottom: 65, height: 65, right: 400, width: 400 })
         }
@@ -280,11 +276,8 @@ describe("LanguageCombobox", () => {
       value: 220,
     })
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function getBoundingClientRectMock() {
-        const element = this as HTMLElement
-        if (
-          element.getAttribute("data-testid") === "language-combobox-trigger"
-        ) {
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
           return makeRect({
             bottom: 74,
             height: 64,
@@ -294,8 +287,7 @@ describe("LanguageCombobox", () => {
           })
         }
         if (
-          element ===
-          $('[data-testid="language-combobox-search"]')?.parentElement
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
         ) {
           return makeRect({ bottom: 65, height: 65, right: 400, width: 400 })
         }
