@@ -415,6 +415,92 @@ describe("HeroPlayer — initial mount", () => {
     expect(bridge).not.toBeNull()
   })
 
+  it("bridges the committed route poster when it replaces the clicked poster", () => {
+    const baseBlock = makeBlock()
+    const committedBlock: WatchHeroPlayerBlock = {
+      ...baseBlock,
+      video: {
+        ...(baseBlock.video as object),
+        documentId: "video-2",
+        title: "Clicked Chapter",
+      } as never,
+      variant: {
+        ...(baseBlock.variant as object),
+        documentId: "variant-2",
+        muxVideo: { playbackId: "route-playback-456" },
+      } as never,
+    }
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={baseBlock}
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+            loading: true,
+            transitionKey: "chapter-2",
+          }}
+        />,
+      )
+    })
+
+    act(() => {
+      root.render(<HeroPlayer block={committedBlock} />)
+    })
+
+    const layer = container.querySelector(
+      '[data-testid="hero-player-poster-layer"]',
+    )
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const bridge = container.querySelector(
+      '[data-testid="hero-player-cover-black-bridge"]',
+    )
+
+    expect(layer?.getAttribute("data-cover-loading")).toBe("false")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(poster.getAttribute("src")).toBe(
+      "https://image.mux.com/route-playback-456/thumbnail.webp?width=1280",
+    )
+    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
+    expect(poster.getAttribute("class")).not.toContain(
+      "watch-hero-cover-reveal-pulse",
+    )
+    expect(bridge).not.toBeNull()
+  })
+
+  it("bridges a route poster on mount when a route bridge key is forced", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          forcePosterBridgeKey="video-1:variant-1"
+        />,
+      )
+    })
+
+    const layer = container.querySelector(
+      '[data-testid="hero-player-poster-layer"]',
+    )
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const bridge = container.querySelector(
+      '[data-testid="hero-player-cover-black-bridge"]',
+    )
+
+    expect(layer?.getAttribute("data-cover-loading")).toBe("false")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
+    expect(poster.getAttribute("class")).not.toContain(
+      "watch-hero-cover-reveal-pulse",
+    )
+    expect(bridge).not.toBeNull()
+  })
+
   it("keeps an optimistic poster visible after the muted preview is ready", async () => {
     const idle = installIdleCallbackStub()
     const block = makeBlock()

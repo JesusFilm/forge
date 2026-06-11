@@ -300,6 +300,11 @@
   animation: watch-hero-cover-black-bridge 540ms ease-out both;
 }
 
+.watch-hero-cover-reveal {
+  animation: watch-hero-cover-reveal 540ms ease-out both;
+  will-change: opacity;
+}
+
 .watch-hero-cover-reveal-pulse {
   animation:
     watch-hero-cover-reveal 540ms ease-out both,
@@ -316,6 +321,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .watch-hero-cover-black-bridge,
+  .watch-hero-cover-reveal,
   .watch-hero-cover-reveal-pulse,
   .watch-hero-cover-pulse {
     animation: none;

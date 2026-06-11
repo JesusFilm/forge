@@ -181,6 +181,7 @@ export function HeroPlayer({
   overlay,
   subtitleVttSrc,
   optimisticVisual,
+  forcePosterBridgeKey,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -190,6 +191,7 @@ export function HeroPlayer({
   overlay?: ReactNode
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
+  forcePosterBridgeKey?: string | null
 }) {
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
@@ -906,18 +908,34 @@ export function HeroPlayer({
     canUseOptimisticVisual && optimisticVisual?.posterUrl != null
   const showPendingPosterTransition =
     showOptimisticPoster && optimisticVisual?.loading === true
+  const posterIdentity = visualHeroPosterUrl ?? "none"
+  const [posterTransitionState, setPosterTransitionState] = useState({
+    identity: posterIdentity,
+    shouldBridge: false,
+  })
+  if (posterTransitionState.identity !== posterIdentity) {
+    setPosterTransitionState({
+      identity: posterIdentity,
+      shouldBridge: true,
+    })
+  }
   const coverLoading =
     showPendingPosterTransition || (playerActivated && !videoReady)
-  const posterLayerKey = showPendingPosterTransition
-    ? `pending-${optimisticVisual?.transitionKey ?? visualHeroPosterUrl}`
-    : `route-${visualHeroPosterUrl ?? "none"}`
+  const showPosterBlackBridge =
+    visualHeroPosterUrl != null &&
+    (showPendingPosterTransition ||
+      posterTransitionState.shouldBridge ||
+      forcePosterBridgeKey != null)
+  const posterLayerKey = posterIdentity
   const posterOpacityClass =
     videoReady && !showOptimisticPoster ? "opacity-0" : "opacity-100"
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-300"
-  const posterImageMotionClass = showPendingPosterTransition
-    ? "watch-hero-cover-reveal-pulse"
+  const posterImageMotionClass = showPosterBlackBridge
+    ? coverLoading
+      ? "watch-hero-cover-reveal-pulse"
+      : "watch-hero-cover-reveal"
     : coverLoading
       ? "watch-hero-cover-pulse"
       : ""
@@ -1086,7 +1104,7 @@ export function HeroPlayer({
               data-testid="hero-player-poster-layer"
               data-cover-loading={coverLoading ? "true" : "false"}
               data-cover-transition={
-                showPendingPosterTransition ? "black-bridge" : "none"
+                showPosterBlackBridge ? "black-bridge" : "none"
               }
               className={`pointer-events-none absolute inset-0 ${posterTransitionClass} ${posterOpacityClass}`}
             >
@@ -1102,7 +1120,7 @@ export function HeroPlayer({
                 sizes="100vw"
                 className={`object-cover ${posterImageMotionClass}`}
               />
-              {showPendingPosterTransition ? (
+              {showPosterBlackBridge ? (
                 <div
                   data-testid="hero-player-cover-black-bridge"
                   aria-hidden="true"
