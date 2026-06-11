@@ -11,6 +11,7 @@ import {
   type UiLocale,
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
+import DatadogRum from "@/components/DatadogRum"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 
 async function loadMessages(locale: UiLocale) {
@@ -89,6 +90,7 @@ export default async function RootLayout({
       </head>
       <body className="overflow-x-clip bg-black">
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <DatadogRum />
           <FloatingSearchProvider>{children}</FloatingSearchProvider>
         </NextIntlClientProvider>
       </body>

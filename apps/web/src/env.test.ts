@@ -9,6 +9,16 @@ function useBaseEnv() {
   delete process.env.YOUVERSION_APP_KEY
   delete process.env.YOUVERSION_DEFAULT_VERSION_ID
   delete process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT
+  delete process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID
+  delete process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
+  delete process.env.NEXT_PUBLIC_DATADOG_SITE
+  delete process.env.NEXT_PUBLIC_DATADOG_ENV
+  delete process.env.NEXT_PUBLIC_DATADOG_VERSION
+  delete process.env.RAILWAY_ENVIRONMENT_NAME
+  delete process.env.RAILWAY_GIT_COMMIT_SHA
+  delete process.env.VERCEL_ENV
+  delete process.env.VERCEL_GIT_COMMIT_SHA
+  delete process.env.GIT_COMMIT_SHA
 }
 
 describe("web env — YouVersion server config", () => {
@@ -66,4 +76,52 @@ describe("web env — YouVersion server config", () => {
       expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(3034)
     },
   )
+})
+
+describe("web env — Datadog RUM config", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    useBaseEnv()
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("imports cleanly without optional Datadog config", async () => {
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_DATADOG_APPLICATION_ID).toBeUndefined()
+    expect(env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN).toBeUndefined()
+    expect(env.NEXT_PUBLIC_DATADOG_SITE).toBe("datadoghq.com")
+    expect(env.NEXT_PUBLIC_DATADOG_ENV).toBe("test")
+    expect(env.NEXT_PUBLIC_DATADOG_VERSION).toBeUndefined()
+  })
+
+  it("reads explicit Datadog config", async () => {
+    process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID = "rum-app-id"
+    process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN = "rum-client-token"
+    process.env.NEXT_PUBLIC_DATADOG_SITE = "us5.datadoghq.com"
+    process.env.NEXT_PUBLIC_DATADOG_ENV = "stage"
+    process.env.NEXT_PUBLIC_DATADOG_VERSION = "release-1"
+
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_DATADOG_APPLICATION_ID).toBe("rum-app-id")
+    expect(env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN).toBe("rum-client-token")
+    expect(env.NEXT_PUBLIC_DATADOG_SITE).toBe("us5.datadoghq.com")
+    expect(env.NEXT_PUBLIC_DATADOG_ENV).toBe("stage")
+    expect(env.NEXT_PUBLIC_DATADOG_VERSION).toBe("release-1")
+  })
+
+  it("normalizes deployment env and release fallbacks for Datadog", async () => {
+    process.env.RAILWAY_ENVIRONMENT_NAME = "production"
+    process.env.RAILWAY_GIT_COMMIT_SHA = "railway-sha"
+
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_DATADOG_ENV).toBe("prod")
+    expect(env.NEXT_PUBLIC_DATADOG_VERSION).toBe("railway-sha")
+  })
 })
