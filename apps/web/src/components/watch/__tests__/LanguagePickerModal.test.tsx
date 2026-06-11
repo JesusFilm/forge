@@ -105,7 +105,7 @@ function expectMultilingualTooltip(
   expect(tooltip?.querySelector(".whitespace-nowrap")).not.toBeNull()
   expect(
     tooltip?.querySelector(
-      '[data-testid="watch-language-picker-tooltip-info-icon"]',
+      '[data-testid="watch-language-picker-tooltip-globe-icon"]',
     ),
   ).not.toBeNull()
   for (const label of ["English", "中文", "हिन्दी", "Español", "العربية"]) {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Captions, Check, Info, Languages, Sparkles, X } from "lucide-react"
+import { Captions, Check, Globe, Languages, Sparkles, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 import type { ReactNode, RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -243,15 +243,17 @@ function MultilingualTooltipPanel({
       role="tooltip"
       aria-hidden={visible ? undefined : true}
       data-testid="watch-language-picker-tooltip-panel"
-      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-[opacity,translate] duration-300 ease-out ${
+      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2.5 px-2 py-1 text-sm leading-5 font-semibold text-stone-200 transition-[opacity,translate] duration-300 ease-out ${
         visible ? "translate-y-0 opacity-75" : "translate-y-2 opacity-0"
       }`}
     >
-      <Info
+      <span
         aria-hidden
-        data-testid="watch-language-picker-tooltip-info-icon"
-        className="mt-0.5 size-4 shrink-0 text-stone-300"
-      />
+        data-testid="watch-language-picker-tooltip-globe-icon"
+        className="flex size-8 shrink-0 items-center justify-center text-stone-300"
+      >
+        <Globe aria-hidden className="size-4" />
+      </span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
         {tooltipLanguages.map((language, index) => (
           <span
