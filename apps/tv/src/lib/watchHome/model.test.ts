@@ -196,6 +196,18 @@ describe("buildWatchHomeModelFromVideos — metaLabel", () => {
 
     expect(model.featured[0]?.metaLabel).toBe("Feature film")
   })
+
+  // Producer side of the routing contract: homeCardRouting feeds rawLabel
+  // into isSeriesSearchResult, which matches uppercase wire literals only —
+  // the display-text `label` must never stand in for it.
+  it("carries the raw wire label alongside the display text", () => {
+    const model = buildWatchHomeModelFromVideos({
+      videos: [video("1_jf-0-0", { label: "COLLECTION" })],
+    })
+
+    expect(model.featured[0]?.label).toBe("Collection")
+    expect(model.featured[0]?.rawLabel).toBe("COLLECTION")
+  })
 })
 
 describe("resolveFeaturedTitle — injected clock", () => {

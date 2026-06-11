@@ -1,41 +1,54 @@
-import { useQuery } from "@apollo/client/react"
-import { useFocusEffect } from "expo-router"
-import { useCallback, useRef, useState } from "react"
+import { useFocusEffect, useRouter } from "expo-router"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native"
 
-import { ExperienceRenderer } from "../src/components/ExperienceRenderer"
 import { HomeHeader } from "../src/components/HomeHeader"
+import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
+import { HomeRail } from "../src/components/home/HomeRail"
+import { ShowcaseCanvas } from "../src/components/home/ShowcaseCanvas"
+import {
+  createShowcaseFocusDebouncer,
+  INITIAL_SHOWCASE_STATE,
+  showcaseReducer,
+  type ShowcaseFocusDebouncer,
+} from "../src/components/home/showcaseState"
+import { useWatchHome } from "../src/hooks/useWatchHome"
 import { COLORS } from "../src/lib/colors"
 import { scale } from "../src/lib/scale"
-import { GET_WATCH_SETTING } from "../src/lib/queries"
+import { WATCH_HOME_FEATURED_RAIL } from "../src/lib/watchHome/config"
+import {
+  resolveFeaturedTitle,
+  type WatchHomeCard,
+} from "../src/lib/watchHome/model"
 
 /**
  * Home screen.
  *
- * The TV home is the curated homepage Experience — the same model mobile and
- * web use — rendered through the shared ExperienceRenderer. We resolve the
- * homepage slug from the PUBLIC watchSetting query (no auth token), then hand
- * the slug to ExperienceRenderer which fetches + renders the experience via
- * the PUBLIC experienceBySlug query.
- *
- * This deliberately does NOT list every experience: the former design hit the
- * editor-gated Query.experiences and 401'd for the public app. See
- * GET_WATCH_SETTING in src/lib/queries.ts.
+ * The TV home renders the curated watch-home set — the same hero pool and
+ * sections web /watch and mobile home use — from useWatchHome's lean bulk
+ * fetch (R8): a non-interactive Focus-Driven Showcase up top, then the
+ * Featured rail (the hero pool) and every configured section as horizontal
+ * rails. Rails own 100% of focus; focusing any card swaps the showcase
+ * (debounced, R10/R11). The SDUI Experience pipeline still serves
+ * /experience/[slug] — only this screen left it (R9).
  */
 export default function HomeScreen() {
+  const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
+  const { model, loading, error, refetch } = useWatchHome()
 
   // Back-from-/search focus restoration. tvos#852 workaround: on every
   // regain-focus after the first real mount, bump a key that tells
   // <HomeHeader /> to apply hasTVPreferredFocus to its Search chip.
-  // Skip the first mount so the experience content's own initial focus
-  // wins on cold home render.
+  // Skip the first mount so the rails' own initial focus wins on cold
+  // home render.
   //
   // Counter (not boolean) to absorb React Strict Mode's deliberate
   // double-invoke of effects in dev: with a counter we wait for the
@@ -57,22 +70,69 @@ export default function HomeScreen() {
     }, []),
   )
 
-  const {
-    data: settingData,
-    loading: settingLoading,
-    error: settingError,
-    refetch: settingRefetch,
-  } = useQuery(GET_WATCH_SETTING, {
-    variables: { locale: "en" },
-    fetchPolicy: "cache-and-network",
-  })
+  // Featured rail title re-evaluates on every screen focus with an injected
+  // clock (the model never reads Date.now()), so a Home left open across a
+  // time-of-day boundary greets correctly on return from a pushed screen.
+  const [featuredTitle, setFeaturedTitle] = useState(() =>
+    resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date()),
+  )
+  useFocusEffect(
+    useCallback(() => {
+      setFeaturedTitle(
+        resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date()),
+      )
+    }, []),
+  )
 
-  const homepageSlug =
-    settingData?.watchSetting?.homepageExperience?.slug ?? null
+  // ── Showcase state ──
+  // First model seeds the showcase (modelResolved); later models — background
+  // refetches — re-reconcile (modelRefreshed keeps the current pick when its
+  // id survives). Only CARDS dispatch focus events: the search chip and Retry
+  // never do, so the showcase retains across non-card focus automatically
+  // (AE4) and across stack push/pop (state lives up here, not in the rails).
+  const [showcase, dispatchShowcase] = useReducer(
+    showcaseReducer,
+    INITIAL_SHOWCASE_STATE,
+  )
+  const modelResolvedRef = useRef(false)
+  useEffect(() => {
+    if (model == null) return
+    if (!modelResolvedRef.current) {
+      modelResolvedRef.current = true
+      dispatchShowcase({ type: "modelResolved", model })
+    } else {
+      dispatchShowcase({ type: "modelRefreshed", model })
+    }
+  }, [model])
+
+  // Trailing ~150ms debounce so fast D-pad traversal commits once with the
+  // settled card (tv-focus-driven-hero-patterns-20260420.md §4). Lazily
+  // created once; cancelled on unmount so no commit fires into a dead tree.
+  const focusDebouncerRef = useRef<ShowcaseFocusDebouncer | null>(null)
+  if (focusDebouncerRef.current == null) {
+    focusDebouncerRef.current = createShowcaseFocusDebouncer((card) =>
+      dispatchShowcase({ type: "cardFocused", card }),
+    )
+  }
+  useEffect(() => () => focusDebouncerRef.current?.cancel(), [])
+
+  const handleCardFocus = useCallback((card: WatchHomeCard) => {
+    focusDebouncerRef.current?.focus(card)
+  }, [])
+
+  // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
+  // seeded for instant first paint. Null path (no slug) is a no-op press.
+  const handleCardPress = useCallback(
+    (card: WatchHomeCard) => {
+      const path = resolveHomeCardPath(card)
+      if (path != null) router.push(path)
+    },
+    [router],
+  )
 
   // The nav header (Search chip). Rendered in every state — including loading,
-  // error and empty — so Search stays reachable while the homepage resolves,
-  // and passed into ExperienceRenderer as the sticky header once loaded.
+  // error and empty — so Search stays reachable while the home model resolves;
+  // in the content state it is the sticky first child of the ScrollView.
   const homeHeader = (
     <HomeHeader
       key={`home-header-${searchChipFocusKey}`}
@@ -80,8 +140,8 @@ export default function HomeScreen() {
     />
   )
 
-  // ── Loading state (resolving which experience is the homepage) ──
-  if (settingLoading && !settingData) {
+  // ── Loading state (no model yet) ──
+  if (model == null && loading) {
     return (
       <View style={styles.screen}>
         {homeHeader}
@@ -92,14 +152,15 @@ export default function HomeScreen() {
     )
   }
 
-  // ── Error state ──
-  if (settingError) {
+  // ── Error state — only when nothing is renderable (R16): a stale model
+  // beats an error screen, so refetch failures fall through to content. ──
+  if (model == null && error != null) {
     return (
       <View style={styles.screen}>
         {homeHeader}
         <View style={styles.centered}>
           <Text style={styles.errorText}>Something went wrong</Text>
-          <Text style={styles.errorDetail}>{settingError.message}</Text>
+          <Text style={styles.errorDetail}>{error}</Text>
           <Pressable
             onFocus={() => setRetryFocused(true)}
             onBlur={() => setRetryFocused(false)}
@@ -107,7 +168,7 @@ export default function HomeScreen() {
               styles.retryButton,
               retryFocused && styles.retryButtonFocused,
             ]}
-            onPress={() => void settingRefetch()}
+            onPress={refetch}
             hasTVPreferredFocus
           >
             <Text style={styles.retryText}>Try Again</Text>
@@ -117,8 +178,11 @@ export default function HomeScreen() {
     )
   }
 
-  // ── Empty state (no homepage configured for this locale) ──
-  if (!homepageSlug) {
+  // ── Empty state (no model, or a model that resolved zero cards) ──
+  if (
+    model == null ||
+    (model.featured.length === 0 && model.sections.length === 0)
+  ) {
     return (
       <View style={styles.screen}>
         {homeHeader}
@@ -129,7 +193,50 @@ export default function HomeScreen() {
     )
   }
 
-  return <ExperienceRenderer slug={homepageSlug} header={homeHeader} />
+  // ── Content ──
+  // ONE ScrollView with the header as its sticky first child: the tvOS focus
+  // engine cannot traverse a parent-View boundary, so chip↔rail D-pad
+  // traversal (R14/AE6) relies on header + rails being siblings in the same
+  // scroll container — the structure the Experience-driven home shipped with.
+  // The non-focusable showcase between them is invisible to the focus engine
+  // (same as PR #803's non-interactive hero). If traversal ever proves
+  // unreliable, the documented fallback is TVFocusGuideView destinations in
+  // both directions (tv-focus-driven-hero-patterns-20260420.md §3).
+  return (
+    <ScrollView
+      style={styles.list}
+      contentContainerStyle={styles.listContent}
+      stickyHeaderIndices={[0]}
+    >
+      <View>{homeHeader}</View>
+
+      <ShowcaseCanvas card={showcase.current} />
+
+      <HomeRail
+        eyebrow={WATCH_HOME_FEATURED_RAIL.eyebrow}
+        title={featuredTitle}
+        cards={model.featured}
+        onCardFocus={handleCardFocus}
+        onCardPress={handleCardPress}
+      />
+
+      {model.sections.map((section, index) => (
+        <HomeRail
+          key={`home-rail-${section.id}-${index}`}
+          eyebrow={section.eyebrow}
+          title={section.title}
+          cards={section.cards}
+          onCardFocus={handleCardFocus}
+          onCardPress={handleCardPress}
+        />
+      ))}
+
+      {/* TODO(U8): mission tail — MissionSection + QrPanel close the feed
+          here (focusable, non-actioning QR card so D-pad can scroll it into
+          view; the showcase retains the last card per R10). */}
+      <View />
+    </ScrollView>
+  )
 }
 
 const styles = StyleSheet.create({
@@ -143,6 +250,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: scale(80),
+  },
+  list: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+  },
+  listContent: {
+    // Breathing room below the last rail; U8's mission tail replaces most of
+    // this with real content.
+    paddingBottom: scale(120),
   },
   // ── Error state ──
   errorText: {

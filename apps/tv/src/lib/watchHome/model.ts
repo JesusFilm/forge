@@ -88,6 +88,13 @@ export type WatchHomeCard = {
   title: string
   description: string | null
   label: string
+  /**
+   * The raw wire enum (e.g. "SERIES") behind the display-text `label`. Shape
+   * predicates (isSeriesSearchResult) match the uppercase wire literals, so
+   * routing must read THIS field — feeding it display text silently breaks
+   * the label branch and leaves childCount as the only signal.
+   */
+  rawLabel: string | null
   metaLabel: string | null
   imageUrl: string | null
   imageAlt: string
@@ -261,6 +268,7 @@ function normalizeCard(args: {
     title,
     description: locale?.snippet ?? locale?.description ?? null,
     label,
+    rawLabel: args.video.label ?? null,
     metaLabel: buildMetaLabel({
       label,
       durationSeconds: args.video.durationSeconds ?? null,
