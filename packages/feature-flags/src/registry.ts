@@ -6,13 +6,6 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the web inline watch player migration.",
   },
-  watchHeroMuxVideo: {
-    key: "forge.watch.heroMuxVideo",
-    defaultValue: false,
-    localOverrideEnv: "FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT",
-    description:
-      "Runtime rollout gate for the web watch hero MuxVideo backend.",
-  },
   watchCtaTextCopy: {
     key: "forge.watch.ctaTextCopy",
     defaultValue: false,

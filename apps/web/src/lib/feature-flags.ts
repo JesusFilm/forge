@@ -18,9 +18,6 @@ const webFeatureFlagClient = createFeatureFlagClient({
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
       env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT ??
       String(env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION),
-    FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT:
-      env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT ??
-      String(env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
@@ -32,7 +29,6 @@ const webFeatureFlagClient = createFeatureFlagClient({
   },
   defaultValues: {
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
-    "forge.watch.heroMuxVideo": env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     "forge.watch.ctaTextCopy": false,
     "forge.watch.downloadAccountGate": false,
     "forge.watch.youVersionBibleQuotes": false,
@@ -65,15 +61,6 @@ export async function isWatchPlayerMigrationEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchPlayerMigration,
-    createWebFeatureFlagContext(context),
-  )
-}
-
-export async function isWatchHeroMuxVideoEnabled(
-  context: WebFeatureFlagContextInput = {},
-): Promise<boolean> {
-  return webFeatureFlagClient.booleanVariation(
-    featureFlags.watchHeroMuxVideo,
     createWebFeatureFlagContext(context),
   )
 }
