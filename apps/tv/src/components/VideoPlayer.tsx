@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import {
   AccessibilityInfo,
@@ -40,8 +40,8 @@ const SUBTITLE_BOTTOM_LIFTED = 272
 
 // ── Visual language (U8) ───────────────────────────────────────────────────
 // The player chrome is the "Forge TV Video Page" handoff's player redesign
-// (chats/chat2): full-bleed scrims, a glass Back pill + quiet status chip up
-// top, eyebrow + title / circular glass transport / Language + Subtitles
+// (chats/chat2): full-bleed scrims, a glass Back pill up
+// top; eyebrow + title / circular glass transport / Language + Subtitles
 // pills in a three-column bottom row, and a focusable scrubber with thumb +
 // time bubble. It shares WATCH_THEME + useFocusAnimation with the details
 // page so the screen → fullscreen transition reads as one surface — the two
@@ -144,19 +144,21 @@ function FocusCrossfade({
   size: number
   render: (color: string) => ReactNode
 }) {
+  // Memoized: progress is a stable ref, so the interpolation is built once
+  // rather than on every host re-render (the host re-renders at ~1Hz from
+  // timeUpdate) — same rationale as DetailsActionRow's pills.
+  const restOpacity = useMemo(
+    () => ({
+      opacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, 0],
+      }),
+    }),
+    [progress],
+  )
   return (
     <View style={{ width: size, height: size }}>
-      <Animated.View
-        style={[
-          styles.crossfadeLayer,
-          {
-            opacity: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [1, 0],
-            }),
-          },
-        ]}
-      >
+      <Animated.View style={[styles.crossfadeLayer, restOpacity]}>
         {render(WATCH_THEME.text)}
       </Animated.View>
       <Animated.View style={[styles.crossfadeLayer, { opacity: progress }]}>
@@ -183,6 +185,32 @@ function BackPill({
   accessibilityLabel: string
 }) {
   const { setFocused, progress } = useFocusAnimation()
+  // Memoized: progress is a stable ref, so the interpolations are built once
+  // rather than on every host re-render (1Hz timeUpdate) — matches
+  // DetailsActionRow's pills.
+  const pillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
+  const inkStyle = useMemo(
+    () => ({
+      color: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+      }),
+    }),
+    [progress],
+  )
   return (
     <Pressable
       onPress={onPress}
@@ -197,22 +225,7 @@ function BackPill({
       accessibilityRole="button"
       style={styles.backHit}
     >
-      <Animated.View
-        style={[
-          styles.backPill,
-          {
-            backgroundColor: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
-            }),
-            shadowOpacity: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.5],
-            }),
-            transform: focusTransform(progress),
-          },
-        ]}
-      >
+      <Animated.View style={[styles.backPill, pillStyle]}>
         <FocusCrossfade
           progress={progress}
           size={scale(24)}
@@ -220,19 +233,7 @@ function BackPill({
             <Ionicons name="chevron-back" size={scale(24)} color={color} />
           )}
         />
-        <Animated.Text
-          style={[
-            styles.backText,
-            {
-              color: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
-              }),
-            },
-          ]}
-        >
-          Back
-        </Animated.Text>
+        <Animated.Text style={[styles.backText, inkStyle]}>Back</Animated.Text>
       </Animated.View>
     </Pressable>
   )
@@ -255,6 +256,21 @@ function CircleControl({
   accessibilityLabel: string
 }) {
   const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render.
+  const circleStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.6],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
   return (
     <Pressable
       onPress={onPress}
@@ -268,22 +284,7 @@ function CircleControl({
       accessibilityRole="button"
       style={dimmed && styles.controlDisabled}
     >
-      <Animated.View
-        style={[
-          styles.circleBtn,
-          {
-            backgroundColor: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
-            }),
-            shadowOpacity: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.6],
-            }),
-            transform: focusTransform(progress),
-          },
-        ]}
-      >
+      <Animated.View style={[styles.circleBtn, circleStyle]}>
         <FocusCrossfade
           progress={progress}
           size={scale(38)}
@@ -315,6 +316,17 @@ function PlayCircle({
   hasTVPreferredFocus: boolean
 }) {
   const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render.
+  const ringStyle = useMemo(
+    () => ({
+      borderColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.85)"],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
   return (
     <Pressable
       onPress={onPress}
@@ -327,20 +339,12 @@ function PlayCircle({
       focusable={focusable}
       accessibilityLabel={isPaused ? "Play" : "Pause"}
       accessibilityRole="button"
+      // selected=playing: machine-readable play state so automated D-pad
+      // drivers can branch on accessibilityState instead of parsing the label.
+      accessibilityState={{ selected: !isPaused }}
       style={dimmed && styles.controlDisabled}
     >
-      <Animated.View
-        style={[
-          styles.playBtn,
-          {
-            borderColor: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.85)"],
-            }),
-            transform: focusTransform(progress),
-          },
-        ]}
-      >
+      <Animated.View style={[styles.playBtn, ringStyle]}>
         {isPaused ? (
           <PlayIcon size={scale(42)} color={WATCH_THEME.accentText} />
         ) : (
@@ -372,6 +376,39 @@ function MenuPill({
   dimmed: boolean
 }) {
   const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render.
+  const pillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
+  const labelInk = useMemo(
+    () => ({
+      color: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+      }),
+    }),
+    [progress],
+  )
+  const subInk = useMemo(
+    () => ({
+      color: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text62, "rgba(0,0,0,0.5)"],
+      }),
+    }),
+    [progress],
+  )
   return (
     <Pressable
       onPress={onPress}
@@ -388,51 +425,14 @@ function MenuPill({
       accessibilityRole="button"
       style={dimmed && styles.controlDisabled}
     >
-      <Animated.View
-        style={[
-          styles.asPill,
-          {
-            backgroundColor: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
-            }),
-            shadowOpacity: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.5],
-            }),
-            transform: focusTransform(progress),
-          },
-        ]}
-      >
+      <Animated.View style={[styles.asPill, pillStyle]}>
         <AnimatedFocusIcon name={icon} progress={progress} size={scale(26)} />
         <View style={styles.asCap}>
-          <Animated.Text
-            style={[
-              styles.asLabel,
-              {
-                color: progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
-                }),
-              },
-            ]}
-            numberOfLines={1}
-          >
+          <Animated.Text style={[styles.asLabel, labelInk]} numberOfLines={1}>
             {label}
           </Animated.Text>
           {sub != null && (
-            <Animated.Text
-              style={[
-                styles.asSub,
-                {
-                  color: progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [WATCH_THEME.text62, "rgba(0,0,0,0.5)"],
-                  }),
-                },
-              ]}
-              numberOfLines={1}
-            >
+            <Animated.Text style={[styles.asSub, subInk]} numberOfLines={1}>
               {sub}
             </Animated.Text>
           )}
@@ -465,6 +465,45 @@ function PlayerScrubber({
   dimmed: boolean
 }) {
   const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render
+  // (the percent-left position styles below NEED to rebuild each tick — only
+  // the focus-driven interpolations are stable).
+  const trackStyle = useMemo(
+    () => ({
+      height: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [scale(8), scale(13)],
+      }),
+    }),
+    [progress],
+  )
+  const thumbScale = useMemo(
+    () => ({
+      transform: [
+        {
+          scale: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 1],
+          }),
+        },
+      ],
+    }),
+    [progress],
+  )
+  const bubbleRise = useMemo(
+    () => ({
+      opacity: progress,
+      transform: [
+        {
+          translateY: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [scale(6), 0],
+          }),
+        },
+      ],
+    }),
+    [progress],
+  )
   return (
     <TVFocusGuideView trapFocusLeft trapFocusRight>
       <Pressable
@@ -482,52 +521,15 @@ function PlayerScrubber({
         accessibilityRole="adjustable"
         style={[styles.scrubWrap, dimmed && styles.controlDisabled]}
       >
-        <Animated.View
-          style={[
-            styles.scrubTrack,
-            {
-              height: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [scale(8), scale(13)],
-              }),
-            },
-          ]}
-        >
+        <Animated.View style={[styles.scrubTrack, trackStyle]}>
           <View style={[styles.scrubBuf, { width: `${bufferedPct}%` }]} />
           <View style={[styles.scrubFill, { width: `${progressPct}%` }]} />
         </Animated.View>
         <Animated.View
-          style={[
-            styles.scrubThumb,
-            {
-              left: `${progressPct}%`,
-              transform: [
-                {
-                  scale: progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
+          style={[styles.scrubThumb, { left: `${progressPct}%` }, thumbScale]}
         />
         <Animated.View
-          style={[
-            styles.scrubBubble,
-            {
-              left: `${progressPct}%`,
-              opacity: progress,
-              transform: [
-                {
-                  translateY: progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [scale(6), 0],
-                  }),
-                },
-              ],
-            },
-          ]}
+          style={[styles.scrubBubble, { left: `${progressPct}%` }, bubbleRise]}
         >
           <Text style={styles.scrubBubbleText}>{bubbleText}</Text>
         </Animated.View>
@@ -555,7 +557,15 @@ function LoadingVeil() {
     return () => anim.stop()
   }, [spin])
   return (
-    <View style={styles.veil} pointerEvents="none">
+    // collapsable={false} keeps the veil above the Android TV VideoView
+    // SurfaceView (same convention as the scrims/chrome layers). The label
+    // gives automated drivers a stable node to poll for "player ready".
+    <View
+      style={styles.veil}
+      pointerEvents="none"
+      collapsable={false}
+      accessibilityLabel="Loading, starting playback"
+    >
       <Animated.View
         style={[
           styles.veilRing,
@@ -780,7 +790,7 @@ export function VideoPlayer({
   // Foreground resume (D12 + U6): on AppState 'active', always snap
   // controls visible, restore a one-shot focus claim (so tvOS
   // UIFocusEngine has a target — matches react-native-tvos #852), and
-  // rearm a fresh 3 s timer.
+  // rearm a fresh 3.5 s timer.
   //   - `hasError` branch: skip scheduleHide entirely (error state
   //     keeps chrome visible permanently) AND route focus to the back
   //     pill via errorFocusPending since it is the only meaningful
@@ -1087,7 +1097,7 @@ export function VideoPlayer({
   // Fix #25: Guard cleanup for consistency with the unmount-pause guard.
   // U2: also drive the inactivity timer — clear on pause, rearm on play.
   // playingChange=isPlaying=true is the authoritative "video actually
-  // started" signal, so it arms the INITIAL 3 s countdown for D1 (see the
+  // started" signal, so it arms the INITIAL 3.5 s countdown for D1 (see the
   // separate 2 s mount fallback below).
   useEffect(() => {
     const subscription = player.addListener(
@@ -1138,6 +1148,9 @@ export function VideoPlayer({
   // pre-seek timeUpdate events overwrite the optimistic position.
   useEffect(() => {
     const subscription = player.addListener("timeUpdate", (payload) => {
+      // P2.3: ignore late-arriving native events after unmount (same guard
+      // as playingChange/statusChange).
+      if (!isMountedRef.current) return
       // Buffer head feeds the scrubber's buffer hint regardless of the seek
       // guard — it's not a playhead value, so stale emissions can't lie.
       if (
@@ -1170,7 +1183,13 @@ export function VideoPlayer({
   // seeded in the useVideoPlayer initializer above).
   useEffect(() => {
     const subscription = player.addListener("sourceLoad", (payload) => {
+      if (!isMountedRef.current) return
       setDuration(payload.duration)
+      // A new source (live dub switch) starts with an empty buffer — without
+      // this reset the scrubber's buffer hint keeps painting the PREVIOUS
+      // source's buffered head until the new source's first timeUpdate (the
+      // >= 0 filter preserves stale values through -1 "unknown" emissions).
+      setBuffered(0)
     })
     return () => {
       try {
@@ -1245,7 +1264,7 @@ export function VideoPlayer({
         return
       }
 
-      // Resume from buffering — restart the 3 s countdown.
+      // Resume from buffering — restart the 3.5 s countdown.
       if (next === "readyToPlay") {
         scheduleHideRef.current()
         return
@@ -1336,6 +1355,12 @@ export function VideoPlayer({
   // by `finished` — when the animation is stopped, finished=false and we
   // do NOT apply the "hide complete" state update.
   const hideControls = () => {
+    // Eager-clear the scrub-focus mirror BEFORE releasing focusability: the
+    // scrubber's onBlur lands a tick after controlsFocusable flips, so a
+    // left/right press inside the 150ms fade window would otherwise pass the
+    // onTVEvent scrub-seek guard and seek on an invisibly-fading control.
+    // Same eager-ref-sync discipline as isPausedRef in playingChange.
+    scrubFocusedRef.current = false
     setControlsFocusable(false)
     if (isReduceMotionEnabled) {
       opacityAnim.setValue(0)
@@ -1357,7 +1382,7 @@ export function VideoPlayer({
   }
 
   // scheduleHide: idempotent timer arm. Clears any in-flight timer first,
-  // then only arms a new 3 s if the state supports auto-hide (D3/D15 plus
+  // then only arms a new 3.5 s if the state supports auto-hide (D3/D15 plus
   // D9 buffering, D10 error, D13 screen reader gates).
   //
   // Reads ground-truth values from refs (not render-closure state) so that
@@ -1684,10 +1709,18 @@ export function VideoPlayer({
             dimmed={hasError}
           />
           <View style={styles.timesRow}>
-            <Text style={[styles.timeText, styles.timeCurrent]}>
+            <Text
+              style={[styles.timeText, styles.timeCurrent]}
+              accessibilityLabel={`Elapsed ${formatTime(currentTime)}`}
+            >
               {formatTime(currentTime)}
             </Text>
-            <Text style={styles.timeText}>{remainingLabel}</Text>
+            <Text
+              style={styles.timeText}
+              accessibilityLabel={`Remaining ${remainingLabel}`}
+            >
+              {remainingLabel}
+            </Text>
           </View>
         </Animated.View>
 
@@ -1707,8 +1740,12 @@ export function VideoPlayer({
       {/* ── Loading veil (U8) ─────────────────────────────────────────────
           Mounted until the first confirmed playback (playingChange true),
           never on error (the inline error treatment owns that). Conditionally
-          mounted — not faded — so it can never linger over the player. */}
-      {!hasStarted && !hasError && <LoadingVeil />}
+          mounted — not faded — so it can never linger over the player. Also
+          unmounts while the in-player menu is open: the veil (zIndex 20)
+          sits ABOVE the contentLayer's stacking context (zIndex 10), so it
+          would otherwise dim the open menu — the menu's internal zIndex 50
+          cannot escape its parent's context. */}
+      {!hasStarted && !hasError && !menuOpen && <LoadingVeil />}
     </View>
   )
 }
@@ -1784,7 +1821,7 @@ const styles = StyleSheet.create({
   // `backHit` (inside BackPill) is the full-width Pressable — invisible but
   // provides the spatial column that overlaps with the play button below, so
   // tvOS's UIFocusEngine can traverse DOWN from back to play via pure
-  // spatial navigation. The status chip rides at the row's right edge.
+  // spatial navigation.
   topBar: {
     flexDirection: "row",
     alignItems: "center",

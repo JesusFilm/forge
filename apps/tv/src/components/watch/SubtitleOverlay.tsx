@@ -78,17 +78,19 @@ export function SubtitleOverlay({
   // mirroring apps/mobile's SubtitleOverlay: anchored at bottom:0 and lifted
   // by -bottomOffset. When `animate`, offset changes (the chrome show/hide
   // lift) slide over 200ms; under reduce-motion (or animate=false) they snap.
+  //
+  // reduce-motion is STATE (not a ref): the AccessibilityInfo seed resolves
+  // async, after the offset effect's first run — a ref would miss any offset
+  // change landing in that window and animate it for a reduce-motion user.
+  // State re-runs the effect when the seed settles (same pattern as the
+  // host's isReduceMotionEnabled).
   const translateY = useRef(new Animated.Value(-px(bottomOffset))).current
-  const reduceMotionRef = useRef(false)
+  const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
-      reduceMotionRef.current = v
-    })
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion)
     const sub = AccessibilityInfo.addEventListener(
       "reduceMotionChanged",
-      (v) => {
-        reduceMotionRef.current = v
-      },
+      setReduceMotion,
     )
     return () => {
       try {
@@ -99,17 +101,21 @@ export function SubtitleOverlay({
     }
   }, [])
   useEffect(() => {
-    if (!animate || reduceMotionRef.current) {
+    if (!animate || reduceMotion) {
       translateY.setValue(-px(bottomOffset))
       return
     }
-    Animated.timing(translateY, {
+    const anim = Animated.timing(translateY, {
       toValue: -px(bottomOffset),
       duration: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
-    }).start()
-  }, [bottomOffset, animate, translateY])
+    })
+    anim.start()
+    // Stop an in-flight slide on unmount / re-target (matches VideoBackdrop's
+    // animation-cleanup discipline).
+    return () => anim.stop()
+  }, [bottomOffset, animate, reduceMotion, translateY])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,

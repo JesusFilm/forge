@@ -117,14 +117,15 @@ export type UseSessionPlaybackResult = {
   activeVttSrc: string | null
   /**
    * Display name of the active dub's language ("English"), or null when the
-   * session isn't driving this overlay. Feeds the top-bar status chip and the
-   * Audio & Subtitles pill sub-caption (U8 player chrome).
+   * session isn't driving this overlay. Feeds the Language pill's sub-caption
+   * (U8 player chrome).
    */
   audioLabel: string | null
   /**
    * Display name of the active subtitle language, or null when subtitles are
    * off / unresolved. Resolution mirrors activeVttSrc (active dub's loaded
-   * media), falling back to the slug so the chip never lies about CC being on.
+   * media), falling back to the slug so the Subtitles pill never lies about
+   * CC being on.
    */
   subtitleLabel: string | null
 }
@@ -301,33 +302,32 @@ export function useSessionPlayback({
     }
   }, [menuActive, session.subtitleEnabled, session.ensureActiveVariantMedia])
 
-  // Resolve the active subtitle VTT src from the session's loaded media for the
-  // active subtitle slug — null unless the session is driving this overlay AND
-  // captions are on AND a matching track has loaded. Null → SubtitleOverlay
-  // renders nothing.
-  const activeVttSrc =
+  // Resolve the active subtitle TRACK from the session's loaded media for the
+  // active subtitle slug — undefined unless the session is driving this
+  // overlay AND captions are on AND a matching track has loaded. The single
+  // guarded lookup feeds both the VTT src (SubtitleOverlay) and the display
+  // label (Subtitles pill), so the label can never diverge from the track
+  // actually rendered.
+  const subtitlesOn =
     menuActive && session.subtitleEnabled && session.activeSubtitleSlug != null
-      ? (session.activeVariantMedia?.subtitles.find(
-          (s) => s.languageSlug === session.activeSubtitleSlug,
-        )?.vttSrc ?? null)
-      : null
+  const activeSubtitle = subtitlesOn
+    ? session.activeVariantMedia?.subtitles.find(
+        (s) => s.languageSlug === session.activeSubtitleSlug,
+      )
+    : undefined
 
-  // Display names for the U8 chrome (status chip + Audio & Subtitles pill).
+  // Null → SubtitleOverlay renders nothing (also the no-session value).
+  const activeVttSrc = activeSubtitle?.vttSrc ?? null
+
+  // Display names for the U8 chrome (Language / Subtitles pill sub-captions).
   // Same gating as the rest of the session-driven surface: null when the
   // session isn't driving this overlay, so no-session playback shows nothing.
   const audioLabel = menuActive
     ? (session.activeVariant?.languageName ?? null)
     : null
-  const activeSubtitle =
-    menuActive && session.subtitleEnabled && session.activeSubtitleSlug != null
-      ? session.activeVariantMedia?.subtitles.find(
-          (s) => s.languageSlug === session.activeSubtitleSlug,
-        )
-      : null
-  const subtitleLabel =
-    menuActive && session.subtitleEnabled && session.activeSubtitleSlug != null
-      ? (activeSubtitle?.languageName ?? session.activeSubtitleSlug)
-      : null
+  const subtitleLabel = subtitlesOn
+    ? (activeSubtitle?.languageName ?? session.activeSubtitleSlug)
+    : null
 
   // ── In-player menu open/close (U7) ──────────────────────────────────
   // Opening from a hidden-chrome state is not supported (the open control is
