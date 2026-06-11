@@ -24,6 +24,7 @@ import { useWatchHome } from "../src/hooks/useWatchHome"
 import { COLORS } from "../src/lib/colors"
 import { scale } from "../src/lib/scale"
 import { WATCH_HOME_FEATURED_RAIL } from "../src/lib/watchHome/config"
+import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
 import {
   resolveFeaturedTitle,
   type WatchHomeCard,
@@ -140,8 +141,10 @@ export default function HomeScreen() {
     />
   )
 
-  // ── Loading state (no model yet) ──
-  if (model == null && loading) {
+  const screenState = resolveHomeScreenState({ model, loading, error })
+
+  // ── Loading state (no model yet — initial load or a retry) ──
+  if (screenState === "loading") {
     return (
       <View style={styles.screen}>
         {homeHeader}
@@ -154,7 +157,7 @@ export default function HomeScreen() {
 
   // ── Error state — only when nothing is renderable (R16): a stale model
   // beats an error screen, so refetch failures fall through to content. ──
-  if (model == null && error != null) {
+  if (screenState === "error") {
     return (
       <View style={styles.screen}>
         {homeHeader}
@@ -179,10 +182,10 @@ export default function HomeScreen() {
   }
 
   // ── Empty state (no model, or a model that resolved zero cards) ──
-  if (
-    model == null ||
-    (model.featured.length === 0 && model.sections.length === 0)
-  ) {
+  // `model == null` is redundant with screenState === "empty" here (the
+  // loading/error returns above cover every other model-less state) but
+  // narrows `model` to non-null for the content branch below.
+  if (screenState === "empty" || model == null) {
     return (
       <View style={styles.screen}>
         {homeHeader}

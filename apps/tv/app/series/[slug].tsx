@@ -106,7 +106,14 @@ export default function SeriesScreen() {
   // Leaf bounce (R1): replace (not push) so Menu pops to the pre-series
   // origin, once-guarded so a partial→full re-evaluation can't fire twice.
   // The original seed param carries through as-is (it arrives still-encoded).
-  const bounce = resolveLeafBounce(record, !loading && error == null)
+  // Completeness signal: the series-only childDubLanguages key exists on the
+  // raw object (even as []) only once THIS query has answered — the watch
+  // screen's warm partial reads back with loading=false under cache-first +
+  // returnPartialData, so `!loading` cannot tell partial from complete.
+  const bounce = resolveLeafBounce(
+    record,
+    data?.videoBySlug?.childDubLanguages !== undefined,
+  )
   const bouncedRef = useRef(false)
   useEffect(() => {
     if (bounce !== "bounce" || bouncedRef.current) return

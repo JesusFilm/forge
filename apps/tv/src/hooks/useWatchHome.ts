@@ -22,7 +22,11 @@ const RETRYABLE_ERROR_MESSAGE = "Couldn't load videos. Please try again."
 
 export type WatchHomeState = {
   model: WatchHomeModel | null
-  /** Initial load — no model yet. */
+  /**
+   * True while a fetch is in flight. The screen only shows a spinner when
+   * `model` is still null (initial load, or a retry from the error state);
+   * once a model exists, content renders through background refreshes.
+   */
   loading: boolean
   error: string | null
   /** Network-only refetch suited to a retry action. */
@@ -44,7 +48,10 @@ export function useWatchHome(): WatchHomeState {
 
   const fetchHome = useCallback(async (mode: "initial" | "refresh") => {
     const thisRequest = ++requestIdRef.current
-    if (mode === "initial") setLoading(true)
+    // Unconditional — a retry from the error state clears `error` below, so
+    // without `loading` the model==null screen would fall through to the
+    // empty state ("No content available") for the whole round trip.
+    setLoading(true)
     setError(null)
 
     try {

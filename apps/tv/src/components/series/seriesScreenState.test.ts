@@ -57,7 +57,7 @@ describe("pickPlayableTrailer", () => {
 // ── resolveLeafBounce ──────────────────────────────────────────────
 
 describe("resolveLeafBounce", () => {
-  it("renders a series-shaped record (label), even on partial data", () => {
+  it("renders a series-shaped record (label), even before the series query answers", () => {
     expect(resolveLeafBounce({ label: "SERIES", episodes: [] }, false)).toBe(
       "render",
     )
@@ -72,21 +72,32 @@ describe("resolveLeafBounce", () => {
     )
   })
 
-  it("bounces a leaf whose label is present", () => {
+  it("bounces a labeled leaf once the series query has answered", () => {
     expect(
       resolveLeafBounce({ label: "FEATURE_FILM", episodes: [] }, true),
     ).toBe("bounce")
-    // The label alone is "complete enough to carry label" — bounce even while
-    // the rest of the query is still filling in.
-    expect(resolveLeafBounce({ label: "EPISODE", episodes: [] }, false)).toBe(
+    expect(resolveLeafBounce({ label: "EPISODE", episodes: [] }, true)).toBe(
       "bounce",
     )
   })
 
-  it("bounces an unlabeled leaf once the data is complete", () => {
+  it("bounces an unlabeled leaf once the series query has answered", () => {
     expect(resolveLeafBounce({ label: null, episodes: [] }, true)).toBe(
       "bounce",
     )
+  })
+
+  it("is pending for a warm watch-fragment partial, even when it carries a leaf label", () => {
+    // Regression (review finding #1): a prior watch-screen visit caches
+    // videoBySlug with a label but NO series selection; cache-first +
+    // returnPartialData replays it with loading=false. A labeled-with-children
+    // series (e.g. FEATURE_FILM with 49 episodes) looks leaf-shaped on that
+    // partial — bouncing here would eject it to /watch unrecoverably (the
+    // replace is once-guarded). It must stay pending until the series query
+    // delivers the children.
+    expect(
+      resolveLeafBounce({ label: "FEATURE_FILM", episodes: [] }, false),
+    ).toBe("pending")
   })
 
   it("is pending for partial data that lacks a label", () => {

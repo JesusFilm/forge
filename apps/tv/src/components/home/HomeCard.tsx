@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 
 import { COLORS, hexToRgba } from "../../lib/colors"
+import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -57,7 +58,12 @@ export const HomeCard = memo(function HomeCard({
     () => (card.imageUrl != null ? resolveImageUrl(card.imageUrl) : null),
     [card.imageUrl],
   )
-  const isSeriesShaped = card.childCount > 0
+  // Same predicate as resolveHomeCardPath (homeCardRouting.ts) so the hint
+  // can never announce a different destination than the press routes to.
+  const isSeriesShaped = isSeriesSearchResult({
+    label: card.rawLabel,
+    childCount: card.childCount,
+  })
 
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.

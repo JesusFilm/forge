@@ -110,6 +110,8 @@ export type WatchHomeSection = {
   eyebrow: string
   title: string
   description: string | null
+  // layout/orientation/showSequenceNumbers: sync-parity with mobile's model —
+  // not yet wired to any TV renderer; TV renders all sections as rails.
   layout: "rail" | "grid"
   orientation: "horizontal" | "vertical"
   showSequenceNumbers: boolean
@@ -122,7 +124,7 @@ export type WatchHomeModel = {
   missingData: WatchHomeMissingData[]
 }
 
-export const LABEL_TEXT: Record<string, string> = {
+const LABEL_TEXT: Record<string, string> = {
   BEHIND_THE_SCENES: "Behind the scenes",
   COLLECTION: "Collection",
   EPISODE: "Episode",
@@ -137,9 +139,7 @@ function labelText(label: string | null | undefined): string {
   return label ? (LABEL_TEXT[label] ?? "Video") : "Video"
 }
 
-export function pickAdminImage(
-  images: readonly WatchHomeImageInput[],
-): string | null {
+function pickAdminImage(images: readonly WatchHomeImageInput[]): string | null {
   for (const image of images) {
     const candidate =
       image.mobileCinematicHigh ??

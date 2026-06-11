@@ -32,24 +32,34 @@ export type LeafBounceDecision = "render" | "bounce" | "pending"
  * isSeriesRecord predicate as the watch route's series redirect (U5), and both
  * sides replace — so the two seams can never disagree and loop.
  *
+ * `hasSeriesSelection` is the completeness signal: whether the RAW videoBySlug
+ * object carries the series-only `childDubLanguages` key — present (even as
+ * []) only once the series query itself has answered. It is the one reliable
+ * discriminator here: a warm partial cached by the watch screen's lean
+ * fragment carries `label` and reads back with loading=false (cache-first +
+ * returnPartialData), so neither a present label nor `!loading` proves the
+ * record's own children have arrived — a labeled-with-children series (e.g.
+ * FEATURE_FILM with 49 episodes) looks leaf-shaped on that partial, and the
+ * once-guarded replace would eject it to /watch unrecoverably.
+ *
  * - "render": series-shaped (label or episodes). Shape can only be gained as
  *   partial data fills in, never lost, so this wins regardless of completeness.
- * - "bounce": a leaf, decided only when the data is complete enough to carry
- *   `label` — either a (non-series) label is present, or the query finished so
- *   a null label is real. Never bounce off a partial cache read.
- * - "pending": no record yet, or a partial that may still gain its label.
+ * - "bounce": a non-series-shaped record once the series query has answered —
+ *   only then is "no series label, no episodes" a real leaf rather than a
+ *   series whose children simply haven't arrived yet.
+ * - "pending": no record yet, or a watch-fragment partial that may still gain
+ *   episodes (or a series label) from the in-flight series query.
  */
 export function resolveLeafBounce(
   record:
     | { label: string | null; episodes?: { length: number } | null }
     | null
     | undefined,
-  hasCompleteData: boolean,
+  hasSeriesSelection: boolean,
 ): LeafBounceDecision {
   if (record == null) return "pending"
   if (isSeriesRecord(record)) return "render"
-  if (record.label != null || hasCompleteData) return "bounce"
-  return "pending"
+  return hasSeriesSelection ? "bounce" : "pending"
 }
 
 // ── Screen state (R16) ─────────────────────────────────────────────
