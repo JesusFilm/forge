@@ -6,8 +6,10 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   ExperienceEditor,
+  buildPublishedWatchUrl,
   cleanLocaleCode,
   cleanRoutePart,
+  watchLanguageSlugForLocale,
 } from "./experience-editor"
 
 const { envState } = vi.hoisted(() => ({
@@ -43,6 +45,7 @@ function renderEditorElement(
       canPublish
       hasPublishedVersion={options.hasPublishedVersion ?? false}
       calendarDate="2026-04-17"
+      watchOrigin="https://watch.jesusfilm.org"
       revisionEntries={[]}
       localeEntries={[
         {
@@ -178,6 +181,29 @@ describe("ExperienceEditor", () => {
     expect(cleanLocaleCode("  ES 419  ", true)).toBe("es-419")
     expect(cleanLocaleCode("pt_BR")).toBe("pt-br")
     expect(cleanLocaleCode("fr///CA")).toBe("frca")
+  })
+
+  it("maps editor locales to public watch audio language slugs", () => {
+    expect(watchLanguageSlugForLocale("en")).toBe("english")
+    expect(watchLanguageSlugForLocale("es")).toBe("spanish-castilian")
+    expect(watchLanguageSlugForLocale("zh-Hans")).toBe("chinese-simplified")
+    // Regional variants fall back to the primary subtag mapping.
+    expect(watchLanguageSlugForLocale("en-US")).toBe("english")
+    expect(watchLanguageSlugForLocale("xx")).toBeNull()
+    expect(watchLanguageSlugForLocale("")).toBeNull()
+  })
+
+  it("builds two-segment .html watch URLs for published previews", () => {
+    // jsdom runs on localhost, so the local watch base wins over the origin.
+    expect(
+      buildPublishedWatchUrl("christmas", "en", "https://watch.jesusfilm.org"),
+    ).toBe("http://localhost:3000/watch/christmas.html/english.html")
+    expect(
+      buildPublishedWatchUrl("christmas", "xx", "https://watch.jesusfilm.org"),
+    ).toBeNull()
+    expect(
+      buildPublishedWatchUrl("", "en", "https://watch.jesusfilm.org"),
+    ).toBeNull()
   })
 
   it("renders container layout as a visual responsive grid editor", () => {
@@ -687,7 +713,7 @@ describe("ExperienceEditor", () => {
       })
 
       expect(openSpy).toHaveBeenCalledWith(
-        "http://localhost:3000/watch/experience-title/en",
+        "http://localhost:3000/watch/experience-title.html/english.html",
         "_blank",
         "noopener,noreferrer",
       )
