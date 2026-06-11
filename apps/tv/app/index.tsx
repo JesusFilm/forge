@@ -175,6 +175,13 @@ export default function HomeScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: true })
   }, [])
 
+  // Mission-tail QR focus: with the native focus-scroll disabled, the tail
+  // needs its own scroll hook — pin to the end in the deep state.
+  const handleMissionFocus = useCallback(() => {
+    setBrowseState("deep")
+    scrollRef.current?.scrollToEnd({ animated: true })
+  }, [])
+
   // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
   // memoized rails' wrappers don't churn on every screen re-render.
   const rowCount = (model?.sections.length ?? 0) + 1
@@ -286,11 +293,18 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <HomeBackdrop card={showcase.current} browseState={browseState} />
 
+      {/* scrollEnabled={false}: ALL scrolling on this screen is
+          row-anchored and programmatic (scrollTo/scrollToEnd below). The
+          native tvOS focus-scroll must stay off — row-0 card labels sit at
+          the viewport's bottom edge, so UIKit's scroll-into-view nudges the
+          feed down on every horizontal focus move within the first rail,
+          landing after (and overriding) this screen's scrollTo(0). */}
       <ScrollView
         ref={scrollRef}
         style={styles.list}
         contentContainerStyle={styles.listContent}
         stickyHeaderIndices={[0]}
+        scrollEnabled={false}
       >
         <View>{topBar}</View>
 
@@ -331,7 +345,7 @@ export default function HomeScreen() {
             feed. Its QR wrapper is focusable but non-actioning, and never
             dispatches card-focus — the showcase retains the last card (R10)
             and the browse state stays "deep" while the tail is explored. */}
-        <MissionSection />
+        <MissionSection onQrFocus={handleMissionFocus} />
       </ScrollView>
     </View>
   )
