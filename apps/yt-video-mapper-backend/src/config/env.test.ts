@@ -7,6 +7,12 @@ const envKeys = [
   "ADMIN_GRAPHQL_URL",
   "ADMIN_SERVICE_BEARER_TOKEN",
   "MAPPER_API_TOKEN",
+  "MEDIA_SIGNATURE_ALGORITHM_VERSION",
+  "MEDIA_INDEX_PAGE_SIZE",
+  "MEDIA_INDEX_MAX_FETCH_BYTES",
+  "MEDIA_INDEX_FETCH_TIMEOUT_MS",
+  "MEDIA_INDEX_ALLOWED_HOSTS",
+  "MEDIA_INDEX_RESUME_AFTER_VARIANT_ID",
 ]
 
 describe("runtime env", () => {
@@ -64,6 +70,48 @@ describe("runtime env", () => {
       adminGraphqlUrl: "https://admin.example.com/graphql",
       adminServiceBearerToken: "service-token",
     })
+  })
+
+  it("defaults media indexing settings and treats empty resume cursor as unset", async () => {
+    const { env } = await loadEnv({
+      MEDIA_SIGNATURE_ALGORITHM_VERSION: "",
+      MEDIA_INDEX_PAGE_SIZE: "",
+      MEDIA_INDEX_MAX_FETCH_BYTES: "",
+      MEDIA_INDEX_FETCH_TIMEOUT_MS: "",
+      MEDIA_INDEX_ALLOWED_HOSTS: "",
+      MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: "",
+    })
+
+    expect(env.MEDIA_SIGNATURE_ALGORITHM_VERSION).toBe(
+      "official-media-signature-v1",
+    )
+    expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(100)
+    expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(262_144)
+    expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(15_000)
+    expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBeUndefined()
+    expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBeUndefined()
+  })
+
+  it("parses media indexing overrides", async () => {
+    const { env } = await loadEnv({
+      MEDIA_SIGNATURE_ALGORITHM_VERSION: "official-media-signature-v2",
+      MEDIA_INDEX_PAGE_SIZE: "25",
+      MEDIA_INDEX_MAX_FETCH_BYTES: "1024",
+      MEDIA_INDEX_FETCH_TIMEOUT_MS: "5000",
+      MEDIA_INDEX_ALLOWED_HOSTS: "media.example.com,cdn.example.com",
+      MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: "catalog-variant-123",
+    })
+
+    expect(env.MEDIA_SIGNATURE_ALGORITHM_VERSION).toBe(
+      "official-media-signature-v2",
+    )
+    expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(25)
+    expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(1_024)
+    expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(5_000)
+    expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBe(
+      "media.example.com,cdn.example.com",
+    )
+    expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBe("catalog-variant-123")
   })
 
   it("requires DATABASE_URL in production", async () => {
