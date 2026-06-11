@@ -28,7 +28,6 @@ import { useSessionPlayback } from "./watch/useSessionPlayback"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
 import { focusTransform, useFocusAnimation } from "./watch/useFocusAnimation"
 import { AnimatedFocusIcon } from "./watch/AnimatedFocusIcon"
-import { composePlayerStatusChip } from "./watch/playerChrome"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -1315,11 +1314,9 @@ export function VideoPlayer({
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
   const bufferedPct =
     duration > 0 ? Math.min(100, (buffered / duration) * 100) : 0
-  // Top-bar status chip + pill sub-caption (null hides each — no-session
-  // playback shows neither, matching the gated CC button it replaces).
-  const statusChip = composePlayerStatusChip(audioLabel, subtitleLabel)
   // Pill sub-captions mirror the details page: Language shows the active dub's
-  // name; Subtitles shows the active track's name, or "Off".
+  // name; Subtitles shows the active track's name, or "Off". (The redundant
+  // top-right status chip was removed — the pills already carry this state.)
   const subtitlePillSub = menuActive ? (subtitleLabel ?? "Off") : null
   const remainingLabel =
     duration > 0
@@ -1537,9 +1534,8 @@ export function VideoPlayer({
 
         {/* ── Top Bar (U8) ─────────────────────────────────────────────
             Glass Back pill (full-width hit region preserves the vertical
-            spatial column down to the transport) + the quiet audio/CC
-            status chip on the right. Fades with the shared opacityAnim;
-            collapsable={false} for Android TV z-order. */}
+            spatial column down to the transport). Fades with the shared
+            opacityAnim; collapsable={false} for Android TV z-order. */}
         <Animated.View
           style={[styles.topBar, { opacity: opacityAnim }]}
           collapsable={false}
@@ -1553,13 +1549,6 @@ export function VideoPlayer({
               subtitle != null ? `Back to ${subtitle}` : "Back"
             }
           />
-          {statusChip != null && (
-            <View style={styles.statusChip}>
-              <Text style={styles.statusChipText} numberOfLines={1}>
-                {statusChip}
-              </Text>
-            </View>
-          )}
         </Animated.View>
 
         {/* Empty middle spacer — the full-width back hit above and
@@ -1824,21 +1813,6 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(21)),
     fontWeight: "600",
   },
-  statusChip: {
-    backgroundColor: "rgba(0,0,0,0.35)",
-    paddingVertical: scale(10),
-    paddingHorizontal: scale(18),
-    borderRadius: scale(13),
-    maxWidth: scale(640),
-  },
-  statusChipText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(19)),
-    fontWeight: "600",
-    color: WATCH_THEME.text66,
-    letterSpacing: scale(0.2),
-  },
-
   // ── Bottom Controls ────────────────────────────────────────────────────────
   bottomPanel: {
     width: "100%",
