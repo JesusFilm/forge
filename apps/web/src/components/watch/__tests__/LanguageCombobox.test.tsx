@@ -45,6 +45,27 @@ const MANY_OPTIONS = Array.from({ length: 200 }, (_, index) => ({
   name: `Language ${String(index).padStart(3, "0")}`,
 }))
 
+function makeRect({
+  bottom = 0,
+  height = 0,
+  left = 0,
+  right = 0,
+  top = 0,
+  width = 0,
+}: Partial<DOMRect> = {}): DOMRect {
+  return {
+    bottom,
+    height,
+    left,
+    right,
+    top,
+    width,
+    x: left,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect
+}
+
 describe("LanguageCombobox", () => {
   it("renders the currently selected option label in the trigger", () => {
     act(() => {
@@ -192,6 +213,114 @@ describe("LanguageCombobox", () => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
     expect($('[data-testid="language-combobox-popover"]')).not.toBeNull()
+  })
+
+  it("opens upward when the trigger is too close to the viewport bottom", () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 800,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 714,
+            height: 64,
+            right: 400,
+            top: 650,
+            width: 400,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 400, width: 400 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.className).toContain("bottom-full")
+      expect(popover?.className).toContain("mb-2")
+      expect(popover?.className).not.toContain("top-full")
+      expect(listbox.style.maxHeight).toBe("288px")
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
+  })
+
+  it("caps the scrollable listbox when the popover must open in limited space", () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 220,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 74,
+            height: 64,
+            right: 400,
+            top: 10,
+            width: 400,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 400, width: 400 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.className).toContain("top-full")
+      expect(popover?.className).toContain("mt-2")
+      expect(listbox.style.maxHeight).toBe("49px")
+      expect(listbox.className).toContain("overflow-y-auto")
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
   })
 
   it("allows callers to wrap the trigger without wrapping the open popover", () => {

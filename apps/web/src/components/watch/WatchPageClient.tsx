@@ -8,6 +8,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
+import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 // Modals are user-triggered (download / language picker / share). Split
 // them into separate chunks so they don't ship with the hero-critical
 // bundle. `ssr: false` is safe — modals are hidden on first paint.
@@ -37,19 +38,43 @@ import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { redirectToAuth } from "@/components/watch/download-session-client"
+import {
+  buildDownloadFilename,
+  buildDownloadProxyUrl,
+} from "@/components/watch/download-link"
+import { selectDefaultDownloadTier } from "@/components/watch/download-options"
+import { env } from "@/env"
 import type {
   MergedWatchBlock,
   ResolvedWatchVideo,
+  WatchSiblingCarouselBlock,
   WatchSubtitle,
 } from "@/lib/content"
+import { isWatchBlock } from "@/lib/content"
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
+import {
+  WATCH_BASE_PATH,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import { buildFbShareUrl } from "@/lib/share"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
 } from "@/lib/subtitle-preference-client"
-import { resolvePosterUrl } from "@/lib/url"
-import { loadWatchLanguageOptions } from "@/lib/watch-language-actions"
+import {
+  PUBLIC_SHARE_FALLBACK_ORIGIN,
+  isPublicShareableOrigin,
+  resolvePosterUrl,
+} from "@/lib/url"
+import {
+  getCachedWatchLanguageOptions,
+  loadWatchInteraction,
+  loadWatchLanguageOptionsForVideo,
+  scheduleWatchInteractionWarmup,
+} from "@/lib/watch-interaction-loader"
 
 function resolveSubtitleSlug(
   preferred: string | null,
@@ -76,6 +101,36 @@ export type WatchModalCallbacks = {
   openLanguage: () => void
   openShare: () => void
   closeModal: () => void
+}
+
+function isPendingChapterStillRoutable(
+  pendingChapter: WatchChapterNavigationIntent,
+  blocks: MergedWatchBlock[],
+  languageSlug: string,
+): boolean {
+  const lang = tryAsLocaleSlug(languageSlug)
+  if (!lang) return false
+
+  for (const block of blocks) {
+    if (!isWatchBlock(block) || block.kind !== "SiblingCarousel") continue
+
+    const carouselBlock: WatchSiblingCarouselBlock = block
+    for (const child of carouselBlock.canonicalParent.children ?? []) {
+      if (
+        child == null ||
+        child.documentId !== pendingChapter.targetVideoDocumentId
+      ) {
+        continue
+      }
+
+      if (typeof child.slug !== "string") return false
+      const slug = tryAsContentSlug(child.slug)
+      if (!slug) return false
+      return watchVideoPath(slug, lang) === pendingChapter.href
+    }
+  }
+
+  return false
 }
 
 type WatchPageClientProps = {
@@ -105,6 +160,29 @@ type LanguageOptionsState =
   | { status: "loading"; variants: LanguagePickerVariant[] }
   | { status: "ready"; variants: LanguagePickerVariant[] }
   | { status: "error"; variants: LanguagePickerVariant[] }
+
+function buildShareFallbackHref({
+  origin,
+  currentLanguageSlug,
+  videoSlug,
+}: {
+  origin: string
+  currentLanguageSlug: string
+  videoSlug: string
+}): string | undefined {
+  const slug = tryAsContentSlug(videoSlug)
+  const lang = tryAsLocaleSlug(currentLanguageSlug)
+  if (!slug || !lang) return undefined
+
+  const shareOrigin = isPublicShareableOrigin(origin)
+    ? origin
+    : PUBLIC_SHARE_FALLBACK_ORIGIN
+  const shareableUrl = `${shareOrigin}${WATCH_BASE_PATH}${watchVideoPath(
+    slug,
+    lang,
+  )}`
+  return buildFbShareUrl(shareableUrl)
+}
 
 export function WatchPageClient({
   downloadButtonLabel,
@@ -138,7 +216,21 @@ export function WatchPageClient({
   }, [])
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
+  const videoSlug = video.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
+  const [pendingChapter, setPendingChapter] =
+    useState<WatchChapterNavigationIntent | null>(null)
+  const validPendingChapter =
+    pendingChapter != null &&
+    pendingChapter.languageSlug === currentLanguageSlug &&
+    pendingChapter.sourceVideoDocumentId === video.documentId &&
+    isPendingChapterStillRoutable(
+      pendingChapter,
+      mergedBlocks,
+      currentLanguageSlug,
+    )
+      ? pendingChapter
+      : null
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
@@ -189,19 +281,47 @@ export function WatchPageClient({
   // which may exceed JS number precision for very large files). Parse to
   // number for the download modal's sort bucket; non-numeric values fall
   // through as null and the modal hides the size label.
-  const downloadsForModal = (variant.downloads ?? [])
-    .filter((d): d is NonNullable<typeof d> => d != null && d.quality != null)
-    .map((d) => {
-      const sizeNum =
-        typeof d.size === "string" && d.size.length > 0
-          ? Number.parseFloat(d.size)
-          : null
-      return {
-        documentId: d.documentId,
-        quality: d.quality as string,
-        size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
-      }
+  const downloadsForModal = useMemo(
+    () =>
+      (variant.downloads ?? [])
+        .filter(
+          (d): d is NonNullable<typeof d> => d != null && d.quality != null,
+        )
+        .map((d) => {
+          const sizeNum =
+            typeof d.size === "string" && d.size.length > 0
+              ? Number.parseFloat(d.size)
+              : null
+          return {
+            documentId: d.documentId,
+            quality: d.quality as string,
+            size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
+          }
+        }),
+    [variant.downloads],
+  )
+
+  const downloadHref = useMemo(() => {
+    if (!videoSlug) return undefined
+    const fallbackTier = selectDefaultDownloadTier(downloadsForModal)
+    if (!fallbackTier) return undefined
+    return buildDownloadProxyUrl({
+      downloadId: fallbackTier.download.documentId,
+      filename: buildDownloadFilename(video.title, fallbackTier.tier),
+      variantId: variant.documentId,
+      videoSlug,
     })
+  }, [downloadsForModal, variant.documentId, video.title, videoSlug])
+
+  const shareHref = useMemo(
+    () =>
+      buildShareFallbackHref({
+        origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+        currentLanguageSlug,
+        videoSlug,
+      }),
+    [currentLanguageSlug, videoSlug],
+  )
 
   // Prefer the editorial cinematic still over `images[].url` — that raw
   // `url` is a misshaped Cloudflare Images URL (missing variant path
@@ -217,7 +337,11 @@ export function WatchPageClient({
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const downloadPendingRef = useRef(false)
-  const videoSlug = video.slug ?? ""
+  const [enabledModalChunks, setEnabledModalChunks] = useState({
+    download: false,
+    language: false,
+    share: false,
+  })
   const [languageOptionsState, setLanguageOptionsState] =
     useState<LanguageOptionsState>({
       status: "idle",
@@ -227,7 +351,16 @@ export function WatchPageClient({
 
   useEffect(() => {
     languageOptionsPendingRef.current = false
-    setLanguageOptionsState({ status: "idle", variants: [] })
+    const cached = videoSlug ? getCachedWatchLanguageOptions(videoSlug) : null
+    setLanguageOptionsState(
+      cached
+        ? { status: "ready", variants: cached }
+        : { status: "idle", variants: [] },
+    )
+  }, [videoSlug])
+
+  useEffect(() => {
+    return scheduleWatchInteractionWarmup({ videoSlug })
   }, [videoSlug])
 
   const loadLanguageOptions = useCallback(async () => {
@@ -235,10 +368,16 @@ export function WatchPageClient({
     if (languageOptionsPendingRef.current) return
     if (languageOptionsState.status === "ready") return
 
+    const cached = getCachedWatchLanguageOptions(videoSlug)
+    if (cached) {
+      setLanguageOptionsState({ status: "ready", variants: cached })
+      return
+    }
+
     languageOptionsPendingRef.current = true
     setLanguageOptionsState({ status: "loading", variants: [] })
     try {
-      const variants = await loadWatchLanguageOptions({ videoSlug })
+      const variants = await loadWatchLanguageOptionsForVideo(videoSlug)
       setLanguageOptionsState({ status: "ready", variants })
     } catch {
       setLanguageOptionsState({ status: "error", variants: [] })
@@ -249,6 +388,8 @@ export function WatchPageClient({
 
   const openDownload = useCallback(async () => {
     if (downloadPendingRef.current) return
+    setEnabledModalChunks((prev) => ({ ...prev, download: true }))
+    void loadWatchInteraction("download").catch(() => {})
     downloadPendingRef.current = true
     setDownloadPending(true)
 
@@ -270,10 +411,16 @@ export function WatchPageClient({
     }
   }, [tDownloadButton])
   const openLanguage = useCallback(() => {
+    setEnabledModalChunks((prev) => ({ ...prev, language: true }))
+    void loadWatchInteraction("language").catch(() => {})
     setModalState("language")
     void loadLanguageOptions()
   }, [loadLanguageOptions])
-  const openShare = useCallback(() => setModalState("share"), [])
+  const openShare = useCallback(() => {
+    setEnabledModalChunks((prev) => ({ ...prev, share: true }))
+    void loadWatchInteraction("share").catch(() => {})
+    setModalState("share")
+  }, [])
   const closeModal = useCallback(() => setModalState("none"), [])
 
   // Pause the video whenever any modal (search / language / download / share)
@@ -325,13 +472,17 @@ export function WatchPageClient({
         blocks={mergedBlocks}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}
+        downloadHref={downloadHref}
         downloadPending={downloadPending}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         locale={locale}
         languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
+        shareHref={shareHref}
         hideBibleQuotes={hideBibleQuotes}
+        pendingChapter={validPendingChapter}
+        onChapterNavigateIntent={setPendingChapter}
       />
 
       <SubtitleTranscript
@@ -342,42 +493,48 @@ export function WatchPageClient({
         initialTranscript={initialTranscript}
       />
 
-      <DownloadModal
-        open={modalState === "download"}
-        downloads={downloadsForModal}
-        videoTitle={video.title ?? null}
-        posterUrl={posterUrl}
-        durationSeconds={variant.duration ?? null}
-        languageName={variant.language?.name ?? null}
-        variantId={variant.documentId}
-        videoSlug={videoSlug}
-        onClose={closeModal}
-      />
-      <LanguagePickerModal
-        open={modalState === "language"}
-        variants={languageOptionsState.variants}
-        currentLanguageSlug={currentLanguageSlug}
-        videoSlug={videoSlug}
-        playerRef={playerRef}
-        onClose={closeModal}
-        subtitles={subtitles}
-        currentSubtitleEnabled={subtitleEnabled}
-        currentSubtitleSlug={subtitleSlug}
-        onSubtitleChange={handleSubtitleChange}
-        languageOptionsLoading={languageOptionsState.status === "loading"}
-        languageOptionsError={languageOptionsState.status === "error"}
-        onRetryLanguageOptions={loadLanguageOptions}
-      />
-      <ShareModal
-        open={modalState === "share"}
-        videoSlug={videoSlug}
-        currentLanguageSlug={currentLanguageSlug}
-        videoTitle={video.title ?? null}
-        videoDescription={video.snippet ?? video.description ?? null}
-        posterUrl={posterUrl}
-        playbackId={variant.muxVideo?.playbackId ?? null}
-        onClose={closeModal}
-      />
+      {enabledModalChunks.download ? (
+        <DownloadModal
+          open={modalState === "download"}
+          downloads={downloadsForModal}
+          videoTitle={video.title ?? null}
+          posterUrl={posterUrl}
+          durationSeconds={variant.duration ?? null}
+          languageName={variant.language?.name ?? null}
+          variantId={variant.documentId}
+          videoSlug={videoSlug}
+          onClose={closeModal}
+        />
+      ) : null}
+      {enabledModalChunks.language ? (
+        <LanguagePickerModal
+          open={modalState === "language"}
+          variants={languageOptionsState.variants}
+          currentLanguageSlug={currentLanguageSlug}
+          videoSlug={videoSlug}
+          playerRef={playerRef}
+          onClose={closeModal}
+          subtitles={subtitles}
+          currentSubtitleEnabled={subtitleEnabled}
+          currentSubtitleSlug={subtitleSlug}
+          onSubtitleChange={handleSubtitleChange}
+          languageOptionsLoading={languageOptionsState.status === "loading"}
+          languageOptionsError={languageOptionsState.status === "error"}
+          onRetryLanguageOptions={loadLanguageOptions}
+        />
+      ) : null}
+      {enabledModalChunks.share ? (
+        <ShareModal
+          open={modalState === "share"}
+          videoSlug={videoSlug}
+          currentLanguageSlug={currentLanguageSlug}
+          videoTitle={video.title ?? null}
+          videoDescription={video.snippet ?? video.description ?? null}
+          posterUrl={posterUrl}
+          playbackId={variant.muxVideo?.playbackId ?? null}
+          onClose={closeModal}
+        />
+      ) : null}
       {questionPanelEnabled ? (
         <WatchQuestionPanel
           enabled={questionPanelEnabled}

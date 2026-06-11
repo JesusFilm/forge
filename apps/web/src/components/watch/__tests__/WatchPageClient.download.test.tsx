@@ -10,14 +10,18 @@ const {
   checkDownloadSessionMock,
   downloadModalProps,
   languageModalProps,
+  loadWatchInteractionMock,
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
+  scheduleWatchInteractionWarmupMock,
 } = vi.hoisted(() => ({
   checkDownloadSessionMock: vi.fn(),
   downloadModalProps: [] as unknown[],
   languageModalProps: [] as unknown[],
+  loadWatchInteractionMock: vi.fn(async () => undefined),
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
+  scheduleWatchInteractionWarmupMock: vi.fn(() => vi.fn()),
 }))
 
 vi.mock("next/dynamic", () => {
@@ -62,18 +66,24 @@ vi.mock("@/components/watch/SubtitleTranscript", () => ({
 vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     downloadError,
+    downloadHref,
     downloadPending,
     languageSlug,
     modalCallbacks,
+    shareHref,
   }: {
     downloadError?: string | null
+    downloadHref?: string
     downloadPending?: boolean
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
+    shareHref?: string
   }) => (
     <div
       data-testid="watch-section-renderer"
+      data-download-href={downloadHref ?? ""}
       data-language-slug={languageSlug ?? ""}
+      data-share-href={shareHref ?? ""}
     >
       <button
         data-testid="watch-download-button"
@@ -104,8 +114,11 @@ vi.mock("@/components/watch/download-session-client", () => ({
   redirectToAuth: redirectToAuthMock,
 }))
 
-vi.mock("@/lib/watch-language-actions", () => ({
-  loadWatchLanguageOptions: loadWatchLanguageOptionsMock,
+vi.mock("@/lib/watch-interaction-loader", () => ({
+  getCachedWatchLanguageOptions: () => null,
+  loadWatchInteraction: loadWatchInteractionMock,
+  loadWatchLanguageOptionsForVideo: loadWatchLanguageOptionsMock,
+  scheduleWatchInteractionWarmup: scheduleWatchInteractionWarmupMock,
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
@@ -120,8 +133,10 @@ beforeEach(() => {
   downloadModalProps.length = 0
   languageModalProps.length = 0
   checkDownloadSessionMock.mockReset()
+  loadWatchInteractionMock.mockClear()
   loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
+  scheduleWatchInteractionWarmupMock.mockClear()
 })
 
 afterEach(() => {
@@ -170,8 +185,50 @@ function renderWatchPage() {
 }
 
 describe("WatchPageClient download boundary", () => {
-  it("passes opaque download ids to DownloadModal without raw CDN URLs", () => {
+  it("does not mount modal chunks before the user asks for them", () => {
     renderWatchPage()
+
+    expect(downloadModalProps).toHaveLength(0)
+    expect(languageModalProps).toHaveLength(0)
+    expect(scheduleWatchInteractionWarmupMock).toHaveBeenCalledWith({
+      videoSlug: "jesus",
+    })
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "/watch/api/download?",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "downloadId=download-1",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "variantId=variant-1",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "videoSlug=jesus",
+    )
+    expect(renderer?.getAttribute("data-share-href")).toContain(
+      "https://www.facebook.com/sharer/sharer.php",
+    )
+    expect(renderer?.getAttribute("data-share-href")).toContain("jesus")
+  })
+
+  it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      authenticated: false,
+      gateEnabled: false,
+    })
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
 
     const latestProps = downloadModalProps.at(-1) as {
       downloads: Array<Record<string, unknown>>
@@ -193,6 +250,7 @@ describe("WatchPageClient download boundary", () => {
         .querySelector('[data-testid="watch-section-renderer"]')
         ?.getAttribute("data-language-slug"),
     ).toBe("english")
+    expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
   })
 
   it("loads language picker rows only when the language modal opens", async () => {
@@ -223,9 +281,8 @@ describe("WatchPageClient download boundary", () => {
         ?.click()
     })
 
-    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith({
-      videoSlug: "jesus",
-    })
+    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith("jesus")
+    expect(loadWatchInteractionMock).toHaveBeenCalledWith("language")
     expect(languageModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: true,

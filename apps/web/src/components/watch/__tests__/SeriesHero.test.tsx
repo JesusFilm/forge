@@ -162,7 +162,7 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
       container.querySelector('[data-testid="hero-player-overlay-anchor"]'),
     ).not.toBeNull()
 
-    // Title and label overlay rendered (no Play with Sound button — there's
+    // Title and label overlay rendered (no Watch now button — there's
     // nothing to play in static mode).
     expect(
       container.querySelector('[data-testid="series-hero-overlay-title"]')

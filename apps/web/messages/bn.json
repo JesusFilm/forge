@@ -100,7 +100,7 @@
     "fallbackBody": "শুনতে প্রস্তুত এমন কারও সাথে ব্যক্তিগতভাবে কথা বলুন।",
     "questionsShort": "প্রশ্ন",
     "questions": "সম্পর্কিত প্রশ্ন",
-    "askYours": "আপনার প্রশ্ন করুন",
+    "askYours": "আপনার প্রশ্ন",
     "chatWithPerson": "একজন মানুষের সাথে চ্যাট করুন",
     "askBibleQuestion": "বাইবেল সম্পর্কে প্রশ্ন করুন"
   },
@@ -195,7 +195,7 @@
     "clearLanguages": "Clear"
   },
   "HeroPlayer": {
-    "playWithSound": "শব্দসহ চালান",
+    "playWithSound": "এখন দেখুন",
     "tapToUnmute": "শব্দ চালু করতে ট্যাপ করুন"
   },
   "ExperienceSkeleton": {
