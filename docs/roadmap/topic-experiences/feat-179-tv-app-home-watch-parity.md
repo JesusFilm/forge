@@ -3,7 +3,7 @@ id: "feat-179"
 title: "TV App — Home Watch-Content Parity (Focus-Driven Showcase)"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-16"
 duration: 6
 depends_on:

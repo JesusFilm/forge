@@ -3,7 +3,7 @@ id: "feat-178"
 title: "TV App — Series Detail Screen"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-12"
 duration: 4
 depends_on: []
