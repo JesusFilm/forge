@@ -17,6 +17,7 @@
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
     "@forge/admin-graphql": "workspace:*",
+    "@forge/shorts-compositions": "workspace:*",
     "@forge/video-player": "workspace:*",
     "@mux/mux-node": "^9.0.0",
     "@t3-oss/env-nextjs": "^0.13.10",

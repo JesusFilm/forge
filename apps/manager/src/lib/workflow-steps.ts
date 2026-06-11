@@ -60,6 +60,29 @@ export function buildSmartCropInitialSteps(
   }))
 }
 
+// Shorts Studio step inventories (plan 2026-06-11-002 "Manager changes").
+// Persisted at shorts job creation (kind "prepare") and at render launch
+// (kind "render" — the render route resets/replaces the render-step subset
+// in place per the lifecycle contract, prepare steps preserved).
+export const SHORTS_PREPARE_STEPS: WorkflowStepName[] = ["shorts_prepare"]
+
+export const SHORTS_RENDER_STEPS: WorkflowStepName[] = [
+  "shorts_render",
+  "shorts_mux_output",
+]
+
+export function buildShortsInitialSteps(
+  kind: "prepare" | "render",
+): JobStepState[] {
+  const names = kind === "prepare" ? SHORTS_PREPARE_STEPS : SHORTS_RENDER_STEPS
+
+  return names.map((name) => ({
+    name,
+    status: "pending" as const,
+    retries: 0,
+  }))
+}
+
 export function formatStepName(step: WorkflowStepName): string {
   if (step === "seo_improvements") {
     return "SEO Improvements"

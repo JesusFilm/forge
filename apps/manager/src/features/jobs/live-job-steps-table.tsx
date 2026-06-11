@@ -84,6 +84,10 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   smart_crop_qa: "Runs AI review over the rendered preview frames.",
   smart_crop_render: "Renders the full 9:16 output through the crop worker.",
   smart_crop_mux_output: "Creates the Mux output asset from the rendered file.",
+  shorts_prepare:
+    "Trims the source clip and generates whisper word captions via the shorts worker.",
+  shorts_render: "Renders the 1080x1920 short through the shorts worker.",
+  shorts_mux_output: "Creates the Mux output asset from the rendered short.",
 }
 
 function formatDuration(startedAt?: string, finishedAt?: string): string {

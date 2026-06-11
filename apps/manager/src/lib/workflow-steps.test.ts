@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   buildInitialSteps,
+  buildShortsInitialSteps,
   buildSmartCropInitialSteps,
   formatStepName,
   FORGE_WORKFLOW_STEPS,
@@ -84,6 +85,28 @@ describe("buildSmartCropInitialSteps", () => {
 
   it("does not change the enrichment step inventory", () => {
     expect(FORGE_WORKFLOW_STEPS).not.toContain("smart_crop_fingerprint")
+  })
+})
+
+describe("buildShortsInitialSteps", () => {
+  it("builds the prepare inventory, all pending", () => {
+    const steps = buildShortsInitialSteps("prepare")
+    expect(steps.map((step) => step.name)).toEqual(["shorts_prepare"])
+    expect(steps.every((step) => step.status === "pending")).toBe(true)
+    expect(steps.every((step) => step.retries === 0)).toBe(true)
+  })
+
+  it("builds the render inventory, all pending", () => {
+    const steps = buildShortsInitialSteps("render")
+    expect(steps.map((step) => step.name)).toEqual([
+      "shorts_render",
+      "shorts_mux_output",
+    ])
+    expect(steps.every((step) => step.status === "pending")).toBe(true)
+  })
+
+  it("does not change the enrichment step inventory", () => {
+    expect(FORGE_WORKFLOW_STEPS).not.toContain("shorts_prepare")
   })
 })
 

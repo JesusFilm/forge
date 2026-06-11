@@ -401,6 +401,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/shorts-compositions':
+        specifier: workspace:*
+        version: link:../../packages/shorts-compositions
       '@forge/video-player':
         specifier: workspace:*
         version: link:../../packages/video-player
