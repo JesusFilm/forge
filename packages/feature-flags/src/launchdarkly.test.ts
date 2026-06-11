@@ -32,11 +32,15 @@ describe("createFeatureFlagClient", () => {
     const client = createFeatureFlagClient({
       localEnv: {
         FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "yes",
+        FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: "on",
       },
     })
 
     await expect(
       client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+    ).resolves.toBe(true)
+    await expect(
+      client.booleanVariation(featureFlags.watchAlgoliaSearch, context),
     ).resolves.toBe(true)
   })
 
