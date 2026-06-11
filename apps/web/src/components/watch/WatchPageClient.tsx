@@ -55,6 +55,7 @@ import {
   loadWatchLanguageOptionsForVideo,
   scheduleWatchInteractionWarmup,
 } from "@/lib/watch-interaction-loader"
+import type { WatchPendingChapterPreview } from "./pending-chapter-preview"
 
 function resolveSubtitleSlug(
   preferred: string | null,
@@ -144,6 +145,14 @@ export function WatchPageClient({
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
+  const [pendingChapterPreview, setPendingChapterPreview] =
+    useState<WatchPendingChapterPreview | null>(null)
+  const validPendingChapterPreview =
+    pendingChapterPreview != null &&
+    pendingChapterPreview.languageSlug === currentLanguageSlug &&
+    pendingChapterPreview.sourceVideoDocumentId === video.documentId
+      ? pendingChapterPreview
+      : null
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
@@ -365,6 +374,8 @@ export function WatchPageClient({
         languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
+        pendingChapterPreview={validPendingChapterPreview}
+        onChapterPreviewPending={setPendingChapterPreview}
       />
 
       <SubtitleTranscript

@@ -45,6 +45,7 @@ import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import { MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
+import type { WatchPendingChapterPreview } from "./pending-chapter-preview"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
@@ -168,6 +169,7 @@ export function HeroPlayer({
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
+  pendingChapterPreview,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -176,6 +178,7 @@ export function HeroPlayer({
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
+  pendingChapterPreview?: WatchPendingChapterPreview | null
 }) {
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
@@ -886,6 +889,15 @@ export function HeroPlayer({
   const showTopLanguageSwitch = showLanguageSwitch
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
+  const showPendingChapterPreview =
+    pendingChapterPreview != null && !chromeRevealed
+  const pendingChapterPreviewKey = showPendingChapterPreview
+    ? `${pendingChapterPreview.languageSlug}:${pendingChapterPreview.sourceVideoDocumentId}:${pendingChapterPreview.targetVideoDocumentId}:${pendingChapterPreview.href}`
+    : null
+  const visibleHeroTitle =
+    showPendingChapterPreview && pendingChapterPreview.title
+      ? pendingChapterPreview.title
+      : video.title
   const effectivePreviewBodyOverlapPx = chromeRevealed
     ? 0
     : previewBodyOverlapPx
@@ -1040,6 +1052,37 @@ export function HeroPlayer({
             </div>
           ) : null}
 
+          {showPendingChapterPreview ? (
+            <div
+              key={pendingChapterPreviewKey}
+              data-testid="hero-player-pending-preview"
+              data-pulse="true"
+              className="pointer-events-none absolute inset-0"
+              aria-hidden="true"
+            >
+              <div
+                data-testid="hero-player-pending-black"
+                className="absolute inset-0 bg-black animate-watch-hero-pending-black"
+              />
+              {pendingChapterPreview.posterUrl ? (
+                <div
+                  data-testid="hero-player-pending-poster"
+                  className="absolute inset-0 animate-watch-hero-pending-cover"
+                >
+                  <Image
+                    src={pendingChapterPreview.posterUrl}
+                    alt=""
+                    aria-hidden="true"
+                    fill
+                    unoptimized
+                    sizes="100vw"
+                    className="animate-pulse object-cover"
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {!chromeRevealed && overlay == null ? (
             <button
               type="button"
@@ -1133,12 +1176,15 @@ export function HeroPlayer({
                     {videoLabels(videoLabelMessageKey(video.label))}
                   </span>
                 ) : null}
-                {video.title ? (
+                {visibleHeroTitle ? (
                   <h1
                     data-testid="hero-player-overlay-title"
+                    data-pending-chapter={
+                      showPendingChapterPreview ? "true" : "false"
+                    }
                     className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"
                   >
-                    {video.title}
+                    {visibleHeroTitle}
                   </h1>
                 ) : null}
                 <button

@@ -264,6 +264,28 @@
   }
 }
 
+@keyframes watch-hero-pending-black {
+  0%,
+  38% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes watch-hero-pending-cover {
+  0%,
+  34% {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Series episodes grid — ported from core/apps/watch's SectionVideoGrid:
    a slow horizontal pan + scale pulse over a wider-than-canvas blurred
    image (paired with `background-size: 200% 200%`) gives the Ken-Burns
@@ -285,6 +307,12 @@
 @layer utilities {
   .animate-series-backdrop-pan-zoom {
     animation: series-backdrop-pan-zoom 28s ease-in-out infinite;
+  }
+  .animate-watch-hero-pending-black {
+    animation: watch-hero-pending-black 640ms ease-out forwards;
+  }
+  .animate-watch-hero-pending-cover {
+    animation: watch-hero-pending-cover 760ms ease-out forwards;
   }
 }
 

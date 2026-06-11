@@ -366,6 +366,90 @@ describe("HeroPlayer — initial mount", () => {
     expect(props.style).toEqual({ objectFit: "cover" })
   })
 
+  it("renders a pending chapter cover transition without mounting media immediately", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          pendingChapterPreview={{
+            href: "/child-2-slug.html/english.html",
+            languageSlug: "english",
+            sourceVideoDocumentId: "video-1",
+            targetVideoDocumentId: "child-2",
+            title: "Child 2",
+            posterUrl: "https://cdn.test/child-2.jpg",
+          }}
+        />,
+      )
+    })
+
+    const pendingPreview = container.querySelector(
+      '[data-testid="hero-player-pending-preview"]',
+    )
+    const pendingBlack = container.querySelector(
+      '[data-testid="hero-player-pending-black"]',
+    )
+    const pendingPoster = container.querySelector(
+      '[data-testid="hero-player-pending-poster"]',
+    )
+    const pendingImage = pendingPoster?.querySelector("img")
+    const title = container.querySelector(
+      '[data-testid="hero-player-overlay-title"]',
+    )
+
+    expect(pendingPreview?.getAttribute("data-pulse")).toBe("true")
+    expect(pendingBlack?.className).toContain(
+      "animate-watch-hero-pending-black",
+    )
+    expect(pendingPoster?.className).toContain(
+      "animate-watch-hero-pending-cover",
+    )
+    expect(pendingImage?.className).toContain("animate-pulse")
+    expect(pendingImage?.getAttribute("src")).toBe(
+      "https://cdn.test/child-2.jpg",
+    )
+    expect(title?.textContent).toBe("Child 2")
+    expect(title?.getAttribute("data-pending-chapter")).toBe("true")
+    expect(muxVideoMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps committed Mux media props route-derived while a pending chapter cover is visible", async () => {
+    const idle = installIdleCallbackStub()
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock()}
+            pendingChapterPreview={{
+              href: "/child-2-slug.html/english.html",
+              languageSlug: "english",
+              sourceVideoDocumentId: "video-1",
+              targetVideoDocumentId: "child-2",
+              title: "Child 2",
+              posterUrl: "https://cdn.test/child-2.jpg",
+            }}
+          />,
+        )
+      })
+      await idle.runNext()
+    } finally {
+      idle.restore()
+    }
+
+    const props = lastMuxProps()
+    expect(props.playbackId).toBe("playback-id-123")
+    expect(props.poster).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+    )
+    expect(props.metadata).toMatchObject({
+      video_title: "Jesus",
+      video_id: "video-1",
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-pending-preview"]'),
+    ).not.toBeNull()
+  })
+
   it("defers idle muted activation while the document is hidden", async () => {
     const idle = installIdleCallbackStub()
     const originalVisibility = document.visibilityState

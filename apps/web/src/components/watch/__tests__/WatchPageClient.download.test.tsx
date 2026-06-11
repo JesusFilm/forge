@@ -14,6 +14,7 @@ const {
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
   scheduleWatchInteractionWarmupMock,
+  watchSectionRendererProps,
 } = vi.hoisted(() => ({
   checkDownloadSessionMock: vi.fn(),
   downloadModalProps: [] as unknown[],
@@ -22,6 +23,7 @@ const {
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
   scheduleWatchInteractionWarmupMock: vi.fn(() => vi.fn()),
+  watchSectionRendererProps: [] as unknown[],
 }))
 
 vi.mock("next/dynamic", () => {
@@ -69,38 +71,72 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     downloadPending,
     languageSlug,
     modalCallbacks,
+    pendingChapterPreview,
+    onChapterPreviewPending,
   }: {
     downloadError?: string | null
     downloadPending?: boolean
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
-  }) => (
-    <div
-      data-testid="watch-section-renderer"
-      data-language-slug={languageSlug ?? ""}
-    >
-      <button
-        data-testid="watch-download-button"
-        disabled={downloadPending}
-        type="button"
-        onClick={modalCallbacks.openDownload}
+    pendingChapterPreview?: { title: string | null } | null
+    onChapterPreviewPending?: (preview: {
+      href: string
+      languageSlug: string
+      sourceVideoDocumentId: string
+      targetVideoDocumentId: string
+      title: string | null
+      posterUrl: string | null
+    }) => void
+  }) => {
+    watchSectionRendererProps.push({
+      pendingChapterPreview,
+      languageSlug,
+    })
+    return (
+      <div
+        data-testid="watch-section-renderer"
+        data-language-slug={languageSlug ?? ""}
+        data-pending-title={pendingChapterPreview?.title ?? ""}
       >
-        Download
-      </button>
-      <button
-        data-testid="watch-language-button"
-        type="button"
-        onClick={modalCallbacks.openLanguage}
-      >
-        Language
-      </button>
-      {downloadError ? (
-        <p data-testid="watch-download-error" role="alert">
-          {downloadError}
-        </p>
-      ) : null}
-    </div>
-  ),
+        <button
+          data-testid="watch-download-button"
+          disabled={downloadPending}
+          type="button"
+          onClick={modalCallbacks.openDownload}
+        >
+          Download
+        </button>
+        <button
+          data-testid="watch-language-button"
+          type="button"
+          onClick={modalCallbacks.openLanguage}
+        >
+          Language
+        </button>
+        <button
+          data-testid="watch-pending-chapter-button"
+          type="button"
+          onClick={() =>
+            onChapterPreviewPending?.({
+              href: "/child-2-slug.html/english.html",
+              languageSlug: "english",
+              sourceVideoDocumentId: "video-1",
+              targetVideoDocumentId: "child-2",
+              title: "Child 2",
+              posterUrl: "https://cdn.test/child-2.jpg",
+            })
+          }
+        >
+          Pending chapter
+        </button>
+        {downloadError ? (
+          <p data-testid="watch-download-error" role="alert">
+            {downloadError}
+          </p>
+        ) : null}
+      </div>
+    )
+  },
 }))
 
 vi.mock("@/components/watch/download-session-client", () => ({
@@ -131,6 +167,7 @@ beforeEach(() => {
   loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
   scheduleWatchInteractionWarmupMock.mockClear()
+  watchSectionRendererProps.length = 0
 })
 
 afterEach(() => {
@@ -141,7 +178,12 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
-function renderWatchPage() {
+function renderWatchPage(
+  overrides: {
+    videoDocumentId?: string
+    languageSlug?: string
+  } = {},
+) {
   const variant = {
     documentId: "variant-1",
     duration: 7674,
@@ -157,7 +199,7 @@ function renderWatchPage() {
     muxVideo: { playbackId: "playback-1" },
   }
   const video = {
-    documentId: "video-1",
+    documentId: overrides.videoDocumentId ?? "video-1",
     slug: "jesus",
     title: "JESUS",
     snippet: null,
@@ -173,6 +215,7 @@ function renderWatchPage() {
         mergedBlocks={[]}
         variant={variant as never}
         video={video as never}
+        languageSlug={overrides.languageSlug}
       />,
     )
   })
@@ -271,6 +314,32 @@ describe("WatchPageClient download boundary", () => {
         ],
       }),
     )
+  })
+
+  it("threads pending chapter preview to the renderer and clears it after route identity changes", async () => {
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-pending-chapter-button"]',
+        )
+        ?.click()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-section-renderer"]')
+        ?.getAttribute("data-pending-title"),
+    ).toBe("Child 2")
+
+    renderWatchPage({ videoDocumentId: "child-2" })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-section-renderer"]')
+        ?.getAttribute("data-pending-title"),
+    ).toBe("")
   })
 
   it("shows an inline error when the first session check cannot complete", async () => {

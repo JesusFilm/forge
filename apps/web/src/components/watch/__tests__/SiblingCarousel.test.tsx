@@ -332,9 +332,16 @@ describe("SiblingCarousel — happy path", () => {
 
   it("makes the clicked chapter card current while navigation is pending", () => {
     const block = makeBlock(4, 0)
+    const onChapterPreviewPending = vi.fn()
 
     act(() => {
-      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterPreviewPending={onChapterPreviewPending}
+        />,
+      )
     })
 
     const target = container.querySelector(
@@ -378,13 +385,28 @@ describe("SiblingCarousel — happy path", () => {
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("2 of 4")
     expect(desktopLabel?.textContent).toBe("Clip 2 of 4")
+    expect(onChapterPreviewPending).toHaveBeenCalledWith({
+      href: "/child-2-slug.html/english.html",
+      languageSlug: "english",
+      sourceVideoDocumentId: "child-1",
+      targetVideoDocumentId: "child-2",
+      title: "Child 2",
+      posterUrl: "https://cdn.test/2.jpg",
+    })
   })
 
   it("does not show pending feedback for modified chapter clicks", () => {
     const block = makeBlock(4, 0)
+    const onChapterPreviewPending = vi.fn()
 
     act(() => {
-      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterPreviewPending={onChapterPreviewPending}
+        />,
+      )
     })
 
     const target = container.querySelector(
@@ -407,6 +429,7 @@ describe("SiblingCarousel — happy path", () => {
     expect(
       target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
     ).toBeNull()
+    expect(onChapterPreviewPending).not.toHaveBeenCalled()
   })
 
   it("renders an in-app href without the /watch/ basePath prefix", () => {

@@ -18,13 +18,16 @@ import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
+import type { WatchPendingChapterPreview } from "./pending-chapter-preview"
 
 export function SiblingCarousel({
   block,
   languageSlug,
+  onChapterPreviewPending,
 }: {
   block: WatchSiblingCarouselBlock
   languageSlug: string
+  onChapterPreviewPending?: (preview: WatchPendingChapterPreview) => void
 }) {
   const t = useTranslations("SiblingCarousel")
   const videoLabels = useTranslations("VideoLabels")
@@ -65,8 +68,7 @@ export function SiblingCarousel({
   const handleCardClick = useCallback(
     (
       event: MouseEvent<HTMLAnchorElement>,
-      href: string,
-      targetVideoDocumentId: string,
+      preview: WatchPendingChapterPreview,
       isActive: boolean,
     ) => {
       if (isActive) return
@@ -77,13 +79,14 @@ export function SiblingCarousel({
       }
 
       setPendingNavigation({
-        href,
-        languageSlug,
-        sourceVideoDocumentId: currentVideoDocumentId,
-        targetVideoDocumentId,
+        href: preview.href,
+        languageSlug: preview.languageSlug,
+        sourceVideoDocumentId: preview.sourceVideoDocumentId,
+        targetVideoDocumentId: preview.targetVideoDocumentId,
       })
+      onChapterPreviewPending?.(preview)
     },
-    [currentVideoDocumentId, languageSlug],
+    [onChapterPreviewPending],
   )
 
   const validPendingNavigation =
@@ -192,6 +195,17 @@ export function SiblingCarousel({
             const thumbnailAlt = child.title
               ? `${child.title} thumbnail`
               : "Related video thumbnail"
+            const preview =
+              href != null
+                ? {
+                    href,
+                    languageSlug,
+                    sourceVideoDocumentId: currentVideoDocumentId,
+                    targetVideoDocumentId: child.documentId,
+                    title: child.title ?? null,
+                    posterUrl: thumb ?? null,
+                  }
+                : null
 
             const cardClassName = cn(
               "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
@@ -327,9 +341,11 @@ export function SiblingCarousel({
                     data-href={href}
                     aria-busy={isPending ? "true" : undefined}
                     className={cardClassName}
-                    onClick={(event) =>
-                      handleCardClick(event, href, child.documentId, isActive)
-                    }
+                    onClick={(event) => {
+                      if (preview) {
+                        handleCardClick(event, preview, isActive)
+                      }
+                    }}
                   >
                     {cardInner}
                   </Link>

@@ -16,6 +16,7 @@ import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import type { WatchPendingChapterPreview } from "./pending-chapter-preview"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
 //
@@ -39,6 +40,8 @@ export function WatchSectionRenderer({
   languageSlug,
   subtitleVttSrc,
   hideBibleQuotes = false,
+  pendingChapterPreview,
+  onChapterPreviewPending,
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
@@ -50,6 +53,8 @@ export function WatchSectionRenderer({
   languageSlug?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
+  pendingChapterPreview?: WatchPendingChapterPreview | null
+  onChapterPreviewPending?: (preview: WatchPendingChapterPreview) => void
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -86,6 +91,8 @@ export function WatchSectionRenderer({
           languageSlug={languageSlug}
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
+          pendingChapterPreview={pendingChapterPreview}
+          onChapterPreviewPending={onChapterPreviewPending}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -122,6 +129,8 @@ export function WatchSectionRenderer({
                   locale={locale}
                   languageSlug={languageSlug}
                   hideBibleQuotes={hideBibleQuotes}
+                  pendingChapterPreview={pendingChapterPreview}
+                  onChapterPreviewPending={onChapterPreviewPending}
                 />
               ))}
             </div>
@@ -145,6 +154,8 @@ function WatchBlockEntry({
   languageSlug,
   subtitleVttSrc,
   hideBibleQuotes,
+  pendingChapterPreview,
+  onChapterPreviewPending,
 }: {
   block: MergedWatchBlock
   index: number
@@ -158,6 +169,8 @@ function WatchBlockEntry({
   languageSlug?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
+  pendingChapterPreview?: WatchPendingChapterPreview | null
+  onChapterPreviewPending?: (preview: WatchPendingChapterPreview) => void
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -173,6 +186,8 @@ function WatchBlockEntry({
         languageSlug={languageSlug}
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
+        pendingChapterPreview={pendingChapterPreview}
+        onChapterPreviewPending={onChapterPreviewPending}
       />
     )
   }
@@ -191,6 +206,8 @@ function SyntheticBlock({
   languageSlug,
   subtitleVttSrc,
   hideBibleQuotes,
+  pendingChapterPreview,
+  onChapterPreviewPending,
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
@@ -203,6 +220,8 @@ function SyntheticBlock({
   languageSlug?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
+  pendingChapterPreview?: WatchPendingChapterPreview | null
+  onChapterPreviewPending?: (preview: WatchPendingChapterPreview) => void
 }) {
   switch (block.kind) {
     case "HeroPlayer": {
@@ -216,11 +235,18 @@ function SyntheticBlock({
           onLanguageClick={modalCallbacks?.openLanguage}
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
+          pendingChapterPreview={pendingChapterPreview}
         />
       )
     }
     case "SiblingCarousel":
-      return <SiblingCarousel block={block} languageSlug={languageSlug ?? ""} />
+      return (
+        <SiblingCarousel
+          block={block}
+          languageSlug={languageSlug ?? ""}
+          onChapterPreviewPending={onChapterPreviewPending}
+        />
+      )
 
     case "WatchBody":
       return (
