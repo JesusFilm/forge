@@ -222,6 +222,8 @@ export const env = createEnv({
     // ingest outcomes after writing through Admin's internal ingest.
     MASTRA_BASE_URL: z.string().url().optional(),
     MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_GATEWAY_BASE_URL: z.string().url().optional(),
+    MASTRA_GATEWAY_ADMIN_API_KEY: z.string().min(1).optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -434,6 +436,12 @@ export const env = createEnv({
     MASTRA_BASE_URL: emptyToUndefined(process.env.MASTRA_BASE_URL),
     MASTRA_SERVICE_API_KEY: emptyToUndefined(
       process.env.MASTRA_SERVICE_API_KEY,
+    ),
+    MASTRA_GATEWAY_BASE_URL: emptyToUndefined(
+      process.env.MASTRA_GATEWAY_BASE_URL,
+    ),
+    MASTRA_GATEWAY_ADMIN_API_KEY: emptyToUndefined(
+      process.env.MASTRA_GATEWAY_ADMIN_API_KEY,
     ),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,

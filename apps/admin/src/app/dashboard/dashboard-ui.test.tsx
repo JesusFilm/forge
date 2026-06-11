@@ -379,15 +379,15 @@ vi.mock("@/app/dashboard/ops-data", () => ({
           {
             key: "mastra-studio",
             label: "Mastra Studio",
-            selectedRole: "NO_ACCESS",
+            selectedRole: "STUDIO_ACCESS",
             roleOptions: [
               { value: "NO_ACCESS", label: "No access" },
               { value: "STUDIO_ACCESS", label: "Studio access" },
             ],
-            statusTone: "muted",
-            disabled: true,
-            backed: false,
-            helperText: "Mock only",
+            statusTone: "success",
+            disabled: false,
+            backed: true,
+            helperText: "Backed",
           },
         ],
       },
@@ -436,9 +436,9 @@ vi.mock("@/app/dashboard/ops-data", () => ({
               { value: "STUDIO_ACCESS", label: "Studio access" },
             ],
             statusTone: "muted",
-            disabled: true,
-            backed: false,
-            helperText: "Mock only",
+            disabled: false,
+            backed: true,
+            helperText: "Backed",
           },
         ],
       },
@@ -1374,14 +1374,18 @@ describe("dashboard UI routes", () => {
       "Mastra Studio app access role for admin@example.com",
     )
     expect(html).toContain("Apply Manager role")
+    expect(html).toContain("Apply Mastra Studio role")
     expect(html).toContain("Status role")
-    expect(html).toContain("Mock only")
+    expect(html).not.toContain("Mock only")
     expect(html).toContain('<option value="OPERATOR" selected="">Operator')
+    expect(html).toContain(
+      '<option value="STUDIO_ACCESS" selected="">Studio access',
+    )
     expect(html).toContain('<option value="NO_ACCESS" selected="">No access')
     expect(html).toMatch(
       /aria-label="Admin app access role for admin@example\.com"[^>]*disabled=""/,
     )
-    expect(html).toMatch(
+    expect(html).not.toMatch(
       /aria-label="Mastra Studio app access role for admin@example\.com"[^>]*disabled=""/,
     )
     expect(html).not.toContain("Revoke Manager")
