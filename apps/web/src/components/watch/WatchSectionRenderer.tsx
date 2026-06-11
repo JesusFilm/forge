@@ -43,6 +43,7 @@ export function WatchSectionRenderer({
   subtitleVttSrc,
   hideBibleQuotes = false,
   pendingChapter,
+  routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
   blocks: MergedWatchBlock[]
@@ -58,6 +59,7 @@ export function WatchSectionRenderer({
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -98,6 +100,7 @@ export function WatchSectionRenderer({
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
           pendingChapter={pendingChapter}
+          routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
         />
       ))}
@@ -138,6 +141,7 @@ export function WatchSectionRenderer({
                   shareHref={shareHref}
                   hideBibleQuotes={hideBibleQuotes}
                   pendingChapter={pendingChapter}
+                  routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                 />
               ))}
@@ -165,6 +169,7 @@ function WatchBlockEntry({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
   block: MergedWatchBlock
@@ -182,6 +187,7 @@ function WatchBlockEntry({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   if (isWatchBlock(block)) {
@@ -201,6 +207,7 @@ function WatchBlockEntry({
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={pendingChapter}
+        routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
       />
     )
@@ -223,6 +230,7 @@ function SyntheticBlock({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
   block: WatchBlock
@@ -239,6 +247,7 @@ function SyntheticBlock({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   const optimisticVisual =
@@ -265,6 +274,7 @@ function SyntheticBlock({
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
+          forcePosterBridgeKey={routePosterBridgeKey}
         />
       )
     }
