@@ -182,7 +182,17 @@
     "categoryAnimated": "アニメーション",
     "categoryStudy": "学び",
     "categoryFamily": "家族",
-    "categoryChristmas": "クリスマス"
+    "categoryChristmas": "クリスマス",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "音声付きで再生",

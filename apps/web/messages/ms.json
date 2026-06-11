@@ -182,7 +182,17 @@
     "categoryAnimated": "Animasi",
     "categoryStudy": "Kajian",
     "categoryFamily": "Keluarga",
-    "categoryChristmas": "Krismas"
+    "categoryChristmas": "Krismas",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "Mainkan dengan bunyi",

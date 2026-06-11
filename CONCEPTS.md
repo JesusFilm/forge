@@ -50,6 +50,24 @@ A Catalog Sync Run tracks page progress, counts, terminal status, and safe
 failure summaries so broad catalog refreshes can be inspected and retried
 without treating Admin as the mapper's database.
 
+### Media Signature
+
+A compact, versioned media signal derived from an official catalog variant and
+stored for future content-first retrieval.
+
+A Media Signature is keyed by the source `coreId`, the variant
+`videoVariantId`, signature type, algorithm version, and time offset. It is
+evidence for matching, not catalog metadata.
+
+### Index Run
+
+A durable record of one pass that turns indexable Mapper Catalog variants into
+Media Signatures.
+
+An Index Run tracks algorithm version, cursor, counts, terminal status, and
+safe failure summaries so broad indexing can be resumed or inspected without
+reprocessing the whole catalog.
+
 ### Match Job
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.

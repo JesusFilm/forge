@@ -20,8 +20,20 @@ import { Globe } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { runSearch } from "@/lib/search-actions"
-import type { SearchResult } from "@/lib/search"
+import { getSearchLanguageOptions } from "@/lib/search-language-actions"
+import type { SearchActionResultSource, SearchResult } from "@/lib/search"
+import {
+  MAX_SEARCH_LANGUAGE_FILTERS,
+  groupSearchLanguagesByRegion,
+  normalizeSearchLanguageEnglishNames,
+  stripLanguageFromSearchQuery,
+  type SearchLanguageCountrySuggestion,
+  type SearchLanguageOption,
+  type SearchLanguageRegionGroup,
+} from "@/lib/search-language"
+import { writeSearchLanguagePreferenceSlug } from "@/lib/search-language-preference-client"
 import { buildSearchUrl } from "@/lib/search-url"
+import { parseWatchPath } from "@/lib/routes"
 import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -39,6 +51,14 @@ import { SearchOverlay } from "./SearchOverlay"
 const HEADER_HOVER_HEIGHT_PX = 144
 const SEARCH_PAGE_SIZE = 10
 
+type ActiveSearchSignature = {
+  query: string
+  languageKey: string
+  routeLanguageSlug: string | null
+  resultSource: SearchActionResultSource
+  nextOffset: number
+}
+
 export type FloatingSearchContextValue = {
   open: boolean
   closing: boolean
@@ -53,10 +73,32 @@ export type FloatingSearchContextValue = {
   loadingMore: boolean
   error: string | null
   searched: boolean
+  resultSource: SearchActionResultSource | null
+  algoliaSearchEnabled: boolean
+  languageOptions: SearchLanguageOption[]
+  languageGroups: SearchLanguageRegionGroup[]
+  languageCountrySuggestion: SearchLanguageCountrySuggestion | null
+  recommendedLanguage: SearchLanguageOption | null
+  languageOptionsLoading: boolean
+  languageOptionsError: string | null
+  selectedLanguageEnglishNames: string[]
+  selectedLanguageRegionByName: Record<string, string>
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void
-  search: (q: string) => Promise<void>
+  search: (
+    q: string,
+    options?: { languageEnglishNames?: string[] },
+  ) => Promise<void>
   loadMore: () => Promise<void>
+  toggleSearchLanguage: (
+    option: SearchLanguageOption,
+    regionName?: string,
+  ) => void
+  selectSearchLanguage: (
+    option: SearchLanguageOption,
+    regionName?: string,
+  ) => void
+  clearSearchLanguages: () => void
   closeAndKeepQuery: () => void
 }
 
@@ -119,7 +161,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   // closed modal for preserved ISR on all pages.
   const [open, setOpenState] = useState<boolean>(false)
   const [closing, setClosing] = useState<boolean>(false)
-  const [query, setQuery] = useState<string>("")
+  const [query, setQueryState] = useState<string>("")
   const [pinned, setPinned] = useState<boolean>(false)
   const [playerChromeVisible, setPlayerChromeVisible] = useState(true)
   const [playerChromeOpacity, setPlayerChromeOpacity] = useState(1)
@@ -293,14 +335,52 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState(false)
+  const [resultSource, setResultSource] =
+    useState<SearchActionResultSource | null>(null)
+  const [algoliaSearchEnabled, setAlgoliaSearchEnabled] = useState(false)
+  const [languageOptions, setLanguageOptions] = useState<
+    SearchLanguageOption[]
+  >([])
+  const [languageCountrySuggestion, setLanguageCountrySuggestion] =
+    useState<SearchLanguageCountrySuggestion | null>(null)
+  const [recommendedLanguage, setRecommendedLanguage] =
+    useState<SearchLanguageOption | null>(null)
+  const [languageOptionsLoading, setLanguageOptionsLoading] = useState(false)
+  const [languageOptionsError, setLanguageOptionsError] = useState<
+    string | null
+  >(null)
+  const [languageFacets, setLanguageFacets] = useState<Record<string, number>>(
+    {},
+  )
+  const [selectedLanguageEnglishNames, setSelectedLanguageEnglishNames] =
+    useState<string[]>([])
+  const [selectedLanguageRegionByName, setSelectedLanguageRegionByName] =
+    useState<Record<string, string>>({})
 
   const requestIdRef = useRef(0)
+  const languageOptionsRequestIdRef = useRef(0)
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loadingMoreRef = useRef(false)
+  const loadMoreRunIdRef = useRef(0)
   const displayResultsRef = useRef<SearchResult[]>([])
+  const languageOptionsRef = useRef<SearchLanguageOption[]>([])
+  const queryRef = useRef("")
+  const selectedLanguageEnglishNamesRef = useRef<string[]>([])
+  const activeSearchSignatureRef = useRef<ActiveSearchSignature | null>(null)
   useEffect(() => {
     displayResultsRef.current = displayResults
   }, [displayResults])
+  useEffect(() => {
+    languageOptionsRef.current = languageOptions
+  }, [languageOptions])
+  useEffect(() => {
+    selectedLanguageEnglishNamesRef.current = selectedLanguageEnglishNames
+  }, [selectedLanguageEnglishNames])
+
+  const setQuery = useCallback((nextQuery: string) => {
+    queryRef.current = nextQuery
+    setQueryState(nextQuery)
+  }, [])
 
   // Cancel any pending skeleton timer on unmount.
   useEffect(() => {
@@ -314,15 +394,104 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     setPortalReady(true)
   }, [])
 
+  const languageGroups = useMemo(
+    () => groupSearchLanguagesByRegion(languageOptions),
+    [languageOptions],
+  )
+  const routeLanguageSlug = useMemo(() => {
+    const parsed = parseWatchPath(pathname)
+    if (
+      parsed.kind === "localized-home" ||
+      parsed.kind === "video" ||
+      parsed.kind === "episode"
+    ) {
+      return parsed.lang
+    }
+    return null
+  }, [pathname])
+
+  const refreshLanguageOptions = useCallback(
+    async (
+      availableLanguageFacets?: Record<string, number>,
+    ): Promise<SearchLanguageOption[]> => {
+      const thisRequest = ++languageOptionsRequestIdRef.current
+      setLanguageOptionsLoading(true)
+      setLanguageOptionsError(null)
+
+      try {
+        const response = await getSearchLanguageOptions({
+          availableLanguageFacets,
+        })
+        if (languageOptionsRequestIdRef.current !== thisRequest) {
+          return response.ok ? response.options : []
+        }
+        setAlgoliaSearchEnabled(response.algoliaEnabled)
+
+        if (response.ok) {
+          setLanguageOptions(response.options)
+          setLanguageCountrySuggestion(response.countrySuggestion)
+          setRecommendedLanguage(response.recommendedLanguage)
+          return response.options
+        }
+
+        setLanguageOptions([])
+        setLanguageCountrySuggestion(null)
+        setRecommendedLanguage(null)
+        setLanguageOptionsError(response.error.message)
+        return []
+      } catch {
+        if (languageOptionsRequestIdRef.current !== thisRequest) return []
+        setLanguageOptions([])
+        setLanguageCountrySuggestion(null)
+        setRecommendedLanguage(null)
+        setLanguageOptionsError("Language options are unavailable.")
+        return []
+      } finally {
+        if (languageOptionsRequestIdRef.current === thisRequest) {
+          setLanguageOptionsLoading(false)
+        }
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    void refreshLanguageOptions(
+      Object.keys(languageFacets).length > 0 ? languageFacets : undefined,
+    )
+  }, [open, languageFacets, refreshLanguageOptions])
+
+  const maybeSetLanguageFacets = useCallback(
+    (
+      nextLanguageFacets: Record<string, number>,
+      activeLanguageEnglishNames: readonly string[],
+    ): void => {
+      if (activeLanguageEnglishNames.length > 0) return
+      setLanguageFacets(nextLanguageFacets)
+    },
+    [],
+  )
+
   const search = useCallback(
-    async (q: string): Promise<void> => {
+    async (
+      q: string,
+      options?: { languageEnglishNames?: string[] },
+    ): Promise<void> => {
       const trimmed = q.trim()
       setQuery(q)
+      const activeLanguageEnglishNames =
+        options?.languageEnglishNames ?? selectedLanguageEnglishNamesRef.current
+      const activeLanguageKey = searchLanguageKey(activeLanguageEnglishNames)
 
       // Bump the request id immediately so any in-flight request (from a prior
       // call in any branch — exit-animation, Apollo, or clear) fails its
       // freshness check when it resolves.
       const thisRequest = ++requestIdRef.current
+      loadMoreRunIdRef.current += 1
+      loadingMoreRef.current = false
+      activeSearchSignatureRef.current = null
+      setLoadingMore(false)
 
       // URL sync — preserves any existing params (utm_*, etc.) and strips ?q=
       // when the query is empty. Use usePathname() (app-relative) so
@@ -347,6 +516,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         setHasMore(false)
         setSearched(false)
         setError(null)
+        setResultSource(null)
+        activeSearchSignatureRef.current = null
         return
       }
 
@@ -368,21 +539,67 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       }, skeletonThreshold)
 
       try {
+        const currentLanguageOptions =
+          languageOptionsRef.current.length > 0
+            ? languageOptionsRef.current
+            : await refreshLanguageOptions(
+                Object.keys(languageFacets).length > 0
+                  ? languageFacets
+                  : undefined,
+              )
+        if (requestIdRef.current !== thisRequest) return
+
         const data = await runSearch({
           query: trimmed.slice(0, 200),
           limit: SEARCH_PAGE_SIZE,
           offset: 0,
+          languageEnglishNames: activeLanguageEnglishNames,
+          languageOptions: currentLanguageOptions,
+          routeLanguageSlug,
         })
 
         if (requestIdRef.current !== thisRequest) return
+
+        if (!data.ok) {
+          setResults([])
+          setDisplayResults([])
+          setHasMore(false)
+          setResultSource(data.resultSource)
+          activeSearchSignatureRef.current = null
+          setError(tSearchOverlay("searchFailed"))
+          setAlgoliaSearchEnabled(data.resultSource === "algolia")
+          if (data.languageFacets) {
+            maybeSetLanguageFacets(
+              data.languageFacets,
+              activeLanguageEnglishNames,
+            )
+          }
+          return
+        }
 
         const newResults = data.results
         setResults(newResults)
         setDisplayResults(newResults)
         setResultsKey((k) => k + 1)
         setHasMore(data.hasMore)
+        setResultSource(data.resultSource)
+        activeSearchSignatureRef.current = {
+          query: trimmed.slice(0, 200),
+          languageKey: activeLanguageKey,
+          routeLanguageSlug,
+          resultSource: data.resultSource,
+          nextOffset: data.nextOffset ?? newResults.length,
+        }
+        setAlgoliaSearchEnabled(data.resultSource === "algolia")
+        if (data.languageFacets) {
+          maybeSetLanguageFacets(
+            data.languageFacets,
+            activeLanguageEnglishNames,
+          )
+        }
       } catch {
         if (requestIdRef.current === thisRequest) {
+          activeSearchSignatureRef.current = null
           setError(tSearchOverlay("searchFailed"))
         }
       } finally {
@@ -395,13 +612,38 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [pathname, router, tSearchOverlay],
+    [
+      languageFacets,
+      maybeSetLanguageFacets,
+      pathname,
+      refreshLanguageOptions,
+      routeLanguageSlug,
+      router,
+      setQuery,
+      tSearchOverlay,
+    ],
   )
 
   const loadMore = useCallback(async (): Promise<void> => {
+    const expectedSignature = activeSearchSignatureRef.current
+    if (!expectedSignature) return
+    const currentQuery = queryRef.current.trim().slice(0, 200)
+    const currentLanguageKey = searchLanguageKey(
+      selectedLanguageEnglishNamesRef.current,
+    )
+    if (
+      expectedSignature.query !== currentQuery ||
+      expectedSignature.languageKey !== currentLanguageKey ||
+      expectedSignature.routeLanguageSlug !== routeLanguageSlug ||
+      expectedSignature.resultSource !== resultSource
+    ) {
+      return
+    }
+
     // Synchronous guard against double-fire before React commits `disabled`.
     if (loadingMoreRef.current) return
     loadingMoreRef.current = true
+    const thisLoadMoreRun = ++loadMoreRunIdRef.current
     setLoadingMore(true)
     setError(null)
     // Capture the current search's request id; bail out of the append if a
@@ -409,23 +651,114 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     const thisRequest = requestIdRef.current
     try {
       const data = await runSearch({
-        query: query.trim().slice(0, 200),
+        query: currentQuery,
         limit: SEARCH_PAGE_SIZE,
-        offset: results.length,
+        offset: expectedSignature.nextOffset,
+        languageEnglishNames: selectedLanguageEnglishNamesRef.current,
+        languageOptions: languageOptionsRef.current,
+        routeLanguageSlug,
       })
       if (requestIdRef.current !== thisRequest) return
+      if (data.resultSource !== expectedSignature.resultSource) {
+        setError(tSearchOverlay("loadMoreFailed"))
+        return
+      }
+      if (!data.ok) {
+        setError(tSearchOverlay("loadMoreFailed"))
+        setAlgoliaSearchEnabled(data.resultSource === "algolia")
+        return
+      }
       setResults((prev) => [...prev, ...data.results])
       setDisplayResults((prev) => [...prev, ...data.results])
       setHasMore(data.hasMore)
+      setResultSource(data.resultSource)
+      activeSearchSignatureRef.current = {
+        ...expectedSignature,
+        nextOffset:
+          data.nextOffset ?? expectedSignature.nextOffset + data.results.length,
+      }
+      setAlgoliaSearchEnabled(data.resultSource === "algolia")
     } catch {
       if (requestIdRef.current === thisRequest) {
         setError(tSearchOverlay("loadMoreFailed"))
       }
     } finally {
-      loadingMoreRef.current = false
-      setLoadingMore(false)
+      if (loadMoreRunIdRef.current === thisLoadMoreRun) {
+        loadingMoreRef.current = false
+        setLoadingMore(false)
+      }
     }
-  }, [query, results.length, tSearchOverlay])
+  }, [resultSource, routeLanguageSlug, tSearchOverlay])
+
+  const toggleSearchLanguage = useCallback(
+    (option: SearchLanguageOption, regionName?: string): void => {
+      const selected = selectedLanguageEnglishNamesRef.current.some(
+        (language) => language === option.englishName,
+      )
+      if (
+        !selected &&
+        selectedLanguageEnglishNamesRef.current.length >=
+          MAX_SEARCH_LANGUAGE_FILTERS
+      ) {
+        return
+      }
+      const nextLanguages = selected
+        ? selectedLanguageEnglishNamesRef.current.filter(
+            (language) => language !== option.englishName,
+          )
+        : normalizeSearchLanguageEnglishNames([
+            ...selectedLanguageEnglishNamesRef.current,
+            option.englishName,
+          ])
+
+      selectedLanguageEnglishNamesRef.current = nextLanguages
+      setSelectedLanguageEnglishNames(nextLanguages)
+      setSelectedLanguageRegionByName((prev) => {
+        const next = { ...prev }
+        if (selected) {
+          delete next[option.englishName]
+        } else if (regionName) {
+          next[option.englishName] = regionName
+        }
+        return next
+      })
+
+      if (!selected && option.publicSlug) {
+        writeSearchLanguagePreferenceSlug(option.publicSlug)
+      }
+
+      const nextQuery = selected
+        ? query
+        : stripLanguageFromSearchQuery(option.englishName, query)
+      void search(nextQuery, { languageEnglishNames: nextLanguages })
+    },
+    [query, search],
+  )
+
+  const selectSearchLanguage = useCallback(
+    (option: SearchLanguageOption, regionName?: string): void => {
+      const nextLanguages = [option.englishName]
+      selectedLanguageEnglishNamesRef.current = nextLanguages
+      setSelectedLanguageEnglishNames(nextLanguages)
+      setSelectedLanguageRegionByName(
+        regionName ? { [option.englishName]: regionName } : {},
+      )
+
+      if (option.publicSlug) {
+        writeSearchLanguagePreferenceSlug(option.publicSlug)
+      }
+    },
+    [],
+  )
+
+  const clearSearchLanguages = useCallback((): void => {
+    selectedLanguageEnglishNamesRef.current = []
+    setSelectedLanguageEnglishNames([])
+    setSelectedLanguageRegionByName({})
+    if (query.trim().length > 0) {
+      void search(query, { languageEnglishNames: [] })
+    }
+  }, [query, search])
 
   const closeAndKeepQuery = useCallback(() => {
     setOpen(false)
@@ -444,7 +777,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     setQuery(trimmed)
     setOpenState(true)
     void search(trimmed)
-  }, [search])
+  }, [search, setQuery])
 
   const value = useMemo<FloatingSearchContextValue>(
     () => ({
@@ -461,10 +794,23 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       loadingMore,
       error,
       searched,
+      resultSource,
+      algoliaSearchEnabled,
+      languageOptions,
+      languageGroups,
+      languageCountrySuggestion,
+      recommendedLanguage,
+      languageOptionsLoading,
+      languageOptionsError,
+      selectedLanguageEnglishNames,
+      selectedLanguageRegionByName,
       setOpen,
       setQuery,
       search,
       loadMore,
+      toggleSearchLanguage,
+      selectSearchLanguage,
+      clearSearchLanguages,
       closeAndKeepQuery,
     }),
     [
@@ -481,9 +827,23 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       loadingMore,
       error,
       searched,
+      resultSource,
+      algoliaSearchEnabled,
+      languageOptions,
+      languageGroups,
+      languageCountrySuggestion,
+      recommendedLanguage,
+      languageOptionsLoading,
+      languageOptionsError,
+      selectedLanguageEnglishNames,
+      selectedLanguageRegionByName,
       setOpen,
+      setQuery,
       search,
       loadMore,
+      toggleSearchLanguage,
+      selectSearchLanguage,
+      clearSearchLanguages,
       closeAndKeepQuery,
     ],
   )
@@ -658,5 +1018,11 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           : null}
       </FloatingSearchPinnedContext.Provider>
     </FloatingSearchContext.Provider>
+  )
+}
+
+function searchLanguageKey(languageEnglishNames: readonly string[]): string {
+  return normalizeSearchLanguageEnglishNames(languageEnglishNames).join(
+    "\u0001",
   )
 }

@@ -41,6 +41,13 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the watch-page floating question panel.",
   },
+  watchAlgoliaSearch: {
+    key: "forge.watch.algoliaSearch",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT",
+    description:
+      "Runtime rollout gate for Algolia-backed video results in the Forge watch search modal.",
+  },
 } as const
 
 export type FeatureFlagName = keyof typeof featureFlags

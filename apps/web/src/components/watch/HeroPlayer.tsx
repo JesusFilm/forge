@@ -45,6 +45,7 @@ import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import { MutedSpeakerIcon, UnmutedSpeakerIcon } from "./chrome-icons"
+import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
 type PillState = "play-with-sound" | "tap-to-unmute"
@@ -202,7 +203,7 @@ export function HeroPlayer({
         const t = tracks[i]!
         if (
           (t.kind === "subtitles" || t.kind === "captions") &&
-          t.label !== "__forge_subtitle__"
+          t.label !== FORGE_SUBTITLE_TRACK_LABEL
         ) {
           t.mode = "disabled"
         }
@@ -242,7 +243,7 @@ export function HeroPlayer({
 
         const trackEl = document.createElement("track")
         trackEl.kind = "subtitles"
-        trackEl.label = "__forge_subtitle__"
+        trackEl.label = FORGE_SUBTITLE_TRACK_LABEL
         trackEl.src = subtitleVttSrc
         trackEl.default = true
         trackEl.setAttribute("data-subtitle-track", "true")
