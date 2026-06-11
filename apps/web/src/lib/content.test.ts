@@ -231,7 +231,7 @@ describe("resolveWatchPage", () => {
     expect(result.error?.message).toBe("No experience found")
   })
 
-  it("prefers an explicit experience when the slug doesn't match the template slug", async () => {
+  it("falls back to an explicit experience when no route video exists", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
@@ -245,6 +245,11 @@ describe("resolveWatchPage", () => {
               title: "Single Video Template",
             },
           },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: null,
         },
       })
       .mockResolvedValueOnce({
@@ -262,7 +267,7 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "christmas")
 
-    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(queryMock).toHaveBeenCalledTimes(3)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "experience",
@@ -272,7 +277,7 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("falls back to the default template for plain video slugs", async () => {
+  it("uses the default template for video slugs before same-slug experience lookup", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
@@ -286,11 +291,6 @@ describe("resolveWatchPage", () => {
               title: "Single Video Template",
             },
           },
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          experienceBySlug: null,
         },
       })
       .mockResolvedValueOnce({
@@ -351,6 +351,7 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "jesus")
 
+    expect(queryMock).toHaveBeenCalledTimes(3)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "video-template",
@@ -380,9 +381,6 @@ describe("resolveWatchPage", () => {
             defaultTemplateExperience: null,
           },
         },
-      })
-      .mockResolvedValueOnce({
-        data: { experienceBySlug: null },
       })
       .mockResolvedValueOnce({
         data: {
@@ -419,7 +417,6 @@ describe("resolveWatchPage", () => {
           },
         },
       })
-      .mockResolvedValueOnce({ data: { experienceBySlug: null } })
       .mockResolvedValueOnce({
         data: {
           // Empty variants — selectPlayableVariant returns null, so
