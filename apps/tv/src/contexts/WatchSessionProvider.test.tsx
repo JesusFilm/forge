@@ -69,6 +69,7 @@ function makeSubtitle(
     documentId: `sub-${slug}`,
     languageSlug: slug,
     languageName: slug,
+    languageNameNative: null,
     languageBcp47: bcp47,
     vttSrc: `https://x/${slug}.vtt`,
     primary: false,

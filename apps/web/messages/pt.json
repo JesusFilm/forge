@@ -182,7 +182,17 @@
     "categoryAnimated": "Animações",
     "categoryStudy": "Estudo",
     "categoryFamily": "Família",
-    "categoryChristmas": "Natal"
+    "categoryChristmas": "Natal",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "Assistir agora",

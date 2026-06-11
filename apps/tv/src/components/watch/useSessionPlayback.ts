@@ -21,7 +21,13 @@
 // The pure decision logic lives in playerSwitch.ts (inPlayerMenuVisible /
 // shouldReplaceSource); this hook is the React wiring around it.
 
-import { useEffect, useRef, useState, type MutableRefObject } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import type { Animated } from "react-native"
 
@@ -288,7 +294,15 @@ export function useSessionPlayback({
   // first (D-pad), then opens the menu. Opening cancels any pending hide so the
   // chrome doesn't fade under the menu; closing re-arms auto-hide and routes
   // focus back to play/pause via the one-shot revealFocusPending claim.
-  const openMenu = () => {
+  //
+  // Both are useCallback-stable: closeMenu flows into InPlayerMenu's renderRow
+  // deps, and the host re-renders every timeUpdate (~1Hz) during playback — an
+  // unstable identity would re-render every mounted dub row each second while
+  // the menu is open. Latest-ref pattern for the host callback (mirrors
+  // scheduleHideRef).
+  const onRequestRevealFocusRef = useRef(onRequestRevealFocus)
+  onRequestRevealFocusRef.current = onRequestRevealFocus
+  const openMenu = useCallback(() => {
     // Stop any in-flight hide so its completion callback can't flip
     // controlsVisible=false after the menu opens (captured-handle pattern,
     // mirrors revealControls / the error + foreground paths).
@@ -302,14 +316,14 @@ export function useSessionPlayback({
     }
     menuOpenRef.current = true
     setMenuOpen(true)
-  }
-  const closeMenu = () => {
+  }, [hideAnimRef, inactivityTimerRef])
+  const closeMenu = useCallback(() => {
     menuOpenRef.current = false
     setMenuOpen(false)
     // One-shot focus restore to play/pause (mirrors Fix #5 / reveal pattern).
-    onRequestRevealFocus()
+    onRequestRevealFocusRef.current()
     scheduleHideRef.current()
-  }
+  }, [scheduleHideRef])
 
   return {
     menuActive,

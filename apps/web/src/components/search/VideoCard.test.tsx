@@ -68,6 +68,14 @@ describe("defaultHrefBuilder", () => {
     )
   })
 
+  it("uses a result language slug when Algolia search resolves one", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({ slug: "jesus", languageSlug: "spanish-castilian" }),
+      ),
+    ).toBe("/jesus.html/spanish-castilian.html")
+  })
+
   it("falls back to / on a malformed slug rather than a broken deep link", () => {
     expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe("/")
   })

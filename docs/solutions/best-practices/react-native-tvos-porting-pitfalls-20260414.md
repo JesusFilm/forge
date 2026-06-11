@@ -132,6 +132,11 @@ Key constraints:
 - Anchors need `accessible={false}` to be invisible to screen readers.
 - Anchor height must be >= 48px for the focus engine to recognize it.
 
+Scope: this anchor technique is for `ScrollView`. A virtualized `FlatList`
+scrolls programmatically with `scrollToIndex` + `getItemLayout` instead (no
+anchors needed), and its preferred-focus handling has its own pitfalls — see
+`docs/solutions/best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md`.
+
 ### 5. pointerEvents="none" wrapper on overlay VideoView blocks AVPlayerLayer on tvOS
 
 Wrapping a `VideoView` in `<View pointerEvents="none">` is the documented fix for D-pad focus stealing on inline video (see Pitfall 3's related doc on VideoView focus). However, in an **overlay** context (e.g., fullscreen `VideoPlayer` with `TVFocusGuideView trapFocusUp/Down/Left/Right`), this wrapper prevents AVPlayerLayer from compositing -- the video area is black while controls remain functional.
@@ -187,6 +192,7 @@ See `apps/tv/app/experience/[slug].tsx` for a real implementation of pitfall 4 (
 
 ## Related
 
+- `docs/solutions/best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md` -- the virtualized-list deep dive: Yoga maxHeight non-shrink inside bounded panels, one-shot `hasTVPreferredFocus` for virtualized row remounts (the FlatList instance of issue #839 below), mount-once `initialScrollIndex` under an always-mounted Modal, deterministic row heights for `getItemLayout`
 - `docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md` -- extends this catalog with pitfalls that aren't runtime type/layout issues: state-machine stale closures when native event callbacks (`expo-video` `playingChange`, `statusChange`) fire before React commits; `Animated.CompositeAnimation` completion callbacks clobbering force-transitioned state; focus dead-zones during opacity fades; `useTVEventHandler` whitelist-vs-denylist trade-offs; `isMountedRef` for late-emission safety. Same "invisible to type checking, only surfaces on hardware" class — complementary axis to the six pitfalls above.
 - `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` -- Pitfall 6 reference doc: non-interactive hero + rail-owns-focus, poster-hold during HLS swap, `collapsable={false}` for Android TV, gql.tada compile-time `never`-collapse assert
 - `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md` -- general TV platform setup guide (TurboModule/New Arch, deployment targets, FlatList swap, TVFocusGuideView basics)

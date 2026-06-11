@@ -182,7 +182,17 @@
     "categoryAnimated": "Animation",
     "categoryStudy": "Étude",
     "categoryFamily": "Famille",
-    "categoryChristmas": "Noël"
+    "categoryChristmas": "Noël",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "Regarder",

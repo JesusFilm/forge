@@ -429,6 +429,14 @@ export function VideoPlayer({
   // from popping (combined with TVEventControl.enableTVMenuKey on tvOS).
   useEffect(() => {
     const handler = () => {
+      // In-player menu open: Back closes the MENU, not playback — without
+      // this branch the menu was a trap (Back exited the video entirely).
+      // menuOpenRef/closeMenu are declared below; the closure only runs
+      // post-commit, and both identities are stable (ref + useCallback).
+      if (menuOpenRef.current) {
+        closeMenu()
+        return true
+      }
       if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
         revealControlsRef.current()
         return true

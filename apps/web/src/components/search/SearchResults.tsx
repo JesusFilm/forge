@@ -63,9 +63,14 @@ export function SearchResults({
         typeof performance !== "undefined" ? performance.now() : Date.now()
       onQueryTimed?.(ended - startedAt)
 
+      if (!data.ok) {
+        setError(data.error.message)
+        return
+      }
+
       setResults((prev) => [...prev, ...data.results])
       setHasMore(data.hasMore)
-      setOffset((prev) => prev + data.results.length)
+      setOffset((prev) => data.nextOffset ?? prev + data.results.length)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load more results",

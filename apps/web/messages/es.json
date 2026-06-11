@@ -182,7 +182,17 @@
     "categoryAnimated": "Animados",
     "categoryStudy": "Estudio",
     "categoryFamily": "Familia",
-    "categoryChristmas": "Navidad"
+    "categoryChristmas": "Navidad",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "Ver ahora",

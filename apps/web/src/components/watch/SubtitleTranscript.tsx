@@ -14,106 +14,14 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import type { WatchSubtitle } from "@/lib/content"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
-
-type Cue = { start: number; end: number; text: string }
-
-const TIMING_RE =
-  /(?:(\d+):)?(\d+):(\d+)[.,](\d+)\s*-->\s*(?:(\d+):)?(\d+):(\d+)[.,](\d+)/
-
-function toSeconds(
-  h: string | undefined,
-  m: string,
-  s: string,
-  ms: string,
-): number {
-  const hours = h ? parseInt(h, 10) : 0
-  return (
-    hours * 3600 +
-    parseInt(m, 10) * 60 +
-    parseInt(s, 10) +
-    parseInt(ms.padEnd(3, "0").slice(0, 3), 10) / 1000
-  )
-}
-
-// Entity map. Single-pass replace so a literal `&amp;lt;` in source
-// decodes to `&lt;` (not `<`). Decoding `&amp;` last in a chained
-// `.replace()` would double-unescape that case — see CodeQL js/double-escaping.
-const HTML_ENTITY_MAP: Record<string, string> = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&#39;": "'",
-  "&nbsp;": " ",
-}
-const HTML_ENTITY_RE = /&(?:amp|lt|gt|quot|#39|nbsp);/g
-
-function decodeEntities(text: string): string {
-  return text.replace(HTML_ENTITY_RE, (m) => HTML_ENTITY_MAP[m] ?? m)
-}
-
-// Strip VTT/HTML-ish tags. Iterate until the string stabilises so nested
-// or overlapping payloads (e.g. `<scr<script>ipt>`) can't survive a single
-// pass — see CodeQL js/incomplete-multi-character-sanitization. Output
-// still flows into a React text node, so the regex is defense-in-depth
-// over auto-escaped JSX rather than the primary safety boundary.
-function stripTags(text: string): string {
-  let prev = ""
-  let cur = text
-  while (cur !== prev) {
-    prev = cur
-    cur = cur.replace(/<[^>]*>/g, "")
-  }
-  return cur
-}
-
-/**
- * SMPTE-offset normalization. Broadcast-authored VTT files often start at
- * 01:00:00 (the first hour reserved for color bars / leader), so cues run
- * 01:HH:MM:SS instead of 00:HH:MM:SS. The video file itself plays from
- * 0:00, so the raw cues never line up with `currentTime`. Detect by
- * comparing the last cue's end against the variant duration with a 60s
- * grace; shift by the largest whole-hour offset that brings cues back
- * inside duration. No-op when duration is unknown.
- */
-export function normalizeCueOffset(
-  cues: Cue[],
-  durationSeconds: number | null | undefined,
-): Cue[] {
-  if (cues.length === 0) return cues
-  if (!durationSeconds || durationSeconds <= 0) return cues
-  const first = cues[0]!.start
-  const last = cues[cues.length - 1]!.end
-  if (last <= durationSeconds + 60) return cues
-  if (first < 3600) return cues
-  const offset = Math.floor(first / 3600) * 3600
-  const candidateLast = last - offset
-  if (candidateLast < 0 || candidateLast > durationSeconds + 60) return cues
-  return cues.map((c) => ({
-    start: c.start - offset,
-    end: c.end - offset,
-    text: c.text,
-  }))
-}
-
-export function parseVtt(raw: string): Cue[] {
-  const cues: Cue[] = []
-  const normalized = raw.replace(/\r\n?/g, "\n")
-  const blocks = normalized.split(/\n\n+/)
-  for (const block of blocks) {
-    const lines = block.split("\n").filter((l) => l.length > 0)
-    const timingIdx = lines.findIndex((l) => l.includes("-->"))
-    if (timingIdx < 0) continue
-    const m = lines[timingIdx]!.match(TIMING_RE)
-    if (!m) continue
-    const start = toSeconds(m[1], m[2]!, m[3]!, m[4]!)
-    const end = toSeconds(m[5], m[6]!, m[7]!, m[8]!)
-    const textLines = lines.slice(timingIdx + 1)
-    const text = decodeEntities(stripTags(textLines.join(" ")).trim())
-    if (text) cues.push({ start, end, text })
-  }
-  return cues
-}
+import {
+  filterTranscriptSubtitlesForAudio,
+  normalizeCueOffset,
+  parseVtt,
+  pickInitialSubtitleSlug,
+  type InitialSubtitleTranscript,
+  type SubtitleCue,
+} from "@/lib/subtitle-transcript"
 
 function formatTimestamp(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds))
@@ -123,30 +31,6 @@ function formatTimestamp(seconds: number): string {
   const pad = (n: number) => n.toString().padStart(2, "0")
   if (h > 0) return `${h}:${pad(m)}:${pad(s)}`
   return `${m}:${pad(s)}`
-}
-
-function pickInitialSubtitleSlug(
-  subtitles: WatchSubtitle[],
-  audioSlug: string | null | undefined,
-): string | null {
-  if (subtitles.length === 0) return null
-  if (audioSlug) {
-    const match = subtitles.find((s) => s.language.slug === audioSlug)
-    if (match) return match.language.slug
-  }
-  const primary = subtitles.find((s) => s.primary)
-  if (primary) return primary.language.slug
-  const human = subtitles.find((s) => !s.aiGenerated)
-  if (human) return human.language.slug
-  return subtitles[0]!.language.slug
-}
-
-export function filterTranscriptSubtitlesForAudio(
-  subtitles: WatchSubtitle[],
-  audioSlug: string | null | undefined,
-): WatchSubtitle[] {
-  if (!audioSlug) return subtitles
-  return subtitles.filter((s) => s.language.slug === audioSlug)
 }
 
 type SubtitleTranscriptProps = {
@@ -160,6 +44,7 @@ type SubtitleTranscriptProps = {
    * authored.
    */
   durationSeconds?: number | null
+  initialTranscript?: InitialSubtitleTranscript
 }
 
 export function SubtitleTranscript({
@@ -167,6 +52,7 @@ export function SubtitleTranscript({
   playerRef,
   audioSlug,
   durationSeconds,
+  initialTranscript = null,
 }: SubtitleTranscriptProps) {
   const t = useTranslations("SubtitleTranscript")
   const transcriptSubtitles = useMemo(
@@ -194,14 +80,14 @@ export function SubtitleTranscript({
 
   const [loaded, setLoaded] = useState<{
     vttSrc: string
-    cues: Cue[] | null
-  } | null>(null)
+    cues: SubtitleCue[] | null
+  } | null>(initialTranscript)
   // activeMark carries BOTH the cue-list identity and the highlighted index,
   // so render-time we only treat the index as valid when it belongs to the
   // currently-rendered cues array. Switching subtitle language drops the
   // stale highlight without an extra effect-driven setState.
   const [activeMark, setActiveMark] = useState<{
-    cues: Cue[] | null
+    cues: SubtitleCue[] | null
     idx: number
   }>({ cues: null, idx: -1 })
 
@@ -224,6 +110,7 @@ export function SubtitleTranscript({
 
   useEffect(() => {
     if (!activeVttSrc) return
+    if (loaded?.vttSrc === activeVttSrc) return
     const controller = new AbortController()
     fetch(activeVttSrc, {
       credentials: "omit",
@@ -244,7 +131,7 @@ export function SubtitleTranscript({
         setLoaded({ vttSrc: activeVttSrc, cues: null })
       })
     return () => controller.abort()
-  }, [activeVttSrc, durationSeconds])
+  }, [activeVttSrc, durationSeconds, loaded?.vttSrc])
 
   useEffect(() => {
     const el = playerRef.current as HTMLMediaElement | null
@@ -276,7 +163,7 @@ export function SubtitleTranscript({
   }, [cues, playerRef])
 
   const handleSeek = useCallback(
-    (cue: Cue) => {
+    (cue: SubtitleCue) => {
       const el = playerRef.current as HTMLMediaElement | null
       if (!el) return
       // Promote the hero out of muted-preview if it has not committed yet.

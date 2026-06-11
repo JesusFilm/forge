@@ -10,6 +10,14 @@
 // it. On close, the parent overlay restores focus to play/pause via a one-shot
 // hasTVPreferredFocus (we don't own that flag — we signal close via onClose).
 //
+// Rows are the same WatchOptionRow the on-page sheets use (white-fill focus,
+// red check, disabled "Unavailable"), and the chrome is watchMenuStyles — one
+// design language across every watch menu. The dub section is a VIRTUALIZED
+// FlatList (a video like the JESUS film carries ~2,259 dubs; mounting them all
+// froze the menu open). Headings and rows are fixed-height, so getItemLayout +
+// initialScrollIndex open the menu AT the active dub. The small subtitle
+// section rides in ListFooterComponent (not virtualized — typically tens).
+//
 // Rows reuse the SAME pure helpers as U6's on-page panels (panelState.ts):
 //   - language rows: annotateVariantRows (hls==null → disabled, non-selectable),
 //   - subtitle rows: deriveSubtitlePanelState (loading/error/empty/list).
@@ -19,20 +27,21 @@
 // viewer is never trapped in a loading/error/empty menu.
 
 import { useEffect, useMemo } from "react"
-import { ScrollView, StyleSheet, Text, View } from "react-native"
+import { FlatList, StyleSheet, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
-import { FocusableCard } from "../FocusableCard"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import {
   annotateVariantRows,
   deriveSubtitlePanelState,
   isSubtitleRowActive,
 } from "./panelState"
-import { panelStyles } from "./panelStyles"
-import { VariantRow } from "./VariantRow"
+import { useVariantList } from "./useVariantList"
+import { MENU_HEADING_HEIGHT } from "./watchMenuLayout"
+import { WatchOptionRow } from "./WatchOptionRow"
+import { watchMenuStyles } from "./watchMenuStyles"
 
 export function InPlayerMenu({ onClose }: { onClose: () => void }) {
   const {
@@ -60,6 +69,23 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
 
   const subtitleState = deriveSubtitlePanelState(activeVariantMediaState)
 
+  // Shared virtualized-list wiring (one-shot preferred focus, scroll-to-active,
+  // fixed-height offsets). The menu unmounts on close, so each open is a fresh
+  // mount and `visible` can stay at its default. headerHeight shifts the row
+  // offsets below the in-list "Audio Language" heading.
+  const {
+    listRef,
+    renderRow,
+    keyExtractor,
+    getItemLayout,
+    initialScrollIndex,
+  } = useVariantList({
+    rows: languageRows,
+    onSelect: setActiveVariantIndex,
+    onClose,
+    headerHeight: MENU_HEADING_HEIGHT,
+  })
+
   return (
     // Absolute-fill scrim INSIDE the overlay's content layer. Its own
     // trapFocus* TVFocusGuideView keeps D-pad within the menu while open; the
@@ -72,107 +98,109 @@ export function InPlayerMenu({ onClose }: { onClose: () => void }) {
         trapFocusDown
         trapFocusLeft
         trapFocusRight
-        style={styles.panel}
+        style={watchMenuStyles.panel}
       >
-        <ScrollView contentContainerStyle={styles.listContent}>
-          {/* ── Audio Language ────────────────────────────────────────── */}
-          <Text style={styles.heading} accessibilityRole="header">
-            Audio Language
-          </Text>
-          {languageRows.map((row) => (
-            <VariantRow
-              key={`variant-${row.variant.documentId ?? ""}-${row.index}`}
-              row={row}
-              onSelect={setActiveVariantIndex}
-              onClose={onClose}
-              rowInnerStyle={panelStyles.rowInnerCompact}
-            />
-          ))}
-
-          {/* ── Subtitles ─────────────────────────────────────────────── */}
-          <Text style={[styles.heading, styles.headingGap]}>Subtitles</Text>
-
-          {/* Off row — always present, always focusable, in every state. */}
-          <FocusableCard
-            onPress={() => {
-              setSubtitleEnabled(false)
-              onClose()
-            }}
-            focusScale={1.02}
-            style={panelStyles.row}
-            accessibilityLabel="Subtitles off"
-          >
-            <View style={panelStyles.rowInnerCompact}>
-              <Text style={panelStyles.rowText}>Subtitles off</Text>
-              {!subtitleEnabled ? (
-                <Text style={panelStyles.check}>{"✓"}</Text>
-              ) : null}
+        <FlatList
+          ref={listRef}
+          data={languageRows}
+          renderItem={renderRow}
+          keyExtractor={keyExtractor}
+          getItemLayout={getItemLayout}
+          initialScrollIndex={initialScrollIndex}
+          initialNumToRender={14}
+          windowSize={7}
+          showsVerticalScrollIndicator={false}
+          style={watchMenuStyles.list}
+          contentContainerStyle={watchMenuStyles.listContent}
+          ListHeaderComponent={
+            <View style={styles.headingBox}>
+              <Text style={watchMenuStyles.title} accessibilityRole="header">
+                Audio Language
+              </Text>
             </View>
-          </FocusableCard>
+          }
+          ListFooterComponent={
+            <>
+              {/* ── Subtitles (small list — rides unvirtualized) ─────────── */}
+              <View style={styles.headingBox}>
+                <Text style={watchMenuStyles.title} accessibilityRole="header">
+                  Subtitles
+                </Text>
+              </View>
 
-          {/* loading: non-focusable status row. */}
-          {subtitleState.kind === "loading" ? (
-            <Text style={styles.status}>Loading…</Text>
-          ) : null}
+              {/* Off row — always present, always focusable, in every state. */}
+              <WatchOptionRow
+                icon="text-outline"
+                label="Subtitles off"
+                selected={!subtitleEnabled}
+                onPress={() => {
+                  setSubtitleEnabled(false)
+                  onClose()
+                }}
+                accessibilityLabel="Subtitles off"
+              />
 
-          {/* error: non-focusable status row (vs. a misleading empty list). */}
-          {subtitleState.kind === "error" ? (
-            <Text style={styles.status}>Couldn’t load subtitles</Text>
-          ) : null}
+              {/* loading: non-focusable status row. */}
+              {subtitleState.kind === "loading" ? (
+                <Text style={watchMenuStyles.status}>Loading…</Text>
+              ) : null}
 
-          {/* loaded-empty: non-focusable status row. */}
-          {subtitleState.kind === "loaded" &&
-          subtitleState.subtitles.length === 0 ? (
-            <Text style={styles.status}>No subtitles available</Text>
-          ) : null}
+              {/* error: non-focusable status row (vs. a misleading empty list). */}
+              {subtitleState.kind === "error" ? (
+                <Text style={watchMenuStyles.status}>
+                  Couldn’t load subtitles
+                </Text>
+              ) : null}
 
-          {/* loaded-list: focusable, slug-keyed subtitle rows. */}
-          {subtitleState.kind === "loaded"
-            ? subtitleState.subtitles.map((subtitle, index) => {
-                const isActive = isSubtitleRowActive(
-                  subtitle,
-                  subtitleEnabled,
-                  activeSubtitleSlug,
-                )
-                const name = subtitle.languageName || subtitle.languageSlug
-                return (
-                  <FocusableCard
-                    key={`subtitle-${subtitle.languageSlug ?? ""}-${index}`}
-                    onPress={() => {
-                      setActiveSubtitleSlug(subtitle.languageSlug)
-                      setSubtitleEnabled(true)
-                      onClose()
-                    }}
-                    hasTVPreferredFocus={isActive}
-                    focusScale={1.02}
-                    style={panelStyles.row}
-                    accessibilityLabel={name}
-                  >
-                    <View style={panelStyles.rowInnerCompact}>
-                      <Text style={panelStyles.rowText} numberOfLines={1}>
-                        {name}
-                      </Text>
-                      {isActive ? (
-                        <Text style={panelStyles.check}>{"✓"}</Text>
-                      ) : null}
-                    </View>
-                  </FocusableCard>
-                )
-              })
-            : null}
-        </ScrollView>
+              {/* loaded-empty: non-focusable status row. */}
+              {subtitleState.kind === "loaded" &&
+              subtitleState.subtitles.length === 0 ? (
+                <Text style={watchMenuStyles.status}>
+                  No subtitles available
+                </Text>
+              ) : null}
+
+              {/* loaded-list: focusable, slug-keyed subtitle rows. */}
+              {subtitleState.kind === "loaded"
+                ? subtitleState.subtitles.map((subtitle, index) => {
+                    const isActive = isSubtitleRowActive(
+                      subtitle,
+                      subtitleEnabled,
+                      activeSubtitleSlug,
+                    )
+                    const name = subtitle.languageName || subtitle.languageSlug
+                    return (
+                      <WatchOptionRow
+                        key={`subtitle-${subtitle.languageSlug ?? ""}-${index}`}
+                        icon="text-outline"
+                        label={name}
+                        note={subtitle.languageNameNative}
+                        selected={isActive}
+                        onPress={() => {
+                          setActiveSubtitleSlug(subtitle.languageSlug)
+                          setSubtitleEnabled(true)
+                          onClose()
+                        }}
+                        accessibilityLabel={name}
+                      />
+                    )
+                  })
+                : null}
+            </>
+          }
+        />
 
         {/* Dismiss affordance stays focusable in EVERY state so the viewer is
             never trapped. Closing returns focus to play/pause via the parent's
             one-shot hasTVPreferredFocus. */}
-        <FocusableCard
-          onPress={onClose}
-          focusScale={1.02}
-          style={styles.closeRow}
-          accessibilityLabel="Close menu"
-        >
-          <Text style={styles.closeText}>Close</Text>
-        </FocusableCard>
+        <View style={watchMenuStyles.footer}>
+          <WatchOptionRow
+            icon="close"
+            label="Close"
+            onPress={onClose}
+            accessibilityLabel="Close menu"
+          />
+        </View>
       </TVFocusGuideView>
     </View>
   )
@@ -188,43 +216,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 50,
   },
-  panel: {
-    width: scale(640),
-    maxHeight: scale(860),
-    backgroundColor: COLORS.surfaceContainer,
-    borderRadius: scale(24),
-    padding: scale(40),
-  },
-  listContent: {
-    paddingBottom: scale(8),
-  },
-  heading: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(30)),
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: scale(20),
-  },
-  headingGap: {
-    marginTop: scale(28),
-  },
-  status: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(20)),
-    color: COLORS.muted,
-    paddingVertical: scale(16),
-    paddingHorizontal: scale(24),
-  },
-  closeRow: {
-    marginTop: scale(12),
-    backgroundColor: COLORS.surfaceContainerHigh,
-    alignItems: "center",
-  },
-  closeText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(20)),
-    fontWeight: "600",
-    color: COLORS.muted,
-    paddingVertical: scale(16),
+  // Fixed-height heading container (MENU_HEADING_HEIGHT, watchMenuLayout.ts)
+  // so the dub FlatList's getItemLayout offsets stay exact below the header.
+  headingBox: {
+    height: MENU_HEADING_HEIGHT,
+    justifyContent: "flex-end",
+    paddingBottom: scale(12),
+    paddingHorizontal: scale(20),
   },
 })

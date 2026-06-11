@@ -1,5 +1,6 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import client from "@/lib/admin-client"
+import type { SearchLanguageResolution } from "./search-language"
 
 // Admin's `search(q, locale, type, limit, offset, mode, debug)` is the
 // hybrid (semantic + keyword) PUBLIC-tier search surface. Response shape
@@ -84,6 +85,12 @@ export type SearchResult = {
    *  experiences; 0 when a video has no children. Drives the
    *  "{n} episodes" pill on series / collection cards. */
   childCount: number | null
+  /** Source adapter that produced this row. Omitted on legacy semantic rows. */
+  source?: "semantic" | "algolia"
+  /** Public Watch audio-language slug to prefer for result links. */
+  languageSlug?: string | null
+  /** Algolia/Core English language label, when the result came from a language-aware index. */
+  languageEnglishName?: string | null
 }
 
 export type SearchError = {
@@ -91,6 +98,34 @@ export type SearchError = {
   message: string
   retryAfterSeconds?: number
 }
+
+export type SearchResponse = {
+  results: SearchResult[]
+  hasMore: boolean
+  query: string
+  searchMode: string
+  latencyMs: number
+  nextOffset?: number
+}
+
+export type SearchActionResultSource = "semantic" | "algolia"
+
+export type SearchActionResult =
+  | (SearchResponse & {
+      ok: true
+      resultSource: SearchActionResultSource
+      resolvedLanguage: SearchLanguageResolution
+      languageFacets?: Record<string, number>
+    })
+  | (Omit<SearchResponse, "results" | "hasMore"> & {
+      ok: false
+      results: []
+      hasMore: false
+      resultSource: SearchActionResultSource
+      resolvedLanguage: SearchLanguageResolution
+      languageFacets?: Record<string, number>
+      error: SearchError
+    })
 
 const MAX_QUERY_LENGTH = 200
 
@@ -124,13 +159,8 @@ export async function searchVideos(
   limit = 20,
   offset = 0,
   type?: SearchContentType,
-): Promise<{
-  results: SearchResult[]
-  hasMore: boolean
-  query: string
-  searchMode: string
-  latencyMs: number
-}> {
+  locale = "en",
+): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
 
   const startedAt = performance.now()
@@ -138,7 +168,7 @@ export async function searchVideos(
     query: searchVideosOperation,
     variables: {
       q: truncatedQuery,
-      locale: "en",
+      locale,
       limit,
       offset,
       type: toAdminContentType(type),
@@ -197,6 +227,7 @@ export async function searchVideos(
     label: row.label ?? null,
     durationSeconds: row.durationSeconds ?? null,
     childCount: row.childCount ?? null,
+    source: "semantic",
   }))
 
   return {
@@ -205,5 +236,6 @@ export async function searchVideos(
     query: data?.query ?? truncatedQuery,
     searchMode: normalizeSearchMode(data?.searchMode),
     latencyMs,
+    nextOffset: offset + results.length,
   }
 }
