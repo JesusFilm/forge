@@ -99,6 +99,7 @@ export const env = createEnv({
     CORE_API_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
     CORE_API_RETRIES: z.coerce.number().int().min(0).optional(),
     CORE_SYNC_CRON_SECRET: z.string().min(1).optional(),
+    OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
@@ -342,6 +343,9 @@ export const env = createEnv({
     CORE_API_TIMEOUT_MS: emptyToUndefined(process.env.CORE_API_TIMEOUT_MS),
     CORE_API_RETRIES: emptyToUndefined(process.env.CORE_API_RETRIES),
     CORE_SYNC_CRON_SECRET: emptyToUndefined(process.env.CORE_SYNC_CRON_SECRET),
+    OPENROUTER_API_PAID_KEY: emptyToUndefined(
+      process.env.OPENROUTER_API_PAID_KEY,
+    ),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
     OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
       process.env.OPENROUTER_IMAGE_TEXT_MODEL,
