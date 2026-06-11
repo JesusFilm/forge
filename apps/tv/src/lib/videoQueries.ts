@@ -136,6 +136,61 @@ export const GET_VIDEO_BY_SLUG = graphql(
 
 export type WatchVideoData = ResultOf<typeof GET_VIDEO_BY_SLUG>
 
+// ── Series detail query ─────────────────────────────────────────────
+//
+// SYNC: mirrors apps/mobile/src/lib/queries.ts GET_SERIES_BY_SLUG.
+//
+// A series is a Video whose label is SERIES/COLLECTION (or which has children).
+// The series screen needs two things the single-video query doesn't:
+//   1. the series' OWN `children` (the episode rail) — distinct from the
+//      `parents.parent.children` siblings the WatchVideo fragment carries;
+//   2. `childDubLanguages` — the server-aggregated union of languages the
+//      episodes are available in, which feeds the language panel.
+// These series-only selections live HERE, on a dedicated operation, NOT on the
+// shared `watchVideoFragment` — keeping the single-video query lean (see the
+// payload note above). Children select card fields only, never dubs/variants:
+// a Jesus-film-sized collection (61 chapters × ~2,200 dubs) is the 9.5MB
+// incident again.
+export const GET_SERIES_BY_SLUG = graphql(
+  `
+    query GetSeriesBySlug($locale: String!, $slug: String!) {
+      videoBySlug(slug: $slug) {
+        ...WatchVideo
+        children {
+          order
+          child {
+            documentId: id
+            slug
+            label
+            locales(locale: $locale) {
+              documentId: id
+              languageSlug
+              title
+              description
+              imageAlt
+            }
+            images {
+              documentId: id
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+          }
+        }
+        childDubLanguages {
+          slug
+          name
+          bcp47
+        }
+      }
+    }
+  `,
+  [watchVideoFragment],
+)
+
+export type SeriesVideoData = ResultOf<typeof GET_SERIES_BY_SLUG>
+
 // ── Per-dub media (lazy) ────────────────────────────────────────────
 //
 // The downloads + subtitles deliberately left out of WatchVideo above. Fetched
