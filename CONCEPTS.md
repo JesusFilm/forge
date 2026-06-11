@@ -140,8 +140,28 @@ Touches go to the topmost layer and are never re-offered downward, so anything i
 
 ### Hero Insert
 
-An editorial slide in the watch-home hero rotation sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
+An editorial slide in the watch-home Hero Queue sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
 _Avoid:_ Mux insert.
+
+### Hero Queue
+
+The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
+
+A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+
+### Carousel Pool
+
+One curated group of collections whose videos are candidates for the Hero Queue. Pools are drawn from in a fixed round-robin order, with the day's date-seeded pick choosing which candidate each pool contributes.
+
+### Played Set
+
+The per-user memory of which videos the watch-home rotation has already shown, used to exclude them from Hero Queue rebuilds so returning users lead with unseen content. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+
+### Home Snapshot
+
+The last successful watch-home content response a client keeps on device and paints immediately at the next launch while a live fetch revalidates in the background. It exists to mask a slow content resolver; it is only ever the first paint.
+
+An expired, shape-drifted, or empty Home Snapshot never paints — launch falls back to the loading state. When the live response matches the painted snapshot, the client keeps the painted view rather than rebuilding the Hero Queue; an empty live response never replaces a painted snapshot.
 
 ### Focus-Driven Showcase
 
