@@ -29,6 +29,7 @@ vi.mock("@/components/watch/WatchQuestionPanel", () => ({
 vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     pendingChapter,
+    routePosterBridgeKey,
     onChapterNavigateIntent,
   }: {
     pendingChapter?: {
@@ -36,6 +37,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       title: string | null
       posterUrl: string | null
     } | null
+    routePosterBridgeKey?: string | null
     onChapterNavigateIntent?: (intent: {
       href: string
       languageSlug: string
@@ -53,6 +55,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       data-pending-target={pendingChapter?.targetVideoDocumentId ?? ""}
       data-pending-title={pendingChapter?.title ?? ""}
       data-pending-poster={pendingChapter?.posterUrl ?? ""}
+      data-route-poster-bridge-key={routePosterBridgeKey ?? ""}
       onClick={() => {
         onChapterNavigateIntent?.({
           href: "/child-2.html/english.html",
@@ -85,6 +88,8 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  window.sessionStorage.clear()
+  window.history.replaceState({}, "", "/watch/current-video.html/english.html")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -171,6 +176,7 @@ describe("WatchPageClient chapter navigation", () => {
       container.querySelector('[data-testid="watch-section-renderer"]')
 
     expect(renderer()?.getAttribute("data-pending-title")).toBe("")
+    expect(renderer()?.getAttribute("data-route-poster-bridge-key")).toBe("")
 
     act(() => {
       ;(renderer() as HTMLButtonElement).click()
@@ -182,10 +188,14 @@ describe("WatchPageClient chapter navigation", () => {
       "https://cdn.test/clicked.jpg",
     )
 
+    window.history.replaceState({}, "", "/watch/child-2.html/english.html")
     renderWatchPage(makeVideo("child-2", "Clicked Child"))
 
     expect(renderer()?.getAttribute("data-pending-target")).toBe("")
     expect(renderer()?.getAttribute("data-pending-title")).toBe("")
     expect(renderer()?.getAttribute("data-pending-poster")).toBe("")
+    expect(renderer()?.getAttribute("data-route-poster-bridge-key")).toBe(
+      "child-2:variant-1",
+    )
   })
 })

@@ -8,7 +8,12 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
-import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
+import {
+  consumeWatchChapterPosterBridgeIntent,
+  shouldUseWatchChapterPosterBridgeIntent,
+  type WatchChapterNavigationIntent,
+  writeWatchChapterPosterBridgeIntent,
+} from "@/components/watch/chapter-navigation"
 // Modals are user-triggered (download / language picker / share). Split
 // them into separate chunks so they don't ship with the hero-critical
 // bundle. `ssr: false` is safe — modals are hidden on first paint.
@@ -218,6 +223,17 @@ export function WatchPageClient({
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
   const videoSlug = video.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
+  const routePosterBridgeKey = `${video.documentId}:${variant.documentId}`
+  const [forcedRoutePosterBridgeKey, setForcedRoutePosterBridgeKey] = useState<
+    string | null
+  >(() =>
+    shouldUseWatchChapterPosterBridgeIntent({
+      languageSlug: currentLanguageSlug,
+      targetVideoDocumentId: video.documentId,
+    })
+      ? routePosterBridgeKey
+      : null,
+  )
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
   const validPendingChapter =
@@ -231,6 +247,25 @@ export function WatchPageClient({
     )
       ? pendingChapter
       : null
+
+  useEffect(() => {
+    const matched = consumeWatchChapterPosterBridgeIntent({
+      languageSlug: currentLanguageSlug,
+      targetVideoDocumentId: video.documentId,
+    })
+    setForcedRoutePosterBridgeKey((current) => {
+      if (matched) return routePosterBridgeKey
+      return current === routePosterBridgeKey ? current : null
+    })
+  }, [currentLanguageSlug, routePosterBridgeKey, video.documentId])
+
+  const handleChapterNavigateIntent = useCallback(
+    (intent: WatchChapterNavigationIntent) => {
+      writeWatchChapterPosterBridgeIntent(intent)
+      setPendingChapter(intent)
+    },
+    [],
+  )
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
@@ -482,7 +517,8 @@ export function WatchPageClient({
         shareHref={shareHref}
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={validPendingChapter}
-        onChapterNavigateIntent={setPendingChapter}
+        routePosterBridgeKey={forcedRoutePosterBridgeKey}
+        onChapterNavigateIntent={handleChapterNavigateIntent}
       />
 
       <SubtitleTranscript

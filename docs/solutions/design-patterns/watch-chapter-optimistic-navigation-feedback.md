@@ -139,6 +139,15 @@ black, fade the clicked chapter poster in, and pulse the visible cover while
 the route is pending. The real player source, Mux metadata, downloads,
 subtitles, and share data still remain route-owned until navigation commits.
 
+If the route-owned poster can differ from the clicked carousel thumbnail, carry
+a separate one-shot destination bridge intent across the route boundary. The
+optimistic chapter payload should still self-invalidate when
+`currentVideoDocumentId` changes; do not keep it alive just to animate the
+destination. Instead, write a small client-only intent for normal clicks and
+consume it only when the destination video id, language slug, and href match.
+That lets the committed route poster reveal out of black without preserving
+stale title, card, playback, or share state.
+
 The React shape also avoids the `set-state-in-effect` trap. Do not clear
 pending navigation from an effect that watches the URL or current video. Encode
 the pending source and target, then derive whether it is still valid from the
