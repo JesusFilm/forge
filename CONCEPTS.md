@@ -102,6 +102,26 @@ The metadata that says which provider contract produced a stored Content Embeddi
 
 An evaluation or backfill approval artifact that binds quality evidence to a specific embedding provider contract before high-churn content vectors are rewritten. A Provider-Bound Gate needs both configuration provenance and corpus provenance: it must show what the system is configured to generate and what stored rows the evaluation actually searched.
 
+## Known-caller auth
+
+### Search Passport
+
+The request-level check on the public search surface that asks "are you a known caller?" rather than "what may you do?". Any key from any known-caller class satisfies it, and it grants no data permissions — a passport identifies the caller class, nothing more. Distinct from editor/session auth.
+
+### Consumer Bearer
+
+A known-caller key issued to a consumer-facing app surface (web, mobile, TV) that satisfies the Search Passport while carrying no permissions beyond public access. Each surface holds its own dedicated key so revocation and rotation stay per-surface.
+
+A Consumer Bearer doubles as the request's Rate-Limit Identity: every request presenting the same key spends one shared budget. That is correct for a single-egress server and hazardous for a Fleet Client — on a fleet, the key must ride only on the operations the server actually gates.
+
+### Rate-Limit Identity
+
+The identity a request's rate budget is counted under: an authenticated user's own identity, else the presented Consumer Bearer's key, else the caller's network address. Which identity a request lands on determines whose budget it spends — a shared key pools many callers into one budget, while anonymous callers each spend their own.
+
+### Fleet Client
+
+A client app distributed as many installed copies (mobile, TV) that share one baked-in credential and one release cycle. Contrast with a single-egress server client: a fleet cannot rotate its credential without a release and field adoption lag, each device has its own network address, and any globally attached shared credential pools the whole fleet onto one Rate-Limit Identity.
+
 ## Admin schema operations
 
 ### Forward-Only Migration
