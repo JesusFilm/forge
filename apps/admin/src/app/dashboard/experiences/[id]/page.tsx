@@ -14,6 +14,7 @@ import {
   videoIdsFromExperienceBlocks,
 } from "@/app/dashboard/live-data"
 import { requireSession } from "@/auth/session"
+import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
@@ -625,6 +626,7 @@ export default async function ExperienceEditorPage({
       canPublish={selectedLocale.status !== "PUBLISHED"}
       hasPublishedVersion={selectedLocale.publishedAt !== null}
       calendarDate={new Date().toISOString().slice(0, 10)}
+      watchOrigin={env.WEB_CANONICAL_ORIGIN}
       initialValues={{
         localeId: selectedLocale.id,
         title: selectedLocale.title ?? "",
