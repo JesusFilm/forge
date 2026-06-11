@@ -1,10 +1,10 @@
 // Inline SVG icons for the HeroPlayer chrome.
 //
 // Two visual families:
-//   - Chrome controls (Play, Pause, Volume, Muted, Fullscreen) use a 24px
-//     fill-based glyph styled by the parent button's text color.
-//   - The pre-reveal Play with Sound / Tap to Unmute pill uses larger 22px
-//     stroke-based speakers that match the pill's lock-up.
+//   - Chrome controls and the pre-reveal Watch now pill use 24px fill-based glyphs
+//     styled by the parent button's text color.
+//   - The Tap to Unmute recovery pill uses a larger 22px stroke-based speaker
+//     that matches the pill's lock-up.
 
 type GlyphProps = { path: string }
 
@@ -51,26 +51,6 @@ export function EnterFullscreenIcon() {
 export function ExitFullscreenIcon() {
   return (
     <ChromeGlyph path="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-  )
-}
-
-export function UnmutedSpeakerIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width={22}
-      height={22}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11 5 6 9H2v6h4l5 4V5z" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
   )
 }
 

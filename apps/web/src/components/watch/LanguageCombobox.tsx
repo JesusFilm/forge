@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -40,6 +41,9 @@ export type LanguageComboboxProps = {
 
 const LISTBOX_MAX_HEIGHT_PX = 288
 const OPTION_ROW_HEIGHT_PX = 72
+const POPOVER_GAP_PX = 8
+const POPOVER_VIEWPORT_PADDING_PX = 24
+const POPOVER_SEARCH_FALLBACK_HEIGHT_PX = 65
 const VIRTUALIZATION_THRESHOLD = 80
 const VIRTUALIZATION_OVERSCAN = 4
 
@@ -481,12 +485,19 @@ export function LanguageCombobox({
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
+  const [listboxMaxHeight, setListboxMaxHeight] = useState(
+    LISTBOX_MAX_HEIGHT_PX,
+  )
+  const [popoverPlacement, setPopoverPlacement] = useState<"above" | "below">(
+    "below",
+  )
   const open = controlledOpen ?? uncontrolledOpen
   // Mirror activeIndex in a ref so keydown handlers always read the latest value
   // even when multiple key events fire within the same React batch.
   const activeIndexRef = useRef(0)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
+  const searchFrameRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const listboxRef = useRef<HTMLUListElement | null>(null)
 
@@ -545,6 +556,51 @@ export function LanguageCombobox({
 
   useEffect(() => {
     if (open) searchRef.current?.focus()
+  }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) return
+
+    function updatePopoverLayout() {
+      const trigger = triggerRef.current
+      if (!trigger) return
+
+      const triggerRect = trigger.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const measuredSearchHeight =
+        searchFrameRef.current?.getBoundingClientRect().height ?? 0
+      const searchHeight =
+        measuredSearchHeight > 0
+          ? measuredSearchHeight
+          : POPOVER_SEARCH_FALLBACK_HEIGHT_PX
+      const desiredPopoverHeight = searchHeight + LISTBOX_MAX_HEIGHT_PX
+      const spaceBelow =
+        viewportHeight -
+        triggerRect.bottom -
+        POPOVER_GAP_PX -
+        POPOVER_VIEWPORT_PADDING_PX
+      const spaceAbove =
+        triggerRect.top - POPOVER_GAP_PX - POPOVER_VIEWPORT_PADDING_PX
+      const nextPlacement =
+        spaceBelow < desiredPopoverHeight && spaceAbove > spaceBelow
+          ? "above"
+          : "below"
+      const availableSpace = nextPlacement === "above" ? spaceAbove : spaceBelow
+      const nextMaxHeight = Math.max(
+        1,
+        Math.min(
+          LISTBOX_MAX_HEIGHT_PX,
+          Math.floor(availableSpace - searchHeight),
+        ),
+      )
+
+      setPopoverPlacement(nextPlacement)
+      setListboxMaxHeight(nextMaxHeight)
+    }
+
+    updatePopoverLayout()
+    window.addEventListener("resize", updatePopoverLayout, { passive: true })
+    return () => window.removeEventListener("resize", updatePopoverLayout)
   }, [open])
 
   // Install the click-outside listener once at mount, gate its body on a
@@ -635,7 +691,7 @@ export function LanguageCombobox({
       return { end: filtered.length, start: 0 }
     }
 
-    const visibleCount = Math.ceil(LISTBOX_MAX_HEIGHT_PX / OPTION_ROW_HEIGHT_PX)
+    const visibleCount = Math.ceil(listboxMaxHeight / OPTION_ROW_HEIGHT_PX)
     const windowSize = visibleCount + VIRTUALIZATION_OVERSCAN * 2
     const scrollStart = Math.max(
       0,
@@ -651,7 +707,13 @@ export function LanguageCombobox({
     )
     const end = Math.min(filtered.length, start + windowSize)
     return { end, start }
-  }, [activeIndex, filtered.length, scrollTop, shouldVirtualize])
+  }, [
+    activeIndex,
+    filtered.length,
+    listboxMaxHeight,
+    scrollTop,
+    shouldVirtualize,
+  ])
   const visibleOptions = useMemo(
     () =>
       shouldVirtualize
@@ -762,9 +824,14 @@ export function LanguageCombobox({
           // (the filled `<button>`) paints past the `rounded-2xl` corner.
           // `shadow-xl` is unaffected because box-shadow renders outside
           // the element's bounding box, not against its overflow rule.
-          className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md"
+          className={`absolute left-0 right-0 z-20 overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md ${
+            popoverPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
+          }`}
         >
-          <div className="border-b border-white/10 px-5 py-4">
+          <div
+            ref={searchFrameRef}
+            className="border-b border-white/10 px-5 py-4"
+          >
             <input
               ref={searchRef}
               data-testid="language-combobox-search"
@@ -797,7 +864,8 @@ export function LanguageCombobox({
             aria-label={t("languages")}
             data-virtualized={shouldVirtualize ? "true" : "false"}
             onScroll={handleListScroll}
-            className="max-h-72 overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
+            style={{ maxHeight: listboxMaxHeight }}
+            className="overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {filtered.length === 0 ? (
               <li

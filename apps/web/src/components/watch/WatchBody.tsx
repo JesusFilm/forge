@@ -39,11 +39,11 @@ export function WatchBody({
         data-testid="watch-body-left"
         className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-7"
       >
-        {/* Keep Download grouped with the title, but stack it below the title on
-            mobile so the title can use the full content rail. */}
+        {/* Keep Download beside the title; the title wraps inside the
+            remaining width instead of forcing the CTA onto a new row. */}
         <div
           data-testid="watch-body-title-row"
-          className="flex flex-col items-start gap-3 md:flex-row md:justify-between md:gap-4"
+          className="flex flex-nowrap items-center justify-between gap-3"
         >
           {/* The HeroPlayer overlay already renders the canonical <h1> for
               this video. The body title repeats that text for visual
@@ -51,12 +51,12 @@ export function WatchBody({
               one <h1> per page (WCAG 1.3.1). Visual styling is unchanged. */}
           <h2
             data-testid="watch-body-title"
-            className="min-w-0 text-3xl font-bold text-stone-100 md:text-4xl xl:text-5xl"
+            className="min-w-0 flex-1 text-[27px] leading-[1.08] font-semibold text-stone-100 md:text-4xl xl:text-5xl"
           >
             {video.title ?? ""}
           </h2>
           {hasDownloads ? (
-            <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
+            <div className="ml-auto flex shrink-0 flex-col items-end gap-2">
               <DownloadButton
                 label={downloadButtonLabel}
                 onClick={onDownloadClick}
@@ -77,7 +77,7 @@ export function WatchBody({
         {video.description ? (
           <p
             data-testid="watch-body-description"
-            className="text-base leading-relaxed text-stone-200/80 md:mt-6 md:text-lg"
+            className="text-base leading-relaxed font-normal text-stone-200/80 md:mt-6 md:text-lg"
           >
             {video.description}
           </p>

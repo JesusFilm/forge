@@ -173,14 +173,22 @@ describe("SiblingCarousel — happy path", () => {
     const header = rail?.querySelector("header")
     expect(header?.className).toContain("px-10")
     expect(header?.className).toContain("md:px-0")
+    const headerLine = header?.querySelector("p")
+    expect(headerLine?.className).toContain("font-normal")
+    expect(headerLine?.className).not.toContain("font-medium")
+    expect(headerLine?.querySelector("span")?.className).toContain(
+      "font-medium",
+    )
     const carousel = container.querySelector("[data-slot='carousel']")
+    expect(carousel?.className).toContain("pl-10")
+    expect(carousel?.className).toContain("md:pl-0")
     expect(carousel?.className).not.toContain("translate-x-10")
     expect(carousel?.className).not.toContain("md:translate-x-0")
     const content = container.querySelector(
       "[data-slot='carousel-content'] > div",
     )
-    expect(content?.className).toContain("pl-10")
-    expect(content?.className).toContain("md:pl-0")
+    expect(content?.className).not.toContain("pl-10")
+    expect(content?.className).not.toContain("md:pl-0")
     expect(content?.className).not.toContain("translate-x-14")
     expect(content?.className).not.toContain("md:translate-x-0")
     const endSpacer = container.querySelector(
@@ -218,6 +226,13 @@ describe("SiblingCarousel — happy path", () => {
     expect(caption?.className).toContain("bg-gradient-to-t")
     expect(caption?.className).toContain("via-black/35")
     expect(caption?.className).toContain("z-20")
+    expect(caption?.className).toContain("gap-[3px]")
+    expect(caption?.className).not.toContain("gap-1.5")
+    const captionText = Array.from(caption!.querySelectorAll("span"))
+    expect(captionText[0]?.className).toContain("font-normal")
+    expect(captionText[0]?.className).not.toContain("font-semibold")
+    expect(captionText[1]?.className).toContain("font-semibold")
+    expect(captionText[1]?.className).not.toContain("font-bold")
 
     const blurMask = active!.querySelector("[aria-hidden='true']")
     expect(blurMask?.className).toContain("h-full")
