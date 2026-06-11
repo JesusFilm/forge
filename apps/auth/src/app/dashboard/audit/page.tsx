@@ -15,7 +15,7 @@ export default async function AuditPage() {
     orderBy: { createdAt: "desc" },
     take: 100,
     include: {
-      actorUser: { select: { email: true, name: true } },
+      actorUser: { select: { actorType: true, email: true, name: true } },
       app: { select: { displayName: true, key: true } },
     },
   })
@@ -48,7 +48,11 @@ export default async function AuditPage() {
               <tr key={event.id}>
                 <DashboardTd>{event.eventType}</DashboardTd>
                 <DashboardTd>{event.severity.toLowerCase()}</DashboardTd>
-                <DashboardTd>{event.actorUser?.email ?? "system"}</DashboardTd>
+                <DashboardTd>
+                  {event.actorUser
+                    ? `${event.actorUser.email} (${event.actorUser.actorType.toLowerCase()})`
+                    : "system"}
+                </DashboardTd>
                 <DashboardTd>{event.app?.displayName ?? "none"}</DashboardTd>
                 <DashboardTd>
                   <code className="whitespace-normal break-words">
