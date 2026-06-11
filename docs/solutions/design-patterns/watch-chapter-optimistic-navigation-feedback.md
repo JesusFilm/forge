@@ -8,13 +8,17 @@ component: watch-page
 severity: medium
 related_components:
   - apps/web/src/components/watch/SiblingCarousel.tsx
+  - apps/web/src/components/watch/HeroPlayer.tsx
+  - apps/web/src/components/watch/WatchSectionRenderer.tsx
   - apps/web/src/components/watch/__tests__/SiblingCarousel.test.tsx
   - apps/web/src/lib/routes.ts
 tags:
   - watch-page
   - sibling-carousel
   - chapter-navigation
+  - hero-player
   - optimistic-ui
+  - loading-state
   - next-link
   - react-compiler
   - browser-smoke
@@ -126,6 +130,14 @@ This gives users the same feedback cadence as a classic full-page navigation
 without giving up Next's client-side route behavior. The important shift is
 that the chapter rail acknowledges intent immediately while the hero poster,
 title, video data, and rest of the page are still resolving.
+
+When the pending chapter also drives the hero shell, treat the hero poster as a
+loading cover, not a playback source swap. `WatchSectionRenderer` should pass a
+pending-only visual payload with `loading: true` and a stable transition key
+derived from the target video id. `HeroPlayer` can then bridge the cover through
+black, fade the clicked chapter poster in, and pulse the visible cover while
+the route is pending. The real player source, Mux metadata, downloads,
+subtitles, and share data still remain route-owned until navigation commits.
 
 The React shape also avoids the `set-state-in-effect` trap. Do not clear
 pending navigation from an effect that watches the URL or current video. Encode
