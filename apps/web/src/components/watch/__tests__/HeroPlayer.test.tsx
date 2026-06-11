@@ -769,6 +769,11 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-overlay"]',
     )
     expect(pill).not.toBeNull()
+    expect(pill?.tagName.toLowerCase()).toBe("a")
+    expect(pill?.getAttribute("href")).toBe(
+      "https://stream.mux.com/playback-id-123.m3u8",
+    )
+    expect(pill?.getAttribute("aria-controls")).toBe("watch-hero-player-media")
     expect(overlay?.getAttribute("class")).toContain("bottom-0")
     expect(overlay?.getAttribute("class")).toContain("gap-3")
     expect(overlay?.getAttribute("class")).not.toContain("gap-4")
@@ -781,6 +786,8 @@ describe("HeroPlayer — initial mount", () => {
     expect(pillClassTokens).toContain("cursor-pointer")
     expect(pillClassTokens).toContain("bg-brand-red")
     expect(pillClassTokens).toContain("px-5")
+    expect(pillClassTokens).toContain("focus-visible:outline-2")
+    expect(pillClassTokens).toContain("focus-visible:ring-2")
     expect(pillClassTokens).not.toContain("px-7")
     expect(pillClassTokens).not.toContain("md:px-8")
     expect(pillClassTokens.some((token) => token.startsWith("min-w"))).toBe(
@@ -805,6 +812,12 @@ describe("HeroPlayer — initial mount", () => {
     // visible "Watch now" text so voice-control engines that match on
     // accessible name still resolve "click watch now".
     expect(pill?.getAttribute("aria-label")).toBe("Watch now")
+
+    const surface = container.querySelector(
+      '[data-testid="hero-player-pre-reveal-click-surface"]',
+    )
+    expect(surface?.getAttribute("aria-hidden")).toBe("true")
+    expect(surface?.getAttribute("tabindex")).toBe("-1")
   })
 
   it("uses the production muted overlay backdrop before chrome is revealed", () => {
@@ -836,7 +849,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
-    ) as HTMLButtonElement
+    ) as HTMLAnchorElement
     expect(pill).not.toBeNull()
 
     // Order check: capture the order in which mutations & play() happen
@@ -872,10 +885,15 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     // Dispatch the click event synchronously (no await between dispatch and
     // assertion) — proves play() is called inside the same task as the
     // click event, which is the iOS user-activation requirement.
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
     await act(async () => {
-      pill.click()
+      expect(pill.dispatchEvent(clickEvent)).toBe(false)
     })
 
+    expect(clickEvent.defaultPrevented).toBe(true)
     expect(events).toEqual(["currentTime=0", "muted=false", "play()"])
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })

@@ -37,6 +37,12 @@ import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { redirectToAuth } from "@/components/watch/download-session-client"
+import {
+  buildDownloadFilename,
+  buildDownloadProxyUrl,
+} from "@/components/watch/download-link"
+import { selectDefaultDownloadTier } from "@/components/watch/download-options"
+import { env } from "@/env"
 import type {
   MergedWatchBlock,
   ResolvedWatchVideo,
@@ -45,10 +51,21 @@ import type {
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import {
+  WATCH_BASE_PATH,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import { buildFbShareUrl } from "@/lib/share"
+import {
   readSubtitlePreference,
   writeSubtitlePreference,
 } from "@/lib/subtitle-preference-client"
-import { resolvePosterUrl } from "@/lib/url"
+import {
+  PUBLIC_SHARE_FALLBACK_ORIGIN,
+  isPublicShareableOrigin,
+  resolvePosterUrl,
+} from "@/lib/url"
 import {
   getCachedWatchLanguageOptions,
   loadWatchInteraction,
@@ -111,6 +128,29 @@ type LanguageOptionsState =
   | { status: "ready"; variants: LanguagePickerVariant[] }
   | { status: "error"; variants: LanguagePickerVariant[] }
 
+function buildShareFallbackHref({
+  origin,
+  currentLanguageSlug,
+  videoSlug,
+}: {
+  origin: string
+  currentLanguageSlug: string
+  videoSlug: string
+}): string | undefined {
+  const slug = tryAsContentSlug(videoSlug)
+  const lang = tryAsLocaleSlug(currentLanguageSlug)
+  if (!slug || !lang) return undefined
+
+  const shareOrigin = isPublicShareableOrigin(origin)
+    ? origin
+    : PUBLIC_SHARE_FALLBACK_ORIGIN
+  const shareableUrl = `${shareOrigin}${WATCH_BASE_PATH}${watchVideoPath(
+    slug,
+    lang,
+  )}`
+  return buildFbShareUrl(shareableUrl)
+}
+
 export function WatchPageClient({
   downloadButtonLabel,
   mergedBlocks,
@@ -143,6 +183,7 @@ export function WatchPageClient({
   }, [])
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
+  const videoSlug = video.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
@@ -194,19 +235,47 @@ export function WatchPageClient({
   // which may exceed JS number precision for very large files). Parse to
   // number for the download modal's sort bucket; non-numeric values fall
   // through as null and the modal hides the size label.
-  const downloadsForModal = (variant.downloads ?? [])
-    .filter((d): d is NonNullable<typeof d> => d != null && d.quality != null)
-    .map((d) => {
-      const sizeNum =
-        typeof d.size === "string" && d.size.length > 0
-          ? Number.parseFloat(d.size)
-          : null
-      return {
-        documentId: d.documentId,
-        quality: d.quality as string,
-        size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
-      }
+  const downloadsForModal = useMemo(
+    () =>
+      (variant.downloads ?? [])
+        .filter(
+          (d): d is NonNullable<typeof d> => d != null && d.quality != null,
+        )
+        .map((d) => {
+          const sizeNum =
+            typeof d.size === "string" && d.size.length > 0
+              ? Number.parseFloat(d.size)
+              : null
+          return {
+            documentId: d.documentId,
+            quality: d.quality as string,
+            size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
+          }
+        }),
+    [variant.downloads],
+  )
+
+  const downloadHref = useMemo(() => {
+    if (!videoSlug) return undefined
+    const fallbackTier = selectDefaultDownloadTier(downloadsForModal)
+    if (!fallbackTier) return undefined
+    return buildDownloadProxyUrl({
+      downloadId: fallbackTier.download.documentId,
+      filename: buildDownloadFilename(video.title, fallbackTier.tier),
+      variantId: variant.documentId,
+      videoSlug,
     })
+  }, [downloadsForModal, variant.documentId, video.title, videoSlug])
+
+  const shareHref = useMemo(
+    () =>
+      buildShareFallbackHref({
+        origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+        currentLanguageSlug,
+        videoSlug,
+      }),
+    [currentLanguageSlug, videoSlug],
+  )
 
   // Prefer the editorial cinematic still over `images[].url` — that raw
   // `url` is a misshaped Cloudflare Images URL (missing variant path
@@ -222,7 +291,6 @@ export function WatchPageClient({
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const downloadPendingRef = useRef(false)
-  const videoSlug = video.slug ?? ""
   const [enabledModalChunks, setEnabledModalChunks] = useState({
     download: false,
     language: false,
@@ -358,12 +426,14 @@ export function WatchPageClient({
         blocks={mergedBlocks}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}
+        downloadHref={downloadHref}
         downloadPending={downloadPending}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         locale={locale}
         languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
+        shareHref={shareHref}
         hideBibleQuotes={hideBibleQuotes}
       />
 

@@ -8,6 +8,7 @@ export function WatchBody({
   block,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending = false,
   studyQuestions,
   onDownloadClick,
@@ -15,6 +16,7 @@ export function WatchBody({
   block: WatchBodyBlock
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
@@ -58,6 +60,7 @@ export function WatchBody({
           {hasDownloads ? (
             <div className="ml-auto flex shrink-0 flex-col items-end gap-2">
               <DownloadButton
+                href={downloadHref}
                 label={downloadButtonLabel}
                 onClick={onDownloadClick}
                 pending={downloadPending}
