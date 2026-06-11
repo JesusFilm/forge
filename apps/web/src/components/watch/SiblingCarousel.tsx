@@ -141,6 +141,9 @@ export function SiblingCarousel({
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
             const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+            const thumbnailAlt = child.title
+              ? `${child.title} thumbnail`
+              : "Related video thumbnail"
 
             const cardClassName = cn(
               "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
@@ -156,7 +159,7 @@ export function SiblingCarousel({
                 {thumb ? (
                   <Image
                     src={thumb}
-                    alt={child.title ?? ""}
+                    alt={thumbnailAlt}
                     fill
                     sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"

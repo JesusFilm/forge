@@ -1010,6 +1010,17 @@ type Query {
   Fetch a single VideoDub by id. Lets consumers lazily load one dub's downloads + subtitles (via `videoEdition { subtitles }`) without projecting every dub — mobile's watch screen uses this so switching language/opening the download or subtitle sheet fetches just the active dub, not all ~2,200. Visibility mirrors `videoBySlug { dubs }`: the dub and its parent video must both be non-deleted.
   """
   videoDub(id: ID!): VideoDub
+  """
+  Bounded, flat VideoDub-level catalog projection for yt-video-mapper sync. Service-readable only; callers page with `first` + `after` and receive Core-facing `coreId`/`videoVariantId` fields plus indexability state.
+  """
+  videoMapperCatalog(
+    """
+    Opaque cursor from pageInfo.endCursor. Pages forward by Admin VideoDub.id.
+    """
+    after: String
+    """Page size. Defaults to 100 and is capped at 250 for broad sync safety."""
+    first: Int
+  ): VideoMapperCatalogConnection!
   """List active Videos ordered by most recent Core update."""
   videos(limit: Int = 50, offset: Int = 0): [Video!]
   """
@@ -1378,6 +1389,83 @@ type VideoLocale {
   snippet: String
   status: LocaleStatus
   title: String
+}
+
+"""
+Bounded page of flat mapper catalog rows. Does not expose nested Video or VideoDub relation graphs.
+"""
+type VideoMapperCatalogConnection {
+  nodes: [VideoMapperCatalogItem!]!
+  pageInfo: VideoMapperCatalogPageInfo!
+}
+
+"""
+Flat VideoDub-level projection for yt-video-mapper catalog sync. Uses Core-facing `coreId` and `videoVariantId` terminology while retaining Admin ids for diagnostics.
+"""
+type VideoMapperCatalogItem {
+  """Admin VideoDub.id for diagnostics and cursor ordering."""
+  adminDubId: ID!
+  """Admin Video.id for diagnostics."""
+  adminVideoId: ID!
+  """Admin Video.coreId: the canonical source video answer."""
+  coreId: String!
+  dashUrl: String
+  deletedAt: String
+  downloadHeight: Int
+  downloadQuality: String
+  downloadUrl: String
+  downloadWidth: Int
+  dubDeleted: Boolean!
+  dubPublished: Boolean!
+  durationSeconds: Int
+  editionCoreId: String
+  editionName: String
+  hlsUrl: String
+  indexable: Boolean!
+  """Core Language.coreId for the dub language."""
+  languageId: String
+  languageSlug: String
+  lengthInMilliseconds: String
+  """BCP-47 tag for the dub language."""
+  locale: String
+  mediaSourceType: VideoMapperCatalogMediaSourceType!
+  mediaSourceUrl: String
+  """
+  Machine-readable reason when indexable=false. Current values: dub_deleted, video_deleted, video_no_index, video_unpublished, dub_unpublished, language_missing, language_deleted, edition_deleted, media_missing.
+  """
+  nonIndexableReason: String
+  """
+  Share/playback URL exposed for diagnostics. Not selected as mediaSourceUrl in YTM-002 because mapper MediaSourceType has no SHARE value.
+  """
+  shareUrl: String
+  """
+  Selected source-video title for the mapper's lightweight coreId/title map.
+  """
+  sourceTitle: String!
+  """
+  Locale of the selected source title, null when the title fell back to slug/coreId.
+  """
+  sourceTitleLocale: String
+  videoDeleted: Boolean!
+  videoNoIndex: Boolean!
+  videoPublished: Boolean!
+  """Core videoVariant.id, stored in Admin as VideoDub.coreId."""
+  videoVariantId: String!
+}
+
+"""Primary media source selected for mapper catalog indexing."""
+enum VideoMapperCatalogMediaSourceType {
+  DASH
+  DOWNLOAD
+  HLS
+  NONE
+}
+
+"""Forward cursor pagination state for mapper catalog sync."""
+type VideoMapperCatalogPageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  startCursor: String
 }
 
 type VideoOrigin {

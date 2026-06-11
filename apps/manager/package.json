@@ -15,6 +15,7 @@
   "dependencies": {
     "@apollo/client": "^4.1.4",
     "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
     "@forge/admin-graphql": "workspace:*",
     "@forge/video-player": "workspace:*",
     "@mux/mux-node": "^9.0.0",

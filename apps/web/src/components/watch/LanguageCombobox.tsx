@@ -10,6 +10,8 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
+  type UIEvent,
 } from "react"
 
 export type LanguageComboboxOption = {
@@ -30,7 +32,15 @@ export type LanguageComboboxProps = {
   icon?: "language" | "subtitles"
   disabled?: boolean
   placeholder?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  triggerWrapper?: (trigger: ReactNode) => ReactNode
 }
+
+const LISTBOX_MAX_HEIGHT_PX = 288
+const OPTION_ROW_HEIGHT_PX = 72
+const VIRTUALIZATION_THRESHOLD = 80
+const VIRTUALIZATION_OVERSCAN = 4
 
 const LANGUAGE_REGION_FALLBACKS: Record<string, string> = {
   af: "ZA",
@@ -420,20 +430,26 @@ export function LanguageCombobox({
   icon = "language",
   disabled = false,
   placeholder,
+  open: controlledOpen,
+  onOpenChange,
+  triggerWrapper,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
   // Fall back to the localized default only when the caller did not pass an
   // explicit placeholder (e.g. LanguagePickerModal passes "No subtitles").
   const resolvedPlaceholder = placeholder ?? t("selectLanguage")
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
+  const [scrollTop, setScrollTop] = useState(0)
+  const open = controlledOpen ?? uncontrolledOpen
   // Mirror activeIndex in a ref so keydown handlers always read the latest value
   // even when multiple key events fire within the same React batch.
   const activeIndexRef = useRef(0)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
+  const listboxRef = useRef<HTMLUListElement | null>(null)
 
   // Memoised: options is up to ~2000 items and re-renders fire on every
   // setActiveIndex (hover, keyboard nav). The find call shouldn't run on
@@ -469,19 +485,14 @@ export function LanguageCombobox({
     filteredRef.current = filtered
   }, [filtered])
 
-  // Reset query/active-index on the closed→open transition. Use the
-  // render-phase snapshot pattern so the reset queues with the same
-  // commit that opens the popover — avoids React Compiler's cascading-
-  // setState-in-effect warning while preserving the same UX (search
-  // input shows up cleared and at index 0 on every open).
-  const [prevOpen, setPrevOpen] = useState(open)
-  if (prevOpen !== open) {
-    setPrevOpen(open)
-    if (open) {
-      setActiveIndex(0)
-      setQuery("")
-    }
-  }
+  const setComboboxOpen = useCallback(
+    (next: boolean) => {
+      if (controlledOpen == null) setUncontrolledOpen(next)
+      onOpenChange?.(next)
+    },
+    [controlledOpen, onOpenChange],
+  )
+
   useEffect(() => {
     if (open) searchRef.current?.focus()
   }, [open])
@@ -504,11 +515,11 @@ export function LanguageCombobox({
       ) {
         return
       }
-      setOpen(false)
+      setComboboxOpen(false)
     }
     document.addEventListener("mousedown", onDocMouseDown)
     return () => document.removeEventListener("mousedown", onDocMouseDown)
-  }, [])
+  }, [setComboboxOpen])
 
   // Reset query and active index together so the list is always in sync with
   // the search input — avoids the off-by-one that a post-render clamp useEffect produces.
@@ -516,15 +527,26 @@ export function LanguageCombobox({
     setQuery(next)
     setActiveIndex(0)
     activeIndexRef.current = 0
+    setScrollTop(0)
+    if (listboxRef.current) listboxRef.current.scrollTop = 0
   }, [])
+
+  const openCombobox = useCallback(() => {
+    setQuery("")
+    setActiveIndex(0)
+    activeIndexRef.current = 0
+    setScrollTop(0)
+    if (listboxRef.current) listboxRef.current.scrollTop = 0
+    setComboboxOpen(true)
+  }, [setComboboxOpen])
 
   const handleSelect = useCallback(
     (slug: string) => {
       onChange(slug)
-      setOpen(false)
+      setComboboxOpen(false)
       triggerRef.current?.focus()
     },
-    [onChange],
+    [onChange, setComboboxOpen],
   )
 
   const handleSearchKeyDown = useCallback(
@@ -550,52 +572,117 @@ export function LanguageCombobox({
         if (option) handleSelect(option.slug)
       } else if (event.key === "Escape") {
         event.preventDefault()
-        setOpen(false)
+        setComboboxOpen(false)
         triggerRef.current?.focus()
       }
     },
-    [handleSelect],
+    [handleSelect, setComboboxOpen],
+  )
+
+  const shouldVirtualize = filtered.length > VIRTUALIZATION_THRESHOLD
+  const visibleRange = useMemo(() => {
+    if (!shouldVirtualize) {
+      return { end: filtered.length, start: 0 }
+    }
+
+    const visibleCount = Math.ceil(LISTBOX_MAX_HEIGHT_PX / OPTION_ROW_HEIGHT_PX)
+    const windowSize = visibleCount + VIRTUALIZATION_OVERSCAN * 2
+    const scrollStart = Math.max(
+      0,
+      Math.floor(scrollTop / OPTION_ROW_HEIGHT_PX) - VIRTUALIZATION_OVERSCAN,
+    )
+    const activeStart =
+      activeIndex < scrollStart || activeIndex >= scrollStart + windowSize
+        ? Math.max(0, activeIndex - VIRTUALIZATION_OVERSCAN)
+        : scrollStart
+    const start = Math.min(
+      activeStart,
+      Math.max(0, filtered.length - windowSize),
+    )
+    const end = Math.min(filtered.length, start + windowSize)
+    return { end, start }
+  }, [activeIndex, filtered.length, scrollTop, shouldVirtualize])
+  const visibleOptions = useMemo(
+    () =>
+      shouldVirtualize
+        ? filtered.slice(visibleRange.start, visibleRange.end)
+        : filtered,
+    [filtered, shouldVirtualize, visibleRange.end, visibleRange.start],
+  )
+
+  useEffect(() => {
+    if (!open || !shouldVirtualize) return
+    const listbox = listboxRef.current
+    if (!listbox) return
+
+    const rowTop = activeIndex * OPTION_ROW_HEIGHT_PX
+    const rowBottom = rowTop + OPTION_ROW_HEIGHT_PX
+    const viewportTop = listbox.scrollTop
+    const viewportBottom = viewportTop + listbox.clientHeight
+    let nextScrollTop: number | null = null
+
+    if (rowTop < viewportTop) {
+      nextScrollTop = rowTop
+    } else if (rowBottom > viewportBottom) {
+      nextScrollTop = rowBottom - listbox.clientHeight
+    }
+
+    if (nextScrollTop != null) {
+      listbox.scrollTop = nextScrollTop
+    }
+  }, [activeIndex, open, shouldVirtualize])
+
+  const handleListScroll = useCallback(
+    (event: UIEvent<HTMLUListElement>) => {
+      if (!shouldVirtualize) return
+      setScrollTop(event.currentTarget.scrollTop)
+    },
+    [shouldVirtualize],
   )
 
   const selectedNativeName = selected ? nativeNameForOption(selected) : null
+  const triggerButton = (
+    <button
+      ref={triggerRef}
+      type="button"
+      data-testid="language-combobox-trigger"
+      onClick={() => {
+        if (disabled) return
+        if (open) setComboboxOpen(false)
+        else openCombobox()
+      }}
+      aria-expanded={open}
+      aria-haspopup="listbox"
+      disabled={disabled}
+      className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        {selected ? (
+          <LanguageFlag option={selected} size="trigger" />
+        ) : (
+          <Icon aria-hidden className="h-5 w-5 shrink-0 text-stone-400" />
+        )}
+        <span className="min-w-0">
+          <span className="block truncate leading-tight">
+            {selected?.name ?? resolvedPlaceholder}
+          </span>
+          {selectedNativeName ? (
+            <span
+              data-testid="language-combobox-trigger-native"
+              className="mt-0.5 block truncate text-xs leading-tight text-stone-400"
+            >
+              {selectedNativeName}
+            </span>
+          ) : null}
+        </span>
+      </span>
+      <ChevronsUpDown aria-hidden className="h-5 w-5 text-stone-500" />
+    </button>
+  )
 
   return (
     <div className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        data-testid="language-combobox-trigger"
-        onClick={() => {
-          if (disabled) return
-          setOpen((v) => !v)
-        }}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        disabled={disabled}
-        className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <span className="flex min-w-0 items-center gap-3">
-          {selected ? (
-            <LanguageFlag option={selected} size="trigger" />
-          ) : (
-            <Icon aria-hidden className="h-5 w-5 shrink-0 text-stone-400" />
-          )}
-          <span className="min-w-0">
-            <span className="block truncate leading-tight">
-              {selected?.name ?? resolvedPlaceholder}
-            </span>
-            {selectedNativeName ? (
-              <span
-                data-testid="language-combobox-trigger-native"
-                className="mt-0.5 block truncate text-xs leading-tight text-stone-400"
-              >
-                {selectedNativeName}
-              </span>
-            ) : null}
-          </span>
-        </span>
-        <ChevronsUpDown aria-hidden className="h-5 w-5 text-stone-500" />
-      </button>
+      {triggerWrapper ? triggerWrapper(triggerButton) : triggerButton}
 
       {open ? (
         <div
@@ -629,7 +716,7 @@ export function LanguageCombobox({
               className="w-full bg-transparent text-lg font-normal text-stone-100 placeholder:text-stone-500 focus:outline-none"
             />
           </div>
-          {/* Non-virtualised: acceptable up to a few thousand items. Revisit if scroll jank appears on lower-end devices. */}
+          {/* Large lists are windowed so the 2k+ language picker opens immediately. */}
           {/*
             Same stone-themed scrollbar class string is also used on
             DownloadModal.tsx's terms-of-use body. Keep both in sync —
@@ -637,8 +724,11 @@ export function LanguageCombobox({
             globals.css, following the `search-overlay-scroll` precedent.
           */}
           <ul
+            ref={listboxRef}
             role="listbox"
             aria-label={t("languages")}
+            data-virtualized={shouldVirtualize ? "true" : "false"}
+            onScroll={handleListScroll}
             className="max-h-72 overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {filtered.length === 0 ? (
@@ -649,48 +739,75 @@ export function LanguageCombobox({
                 {t("noMatches")}
               </li>
             ) : (
-              filtered.map((option, index) => {
-                const active = index === activeIndex
-                const selectedOption = option.slug === value
-                const nativeName = nativeNameForOption(option)
-                return (
-                  <li key={option.slug}>
-                    <button
-                      type="button"
-                      id={`lcb-opt-${option.slug}`}
-                      role="option"
-                      aria-selected={selectedOption}
-                      data-testid="language-combobox-option"
-                      data-language-slug={option.slug}
-                      data-active={active ? "true" : "false"}
-                      onMouseEnter={() => setActiveIndex(index)}
-                      onClick={() => handleSelect(option.slug)}
-                      className={`flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left text-stone-100 transition ${
-                        selectedOption
-                          ? "bg-white/[0.08] text-white hover:bg-white/[0.12]"
-                          : active
-                            ? "bg-white/10"
-                            : "hover:bg-white/10"
-                      }`}
-                    >
-                      <LanguageFlag option={option} />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold">
-                          {option.name}
-                        </span>
-                        {nativeName ? (
-                          <span
-                            data-testid="language-combobox-option-native"
-                            className="block truncate text-xs text-stone-400"
-                          >
-                            {nativeName}
+              <>
+                {shouldVirtualize && visibleRange.start > 0 ? (
+                  <li
+                    aria-hidden="true"
+                    style={{
+                      height: visibleRange.start * OPTION_ROW_HEIGHT_PX,
+                    }}
+                  />
+                ) : null}
+                {visibleOptions.map((option, visibleIndex) => {
+                  const index = shouldVirtualize
+                    ? visibleRange.start + visibleIndex
+                    : visibleIndex
+                  const active = index === activeIndex
+                  const selectedOption = option.slug === value
+                  const nativeName = nativeNameForOption(option)
+                  return (
+                    <li key={option.slug}>
+                      <button
+                        type="button"
+                        id={`lcb-opt-${option.slug}`}
+                        role="option"
+                        aria-selected={selectedOption}
+                        aria-posinset={shouldVirtualize ? index + 1 : undefined}
+                        aria-setsize={
+                          shouldVirtualize ? filtered.length : undefined
+                        }
+                        data-testid="language-combobox-option"
+                        data-language-slug={option.slug}
+                        data-active={active ? "true" : "false"}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onClick={() => handleSelect(option.slug)}
+                        className={`flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left text-stone-100 transition ${
+                          selectedOption
+                            ? "bg-white/[0.08] text-white hover:bg-white/[0.12]"
+                            : active
+                              ? "bg-white/10"
+                              : "hover:bg-white/10"
+                        }`}
+                      >
+                        <LanguageFlag option={option} />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">
+                            {option.name}
                           </span>
-                        ) : null}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })
+                          {nativeName ? (
+                            <span
+                              data-testid="language-combobox-option-native"
+                              className="block truncate text-xs text-stone-400"
+                            >
+                              {nativeName}
+                            </span>
+                          ) : null}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+                {shouldVirtualize && visibleRange.end < filtered.length ? (
+                  <li
+                    aria-hidden="true"
+                    style={{
+                      height:
+                        (filtered.length - visibleRange.end) *
+                        OPTION_ROW_HEIGHT_PX,
+                    }}
+                  />
+                ) : null}
+              </>
             )}
           </ul>
         </div>

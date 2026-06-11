@@ -8,8 +8,11 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type KeyboardEvent,
   type ReactNode,
 } from "react"
+import { flushSync } from "react-dom"
+import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
@@ -81,6 +84,36 @@ const CHROME_HIDE_STYLE: MuxCSSProperties = {
   "--bottom-controls": "none",
 }
 
+// Full-width 16:9 frame, capped to the visible viewport height. This keeps
+// the sound-on player as tall as the browser can show without exceeding the
+// video aspect ratio's needed height.
+const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
+
+// Pulls the body/episode rail over the muted preview only when the rail would
+// not otherwise fit below the 16:9 hero. This preserves the full muted preview
+// on smaller/taller viewports while still keeping the episode rail in the
+// first viewport on squat windows.
+const HERO_PREVIEW_PANEL_BOTTOM_PADDING_PX = 32
+const HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX = 50
+const HERO_PREVIEW_BODY_OVERLAP_MIN_PX = 160
+const HERO_PREVIEW_BODY_OVERLAP_MAX_PX = 288
+
+function canScrollWindowTo(windowRef: Window): boolean {
+  if (typeof windowRef.scrollTo !== "function") return false
+  const scrollTo = windowRef.scrollTo as typeof windowRef.scrollTo & {
+    _isMockFunction?: boolean
+    mock?: unknown
+  }
+  if (
+    windowRef.navigator.userAgent.toLowerCase().includes("jsdom") &&
+    scrollTo._isMockFunction !== true &&
+    scrollTo.mock == null
+  ) {
+    return false
+  }
+  return true
+}
+
 // Object-fit modes per playback phase:
 //   pre-reveal (muted preview) → cover: fills the hero box, may crop;
 //   chrome-revealed (sound on) → contain: never crops. The wrapper is
@@ -101,6 +134,40 @@ const PRE_REVEAL_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
 }
 const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
   objectFit: "contain",
+}
+
+const HERO_HLS_CONFIG = {
+  maxBufferLength: 10,
+  maxBufferSize: 5_000_000,
+  backBufferLength: 5,
+}
+
+function buildHeroPosterUrl(
+  playbackId: string | undefined,
+): string | undefined {
+  return playbackId
+    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
+    : undefined
+}
+
+const IDLE_PREVIEW_FALLBACK_DELAY_MS = 1200
+const IDLE_PREVIEW_VIEWPORT_MARGIN_PX = 200
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions,
+  ) => number
+  cancelIdleCallback?: (handle: number) => void
+}
+
+function isHeroNearViewport(wrapper: HTMLElement, windowRef: Window): boolean {
+  const rect = wrapper.getBoundingClientRect()
+  const viewportHeight = windowRef.innerHeight
+  return (
+    rect.bottom >= -IDLE_PREVIEW_VIEWPORT_MARGIN_PX &&
+    rect.top <= viewportHeight + IDLE_PREVIEW_VIEWPORT_MARGIN_PX
+  )
 }
 
 // Fraction of the visible video that must be obscured by the body section
@@ -143,6 +210,12 @@ export function HeroPlayer({
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
+  const playbackId = variant.muxVideo?.playbackId ?? undefined
+  const hlsSrc = variant.hls ?? undefined
+  const heroPosterUrl = buildHeroPosterUrl(playbackId)
+  const searchParams = useSearchParams()
+  const tParam = searchParams?.get("t")
+  const autoplayParam = searchParams?.get("autoplay")
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
@@ -230,34 +303,39 @@ export function HeroPlayer({
   }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
-  const [controlsChromeVisible, setControlsChromeVisible] = useState(true)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
+  const [playerActivated, setPlayerActivated] = useState(
+    () => autoplayParam === "1" || heroPosterUrl == null,
+  )
+  const pendingSoundIntentRef = useRef<PillState | null>(null)
 
-  const publishChromeVisibility = useCallback((visible: boolean) => {
-    if (typeof window === "undefined") return
-    window.dispatchEvent(
-      new CustomEvent<WatchPlayerChromeVisibilityDetail>(
-        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
-        { detail: { visible } },
-      ),
-    )
-  }, [])
+  const publishChromeVisibility = useCallback(
+    (detail: WatchPlayerChromeVisibilityDetail) => {
+      if (typeof window === "undefined") return
+      window.dispatchEvent(
+        new CustomEvent<WatchPlayerChromeVisibilityDetail>(
+          WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+          { detail },
+        ),
+      )
+    },
+    [],
+  )
 
   const handleControlsVisibilityChange = useCallback(
-    (visible: boolean) => {
-      setControlsChromeVisible(visible)
-      publishChromeVisibility(visible)
+    (detail: WatchPlayerChromeVisibilityDetail) => {
+      publishChromeVisibility(detail)
     },
     [publishChromeVisibility],
   )
 
   useEffect(() => {
     if (!chromeRevealed) {
-      publishChromeVisibility(true)
+      publishChromeVisibility({ visible: true, opacity: 1 })
     }
     return () => {
-      publishChromeVisibility(true)
+      publishChromeVisibility({ visible: true, opacity: 1 })
     }
   }, [chromeRevealed, publishChromeVisibility])
 
@@ -289,12 +367,93 @@ export function HeroPlayer({
   // Tracks the first paint where Mux Player has buffered enough to render the
   // muted-loop preview. Without this, the wrapper sits at the player's initial
   // min-height (~200px) during the buffer phase and the title overflows the
-  // hero — `aspect-video` below pins the layout, this hides the empty box
-  // behind a spinner until there's something to show.
+  // hero — the viewport/aspect-ratio height class below pins the layout, this
+  // hides the empty box behind a spinner until there's something to show.
   const [videoReady, setVideoReady] = useState(false)
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
   }, [])
+
+  useEffect(() => {
+    if (playerActivated || autoplayParam === "1" || heroPosterUrl == null) {
+      return
+    }
+    if (typeof window === "undefined") return
+
+    let cancelled = false
+    let loadListenerInstalled = false
+    let idleHandle: number | null = null
+    let timeoutHandle: number | null = null
+    const idleWindow = window as IdleWindow
+
+    const clearScheduledWork = () => {
+      if (idleHandle != null && idleWindow.cancelIdleCallback) {
+        idleWindow.cancelIdleCallback(idleHandle)
+      }
+      idleHandle = null
+      if (timeoutHandle != null) {
+        window.clearTimeout(timeoutHandle)
+      }
+      timeoutHandle = null
+    }
+
+    const canActivatePreview = () => {
+      if (document.visibilityState === "hidden") return false
+      const wrapper = wrapperRef.current
+      return wrapper ? isHeroNearViewport(wrapper, window) : true
+    }
+
+    const tryActivatePreview = () => {
+      clearScheduledWork()
+      if (cancelled) return
+      if (!canActivatePreview()) return
+      setPlayerActivated(true)
+    }
+
+    const scheduleIdleActivation = () => {
+      if (cancelled || idleHandle != null || timeoutHandle != null) return
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(tryActivatePreview, {
+          timeout: IDLE_PREVIEW_FALLBACK_DELAY_MS,
+        })
+        return
+      }
+      timeoutHandle = window.setTimeout(
+        tryActivatePreview,
+        IDLE_PREVIEW_FALLBACK_DELAY_MS,
+      )
+    }
+
+    const scheduleAfterLoad = () => {
+      if (document.readyState === "complete") {
+        scheduleIdleActivation()
+        return
+      }
+      loadListenerInstalled = true
+      window.addEventListener("load", scheduleIdleActivation, { once: true })
+    }
+
+    const retryIfEligible = () => {
+      if (document.readyState !== "complete") return
+      scheduleIdleActivation()
+    }
+
+    scheduleAfterLoad()
+    document.addEventListener("visibilitychange", retryIfEligible)
+    window.addEventListener("scroll", retryIfEligible, { passive: true })
+    window.addEventListener("resize", retryIfEligible, { passive: true })
+
+    return () => {
+      cancelled = true
+      clearScheduledWork()
+      if (loadListenerInstalled) {
+        window.removeEventListener("load", scheduleIdleActivation)
+      }
+      document.removeEventListener("visibilitychange", retryIfEligible)
+      window.removeEventListener("scroll", retryIfEligible)
+      window.removeEventListener("resize", retryIfEligible)
+    }
+  }, [autoplayParam, heroPosterUrl, playerActivated])
 
   // Anchor for the title/pill overlay AND the chrome control bar — both live
   // in this zero-height div right after the sticky hero so they ride on the
@@ -303,15 +462,15 @@ export function HeroPlayer({
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
   )
+  const [previewBodyOverlapPx, setPreviewBodyOverlapPx] = useState(0)
 
   // Measured rendered height drives the sticky `top` so the player pins
-  // exactly when its bottom reaches the viewport bottom. Aspect-ratio is
-  // determined by mux-player at runtime, so we measure rather than guess.
+  // exactly when its bottom reaches the viewport bottom.
   const [heroHeight, setHeroHeight] = useState<number | null>(null)
-  // useLayoutEffect: aspect-video on the wrapper means we have a real
-  // measurable height before paint, so we can install the ResizeObserver
-  // (and seed heroHeight) without flashing the fallback `top: 0px` for a
-  // frame.
+  // useLayoutEffect: the viewport/aspect-ratio height class on the wrapper
+  // means we have a real measurable height before paint, so we can install
+  // the ResizeObserver (and seed heroHeight) without flashing the fallback
+  // `top: 0px` for a frame.
   useLayoutEffect(() => {
     const el = wrapperRef.current
     if (!el) return
@@ -328,11 +487,91 @@ export function HeroPlayer({
     return () => observer.disconnect()
   }, [])
 
+  useLayoutEffect(() => {
+    if (chromeRevealed || heroHeight == null) return
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+
+    let rafHandle = 0
+    const calculateMaxOverlap = () =>
+      Math.min(
+        HERO_PREVIEW_BODY_OVERLAP_MAX_PX,
+        Math.max(HERO_PREVIEW_BODY_OVERLAP_MIN_PX, window.innerHeight * 0.24),
+      ) + HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX
+
+    const sync = () => {
+      rafHandle = 0
+      const bodyZone = document.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement | null
+      const siblingRail = document.querySelector(
+        '[data-block-type="SiblingCarousel"]',
+      ) as HTMLElement | null
+      if (!bodyZone || !siblingRail) {
+        setPreviewBodyOverlapPx(0)
+        return
+      }
+
+      const bodyRect = bodyZone.getBoundingClientRect()
+      const railRect = siblingRail.getBoundingClientRect()
+      const railOffsetFromBody = Math.max(0, railRect.top - bodyRect.top)
+      const panelHeightNeeded =
+        railOffsetFromBody +
+        railRect.height +
+        HERO_PREVIEW_PANEL_BOTTOM_PADDING_PX
+      const spaceBelowHero = Math.max(0, window.innerHeight - heroHeight)
+      const neededOverlap = Math.ceil(panelHeightNeeded - spaceBelowHero)
+      const nextOverlap = Math.max(
+        0,
+        Math.min(neededOverlap, calculateMaxOverlap()),
+      )
+      setPreviewBodyOverlapPx(nextOverlap)
+    }
+
+    const scheduleSync = () => {
+      if (rafHandle !== 0) return
+      rafHandle = window.requestAnimationFrame(sync)
+    }
+
+    scheduleSync()
+    window.addEventListener("resize", scheduleSync, { passive: true })
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(scheduleSync)
+    observer?.observe(wrapper)
+    const bodyZone = document.querySelector(
+      '[data-testid="watch-body-zone"]',
+    ) as HTMLElement | null
+    const siblingRail = document.querySelector(
+      '[data-block-type="SiblingCarousel"]',
+    ) as HTMLElement | null
+    if (bodyZone) observer?.observe(bodyZone)
+    if (siblingRail) observer?.observe(siblingRail)
+    return () => {
+      window.removeEventListener("resize", scheduleSync)
+      observer?.disconnect()
+      if (rafHandle !== 0) window.cancelAnimationFrame(rafHandle)
+    }
+  }, [chromeRevealed, heroHeight])
+
   // Tracks whether the current paused state was caused by THIS scroll
   // listener, so the auto-resume on scroll-back only fires when WE
   // paused. If the user paused manually (chrome button, keyboard) and
   // then scrolled away, scrolling back must not override their intent.
   const pausedByScrollRef = useRef(false)
+
+  useEffect(() => {
+    if (!chromeRevealed) return
+    if (typeof window === "undefined") return
+    if (window.scrollY <= 0) return
+    if (!canScrollWindowTo(window)) return
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [chromeRevealed])
 
   // Pause the player when the user has scrolled enough that the body
   // section covers >=60% of the visible video, resume when scrolling
@@ -373,11 +612,20 @@ export function HeroPlayer({
       const viewportHeight = window.innerHeight
       const visibleVideoHeight = Math.min(heroHeight, viewportHeight)
       // The body section sits right after the hero in flow at doc-y =
-      // heroHeight; in the viewport its top is heroHeight - scrollY.
+      // heroHeight plus the current bottom margin; in the muted-preview
+      // layout that margin is negative so the episode rail starts above
+      // the hero's natural bottom edge.
       // Body covers everything BELOW that line; the unobscured part of
       // the visible video is from the wrapper's visible top down to
       // that line.
-      const bodyTopInViewport = heroHeight - window.scrollY
+      const wrapper = wrapperRef.current
+      const computedMarginBottom = wrapper
+        ? Number.parseFloat(window.getComputedStyle(wrapper).marginBottom)
+        : 0
+      const bodyOverlap = Number.isFinite(computedMarginBottom)
+        ? Math.max(0, -computedMarginBottom)
+        : 0
+      const bodyTopInViewport = heroHeight - bodyOverlap - window.scrollY
       const unobscuredHeight = Math.max(
         0,
         Math.min(visibleVideoHeight, bodyTopInViewport),
@@ -426,7 +674,7 @@ export function HeroPlayer({
       // pause/play on the player).
       if (rafHandle !== 0) cancelAnimationFrame(rafHandle)
     }
-  }, [heroHeight, player])
+  }, [chromeRevealed, heroHeight, player])
 
   const viewerUserId = useSyncExternalStore(
     subscribeViewerId,
@@ -434,9 +682,6 @@ export function HeroPlayer({
     getViewerIdServerSnapshot,
   )
 
-  const searchParams = useSearchParams()
-  const tParam = searchParams?.get("t")
-  const autoplayParam = searchParams?.get("autoplay")
   const handleLoadedMetadata = useCallback(() => {
     const player = playerRef.current
     if (!player) return
@@ -521,48 +766,90 @@ export function HeroPlayer({
     // re-run the effect after a successful attempt commits.
   }, [player, videoReady, autoplayParam, playerRef])
 
-  // iOS user-activation gate: NO `await` between click and play(), or
-  // play() will be rejected as not-from-user-gesture.
-  const handleUnmuteClick = useCallback(() => {
+  const runSoundIntent = useCallback(
+    (player: MuxPlayerRef, intent: PillState) => {
+      if (intent === "tap-to-unmute") {
+        // Autoplay was blocked — this gesture both unmutes AND starts playback
+        // since the user is now committed. Without play() the user just
+        // unmuted a still-paused video.
+        player.muted = false
+        const tapResult = player.play()
+        if (tapResult && typeof tapResult.then === "function") {
+          tapResult.catch((err: unknown) => {
+            console.warn("[HeroPlayer] tap-to-unmute play() rejected", err)
+          })
+        }
+        setChromeRevealed(true)
+        return
+      }
+
+      // Initial click commits playback from the beginning, not from wherever the
+      // muted preview loop happened to be when the user clicked.
+      player.currentTime = 0
+      player.muted = false
+      const result = player.play()
+      if (result && typeof result.then === "function") {
+        result
+          .then(() => {
+            setChromeRevealed(true)
+            setAutoplayBlocked(false)
+          })
+          .catch((err: unknown) => {
+            setPillState("tap-to-unmute")
+            if (isAutoplayBlockedError(err)) {
+              setAutoplayBlocked(true)
+            }
+          })
+      } else {
+        setChromeRevealed(true)
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
     const player = playerRef.current
+    const pendingIntent = pendingSoundIntentRef.current
+    if (!player || !pendingIntent) return
+    pendingSoundIntentRef.current = null
+    runSoundIntent(player, pendingIntent)
+  }, [player, runSoundIntent])
+
+  const activatePlayerForIntent = useCallback(() => {
+    if (playerActivated) return
+    flushSync(() => {
+      setPlayerActivated(true)
+    })
+  }, [playerActivated])
+
+  const handleIntentKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        activatePlayerForIntent()
+      }
+    },
+    [activatePlayerForIntent],
+  )
+
+  // iOS user-activation gate: NO `await` between click and play(), or
+  // play() will be rejected as not-from-user-gesture. When the poster-first
+  // path has not mounted Mux yet, flush the activation synchronously so the
+  // ref is available in the same click task whenever the dynamic chunk is
+  // already loaded; otherwise keep the user's intent queued for attach.
+  const handleUnmuteClick = useCallback(() => {
+    let player = playerRef.current
+    if (!playerActivated) {
+      activatePlayerForIntent()
+      player = playerRef.current
+      if (!player) {
+        pendingSoundIntentRef.current = pillState
+      }
+    }
     if (!player) return
 
-    if (pillState === "tap-to-unmute") {
-      // Autoplay was blocked — this gesture both unmutes AND starts playback
-      // since the user is now committed. Without play() the user just
-      // unmuted a still-paused video.
-      player.muted = false
-      const tapResult = player.play()
-      if (tapResult && typeof tapResult.then === "function") {
-        tapResult.catch((err: unknown) => {
-          console.warn("[HeroPlayer] tap-to-unmute play() rejected", err)
-        })
-      }
-      setChromeRevealed(true)
-      return
-    }
-
-    // Initial click commits playback from the beginning, not from wherever the
-    // muted preview loop happened to be when the user clicked.
-    player.currentTime = 0
-    player.muted = false
-    const result = player.play()
-    if (result && typeof result.then === "function") {
-      result
-        .then(() => {
-          setChromeRevealed(true)
-          setAutoplayBlocked(false)
-        })
-        .catch((err: unknown) => {
-          setPillState("tap-to-unmute")
-          if (isAutoplayBlockedError(err)) {
-            setAutoplayBlocked(true)
-          }
-        })
-    } else {
-      setChromeRevealed(true)
-    }
-  }, [pillState])
+    pendingSoundIntentRef.current = null
+    runSoundIntent(player, pillState)
+  }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
 
   const handlePlayerError = useCallback((event: Event) => {
     // MuxPlayer emits a CustomEvent with `detail.code === "autoplay-blocked"`.
@@ -584,9 +871,6 @@ export function HeroPlayer({
     setVideoReady(true)
   }, [])
 
-  const playbackId = variant.muxVideo?.playbackId ?? undefined
-  const hlsSrc = variant.hls ?? undefined
-
   // Reset the buffered/ready spinner when the playable identity changes
   // (variant switch via the language picker, or new playback id), otherwise
   // the spinner stays hidden during the next variant's pre-canplay buffer.
@@ -594,9 +878,13 @@ export function HeroPlayer({
   // setState) avoids the cascading-render warning the React Compiler raises
   // on a useEffect-driven reset, since the new state is queued before commit.
   const [prevVariantKey, setPrevVariantKey] = useState(variant.documentId)
+  if (autoplayParam === "1" && !playerActivated) {
+    setPlayerActivated(true)
+  }
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
+    setPlayerActivated(autoplayParam === "1" || heroPosterUrl == null)
   }
   // Variant-scope the autoplay one-shot — without this, a same-component
   // re-render with a new variant id (e.g. soft variant swap) would carry
@@ -628,10 +916,12 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" &&
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
-  const showTopLanguageSwitch =
-    showLanguageSwitch && (!chromeRevealed || controlsChromeVisible)
+  const showTopLanguageSwitch = showLanguageSwitch
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
+  const effectivePreviewBodyOverlapPx = chromeRevealed
+    ? 0
+    : previewBodyOverlapPx
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -663,8 +953,12 @@ export function HeroPlayer({
         data-block-type="HeroPlayer"
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
+        data-preview-overlap={
+          effectivePreviewBodyOverlapPx > 0 ? "true" : "false"
+        }
+        data-preview-overlap-px={effectivePreviewBodyOverlapPx}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky w-full h-[calc(100svh-300px)] min-h-[400px] bg-black ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
+        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -675,9 +969,13 @@ export function HeroPlayer({
             heroHeight != null
               ? `min(0px, calc(100svh - ${heroHeight}px))`
               : "0px",
+          marginBottom:
+            effectivePreviewBodyOverlapPx <= 0
+              ? "0px"
+              : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
-        {env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO ? (
+        {playerActivated && env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO ? (
           <MuxVideo
             ref={setPlayerRef as React.Ref<MuxVideoRef>}
             playbackId={playbackId}
@@ -693,11 +991,7 @@ export function HeroPlayer({
             // a regular IMG before the first frame paints, so the existing
             // <link rel="preload"> in page.tsx is reused and the LCP element
             // is discoverable in the initial HTML scan.
-            poster={
-              playbackId
-                ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
-                : undefined
-            }
+            poster={heroPosterUrl}
             envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             disableCookies={true}
             // Override the wrapper's default — the hero is the one MuxVideo
@@ -710,11 +1004,7 @@ export function HeroPlayer({
               video_id: video.documentId,
               viewer_user_id: viewerUserId,
             }}
-            _hlsConfig={{
-              maxBufferLength: 10,
-              maxBufferSize: 5_000_000,
-              backBufferLength: 5,
-            }}
+            _hlsConfig={HERO_HLS_CONFIG}
             style={
               chromeRevealed
                 ? REVEALED_VIDEO_OBJECT_FIT_STYLE
@@ -729,7 +1019,7 @@ export function HeroPlayer({
             onError={(event) => handlePlayerError(event as unknown as Event)}
             className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
           />
-        ) : (
+        ) : playerActivated ? (
           <MuxPlayer
             ref={setPlayerRef}
             playbackId={playbackId}
@@ -737,6 +1027,7 @@ export function HeroPlayer({
             autoPlay="muted"
             muted={muted}
             loop={loop}
+            poster={heroPosterUrl}
             envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
             disableCookies={true}
             metadata={{
@@ -754,25 +1045,47 @@ export function HeroPlayer({
             onLoadedMetadata={handleLoadedMetadata}
             onCanPlay={handleCanPlay}
             onError={handlePlayerError}
+            _hlsConfig={HERO_HLS_CONFIG}
             className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
           />
-        )}
+        ) : null}
+
+        {heroPosterUrl ? (
+          <div
+            className={`pointer-events-none absolute inset-0 transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`}
+          >
+            <Image
+              data-testid="hero-player-poster"
+              src={heroPosterUrl}
+              alt=""
+              aria-hidden="true"
+              fill
+              unoptimized
+              loading="eager"
+              fetchPriority="high"
+              sizes="100vw"
+              className="object-cover"
+            />
+          </div>
+        ) : null}
 
         {!chromeRevealed && overlay == null ? (
           <button
             type="button"
             data-testid="hero-player-pre-reveal-click-surface"
             aria-label={preRevealActionLabel}
+            onPointerDown={activatePlayerForIntent}
+            onKeyDown={handleIntentKeyDown}
             onClick={handleUnmuteClick}
             className="absolute inset-0 z-1 cursor-pointer bg-transparent focus:outline-none"
           />
         ) : null}
 
-        {!videoReady ? (
+        {playerActivated && !videoReady ? (
           <div
             data-testid="hero-player-loading"
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35"
           >
             <SpinnerIcon className="h-12 w-12 animate-spin text-white/80" />
           </div>
@@ -858,6 +1171,8 @@ export function HeroPlayer({
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
+                  onPointerDown={activatePlayerForIntent}
+                  onKeyDown={handleIntentKeyDown}
                   onClick={handleUnmuteClick}
                   className={
                     pillState === "tap-to-unmute"

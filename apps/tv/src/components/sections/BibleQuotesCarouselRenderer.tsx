@@ -5,12 +5,13 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
 import { LinkModal } from "../LinkModal"
+import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -172,11 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: scale(32),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: scale(20),
-    fontWeight: "600",
-    color: COLORS.muted,
-    letterSpacing: 0.5,
+    ...SECTION_HEADING,
     marginBottom: scale(12),
     paddingHorizontal: scale(80),
   },

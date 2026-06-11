@@ -86,7 +86,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
       <div
         aria-hidden
         className={cn(
-          "absolute inset-0 z-[1] bg-[url(/assets/overlay.svg)] bg-repeat mix-blend-multiply",
+          "absolute inset-0 z-[1] bg-[url(/watch/images/overlay.svg)] bg-repeat mix-blend-multiply",
           isRail ? "opacity-70" : "opacity-45",
         )}
       />

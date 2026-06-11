@@ -4,6 +4,12 @@ Shared domain vocabulary for this project — entities, named processes, and sta
 
 ## Video & media
 
+### Core ID
+
+The stable identifier from the Core API for a Core-sourced entity. For source
+video attribution, `Video.coreId` is the canonical video answer and
+`VideoDub.coreId` is Core's `videoVariantId`.
+
 ### Video
 
 A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their episodes — and "Up Next" siblings — are formed.
@@ -21,7 +27,50 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons — persisting or re-selecting a user's chosen language — key on the slug; the BCP-47 tag is only for best-effort device-locale matching.
 
+## Video source mapper
+
+### Video Source Mapper
+
+A prototype attribution service that accepts an externally uploaded or reuploaded video and maps it back to the official source Video and likely Dub it came from.
+
+### Mapper Catalog
+
+A mapper-owned projection of official Forge/Admin media records and matchable media signals used for attribution. The Mapper Catalog is an index for matching, not the source of truth for Videos, Dubs, or Video Editions.
+
+Mapper Catalog rows are shaped around matchable variants: the source Video
+identity stays anchored by Core ID, while each Dub contributes the variant
+identity the mapper uses to compare uploaded media against official media.
+
+### Catalog Sync Run
+
+A durable record of one Mapper Catalog refresh from Admin into mapper-owned
+projection rows.
+
+A Catalog Sync Run tracks page progress, counts, terminal status, and safe
+failure summaries so broad catalog refreshes can be inspected and retried
+without treating Admin as the mapper's database.
+
+### Match Job
+
+An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
+
+### Match Candidate
+
+A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
+
 ## Search & embeddings
+
+### Search Pipeline Mode
+
+A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
+
+### Keyword-First Search
+
+A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
+
+### Search Degradation Signal
+
+The response-side state that says whether semantic retrieval actually contributed to a search response. It reflects runtime embedding availability, not the requested Search Pipeline Mode.
 
 ### Content Embedding
 
@@ -55,10 +104,29 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
 
+## Home hero UI
+
+### Three-Layer Hero
+
+The mobile layering pattern for a screen whose feed scrolls over a full-bleed video hero: a display-only hero layer behind the feed, the scrolling feed itself, and a touch overlay above the feed that owns every tappable hero control.
+
+Touches go to the topmost layer and are never re-offered downward, so anything interactive placed in the hero layer is unreachable — the hero's Chrome must live in the overlay, which passes gestures it doesn't own through to the feed. When the hero itself needs a gesture (such as swiping between paged slides), a shared ancestor intercepts it before the feed's scroll can claim it, taking only gestures whose direction marks them as the hero's.
+
+### Hero Insert
+
+An editorial slide in the watch-home hero rotation sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
+_Avoid:_ Mux insert.
+
 ## Watch player UI
 
 ### Chrome
 
 The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it.
 
-The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches.
+The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
+
+### Watch Session
+
+The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
+
+A Watch Session belongs to the currently-viewed Video: it is published when the details screen resolves its Video and cleared when that screen goes away, and switching the active Dub mid-playback updates the session rather than restarting playback. Player features that depend on it (the in-player language/subtitle menu, subtitle rendering) gate on the session matching what is actually playing, so playback started outside a details screen runs without them.

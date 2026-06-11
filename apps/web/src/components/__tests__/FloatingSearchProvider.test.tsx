@@ -18,6 +18,7 @@ import type {
 } from "@/lib/search"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  WATCH_PLAYER_CHROME_REVEAL_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   WATCH_PLAYER_PLAYBACK_STATE_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
@@ -64,13 +65,17 @@ afterEach(() => {
   })
   container.remove()
   document.body.innerHTML = ""
+  vi.clearAllMocks()
+  vi.useRealTimers()
 })
 
-function dispatchChromeVisibility(visible: boolean) {
+const mockedRunSearch = vi.mocked(runSearch)
+
+function dispatchChromeVisibility(visible: boolean, opacity?: number) {
   window.dispatchEvent(
     new CustomEvent<WatchPlayerChromeVisibilityDetail>(
       WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
-      { detail: { visible } },
+      { detail: { visible, opacity } },
     ),
   )
 }
@@ -129,6 +134,91 @@ const videoResult = (id: string): SearchResult => ({
   durationSeconds: null,
   childCount: 0,
 })
+
+function makeSearchResult(id: string, title: string): SearchResult {
+  return {
+    type: "video",
+    id,
+    slug: `${id}-slug`,
+    title,
+    imageUrl: null,
+    snippet: `${title} snippet`,
+    startSeconds: null,
+    playbackId: `playback-${id}`,
+    score: 1,
+    label: null,
+    durationSeconds: 120,
+    childCount: 0,
+  }
+}
+
+function makeSearchResponse(
+  results: SearchResult[],
+  hasMore: boolean,
+): SearchActionResult {
+  return searchResult("semantic", {
+    results,
+    hasMore,
+    query: "the bible project",
+    searchMode: "hybrid",
+    latencyMs: 12,
+  })
+}
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set
+  valueSetter?.call(input, value)
+  input.dispatchEvent(new Event("input", { bubbles: true }))
+}
+
+async function openSearchOverlay(): Promise<HTMLInputElement> {
+  act(() => {
+    root.render(
+      <FloatingSearchProvider>
+        <main>Page</main>
+      </FloatingSearchProvider>,
+    )
+  })
+  await act(async () => {
+    await Promise.resolve()
+  })
+
+  const searchButton = document.querySelector(
+    '[aria-label="Search videos"]',
+  ) as HTMLButtonElement
+  act(() => {
+    searchButton.click()
+  })
+
+  const input = document.querySelector(
+    'input[aria-label="Search videos by keyword"]',
+  ) as HTMLInputElement | null
+  if (input === null) {
+    throw new Error("Expected search overlay input to render")
+  }
+  return input
+}
+
+async function submitDebouncedSearch(input: HTMLInputElement, query: string) {
+  act(() => {
+    setInputValue(input, query)
+  })
+  await act(async () => {
+    vi.advanceTimersByTime(300)
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
+async function flushResolvedSearch() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
 
 function PlaybackStatePublisher({
   detail,
@@ -572,7 +662,69 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(mobileSearchButton?.className).toContain("opacity-100")
   })
 
-  it("reveals the floating search bar while hovering the header after the player chrome hides", () => {
+  it("dims the floating search bar when player chrome publishes 30% opacity", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchChromeVisibility(true, 0.3)
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    const mobileSearchButton = document.querySelector(
+      '[data-testid="floating-search-mobile-button"]',
+    )
+    expect(searchButton?.className).toContain("opacity-30")
+    expect(searchButton?.className).toContain("pointer-events-auto")
+    expect(mobileSearchButton?.className).toContain("opacity-30")
+    expect(mobileSearchButton?.className).toContain("pointer-events-auto")
+  })
+
+  it("keeps the floating search bar dimmed and asks the player to brighten while hovering during player dim state", () => {
+    const revealListener = vi.fn()
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchChromeVisibility(true, 0.3)
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    const mobileSearchButton = document.querySelector(
+      '[data-testid="floating-search-mobile-button"]',
+    )
+    const hoverZone = document.querySelector(
+      '[data-testid="floating-header-hover-zone"]',
+    )
+
+    act(() => {
+      hoverZone?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    expect(searchButton?.className).toContain("opacity-30")
+    expect(mobileSearchButton?.className).toContain("opacity-30")
+    expect(revealListener).toHaveBeenCalled()
+    window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+  })
+
+  it("reveals the floating search bar and emits a player reveal request while hovering the header after player chrome hides", () => {
+    const revealListener = vi.fn()
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -612,6 +764,8 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 
     expect(searchButton?.className).toContain("opacity-0")
     expect(mobileSearchButton?.className).toContain("opacity-0")
+    expect(revealListener).toHaveBeenCalled()
+    window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
 })
 
@@ -698,6 +852,30 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       document.querySelector('[data-testid="floating-header-animated-icon"]'),
     ).toBeNull()
   })
+
+  it("dims the floating language globe and logo with player chrome opacity", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: vi.fn() })
+      dispatchChromeVisibility(true, 0.3)
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(languageButton?.className).toContain("opacity-30")
+    expect(languageButton?.className).not.toContain("pointer-events-none")
+    expect(logo?.className).toContain("opacity-30")
+    expect(logo?.className).not.toContain("pointer-events-none")
+  })
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
@@ -776,5 +954,80 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(close?.className).toContain("z-[60]")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("h-6")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("w-6")
+  })
+})
+
+describe("FloatingSearchProvider — search pagination", () => {
+  it("requests the initial Watch search page with limit 10 and offset 0", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockResolvedValueOnce(
+      makeSearchResponse(
+        [makeSearchResult("first-result", "The Bible Project Result")],
+        false,
+      ),
+    )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "the bible project",
+        limit: 10,
+        offset: 0,
+      }),
+    )
+    expect(document.body.textContent).toContain("The Bible Project Result")
+  })
+
+  it("loads the next Watch search page with limit 10, current offset, and appends results", async () => {
+    vi.useFakeTimers()
+    const initialResults = Array.from({ length: 7 }, (_, index) =>
+      makeSearchResult(
+        `initial-${index + 1}`,
+        `Initial Bible Project Result ${index + 1}`,
+      ),
+    )
+    const nextResults = [
+      makeSearchResult("next-1", "Next Bible Project Result 1"),
+    ]
+    mockedRunSearch
+      .mockResolvedValueOnce(makeSearchResponse(initialResults, true))
+      .mockResolvedValueOnce(makeSearchResponse(nextResults, false))
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+
+    const loadMore = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Load more",
+    )
+    expect(loadMore).not.toBeUndefined()
+
+    act(() => {
+      loadMore?.click()
+    })
+    await flushResolvedSearch()
+
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        query: "the bible project",
+        limit: 10,
+        offset: 0,
+      }),
+    )
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        query: "the bible project",
+        limit: 10,
+        offset: 7,
+      }),
+    )
+    expect(document.body.textContent).toContain(
+      "Initial Bible Project Result 1",
+    )
+    expect(document.body.textContent).toContain("Next Bible Project Result 1")
   })
 })

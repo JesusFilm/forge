@@ -20,15 +20,18 @@ import type { SearchLanguageResolution } from "./search-language"
 // keyring rotation documented at
 // docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md
 
-const SEARCH_QUERY = adminGraphql(`
+const WEB_SEARCH_MODE = "keyword-first"
+
+const searchVideosOperation = adminGraphql(`
   query Search(
     $q: String!
     $locale: String!
     $limit: Int
     $offset: Int
     $type: HybridSearchContentType
+    $mode: String
   ) {
-    search(q: $q, locale: $locale, limit: $limit, offset: $offset, type: $type) {
+    search(q: $q, locale: $locale, limit: $limit, offset: $offset, type: $type, mode: $mode) {
       hasMore
       query
       searchMode
@@ -52,13 +55,13 @@ const SEARCH_QUERY = adminGraphql(`
 
 export type SearchContentType = "video" | "experience"
 
-// Derived from the gql.tada introspection of the actual SEARCH_QUERY
+// Derived from the gql.tada introspection of the actual search operation
 // result. When admin adds a new VideoLabel value and the package
 // regenerates `admin-graphql-env.d.ts`, this union widens automatically
 // — no hand-mirrored string list to drift out of sync with the SDL.
 export type AdminVideoLabel = NonNullable<
   NonNullable<
-    AdminResultOf<typeof SEARCH_QUERY>["search"]
+    AdminResultOf<typeof searchVideosOperation>["search"]
   >["results"][number]["label"]
 >
 
@@ -162,13 +165,14 @@ export async function searchVideos(
 
   const startedAt = performance.now()
   const result = await client.query({
-    query: SEARCH_QUERY,
+    query: searchVideosOperation,
     variables: {
       q: truncatedQuery,
       locale,
       limit,
       offset,
       type: toAdminContentType(type),
+      mode: WEB_SEARCH_MODE,
     },
     fetchPolicy: "no-cache",
   })
