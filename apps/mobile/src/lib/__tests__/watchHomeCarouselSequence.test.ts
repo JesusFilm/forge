@@ -111,6 +111,23 @@ describe("buildWatchHomeVideoQueue", () => {
     expect(result.nextPoolIndex).toBe(2)
   })
 
+  it("resumes the pool rotation from a non-zero startPoolIndex (persisted session resume)", () => {
+    const result = buildWatchHomeVideoQueue({
+      pools: [
+        pool("pool-a", ["video-a", "video-b"]),
+        pool("pool-b", ["video-c", "video-d"]),
+      ],
+      startPoolIndex: 1,
+      targetVideoCount: 1,
+      now: morningNow,
+    })
+
+    expect(result.videos).toHaveLength(1)
+    expect(result.videos[0]?.poolId).toBe("pool-b")
+    expect(result.videos[0]?.poolIndex).toBe(1)
+    expect(result.nextPoolIndex).toBe(2)
+  })
+
   it("advances past a played slide on rebuild (played set advances the queue)", () => {
     const pools = [pool("pool-a", ["video-a", "video-b"])]
     const first = buildWatchHomeVideoQueue({
