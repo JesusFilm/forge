@@ -32,6 +32,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
 import { useWatchHome } from "../../hooks/useWatchHome"
+import { useWatchHomeCarouselMemory } from "../../hooks/useWatchHomeCarouselMemory"
 import {
   ACCENT,
   BG_COLOR,
@@ -51,7 +52,7 @@ import { slideRouteArgs } from "../../lib/watchHome/slideRouteArgs"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import { feedback, layout, text } from "../../styles/shared"
 import { HomeHeader } from "../ui/HomeHeader"
-import { HomeChipRail } from "./HomeChipRail"
+import { HomeHeroSelectorRail } from "./HomeHeroSelectorRail"
 import {
   HERO_CHROME_BOTTOM,
   HERO_CTA_HEIGHT,
@@ -64,7 +65,7 @@ import { HomeShelf } from "./HomeShelf"
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type HomeFeedItem =
-  | { kind: "chips" }
+  | { kind: "selector" }
   | { kind: "section"; section: WatchHomeSection }
   | { kind: "mission" }
 
@@ -101,36 +102,52 @@ export function HomeScreen() {
 
   // ── Hero queue (referentially stable per model identity) ──────────────────
 
-  // In-memory played set (web's localStorage persistence does not port —
-  // KTD-3). A ref, not state: it only feeds queue REBUILDS (new model
-  // identity); the live pager tracks its own progress internally.
-  // Intentionally duplicates the reducer's playedIds: the reducer's set signals
-  // wrap for the pager; this ref feeds queue rebuilds across model refreshes
-  // and resets on wrap.
-  const playedIdsRef = useRef<Set<string>>(new Set())
+  // AsyncStorage-backed carousel memory (web's localStorage/session parity).
+  // playedIdsRef is a ref, not state: it only feeds queue REBUILDS (new model
+  // identity or hydration landing); the live pager tracks its own progress
+  // internally. Intentionally duplicates the reducer's playedIds: the
+  // reducer's set signals wrap for the pager; this ref feeds queue rebuilds
+  // across model refreshes and resets on wrap.
+  const {
+    playedIdsRef,
+    startPoolIndexRef,
+    hydrated: memoryHydrated,
+    markVideoPlayed,
+    resetPlayedIds,
+    persistActiveSlide,
+  } = useWatchHomeCarouselMemory()
   // Stable per-mount seed keeps each insert's mux playback selection stable
   // for the session (carouselSequence's sessionSeed contract).
   const sessionSeedRef = useRef(
     `home-${Math.random().toString(36).slice(2, 10)}`,
   )
 
+  // memoryHydrated is a rebuild trigger, not data: hydration (a local disk
+  // read) normally resolves before the model fetch, so the first model-driven
+  // build already sees the persisted exclusions. When it loses that race the
+  // queue rebuilds once, leading with unseen content.
   const heroSlides = useMemo<readonly WatchHomeSlide[]>(() => {
     if (model == null) return EMPTY_SLIDES
     const queue = buildWatchHomeHeroQueue({
       pools: model.carousel.pools,
       inserts: model.carousel.muxInserts,
       playedIds: playedIdsRef.current,
+      startPoolIndex: startPoolIndexRef.current,
       sessionSeed: sessionSeedRef.current,
     })
-    if (queue.wrapped) {
+    if (queue.wrapped && queue.videos.length > 0) {
       // Helper contract: wrapped=true means every eligible slide was already
       // in the played set and the returned queue was rebuilt ignoring it.
-      // Reset the set so the next rebuild starts a fresh played cycle instead
-      // of wrapping forever.
-      playedIdsRef.current = new Set()
+      // Reset the set (memory + storage) so the next rebuild starts a fresh
+      // played cycle instead of wrapping forever. The videos.length guard
+      // keeps a degenerate model (no eligible videos at all — a content
+      // outage, not a wrap) from wiping the persisted monthly memory.
+      resetPlayedIds()
     }
     return queue.slides
-  }, [model])
+    // playedIdsRef/startPoolIndexRef are stable refs read at build time, not
+    // rebuild triggers; memoryHydrated is the rebuild trigger for them.
+  }, [model, memoryHydrated, resetPlayedIds])
 
   const heroVisible = heroSlides.length > 0
 
@@ -141,7 +158,10 @@ export function HomeScreen() {
     index: number
     slide: WatchHomeSlide
   } | null>(null)
-  const prevSlideIdRef = useRef<string | null>(null)
+  const prevSlideRef = useRef<{
+    id: string
+    kind: WatchHomeSlide["kind"]
+  } | null>(null)
 
   // A queue rebuild resets the pager to slide 0 WITHOUT re-firing
   // onSlideChange when the index is unchanged (its real-index-change guard),
@@ -168,17 +188,23 @@ export function HomeScreen() {
     (index: number, slide: WatchHomeSlide) => {
       setActiveHero({ index, slide })
       swipeStateRef.current.activeIndex = index
-      // Mark the slide we LEFT as played so queue rebuilds (pull-to-refresh
-      // producing a new model) lead with unseen content. Mux insert ids never
-      // appear in the pools, so collecting them here is harmless.
-      const prev = prevSlideIdRef.current
-      if (prev != null && prev !== slide.id) playedIdsRef.current.add(prev)
-      prevSlideIdRef.current = slide.id
+      // Mark the VIDEO slide we LEFT as played (persisted, monthly reset) so
+      // queue rebuilds — pull-to-refresh AND the next app launch — lead with
+      // unseen content. Mux insert ids never appear in the pools, so they are
+      // skipped rather than stored.
+      const prev = prevSlideRef.current
+      if (prev != null && prev.id !== slide.id && prev.kind === "video") {
+        markVideoPlayed(prev.id)
+      }
+      prevSlideRef.current = { id: slide.id, kind: slide.kind }
+      // Active video slide is the resume point: the next launch's queue build
+      // continues the pool rotation from here (web's 24h session-resume rule).
+      persistActiveSlide(slide)
     },
-    [],
+    [markVideoPlayed, persistActiveSlide],
   )
 
-  const handleChipPress = useCallback((index: number) => {
+  const handleSelectSlide = useCallback((index: number) => {
     pagerRef.current?.selectSlide(index)
   }, [])
 
@@ -318,8 +344,8 @@ export function HomeScreen() {
   const feedItems = useMemo<HomeFeedItem[]>(() => {
     if (model == null) return []
     const items: HomeFeedItem[] = []
-    // Chip rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
-    if (heroSlides.length > 1) items.push({ kind: "chips" })
+    // Selector rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
+    if (heroSlides.length > 1) items.push({ kind: "selector" })
     for (const section of model.sections) {
       items.push({ kind: "section", section })
     }
@@ -336,12 +362,12 @@ export function HomeScreen() {
   const renderItem = useCallback(
     ({ item, index }: { item: HomeFeedItem; index: number }) => {
       const content =
-        item.kind === "chips" ? (
-          <View style={styles.chipRailSpacing}>
-            <HomeChipRail
+        item.kind === "selector" ? (
+          <View style={styles.selectorRailSpacing}>
+            <HomeHeroSelectorRail
               slides={heroSlides}
               activeIndex={activeIndex}
-              onChipPress={handleChipPress}
+              onSelectSlide={handleSelectSlide}
             />
           </View>
         ) : item.kind === "section" ? (
@@ -368,7 +394,7 @@ export function HomeScreen() {
         </View>
       )
     },
-    [heroSlides, activeIndex, handleChipPress, heroVisible],
+    [heroSlides, activeIndex, handleSelectSlide, heroVisible],
   )
 
   const contentContainerStyle = useMemo(
@@ -631,7 +657,7 @@ const styles = StyleSheet.create({
     height: 48,
     marginTop: -48,
   },
-  chipRailSpacing: {
+  selectorRailSpacing: {
     paddingTop: 12,
     paddingBottom: 8,
   },
