@@ -30,7 +30,7 @@ Building a new React Native Expo app (`apps/mobile-v2/`) alongside the existing 
 
 **Root cause:** `apollo3-cache-persist@0.15.0` only supports Apollo Client v3. Its internal imports fail against v4's restructured module exports.
 
-**Fix:** Remove `apollo3-cache-persist` and `@react-native-async-storage/async-storage`. Use synchronous `getApolloClient()` singleton (matching `apps/mobile/` pattern). Cache persistence can be revisited with a v4-compatible library.
+**Fix:** Remove `apollo3-cache-persist` and `@react-native-async-storage/async-storage`. Use synchronous `getApolloClient()` singleton (matching `apps/mobile/` pattern). Cache persistence can be revisited with a v4-compatible library. _Update 2026-06-11:_ the revisit happened as a hand-rolled, per-query AsyncStorage snapshot rather than a library — see `docs/solutions/design-patterns/asyncstorage-swr-snapshot-slow-admin-resolver.md`.
 
 ### 2. Expo Router Version Mismatch — SDK 54 expects different versions
 
