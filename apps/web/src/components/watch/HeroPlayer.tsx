@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react"
 import { flushSync } from "react-dom"
@@ -114,6 +115,10 @@ const HERO_HLS_CONFIG = {
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
 }
+const HERO_PLAYER_ID = "watch-hero-player"
+const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
+const WATCH_NOW_LINK_CLASS =
+  "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
 
 function buildHeroPosterUrl(
   playbackId: string | undefined,
@@ -121,6 +126,12 @@ function buildHeroPosterUrl(
   return playbackId
     ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
     : undefined
+}
+
+function buildHeroPlaybackFallbackHref(playbackId: string | undefined): string {
+  return playbackId
+    ? `https://stream.mux.com/${encodeURIComponent(playbackId)}.m3u8`
+    : `#${HERO_PLAYER_MEDIA_ID}`
 }
 
 const IDLE_PREVIEW_FALLBACK_DELAY_MS = 1200
@@ -186,6 +197,7 @@ export function HeroPlayer({
   const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
+  const heroPlaybackFallbackHref = buildHeroPlaybackFallbackHref(playbackId)
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
@@ -793,15 +805,6 @@ export function HeroPlayer({
     })
   }, [playerActivated])
 
-  const handleIntentKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLButtonElement>) => {
-      if (event.key === "Enter" || event.key === " ") {
-        activatePlayerForIntent()
-      }
-    },
-    [activatePlayerForIntent],
-  )
-
   // iOS user-activation gate: NO `await` between click and play(), or
   // play() will be rejected as not-from-user-gesture. When the poster-first
   // path has not mounted Mux yet, flush the activation synchronously so the
@@ -821,6 +824,28 @@ export function HeroPlayer({
     pendingSoundIntentRef.current = null
     runSoundIntent(player, pillState)
   }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
+
+  const handleWatchNowClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault()
+      handleUnmuteClick()
+    },
+    [handleUnmuteClick],
+  )
+
+  const handleWatchNowKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLAnchorElement>) => {
+      if (event.key === " ") {
+        event.preventDefault()
+        handleUnmuteClick()
+        return
+      }
+      if (event.key === "Enter") {
+        activatePlayerForIntent()
+      }
+    },
+    [activatePlayerForIntent, handleUnmuteClick],
+  )
 
   const handlePlayerError = useCallback((event: Event) => {
     // MuxVideo emits a plain Event — autoplay rejection arrives via the
@@ -949,6 +974,7 @@ export function HeroPlayer({
   return (
     <>
       <div
+        id={HERO_PLAYER_ID}
         ref={wrapperRef}
         data-block-type="HeroPlayer"
         data-testid="hero-player-wrapper"
@@ -995,6 +1021,7 @@ export function HeroPlayer({
         ) : null}
 
         <div
+          id={HERO_PLAYER_MEDIA_ID}
           data-testid="hero-player-media-frame"
           className={mediaFrameClassName}
         >
@@ -1064,9 +1091,9 @@ export function HeroPlayer({
             <button
               type="button"
               data-testid="hero-player-pre-reveal-click-surface"
-              aria-label={preRevealActionLabel}
+              aria-hidden="true"
+              tabIndex={-1}
               onPointerDown={activatePlayerForIntent}
-              onKeyDown={handleIntentKeyDown}
               onClick={handleUnmuteClick}
               className="absolute inset-0 z-1 cursor-pointer bg-transparent focus:outline-none"
             />
@@ -1161,18 +1188,19 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <button
-                  type="button"
+                <a
+                  href={heroPlaybackFallbackHref}
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
+                  aria-controls={HERO_PLAYER_MEDIA_ID}
                   onPointerDown={activatePlayerForIntent}
-                  onKeyDown={handleIntentKeyDown}
-                  onClick={handleUnmuteClick}
+                  onKeyDown={handleWatchNowKeyDown}
+                  onClick={handleWatchNowClick}
                   className={
                     pillState === "tap-to-unmute"
-                      ? "inline-flex cursor-pointer items-center gap-3 rounded-full bg-amber-500 px-5 py-2.5 text-base font-medium text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400 md:py-3 md:text-lg"
-                      : "inline-flex cursor-pointer items-center gap-3 rounded-full bg-brand-red px-5 py-2.5 text-base font-medium text-white shadow-lg transition hover:bg-brand-red md:py-3 md:text-lg"
+                      ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                      : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
                   }
                 >
                   {pillState === "tap-to-unmute" ? (
@@ -1181,7 +1209,7 @@ export function HeroPlayer({
                     <PlayIcon />
                   )}
                   <span>{preRevealActionLabel}</span>
-                </button>
+                </a>
               </div>
             ))
           : null}

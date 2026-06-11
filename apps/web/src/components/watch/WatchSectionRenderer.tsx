@@ -33,11 +33,13 @@ export function WatchSectionRenderer({
   blocks,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending,
   modalCallbacks,
   onPlayerReady,
   locale,
   languageSlug,
+  shareHref,
   subtitleVttSrc,
   hideBibleQuotes = false,
   pendingChapter,
@@ -46,11 +48,13 @@ export function WatchSectionRenderer({
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
   languageSlug?: string
+  shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
@@ -83,12 +87,14 @@ export function WatchSectionRenderer({
           index={index}
           downloadButtonLabel={downloadButtonLabel}
           downloadError={downloadError}
+          downloadHref={downloadHref}
           downloadPending={downloadPending}
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           locale={locale}
           languageSlug={languageSlug}
+          shareHref={shareHref}
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
           pendingChapter={pendingChapter}
@@ -122,12 +128,14 @@ export function WatchSectionRenderer({
                   index={index + topBlocks.length}
                   downloadButtonLabel={downloadButtonLabel}
                   downloadError={downloadError}
+                  downloadHref={downloadHref}
                   downloadPending={downloadPending}
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
                   locale={locale}
                   languageSlug={languageSlug}
+                  shareHref={shareHref}
                   hideBibleQuotes={hideBibleQuotes}
                   pendingChapter={pendingChapter}
                   onChapterNavigateIntent={onChapterNavigateIntent}
@@ -146,12 +154,14 @@ function WatchBlockEntry({
   index,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
   locale,
   languageSlug,
+  shareHref,
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
@@ -161,12 +171,14 @@ function WatchBlockEntry({
   index: number
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
   languageSlug?: string
+  shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
@@ -178,12 +190,14 @@ function WatchBlockEntry({
         block={block}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}
+        downloadHref={downloadHref}
         downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         locale={locale}
         languageSlug={languageSlug}
+        shareHref={shareHref}
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={pendingChapter}
@@ -198,12 +212,14 @@ function SyntheticBlock({
   block,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
   locale,
   languageSlug,
+  shareHref,
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
@@ -212,12 +228,14 @@ function SyntheticBlock({
   block: WatchBlock
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
   languageSlug?: string
+  shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
@@ -264,6 +282,7 @@ function SyntheticBlock({
           block={block}
           downloadButtonLabel={downloadButtonLabel}
           downloadError={downloadError}
+          downloadHref={downloadHref}
           downloadPending={downloadPending}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
@@ -288,6 +307,7 @@ function SyntheticBlock({
       return (
         <BibleQuotesSection
           bibleCitations={block.bibleCitations}
+          href={shareHref}
           onShareClick={modalCallbacks?.openShare ?? noop}
           locale={locale}
           youVersionPassages={block.youVersionPassages}

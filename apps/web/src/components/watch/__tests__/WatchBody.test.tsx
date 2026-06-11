@@ -806,4 +806,41 @@ describe("DownloadButton — isolated render", () => {
     expect(btn.textContent).toContain("Save Video")
     expect(btn.getAttribute("aria-label")).toBe("Save Video")
   })
+
+  it("renders a concrete fallback link when an href is supplied", () => {
+    const onClick = vi.fn()
+
+    act(() => {
+      root.render(
+        <DownloadButton
+          href="/watch/api/download?downloadId=dl-1&variantId=variant-1&videoSlug=jesus"
+          onClick={onClick}
+        />,
+      )
+    })
+
+    const link = container.querySelector(
+      '[data-testid="watch-download-button"]',
+    ) as HTMLAnchorElement
+    expect(link).not.toBeNull()
+    expect(link.tagName.toLowerCase()).toBe("a")
+    expect(link.getAttribute("href")).toContain("/watch/api/download?")
+    expect(link.getAttribute("href")).toContain("downloadId=dl-1")
+    expect(link.getAttribute("download")).toBe("")
+    expect(link.getAttribute("aria-label")).toBe("Download")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(link.className).toContain(token)
+    }
+
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+    act(() => {
+      expect(link.dispatchEvent(clickEvent)).toBe(false)
+    })
+
+    expect(clickEvent.defaultPrevented).toBe(true)
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
 })
