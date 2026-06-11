@@ -330,7 +330,7 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.getAttribute("href")).toBe("/magdalena.html/english.html")
   })
 
-  it("marks an inactive chapter card as pending immediately after a normal click", () => {
+  it("makes the clicked chapter card current while navigation is pending", () => {
     const block = makeBlock(4, 0)
 
     act(() => {
@@ -340,10 +340,16 @@ describe("SiblingCarousel — happy path", () => {
     const target = container.querySelector(
       "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
     )
+    const previousCurrent = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-1-slug.html/english.html']",
+    )
 
     expect(target).not.toBeNull()
+    expect(previousCurrent).not.toBeNull()
     expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(target!.getAttribute("data-active")).toBe("false")
     expect(target!.getAttribute("aria-busy")).toBeNull()
+    expect(previousCurrent!.getAttribute("data-active")).toBe("true")
 
     act(() => {
       target!.dispatchEvent(
@@ -356,10 +362,22 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     expect(target!.getAttribute("data-pending")).toBe("true")
+    expect(target!.getAttribute("data-active")).toBe("true")
     expect(target!.getAttribute("aria-busy")).toBe("true")
+    expect(target!.className).toContain("border-white")
+    expect(previousCurrent!.getAttribute("data-active")).toBe("false")
+    expect(previousCurrent!.className).not.toContain("border-white")
     expect(
       target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
     ).not.toBeNull()
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("2 of 4")
+    expect(desktopLabel?.textContent).toBe("Clip 2 of 4")
   })
 
   it("does not show pending feedback for modified chapter clicks", () => {

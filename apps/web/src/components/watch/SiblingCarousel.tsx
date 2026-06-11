@@ -43,8 +43,6 @@ export function SiblingCarousel({
   const activeIndex = children.findIndex(
     (child) => child.documentId === currentVideoDocumentId,
   )
-  const isParentMode = activeIndex < 0
-  const clipIndex = activeIndex >= 0 ? activeIndex + 1 : 1
   const clipTotal = children.length
   const parentTitle = canonicalParent.title ?? videoLabels("collection")
 
@@ -61,11 +59,16 @@ export function SiblingCarousel({
     href: string
     languageSlug: string
     sourceVideoDocumentId: string
+    targetVideoDocumentId: string
   } | null>(null)
-  const initialCarouselIndex = activeIndex >= 0 ? activeIndex : 0
 
   const handleCardClick = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>, href: string, isActive: boolean) => {
+    (
+      event: MouseEvent<HTMLAnchorElement>,
+      href: string,
+      targetVideoDocumentId: string,
+      isActive: boolean,
+    ) => {
       if (isActive) return
       if (event.defaultPrevented) return
       if (event.button !== 0) return
@@ -77,22 +80,40 @@ export function SiblingCarousel({
         href,
         languageSlug,
         sourceVideoDocumentId: currentVideoDocumentId,
+        targetVideoDocumentId,
       })
     },
     [currentVideoDocumentId, languageSlug],
   )
 
-  // Snap to the active item whenever it changes (or when `api` first
-  // becomes available). Re-keying on `activeIndex` covers variant-switch
-  // scenarios where the same SiblingCarousel instance now has a new
-  // active child — without this, the carousel would stay scrolled to the
-  // previous chapter. The early-return guard handles parent-page mode
-  // (activeIndex === -1, no card to snap to).
+  const validPendingNavigation =
+    pendingNavigation != null &&
+    pendingNavigation.languageSlug === languageSlug &&
+    pendingNavigation.sourceVideoDocumentId === currentVideoDocumentId
+      ? pendingNavigation
+      : null
+  const pendingActiveIndex =
+    validPendingNavigation != null
+      ? children.findIndex(
+          (child) =>
+            child.documentId === validPendingNavigation.targetVideoDocumentId,
+        )
+      : -1
+  const visualActiveIndex =
+    pendingActiveIndex >= 0 ? pendingActiveIndex : activeIndex
+  const isParentMode = visualActiveIndex < 0
+  const clipIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
+  const initialCarouselIndex = visualActiveIndex >= 0 ? visualActiveIndex : 0
+
+  // Snap to the visually active item whenever it changes (or when `api`
+  // first becomes available). Pending navigation can temporarily move the
+  // active treatment to the clicked chapter before the route data catches up.
+  // The early-return guard handles parent-page mode (no card to snap to).
   useEffect(() => {
     if (!api) return
-    if (activeIndex < 0) return
-    api.scrollTo(activeIndex, true)
-  }, [api, activeIndex])
+    if (visualActiveIndex < 0) return
+    api.scrollTo(visualActiveIndex, true)
+  }, [api, visualActiveIndex])
 
   if (children.length < 2) return null
 
@@ -151,7 +172,7 @@ export function SiblingCarousel({
       >
         <CarouselContent>
           {children.map((child, index) => {
-            const isActive = index === activeIndex
+            const isActive = index === visualActiveIndex
             // `resolvePosterUrl` codifies the editorial-cinematic priority
             // chain shared with WatchPageClient. The raw `images[].url`
             // value is excluded from that chain entirely: it's a misshaped
@@ -165,12 +186,9 @@ export function SiblingCarousel({
             const lang = tryAsLocaleSlug(languageSlug)
             const href = slug && lang ? watchVideoPath(slug, lang) : undefined
             const isPending =
-              pendingNavigation != null &&
-              pendingNavigation.href === href &&
-              pendingNavigation.languageSlug === languageSlug &&
-              pendingNavigation.sourceVideoDocumentId ===
-                currentVideoDocumentId &&
-              !isActive
+              validPendingNavigation != null &&
+              validPendingNavigation.href === href &&
+              validPendingNavigation.targetVideoDocumentId === child.documentId
             const thumbnailAlt = child.title
               ? `${child.title} thumbnail`
               : "Related video thumbnail"
@@ -181,6 +199,7 @@ export function SiblingCarousel({
                 ? "border-4 border-white"
                 : "opacity-70 hover:outline-4 hover:outline-offset-[-4px] hover:outline-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
               isPending &&
+                !isActive &&
                 "opacity-100 outline-4 outline-offset-[-4px] outline-brand-red shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
             )
 
@@ -218,10 +237,10 @@ export function SiblingCarousel({
                   className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-full bg-black/35 backdrop-blur-[14px] [mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_35%,rgba(0,0,0,0.35)_62%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_35%,rgba(0,0,0,0.35)_62%,transparent_100%)]"
                 />
 
-                {/* Hover-only play overlay on inactive cards. The active
-                    card already signals "this is what's playing" via the
-                    red border, so we don't double-mark it with a button. */}
-                {!isActive ? (
+                {/* Hover-only play overlay on inactive cards. A pending
+                    active card swaps the play glyph for a loader so the
+                    current-looking tile still communicates navigation work. */}
+                {!isActive || isPending ? (
                   <div
                     aria-hidden="true"
                     data-testid="sibling-carousel-play-overlay"
@@ -308,7 +327,9 @@ export function SiblingCarousel({
                     data-href={href}
                     aria-busy={isPending ? "true" : undefined}
                     className={cardClassName}
-                    onClick={(event) => handleCardClick(event, href, isActive)}
+                    onClick={(event) =>
+                      handleCardClick(event, href, child.documentId, isActive)
+                    }
                   >
                     {cardInner}
                   </Link>
