@@ -8,6 +8,7 @@
     "build": "rm -rf dist && pnpm run db:generate && tsc -p tsconfig.build.json && rm -rf dist/generated/prisma && mkdir -p dist/generated && cp -R src/generated/prisma dist/generated/prisma",
     "start": "node dist/server.js",
     "sync:catalog": "tsx src/scripts/sync-catalog.ts",
+    "index:media": "tsx src/scripts/index-media.ts",
     "postinstall": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5432/yt_video_mapper} prisma generate",
     "db:generate": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5432/yt_video_mapper} prisma generate",
     "db:migrate:dev": "prisma migrate dev",
