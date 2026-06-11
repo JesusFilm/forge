@@ -12,6 +12,7 @@
 
 import { useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
+import type { View as ViewType } from "react-native"
 
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
@@ -29,6 +30,9 @@ const NO_ACTION = () => {}
 
 export function MissionSection() {
   const [qrFocused, setQrFocused] = useState(false)
+  // State (not a ref) so the guide re-renders with its destination once the
+  // QR node mounts — a plain ref leaves destinations empty on first render.
+  const [qrNode, setQrNode] = useState<ViewType | null>(null)
 
   return (
     <View style={styles.container}>
@@ -45,11 +49,16 @@ export function MissionSection() {
         </Text>
       </View>
 
-      {/* Full-width guide so down-navigation from any card in the last rail
-          finds the QR focusable even without horizontal projection overlap
-          (the tile sits right of the text column; the focus engine needs
-          projection overlap for vertical moves — pitfalls doc §3). */}
-      <TVFocusGuideView autoFocus style={styles.band}>
+      {/* Full-width guide with an explicit destination: the QR sits right of
+          the non-focusable text column, so down-moves from a left-positioned
+          rail card have no horizontal projection overlap with it — autoFocus
+          alone never catches the move (verified in sim). destinations is the
+          app's established bridge for horizontally-offset focusables. */}
+      <TVFocusGuideView
+        autoFocus
+        destinations={qrNode != null ? [qrNode] : undefined}
+        style={styles.band}
+      >
         <View style={styles.cardsColumn}>
           {MISSION_CARDS.map((card) => (
             <View key={`mission-card-${card.key}`} style={styles.card}>
@@ -63,6 +72,7 @@ export function MissionSection() {
 
         <View style={styles.qrColumn}>
           <Pressable
+            ref={setQrNode}
             onPress={NO_ACTION}
             onFocus={() => setQrFocused(true)}
             onBlur={() => setQrFocused(false)}

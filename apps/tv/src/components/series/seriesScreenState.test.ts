@@ -1,4 +1,5 @@
 import {
+  pickDefaultTrailer,
   pickPlayableTrailer,
   resolveLeafBounce,
   resolveScreenState,
@@ -55,6 +56,58 @@ describe("pickPlayableTrailer", () => {
 })
 
 // ── resolveLeafBounce ──────────────────────────────────────────────
+
+// ── pickDefaultTrailer ─────────────────────────────────────────────
+
+function langDub(
+  slug: string,
+  languageSlug: string,
+  bcp47: string,
+  overrides: Partial<{ published: boolean; hls: string | null }> = {},
+) {
+  return {
+    slug,
+    languageSlug,
+    languageBcp47: bcp47,
+    published: true,
+    hls: HLS,
+    ...overrides,
+  }
+}
+
+describe("pickDefaultTrailer", () => {
+  it("prefers the default-language chain over array order", () => {
+    const german = langDub("d1", "german-standard", "de")
+    const english = langDub("d2", "english", "en")
+    expect(
+      pickDefaultTrailer({
+        variants: [german, english],
+        primaryLanguageBcp47: null,
+      }),
+    ).toBe(english)
+  })
+
+  it("falls back to the first playable dub when the chain misses", () => {
+    const german = langDub("d1", "german-standard", "de")
+    const englishUnplayable = langDub("d2", "english", "en", { hls: null })
+    expect(
+      pickDefaultTrailer({
+        variants: [german, englishUnplayable],
+        primaryLanguageBcp47: null,
+      }),
+    ).toBe(german)
+  })
+
+  it("returns null when no dub is playable", () => {
+    expect(
+      pickDefaultTrailer({
+        variants: [langDub("d1", "german-standard", "de", { hls: "" })],
+        primaryLanguageBcp47: null,
+      }),
+    ).toBeNull()
+    expect(pickDefaultTrailer(null)).toBeNull()
+  })
+})
 
 describe("resolveLeafBounce", () => {
   it("renders a series-shaped record (label), even before the series query answers", () => {

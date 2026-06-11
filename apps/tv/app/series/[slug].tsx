@@ -49,10 +49,11 @@ import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { useSeriesLanguage } from "../../src/contexts/SeriesLanguageContext"
 import { resolveTrailerSwap } from "../../src/contexts/seriesLanguageState"
 import {
-  pickPlayableTrailer,
+  pickDefaultTrailer,
   resolveLeafBounce,
   resolveScreenState,
 } from "../../src/components/series/seriesScreenState"
+import { isSeriesLabel } from "../../src/lib/isSeriesRecord"
 import { EpisodeRail } from "../../src/components/series/EpisodeRail"
 import { RetryButton } from "../../src/components/RetryButton"
 import { SeriesActionRow } from "../../src/components/series/SeriesActionRow"
@@ -174,14 +175,15 @@ export default function SeriesScreen() {
     setActionRowRefocusKey((key) => key + 1)
   }, [])
 
-  // Trailer (R4 / AE9): default = the series' own first playable dub; a
-  // selection swaps it ONLY when that language has a playable dub on the
-  // series record. `trailerSlug` remembers the last selection that DID swap,
-  // so a later no-trailer selection keeps the PREVIOUS trailer (not the
-  // default) and the Play Trailer action never disappears under focus. On
-  // re-entry (trailerSlug reset) the surviving selection seeds the swap.
+  // Trailer (R4 / AE9): default = the playable dub the default-language
+  // chain picks (device → primary → English → first playable, matching the
+  // watch screen); a selection swaps it ONLY when that language has a
+  // playable dub on the series record. `trailerSlug` remembers the last
+  // selection that DID swap, so a later no-trailer selection keeps the
+  // PREVIOUS trailer (not the default) and the Play Trailer action never
+  // disappears under focus. On re-entry the surviving selection seeds it.
   const [trailerSlug, setTrailerSlug] = useState<string | null>(null)
-  const defaultTrailer = useMemo(() => pickPlayableTrailer(record), [record])
+  const defaultTrailer = useMemo(() => pickDefaultTrailer(record), [record])
   const trailer = useMemo(
     () =>
       resolveTrailerSwap(record, trailerSlug ?? selectedSlug, defaultTrailer),
@@ -225,11 +227,14 @@ export default function SeriesScreen() {
     seed?.imageUrl ??
     null
 
-  // Hero kicker: the label badge (defaulting to SERIES while only the seed
-  // has painted — this IS the series screen; a leaf bounces away anyway) and
-  // a meta line. buildMetadataLine is a joined-segments builder: its first
-  // slot carries the episode count, the third the childDubLanguages count.
-  const badgeLabel = record?.label ?? "SERIES"
+  // Hero kicker: the badge reads SERIES/COLLECTION — never the raw wire enum.
+  // Records routed here by childCount alone carry leaf labels (FEATURE_FILM),
+  // which would render underscores verbatim; this IS the series screen, so
+  // anything rendering here presents as a series (R3). buildMetadataLine is a
+  // joined-segments builder: first slot episode count, third language count.
+  const badgeLabel = isSeriesLabel(record?.label ?? null)
+    ? (record?.label ?? "SERIES")
+    : "SERIES"
   const episodeCount = record?.episodes.length ?? 0
   const heroMeta = buildMetadataLine(
     episodeCount > 0

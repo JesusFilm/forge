@@ -4,6 +4,7 @@
 // which cannot load .tsx.
 
 import { isSeriesRecord } from "../../lib/isSeriesRecord"
+import { resolveDefaultSlug } from "../../lib/resolveDefaultLanguage"
 
 // ── Playable trailer (R4) ──────────────────────────────────────────
 
@@ -21,6 +22,43 @@ export function pickPlayableTrailer<
       (v) => v.published === true && v.hls != null && v.hls !== "",
     ) ?? null
   )
+}
+
+/**
+ * The dub Play Trailer starts in before any selection: the default-language
+ * chain (device locale → video primary → English → first) restricted to
+ * PLAYABLE dubs — the watch screen's resolveDefaultVariantIndex rule, not
+ * "first dub in array order", which starts trailers in arbitrary languages.
+ */
+export function pickDefaultTrailer<
+  V extends {
+    published: boolean
+    hls: string | null
+    slug: string
+    languageSlug: string | null
+    languageBcp47: string | null
+  },
+>(
+  record:
+    | { variants: readonly V[]; primaryLanguageBcp47: string | null }
+    | null
+    | undefined,
+): V | null {
+  if (record == null) return null
+  const playable = record.variants.filter(
+    (v) => v.published === true && v.hls != null && v.hls !== "",
+  )
+  if (playable.length === 0) return null
+  const best = resolveDefaultSlug(
+    playable.map((v) => ({
+      slug: v.slug,
+      bcp47: v.languageBcp47,
+      languageSlug: v.languageSlug,
+    })),
+    record.primaryLanguageBcp47,
+    null,
+  )
+  return playable.find((v) => v.slug === best) ?? playable[0]
 }
 
 // ── Leaf bounce (R1) ───────────────────────────────────────────────
