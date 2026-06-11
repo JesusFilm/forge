@@ -115,6 +115,7 @@ For a seamless looping HLS backdrop in expo-video on tvOS:
 
 ## Related Issues
 
+- `docs/solutions/ui-bugs/tv-backdrop-videoview-decoder-starvation-overlay-20260611.md` — **side effect of this fix's `videoReady` latch.** Latching ready stopped the `VideoView` unmounting at the loop seam, but it _also_ stopped it unmounting when the fullscreen overlay opens — leaving the backdrop's `AVPlayerLayer`/decode slot allocated and starving the overlay player (black, stuck at 0:00). Fixed by gating the `VideoView` mount on `!overlayVisible` (pause alone does not release the slot on tvOS).
 - `docs/solutions/ui-bugs/tv-video-hero-blank-autoplay-20260413.md` — baseline TV hero autoplay setup. It documents `p.loop = true` for a looping hero; this fix supersedes that for backdrop/hero looping on tvOS (the native loop is the cause of the seam black-pause). Refresh candidate.
 - `docs/solutions/best-practices/mobile-video-detail-page-patterns-20260527.md` — the frozen `creationSource` + `replaceAsync` rule that `VideoBackdrop` inherits (and why the `videoReady` latch is safe — the player is never re-created).
 - `docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md` — `playToEnd` listener guard + ref-mirror discipline for native-event callbacks; directly applies to the `overlayVisibleRef` guard and the latched `videoReady`.

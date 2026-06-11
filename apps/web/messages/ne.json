@@ -182,7 +182,17 @@
     "categoryAnimated": "एनिमेटेड",
     "categoryStudy": "अध्ययन",
     "categoryFamily": "परिवार",
-    "categoryChristmas": "क्रिसमस"
+    "categoryChristmas": "क्रिसमस",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
     "playWithSound": "आवाजसहित चलाउनुहोस्",

@@ -16,6 +16,7 @@ const { queryRaw, mockEnv } = vi.hoisted(() => ({
       AUTH_ADMIN_CLIENT_ID: "admin-client",
       AUTH_ISSUER_URL: "https://auth.example",
       CORS_ALLOWED_ORIGINS: "",
+      OPENROUTER_API_PAID_KEY: undefined as string | undefined,
       OPENROUTER_API_KEY: undefined as string | undefined,
       OPENAI_API_KEY: undefined as string | undefined,
     },
@@ -55,6 +56,7 @@ const ADMIN_PRINCIPAL = {
 } as const satisfies Principal
 
 function resetMockEnv() {
+  mockEnv.env.OPENROUTER_API_PAID_KEY = undefined
   mockEnv.env.OPENROUTER_API_KEY = undefined
   mockEnv.env.OPENAI_API_KEY = undefined
 }
@@ -198,6 +200,26 @@ describe("embedding provider readiness", () => {
     ).toEqual(expect.objectContaining({ value: "OpenRouter" }))
   })
 
+  it("treats OPENROUTER_API_PAID_KEY as the preferred ready embedding backend", async () => {
+    mockEnv.env.OPENROUTER_API_PAID_KEY = "paid-openrouter-key"
+    mockEnv.env.OPENAI_API_KEY = "legacy-openai-key"
+    mockEmbeddingCounts({ total: 2, embedded: 2, published: 1 })
+    queryRaw.mockResolvedValueOnce([])
+
+    const embeddings = await loadEmbeddingsData()
+    const settings = await loadSettingsData()
+
+    expect(embeddings.providerReady).toBe(true)
+    expect(
+      embeddings.insights.find((insight) => insight.label === "Provider"),
+    ).toEqual(expect.objectContaining({ value: "OpenRouter" }))
+    expect(
+      settings.insights.find(
+        (insight) => insight.label === "Embedding Backend",
+      ),
+    ).toEqual(expect.objectContaining({ value: "OpenRouter" }))
+  })
+
   it("keeps semantic search unavailable when only OPENAI_API_KEY is set", async () => {
     mockEnv.env.OPENAI_API_KEY = "legacy-openai-key"
     mockEmbeddingCounts({ total: 2, embedded: 1, published: 1 })
@@ -212,7 +234,7 @@ describe("embedding provider readiness", () => {
       expect.objectContaining({ value: "Missing" }),
     )
     expect(data.unavailableReason).toBe(
-      "Semantic search requires OPENROUTER_API_KEY.",
+      "Semantic search requires OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY.",
     )
   })
 })

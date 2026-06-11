@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
+import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
 // Modals are user-triggered (download / language picker / share). Split
 // them into separate chunks so they don't ship with the hero-critical
 // bundle. `ssr: false` is safe — modals are hidden on first paint.
@@ -41,12 +42,14 @@ import type {
   ResolvedWatchVideo,
   WatchSubtitle,
 } from "@/lib/content"
+import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
 } from "@/lib/subtitle-preference-client"
 import { resolvePosterUrl } from "@/lib/url"
+import { loadWatchLanguageOptions } from "@/lib/watch-language-actions"
 
 function resolveSubtitleSlug(
   preferred: string | null,
@@ -94,7 +97,14 @@ type WatchPageClientProps = {
   locale?: string
   hideBibleQuotes?: boolean
   questionPanelEnabled?: boolean
+  initialTranscript?: InitialSubtitleTranscript
 }
+
+type LanguageOptionsState =
+  | { status: "idle"; variants: LanguagePickerVariant[] }
+  | { status: "loading"; variants: LanguagePickerVariant[] }
+  | { status: "ready"; variants: LanguagePickerVariant[] }
+  | { status: "error"; variants: LanguagePickerVariant[] }
 
 export function WatchPageClient({
   downloadButtonLabel,
@@ -105,6 +115,7 @@ export function WatchPageClient({
   locale,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
+  initialTranscript = null,
 }: WatchPageClientProps) {
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
@@ -192,28 +203,6 @@ export function WatchPageClient({
       }
     })
 
-  const variantsForLanguagePicker = useMemo(
-    () =>
-      (video.variants ?? [])
-        .filter((v): v is NonNullable<typeof v> => v != null)
-        .map((v) => ({
-          documentId: v.documentId,
-          hls: v.hls,
-          published: v.published,
-          language: v.language
-            ? {
-                coreId: v.language.coreId,
-                bcp47: v.language.bcp47,
-                slug: v.language.slug,
-                name: v.language.name,
-                nativeName: v.language.nativeName,
-              }
-            : null,
-          videoEdition: v.videoEdition,
-        })),
-    [video.variants],
-  )
-
   // Prefer the editorial cinematic still over `images[].url` — that raw
   // `url` is a misshaped Cloudflare Images URL (missing variant path
   // segment) and 400s. Mux's thumbnail API is the last-resort fallback;
@@ -228,6 +217,35 @@ export function WatchPageClient({
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const downloadPendingRef = useRef(false)
+  const videoSlug = video.slug ?? ""
+  const [languageOptionsState, setLanguageOptionsState] =
+    useState<LanguageOptionsState>({
+      status: "idle",
+      variants: [],
+    })
+  const languageOptionsPendingRef = useRef(false)
+
+  useEffect(() => {
+    languageOptionsPendingRef.current = false
+    setLanguageOptionsState({ status: "idle", variants: [] })
+  }, [videoSlug])
+
+  const loadLanguageOptions = useCallback(async () => {
+    if (!videoSlug) return
+    if (languageOptionsPendingRef.current) return
+    if (languageOptionsState.status === "ready") return
+
+    languageOptionsPendingRef.current = true
+    setLanguageOptionsState({ status: "loading", variants: [] })
+    try {
+      const variants = await loadWatchLanguageOptions({ videoSlug })
+      setLanguageOptionsState({ status: "ready", variants })
+    } catch {
+      setLanguageOptionsState({ status: "error", variants: [] })
+    } finally {
+      languageOptionsPendingRef.current = false
+    }
+  }, [languageOptionsState.status, videoSlug])
 
   const openDownload = useCallback(async () => {
     if (downloadPendingRef.current) return
@@ -251,7 +269,10 @@ export function WatchPageClient({
       setDownloadPending(false)
     }
   }, [tDownloadButton])
-  const openLanguage = useCallback(() => setModalState("language"), [])
+  const openLanguage = useCallback(() => {
+    setModalState("language")
+    void loadLanguageOptions()
+  }, [loadLanguageOptions])
   const openShare = useCallback(() => setModalState("share"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
 
@@ -318,6 +339,7 @@ export function WatchPageClient({
         playerRef={playerRef}
         audioSlug={currentLanguageSlug}
         durationSeconds={variant.duration ?? null}
+        initialTranscript={initialTranscript}
       />
 
       <DownloadModal
@@ -328,24 +350,27 @@ export function WatchPageClient({
         durationSeconds={variant.duration ?? null}
         languageName={variant.language?.name ?? null}
         variantId={variant.documentId}
-        videoSlug={video.slug ?? ""}
+        videoSlug={videoSlug}
         onClose={closeModal}
       />
       <LanguagePickerModal
         open={modalState === "language"}
-        variants={variantsForLanguagePicker}
+        variants={languageOptionsState.variants}
         currentLanguageSlug={currentLanguageSlug}
-        videoSlug={video.slug ?? ""}
+        videoSlug={videoSlug}
         playerRef={playerRef}
         onClose={closeModal}
         subtitles={subtitles}
         currentSubtitleEnabled={subtitleEnabled}
         currentSubtitleSlug={subtitleSlug}
         onSubtitleChange={handleSubtitleChange}
+        languageOptionsLoading={languageOptionsState.status === "loading"}
+        languageOptionsError={languageOptionsState.status === "error"}
+        onRetryLanguageOptions={loadLanguageOptions}
       />
       <ShareModal
         open={modalState === "share"}
-        videoSlug={video.slug ?? ""}
+        videoSlug={videoSlug}
         currentLanguageSlug={currentLanguageSlug}
         videoTitle={video.title ?? null}
         videoDescription={video.snippet ?? video.description ?? null}

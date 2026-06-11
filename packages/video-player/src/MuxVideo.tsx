@@ -7,8 +7,7 @@ import type { ComponentPropsWithoutRef } from "react"
 export type MuxVideoProps = ComponentPropsWithoutRef<typeof MuxVideoReact>
 /**
  * The underlying ref shape from `@mux/mux-video-react` includes `| undefined`
- * — consumers MUST null-guard before calling any media method (verified in
- * U1 spike — see apps/web/src/components/watch/__tests__/MuxPlayerSpike.test.tsx).
+ * — consumers MUST null-guard before calling any media method.
  */
 export type MuxVideoRef = HTMLVideoElement | undefined
 

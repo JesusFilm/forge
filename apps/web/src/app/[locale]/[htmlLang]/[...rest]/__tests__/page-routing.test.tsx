@@ -30,6 +30,7 @@ const {
   isWatchHideBibleQuotesEnabledMock,
   fetchYouVersionBibleQuotePassagesMock,
   isWatchQuestionPanelEnabledMock,
+  getInitialSubtitleTranscriptMock,
 } = vi.hoisted(() => ({
   resolveWatchVideoBySlugMock: vi.fn(),
   resolveSeriesBySlugMock: vi.fn(),
@@ -57,6 +58,7 @@ const {
   isWatchHideBibleQuotesEnabledMock: vi.fn(async () => false),
   fetchYouVersionBibleQuotePassagesMock: vi.fn(),
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
+  getInitialSubtitleTranscriptMock: vi.fn(async () => null),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -78,6 +80,10 @@ vi.mock("@/lib/content", async () => {
 
 vi.mock("@/lib/watch-home", () => ({
   resolveWatchHome: resolveWatchHomeMock,
+}))
+
+vi.mock("@/lib/watch-transcript", () => ({
+  getInitialSubtitleTranscript: getInitialSubtitleTranscriptMock,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -176,6 +182,8 @@ beforeEach(() => {
   fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([])
   isWatchQuestionPanelEnabledMock.mockReset()
   isWatchQuestionPanelEnabledMock.mockResolvedValue(false)
+  getInitialSubtitleTranscriptMock.mockReset()
+  getInitialSubtitleTranscriptMock.mockResolvedValue(null)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -657,6 +665,40 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       }),
     )
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+  })
+
+  it("passes initial transcript cues and prunes client variant rows", async () => {
+    const initialTranscript = {
+      vttSrc: "https://cdn.example/storyclubs.vtt",
+      cues: [{ start: 1, end: 4, text: "Server cue" }],
+    }
+    getInitialSubtitleTranscriptMock.mockResolvedValue(
+      initialTranscript as never,
+    )
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+
+    await render2Seg("jesus", "english")
+
+    expect(getInitialSubtitleTranscriptMock).toHaveBeenCalledWith({
+      subtitles: watchVideoResult.video.subtitles,
+      audioSlug: "english",
+      durationSeconds: 30,
+    })
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      initialTranscript: unknown
+      video: { variants: unknown[] }
+      mergedBlocks: Array<{
+        kind?: string
+        playableLanguageCount?: number
+        video?: { variants: unknown[] }
+      }>
+    }
+    expect(props.initialTranscript).toBe(initialTranscript)
+    expect(props.video.variants).toHaveLength(1)
+    const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+    expect(hero?.playableLanguageCount).toBe(2)
+    expect(hero?.video?.variants).toHaveLength(1)
   })
 
   it("renders a sanitized VideoObject JSON-LD script for playable videos", async () => {

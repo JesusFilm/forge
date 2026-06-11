@@ -79,29 +79,26 @@ Never expose the LaunchDarkly server-side SDK key to client components or
 `NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
 `packages/feature-flags/src/registry.ts` before using them in an app.
 
-Two composable `NEXT_PUBLIC_*` toggles control the watch player surface:
+One `NEXT_PUBLIC_*` toggle still controls the inline watch player surface:
 
 - `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the
   player backend for the inline section components (`VideoHero`, `Video`,
   `CarouselVideo`). `false` keeps the video.js path via
   `useVideoPlayerCore`; `true` renders `<MuxVideo>` from
   `@forge/video-player`. Sunset gate for the video.js drop (R19).
-- `NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` (default `false`) — selects the
-  player backend for the watch-page hero (`HeroPlayer`). `false` keeps the
-  existing `<MuxPlayer>` path (full `@mux/mux-player-react` chrome bundle,
-  including `cast_sender.js`); `true` renders `<MuxVideo>` (smaller, no
-  cast, light-DOM poster discoverable as the LCP element). The two
-  backends are dynamic-imported through subpath specifiers
-  (`@forge/video-player/mux-player` vs `/mux-video`) and the inactive
-  branch is build-time DCE'd via `process.env.NEXT_PUBLIC_*` substitution,
-  so exactly one ships per build. See
-  `docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md`.
 
-Both flags are per-environment / per-build — set via Railway env vars and
-baked at `next build` time. They do NOT support per-request override.
-LaunchDarkly runtime evaluation does not replace these build-time branches yet
-because the inactive player implementation is intentionally dead-code
-eliminated by `process.env.NEXT_PUBLIC_*` substitution.
+The watch-page hero (`HeroPlayer`) always renders the optimized `<MuxVideo>`
+backend from `@forge/video-player/mux-video` after poster-first activation.
+Do not reintroduce a MuxPlayer hero fallback or a
+`NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` build flag; that rollout graduated in
+the non-Cloudflare performance hardening work.
+
+The remaining inline player flag is per-environment / per-build — set via
+Railway env vars and baked at `next build` time. It does NOT support
+per-request override. LaunchDarkly runtime evaluation does not replace this
+build-time branch yet because the inactive inline player implementation is
+intentionally dead-code eliminated by `process.env.NEXT_PUBLIC_*`
+substitution.
 
 `forge.watch.ctaTextCopy` is a temporary LaunchDarkly-backed production smoke
 flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`

@@ -17,6 +17,23 @@ const envSchema = z.object({
   MATCH_RESULT_LIMIT: z.coerce.number().int().positive().max(25).default(3),
   JOB_RESULT_RETENTION_HOURS: z.coerce.number().int().positive().default(168),
   JOB_RUNNING_STALE_MINUTES: z.coerce.number().int().positive().default(30),
+  MEDIA_SIGNATURE_ALGORITHM_VERSION: z
+    .string()
+    .min(1)
+    .default("official-media-signature-v1"),
+  MEDIA_INDEX_PAGE_SIZE: z.coerce.number().int().positive().default(100),
+  MEDIA_INDEX_MAX_FETCH_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(262_144),
+  MEDIA_INDEX_FETCH_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15_000),
+  MEDIA_INDEX_ALLOWED_HOSTS: z.string().min(1).optional(),
+  MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: z.string().min(1).optional(),
 })
 
 export const env = envSchema.parse({
@@ -36,6 +53,22 @@ export const env = envSchema.parse({
   ),
   JOB_RUNNING_STALE_MINUTES: emptyToUndefined(
     process.env.JOB_RUNNING_STALE_MINUTES,
+  ),
+  MEDIA_SIGNATURE_ALGORITHM_VERSION: emptyToUndefined(
+    process.env.MEDIA_SIGNATURE_ALGORITHM_VERSION,
+  ),
+  MEDIA_INDEX_PAGE_SIZE: emptyToUndefined(process.env.MEDIA_INDEX_PAGE_SIZE),
+  MEDIA_INDEX_MAX_FETCH_BYTES: emptyToUndefined(
+    process.env.MEDIA_INDEX_MAX_FETCH_BYTES,
+  ),
+  MEDIA_INDEX_FETCH_TIMEOUT_MS: emptyToUndefined(
+    process.env.MEDIA_INDEX_FETCH_TIMEOUT_MS,
+  ),
+  MEDIA_INDEX_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.MEDIA_INDEX_ALLOWED_HOSTS,
+  ),
+  MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: emptyToUndefined(
+    process.env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID,
   ),
 })
 

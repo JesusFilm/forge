@@ -50,6 +50,24 @@ A Catalog Sync Run tracks page progress, counts, terminal status, and safe
 failure summaries so broad catalog refreshes can be inspected and retried
 without treating Admin as the mapper's database.
 
+### Media Signature
+
+A compact, versioned media signal derived from an official catalog variant and
+stored for future content-first retrieval.
+
+A Media Signature is keyed by the source `coreId`, the variant
+`videoVariantId`, signature type, algorithm version, and time offset. It is
+evidence for matching, not catalog metadata.
+
+### Index Run
+
+A durable record of one pass that turns indexable Mapper Catalog variants into
+Media Signatures.
+
+An Index Run tracks algorithm version, cursor, counts, terminal status, and
+safe failure summaries so broad indexing can be resumed or inspected without
+reprocessing the whole catalog.
+
 ### Match Job
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
@@ -121,7 +139,7 @@ _Avoid:_ Mux insert.
 
 ### Chrome
 
-The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it.
+The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 

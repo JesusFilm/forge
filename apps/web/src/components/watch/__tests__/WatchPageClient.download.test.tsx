@@ -6,12 +6,19 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { checkDownloadSessionMock, downloadModalProps, redirectToAuthMock } =
-  vi.hoisted(() => ({
-    checkDownloadSessionMock: vi.fn(),
-    downloadModalProps: [] as unknown[],
-    redirectToAuthMock: vi.fn(),
-  }))
+const {
+  checkDownloadSessionMock,
+  downloadModalProps,
+  languageModalProps,
+  loadWatchLanguageOptionsMock,
+  redirectToAuthMock,
+} = vi.hoisted(() => ({
+  checkDownloadSessionMock: vi.fn(),
+  downloadModalProps: [] as unknown[],
+  languageModalProps: [] as unknown[],
+  loadWatchLanguageOptionsMock: vi.fn(),
+  redirectToAuthMock: vi.fn(),
+}))
 
 vi.mock("next/dynamic", () => {
   let callIndex = 0
@@ -21,6 +28,12 @@ vi.mock("next/dynamic", () => {
       if (index === 0) {
         return (props: unknown) => {
           downloadModalProps.push(props)
+          return null
+        }
+      }
+      if (index === 1) {
+        return (props: unknown) => {
+          languageModalProps.push(props)
           return null
         }
       }
@@ -56,7 +69,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     downloadError?: string | null
     downloadPending?: boolean
     languageSlug?: string
-    modalCallbacks: { openDownload: () => void }
+    modalCallbacks: { openDownload: () => void; openLanguage: () => void }
   }) => (
     <div
       data-testid="watch-section-renderer"
@@ -69,6 +82,13 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
         onClick={modalCallbacks.openDownload}
       >
         Download
+      </button>
+      <button
+        data-testid="watch-language-button"
+        type="button"
+        onClick={modalCallbacks.openLanguage}
+      >
+        Language
       </button>
       {downloadError ? (
         <p data-testid="watch-download-error" role="alert">
@@ -84,6 +104,10 @@ vi.mock("@/components/watch/download-session-client", () => ({
   redirectToAuth: redirectToAuthMock,
 }))
 
+vi.mock("@/lib/watch-language-actions", () => ({
+  loadWatchLanguageOptions: loadWatchLanguageOptionsMock,
+}))
+
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 
 let container: HTMLDivElement
@@ -94,7 +118,9 @@ beforeEach(() => {
   document.body.appendChild(container)
   root = createRoot(container)
   downloadModalProps.length = 0
+  languageModalProps.length = 0
   checkDownloadSessionMock.mockReset()
+  loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
 })
 
@@ -167,6 +193,52 @@ describe("WatchPageClient download boundary", () => {
         .querySelector('[data-testid="watch-section-renderer"]')
         ?.getAttribute("data-language-slug"),
     ).toBe("english")
+  })
+
+  it("loads language picker rows only when the language modal opens", async () => {
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([
+      {
+        documentId: "variant-es",
+        hls: "https://stream.mux.com/es.m3u8",
+        published: true,
+        language: {
+          coreId: "es",
+          bcp47: "es",
+          slug: "spanish",
+          name: "Spanish",
+          nativeName: "Espanol",
+        },
+        videoEdition: null,
+      },
+    ])
+    renderWatchPage()
+
+    expect(loadWatchLanguageOptionsMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith({
+      videoSlug: "jesus",
+    })
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        languageOptionsLoading: false,
+        languageOptionsError: false,
+        variants: [
+          expect.objectContaining({
+            documentId: "variant-es",
+            language: expect.objectContaining({ slug: "spanish" }),
+          }),
+        ],
+      }),
+    )
   })
 
   it("shows an inline error when the first session check cannot complete", async () => {
