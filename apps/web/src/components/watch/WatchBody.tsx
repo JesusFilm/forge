@@ -11,6 +11,7 @@ export function WatchBody({
   downloadPending = false,
   studyQuestions,
   onDownloadClick,
+  optimisticTitle,
 }: {
   block: WatchBodyBlock
   downloadButtonLabel?: string
@@ -18,8 +19,10 @@ export function WatchBody({
   downloadPending?: boolean
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
+  optimisticTitle?: string | null
 }) {
   const { video, variant } = block
+  const visualTitle = optimisticTitle ?? video.title ?? ""
   const hasDownloads = (variant.downloads ?? []).length > 0
   const prompts = (studyQuestions?.studyQuestions ?? [])
     .map((q) => q.value)
@@ -53,7 +56,7 @@ export function WatchBody({
             data-testid="watch-body-title"
             className="min-w-0 flex-1 text-[27px] leading-[1.08] font-semibold text-stone-100 md:text-4xl xl:text-5xl"
           >
-            {video.title ?? ""}
+            {visualTitle}
           </h2>
           {hasDownloads ? (
             <div className="ml-auto flex shrink-0 flex-col items-end gap-2">

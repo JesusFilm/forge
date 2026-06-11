@@ -380,11 +380,103 @@ describe("SiblingCarousel — happy path", () => {
     expect(desktopLabel?.textContent).toBe("Clip 2 of 4")
   })
 
-  it("does not show pending feedback for modified chapter clicks", () => {
+  it("emits full pending chapter metadata for a normal inactive click", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
+    )
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(onChapterNavigateIntent).toHaveBeenCalledTimes(1)
+    expect(onChapterNavigateIntent).toHaveBeenCalledWith({
+      href: "/child-2-slug.html/english.html",
+      languageSlug: "english",
+      sourceVideoDocumentId: "child-1",
+      targetVideoDocumentId: "child-2",
+      title: "Child 2",
+      slug: "child-2-slug",
+      label: "Label 2",
+      posterUrl: "https://cdn.test/2.jpg",
+    })
+  })
+
+  it("uses controlled pending state when the parent supplies it", () => {
     const block = makeBlock(4, 0)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          pendingNavigation={{
+            href: "/child-3-slug.html/english.html",
+            languageSlug: "english",
+            sourceVideoDocumentId: "child-1",
+            targetVideoDocumentId: "child-3",
+            title: "Child 3",
+            slug: "child-3-slug",
+            label: null,
+            posterUrl: "https://cdn.test/3.jpg",
+          }}
+        />,
+      )
+    })
+
+    const previousCurrent = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-1-slug.html/english.html']",
+    )
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-3-slug.html/english.html']",
+    )
+
+    expect(previousCurrent!.getAttribute("data-active")).toBe("false")
+    expect(target!.getAttribute("data-active")).toBe("true")
+    expect(target!.getAttribute("data-pending")).toBe("true")
+    expect(target!.getAttribute("aria-busy")).toBe("true")
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).not.toBeNull()
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    expect(label?.textContent).toContain("3 of 4")
+    expect(label?.textContent).toContain("Clip 3 of 4")
+  })
+
+  it("does not show pending feedback for modified chapter clicks", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
     })
 
     const target = container.querySelector(
@@ -403,10 +495,44 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
     expect(target!.getAttribute("aria-busy")).toBeNull()
     expect(
       target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
     ).toBeNull()
+  })
+
+  it("does not emit pending feedback for the already-current chapter", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const current = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-1-slug.html/english.html']",
+    )
+
+    act(() => {
+      current!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+    expect(current!.getAttribute("data-pending")).toBe("false")
+    expect(current!.getAttribute("aria-busy")).toBeNull()
   })
 
   it("renders an in-app href without the /watch/ basePath prefix", () => {

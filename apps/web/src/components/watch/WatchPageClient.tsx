@@ -8,6 +8,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
+import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 // Modals are user-triggered (download / language picker / share). Split
 // them into separate chunks so they don't ship with the hero-critical
 // bundle. `ssr: false` is safe — modals are hidden on first paint.
@@ -40,10 +41,13 @@ import { redirectToAuth } from "@/components/watch/download-session-client"
 import type {
   MergedWatchBlock,
   ResolvedWatchVideo,
+  WatchSiblingCarouselBlock,
   WatchSubtitle,
 } from "@/lib/content"
+import { isWatchBlock } from "@/lib/content"
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
@@ -81,6 +85,36 @@ export type WatchModalCallbacks = {
   openLanguage: () => void
   openShare: () => void
   closeModal: () => void
+}
+
+function isPendingChapterStillRoutable(
+  pendingChapter: WatchChapterNavigationIntent,
+  blocks: MergedWatchBlock[],
+  languageSlug: string,
+): boolean {
+  const lang = tryAsLocaleSlug(languageSlug)
+  if (!lang) return false
+
+  for (const block of blocks) {
+    if (!isWatchBlock(block) || block.kind !== "SiblingCarousel") continue
+
+    const carouselBlock: WatchSiblingCarouselBlock = block
+    for (const child of carouselBlock.canonicalParent.children ?? []) {
+      if (
+        child == null ||
+        child.documentId !== pendingChapter.targetVideoDocumentId
+      ) {
+        continue
+      }
+
+      if (typeof child.slug !== "string") return false
+      const slug = tryAsContentSlug(child.slug)
+      if (!slug) return false
+      return watchVideoPath(slug, lang) === pendingChapter.href
+    }
+  }
+
+  return false
 }
 
 type WatchPageClientProps = {
@@ -144,6 +178,19 @@ export function WatchPageClient({
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
+  const [pendingChapter, setPendingChapter] =
+    useState<WatchChapterNavigationIntent | null>(null)
+  const validPendingChapter =
+    pendingChapter != null &&
+    pendingChapter.languageSlug === currentLanguageSlug &&
+    pendingChapter.sourceVideoDocumentId === video.documentId &&
+    isPendingChapterStillRoutable(
+      pendingChapter,
+      mergedBlocks,
+      currentLanguageSlug,
+    )
+      ? pendingChapter
+      : null
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
@@ -365,6 +412,8 @@ export function WatchPageClient({
         languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
+        pendingChapter={validPendingChapter}
+        onChapterNavigateIntent={setPendingChapter}
       />
 
       <SubtitleTranscript
