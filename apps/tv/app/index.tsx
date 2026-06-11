@@ -121,6 +121,21 @@ export default function HomeScreen() {
     focusDebouncerRef.current?.focus(card)
   }, [])
 
+  // Featured-rail focus also scrolls the feed back to the top. The showcase
+  // is non-focusable, so the tvOS focus engine never auto-scrolls it back
+  // into view: after browsing lower rails, D-pad up stops scrolling once the
+  // Featured rail is visible and the hero stays stranded above the viewport.
+  // The scroll is immediate (not debounced) — it must track the return trip,
+  // not the settled card.
+  const scrollRef = useRef<ScrollView | null>(null)
+  const handleFeaturedCardFocus = useCallback(
+    (card: WatchHomeCard) => {
+      scrollRef.current?.scrollTo({ y: 0, animated: true })
+      handleCardFocus(card)
+    },
+    [handleCardFocus],
+  )
+
   // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
   // seeded for instant first paint. Null path (no slug) is a no-op press.
   const handleCardPress = useCallback(
@@ -207,6 +222,7 @@ export default function HomeScreen() {
   // both directions (tv-focus-driven-hero-patterns-20260420.md §3).
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.list}
       contentContainerStyle={styles.listContent}
       stickyHeaderIndices={[0]}
@@ -219,7 +235,7 @@ export default function HomeScreen() {
         eyebrow={WATCH_HOME_FEATURED_RAIL.eyebrow}
         title={featuredTitle}
         cards={model.featured}
-        onCardFocus={handleCardFocus}
+        onCardFocus={handleFeaturedCardFocus}
         onCardPress={handleCardPress}
       />
 
