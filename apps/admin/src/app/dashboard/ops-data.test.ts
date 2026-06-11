@@ -19,6 +19,8 @@ const { queryRaw, mockEnv } = vi.hoisted(() => ({
       OPENROUTER_API_PAID_KEY: undefined as string | undefined,
       OPENROUTER_API_KEY: undefined as string | undefined,
       OPENAI_API_KEY: undefined as string | undefined,
+      MASTRA_GATEWAY_BASE_URL: undefined as string | undefined,
+      MASTRA_GATEWAY_ADMIN_API_KEY: undefined as string | undefined,
     },
   },
 }))
@@ -59,6 +61,8 @@ function resetMockEnv() {
   mockEnv.env.OPENROUTER_API_PAID_KEY = undefined
   mockEnv.env.OPENROUTER_API_KEY = undefined
   mockEnv.env.OPENAI_API_KEY = undefined
+  mockEnv.env.MASTRA_GATEWAY_BASE_URL = undefined
+  mockEnv.env.MASTRA_GATEWAY_ADMIN_API_KEY = undefined
 }
 
 function mockEmbeddingCounts({
@@ -340,7 +344,7 @@ describe("loadUsersData", () => {
           statusTone: "muted",
           disabled: true,
           backed: false,
-          helperText: "Mock only",
+          helperText: "Configure",
         },
       ],
       [
@@ -366,7 +370,7 @@ describe("loadUsersData", () => {
           statusTone: "muted",
           disabled: true,
           backed: false,
-          helperText: "Mock only",
+          helperText: "Configure",
         },
       ],
       [
@@ -392,7 +396,7 @@ describe("loadUsersData", () => {
           statusTone: "muted",
           disabled: true,
           backed: false,
-          helperText: "Mock only",
+          helperText: "Configure",
         },
       ],
     ])
@@ -463,6 +467,27 @@ describe("buildUserTableRow", () => {
         backed: false,
       },
     ])
+  })
+
+  it("maps active Mastra Studio access into a backed product control", () => {
+    expect(
+      buildUserTableRow(
+        userSourceRow({
+          mastraStudioAccess: {
+            selectedRole: "STUDIO_ACCESS",
+            disabled: false,
+            helperText: "Backed",
+          },
+        }),
+      ).productAccess[2],
+    ).toMatchObject({
+      key: "mastra-studio",
+      selectedRole: "STUDIO_ACCESS",
+      statusTone: "success",
+      disabled: false,
+      backed: true,
+      helperText: "Backed",
+    })
   })
 })
 
