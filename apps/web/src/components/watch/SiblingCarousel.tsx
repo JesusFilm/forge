@@ -16,7 +16,11 @@ import {
 } from "@/components/ui/carousel"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+} from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
 
 export function SiblingCarousel({
@@ -136,11 +140,15 @@ export function SiblingCarousel({
             // that returns 400, so a "last resort" fallback to it only
             // ever produces broken images.
             const thumb = resolvePosterUrl(child.images?.[0])
-            // The builder emits the canonical 2-segment `.html` shape
-            // (`/{slug}.html/{languageSlug}.html`).
             const slug = tryAsContentSlug(child.slug)
+            const parentSlug = canonicalParent.slug
+              ? tryAsContentSlug(canonicalParent.slug)
+              : null
             const lang = tryAsLocaleSlug(languageSlug)
-            const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+            const href =
+              parentSlug && slug && lang
+                ? watchEpisodePath(parentSlug, slug, lang)
+                : undefined
             const thumbnailAlt = child.title
               ? `${child.title} thumbnail`
               : "Related video thumbnail"

@@ -518,6 +518,7 @@ async function renderEpisode(shape: {
         variant={resolved.selectedVariant}
         video={clientVideo}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
+        collectionSlug={seriesSlug}
         locale={locale}
         hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
@@ -627,7 +628,7 @@ async function renderVideo(shape: {
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
-      canonicalParent: watchVideo.canonicalParent,
+      canonicalParent: null,
       youVersionPassages,
     })
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(

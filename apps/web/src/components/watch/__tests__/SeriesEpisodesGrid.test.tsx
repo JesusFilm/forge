@@ -70,14 +70,18 @@ describe("SeriesEpisodesGrid — happy path", () => {
     ]
     act(() => {
       root.render(
-        <SeriesEpisodesGrid episodes={episodes} languageSlug="english" />,
+        <SeriesEpisodesGrid
+          episodes={episodes}
+          languageSlug="english"
+          parentSlug="storyclubs"
+        />,
       )
     })
     const anchors = container.querySelectorAll("a")
     expect(anchors.length).toBe(3)
   })
 
-  it("routes each episode click to /{episode-slug}/{locale} (AE5)", () => {
+  it("routes each episode click through the contextual collection path", () => {
     const episodes: Episodes = [
       makeEpisode({
         documentId: "e1",
@@ -87,12 +91,16 @@ describe("SeriesEpisodesGrid — happy path", () => {
     ]
     act(() => {
       root.render(
-        <SeriesEpisodesGrid episodes={episodes} languageSlug="english" />,
+        <SeriesEpisodesGrid
+          episodes={episodes}
+          languageSlug="english"
+          parentSlug="storyclubs"
+        />,
       )
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/storyclubs-birth-of-jesus.html/english.html",
+      "/storyclubs.html/storyclubs-birth-of-jesus/english.html",
     )
   })
 
@@ -106,15 +114,16 @@ describe("SeriesEpisodesGrid — happy path", () => {
         <SeriesEpisodesGrid
           episodes={episodes}
           languageSlug="spanish-castilian"
+          parentSlug="storyclubs"
         />,
       )
     })
     const anchors = container.querySelectorAll("a")
     expect(anchors[0]?.getAttribute("href")).toBe(
-      "/ep-1.html/spanish-castilian.html",
+      "/storyclubs.html/ep-1/spanish-castilian.html",
     )
     expect(anchors[1]?.getAttribute("href")).toBe(
-      "/ep-2.html/spanish-castilian.html",
+      "/storyclubs.html/ep-2/spanish-castilian.html",
     )
   })
 })
@@ -122,7 +131,13 @@ describe("SeriesEpisodesGrid — happy path", () => {
 describe("SeriesEpisodesGrid — grid template", () => {
   it("uses a 5-column responsive grid at xl, ladder down to 1-col on mobile", () => {
     act(() => {
-      root.render(<SeriesEpisodesGrid episodes={[]} languageSlug="english" />)
+      root.render(
+        <SeriesEpisodesGrid
+          episodes={[]}
+          languageSlug="english"
+          parentSlug="storyclubs"
+        />,
+      )
     })
     const grid = container.querySelector('[data-testid="series-episodes-grid"]')
     // Mobile → tablet → laptop → desktop ladder. The xl:grid-cols-5 is
@@ -147,7 +162,11 @@ describe("SeriesEpisodesGrid — hover backdrop", () => {
     ]
     act(() => {
       root.render(
-        <SeriesEpisodesGrid episodes={episodes} languageSlug="english" />,
+        <SeriesEpisodesGrid
+          episodes={episodes}
+          languageSlug="english"
+          parentSlug="storyclubs"
+        />,
       )
     })
     const wrapper = container.querySelector(
@@ -184,6 +203,7 @@ describe("SeriesEpisodesGrid — hover backdrop", () => {
         <SeriesEpisodesGrid
           episodes={episodes}
           languageSlug="english"
+          parentSlug="storyclubs"
           seriesPosterUrl="https://cdn.example/series.jpg"
         />,
       )
@@ -250,6 +270,7 @@ describe("SeriesEpisodesGrid — crossfade reducer state machine", () => {
         <SeriesEpisodesGrid
           episodes={episodes}
           languageSlug="english"
+          parentSlug="storyclubs"
           seriesPosterUrl="https://cdn.example/series.jpg"
         />,
       )
@@ -294,6 +315,7 @@ describe("SeriesEpisodesGrid — crossfade reducer state machine", () => {
         <SeriesEpisodesGrid
           episodes={episodes}
           languageSlug="english"
+          parentSlug="storyclubs"
           seriesPosterUrl="https://cdn.example/series.jpg"
         />,
       )
@@ -324,7 +346,13 @@ describe("SeriesEpisodesGrid — crossfade reducer state machine", () => {
 describe("SeriesEpisodesGrid — edge cases", () => {
   it("renders an empty grid wrapper for zero children (no error, no layout shift)", () => {
     act(() => {
-      root.render(<SeriesEpisodesGrid episodes={[]} languageSlug="english" />)
+      root.render(
+        <SeriesEpisodesGrid
+          episodes={[]}
+          languageSlug="english"
+          parentSlug="storyclubs"
+        />,
+      )
     })
     const grid = container.querySelector('[data-testid="series-episodes-grid"]')
     expect(grid).not.toBeNull()
@@ -348,6 +376,7 @@ describe("SeriesEpisodesGrid — edge cases", () => {
         <SeriesEpisodesGrid
           episodes={[episodeMissingHigh]}
           languageSlug="english"
+          parentSlug="storyclubs"
         />,
       )
     })
