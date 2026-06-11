@@ -3,6 +3,7 @@ import type { JobRecord, ShortsPhase } from "@/types/job"
 
 const {
   authenticateManagerOverrideRequestMock,
+  authenticateRequestMock,
   getJobMock,
   mergeJobArtifactsMock,
   artifactExistsMock,
@@ -11,6 +12,7 @@ const {
   writeShortsDraftMock,
 } = vi.hoisted(() => ({
   authenticateManagerOverrideRequestMock: vi.fn(),
+  authenticateRequestMock: vi.fn(),
   getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
   artifactExistsMock: vi.fn(),
@@ -21,6 +23,7 @@ const {
 
 vi.mock("@/lib/auth", () => ({
   authenticateManagerOverrideRequest: authenticateManagerOverrideRequestMock,
+  authenticateRequest: authenticateRequestMock,
   managerActorIdentity: (actor: {
     kind: string
     user?: { email: string }
@@ -46,7 +49,7 @@ vi.mock("@/lib/shorts-draft", () => ({
   writeShortsDraft: writeShortsDraftMock,
 }))
 
-const { POST } = await import("@/app/api/shorts/jobs/[id]/draft/route")
+const { GET, POST } = await import("@/app/api/shorts/jobs/[id]/draft/route")
 
 const sessionActor = {
   kind: "session" as const,
@@ -139,8 +142,51 @@ function postRequest(body: unknown): Request {
 
 const routeParams = { params: Promise.resolve({ id: "job-1" }) }
 
+const CAPTIONS_ARTIFACT_JSON = {
+  captions: [
+    {
+      text: "Hello",
+      startMs: 0,
+      endMs: 500,
+      timestampMs: 250,
+      confidence: null,
+    },
+    {
+      text: " world",
+      startMs: 500,
+      endMs: 1200,
+      timestampMs: 800,
+      confidence: null,
+    },
+  ],
+  language: "en",
+  model: "large-v3-turbo",
+  annotation: null,
+  generatedAt: CAPTIONS_GENERATED_AT,
+}
+
+const CLIP_META_ARTIFACT_JSON = {
+  sourceHost: "stream.mux.com",
+  clip: { startSec: 10, endSec: 40 },
+  durationSec: 30,
+  fps: 29.97,
+  width: 1920,
+  height: 1080,
+  hasAudio: true,
+  generatedAt: "2026-06-11T00:59:00.000Z",
+}
+
+function encodeJson(value: unknown): Uint8Array {
+  return new TextEncoder().encode(JSON.stringify(value))
+}
+
+function getRequest(): Request {
+  return new Request("http://example.test/api/shorts/jobs/job-1/draft")
+}
+
 beforeEach(() => {
   authenticateManagerOverrideRequestMock.mockReset()
+  authenticateRequestMock.mockReset()
   getJobMock.mockReset()
   mergeJobArtifactsMock.mockReset()
   artifactExistsMock.mockReset()
@@ -149,19 +195,17 @@ beforeEach(() => {
   writeShortsDraftMock.mockReset()
 
   authenticateManagerOverrideRequestMock.mockResolvedValue(sessionActor)
+  authenticateRequestMock.mockResolvedValue(null)
   getJobMock.mockResolvedValue(buildShortsJob())
   mergeJobArtifactsMock.mockResolvedValue(buildShortsJob())
   artifactExistsMock.mockResolvedValue(true)
-  readArtifactMock.mockResolvedValue(
-    new TextEncoder().encode(
-      JSON.stringify({
-        captions: [],
-        language: "en",
-        model: "large-v3-turbo",
-        annotation: null,
-        generatedAt: CAPTIONS_GENERATED_AT,
-      }),
-    ),
+  readArtifactMock.mockImplementation(
+    (_assetId: string, artifactType: string) =>
+      Promise.resolve(
+        artifactType === "shorts-clip-meta-v1"
+          ? encodeJson(CLIP_META_ARTIFACT_JSON)
+          : encodeJson(CAPTIONS_ARTIFACT_JSON),
+      ),
   )
   readShortsDraftMock.mockResolvedValue({
     draftVersion: 3,
@@ -171,6 +215,116 @@ beforeEach(() => {
     draft: validDraft(),
   })
   writeShortsDraftMock.mockResolvedValue(undefined)
+})
+
+describe("GET /api/shorts/jobs/[id]/draft", () => {
+  it("rejects unauthorized callers", async () => {
+    const { NextResponse } = await import("next/server")
+    authenticateRequestMock.mockResolvedValue(
+      NextResponse.json({ error: "auth required" }, { status: 401 }),
+    )
+
+    const response = await GET(getRequest(), routeParams)
+    expect(response.status).toBe(401)
+  })
+
+  it("returns 404 for unknown jobs", async () => {
+    getJobMock.mockResolvedValue(null)
+
+    const response = await GET(getRequest(), routeParams)
+    expect(response.status).toBe(404)
+  })
+
+  it("returns 404 for non-shorts jobs", async () => {
+    getJobMock.mockResolvedValue(
+      buildShortsJob("ready_for_review", { options: {} }),
+    )
+
+    const response = await GET(getRequest(), routeParams)
+    expect(response.status).toBe(404)
+  })
+
+  it("returns the stored draft, captions summary, and clip meta", async () => {
+    const response = await GET(getRequest(), routeParams)
+    expect(response.status).toBe(200)
+
+    const payload = (await response.json()) as {
+      draft: { draftVersion: number; draft: { templateId: string } }
+      captions: Record<string, unknown>
+      clipMeta: Record<string, unknown>
+    }
+
+    expect(payload.draft.draftVersion).toBe(3)
+    expect(payload.draft.draft.templateId).toBe("focus")
+    expect(payload.captions).toEqual({
+      generatedAt: CAPTIONS_GENERATED_AT,
+      count: 2,
+      annotation: null,
+      language: "en",
+    })
+    // fps is rounded to match the render path's resolveShortInputProps.
+    expect(payload.clipMeta).toEqual({
+      durationSec: 30,
+      fps: 30,
+      hasAudio: true,
+    })
+  })
+
+  it("returns null fields before prepare has produced artifacts", async () => {
+    readShortsDraftMock.mockResolvedValue(null)
+    artifactExistsMock.mockResolvedValue(false)
+
+    const response = await GET(getRequest(), routeParams)
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      draft: null,
+      captions: null,
+      clipMeta: null,
+    })
+  })
+
+  it("nulls malformed artifacts instead of failing", async () => {
+    readArtifactMock.mockImplementation(() =>
+      Promise.resolve(encodeJson({ nope: true })),
+    )
+
+    const response = await GET(getRequest(), routeParams)
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as {
+      draft: unknown
+      captions: unknown
+      clipMeta: unknown
+    }
+    expect(payload.captions).toBeNull()
+    expect(payload.clipMeta).toBeNull()
+    // The draft read goes through readShortsDraft (mocked healthy here).
+    expect(payload.draft).not.toBeNull()
+  })
+
+  it("surfaces the captions annotation for skipped transcription", async () => {
+    readArtifactMock.mockImplementation(
+      (_assetId: string, artifactType: string) =>
+        Promise.resolve(
+          artifactType === "shorts-clip-meta-v1"
+            ? encodeJson({ ...CLIP_META_ARTIFACT_JSON, hasAudio: false })
+            : encodeJson({
+                ...CAPTIONS_ARTIFACT_JSON,
+                captions: [],
+                language: null,
+                annotation: "transcription_skipped_no_audio",
+              }),
+        ),
+    )
+
+    const response = await GET(getRequest(), routeParams)
+    const payload = (await response.json()) as {
+      captions: { count: number; annotation: string; language: null }
+      clipMeta: { hasAudio: boolean }
+    }
+    expect(payload.captions.count).toBe(0)
+    expect(payload.captions.annotation).toBe("transcription_skipped_no_audio")
+    expect(payload.clipMeta.hasAudio).toBe(false)
+  })
 })
 
 describe("POST /api/shorts/jobs/[id]/draft", () => {

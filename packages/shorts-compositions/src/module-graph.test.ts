@@ -1,6 +1,6 @@
-// GUARD: the "./schema" and "./captions" subpath exports are imported by
-// manager server/workflow code and must stay React/Remotion-free
-// (plan arch P1-1). Two layers of proof:
+// GUARD: the "./schema", "./captions", and "./registry" subpath exports are
+// imported by manager server/workflow/SSR'd-client code and must stay
+// React/Remotion-free (plan arch P1-1). Two layers of proof:
 //   1. runtime — importing them in this node environment (no React, no DOM)
 //      must succeed;
 //   2. static — their import specifiers must stay inside an allowlist.
@@ -37,7 +37,12 @@ describe("module graph guard", () => {
     }
   })
 
-  it.each(["schema.ts", "captions.ts"])(
+  it("templates/registry.ts imports only the schema module", () => {
+    const specifiers = importSpecifiers(readSource("templates/registry.ts"))
+    expect(specifiers).toEqual(["../schema"])
+  })
+
+  it.each(["schema.ts", "captions.ts", "templates/registry.ts"])(
     "%s never imports react, remotion core, or .tsx modules",
     (file) => {
       const specifiers = importSpecifiers(readSource(file))
@@ -62,5 +67,11 @@ describe("module graph guard", () => {
     expect((globalThis as Record<string, unknown>).React).toBeUndefined()
     const captions = await import("./captions")
     expect(typeof captions.buildCaptionPages).toBe("function")
+  })
+
+  it("registry module imports and executes without React in the environment", async () => {
+    expect((globalThis as Record<string, unknown>).React).toBeUndefined()
+    const registry = await import("./templates/registry")
+    expect(registry.SHORT_TEMPLATES.length).toBeGreaterThanOrEqual(2)
   })
 })

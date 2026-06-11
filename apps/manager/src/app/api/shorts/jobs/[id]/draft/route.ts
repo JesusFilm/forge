@@ -1,3 +1,5 @@
+// GET  /api/shorts/jobs/[id]/draft — read the editor state (stored draft +
+// captions summary + clip meta) for the detail page's caption editor.
 // POST /api/shorts/jobs/[id]/draft — save the operator caption/knob draft
 // (plan 2026-06-11-002 decision 4).
 //
@@ -18,9 +20,13 @@ import { z } from "zod"
 import { draftSchema } from "@forge/shorts-compositions/schema"
 import {
   authenticateManagerOverrideRequest,
+  authenticateRequest,
   managerActorIdentity,
 } from "@/lib/auth"
-import { SHORTS_CAPTIONS_ARTIFACT_TYPE } from "@/lib/shorts-artifacts"
+import {
+  SHORTS_CAPTIONS_ARTIFACT_TYPE,
+  SHORTS_CLIP_META_ARTIFACT_TYPE,
+} from "@/lib/shorts-artifacts"
 import {
   buildShortsMetadataArtifact,
   mergeShortsReport,
@@ -45,6 +51,128 @@ const DRAFT_EDITABLE_PHASES: ReadonlySet<ShortsPhase> = new Set([
   "render_failed",
   "completed",
 ])
+
+// Editor state response: the stored draft record (null before prepare seeds
+// one), a captions summary (NOT the immutable caption tokens — the editor
+// edits the draft's captionPages), and the clip meta the preview needs to
+// assemble Player input props. Missing/malformed artifacts surface as null
+// fields, never errors — the editor renders what exists.
+export type ShortsDraftStateResponse = {
+  draft: {
+    draftVersion: number
+    captionsGeneratedAt: string
+    updatedBy: string
+    updatedAt: string
+    draft: z.infer<typeof draftSchema>
+  } | null
+  captions: {
+    generatedAt: string
+    count: number
+    annotation: string | null
+    language: string | null
+  } | null
+  clipMeta: {
+    durationSec: number
+    fps: number
+    hasAudio: boolean
+  } | null
+}
+
+type ArtifactStorageReaders = Pick<
+  typeof import("@/services/storage"),
+  "artifactExists" | "readArtifact"
+>
+
+// The storage module is imported ONCE by the caller and passed in —
+// concurrent dynamic imports of the same module from parallel promises can
+// race the module-mock interception under vitest.
+async function readJsonArtifactOrNull(
+  storage: ArtifactStorageReaders,
+  assetId: string,
+  artifactType: string,
+): Promise<unknown | null> {
+  const exists = await storage.artifactExists(assetId, artifactType, "json")
+  if (!exists) {
+    return null
+  }
+
+  try {
+    const bytes = await storage.readArtifact(assetId, artifactType, "json")
+    return JSON.parse(new TextDecoder().decode(bytes)) as unknown
+  } catch {
+    return null
+  }
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const authError = await authenticateRequest(request)
+  if (authError) return authError
+
+  const { id } = await params
+
+  const job = await getJob(id)
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 })
+  }
+
+  const shorts = job.options.shorts
+  if (!shorts) {
+    return NextResponse.json(
+      { error: "Job is not a shorts job" },
+      { status: 404 },
+    )
+  }
+
+  const { readShortsDraft } = await import("@/lib/shorts-draft")
+  const { parseShortsCaptionsArtifact, parseShortsClipMeta } =
+    await import("@/lib/shorts-artifacts")
+  const storage = await import("@/services/storage")
+
+  const [draft, captionsRaw, clipMetaRaw] = await Promise.all([
+    readShortsDraft(shorts.assetId),
+    readJsonArtifactOrNull(
+      storage,
+      shorts.assetId,
+      SHORTS_CAPTIONS_ARTIFACT_TYPE,
+    ),
+    readJsonArtifactOrNull(
+      storage,
+      shorts.assetId,
+      SHORTS_CLIP_META_ARTIFACT_TYPE,
+    ),
+  ])
+
+  const captions =
+    captionsRaw === null ? null : parseShortsCaptionsArtifact(captionsRaw)
+  const clipMeta =
+    clipMetaRaw === null ? null : parseShortsClipMeta(clipMetaRaw)
+
+  const response: ShortsDraftStateResponse = {
+    draft,
+    captions: captions
+      ? {
+          generatedAt: captions.generatedAt,
+          count: captions.captions.length,
+          annotation: captions.annotation,
+          language: captions.language,
+        }
+      : null,
+    clipMeta: clipMeta
+      ? {
+          durationSec: clipMeta.durationSec,
+          // Constant-fps re-encoded clip; round to match the render path's
+          // resolveShortInputProps so preview and render agree on frames.
+          fps: Math.round(clipMeta.fps),
+          hasAudio: clipMeta.hasAudio,
+        }
+      : null,
+  }
+
+  return NextResponse.json(response)
+}
 
 export async function POST(
   request: Request,

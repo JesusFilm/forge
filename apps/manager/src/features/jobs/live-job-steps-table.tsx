@@ -326,7 +326,8 @@ function TranscriptionRoutingInlineDetails({
   )
 }
 
-function StepStatusGlyph({ status }: { status: StepStatus }) {
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail).
+export function StepStatusGlyph({ status }: { status: StepStatus }) {
   if (status === "completed") {
     return (
       <svg viewBox="0 0 20 20" aria-hidden="true">
