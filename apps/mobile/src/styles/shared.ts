@@ -15,6 +15,7 @@ import {
   ACCENT_ON_DARK,
   BG_COLOR,
   SURFACE_COLOR,
+  TEXT_ON_OVERLAY,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../lib/color"
@@ -96,6 +97,14 @@ export const text = StyleSheet.create({
     color: ACCENT_ON_DARK,
     fontFamily: "System",
   },
+  // Uppercase section eyebrow; padding/margins stay local to each consumer.
+  eyebrow: {
+    fontWeight: "600",
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
 })
 
 // ── Card ───────────────────────────────────────────────────────────────────
@@ -109,6 +118,21 @@ export const card = StyleSheet.create({
     borderRadius: CARD_BORDER_RADIUS,
     overflow: "hidden",
     backgroundColor: SURFACE_COLOR,
+  },
+  // Meta badge pinned to a poster card's top-right corner.
+  badge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontWeight: "600",
   },
 })
 

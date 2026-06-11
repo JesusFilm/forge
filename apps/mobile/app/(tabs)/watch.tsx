@@ -102,7 +102,7 @@ export default function DiscoverScreen() {
     (result: SearchResult) => {
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
-        router.navigate("/(tabs)")
+        router.push(`/experience/${encodeURIComponent(result.slug)}`)
         return
       }
       // Carry seed data forward so the detail screen paints instantly.
