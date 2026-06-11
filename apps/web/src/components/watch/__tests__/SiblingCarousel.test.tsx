@@ -11,7 +11,7 @@
  * verifying U6's auto-scroll-on-mount behavior.
  */
 
-import { act } from "react"
+import { act, type MouseEventHandler, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -46,6 +46,31 @@ vi.mock("next/image", () => ({
       data-alt={alt}
       className={className}
     />
+  ),
+}))
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    onClick,
+    children,
+    ...props
+  }: {
+    href: string
+    onClick?: MouseEventHandler<HTMLAnchorElement>
+    children: ReactNode
+    [key: string]: unknown
+  }) => (
+    <a
+      href={href}
+      onClick={(event) => {
+        onClick?.(event)
+        event.preventDefault()
+      }}
+      {...props}
+    >
+      {children}
+    </a>
   ),
 }))
 
@@ -303,6 +328,85 @@ describe("SiblingCarousel — happy path", () => {
       "/magdalena.html/english.html",
     )
     expect(active!.getAttribute("href")).toBe("/magdalena.html/english.html")
+  })
+
+  it("makes the clicked chapter card current while navigation is pending", () => {
+    const block = makeBlock(4, 0)
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
+    )
+    const previousCurrent = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-1-slug.html/english.html']",
+    )
+
+    expect(target).not.toBeNull()
+    expect(previousCurrent).not.toBeNull()
+    expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(target!.getAttribute("data-active")).toBe("false")
+    expect(target!.getAttribute("aria-busy")).toBeNull()
+    expect(previousCurrent!.getAttribute("data-active")).toBe("true")
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(target!.getAttribute("data-pending")).toBe("true")
+    expect(target!.getAttribute("data-active")).toBe("true")
+    expect(target!.getAttribute("aria-busy")).toBe("true")
+    expect(target!.className).toContain("border-white")
+    expect(previousCurrent!.getAttribute("data-active")).toBe("false")
+    expect(previousCurrent!.className).not.toContain("border-white")
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).not.toBeNull()
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("2 of 4")
+    expect(desktopLabel?.textContent).toBe("Clip 2 of 4")
+  })
+
+  it("does not show pending feedback for modified chapter clicks", () => {
+    const block = makeBlock(4, 0)
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
+    )
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          metaKey: true,
+        }),
+      )
+    })
+
+    expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(target!.getAttribute("aria-busy")).toBeNull()
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).toBeNull()
   })
 
   it("renders an in-app href without the /watch/ basePath prefix", () => {
