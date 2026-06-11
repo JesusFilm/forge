@@ -3,15 +3,23 @@
 import { Search } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import {
-  useFloatingSearch,
-  useFloatingSearchPinned,
-} from "./FloatingSearchProvider"
+import { useFloatingSearchPinned } from "./FloatingSearchProvider"
 import { FloatingSearchFieldButton } from "./FloatingSearchField"
 
-export function FloatingSearchBar() {
+type FloatingSearchBarProps = {
+  open: boolean
+  closing: boolean
+  query: string
+  onOpen: () => void
+}
+
+export function FloatingSearchBar({
+  open,
+  closing,
+  query,
+  onOpen,
+}: FloatingSearchBarProps) {
   const t = useTranslations("FloatingSearch")
-  const { open, closing, query, setOpen } = useFloatingSearch()
   const { pinned, searchChromeDimmed, searchChromeVisible } =
     useFloatingSearchPinned()
 
@@ -36,7 +44,7 @@ export function FloatingSearchBar() {
         type="button"
         aria-label={t("openSearch")}
         data-testid="floating-search-mobile-button"
-        onClick={() => setOpen(true)}
+        onClick={onOpen}
         inert={chromeHidden || undefined}
         aria-hidden={chromeHidden || undefined}
         className={`fixed right-24 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none sm:hidden ${topClass} ${openClass}`}
@@ -50,7 +58,7 @@ export function FloatingSearchBar() {
       <FloatingSearchFieldButton
         aria-label={t("openSearch")}
         data-testid="floating-search-desktop-button"
-        onClick={() => setOpen(true)}
+        onClick={onOpen}
         inert={chromeHidden || undefined}
         aria-hidden={chromeHidden || undefined}
         display={display}
