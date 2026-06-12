@@ -170,6 +170,7 @@ type WatchPageClientProps = {
   showHeroTitle?: boolean
   transcriptPlacement?: "afterContent" | "belowHero"
   transcriptDisplayMode?: "timeline" | "inlineFlow"
+  showTranscriptHeader?: boolean
   heroViewportHeight?: "default" | "half"
 }
 
@@ -259,6 +260,7 @@ export function WatchPageClient({
   showHeroTitle = true,
   transcriptPlacement = "afterContent",
   transcriptDisplayMode = "timeline",
+  showTranscriptHeader = true,
   heroViewportHeight = "default",
 }: WatchPageClientProps) {
   const router = useRouter()
@@ -619,6 +621,7 @@ export function WatchPageClient({
       durationSeconds={variant.duration ?? null}
       initialTranscript={initialTranscript}
       displayMode={transcriptDisplayMode}
+      showHeader={showTranscriptHeader}
     />
   )
   const placeTranscriptBelowHero = transcriptPlacement === "belowHero"

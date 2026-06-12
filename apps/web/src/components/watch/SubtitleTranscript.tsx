@@ -47,6 +47,7 @@ type SubtitleTranscriptProps = {
   durationSeconds?: number | null
   initialTranscript?: InitialSubtitleTranscript
   displayMode?: "timeline" | "inlineFlow"
+  showHeader?: boolean
 }
 
 export function SubtitleTranscript({
@@ -56,6 +57,7 @@ export function SubtitleTranscript({
   durationSeconds,
   initialTranscript = null,
   displayMode = "timeline",
+  showHeader = true,
 }: SubtitleTranscriptProps) {
   const t = useTranslations("SubtitleTranscript")
   const isInlineFlow = displayMode === "inlineFlow"
@@ -250,51 +252,54 @@ export function SubtitleTranscript({
     <section
       data-testid="watch-subtitle-transcript"
       data-display-mode={displayMode}
-      aria-labelledby="watch-transcript-heading"
+      aria-labelledby={showHeader ? "watch-transcript-heading" : undefined}
+      aria-label={showHeader ? undefined : t("heading")}
       className={sectionClassName}
     >
       <div className={contentClassName}>
         <div className={panelClassName}>
-          <header className={headerClassName}>
-            <div>
-              <h2
-                id="watch-transcript-heading"
-                className={
-                  isInlineFlow
-                    ? "text-xl font-semibold tracking-tight text-stone-50 sm:text-2xl"
-                    : "text-2xl font-semibold tracking-tight text-stone-50"
-                }
-              >
-                {t("heading")}
-              </h2>
-              <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {transcriptSubtitles.length > 1 ? (
-                <label className="flex items-center gap-2 text-sm text-stone-300">
-                  <span className="sr-only">{t("subtitleLanguage")}</span>
-                  <select
-                    data-testid="watch-subtitle-language"
-                    value={selectedSlug ?? ""}
-                    onChange={(e) => setSelectedSlug(e.target.value)}
-                    className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
-                  >
-                    {transcriptSubtitles.map((s) => (
-                      <option key={s.documentId} value={s.language.slug}>
-                        {languageLabel(s)}
-                        {s.aiGenerated ? t("aiSuffix") : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <span className="rounded-full bg-stone-900/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-stone-300">
-                  {activeSubtitle ? languageLabel(activeSubtitle) : ""}
-                  {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
-                </span>
-              )}
-            </div>
-          </header>
+          {showHeader ? (
+            <header className={headerClassName}>
+              <div>
+                <h2
+                  id="watch-transcript-heading"
+                  className={
+                    isInlineFlow
+                      ? "text-xl font-semibold tracking-tight text-stone-50 sm:text-2xl"
+                      : "text-2xl font-semibold tracking-tight text-stone-50"
+                  }
+                >
+                  {t("heading")}
+                </h2>
+                <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {transcriptSubtitles.length > 1 ? (
+                  <label className="flex items-center gap-2 text-sm text-stone-300">
+                    <span className="sr-only">{t("subtitleLanguage")}</span>
+                    <select
+                      data-testid="watch-subtitle-language"
+                      value={selectedSlug ?? ""}
+                      onChange={(e) => setSelectedSlug(e.target.value)}
+                      className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
+                    >
+                      {transcriptSubtitles.map((s) => (
+                        <option key={s.documentId} value={s.language.slug}>
+                          {languageLabel(s)}
+                          {s.aiGenerated ? t("aiSuffix") : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <span className="rounded-full bg-stone-900/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-stone-300">
+                    {activeSubtitle ? languageLabel(activeSubtitle) : ""}
+                    {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
+                  </span>
+                )}
+              </div>
+            </header>
+          ) : null}
 
           {status === "loading" ? (
             <div className={statusClassName}>{t("loading")}</div>

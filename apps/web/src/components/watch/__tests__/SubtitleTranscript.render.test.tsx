@@ -128,10 +128,13 @@ describe("SubtitleTranscript rendering", () => {
       container.querySelector('[data-testid="watch-subtitle-cues"]')
         ?.textContent,
     ).toContain("Server-rendered cue")
+    expect(
+      container.querySelector("#watch-transcript-heading")?.textContent,
+    ).toBe("heading")
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("renders inline flow cues without timestamps inside a half-height scroll pane", () => {
+  it("renders inline flow cues without timestamps or header inside a half-height scroll pane", () => {
     const { playerRef } = makePlayerRef()
 
     act(() => {
@@ -141,6 +144,7 @@ describe("SubtitleTranscript rendering", () => {
           audioSlug="english"
           playerRef={playerRef}
           displayMode="inlineFlow"
+          showHeader={false}
           initialTranscript={{
             vttSrc: englishSubtitle.vttSrc,
             cues: [
@@ -163,10 +167,13 @@ describe("SubtitleTranscript rendering", () => {
 
     expect(section?.getAttribute("data-display-mode")).toBe("inlineFlow")
     expect(section?.getAttribute("class")).toContain("h-[50svh]")
+    expect(section?.getAttribute("aria-label")).toBe("heading")
+    expect(section?.getAttribute("aria-labelledby")).toBeNull()
     expect(cues?.getAttribute("class")).toContain("overflow-y-auto")
     expect(cues?.textContent).toContain(
       "Tell us: what right do You have to say these things?",
     )
+    expect(container.querySelector("#watch-transcript-heading")).toBeNull()
     expect(cues?.querySelector("time")).toBeNull()
     expect(cues?.textContent).not.toContain("0:05")
   })
