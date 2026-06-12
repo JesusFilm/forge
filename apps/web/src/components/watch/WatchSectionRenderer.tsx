@@ -49,6 +49,7 @@ export function WatchSectionRenderer({
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
+  showHeroCta = true,
   showHeroTitle = true,
 }: {
   blocks: MergedWatchBlock[]
@@ -69,6 +70,7 @@ export function WatchSectionRenderer({
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
+  showHeroCta?: boolean
   showHeroTitle?: boolean
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -114,6 +116,7 @@ export function WatchSectionRenderer({
           routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
           videoPathBuilder={videoPathBuilder}
+          showHeroCta={showHeroCta}
           showHeroTitle={showHeroTitle}
         />
       ))}
@@ -159,6 +162,7 @@ export function WatchSectionRenderer({
                   routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                   videoPathBuilder={videoPathBuilder}
+                  showHeroCta={showHeroCta}
                   showHeroTitle={showHeroTitle}
                 />
               ))}
@@ -191,6 +195,7 @@ function WatchBlockEntry({
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
+  showHeroCta,
   showHeroTitle,
 }: {
   block: MergedWatchBlock
@@ -213,6 +218,7 @@ function WatchBlockEntry({
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
+  showHeroCta: boolean
   showHeroTitle: boolean
 }) {
   if (isWatchBlock(block)) {
@@ -237,6 +243,7 @@ function WatchBlockEntry({
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
         videoPathBuilder={videoPathBuilder}
+        showHeroCta={showHeroCta}
         showHeroTitle={showHeroTitle}
       />
     )
@@ -264,6 +271,7 @@ function SyntheticBlock({
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
+  showHeroCta,
   showHeroTitle,
 }: {
   block: WatchBlock
@@ -285,6 +293,7 @@ function SyntheticBlock({
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
+  showHeroCta: boolean
   showHeroTitle: boolean
 }) {
   const optimisticVisual =
@@ -314,6 +323,7 @@ function SyntheticBlock({
           coverBlackoutKey={coverBlackoutKey}
           coverBlackoutPhase={coverBlackoutPhase}
           forcePosterBridgeKey={routePosterBridgeKey}
+          showCta={showHeroCta}
           showTitle={showHeroTitle}
         />
       )

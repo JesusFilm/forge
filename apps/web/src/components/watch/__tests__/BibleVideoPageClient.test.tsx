@@ -33,7 +33,7 @@ afterEach(() => {
 })
 
 describe("BibleVideoPageClient", () => {
-  it("keeps Bible Video links isolated and hides the shared hero title", () => {
+  it("keeps Bible Video links isolated and hides shared hero chrome", () => {
     const Component = BibleVideoPageClient as ComponentType<
       Record<string, unknown>
     >
@@ -47,6 +47,7 @@ describe("BibleVideoPageClient", () => {
       | undefined
 
     expect(props?.videoPathBuilder).toBe(bibleVideoPath)
+    expect(props?.showHeroCta).toBe(false)
     expect(props?.showHeroTitle).toBe(false)
   })
 })

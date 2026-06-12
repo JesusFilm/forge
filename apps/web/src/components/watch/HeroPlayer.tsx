@@ -180,6 +180,7 @@ export function HeroPlayer({
   playableLanguageCount,
   darkenOverlay = false,
   overlay,
+  showCta = true,
   showTitle = true,
   subtitleVttSrc,
   optimisticVisual,
@@ -193,6 +194,7 @@ export function HeroPlayer({
   playableLanguageCount?: number
   darkenOverlay?: boolean
   overlay?: ReactNode
+  showCta?: boolean
   showTitle?: boolean
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
@@ -1274,28 +1276,30 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <a
-                  href={heroPlaybackFallbackHref}
-                  data-testid="hero-player-unmute-pill"
-                  data-state={pillState}
-                  aria-label={preRevealActionLabel}
-                  aria-controls={HERO_PLAYER_MEDIA_ID}
-                  onPointerDown={activatePlayerForIntent}
-                  onKeyDown={handleWatchNowKeyDown}
-                  onClick={handleWatchNowClick}
-                  className={
-                    pillState === "tap-to-unmute"
-                      ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
-                      : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
-                  }
-                >
-                  {pillState === "tap-to-unmute" ? (
-                    <MutedSpeakerIcon />
-                  ) : (
-                    <PlayIcon />
-                  )}
-                  <span>{preRevealActionLabel}</span>
-                </a>
+                {showCta ? (
+                  <a
+                    href={heroPlaybackFallbackHref}
+                    data-testid="hero-player-unmute-pill"
+                    data-state={pillState}
+                    aria-label={preRevealActionLabel}
+                    aria-controls={HERO_PLAYER_MEDIA_ID}
+                    onPointerDown={activatePlayerForIntent}
+                    onKeyDown={handleWatchNowKeyDown}
+                    onClick={handleWatchNowClick}
+                    className={
+                      pillState === "tap-to-unmute"
+                        ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                        : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
+                    }
+                  >
+                    {pillState === "tap-to-unmute" ? (
+                      <MutedSpeakerIcon />
+                    ) : (
+                      <PlayIcon />
+                    )}
+                    <span>{preRevealActionLabel}</span>
+                  </a>
+                ) : null}
               </div>
             ))
           : null}
