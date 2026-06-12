@@ -1180,6 +1180,10 @@ type Video {
   """
   locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
+  """
+  Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.
+  """
+  muxPlaybackId(languageSlug: String): String
   noIndex: Boolean
   origin: VideoOrigin
   """

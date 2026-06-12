@@ -69,13 +69,20 @@ enum AuditEventSeverity {
   CRITICAL @map("critical")
 }
 
+enum UserActorType {
+  HUMAN @map("human")
+  AGENT @map("agent")
+}
+
 model User {
   id               String           @id
   name             String
   email            String
   emailVerified    Boolean          @default(false) @map("email_verified")
   image            String?
+  actorType        UserActorType     @default(HUMAN) @map("actor_type")
   membershipStatus MembershipStatus @default(INVITED) @map("membership_status")
+  expiresAt        DateTime?        @map("expires_at")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
@@ -90,6 +97,8 @@ model User {
   auditEvents AuthAuditEvent[]
 
   @@unique([email])
+  @@index([actorType])
+  @@index([expiresAt])
   @@index([membershipStatus])
   @@map("user")
 }

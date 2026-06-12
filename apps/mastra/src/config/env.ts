@@ -116,6 +116,7 @@ const envSchema = z.object({
     .url()
     .default("https://api.openai.com/v1"),
   OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   OPENROUTER_EMBEDDINGS_BASE_URL: z
     .string()
@@ -253,6 +254,9 @@ export const env = envSchema.parse({
     process.env.OPENAI_EMBEDDINGS_BASE_URL,
   ),
   OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
+  OPENROUTER_API_PAID_KEY: emptyToUndefined(
+    process.env.OPENROUTER_API_PAID_KEY,
+  ),
   OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
   OPENROUTER_EMBEDDINGS_BASE_URL: emptyToUndefined(
     process.env.OPENROUTER_EMBEDDINGS_BASE_URL,
@@ -399,8 +403,8 @@ export function assertMastraRuntimeEnv() {
     assertGatewayProviderContractAllowedForProduction()
   } else {
     missing.push([
-      "OPENROUTER_API_KEY or OPENAI_API_KEY",
-      env.OPENROUTER_API_KEY ?? env.OPENAI_API_KEY,
+      "OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY",
+      getOpenRouterApiKey() ?? env.OPENAI_API_KEY,
     ])
   }
 
@@ -425,6 +429,10 @@ export function getMastraStorageDir() {
   return ".mastra/storage"
 }
 
+export function getOpenRouterApiKey(): string | undefined {
+  return env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
+}
+
 export function getFirecrawlConfig(): FirecrawlConfig {
   return {
     apiKey: env.FIRECRAWL_API_KEY,
@@ -440,9 +448,10 @@ function getLegacyEmbeddingProviderConfig(
   model: string,
   provider: string,
 ): ContentEmbeddingProviderConfig {
-  if (env.OPENROUTER_API_KEY) {
+  const openRouterApiKey = getOpenRouterApiKey()
+  if (openRouterApiKey) {
     return {
-      apiKey: env.OPENROUTER_API_KEY,
+      apiKey: openRouterApiKey,
       baseUrl: env.OPENROUTER_EMBEDDINGS_BASE_URL,
       model,
       provider,

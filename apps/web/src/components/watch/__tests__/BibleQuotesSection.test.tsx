@@ -170,6 +170,23 @@ describe("BibleQuotesSection — visibility", () => {
     expect(
       container.querySelector('[data-testid="watch-bible-quotes-promo-cta"]'),
     ).not.toBeNull()
+    const eyebrow = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo-eyebrow"]',
+    )
+    expect(eyebrow?.className).toContain("font-medium")
+    expect(eyebrow?.className).toContain("tracking-[0.18em]")
+    expect(eyebrow?.className).not.toContain("font-bold")
+    expect(eyebrow?.className).not.toContain("tracking-normal")
+    const heading = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo-heading"]',
+    )
+    expect(heading?.className).toContain("text-2xl")
+    expect(heading?.className).toContain("font-semibold")
+    expect(heading?.className).toContain("md:text-3xl")
+    expect(heading?.className).not.toContain(
+      "text-3xl leading-tight font-black",
+    )
+    expect(heading?.className).not.toContain("font-black")
   })
 
   it("renders the section wrapper with data-block-type=BibleQuotes when citations are present", () => {
@@ -264,9 +281,12 @@ describe("BibleQuotesSection — citations + promo", () => {
     const verse = container.querySelector(
       '[data-testid="watch-bible-quotes-verse"]',
     )
-    expect(verse?.className).toContain("text-2xl")
-    expect(verse?.className).toContain("md:text-3xl")
-    expect(verse?.className).toContain("text-balance")
+    const verseClassTokens = (verse?.className ?? "").split(/\s+/)
+    expect(verseClassTokens).toContain("text-xl")
+    expect(verseClassTokens).toContain("md:text-2xl")
+    expect(verseClassTokens).not.toContain("text-2xl")
+    expect(verseClassTokens).not.toContain("md:text-3xl")
+    expect(verseClassTokens).toContain("text-balance")
 
     const readMore = container.querySelector(
       '[data-testid="watch-bible-quotes-read-more"]',
@@ -451,6 +471,48 @@ describe("BibleQuotesSection — Share button", () => {
       btn!.click()
     })
 
+    expect(onShareClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("renders a concrete share fallback link when an href is supplied", () => {
+    const onShareClick = vi.fn()
+
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[makeCitation({})]}
+          href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.jesusfilm.org%2Fwatch%2Fjesus.html%2Fenglish.html"
+          onShareClick={onShareClick}
+        />,
+      )
+    })
+
+    const link = container.querySelector(
+      '[data-testid="watch-share-button"]',
+    ) as HTMLAnchorElement | null
+    expect(link).not.toBeNull()
+    expect(link!.tagName.toLowerCase()).toBe("a")
+    expect(link!.getAttribute("href")).toContain(
+      "https://www.facebook.com/sharer/sharer.php",
+    )
+    expect(link!.getAttribute("target")).toBe("_blank")
+    const rel = link!.getAttribute("rel") ?? ""
+    expect(rel).toContain("noopener")
+    expect(rel).toContain("noreferrer")
+    expect(link!.getAttribute("aria-label")).toBe("Share")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(link!.className).toContain(token)
+    }
+
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+    act(() => {
+      expect(link!.dispatchEvent(clickEvent)).toBe(false)
+    })
+
+    expect(clickEvent.defaultPrevented).toBe(true)
     expect(onShareClick).toHaveBeenCalledTimes(1)
   })
 })

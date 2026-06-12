@@ -1375,8 +1375,9 @@ error_class=… message=…`. Process-local counters in
    `https://admin.jesusfilm.org/api/search/health`. Body's `status`
    field is the signal; HTTP is always 200 so infra-level liveness is
    not confused with provider reachability.
-2. Ensure `OPENROUTER_API_KEY` is set on the `forge-admin` Railway service.
-   `OPENAI_API_KEY` does not satisfy live query embedding readiness.
+2. Ensure `OPENROUTER_API_PAID_KEY` is set on the `forge-admin` Railway
+   service. `OPENROUTER_API_KEY` remains a fallback; `OPENAI_API_KEY` does not
+   satisfy live query embedding readiness.
 3. Canary diff vs cms: for a fixed query set × locales, compare
    `admin/api/search?q=…&locale=…` to `cms/api/search?q=…&locale=…`.
    Top-10 should overlap within ranking ±1. Drift signals either a

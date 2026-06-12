@@ -1,12 +1,20 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
+import {
+  ChevronDown,
+  ChevronUp,
+  Globe2,
+  Languages,
+  Search as SearchIcon,
+  X,
+} from "lucide-react"
 
-import { useFloatingSearch } from "./FloatingSearchProvider"
+import { useFloatingSearch } from "./FloatingSearchContext"
 import { FloatingSearchFieldInput } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
@@ -14,6 +22,7 @@ import { SpinnerIcon } from "@/components/ui/spinner"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { CATEGORIES } from "@/lib/search-categories"
 import type { CategorySearchTerm } from "@/lib/search-categories"
+import { MAX_SEARCH_LANGUAGE_FILTERS } from "@/lib/search-language"
 
 const CATEGORY_TITLE_KEYS: Record<
   CategorySearchTerm,
@@ -32,6 +41,28 @@ const CATEGORY_TITLE_KEYS: Record<
   christmas: "categoryChristmas",
 }
 
+const ALGOLIA_SEARCH_SUGGESTIONS = [
+  "Jesus",
+  "Bible",
+  "Gospel",
+  "Faith",
+  "Prayer",
+  "Hope",
+  "Love",
+  "Christian",
+] as const
+
+const ALGOLIA_REGION_ORDER = [
+  "Europe",
+  "Africa",
+  "Asia",
+  "South America",
+  "North America",
+  "Oceania",
+] as const
+
+type AlgoliaBrowseTab = "suggestions" | "languages"
+
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
   const {
@@ -47,9 +78,21 @@ export function SearchOverlay() {
     loadingMore,
     error,
     searched,
+    algoliaSearchEnabled,
+    languageOptions,
+    languageGroups,
+    languageCountrySuggestion,
+    recommendedLanguage,
+    languageOptionsLoading,
+    languageOptionsError,
+    selectedLanguageEnglishNames,
+    selectedLanguageRegionByName,
     setQuery,
     search,
     loadMore,
+    toggleSearchLanguage,
+    selectSearchLanguage,
+    clearSearchLanguages,
     closeAndKeepQuery,
   } = useFloatingSearch()
 
@@ -58,6 +101,32 @@ export function SearchOverlay() {
     useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [languagePanelCollapsed, setLanguagePanelCollapsed] = useState(false)
+  const [algoliaBrowseTab, setAlgoliaBrowseTab] =
+    useState<AlgoliaBrowseTab>("languages")
+  const [selectedRegionName, setSelectedRegionName] = useState<string | null>(
+    null,
+  )
+
+  const orderedLanguageGroups = useMemo(() => {
+    const order = new Map<string, number>(
+      ALGOLIA_REGION_ORDER.map((regionName, index) => [regionName, index]),
+    )
+    return [...languageGroups].sort((a, b) => {
+      const aOrder = order.get(a.regionName) ?? Number.MAX_SAFE_INTEGER
+      const bOrder = order.get(b.regionName) ?? Number.MAX_SAFE_INTEGER
+      if (aOrder !== bOrder) return aOrder - bOrder
+      return a.regionName.localeCompare(b.regionName)
+    })
+  }, [languageGroups])
+
+  const activeRegionName =
+    algoliaSearchEnabled &&
+    orderedLanguageGroups.some(
+      (group) => group.regionName === selectedRegionName,
+    )
+      ? selectedRegionName
+      : (orderedLanguageGroups[0]?.regionName ?? null)
 
   const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
     overlayRef.current = node
@@ -143,13 +212,72 @@ export function SearchOverlay() {
     [search],
   )
 
+  const handleSuggestionClick = useCallback(
+    (searchTerm: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (recommendedLanguage) {
+        selectSearchLanguage(
+          recommendedLanguage,
+          recommendedLanguage.regionNames[0],
+        )
+        void search(searchTerm, {
+          languageEnglishNames: [recommendedLanguage.englishName],
+        })
+        return
+      }
+      void search(searchTerm)
+    },
+    [recommendedLanguage, search, selectSearchLanguage],
+  )
+
+  const handleRecommendedLanguageClick = useCallback(() => {
+    if (!recommendedLanguage) return
+    selectSearchLanguage(
+      recommendedLanguage,
+      recommendedLanguage.regionNames[0],
+    )
+    if (query.trim().length > 0) {
+      void search(query, {
+        languageEnglishNames: [recommendedLanguage.englishName],
+      })
+    }
+  }, [query, recommendedLanguage, search, selectSearchLanguage])
+
   const handleClearInput = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     void search("")
     inputRef.current?.focus()
   }, [search])
 
-  const showCategoryGrid = query.trim().length === 0 && !loading && !searched
+  const showCategoryGrid =
+    !algoliaSearchEnabled && query.trim().length === 0 && !loading && !searched
+  const languagePanelOpen =
+    open && algoliaSearchEnabled && !languagePanelCollapsed
+  const showAlgoliaBrowsePanel =
+    algoliaSearchEnabled && (languagePanelOpen || query.trim().length === 0)
+  const activeRegionGroup =
+    orderedLanguageGroups.find(
+      (group) => group.regionName === activeRegionName,
+    ) ??
+    orderedLanguageGroups[0] ??
+    null
+  const languageCountLabel =
+    languageOptions.length >= 1000 ? "1000+" : String(languageOptions.length)
+  const selectedLanguageSummary =
+    selectedLanguageEnglishNames.length === 0
+      ? t("allLanguages")
+      : selectedLanguageEnglishNames
+          .slice(0, 2)
+          .map((language) => language.split(",")[0])
+          .join(", ")
+  const additionalLanguageCount = Math.max(
+    0,
+    selectedLanguageEnglishNames.length - 2,
+  )
+  const languageSelectionAtLimit =
+    selectedLanguageEnglishNames.length >= MAX_SEARCH_LANGUAGE_FILTERS
+  const recommendedLanguageName =
+    recommendedLanguage?.englishName.split(",")[0] ?? null
 
   return (
     <div
@@ -216,6 +344,58 @@ export function SearchOverlay() {
             iconTestId="search-overlay-input-icon"
             wrapperClassName="w-full"
           />
+          {algoliaSearchEnabled && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-label={t("searchLanguageLabel")}
+                aria-controls="search-language-panel"
+                aria-expanded={showAlgoliaBrowsePanel}
+                onClick={() => setLanguagePanelCollapsed((value) => !value)}
+                className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-white/12 px-4 text-sm font-medium text-stone-100 shadow-[0_8px_30px_rgba(0,0,0,0.22)] ring-1 ring-white/15 backdrop-blur-md transition hover:bg-white/18 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+              >
+                <Languages size={16} aria-hidden />
+                <span className="max-w-[12rem] truncate">
+                  {selectedLanguageSummary}
+                  {additionalLanguageCount > 0
+                    ? ` +${additionalLanguageCount}`
+                    : ""}
+                </span>
+                {languagePanelOpen ? (
+                  <ChevronUp size={16} aria-hidden />
+                ) : (
+                  <ChevronDown size={16} aria-hidden />
+                )}
+              </button>
+              {selectedLanguageEnglishNames.map((language) => (
+                <button
+                  key={language}
+                  type="button"
+                  aria-label={`Remove ${language}`}
+                  onClick={() => {
+                    const option = languageGroups
+                      .flatMap((group) => group.languages)
+                      .find((item) => item.englishName === language)
+                    toggleSearchLanguage(
+                      option ?? {
+                        englishName: language,
+                        nativeName: null,
+                        bcp47: null,
+                        publicSlug: null,
+                        regionNames: [],
+                      },
+                    )
+                  }}
+                  className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-white/10 px-3 text-xs font-medium text-stone-100 ring-1 ring-white/15 transition hover:bg-white/16 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                >
+                  <span className="max-w-[9rem] truncate">
+                    {language.split(",")[0]}
+                  </span>
+                  <X size={13} aria-hidden />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <WatchModalViewportCloseButton
@@ -237,13 +417,262 @@ export function SearchOverlay() {
           with backdrop-blur — `pt-24 sm:pt-32` clears the bar's height
           (mobile logo + gap + input, or desktop input pt-12 + breathing room). */}
       <div
-        className="search-overlay-scroll absolute inset-0 z-1 overflow-y-auto px-4 pb-8 pt-44 sm:px-6 sm:pt-32"
+        className={`search-overlay-scroll absolute inset-0 z-1 overflow-y-auto px-4 pb-8 sm:px-6 ${
+          algoliaSearchEnabled ? "pt-56 sm:pt-44" : "pt-44 sm:pt-32"
+        }`}
         aria-live="polite"
       >
         <div
           onClick={(e) => e.stopPropagation()}
           className="mx-auto max-w-[1400px]"
         >
+          {showAlgoliaBrowsePanel && (
+            <div
+              id="search-language-panel"
+              className="mb-6 border-y border-white/12 bg-stone-950/55 px-4 py-5 text-stone-100 shadow-2xl shadow-black/20 backdrop-blur-xl sm:px-6"
+            >
+              <div
+                role="tablist"
+                aria-label="Search browse mode"
+                className="grid grid-cols-2 gap-0 border-b border-white/12 md:flex md:items-end md:justify-start md:gap-10"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={algoliaBrowseTab === "suggestions"}
+                  onClick={() => setAlgoliaBrowseTab("suggestions")}
+                  className={`flex min-h-14 min-w-0 cursor-pointer items-center justify-center gap-3 border-b-3 px-2 text-xs font-bold tracking-[0.22em] uppercase transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 sm:text-sm md:min-w-72 ${
+                    algoliaBrowseTab === "suggestions"
+                      ? "border-brand-red text-stone-100"
+                      : "border-transparent text-stone-500 hover:text-stone-300"
+                  }`}
+                >
+                  <SearchIcon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
+                  <span className="truncate">{t("searchSuggestions")}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={algoliaBrowseTab === "languages"}
+                  onClick={() => setAlgoliaBrowseTab("languages")}
+                  className={`flex min-h-14 min-w-0 cursor-pointer items-center justify-center gap-3 border-b-3 px-2 text-xs font-bold tracking-[0.22em] uppercase transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 sm:text-sm md:min-w-72 ${
+                    algoliaBrowseTab === "languages"
+                      ? "border-brand-red text-stone-100"
+                      : "border-transparent text-stone-500 hover:text-stone-300"
+                  }`}
+                >
+                  <Globe2 className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
+                  <span className="truncate">{t("languages")}</span>
+                  <span className="rounded-full border border-white/18 px-2 py-0.5 text-[0.7rem] tracking-[0.16em] text-stone-300 sm:text-xs">
+                    {languageCountLabel}
+                  </span>
+                </button>
+              </div>
+
+              {algoliaBrowseTab === "suggestions" && (
+                <div className="pt-6">
+                  {recommendedLanguage && (
+                    <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-stone-300">
+                      <span className="text-xs font-semibold tracking-[0.18em] text-stone-500 uppercase">
+                        {t("recommendedLanguage")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRecommendedLanguageClick}
+                        className="inline-flex h-8 cursor-pointer items-center rounded-full bg-brand-red px-3 text-xs font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                      >
+                        {recommendedLanguage.englishName}
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {ALGOLIA_SEARCH_SUGGESTIONS.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        aria-label={
+                          recommendedLanguageName
+                            ? t("searchSuggestionWithLanguage", {
+                                suggestion,
+                                language: recommendedLanguageName,
+                              })
+                            : t("searchSuggestion", { suggestion })
+                        }
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-md border border-white/12 bg-white/8 px-4 py-3 text-left text-sm font-semibold text-stone-200 transition hover:border-white/24 hover:bg-white/14 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                      >
+                        <span className="truncate">{suggestion}</span>
+                        {recommendedLanguageName && (
+                          <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[0.68rem] font-bold tracking-[0.12em] text-stone-300 uppercase">
+                            {t("inLanguage", {
+                              language: recommendedLanguageName,
+                            })}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {algoliaBrowseTab === "languages" && (
+                <div className="pt-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold tracking-[0.18em] text-stone-500 uppercase">
+                        {t("browseByRegion")}
+                      </p>
+                    </div>
+                    {selectedLanguageEnglishNames.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={clearSearchLanguages}
+                        className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full bg-white/10 px-3 text-xs font-medium text-stone-200 transition hover:bg-white/16 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                      >
+                        <X size={13} aria-hidden />
+                        {t("clearLanguages")}
+                      </button>
+                    )}
+                  </div>
+
+                  {languageCountrySuggestion && (
+                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+                      <div className="mr-2 flex items-center gap-2 text-xs font-semibold text-stone-300">
+                        {languageCountrySuggestion.flagPngSrc && (
+                          <Image
+                            src={languageCountrySuggestion.flagPngSrc}
+                            alt=""
+                            width={25}
+                            height={15}
+                            className="rounded-[2px]"
+                            unoptimized
+                          />
+                        )}
+                        <span>{languageCountrySuggestion.countryName}:</span>
+                      </div>
+                      {languageCountrySuggestion.languages.map((language) => {
+                        const selected = selectedLanguageEnglishNames.includes(
+                          language.englishName,
+                        )
+                        const disabled = !selected && languageSelectionAtLimit
+                        return (
+                          <button
+                            key={`country-${language.englishName}`}
+                            type="button"
+                            disabled={disabled}
+                            aria-pressed={selected}
+                            onClick={() => toggleSearchLanguage(language)}
+                            className={`h-8 cursor-pointer rounded-full px-3 text-xs font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 disabled:cursor-not-allowed disabled:opacity-40 ${
+                              selected
+                                ? "bg-brand-red text-white"
+                                : "bg-white/10 text-stone-200 hover:bg-white/16"
+                            }`}
+                          >
+                            {language.englishName.split(",")[0]}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {languageOptionsLoading && (
+                    <p className="mt-4 text-sm text-stone-400">
+                      {t("loading")}
+                    </p>
+                  )}
+                  {languageOptionsError && !languageOptionsLoading && (
+                    <p className="mt-4 text-sm text-brand-red">
+                      {languageOptionsError}
+                    </p>
+                  )}
+
+                  {!languageOptionsLoading &&
+                    orderedLanguageGroups.length > 0 && (
+                      <>
+                        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-6">
+                          {orderedLanguageGroups.map((group) => {
+                            const selected =
+                              group.regionName === activeRegionGroup?.regionName
+                            return (
+                              <button
+                                key={group.regionName}
+                                type="button"
+                                aria-pressed={selected}
+                                onClick={() =>
+                                  setSelectedRegionName(group.regionName)
+                                }
+                                className={`min-h-10 cursor-pointer rounded-md px-1 text-left text-base font-semibold text-brand-red transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 sm:text-lg ${
+                                  selected
+                                    ? "bg-brand-red/10 text-brand-red"
+                                    : "hover:bg-white/8"
+                                }`}
+                              >
+                                <span className="block truncate">
+                                  {group.regionName}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        {activeRegionGroup && (
+                          <div className="mt-5 max-h-[min(44vh,30rem)] overflow-y-auto pr-1">
+                            <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                              {activeRegionGroup.languages.map((language) => {
+                                const selected =
+                                  selectedLanguageEnglishNames.includes(
+                                    language.englishName,
+                                  )
+                                const selectedRegion =
+                                  selectedLanguageRegionByName[
+                                    language.englishName
+                                  ]
+                                const disabled =
+                                  (!selected && languageSelectionAtLimit) ||
+                                  (selected &&
+                                    selectedRegion != null &&
+                                    selectedRegion !==
+                                      activeRegionGroup.regionName)
+                                return (
+                                  <button
+                                    key={`${activeRegionGroup.regionName}-${language.englishName}`}
+                                    type="button"
+                                    disabled={disabled}
+                                    aria-pressed={selected && !disabled}
+                                    onClick={() =>
+                                      toggleSearchLanguage(
+                                        language,
+                                        activeRegionGroup.regionName,
+                                      )
+                                    }
+                                    className={`flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 disabled:cursor-not-allowed disabled:opacity-40 ${
+                                      selected && !disabled
+                                        ? "bg-brand-red text-white"
+                                        : "text-stone-200 hover:bg-white/10"
+                                    }`}
+                                  >
+                                    <span className="truncate">
+                                      {language.englishName}
+                                    </span>
+                                    {language.facetCount != null && (
+                                      <span className="shrink-0 text-xs text-stone-400">
+                                        {language.facetCount}
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                </div>
+              )}
+            </div>
+          )}
+
           {showCategoryGrid && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {CATEGORIES.map((cat) => {

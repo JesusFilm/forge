@@ -43,7 +43,18 @@ export function deriveSubtitlePanelState(
   if (state.loading) return { kind: "loading" }
   if (state.error) return { kind: "error" }
   if (state.media == null) return { kind: "loading" }
-  return { kind: "loaded", subtitles: state.media.subtitles }
+  // Alphabetical by display name (A→Z) so the track list is scannable; the
+  // panel's always-on "Subtitles off" row is prepended in the component, not
+  // here, so it stays pinned to the top regardless of this ordering.
+  const subtitles = [...state.media.subtitles].sort((left, right) =>
+    subtitleDisplayName(left).localeCompare(subtitleDisplayName(right)),
+  )
+  return { kind: "loaded", subtitles }
+}
+
+/** Display name a subtitle row renders — the same precedence the panel uses. */
+function subtitleDisplayName(subtitle: WatchSubtitle): string {
+  return subtitle.languageName || subtitle.languageSlug || ""
 }
 
 /**
@@ -100,10 +111,24 @@ export function annotateVariantRows(
   variants: readonly WatchVariant[],
   activeVariantIndex: number,
 ): AnnotatedVariantRow[] {
-  return variants.map((variant, index) => ({
-    variant,
-    index,
-    disabled: !isVariantPlayable(variant),
-    active: index === activeVariantIndex,
-  }))
+  // Sort A→Z by display name AFTER annotating, so each row keeps its original
+  // `index` for write-back (`setActiveVariantIndex`) even though display order
+  // changes. A stable sort keeps same-named dubs in their source order.
+  return variants
+    .map((variant, index) => ({
+      variant,
+      index,
+      disabled: !isVariantPlayable(variant),
+      active: index === activeVariantIndex,
+    }))
+    .sort((left, right) =>
+      variantDisplayName(left.variant).localeCompare(
+        variantDisplayName(right.variant),
+      ),
+    )
+}
+
+/** Display name a variant row renders — the same precedence the panels use. */
+function variantDisplayName(variant: WatchVariant): string {
+  return variant.languageName ?? variant.languageSlug ?? variant.slug ?? ""
 }

@@ -52,13 +52,19 @@ export default function LibraryScreen() {
 
   const imageUrl = resolveImageUrl(experience.ogImageUrl ?? null)
   const isActive = experience.slug === currentSlug
+  // currentSlug is always set when an experience is loaded; the fragment's
+  // slug is the nullable-typed fallback.
+  const targetSlug = currentSlug ?? experience.slug
 
   return (
     <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
       <Text style={[styles.header, typography.heading]}>Library</Text>
       <View style={styles.listContent}>
         <Pressable
-          onPress={() => router.navigate("/(tabs)/")}
+          onPress={() => {
+            if (targetSlug == null) return
+            router.push(`/experience/${encodeURIComponent(targetSlug)}`)
+          }}
           style={[styles.card, isActive && styles.cardActive]}
           accessibilityRole="button"
           accessibilityLabel={`${experience.title ?? "Untitled experience"}, currently active`}

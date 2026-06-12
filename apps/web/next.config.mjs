@@ -23,6 +23,9 @@ const nextConfig = {
   compress: true,
   // typedRoutes moved to top-level in Next 16 (stable).
   typedRoutes: true,
+  // Datadog RUM source-map uploads need production browser maps available
+  // after `next build`; uploads stay opt-in via `pnpm datadog:sourcemaps`.
+  productionBrowserSourceMaps: true,
   async rewrites() {
     return {
       beforeFiles: [
@@ -35,11 +38,7 @@ const nextConfig = {
     }
   },
   experimental: {
-    optimizePackageImports: [
-      "lucide-react",
-      "@mux/mux-player-react",
-      "@mux/mux-video-react",
-    ],
+    optimizePackageImports: ["lucide-react", "@mux/mux-video-react"],
   },
   images: {
     remotePatterns: [

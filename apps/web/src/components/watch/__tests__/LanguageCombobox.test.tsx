@@ -45,6 +45,27 @@ const MANY_OPTIONS = Array.from({ length: 200 }, (_, index) => ({
   name: `Language ${String(index).padStart(3, "0")}`,
 }))
 
+function makeRect({
+  bottom = 0,
+  height = 0,
+  left = 0,
+  right = 0,
+  top = 0,
+  width = 0,
+}: Partial<DOMRect> = {}): DOMRect {
+  return {
+    bottom,
+    height,
+    left,
+    right,
+    top,
+    width,
+    x: left,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect
+}
+
 describe("LanguageCombobox", () => {
   it("renders the currently selected option label in the trigger", () => {
     act(() => {
@@ -80,6 +101,34 @@ describe("LanguageCombobox", () => {
     expect(trigger?.className).toContain("py-3")
     expect(trigger?.className).toContain("text-base")
     expect(trigger?.className).toContain("min-h-16")
+  })
+
+  it("can render a compact trigger for modal surfaces", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="spanish"
+          onChange={vi.fn()}
+          compact
+        />,
+      )
+    })
+
+    const trigger = $('[data-testid="language-combobox-trigger"]')
+    expect(trigger?.className).toContain("rounded-xl")
+    expect(trigger?.className).toContain("px-4")
+    expect(trigger?.className).toContain("py-2.5")
+    expect(trigger?.className).toContain("text-sm")
+    expect(trigger?.className).toContain("min-h-12")
+    expect(trigger?.className).not.toContain("rounded-2xl")
+    expect(trigger?.className).not.toContain("min-h-16")
+
+    const triggerFlag = $(
+      '[data-testid="language-combobox-trigger"] [data-testid="language-combobox-option-flag"]',
+    )
+    expect(triggerFlag?.className).toContain("size-7")
+    expect(triggerFlag?.className).not.toContain("size-8")
   })
 
   it("uses a dark translucent selected option state", () => {
@@ -164,6 +213,114 @@ describe("LanguageCombobox", () => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
     expect($('[data-testid="language-combobox-popover"]')).not.toBeNull()
+  })
+
+  it("opens upward when the trigger is too close to the viewport bottom", () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 800,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 714,
+            height: 64,
+            right: 400,
+            top: 650,
+            width: 400,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 400, width: 400 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.className).toContain("bottom-full")
+      expect(popover?.className).toContain("mb-2")
+      expect(popover?.className).not.toContain("top-full")
+      expect(listbox.style.maxHeight).toBe("288px")
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
+  })
+
+  it("caps the scrollable listbox when the popover must open in limited space", () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 220,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 74,
+            height: 64,
+            right: 400,
+            top: 10,
+            width: 400,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 400, width: 400 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.className).toContain("top-full")
+      expect(popover?.className).toContain("mt-2")
+      expect(listbox.style.maxHeight).toBe("49px")
+      expect(listbox.className).toContain("overflow-y-auto")
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
   })
 
   it("allows callers to wrap the trigger without wrapping the open popover", () => {
@@ -314,6 +471,74 @@ describe("LanguageCombobox", () => {
     expect(items[0]?.textContent).toContain("Spanish")
   })
 
+  it("ranks label-prefix matches before word-prefix and substring matches", () => {
+    const OPTIONS_WITH_RUSSIAN = [
+      { slug: "belorussian", name: "Belorussian" },
+      { slug: "buriat-russia", name: "Buriat, Russia" },
+      { slug: "central-asian-russian", name: "Central Asian Russian" },
+      { slug: "russian", name: "Russian" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_RUSSIAN}
+          value="central-asian-russian"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "russi"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(
+      items.map((item) => item.getAttribute("data-language-slug")),
+    ).toEqual([
+      "russian",
+      "buriat-russia",
+      "central-asian-russian",
+      "belorussian",
+    ])
+    expect(items[0]?.getAttribute("aria-selected")).toBe("false")
+    expect(items[2]?.getAttribute("aria-selected")).toBe("true")
+  })
+
+  it("keeps the original option order for empty searches", () => {
+    const UNSORTED_OPTIONS = [
+      { slug: "zulu", name: "Zulu" },
+      { slug: "english", name: "English" },
+      { slug: "arabic", name: "Arabic" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={UNSORTED_OPTIONS}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(
+      items.map((item) => item.getAttribute("data-language-slug")),
+    ).toEqual(["zulu", "english", "arabic"])
+  })
+
   it("calls onChange and closes the popover when an option is clicked", () => {
     const onChange = vi.fn()
     act(() => {
@@ -368,6 +593,43 @@ describe("LanguageCombobox", () => {
     })
 
     expect(onChange).toHaveBeenCalledWith("spanish")
+  })
+
+  it("Enter selects the first ranked option after search filtering", () => {
+    const onChange = vi.fn()
+    const OPTIONS_WITH_RUSSIAN = [
+      { slug: "belorussian", name: "Belorussian" },
+      { slug: "central-asian-russian", name: "Central Asian Russian" },
+      { slug: "russian", name: "Russian" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_RUSSIAN}
+          value="central-asian-russian"
+          onChange={onChange}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "russi"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+
+    expect(onChange).toHaveBeenCalledWith("russian")
   })
 
   it("Escape closes the popover without calling onChange", () => {
@@ -734,6 +996,40 @@ describe("LanguageCombobox", () => {
     const items = $$('[data-testid="language-combobox-option"]')
     expect(items.length).toBe(1)
     expect(items[0]?.getAttribute("data-language-slug")).toBe("spanish")
+  })
+
+  it("ranks nativeName prefix matches before nativeName substring matches", () => {
+    const OPTIONS_WITH_NATIVE = [
+      { slug: "late-spanish", name: "Late Spanish", nativeName: "Neo Español" },
+      { slug: "spanish", name: "Spanish", nativeName: "Español" },
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_NATIVE}
+          value="late-spanish"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "Esp"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(
+      items.map((item) => item.getAttribute("data-language-slug")),
+    ).toEqual(["spanish", "late-spanish"])
+    expect(items[1]?.getAttribute("aria-selected")).toBe("true")
   })
 
   it("matches the search query against bcp47-derived native names", () => {

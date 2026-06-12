@@ -21,13 +21,22 @@
 // The pure decision logic lives in playerSwitch.ts (inPlayerMenuVisible /
 // shouldReplaceSource); this hook is the React wiring around it.
 
-import { useEffect, useRef, useState, type MutableRefObject } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import type { Animated } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { inPlayerMenuVisible, shouldReplaceSource } from "./playerSwitch"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+
+/** The two sections of the in-player menu (split pills, U8). */
+export type InPlayerMenuSection = "language" | "subtitles"
 
 export type UseSessionPlaybackParams = {
   /**
@@ -87,12 +96,18 @@ export type UseSessionPlaybackResult = {
   /** Whether the in-player menu is currently open. */
   menuOpen: boolean
   /**
+   * Which section the open menu shows — "language" (dub list) or "subtitles".
+   * Set by openMenu; meaningless while menuOpen is false. Mirrors the details
+   * page's separate Language / Subtitles pickers (U8 split pills).
+   */
+  menuSection: InPlayerMenuSection
+  /**
    * Ref mirror of menuOpen, read synchronously by the host's scheduleHide guard
    * (which runs from native event callbacks before React commits state).
    */
   menuOpenRef: MutableRefObject<boolean>
-  /** Open the in-player menu — suppresses auto-hide (stops in-flight hide). */
-  openMenu: () => void
+  /** Open the in-player menu on a section — suppresses auto-hide. */
+  openMenu: (section: InPlayerMenuSection) => void
   /** Close the in-player menu — re-arms auto-hide + restores focus. */
   closeMenu: () => void
   /**
@@ -100,6 +115,19 @@ export type UseSessionPlaybackResult = {
    * SubtitleOverlay renders nothing (also the no-session value).
    */
   activeVttSrc: string | null
+  /**
+   * Display name of the active dub's language ("English"), or null when the
+   * session isn't driving this overlay. Feeds the Language pill's sub-caption
+   * (U8 player chrome).
+   */
+  audioLabel: string | null
+  /**
+   * Display name of the active subtitle language, or null when subtitles are
+   * off / unresolved. Resolution mirrors activeVttSrc (active dub's loaded
+   * media), falling back to the slug so the Subtitles pill never lies about
+   * CC being on.
+   */
+  subtitleLabel: string | null
 }
 
 export function useSessionPlayback({
@@ -144,9 +172,12 @@ export function useSessionPlayback({
 
   // In-player menu open/closed. Opening suppresses auto-hide; closing returns
   // focus to play/pause via the one-shot revealFocusPending claim (set in the
-  // close handler below). Only ever true while menuActive (the open control is
-  // only rendered then), but we still gate the render on both for safety.
+  // close handler below). Only ever true while menuActive (the open controls
+  // are only rendered then), but we still gate the render on both for safety.
+  // menuSection records which pill opened it (Language vs Subtitles).
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuSection, setMenuSection] =
+    useState<InPlayerMenuSection>("language")
   const menuOpenRef = useRef(false)
   useEffect(() => {
     menuOpenRef.current = menuOpen
@@ -271,16 +302,32 @@ export function useSessionPlayback({
     }
   }, [menuActive, session.subtitleEnabled, session.ensureActiveVariantMedia])
 
-  // Resolve the active subtitle VTT src from the session's loaded media for the
-  // active subtitle slug — null unless the session is driving this overlay AND
-  // captions are on AND a matching track has loaded. Null → SubtitleOverlay
-  // renders nothing.
-  const activeVttSrc =
+  // Resolve the active subtitle TRACK from the session's loaded media for the
+  // active subtitle slug — undefined unless the session is driving this
+  // overlay AND captions are on AND a matching track has loaded. The single
+  // guarded lookup feeds both the VTT src (SubtitleOverlay) and the display
+  // label (Subtitles pill), so the label can never diverge from the track
+  // actually rendered.
+  const subtitlesOn =
     menuActive && session.subtitleEnabled && session.activeSubtitleSlug != null
-      ? (session.activeVariantMedia?.subtitles.find(
-          (s) => s.languageSlug === session.activeSubtitleSlug,
-        )?.vttSrc ?? null)
-      : null
+  const activeSubtitle = subtitlesOn
+    ? session.activeVariantMedia?.subtitles.find(
+        (s) => s.languageSlug === session.activeSubtitleSlug,
+      )
+    : undefined
+
+  // Null → SubtitleOverlay renders nothing (also the no-session value).
+  const activeVttSrc = activeSubtitle?.vttSrc ?? null
+
+  // Display names for the U8 chrome (Language / Subtitles pill sub-captions).
+  // Same gating as the rest of the session-driven surface: null when the
+  // session isn't driving this overlay, so no-session playback shows nothing.
+  const audioLabel = menuActive
+    ? (session.activeVariant?.languageName ?? null)
+    : null
+  const subtitleLabel = subtitlesOn
+    ? (activeSubtitle?.languageName ?? session.activeSubtitleSlug)
+    : null
 
   // ── In-player menu open/close (U7) ──────────────────────────────────
   // Opening from a hidden-chrome state is not supported (the open control is
@@ -288,35 +335,50 @@ export function useSessionPlayback({
   // first (D-pad), then opens the menu. Opening cancels any pending hide so the
   // chrome doesn't fade under the menu; closing re-arms auto-hide and routes
   // focus back to play/pause via the one-shot revealFocusPending claim.
-  const openMenu = () => {
-    // Stop any in-flight hide so its completion callback can't flip
-    // controlsVisible=false after the menu opens (captured-handle pattern,
-    // mirrors revealControls / the error + foreground paths).
-    if (hideAnimRef.current != null) {
-      hideAnimRef.current.stop()
-      hideAnimRef.current = null
-    }
-    if (inactivityTimerRef.current != null) {
-      clearTimeout(inactivityTimerRef.current)
-      inactivityTimerRef.current = null
-    }
-    menuOpenRef.current = true
-    setMenuOpen(true)
-  }
-  const closeMenu = () => {
+  //
+  // Both are useCallback-stable: closeMenu flows into InPlayerMenu's renderRow
+  // deps, and the host re-renders every timeUpdate (~1Hz) during playback — an
+  // unstable identity would re-render every mounted dub row each second while
+  // the menu is open. Latest-ref pattern for the host callback (mirrors
+  // scheduleHideRef).
+  const onRequestRevealFocusRef = useRef(onRequestRevealFocus)
+  onRequestRevealFocusRef.current = onRequestRevealFocus
+  const openMenu = useCallback(
+    (section: InPlayerMenuSection) => {
+      // Stop any in-flight hide so its completion callback can't flip
+      // controlsVisible=false after the menu opens (captured-handle pattern,
+      // mirrors revealControls / the error + foreground paths).
+      if (hideAnimRef.current != null) {
+        hideAnimRef.current.stop()
+        hideAnimRef.current = null
+      }
+      if (inactivityTimerRef.current != null) {
+        clearTimeout(inactivityTimerRef.current)
+        inactivityTimerRef.current = null
+      }
+      setMenuSection(section)
+      menuOpenRef.current = true
+      setMenuOpen(true)
+    },
+    [hideAnimRef, inactivityTimerRef],
+  )
+  const closeMenu = useCallback(() => {
     menuOpenRef.current = false
     setMenuOpen(false)
     // One-shot focus restore to play/pause (mirrors Fix #5 / reveal pattern).
-    onRequestRevealFocus()
+    onRequestRevealFocusRef.current()
     scheduleHideRef.current()
-  }
+  }, [scheduleHideRef])
 
   return {
     menuActive,
     menuOpen,
+    menuSection,
     menuOpenRef,
     openMenu,
     closeMenu,
     activeVttSrc,
+    audioLabel,
+    subtitleLabel,
   }
 }

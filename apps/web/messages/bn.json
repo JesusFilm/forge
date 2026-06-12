@@ -100,7 +100,7 @@
     "fallbackBody": "শুনতে প্রস্তুত এমন কারও সাথে ব্যক্তিগতভাবে কথা বলুন।",
     "questionsShort": "প্রশ্ন",
     "questions": "সম্পর্কিত প্রশ্ন",
-    "askYours": "আপনার প্রশ্ন করুন",
+    "askYours": "আপনার প্রশ্ন",
     "chatWithPerson": "একজন মানুষের সাথে চ্যাট করুন",
     "askBibleQuestion": "বাইবেল সম্পর্কে প্রশ্ন করুন"
   },
@@ -182,10 +182,20 @@
     "categoryAnimated": "অ্যানিমেটেড",
     "categoryStudy": "অধ্যয়ন",
     "categoryFamily": "পরিবার",
-    "categoryChristmas": "ক্রিসমাস"
+    "categoryChristmas": "ক্রিসমাস",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
-    "playWithSound": "শব্দসহ চালান",
+    "playWithSound": "এখন দেখুন",
     "tapToUnmute": "শব্দ চালু করতে ট্যাপ করুন"
   },
   "ExperienceSkeleton": {

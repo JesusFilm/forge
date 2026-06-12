@@ -433,6 +433,19 @@ builder.prismaObject("Video", {
       resolve: (video, _args, ctx) =>
         ctx.loaders.videoPrimaryDubDurationById.load(video.id),
     }),
+    muxPlaybackId: t.string({
+      nullable: true,
+      description:
+        "Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
     childDubLanguages: t.field({
       type: [ChildDubLanguageRef],
       nullable: false,

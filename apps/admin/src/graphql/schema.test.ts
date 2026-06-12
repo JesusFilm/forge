@@ -398,6 +398,7 @@ describe("Video type", () => {
         "aiMetadata",
         "locales",
         "dubs",
+        "muxPlaybackId",
         "studyQuestions",
         "bibleCitations",
       ]),
@@ -431,10 +432,14 @@ describe("Video type", () => {
     const localesLanguageSlugArg = fields.locales.args.find(
       (arg) => arg.name === "languageSlug",
     )
+    const muxPlaybackLanguageSlugArg = fields.muxPlaybackId.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
     expect(studyLocaleArg?.type.toString()).toBe("String")
     expect(studyLanguageSlugArg?.type.toString()).toBe("String")
     expect(localesLocaleArg?.type.toString()).toBe("String")
     expect(localesLanguageSlugArg?.type.toString()).toBe("String")
+    expect(muxPlaybackLanguageSlugArg?.type.toString()).toBe("String")
   })
 
   it("localized content rows expose variant identity diagnostics", () => {

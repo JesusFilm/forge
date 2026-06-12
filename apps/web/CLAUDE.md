@@ -49,6 +49,14 @@ Locale propagation flow: public URL (`/watch/{slug}.html/{raw-audio-slug}.html`)
 
 Public watch links must always use the raw audio language slug, never the message-catalog key. Any button, card, carousel, modal, or component that emits a `/watch` href should pass `variant.language.slug`, `languageSlug`, or `currentLanguageSlug` into the route builders in `src/lib/routes.ts`. For English, the public URL is `/watch/{slug}.html/english.html`; `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
 
+Watch chapter/sibling carousel links should keep `next/link` and the public
+audio-language href, but normal left-clicks may optimistically make the clicked
+card the visual current item while the next route resolves. Preserve modified
+click browser behavior, keep pending state scoped to the source video/language,
+and derive the visual active card from that pending payload so it self-invalidates
+when the route commits. See
+`docs/solutions/design-patterns/watch-chapter-optimistic-navigation-feedback.md`.
+
 Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forge/web generate:ui-locales` or any build/test script that runs it. The generated edge-safe catalog module drives middleware, route helpers, and next-intl catalog membership without a manual TypeScript whitelist. CI runs `check:ui-locales` during lint before build/test scripts can regenerate the file, and the drift gate in `src/i18n/__tests__/messages-parity.test.ts` verifies the generated list matches filesystem catalogs. The structural-parity test also enforces every namespace key exists in every catalog.
 
 Critical: `src/i18n/generated-ui-locales.ts` is the only catalog list safe to import from middleware, route helpers, and client-reachable modules. Do NOT copy filesystem discovery into request-path modules (filesystem I/O in the request path is a regression), and do NOT import `src/i18n/locales.ts` into middleware or client-safe helpers because it is a server-only re-export for next-intl request configuration. Keep the internal `[locale]` segment bounded to generated message catalogs; use `[htmlLang]` only for the static HTML language tag.
@@ -79,29 +87,26 @@ Never expose the LaunchDarkly server-side SDK key to client components or
 `NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
 `packages/feature-flags/src/registry.ts` before using them in an app.
 
-Two composable `NEXT_PUBLIC_*` toggles control the watch player surface:
+One `NEXT_PUBLIC_*` toggle still controls the inline watch player surface:
 
 - `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the
   player backend for the inline section components (`VideoHero`, `Video`,
   `CarouselVideo`). `false` keeps the video.js path via
   `useVideoPlayerCore`; `true` renders `<MuxVideo>` from
   `@forge/video-player`. Sunset gate for the video.js drop (R19).
-- `NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` (default `false`) — selects the
-  player backend for the watch-page hero (`HeroPlayer`). `false` keeps the
-  existing `<MuxPlayer>` path (full `@mux/mux-player-react` chrome bundle,
-  including `cast_sender.js`); `true` renders `<MuxVideo>` (smaller, no
-  cast, light-DOM poster discoverable as the LCP element). The two
-  backends are dynamic-imported through subpath specifiers
-  (`@forge/video-player/mux-player` vs `/mux-video`) and the inactive
-  branch is build-time DCE'd via `process.env.NEXT_PUBLIC_*` substitution,
-  so exactly one ships per build. See
-  `docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md`.
 
-Both flags are per-environment / per-build — set via Railway env vars and
-baked at `next build` time. They do NOT support per-request override.
-LaunchDarkly runtime evaluation does not replace these build-time branches yet
-because the inactive player implementation is intentionally dead-code
-eliminated by `process.env.NEXT_PUBLIC_*` substitution.
+The watch-page hero (`HeroPlayer`) always renders the optimized `<MuxVideo>`
+backend from `@forge/video-player/mux-video` after poster-first activation.
+Do not reintroduce a MuxPlayer hero fallback or a
+`NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` build flag; that rollout graduated in
+the non-Cloudflare performance hardening work.
+
+The remaining inline player flag is per-environment / per-build — set via
+Railway env vars and baked at `next build` time. It does NOT support
+per-request override. LaunchDarkly runtime evaluation does not replace this
+build-time branch yet because the inactive inline player implementation is
+intentionally dead-code eliminated by `process.env.NEXT_PUBLIC_*`
+substitution.
 
 `forge.watch.ctaTextCopy` is a temporary LaunchDarkly-backed production smoke
 flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`

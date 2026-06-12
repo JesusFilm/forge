@@ -22,6 +22,7 @@ related:
   - "docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md"
   - "docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md"
 date_learned: 2026-05-21
+last_updated: 2026-06-12
 ---
 
 ## Context
@@ -40,11 +41,18 @@ The pattern:
 
 1. Query scene evidence from `video_scene_locale.embedding`.
 2. Query transcript evidence from `video_transcript_chunk.embedding`.
-3. Select the best row per video per source before bounding each source window.
-4. In service code, group rows by video and choose one winning evidence row.
-5. Score the video by best raw source score plus a small bounded agreement bonus
+3. Collapse each source to one scene row and one transcript row per video before
+   the per-source candidate limit when exact recall parity matters.
+4. Keep expensive survivor-only fields out of the source collapse: image
+   lookup, dub playback lookup, and `embedding::text` should be hydrated after
+   the candidate window is already bounded.
+5. Resolve matching `language.bcp47` rows once for late dub hydration, but keep
+   all matching language ids. Do not use `LIMIT 1` because `bcp47` is not a
+   unique language identity.
+6. In service code, group rows by video and choose one winning evidence row.
+7. Score the video by best raw source score plus a small bounded agreement bonus
    when both sources support it.
-6. Return one `VideoSemanticResult` per video.
+8. Return one `VideoSemanticResult` per video.
 
 The winning evidence row owns `sceneDescription`, `startSeconds`, `playbackId`,
 and service-internal `embeddingText`. Do not average vectors or expose evidence
@@ -64,6 +72,14 @@ indexes must live on the same table as the vector:
 - transcripts filter `video_transcript_chunk.language`.
 
 Filtering only through joined parent rows risks planner index bypass.
+
+Ordering the full corpus by `video_id` before the vector distance also risks
+planner index bypass. That shape asks Postgres to group every embedding row
+before applying the source window, which can push production search past web's
+15 second upstream budget. A nearest-neighbor source window can help, but do
+not apply it blindly before `DISTINCT ON (video_id)`: long videos can contribute
+many top chunks and crowd out distinct videos. Ship that more aggressive shape
+only with a distinct-video guarantee or duplicate-heavy Mastra relevance proof.
 
 ## When To Apply
 

@@ -1,5 +1,11 @@
-import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
-import { getGraphQLUrl } from "./config"
+import {
+  ApolloClient,
+  ApolloLink,
+  HttpLink,
+  InMemoryCache,
+} from "@apollo/client"
+import { getApiToken, getGraphQLUrl } from "./config"
+import { authHeadersForOperation } from "./authHeaders"
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -30,10 +36,26 @@ let _client: ApolloClient | undefined
 export function getApolloClient(): ApolloClient {
   if (_client) return _client
 
-  const link = new HttpLink({
-    uri: getGraphQLUrl(),
-    fetch: fetchWithTimeout,
+  // The bearer rides ONLY on the gated Search operation: a bearer'd request
+  // rate-limit-buckets as consumer:<key> on admin (one shared bucket for the
+  // whole fleet), while anonymous public queries bucket per device IP.
+  const authLink = new ApolloLink((operation, forward) => {
+    const auth = authHeadersForOperation(operation.operationName, getApiToken())
+    if (Object.keys(auth).length > 0) {
+      const prev = operation.getContext()
+      operation.setContext({
+        headers: { ...(prev.headers ?? {}), ...auth },
+      })
+    }
+    return forward(operation)
   })
+
+  const link = authLink.concat(
+    new HttpLink({
+      uri: getGraphQLUrl(),
+      fetch: fetchWithTimeout,
+    }),
+  )
 
   _client = new ApolloClient({
     link,

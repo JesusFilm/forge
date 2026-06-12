@@ -15,6 +15,10 @@ import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { DEFAULT_SYNC_LOCK_STALE_AFTER_MS } from "@/services/core-sync/lock"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import {
+  loadMastraStudioAccessByEmail,
+  type MastraStudioAccessRole,
+} from "@/services/mastra-studio-access.service"
+import {
   mediaAssetDownloadUrl,
   mediaAssetPreviewUrl,
 } from "@/services/media-asset.service"
@@ -111,6 +115,11 @@ export type UserAccessSourceRow = {
     role: "OPERATOR"
     revokedAt: Date | null
   } | null
+  mastraStudioAccess?: {
+    selectedRole: MastraStudioAccessRole
+    disabled: boolean
+    helperText: string
+  }
 }
 
 type UserAccessBaseRow = Omit<UserAccessSourceRow, "managerMembership">
@@ -1647,7 +1656,10 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
     insights: [
       {
         label: "Provider",
-        value: env.OPENROUTER_API_KEY ? "OpenRouter" : "Missing",
+        value:
+          (env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY)
+            ? "OpenRouter"
+            : "Missing",
         detail:
           "Embedding generation backend currently configured for admin workflows.",
       },
@@ -1665,7 +1677,9 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
         detail: "Published locales participating in retrieval once embedded.",
       },
     ],
-    providerReady: Boolean(env.OPENROUTER_API_KEY),
+    providerReady: Boolean(
+      env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY,
+    ),
   }
 }
 
@@ -2066,8 +2080,12 @@ export async function loadUsersData(): Promise<UsersData> {
   const managerMembershipByUserId = new Map(
     managerMemberships.map((membership) => [membership.userId, membership]),
   )
+  const mastraStudioAccess = await loadMastraStudioAccessByEmail(
+    userRows.map((row) => row.email),
+  )
   const rows = userRows.map((row): UserAccessSourceRow => {
     const managerMembership = managerMembershipByUserId.get(row.id)
+    const mastraStudioEmail = row.email.trim().toLowerCase()
     return {
       ...row,
       managerMembership: managerMembership
@@ -2076,6 +2094,13 @@ export async function loadUsersData(): Promise<UsersData> {
             revokedAt: managerMembership.revokedAt,
           }
         : null,
+      mastraStudioAccess: {
+        selectedRole:
+          mastraStudioAccess.accessByEmail.get(mastraStudioEmail) ??
+          "NO_ACCESS",
+        disabled: mastraStudioAccess.disabled,
+        helperText: mastraStudioAccess.helperText,
+      },
     }
   })
 
@@ -2123,6 +2148,13 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
   const hasManagerAccess = Boolean(
     row.managerMembership && !row.managerMembership.revokedAt,
   )
+  const mastraStudioAccess = row.mastraStudioAccess ?? {
+    selectedRole: "NO_ACCESS" as const,
+    disabled: true,
+    helperText: "Configure",
+  }
+  const hasMastraStudioAccess =
+    mastraStudioAccess.selectedRole === "STUDIO_ACCESS"
 
   return {
     key: row.id,
@@ -2157,12 +2189,12 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
       {
         key: "mastra-studio",
         label: "Mastra Studio",
-        selectedRole: "NO_ACCESS",
+        selectedRole: mastraStudioAccess.selectedRole,
         roleOptions: MASTRA_STUDIO_ROLE_OPTIONS,
-        statusTone: "muted",
-        disabled: true,
-        backed: false,
-        helperText: "Mock only",
+        statusTone: hasMastraStudioAccess ? "success" : "muted",
+        disabled: mastraStudioAccess.disabled,
+        backed: !mastraStudioAccess.disabled,
+        helperText: mastraStudioAccess.helperText,
       },
     ],
   }
@@ -2247,7 +2279,10 @@ export async function loadSettingsData(): Promise<SettingsData> {
       },
       {
         label: "Embedding Backend",
-        value: env.OPENROUTER_API_KEY ? "OpenRouter" : "Missing",
+        value:
+          (env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY)
+            ? "OpenRouter"
+            : "Missing",
         detail: "Provider used for admin-side semantic embedding generation.",
       },
     ],
@@ -2262,7 +2297,9 @@ export async function runSemanticSearch(params: {
   const queryText = params.queryText?.trim() ?? ""
   const locale = params.locale?.trim() ?? "en"
   const embeddingCounts = await getEmbeddingCounts()
-  const providerReady = Boolean(env.OPENROUTER_API_KEY)
+  const providerReady = Boolean(
+    env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY,
+  )
 
   const metrics: Metric[] = [
     {
@@ -2320,7 +2357,8 @@ export async function runSemanticSearch(params: {
       results: [],
       queryText,
       locale,
-      unavailableReason: "Semantic search requires OPENROUTER_API_KEY.",
+      unavailableReason:
+        "Semantic search requires OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY.",
     }
   }
 
