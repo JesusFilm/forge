@@ -391,6 +391,41 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     })
   })
 
+  it("renders afterTopContent between the hero and body zones", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const parent = makeParent(2)
+
+    const blocks: MergedWatchBlock[] = [
+      buildHeroBlock(video, variant),
+      buildSiblingCarouselBlock(parent, video)!,
+    ]
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          afterTopContent={<div data-testid="after-top-content" />}
+        />,
+      )
+    })
+
+    const hero = container.querySelector('[data-block-type="HeroPlayer"]')
+    const slot = container.querySelector('[data-testid="after-top-content"]')
+    const bodyZone = container.querySelector('[data-testid="watch-body-zone"]')
+
+    expect(hero).not.toBeNull()
+    expect(slot).not.toBeNull()
+    expect(bodyZone).not.toBeNull()
+    expect(
+      hero!.compareDocumentPosition(slot!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
+    expect(
+      slot!.compareDocumentPosition(bodyZone!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
+  })
+
   it("HeroPlayer placeholder serializes playbackId and hls into data-content", () => {
     const video = makeVideo()
     const variant = makeVariant()

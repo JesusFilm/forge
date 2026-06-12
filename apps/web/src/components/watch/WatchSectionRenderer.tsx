@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import {
@@ -53,6 +54,7 @@ export function WatchSectionRenderer({
   showHeroCta = true,
   showHeroOverlay = true,
   showHeroTitle = true,
+  afterTopContent = null,
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
@@ -76,6 +78,7 @@ export function WatchSectionRenderer({
   showHeroCta?: boolean
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
+  afterTopContent?: ReactNode
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -126,6 +129,7 @@ export function WatchSectionRenderer({
           showHeroTitle={showHeroTitle}
         />
       ))}
+      {afterTopContent}
       {bodyBlocks.length > 0 ? (
         <section
           data-testid="watch-body-zone"

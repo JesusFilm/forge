@@ -168,6 +168,7 @@ type WatchPageClientProps = {
   showHeroCta?: boolean
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
+  transcriptPlacement?: "afterContent" | "belowHero"
 }
 
 type LanguageOptionsState =
@@ -254,6 +255,7 @@ export function WatchPageClient({
   showHeroCta = true,
   showHeroOverlay = true,
   showHeroTitle = true,
+  transcriptPlacement = "afterContent",
 }: WatchPageClientProps) {
   const router = useRouter()
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
@@ -605,6 +607,16 @@ export function WatchPageClient({
     openShare,
     closeModal,
   }
+  const transcript = (
+    <SubtitleTranscript
+      subtitles={subtitles}
+      playerRef={playerRef}
+      audioSlug={currentLanguageSlug}
+      durationSeconds={variant.duration ?? null}
+      initialTranscript={initialTranscript}
+    />
+  )
+  const placeTranscriptBelowHero = transcriptPlacement === "belowHero"
 
   return (
     <main
@@ -639,15 +651,10 @@ export function WatchPageClient({
         showHeroCta={showHeroCta}
         showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
+        afterTopContent={placeTranscriptBelowHero ? transcript : null}
       />
 
-      <SubtitleTranscript
-        subtitles={subtitles}
-        playerRef={playerRef}
-        audioSlug={currentLanguageSlug}
-        durationSeconds={variant.duration ?? null}
-        initialTranscript={initialTranscript}
-      />
+      {placeTranscriptBelowHero ? null : transcript}
 
       {enabledModalChunks.download ? (
         <DownloadModal
