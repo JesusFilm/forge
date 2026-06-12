@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import {
@@ -17,6 +18,7 @@ import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import type { WatchVideoPathBuilder } from "@/lib/routes"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
 //
@@ -47,6 +49,14 @@ export function WatchSectionRenderer({
   coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
+  videoPathBuilder,
+  showRelatedQuestions = true,
+  showHeroCta = true,
+  showHeroOverlay = true,
+  showHeroTitle = true,
+  showHeroBottomGradient = true,
+  heroViewportHeight = "default",
+  afterTopContent = null,
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
@@ -65,6 +75,14 @@ export function WatchSectionRenderer({
   coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  videoPathBuilder?: WatchVideoPathBuilder
+  showRelatedQuestions?: boolean
+  showHeroCta?: boolean
+  showHeroOverlay?: boolean
+  showHeroTitle?: boolean
+  showHeroBottomGradient?: boolean
+  heroViewportHeight?: "default" | "half"
+  afterTopContent?: ReactNode
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -108,8 +126,16 @@ export function WatchSectionRenderer({
           coverBlackoutPhase={coverBlackoutPhase}
           routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
+          videoPathBuilder={videoPathBuilder}
+          showRelatedQuestions={showRelatedQuestions}
+          showHeroCta={showHeroCta}
+          showHeroOverlay={showHeroOverlay}
+          showHeroTitle={showHeroTitle}
+          showHeroBottomGradient={showHeroBottomGradient}
+          heroViewportHeight={heroViewportHeight}
         />
       ))}
+      {afterTopContent}
       {bodyBlocks.length > 0 ? (
         <section
           data-testid="watch-body-zone"
@@ -151,6 +177,13 @@ export function WatchSectionRenderer({
                   coverBlackoutPhase={coverBlackoutPhase}
                   routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
+                  videoPathBuilder={videoPathBuilder}
+                  showRelatedQuestions={showRelatedQuestions}
+                  showHeroCta={showHeroCta}
+                  showHeroOverlay={showHeroOverlay}
+                  showHeroTitle={showHeroTitle}
+                  showHeroBottomGradient={showHeroBottomGradient}
+                  heroViewportHeight={heroViewportHeight}
                 />
               ))}
             </div>
@@ -181,6 +214,13 @@ function WatchBlockEntry({
   coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
+  videoPathBuilder,
+  showRelatedQuestions,
+  showHeroCta,
+  showHeroOverlay,
+  showHeroTitle,
+  showHeroBottomGradient,
+  heroViewportHeight,
 }: {
   block: MergedWatchBlock
   index: number
@@ -201,6 +241,13 @@ function WatchBlockEntry({
   coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  videoPathBuilder?: WatchVideoPathBuilder
+  showRelatedQuestions: boolean
+  showHeroCta: boolean
+  showHeroOverlay: boolean
+  showHeroTitle: boolean
+  showHeroBottomGradient: boolean
+  heroViewportHeight: "default" | "half"
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -223,6 +270,13 @@ function WatchBlockEntry({
         coverBlackoutPhase={coverBlackoutPhase}
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
+        videoPathBuilder={videoPathBuilder}
+        showRelatedQuestions={showRelatedQuestions}
+        showHeroCta={showHeroCta}
+        showHeroOverlay={showHeroOverlay}
+        showHeroTitle={showHeroTitle}
+        showHeroBottomGradient={showHeroBottomGradient}
+        heroViewportHeight={heroViewportHeight}
       />
     )
   }
@@ -248,6 +302,13 @@ function SyntheticBlock({
   coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
+  videoPathBuilder,
+  showRelatedQuestions,
+  showHeroCta,
+  showHeroOverlay,
+  showHeroTitle,
+  showHeroBottomGradient,
+  heroViewportHeight,
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
@@ -267,6 +328,13 @@ function SyntheticBlock({
   coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  videoPathBuilder?: WatchVideoPathBuilder
+  showRelatedQuestions: boolean
+  showHeroCta: boolean
+  showHeroOverlay: boolean
+  showHeroTitle: boolean
+  showHeroBottomGradient: boolean
+  heroViewportHeight: "default" | "half"
 }) {
   const optimisticVisual =
     pendingChapter != null
@@ -295,6 +363,11 @@ function SyntheticBlock({
           coverBlackoutKey={coverBlackoutKey}
           coverBlackoutPhase={coverBlackoutPhase}
           forcePosterBridgeKey={routePosterBridgeKey}
+          showCta={showHeroCta}
+          showOverlay={showHeroOverlay}
+          showTitle={showHeroTitle}
+          showBottomGradient={showHeroBottomGradient}
+          viewportHeight={heroViewportHeight}
         />
       )
     }
@@ -305,6 +378,7 @@ function SyntheticBlock({
           languageSlug={languageSlug ?? ""}
           pendingNavigation={pendingChapter ?? null}
           onChapterNavigateIntent={onChapterNavigateIntent}
+          videoPathBuilder={videoPathBuilder}
         />
       )
 
@@ -319,6 +393,7 @@ function SyntheticBlock({
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
           optimisticTitle={pendingChapter?.title ?? null}
+          showRelatedQuestions={showRelatedQuestions}
         />
       )
     case "StudyQuestions":

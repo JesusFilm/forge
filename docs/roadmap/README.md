@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (June 4, 2026)
 
-- **Total tickets:** 190
-- **Complete:** 115
+- **Total tickets:** 191
+- **Complete:** 116
 - **In progress:** 9
 - **Not started:** 21
 - **Blocked:** 43
@@ -232,6 +232,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)                          | Topic / Experience GraphQL Wiring                           | nisal     | P1       | 2026-05-07 | 28   | 2026-06-03 | blocked     |
 | [feat-036](topic-experiences/feat-036-semantic-visualization-workbench.md)                  | Semantic Visualization Workbench                            | ekkasit   | P1       | 2026-05-19 | 21   | 2026-06-08 | blocked     |
 | [feat-039](topic-experiences/feat-039-topic-discovery-programming-engine.md)                | Topic Programming Engine                                    | ekkasit   | P1       | 2026-06-02 | 28   | 2026-06-29 | blocked     |
+| [feat-183](topic-experiences/feat-183-bible-video-page-template.md)                         | Bible Video Page Template                                   | urim      | P1       | 2026-06-12 | 1    | 2026-06-12 | complete    |
 | [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                | tataihono | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                 | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                         | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |

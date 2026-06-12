@@ -13,6 +13,7 @@ import {
   localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
+  type WatchVideoPathBuilder,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
@@ -44,7 +45,11 @@ const TITLE_SUFFIX = "| Jesus Film Project"
  * The fallback is injection-safe — Next.js HTML-entity-encodes the canonical
  * href attribute, so a slug with quotes/brackets can't break out.
  */
-function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
+function buildCanonicalUrl(
+  slug?: string,
+  pathLocale?: string,
+  videoPathBuilder: WatchVideoPathBuilder = watchVideoPath,
+): string {
   const root = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}`
   const s = slug ? stripHtmlSuffix(slug) : undefined
   const l = pathLocale ? stripHtmlSuffix(pathLocale) : undefined
@@ -52,7 +57,7 @@ function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
   if (s && l) {
     const cs = tryAsContentSlug(s)
     const ls = tryAsLocaleSlug(l)
-    if (cs && ls) return `${root}${watchVideoPath(cs, ls)}`
+    if (cs && ls) return `${root}${videoPathBuilder(cs, ls)}`
     return `${root}/${s}/${l}`
   }
 
@@ -153,6 +158,7 @@ type WatchVideoMetadataOptions = {
   routeSlug: string
   pathLocale: string
   seriesSlug?: string
+  videoPathBuilder?: WatchVideoPathBuilder
 }
 
 function buildWatchVideoAlternateLanguages(
@@ -169,7 +175,7 @@ function buildWatchVideoAlternateLanguages(
 
     languages[bcp47] = options.seriesSlug
       ? buildEpisodeCanonicalUrl(options.seriesSlug, episodeSlug, slug)
-      : buildCanonicalUrl(options.routeSlug, slug)
+      : buildCanonicalUrl(options.routeSlug, slug, options.videoPathBuilder)
   }
 
   return Object.keys(languages).length ? languages : undefined
@@ -185,7 +191,11 @@ export function buildWatchVideoMetadataModel(
         episodeSlug,
         options.pathLocale,
       )
-    : buildCanonicalUrl(options.routeSlug, options.pathLocale)
+    : buildCanonicalUrl(
+        options.routeSlug,
+        options.pathLocale,
+        options.videoPathBuilder,
+      )
   const videoTitle = options.video.title || options.routeSlug || "Watch"
   const title = `${videoTitle} ${TITLE_SUFFIX}`
   const description = options.video.description ?? options.video.snippet ?? ""

@@ -16,7 +16,12 @@ import {
 } from "@/components/ui/carousel"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  type WatchVideoPathBuilder,
+  watchVideoPath,
+} from "@/lib/routes"
 import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
 import type { WatchChapterNavigationIntent } from "./chapter-navigation"
 
@@ -25,11 +30,13 @@ export function SiblingCarousel({
   languageSlug,
   pendingNavigation,
   onChapterNavigateIntent,
+  videoPathBuilder = watchVideoPath,
 }: {
   block: WatchSiblingCarouselBlock
   languageSlug: string
   pendingNavigation?: WatchChapterNavigationIntent | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  videoPathBuilder?: WatchVideoPathBuilder
 }) {
   const t = useTranslations("SiblingCarousel")
   const videoLabels = useTranslations("VideoLabels")
@@ -189,7 +196,7 @@ export function SiblingCarousel({
             // (`/{slug}.html/{languageSlug}.html`).
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
-            const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+            const href = slug && lang ? videoPathBuilder(slug, lang) : undefined
             const isPending =
               validPendingNavigation != null &&
               validPendingNavigation.href === href &&

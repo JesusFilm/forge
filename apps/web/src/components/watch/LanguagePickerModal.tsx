@@ -24,7 +24,12 @@ import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  type WatchVideoPathBuilder,
+  watchVideoPath,
+} from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
@@ -53,6 +58,7 @@ export type LanguagePickerModalProps = {
   languageOptionsLoading?: boolean
   languageOptionsError?: boolean
   onRetryLanguageOptions?: () => void
+  videoPathBuilder?: WatchVideoPathBuilder
 }
 
 // Safety cap on the in-flight navigation guard. router.push is fire-and-
@@ -276,6 +282,7 @@ export function LanguagePickerModal({
   languageOptionsLoading = false,
   languageOptionsError = false,
   onRetryLanguageOptions,
+  videoPathBuilder = watchVideoPath,
 }: LanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
   const router = useRouter()
@@ -502,11 +509,11 @@ export function LanguagePickerModal({
         setPendingNavTo(draftSlug)
         writePreferredLanguageSlug(draftSlug)
         if (kind === "series") {
-          router.push(watchVideoPath(slug, lang))
+          router.push(videoPathBuilder(slug, lang))
         } else {
           const rawT = playerRef.current?.currentTime
           const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
-          router.push(watchVideoPath(slug, lang, { t, autoplay: true }))
+          router.push(videoPathBuilder(slug, lang, { t, autoplay: true }))
         }
       }
     }
@@ -524,6 +531,7 @@ export function LanguagePickerModal({
     playerRef,
     router,
     subtitleDirty,
+    videoPathBuilder,
     videoSlug,
   ])
 

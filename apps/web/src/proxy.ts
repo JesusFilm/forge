@@ -10,6 +10,7 @@ import {
 import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
+  BIBLE_VIDEO_PATH_PREFIX,
   RESERVED_PREFIXES,
   SAFE_SLUG_PATTERN,
   UNSAFE_PATH_PATTERN,
@@ -200,6 +201,30 @@ function classifyRewrite(pathname: string): RewriteDecision {
   }
 
   if (segments.length === 3) {
+    if (segments[0] === BIBLE_VIDEO_PATH_PREFIX) {
+      const [, slugSegment, localeSegment] = segments
+      if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
+        return { kind: "not-found" }
+      }
+      const slug = stripSafeSlug(slugSegment)
+      const rawAudioSlug = stripSafeSlug(localeSegment)
+      if (!slug || !rawAudioSlug) return { kind: "not-found" }
+      if (!isPublicWatchLanguageSlug(rawAudioSlug)) {
+        return { kind: "not-found" }
+      }
+      const identity = resolveWatchLocaleIdentity(rawAudioSlug)
+      return {
+        kind: "rewrite",
+        ...identity,
+        pathname,
+        manifestRoute: {
+          kind: "video",
+          contentSlug: slug,
+          audioLanguageSlug: rawAudioSlug,
+        },
+      }
+    }
+
     const [seriesSegment, episodeSegment, localeSegment] = segments
     if (!hasHtmlSuffix(seriesSegment) || !hasHtmlSuffix(localeSegment)) {
       return { kind: "not-found" }

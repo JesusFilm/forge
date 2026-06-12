@@ -40,6 +40,9 @@ export const RESERVED_PREFIXES: ReadonlySet<string> = new Set([
   ".well-known",
 ])
 
+/** App-relative prefix for the isolated Bible Video template route. */
+export const BIBLE_VIDEO_PATH_PREFIX = "bible-video"
+
 /**
  * Index of the locale segment for a canonical /watch URL split into
  * segments. Returns `1` for the 2-segment shape `/{slug}/{locale}`,

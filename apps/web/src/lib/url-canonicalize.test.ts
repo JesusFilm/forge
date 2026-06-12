@@ -156,6 +156,19 @@ describe("Rule 1: trailing-slash strip → 308 with long cache", () => {
       cache: "long",
     })
   })
+
+  it("strips trailing slash on canonical Bible Video URL", () => {
+    expect(
+      canonical({
+        rawPathname: "/bible-video/jesus.html/english.html/",
+      }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/bible-video/jesus.html/english.html",
+      status: 308,
+      cache: "long",
+    })
+  })
 })
 
 describe("Rule 2: lowercase .HTML → .html → 307", () => {
@@ -242,6 +255,23 @@ describe("Rule 4: per-segment .html append → 307", () => {
       }),
     ).toEqual({ kind: "canonical" })
   })
+
+  it("keeps bible-video bare while appending .html to slug and locale", () => {
+    expect(canonical({ rawPathname: "/bible-video/jesus/english" })).toEqual({
+      kind: "redirect",
+      pathname: "/bible-video/jesus.html/english.html",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("does not rewrite Bible Video as a legacy episode shape", () => {
+    expect(
+      canonical({
+        rawPathname: "/bible-video/jesus.html/english.html",
+      }),
+    ).toEqual({ kind: "canonical" })
+  })
 })
 
 describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
@@ -325,7 +355,7 @@ describe("Rule 4.5: 3-segment episode-bare contract → 307", () => {
       const result = canonical({ rawPathname: raw })
       const final = result.kind === "redirect" ? result.pathname : raw
       const segs = final.split("/").filter(Boolean)
-      if (segs.length === 3) {
+      if (segs.length === 3 && segs[0] !== "bible-video") {
         expect(segs[1].endsWith(".html")).toBe(false)
       }
     }
@@ -360,6 +390,19 @@ describe("Rule 6: language-slug alias → 307", () => {
       kind: "redirect",
       pathname:
         "/lumo-the-gospel-of-john.html/wedding-in-cana/mandarin-china.html",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("applies alias on Bible Video locale segment", () => {
+    expect(
+      canonical({
+        rawPathname: "/bible-video/jesus.html/chinese-mandarin.html",
+      }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/bible-video/jesus.html/mandarin-china.html",
       status: 307,
       cache: "short",
     })
@@ -415,6 +458,7 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     "/jesus.html/the-beginning/english.html",
     "/jesus.html/the-beginning/russian.html",
+    "/bible-video/jesus.html/english.html",
     "/russian.html",
     "/portuguese-brazil.html",
     "/videos",
@@ -439,6 +483,8 @@ describe("idempotence: canonicalize(canonicalize(x).pathname) === canonical", ()
     "/jesus.html/chinese-mandarin.html",
     "/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
     "/jesus/the-beginning/english",
+    "/bible-video/jesus/english",
+    "/bible-video/jesus.html/chinese-mandarin.html",
     "/lumo.html/cana/chinese-mandarin.html",
   ]
 

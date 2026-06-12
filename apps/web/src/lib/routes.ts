@@ -9,6 +9,7 @@ import { env } from "@/env"
 
 import { LOCALE_RESOLVED_PARAM } from "./locale"
 import {
+  BIBLE_VIDEO_PATH_PREFIX,
   RESERVED_PREFIXES,
   appendHtmlSuffix,
   stripHtmlSuffix,
@@ -74,6 +75,8 @@ const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
  */
 type LocalizedHomeRoute = `/${string}.html${"" | `?${string}`}`
 type WatchVideoRoute = `/${string}.html/${string}.html${"" | `?${string}`}`
+type BibleVideoRoute =
+  `/${typeof BIBLE_VIDEO_PATH_PREFIX}/${string}.html/${string}.html${"" | `?${string}`}`
 type WatchEpisodeRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
 type VideosIndexRoute = "/videos"
@@ -107,6 +110,22 @@ export function watchVideoPath(
   return appendQueryString(path, opts) as WatchVideoRoute & Route
 }
 
+/** Build the Bible Video template path `/bible-video/{slug}.html/{lang}.html`. */
+export function bibleVideoPath(
+  slug: ContentSlug,
+  lang: LocaleSlug,
+  opts?: BuildOptions,
+): BibleVideoRoute & Route {
+  const path = `/${BIBLE_VIDEO_PATH_PREFIX}/${appendHtmlSuffix(slug)}/${appendHtmlSuffix(lang)}`
+  return appendQueryString(path, opts) as BibleVideoRoute & Route
+}
+
+export type WatchVideoPathBuilder = (
+  slug: ContentSlug,
+  lang: LocaleSlug,
+  opts?: BuildOptions,
+) => Route
+
 /** Build the three-segment series-episode path `/{series}.html/{episode}/{lang}.html` (episode segment is bare by production contract). */
 export function watchEpisodePath(
   series: ContentSlug,
@@ -136,6 +155,7 @@ export function searchPath(q?: string): SearchRoute & Route {
  * - `home` — `/` (English default home)
  * - `localized-home` — `/{lang}.html` (one segment)
  * - `video` — `/{slug}.html/{lang}.html` (two segments)
+ * - `bible-video` — `/bible-video/{slug}.html/{lang}.html` (three segments)
  * - `episode` — `/{series}.html/{episode}/{lang}.html` (three segments)
  * - `videos` — `/videos`
  * - `search` — deprecated inbound `/search?q=...` redirect shim
@@ -146,6 +166,7 @@ export type ParsedWatchPath =
   | { kind: "home" }
   | { kind: "localized-home"; lang: string }
   | { kind: "video"; slug: string; lang: string }
+  | { kind: "bible-video"; slug: string; lang: string }
   | { kind: "episode"; series: string; episode: string; lang: string }
   | { kind: "videos" }
   | { kind: "search"; q?: string }
@@ -213,6 +234,14 @@ export function parseWatchPath(
     }
   }
 
+  if (segments.length === 3 && segments[0] === BIBLE_VIDEO_PATH_PREFIX) {
+    return {
+      kind: "bible-video",
+      slug: stripHtmlSuffix(segments[1]),
+      lang: stripHtmlSuffix(segments[2]),
+    }
+  }
+
   if (segments.length === 3) {
     return {
       kind: "episode",
@@ -247,6 +276,14 @@ export function watchVideoAbsolute(
   lang: LocaleSlug,
 ): string {
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
+}
+
+/** Build an environment-specific absolute URL for a Bible Video page (origin + basePath + prefixed 2-segment path). */
+export function bibleVideoAbsolute(
+  slug: ContentSlug,
+  lang: LocaleSlug,
+): string {
+  return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${bibleVideoPath(slug, lang)}`
 }
 
 /** Build an environment-specific absolute URL for a series episode (origin + basePath + 3-segment path). */

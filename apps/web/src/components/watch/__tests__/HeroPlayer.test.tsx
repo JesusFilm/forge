@@ -175,7 +175,11 @@ import {
   type WatchHeaderLanguageSwitcherDetail,
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
-import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import {
+  WATCH_PRODUCTION_BOTTOM_GRADIENT_BACKGROUND,
+  WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+  WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND,
+} from "@/lib/watch-production-overlays"
 
 let container: HTMLDivElement
 let root: Root
@@ -1142,6 +1146,61 @@ describe("HeroPlayer — initial mount", () => {
     expect(surface?.getAttribute("tabindex")).toBe("-1")
   })
 
+  it("can hide the pre-reveal overlay title while keeping the label and Watch now pill", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} showTitle={false} />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]')
+        ?.textContent,
+    ).toBe("Episode")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]')
+        ?.textContent,
+    ).toContain("Watch now")
+  })
+
+  it("can hide the pre-reveal Watch now pill while keeping the label and title", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} showCta={false} />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]')
+        ?.textContent,
+    ).toBe("Episode")
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]')
+        ?.textContent,
+    ).toBe("Jesus")
+  })
+
+  it("can hide the entire pre-reveal overlay", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} showOverlay={false} />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+  })
+
   it("uses the production muted overlay backdrop before chrome is revealed", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
@@ -1153,6 +1212,23 @@ describe("HeroPlayer — initial mount", () => {
     expect(backdrop).not.toBeNull()
     expect(backdrop.getAttribute("style")).toContain(
       WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+    )
+  })
+
+  it("can omit the bottom fade from the muted overlay backdrop", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} showBottomGradient={false} />)
+    })
+
+    const backdrop = container.querySelector(
+      '[data-testid="hero-player-muted-backdrop"]',
+    ) as HTMLDivElement
+    expect(backdrop).not.toBeNull()
+    expect(backdrop.getAttribute("style")).toContain(
+      WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND,
+    )
+    expect(backdrop.getAttribute("style")).not.toContain(
+      WATCH_PRODUCTION_BOTTOM_GRADIENT_BACKGROUND,
     )
   })
 })

@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type RefObject,
 } from "react"
@@ -45,6 +46,8 @@ type SubtitleTranscriptProps = {
    */
   durationSeconds?: number | null
   initialTranscript?: InitialSubtitleTranscript
+  displayMode?: "timeline" | "inlineFlow"
+  showHeader?: boolean
 }
 
 export function SubtitleTranscript({
@@ -53,8 +56,12 @@ export function SubtitleTranscript({
   audioSlug,
   durationSeconds,
   initialTranscript = null,
+  displayMode = "timeline",
+  showHeader = true,
 }: SubtitleTranscriptProps) {
   const t = useTranslations("SubtitleTranscript")
+  const isInlineFlow = displayMode === "inlineFlow"
+  const activeCueRef = useRef<HTMLButtonElement | null>(null)
   const transcriptSubtitles = useMemo(
     () => filterTranscriptSubtitlesForAudio(subtitles, audioSlug),
     [subtitles, audioSlug],
@@ -162,6 +169,17 @@ export function SubtitleTranscript({
     }
   }, [cues, playerRef])
 
+  useEffect(() => {
+    if (!isInlineFlow || activeIdx < 0) return
+    const activeCue = activeCueRef.current
+    if (typeof activeCue?.scrollIntoView !== "function") return
+    activeCue.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "smooth",
+    })
+  }, [activeIdx, isInlineFlow])
+
   const handleSeek = useCallback(
     (cue: SubtitleCue) => {
       const el = playerRef.current as HTMLMediaElement | null
@@ -214,102 +232,167 @@ export function SubtitleTranscript({
     s.language.nativeName && s.language.nativeName !== s.language.name
       ? `${s.language.name} (${s.language.nativeName})`
       : s.language.name
+  const sectionClassName = isInlineFlow
+    ? "relative z-10 h-[50svh] min-h-80 bg-stone-950/80 backdrop-blur-md"
+    : "bg-stone-900/60 pt-12 pb-20 backdrop-blur-md sm:pt-16 sm:pb-24"
+  const contentClassName = isInlineFlow
+    ? `${WATCH_PAGE_CONTENT_CLASSES} h-full`
+    : WATCH_PAGE_CONTENT_CLASSES
+  const panelClassName = isInlineFlow
+    ? "flex h-full min-h-0 flex-col overflow-hidden"
+    : `rounded-2xl bg-stone-800/40 ${GLASS_OUTLINE_CLASS}`
+  const headerClassName = isInlineFlow
+    ? "flex shrink-0 flex-col gap-2 border-b border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8"
+    : "flex flex-col gap-3 border-b border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8"
+  const statusClassName = isInlineFlow
+    ? "flex min-h-0 flex-1 items-center justify-center px-8 py-10 text-sm text-stone-400"
+    : "flex items-center justify-center px-8 py-16 text-sm text-stone-400"
 
   return (
     <section
       data-testid="watch-subtitle-transcript"
-      aria-labelledby="watch-transcript-heading"
-      className="bg-stone-900/60 pt-12 pb-20 backdrop-blur-md sm:pt-16 sm:pb-24"
+      data-display-mode={displayMode}
+      aria-labelledby={showHeader ? "watch-transcript-heading" : undefined}
+      aria-label={showHeader ? undefined : t("heading")}
+      className={sectionClassName}
     >
-      <div className={WATCH_PAGE_CONTENT_CLASSES}>
-        <div className={`rounded-2xl bg-stone-800/40 ${GLASS_OUTLINE_CLASS}`}>
-          <header className="flex flex-col gap-3 border-b border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <div>
-              <h2
-                id="watch-transcript-heading"
-                className="text-2xl font-semibold tracking-tight text-stone-50"
-              >
-                {t("heading")}
-              </h2>
-              <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {transcriptSubtitles.length > 1 ? (
-                <label className="flex items-center gap-2 text-sm text-stone-300">
-                  <span className="sr-only">{t("subtitleLanguage")}</span>
-                  <select
-                    data-testid="watch-subtitle-language"
-                    value={selectedSlug ?? ""}
-                    onChange={(e) => setSelectedSlug(e.target.value)}
-                    className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
-                  >
-                    {transcriptSubtitles.map((s) => (
-                      <option key={s.documentId} value={s.language.slug}>
-                        {languageLabel(s)}
-                        {s.aiGenerated ? t("aiSuffix") : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <span className="rounded-full bg-stone-900/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-stone-300">
-                  {activeSubtitle ? languageLabel(activeSubtitle) : ""}
-                  {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
-                </span>
-              )}
-            </div>
-          </header>
+      <div className={contentClassName}>
+        <div className={panelClassName}>
+          {showHeader ? (
+            <header className={headerClassName}>
+              <div>
+                <h2
+                  id="watch-transcript-heading"
+                  className={
+                    isInlineFlow
+                      ? "text-xl font-semibold tracking-tight text-stone-50 sm:text-2xl"
+                      : "text-2xl font-semibold tracking-tight text-stone-50"
+                  }
+                >
+                  {t("heading")}
+                </h2>
+                <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {transcriptSubtitles.length > 1 ? (
+                  <label className="flex items-center gap-2 text-sm text-stone-300">
+                    <span className="sr-only">{t("subtitleLanguage")}</span>
+                    <select
+                      data-testid="watch-subtitle-language"
+                      value={selectedSlug ?? ""}
+                      onChange={(e) => setSelectedSlug(e.target.value)}
+                      className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
+                    >
+                      {transcriptSubtitles.map((s) => (
+                        <option key={s.documentId} value={s.language.slug}>
+                          {languageLabel(s)}
+                          {s.aiGenerated ? t("aiSuffix") : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <span className="rounded-full bg-stone-900/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-stone-300">
+                    {activeSubtitle ? languageLabel(activeSubtitle) : ""}
+                    {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
+                  </span>
+                )}
+              </div>
+            </header>
+          ) : null}
 
           {status === "loading" ? (
-            <div className="flex items-center justify-center px-8 py-16 text-sm text-stone-400">
-              {t("loading")}
-            </div>
+            <div className={statusClassName}>{t("loading")}</div>
           ) : status === "error" ? (
-            <div className="px-8 py-16 text-center text-sm text-stone-400">
+            <div
+              className={
+                isInlineFlow
+                  ? "flex min-h-0 flex-1 items-center justify-center px-8 py-10 text-center text-sm text-stone-400"
+                  : "px-8 py-16 text-center text-sm text-stone-400"
+              }
+            >
               {t("unavailable")}
             </div>
           ) : cues && cues.length > 0 ? (
-            <ol
-              data-testid="watch-subtitle-cues"
-              className="px-2 py-3 sm:px-4 sm:py-4"
-            >
-              {cues.map((cue, idx) => {
-                const isActive = idx === activeIdx
-                return (
-                  <li key={`${cue.start}-${idx}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleSeek(cue)}
-                      aria-current={isActive ? "true" : undefined}
-                      className={[
-                        "group flex w-full cursor-pointer items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
-                        "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
-                        isActive
-                          ? "bg-white/10 text-stone-50"
-                          : "text-stone-300 hover:bg-white/5 hover:text-stone-100",
-                      ].join(" ")}
-                    >
-                      <time
-                        dateTime={`PT${Math.floor(cue.start)}S`}
+            isInlineFlow ? (
+              <div
+                data-testid="watch-subtitle-cues"
+                className="min-h-0 flex-1 overflow-y-auto px-6 py-5 sm:px-8 sm:py-6"
+              >
+                <p className="text-lg leading-8 font-medium text-stone-300 sm:text-xl sm:leading-9">
+                  {cues.map((cue, idx) => {
+                    const isActive = idx === activeIdx
+                    return (
+                      <button
+                        key={`${cue.start}-${idx}`}
+                        ref={isActive ? activeCueRef : undefined}
+                        type="button"
+                        onClick={() => handleSeek(cue)}
+                        aria-current={isActive ? "true" : undefined}
                         className={[
-                          "shrink-0 font-mono text-xs tabular-nums tracking-tight transition-colors",
+                          "inline cursor-pointer rounded-md px-1 py-0.5 text-left transition-colors duration-150",
+                          "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
                           isActive
-                            ? "text-amber-300"
-                            : "text-stone-500 group-hover:text-stone-300",
+                            ? "bg-amber-300/25 text-amber-100 shadow-[0_0_0_1px_rgba(252,211,77,0.28)]"
+                            : "text-stone-300 hover:bg-white/10 hover:text-stone-50",
                         ].join(" ")}
                       >
-                        {formatTimestamp(cue.start)}
-                      </time>
-                      <span className="text-base leading-relaxed sm:text-lg">
                         {cue.text}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
+                        {idx < cues.length - 1 ? " " : ""}
+                      </button>
+                    )
+                  })}
+                </p>
+              </div>
+            ) : (
+              <ol
+                data-testid="watch-subtitle-cues"
+                className="px-2 py-3 sm:px-4 sm:py-4"
+              >
+                {cues.map((cue, idx) => {
+                  const isActive = idx === activeIdx
+                  return (
+                    <li key={`${cue.start}-${idx}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleSeek(cue)}
+                        aria-current={isActive ? "true" : undefined}
+                        className={[
+                          "group flex w-full cursor-pointer items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
+                          "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
+                          isActive
+                            ? "bg-white/10 text-stone-50"
+                            : "text-stone-300 hover:bg-white/5 hover:text-stone-100",
+                        ].join(" ")}
+                      >
+                        <time
+                          dateTime={`PT${Math.floor(cue.start)}S`}
+                          className={[
+                            "shrink-0 font-mono text-xs tabular-nums tracking-tight transition-colors",
+                            isActive
+                              ? "text-amber-300"
+                              : "text-stone-500 group-hover:text-stone-300",
+                          ].join(" ")}
+                        >
+                          {formatTimestamp(cue.start)}
+                        </time>
+                        <span className="text-base leading-relaxed sm:text-lg">
+                          {cue.text}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ol>
+            )
           ) : (
-            <div className="px-8 py-16 text-center text-sm text-stone-400">
+            <div
+              className={
+                isInlineFlow
+                  ? "flex min-h-0 flex-1 items-center justify-center px-8 py-10 text-center text-sm text-stone-400"
+                  : "px-8 py-16 text-center text-sm text-stone-400"
+              }
+            >
               {t("empty")}
             </div>
           )}

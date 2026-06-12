@@ -41,7 +41,10 @@ import {
   type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
-import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import {
+  WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+  WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND,
+} from "@/lib/watch-production-overlays"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -180,6 +183,11 @@ export function HeroPlayer({
   playableLanguageCount,
   darkenOverlay = false,
   overlay,
+  showCta = true,
+  showOverlay = true,
+  showTitle = true,
+  showBottomGradient = true,
+  viewportHeight = "default",
   subtitleVttSrc,
   optimisticVisual,
   coverBlackoutKey,
@@ -192,6 +200,11 @@ export function HeroPlayer({
   playableLanguageCount?: number
   darkenOverlay?: boolean
   overlay?: ReactNode
+  showCta?: boolean
+  showOverlay?: boolean
+  showTitle?: boolean
+  showBottomGradient?: boolean
+  viewportHeight?: "default" | "half"
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
   coverBlackoutKey?: string | null
@@ -205,6 +218,8 @@ export function HeroPlayer({
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
   const heroPlaybackFallbackHref = buildHeroPlaybackFallbackHref(playbackId)
+  const heroFrameHeightClass =
+    viewportHeight === "half" ? "h-[50svh]" : HERO_FRAME_HEIGHT_CLASS
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
@@ -972,6 +987,9 @@ export function HeroPlayer({
   const showTopLanguageSwitch = showLanguageSwitch
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
+  const mutedBackdropBackground = showBottomGradient
+    ? WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND
+    : WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND
   const effectivePreviewBodyOverlapPx = chromeRevealed
     ? 0
     : previewBodyOverlapPx
@@ -1028,7 +1046,7 @@ export function HeroPlayer({
         data-mobile-portrait-preview={
           mobilePortraitPreviewEnabled ? "true" : "false"
         }
-        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${
+        className={`sticky relative w-full ${heroFrameHeightClass} bg-black transition-[margin-bottom] duration-500 ease-out ${
           chromeRevealed
             ? "overflow-hidden"
             : `overflow-x-clip ${
@@ -1139,8 +1157,7 @@ export function HeroPlayer({
                   className="pointer-events-none absolute inset-0 [background:var(--watch-player-muted-backdrop)]"
                   style={
                     {
-                      "--watch-player-muted-backdrop":
-                        WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+                      "--watch-player-muted-backdrop": mutedBackdropBackground,
                     } as CSSProperties
                   }
                 />
@@ -1200,8 +1217,7 @@ export function HeroPlayer({
               className="pointer-events-none absolute inset-0 [background:var(--watch-player-muted-backdrop)]"
               style={
                 {
-                  "--watch-player-muted-backdrop":
-                    WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+                  "--watch-player-muted-backdrop": mutedBackdropBackground,
                 } as CSSProperties
               }
             />
@@ -1250,7 +1266,7 @@ export function HeroPlayer({
         data-testid="hero-player-overlay-anchor"
         className="relative z-10 h-0 w-full"
       >
-        {!chromeRevealed
+        {!chromeRevealed && showOverlay
           ? (overlay ?? (
               <div
                 data-testid="hero-player-overlay"
@@ -1264,7 +1280,7 @@ export function HeroPlayer({
                     {videoLabels(videoLabelMessageKey(visualLabel))}
                   </span>
                 ) : null}
-                {visualTitle ? (
+                {showTitle && visualTitle ? (
                   <h1
                     data-testid="hero-player-overlay-title"
                     className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"
@@ -1272,28 +1288,30 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <a
-                  href={heroPlaybackFallbackHref}
-                  data-testid="hero-player-unmute-pill"
-                  data-state={pillState}
-                  aria-label={preRevealActionLabel}
-                  aria-controls={HERO_PLAYER_MEDIA_ID}
-                  onPointerDown={activatePlayerForIntent}
-                  onKeyDown={handleWatchNowKeyDown}
-                  onClick={handleWatchNowClick}
-                  className={
-                    pillState === "tap-to-unmute"
-                      ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
-                      : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
-                  }
-                >
-                  {pillState === "tap-to-unmute" ? (
-                    <MutedSpeakerIcon />
-                  ) : (
-                    <PlayIcon />
-                  )}
-                  <span>{preRevealActionLabel}</span>
-                </a>
+                {showCta ? (
+                  <a
+                    href={heroPlaybackFallbackHref}
+                    data-testid="hero-player-unmute-pill"
+                    data-state={pillState}
+                    aria-label={preRevealActionLabel}
+                    aria-controls={HERO_PLAYER_MEDIA_ID}
+                    onPointerDown={activatePlayerForIntent}
+                    onKeyDown={handleWatchNowKeyDown}
+                    onClick={handleWatchNowClick}
+                    className={
+                      pillState === "tap-to-unmute"
+                        ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                        : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
+                    }
+                  >
+                    {pillState === "tap-to-unmute" ? (
+                      <MutedSpeakerIcon />
+                    ) : (
+                      <PlayIcon />
+                    )}
+                    <span>{preRevealActionLabel}</span>
+                  </a>
+                ) : null}
               </div>
             ))
           : null}

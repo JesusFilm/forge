@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { act } from "react"
+import { act, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -64,11 +64,12 @@ vi.mock("@/components/FloatingSearchProvider", () => ({
 }))
 
 vi.mock("@/components/watch/SubtitleTranscript", () => ({
-  SubtitleTranscript: () => null,
+  SubtitleTranscript: () => <div data-testid="subtitle-transcript" />,
 }))
 
 vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
+    afterTopContent,
     downloadError,
     downloadHref,
     downloadPending,
@@ -76,6 +77,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     modalCallbacks,
     shareHref,
   }: {
+    afterTopContent?: ReactNode
     downloadError?: string | null
     downloadHref?: string
     downloadPending?: boolean
@@ -89,6 +91,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       data-language-slug={languageSlug ?? ""}
       data-share-href={shareHref ?? ""}
     >
+      {afterTopContent}
       <button
         data-testid="watch-download-button"
         disabled={downloadPending}
@@ -151,7 +154,11 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
-function renderWatchPage() {
+function renderWatchPage({
+  transcriptPlacement,
+}: {
+  transcriptPlacement?: "afterContent" | "belowHero"
+} = {}) {
   const variant = {
     documentId: "variant-1",
     duration: 7674,
@@ -183,6 +190,7 @@ function renderWatchPage() {
         mergedBlocks={[]}
         variant={variant as never}
         video={video as never}
+        transcriptPlacement={transcriptPlacement}
       />,
     )
   })
@@ -216,6 +224,27 @@ describe("WatchPageClient download boundary", () => {
       "https://www.facebook.com/sharer/sharer.php",
     )
     expect(renderer?.getAttribute("data-share-href")).toContain("jesus")
+    const transcript = document.querySelector(
+      '[data-testid="subtitle-transcript"]',
+    )
+    expect(renderer?.contains(transcript)).toBe(false)
+    expect(
+      renderer!.compareDocumentPosition(transcript!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
+  })
+
+  it("can place the transcript into the renderer slot below the hero", () => {
+    renderWatchPage({ transcriptPlacement: "belowHero" })
+
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    const transcript = document.querySelector(
+      '[data-testid="subtitle-transcript"]',
+    )
+
+    expect(renderer?.contains(transcript)).toBe(true)
   })
 
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
