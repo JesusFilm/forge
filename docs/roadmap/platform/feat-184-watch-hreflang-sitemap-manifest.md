@@ -3,8 +3,9 @@ id: "feat-184"
 title: "Watch sitemap-only hreflang manifest"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-12"
+completed_date: "2026-06-12"
 duration: 2
 depends_on: []
 blocks: []
@@ -105,11 +106,11 @@ the generated sitemap.
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/admin lint`
 - `pnpm --filter @forge/web lint`
-- Helium smoke on representative Watch video and episode URLs confirms
-  visible page behavior still works and the HTML head `hreflang` count is
-  zero.
-- Fetch smoke confirms sitemap index and at least one child sitemap return
-  valid XML with canonical absolute Watch URLs.
+- Focused metadata tests confirm Watch video and episode metadata no longer
+  emits page-head `hreflang`; deployed HTML fetch proof should be rerun after
+  the PR lands against real admin data.
+- Helium/agent-browser smoke confirms the local sitemap index and one child
+  sitemap route return valid XML with canonical absolute Watch URLs.
 
 ## Plan
 

@@ -1,7 +1,7 @@
 ---
 title: "perf: Move Watch hreflang alternates to sitemap-only manifests"
 type: "perf"
-status: "active"
+status: "completed"
 date: "2026-06-12"
 origin: "release QA follow-up for oversized Watch HTML alternates"
 roadmap: "docs/roadmap/platform/feat-184-watch-hreflang-sitemap-manifest.md"
