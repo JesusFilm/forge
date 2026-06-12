@@ -12,6 +12,7 @@ import { enrichRouteRelatedVideo } from "@/lib/enrichment"
 import type { YouVersionBibleQuotePassage } from "@/lib/youversion-passage"
 import {
   getVideoChildDubLanguagesBySlugOperation,
+  getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoShellBySlugOperation,
@@ -68,6 +69,9 @@ type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
 type GetWatchVideoShellData = AdminResultOf<
   typeof getWatchVideoShellBySlugOperation
 >
+type GetWatchVideoCarouselMuxPlaybackIdsData = AdminResultOf<
+  typeof getWatchVideoCarouselMuxPlaybackIdsBySlugOperation
+>
 type GetWatchVideoLocalizedCopyData = AdminResultOf<
   typeof getWatchVideoLocalizedCopyBySlugOperation
 >
@@ -75,6 +79,9 @@ type GetWatchVideoDubDetailData = AdminResultOf<
   typeof getWatchVideoDubDetailOperation
 >
 type AdminVideoShellRaw = NonNullable<GetWatchVideoShellData["videoBySlug"]>
+type AdminVideoCarouselMuxPlaybackIdsRaw = NonNullable<
+  GetWatchVideoCarouselMuxPlaybackIdsData["videoBySlug"]
+>
 type AdminVideoLocalizedCopyRaw = NonNullable<
   GetWatchVideoLocalizedCopyData["videoBySlug"]
 >
@@ -150,6 +157,10 @@ export type WatchChild = {
   // that broke unstable_cache. Cross-episode language data now lives on the
   // parent's `childDubLanguages` (see WatchVideoRecord).
   durationSeconds: number | null
+  // Best playable Mux playback id for the current watch language, falling
+  // back server-side to a primary/longest playable Mux dub. Lets the carousel
+  // render frame thumbnails without projecting every child's dubs.
+  muxPlaybackId: string | null
 }
 
 export type WatchParent = {
@@ -466,6 +477,7 @@ type AdminChildRelationRaw = {
     documentId: string | null
     slug?: string | null
     label?: string | null
+    muxPlaybackId?: string | null
     locales?: AdminLocaleRaw[] | null
     images?: AdminImageRaw[] | null
     durationSeconds?: number | null
@@ -516,6 +528,8 @@ type AdminVideoRaw = {
   studyQuestions?: AdminStudyQuestionRaw[] | null
   bibleCitations?: AdminBibleCitationRaw[] | null
 }
+
+type CarouselMuxPlaybackIdMap = Record<string, string | null>
 
 function normalizeImage(img: AdminImageRaw): WatchImage | null {
   if (!img.documentId) return null
@@ -638,6 +652,7 @@ function normalizeChild(
     label: child.label ?? null,
     images: normalizeImages(child.images),
     durationSeconds: child.durationSeconds ?? null,
+    muxPlaybackId: child.muxPlaybackId ?? null,
   }
 }
 
@@ -665,6 +680,7 @@ function normalizeParent(
           title: cLocale?.title ?? null,
           label: c.label ?? null,
           images: normalizeImages(c.images),
+          muxPlaybackId: c.muxPlaybackId ?? null,
           // Nested children inside `parent.children` feed only the
           // SiblingCarousel (thumbnails + titles), which never reads a
           // runtime. The fragment doesn't project durationSeconds here, so
@@ -1282,6 +1298,37 @@ async function queryWatchVideoShellBySlug(
   return result.data?.videoBySlug ?? null
 }
 
+async function queryWatchVideoCarouselMuxPlaybackIdsBySlug(
+  videoSlug: string,
+  languageSlug: string | null,
+): Promise<CarouselMuxPlaybackIdMap> {
+  if (languageSlug == null) return {}
+
+  const result = await client.query({
+    query: getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
+    variables: { languageSlug, videoSlug },
+    fetchPolicy: "no-cache",
+  })
+
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "message" in error && typeof error.message === "string"
+          ? error.message
+          : ""
+    if (message.includes('Cannot query field "muxPlaybackId"')) {
+      return {}
+    }
+    throw error
+  }
+
+  return collectCarouselMuxPlaybackIds(result.data?.videoBySlug ?? null)
+}
+
 async function queryWatchVideoLocalizedCopyBySlug(
   videoSlug: string,
   variables: { locale: string; languageSlug: string | null },
@@ -1324,6 +1371,12 @@ async function queryWatchVideoDubDetail(
 const fetchWatchVideoShell = unstable_cache(
   queryWatchVideoShellBySlug,
   ["watch-video-shell"],
+  { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
+)
+
+const fetchWatchVideoCarouselMuxPlaybackIds = unstable_cache(
+  queryWatchVideoCarouselMuxPlaybackIdsBySlug,
+  ["watch-video-carousel-mux-playback-ids"],
   { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
 )
 
@@ -1513,6 +1566,73 @@ function mergeWatchVideoShellWithCopy(
   } as AdminVideoRaw
 }
 
+function collectCarouselMuxPlaybackIds(
+  raw: AdminVideoCarouselMuxPlaybackIdsRaw | null,
+): CarouselMuxPlaybackIdMap {
+  const playbackIds: CarouselMuxPlaybackIdMap = {}
+
+  function addChild(
+    child: {
+      documentId: string | null
+      muxPlaybackId?: string | null
+    } | null,
+  ) {
+    if (!child?.documentId) return
+    playbackIds[child.documentId] = child.muxPlaybackId ?? null
+  }
+
+  for (const relation of raw?.children ?? []) {
+    addChild(relation.child)
+  }
+  for (const relation of raw?.parents ?? []) {
+    for (const childRelation of relation.parent?.children ?? []) {
+      addChild(childRelation.child)
+    }
+  }
+
+  return playbackIds
+}
+
+function applyCarouselMuxPlaybackIds(
+  raw: AdminVideoRaw,
+  playbackIds: CarouselMuxPlaybackIdMap,
+): AdminVideoRaw {
+  if (Object.keys(playbackIds).length === 0) return raw
+
+  function applyChild(
+    child: AdminChildRelationRaw["child"],
+  ): AdminChildRelationRaw["child"] {
+    if (!child?.documentId) return child
+    if (!Object.prototype.hasOwnProperty.call(playbackIds, child.documentId)) {
+      return child
+    }
+    return {
+      ...child,
+      muxPlaybackId: playbackIds[child.documentId] ?? null,
+    }
+  }
+
+  return {
+    ...raw,
+    parents: raw.parents?.map((relation) => ({
+      ...relation,
+      parent: relation.parent
+        ? {
+            ...relation.parent,
+            children: relation.parent.children?.map((childRelation) => ({
+              ...childRelation,
+              child: applyChild(childRelation.child),
+            })),
+          }
+        : null,
+    })),
+    children: raw.children?.map((relation) => ({
+      ...relation,
+      child: applyChild(relation.child),
+    })),
+  }
+}
+
 async function hydrateSelectedVariant(
   record: WatchVideoRecord,
   selectedVariant: WatchVariant,
@@ -1556,7 +1676,14 @@ async function fetchWatchVideoRecord(
     locale: contentLocale,
     languageSlug,
   })
-  const raw = mergeWatchVideoShellWithCopy(shell, copy)
+  const carouselMuxPlaybackIds = await fetchWatchVideoCarouselMuxPlaybackIds(
+    videoSlug,
+    languageSlug,
+  )
+  const raw = applyCarouselMuxPlaybackIds(
+    mergeWatchVideoShellWithCopy(shell, copy),
+    carouselMuxPlaybackIds,
+  )
   // Admin's `videoBySlug` resolves by slug only; the resolver enforces the
   // collection-slug match by walking `parents`. Returning the full record
   // and letting `tryResolveWatchVideo` decide keeps the not-found branch

@@ -14,12 +14,13 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }))
 
-const { routerPushMock } = vi.hoisted(() => ({
+const { routerPushMock, routerPrefetchMock } = vi.hoisted(() => ({
+  routerPrefetchMock: vi.fn(),
   routerPushMock: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: routerPushMock }),
+  useRouter: () => ({ prefetch: routerPrefetchMock, push: routerPushMock }),
 }))
 
 vi.mock("@/components/FloatingSearchProvider", () => ({
@@ -104,6 +105,13 @@ let root: Root
 
 beforeEach(() => {
   routerPushMock.mockClear()
+  routerPrefetchMock.mockClear()
+  Object.defineProperty(window, "fetch", {
+    configurable: true,
+    value: vi.fn(async () => ({
+      text: vi.fn(async () => ""),
+    })),
+  })
   window.sessionStorage.clear()
   window.history.replaceState({}, "", "/watch/current-video.html/english.html")
   container = document.createElement("div")
@@ -185,8 +193,16 @@ function renderWatchPage(video = makeVideo()) {
   })
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 describe("WatchPageClient chapter navigation", () => {
-  it("validates pending chapter state and self-invalidates after route commit", () => {
+  it("validates pending chapter state and self-invalidates after route commit", async () => {
     vi.useFakeTimers()
     renderWatchPage()
 
@@ -201,6 +217,13 @@ describe("WatchPageClient chapter navigation", () => {
       ;(renderer() as HTMLButtonElement).click()
     })
 
+    expect(window.fetch).toHaveBeenCalledWith(
+      "/child-2.html/english.html",
+      expect.objectContaining({ credentials: "same-origin" }),
+    )
+    expect(routerPrefetchMock).toHaveBeenCalledWith(
+      "/child-2.html/english.html",
+    )
     expect(renderer()?.getAttribute("data-pending-target")).toBe("")
     expect(renderer()?.getAttribute("data-pending-title")).toBe("")
     expect(renderer()?.getAttribute("data-cover-blackout-key")).toContain(
@@ -219,8 +242,10 @@ describe("WatchPageClient chapter navigation", () => {
     )
     expect(routerPushMock).not.toHaveBeenCalled()
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_REVEAL_MS)
+      await Promise.resolve()
+      await Promise.resolve()
     })
     expect(routerPushMock).toHaveBeenCalledWith("/child-2.html/english.html")
 
@@ -233,5 +258,53 @@ describe("WatchPageClient chapter navigation", () => {
     expect(renderer()?.getAttribute("data-route-poster-bridge-key")).toBe(
       "child-2:variant-1",
     )
+  })
+
+  it("waits for the background route warm before pushing", async () => {
+    vi.useFakeTimers()
+    const response = deferred<{ text: () => Promise<string> }>()
+    const body = deferred<string>()
+    Object.defineProperty(window, "fetch", {
+      configurable: true,
+      value: vi.fn(() => response.promise),
+    })
+    renderWatchPage()
+
+    const renderer = () =>
+      container.querySelector('[data-testid="watch-section-renderer"]')
+
+    act(() => {
+      ;(renderer() as HTMLButtonElement).click()
+    })
+
+    act(() => {
+      vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_BLACKOUT_MS)
+    })
+
+    expect(renderer()?.getAttribute("data-pending-target")).toBe("child-2")
+    expect(routerPushMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_REVEAL_MS)
+      await Promise.resolve()
+    })
+
+    expect(routerPushMock).not.toHaveBeenCalled()
+
+    response.resolve({ text: () => body.promise })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(routerPushMock).not.toHaveBeenCalled()
+
+    body.resolve("")
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(routerPushMock).toHaveBeenCalledWith("/child-2.html/english.html")
   })
 })

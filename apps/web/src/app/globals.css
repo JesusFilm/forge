@@ -293,61 +293,18 @@
   }
 }
 
-@keyframes watch-hero-cover-pulse {
-  0%,
-  100% {
-    filter: brightness(0.95);
-    transform: scale(1);
-  }
-  50% {
-    filter: brightness(1.08);
-    transform: scale(1.018);
-  }
-}
-
 .watch-hero-cover-black-bridge {
-  animation: watch-hero-cover-black-bridge 540ms ease-out both;
+  animation: watch-hero-cover-black-bridge 1000ms ease-out both;
 }
 
 .watch-hero-cover-to-black {
-  animation: watch-hero-cover-to-black 220ms ease-out both;
+  animation: watch-hero-cover-to-black 1000ms ease-out both;
   will-change: opacity;
 }
 
 .watch-hero-cover-reveal {
-  animation: watch-hero-cover-reveal 540ms ease-out both;
+  animation: watch-hero-cover-reveal 1000ms ease-out both;
   will-change: opacity;
-}
-
-.watch-hero-cover-reveal-pulse {
-  animation:
-    watch-hero-cover-reveal 540ms ease-out both,
-    watch-hero-cover-pulse 1600ms ease-in-out 540ms infinite;
-  transform-origin: center;
-  will-change: filter, opacity, transform;
-}
-
-.watch-hero-cover-pulse {
-  animation: watch-hero-cover-pulse 1600ms ease-in-out infinite;
-  transform-origin: center;
-  will-change: filter, transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .watch-hero-cover-black-bridge,
-  .watch-hero-cover-to-black,
-  .watch-hero-cover-reveal,
-  .watch-hero-cover-reveal-pulse,
-  .watch-hero-cover-pulse {
-    animation: none;
-    filter: none;
-    transform: none;
-    will-change: auto;
-  }
-
-  .watch-hero-cover-black-bridge {
-    display: none;
-  }
 }
 
 /* Series episodes grid — ported from core/apps/watch's SectionVideoGrid:

@@ -53,11 +53,13 @@ vi.mock("next/link", () => ({
   default: ({
     href,
     onClick,
+    onNavigate: _onNavigate,
     children,
     ...props
   }: {
     href: string
     onClick?: MouseEventHandler<HTMLAnchorElement>
+    onNavigate?: unknown
     children: ReactNode
     [key: string]: unknown
   }) => (
@@ -130,7 +132,11 @@ type ImageVariantFields = {
 
 function makeChild(
   i: number,
-  opts: { thumb?: boolean; image?: ImageVariantFields } = {},
+  opts: {
+    thumb?: boolean
+    image?: ImageVariantFields
+    muxPlaybackId?: string | null
+  } = {},
 ) {
   // When `opts.image` is supplied, use it verbatim — lets tests assert on
   // the priority chain (`mobileCinematicHigh` > `mobileCinematicLow` >
@@ -149,6 +155,8 @@ function makeChild(
     title: `Child ${i}`,
     label: i % 2 === 0 ? `Label ${i}` : null,
     images,
+    durationSeconds: null,
+    muxPlaybackId: opts.muxPlaybackId ?? null,
   }
 }
 
@@ -708,14 +716,17 @@ describe("SiblingCarousel — edge cases", () => {
   })
 })
 
-describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
+describe("SiblingCarousel — image priority", () => {
   // Each test renders a single-active-item block and reads the active item's
   // <Image> stand-in (`data-src`) to assert which image variant won the
   // priority chain. The variant order is:
+  //   muxPlaybackId second-2 frame > editorial image chain > placeholder
+  // The editorial fallback order is:
   //   mobileCinematicHigh > mobileCinematicLow > thumbnail > placeholder
   //   (`url` is intentionally NOT in the chain — it 400s on Cloudflare.)
   function singleChildBlock(
     image: ImageVariantFields,
+    muxPlaybackId: string | null = null,
   ): WatchSiblingCarouselBlock {
     return {
       kind: "SiblingCarousel",
@@ -724,7 +735,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
         slug: "p",
         title: "P",
         children: [
-          makeChild(1, { image }),
+          makeChild(1, { image, muxPlaybackId }),
           makeChild(2), // sibling so children.length >= 2 (carousel renders)
         ],
       } as never,
@@ -743,6 +754,26 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
       "[data-testid='sibling-carousel-item'][data-active='true'] [data-testid='sibling-carousel-thumb-placeholder']",
     )
   }
+
+  it("uses the language-aware Mux second-2 frame before curated image fallbacks", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          languageSlug="english"
+          block={singleChildBlock(
+            {
+              mobileCinematicHigh: "https://cdn.test/high.jpg",
+              thumbnail: "https://cdn.test/thumb.jpg",
+            },
+            "mux-playback-1",
+          )}
+        />,
+      )
+    })
+    expect(activeImage()!.getAttribute("data-src")).toBe(
+      "https://image.mux.com/mux-playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+  })
 
   it("uses mobileCinematicHigh when all four variants are present", () => {
     act(() => {

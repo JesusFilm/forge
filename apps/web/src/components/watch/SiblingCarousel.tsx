@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
-import { resolvePosterUrl } from "@/lib/url"
+import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
 import type { WatchChapterNavigationIntent } from "./chapter-navigation"
 
 export function SiblingCarousel({
@@ -176,13 +176,15 @@ export function SiblingCarousel({
         <CarouselContent>
           {children.map((child, index) => {
             const isActive = index === visualActiveIndex
-            // `resolvePosterUrl` codifies the editorial-cinematic priority
-            // chain shared with WatchPageClient. The raw `images[].url`
-            // value is excluded from that chain entirely: it's a misshaped
-            // Cloudflare Images URL (missing the variant path segment)
-            // that returns 400, so a "last resort" fallback to it only
-            // ever produces broken images.
-            const thumb = resolvePosterUrl(child.images?.[0])
+            // Prefer a Mux frame from the current watch language when admin
+            // supplied one; fall back to the curated editorial image chain.
+            // The raw `images[].url` value is excluded from that chain
+            // entirely: it's a misshaped Cloudflare Images URL (missing the
+            // variant path segment) that returns 400, so a "last resort"
+            // fallback to it only ever produces broken images.
+            const thumb =
+              resolveMuxFrameThumbnailUrl(child.muxPlaybackId) ??
+              resolvePosterUrl(child.images?.[0])
             // The builder emits the canonical 2-segment `.html` shape
             // (`/{slug}.html/{languageSlug}.html`).
             const slug = tryAsContentSlug(child.slug)
@@ -330,6 +332,12 @@ export function SiblingCarousel({
                     data-href={href}
                     aria-busy={isPending ? "true" : undefined}
                     className={cardClassName}
+                    onNavigate={(event) => {
+                      if (isActive) return
+                      if (onChapterNavigateIntent == null) return
+
+                      event.preventDefault()
+                    }}
                     onClick={(event) => {
                       handleCardClick(
                         event,

@@ -44,6 +44,7 @@ export function WatchSectionRenderer({
   hideBibleQuotes = false,
   pendingChapter,
   coverBlackoutKey,
+  coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
@@ -61,6 +62,7 @@ export function WatchSectionRenderer({
   hideBibleQuotes?: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
   coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
@@ -103,6 +105,7 @@ export function WatchSectionRenderer({
           hideBibleQuotes={hideBibleQuotes}
           pendingChapter={pendingChapter}
           coverBlackoutKey={coverBlackoutKey}
+          coverBlackoutPhase={coverBlackoutPhase}
           routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
         />
@@ -145,6 +148,7 @@ export function WatchSectionRenderer({
                   hideBibleQuotes={hideBibleQuotes}
                   pendingChapter={pendingChapter}
                   coverBlackoutKey={coverBlackoutKey}
+                  coverBlackoutPhase={coverBlackoutPhase}
                   routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                 />
@@ -174,6 +178,7 @@ function WatchBlockEntry({
   hideBibleQuotes,
   pendingChapter,
   coverBlackoutKey,
+  coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
@@ -193,6 +198,7 @@ function WatchBlockEntry({
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
   coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
@@ -214,6 +220,7 @@ function WatchBlockEntry({
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={pendingChapter}
         coverBlackoutKey={coverBlackoutKey}
+        coverBlackoutPhase={coverBlackoutPhase}
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
       />
@@ -238,6 +245,7 @@ function SyntheticBlock({
   hideBibleQuotes,
   pendingChapter,
   coverBlackoutKey,
+  coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
@@ -256,6 +264,7 @@ function SyntheticBlock({
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
   coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
@@ -284,6 +293,7 @@ function SyntheticBlock({
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
           coverBlackoutKey={coverBlackoutKey}
+          coverBlackoutPhase={coverBlackoutPhase}
           forcePosterBridgeKey={routePosterBridgeKey}
         />
       )
