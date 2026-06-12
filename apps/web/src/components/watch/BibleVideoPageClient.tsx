@@ -19,6 +19,7 @@ export function BibleVideoPageClient(props: BibleVideoPageClientProps) {
       showHeroCta={false}
       showHeroOverlay={false}
       showHeroTitle={false}
+      hideBibleQuotes={true}
     />
   )
 }
