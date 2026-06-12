@@ -17,6 +17,9 @@ export type WatchChapterOptimisticVisual = {
   transitionKey?: string | null
 }
 
+export const WATCH_CHAPTER_POSTER_BLACKOUT_MS = 1000
+export const WATCH_CHAPTER_POSTER_REVEAL_MS = 1000
+
 const WATCH_CHAPTER_POSTER_BRIDGE_STORAGE_KEY =
   "forge.watch.chapterPosterBridge"
 const WATCH_CHAPTER_POSTER_BRIDGE_TTL_MS = 30_000

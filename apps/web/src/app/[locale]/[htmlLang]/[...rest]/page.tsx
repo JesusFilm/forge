@@ -498,7 +498,7 @@ async function renderEpisode(shape: {
         <link
           rel="preload"
           as="image"
-          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
           fetchPriority="high"
         />
       ) : null}
@@ -602,7 +602,7 @@ async function renderVideo(shape: {
           <link
             rel="preload"
             as="image"
-            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
             fetchPriority="high"
           />
         ) : null}

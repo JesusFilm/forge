@@ -148,6 +148,17 @@ consume it only when the destination video id, language slug, and href match.
 That lets the committed route poster reveal out of black without preserving
 stale title, card, playback, or share state.
 
+When the requested order is "current player to black, then title/cover swap,"
+do not let `next/link` commit the route immediately for normal clicks. Keep the
+card as a `Link` for native semantics, but have the parent-owned normal click
+call `preventDefault()`, start a current-player blackout, and push the route
+after the blackout and reveal delays. Modified clicks, middle clicks, and
+already prevented events must keep the native link path. The pending
+title/poster payload should be applied only after the blackout starts so a fast
+route commit cannot visually jump ahead of the black transition, and the route
+push should wait until after the cover reveal so a slow destination render does
+not blank the first visible cover swap.
+
 The React shape also avoids the `set-state-in-effect` trap. Do not clear
 pending navigation from an effect that watches the URL or current video. Encode
 the pending source and target, then derive whether it is still valid from the

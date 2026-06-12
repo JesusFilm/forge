@@ -869,6 +869,40 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps the language globe after the pathname chrome reset frame", () => {
+    vi.useFakeTimers()
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: onLanguageClick })
+    })
+
+    expect(
+      document.querySelector('[data-testid="floating-header-language-button"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(20)
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement | null
+    expect(languageButton).not.toBeNull()
+
+    act(() => {
+      languageButton?.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+
   it("hides the floating language globe with the rest of the header chrome", () => {
     act(() => {
       root.render(

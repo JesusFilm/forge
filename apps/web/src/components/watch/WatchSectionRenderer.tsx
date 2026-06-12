@@ -44,6 +44,8 @@ export function WatchSectionRenderer({
   subtitleVttSrc,
   hideBibleQuotes = false,
   pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
@@ -61,6 +63,8 @@ export function WatchSectionRenderer({
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
@@ -103,6 +107,8 @@ export function WatchSectionRenderer({
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
           pendingChapter={pendingChapter}
+          coverBlackoutKey={coverBlackoutKey}
+          coverBlackoutPhase={coverBlackoutPhase}
           routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
           videoPathBuilder={videoPathBuilder}
@@ -145,6 +151,8 @@ export function WatchSectionRenderer({
                   shareHref={shareHref}
                   hideBibleQuotes={hideBibleQuotes}
                   pendingChapter={pendingChapter}
+                  coverBlackoutKey={coverBlackoutKey}
+                  coverBlackoutPhase={coverBlackoutPhase}
                   routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                   videoPathBuilder={videoPathBuilder}
@@ -174,6 +182,8 @@ function WatchBlockEntry({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
@@ -193,6 +203,8 @@ function WatchBlockEntry({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
@@ -214,6 +226,8 @@ function WatchBlockEntry({
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={pendingChapter}
+        coverBlackoutKey={coverBlackoutKey}
+        coverBlackoutPhase={coverBlackoutPhase}
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
         videoPathBuilder={videoPathBuilder}
@@ -238,6 +252,8 @@ function SyntheticBlock({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
@@ -256,6 +272,8 @@ function SyntheticBlock({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
@@ -284,6 +302,8 @@ function SyntheticBlock({
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
+          coverBlackoutKey={coverBlackoutKey}
+          coverBlackoutPhase={coverBlackoutPhase}
           forcePosterBridgeKey={routePosterBridgeKey}
         />
       )
