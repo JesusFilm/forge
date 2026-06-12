@@ -274,6 +274,15 @@
   }
 }
 
+@keyframes watch-hero-cover-to-black {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes watch-hero-cover-reveal {
   0%,
   35% {
@@ -300,6 +309,11 @@
   animation: watch-hero-cover-black-bridge 540ms ease-out both;
 }
 
+.watch-hero-cover-to-black {
+  animation: watch-hero-cover-to-black 220ms ease-out both;
+  will-change: opacity;
+}
+
 .watch-hero-cover-reveal {
   animation: watch-hero-cover-reveal 540ms ease-out both;
   will-change: opacity;
@@ -321,6 +335,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .watch-hero-cover-black-bridge,
+  .watch-hero-cover-to-black,
   .watch-hero-cover-reveal,
   .watch-hero-cover-reveal-pulse,
   .watch-hero-cover-pulse {

@@ -415,6 +415,33 @@ describe("HeroPlayer — initial mount", () => {
     expect(bridge).not.toBeNull()
   })
 
+  it("blacks out the current cover before optimistic title and poster swap", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer block={makeBlock()} coverBlackoutKey="chapter-2:0" />,
+      )
+    })
+
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const blackout = container.querySelector(
+      '[data-testid="hero-player-cover-blackout"]',
+    )
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]')
+        ?.textContent,
+    ).toBe("Jesus")
+    expect(poster.getAttribute("src")).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+    )
+    expect(poster.parentElement?.getAttribute("data-cover-transition")).toBe(
+      "none",
+    )
+    expect(blackout).not.toBeNull()
+  })
+
   it("bridges the committed route poster when it replaces the clicked poster", () => {
     const baseBlock = makeBlock()
     const committedBlock: WatchHeroPlayerBlock = {

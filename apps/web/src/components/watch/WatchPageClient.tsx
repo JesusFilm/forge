@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { Route } from "next"
 import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -9,6 +11,8 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
 import {
+  WATCH_CHAPTER_POSTER_BLACKOUT_MS,
+  WATCH_CHAPTER_POSTER_REVEAL_MS,
   consumeWatchChapterPosterBridgeIntent,
   shouldUseWatchChapterPosterBridgeIntent,
   type WatchChapterNavigationIntent,
@@ -166,6 +170,12 @@ type LanguageOptionsState =
   | { status: "ready"; variants: LanguagePickerVariant[] }
   | { status: "error"; variants: LanguagePickerVariant[] }
 
+type ChapterCoverTransition = {
+  intent: WatchChapterNavigationIntent
+  key: string
+  phase: "covering" | "revealing"
+}
+
 function buildShareFallbackHref({
   origin,
   currentLanguageSlug,
@@ -200,6 +210,7 @@ export function WatchPageClient({
   questionPanelEnabled = false,
   initialTranscript = null,
 }: WatchPageClientProps) {
+  const router = useRouter()
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
   const playerRef = useRef<MuxPlayerRef | null>(null)
@@ -236,6 +247,8 @@ export function WatchPageClient({
   )
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
+  const [chapterCoverTransition, setChapterCoverTransition] =
+    useState<ChapterCoverTransition | null>(null)
   const validPendingChapter =
     pendingChapter != null &&
     pendingChapter.languageSlug === currentLanguageSlug &&
@@ -259,13 +272,53 @@ export function WatchPageClient({
     })
   }, [currentLanguageSlug, routePosterBridgeKey, video.documentId])
 
+  useEffect(() => {
+    if (chapterCoverTransition == null) return
+
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    let delay = 0
+    if (!reduceMotion) {
+      delay =
+        chapterCoverTransition.phase === "covering"
+          ? WATCH_CHAPTER_POSTER_BLACKOUT_MS
+          : WATCH_CHAPTER_POSTER_REVEAL_MS
+    }
+    const timer = window.setTimeout(() => {
+      if (chapterCoverTransition.phase === "covering") {
+        setPendingChapter(chapterCoverTransition.intent)
+        setChapterCoverTransition({
+          ...chapterCoverTransition,
+          phase: "revealing",
+        })
+        return
+      }
+
+      router.push(chapterCoverTransition.intent.href as Route)
+    }, delay)
+
+    return () => window.clearTimeout(timer)
+  }, [chapterCoverTransition, router])
+
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
       writeWatchChapterPosterBridgeIntent(intent)
-      setPendingChapter(intent)
+      setPendingChapter(null)
+      setForcedRoutePosterBridgeKey(null)
+      setChapterCoverTransition({
+        intent,
+        key: `${intent.targetVideoDocumentId}:${Date.now()}`,
+        phase: "covering",
+      })
     },
     [],
   )
+
+  const coverBlackoutKey =
+    chapterCoverTransition?.phase === "covering"
+      ? chapterCoverTransition.key
+      : null
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
@@ -517,6 +570,7 @@ export function WatchPageClient({
         shareHref={shareHref}
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={validPendingChapter}
+        coverBlackoutKey={coverBlackoutKey}
         routePosterBridgeKey={forcedRoutePosterBridgeKey}
         onChapterNavigateIntent={handleChapterNavigateIntent}
       />

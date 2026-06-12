@@ -398,16 +398,16 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
     )
 
+    const event = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    })
     act(() => {
-      target!.dispatchEvent(
-        new MouseEvent("click", {
-          bubbles: true,
-          cancelable: true,
-          button: 0,
-        }),
-      )
+      target!.dispatchEvent(event)
     })
 
+    expect(event.defaultPrevented).toBe(true)
     expect(onChapterNavigateIntent).toHaveBeenCalledTimes(1)
     expect(onChapterNavigateIntent).toHaveBeenCalledWith({
       href: "/child-2-slug.html/english.html",

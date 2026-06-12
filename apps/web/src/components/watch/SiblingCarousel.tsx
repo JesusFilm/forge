@@ -78,6 +78,9 @@ export function SiblingCarousel({
         return
       }
 
+      if (onChapterNavigateIntent != null) {
+        event.preventDefault()
+      }
       if (pendingNavigation === undefined) {
         setLocalPendingNavigation(intent)
       }

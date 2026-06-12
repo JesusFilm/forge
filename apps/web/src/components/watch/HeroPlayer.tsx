@@ -181,6 +181,7 @@ export function HeroPlayer({
   overlay,
   subtitleVttSrc,
   optimisticVisual,
+  coverBlackoutKey,
   forcePosterBridgeKey,
 }: {
   block: WatchHeroPlayerBlock
@@ -191,6 +192,7 @@ export function HeroPlayer({
   overlay?: ReactNode
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
+  coverBlackoutKey?: string | null
   forcePosterBridgeKey?: string | null
 }) {
   const t = useTranslations("HeroPlayer")
@@ -1128,6 +1130,15 @@ export function HeroPlayer({
                 />
               ) : null}
             </div>
+          ) : null}
+
+          {coverBlackoutKey != null ? (
+            <div
+              key={coverBlackoutKey}
+              data-testid="hero-player-cover-blackout"
+              aria-hidden="true"
+              className="watch-hero-cover-to-black pointer-events-none absolute inset-0 z-2 bg-black"
+            />
           ) : null}
 
           {!chromeRevealed && overlay == null ? (

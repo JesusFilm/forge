@@ -43,6 +43,7 @@ export function WatchSectionRenderer({
   subtitleVttSrc,
   hideBibleQuotes = false,
   pendingChapter,
+  coverBlackoutKey,
   routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
@@ -59,6 +60,7 @@ export function WatchSectionRenderer({
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
@@ -100,6 +102,7 @@ export function WatchSectionRenderer({
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
           pendingChapter={pendingChapter}
+          coverBlackoutKey={coverBlackoutKey}
           routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
         />
@@ -141,6 +144,7 @@ export function WatchSectionRenderer({
                   shareHref={shareHref}
                   hideBibleQuotes={hideBibleQuotes}
                   pendingChapter={pendingChapter}
+                  coverBlackoutKey={coverBlackoutKey}
                   routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                 />
@@ -169,6 +173,7 @@ function WatchBlockEntry({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  coverBlackoutKey,
   routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
@@ -187,6 +192,7 @@ function WatchBlockEntry({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
@@ -207,6 +213,7 @@ function WatchBlockEntry({
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={pendingChapter}
+        coverBlackoutKey={coverBlackoutKey}
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
       />
@@ -230,6 +237,7 @@ function SyntheticBlock({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  coverBlackoutKey,
   routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
@@ -247,6 +255,7 @@ function SyntheticBlock({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
@@ -274,6 +283,7 @@ function SyntheticBlock({
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
+          coverBlackoutKey={coverBlackoutKey}
           forcePosterBridgeKey={routePosterBridgeKey}
         />
       )
