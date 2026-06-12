@@ -70,6 +70,14 @@ function latestRawSqlWithFragments(
   return `${strings} ${fragments}`
 }
 
+function sqlBetween(sql: string, start: string, end: string): string {
+  const startIndex = sql.indexOf(start)
+  expect(startIndex).toBeGreaterThan(-1)
+  const endIndex = sql.indexOf(end, startIndex + start.length)
+  expect(endIndex).toBeGreaterThan(-1)
+  return sql.slice(startIndex, endIndex)
+}
+
 describe("searchVideoSemantic", () => {
   let prisma: ReturnType<typeof mockPrisma>
 
@@ -253,6 +261,7 @@ describe("searchVideoSemantic", () => {
 
     const sql = latestRawSql(prisma)
     expect(sql).toContain("WITH scene_source AS")
+    expect(sql).toContain("scene_source AS")
     expect(sql).toContain("transcript_source AS")
     expect(sql).toContain("FROM video_scene_locale vsl")
     expect(sql).toContain("FROM video_transcript_chunk vtc")
@@ -279,9 +288,56 @@ describe("searchVideoSemantic", () => {
     expect(sql).toContain("vsl.locale =")
     expect(sql).toContain("vtc.language =")
     expect(sql).toContain("vt.language =")
+    expect(sql).toContain("requested_language AS MATERIALIZED")
+
+    const sceneSource = sqlBetween(
+      sqlWithFragments,
+      "WITH scene_source AS",
+      "transcript_source AS",
+    )
+    const sceneOrderIndex = sceneSource.indexOf("ORDER BY")
+    expect(sceneSource.indexOf("v.deleted_at IS NULL")).toBeLessThan(
+      sceneOrderIndex,
+    )
+    expect(sceneSource.indexOf("vl.status = 'published'")).toBeLessThan(
+      sceneOrderIndex,
+    )
+    expect(sceneSource.indexOf("vl.deleted_at IS NULL")).toBeLessThan(
+      sceneOrderIndex,
+    )
+    expect(sceneSource).not.toContain("LATERAL")
+    expect(sceneSource).not.toContain("embedding::text")
+
+    const transcriptSource = sqlBetween(
+      sqlWithFragments,
+      "transcript_source AS",
+      "semantic_evidence AS",
+    )
+    const transcriptOrderIndex = transcriptSource.indexOf("ORDER BY")
+    expect(transcriptSource.indexOf("v.deleted_at IS NULL")).toBeLessThan(
+      transcriptOrderIndex,
+    )
+    expect(transcriptSource.indexOf("vl.status = 'published'")).toBeLessThan(
+      transcriptOrderIndex,
+    )
+    expect(transcriptSource.indexOf("vl.deleted_at IS NULL")).toBeLessThan(
+      transcriptOrderIndex,
+    )
+    expect(transcriptSource).not.toContain("LATERAL")
+    expect(transcriptSource).not.toContain("embedding::text")
+
+    const hydratedTail = sqlWithFragments.slice(
+      sqlWithFragments.indexOf("requested_language AS MATERIALIZED"),
+    )
+    expect(hydratedTail).toContain("LEFT JOIN LATERAL")
+    expect(hydratedTail).toContain(
+      "vd.language_id IN (SELECT id FROM requested_language)",
+    )
+    expect(hydratedTail).toContain("vsl_final.embedding::text")
+    expect(hydratedTail).toContain("vtc_final.embedding::text")
   })
 
-  it("selects best per-source evidence before bounding source windows", async () => {
+  it("selects best per-source evidence before bounding candidate windows", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
 
     await searchVideoSemantic(prisma, {
@@ -290,13 +346,33 @@ describe("searchVideoSemantic", () => {
       limit: 5,
     })
 
-    const sql = latestRawSql(prisma)
+    const sql = latestRawSqlWithFragments(prisma)
     expect(sql).toContain("SELECT DISTINCT ON (vs.video_id)")
     expect(sql).toContain("SELECT DISTINCT ON (vt.video_id)")
-    expect(sql).toContain("ORDER BY")
-    expect(sql).toContain("vs.video_id")
-    expect(sql).toContain("vt.video_id")
-    expect(sql).toContain("LIMIT")
+    expect(sql).not.toContain("WITH scene_nn AS MATERIALIZED")
+    expect(sql).not.toContain("transcript_nn AS MATERIALIZED")
+
+    const sceneOrderIndex = sql.indexOf(
+      "ORDER BY",
+      sql.indexOf("SELECT DISTINCT ON (vs.video_id)"),
+    )
+    const sceneCandidateLimitIndex = sql.indexOf(
+      "LIMIT",
+      sql.indexOf("best_scene_per_video"),
+    )
+    expect(sceneOrderIndex).toBeGreaterThan(-1)
+    expect(sceneOrderIndex).toBeLessThan(sceneCandidateLimitIndex)
+
+    const transcriptOrderIndex = sql.indexOf(
+      "ORDER BY",
+      sql.indexOf("SELECT DISTINCT ON (vt.video_id)"),
+    )
+    const transcriptCandidateLimitIndex = sql.indexOf(
+      "LIMIT",
+      sql.indexOf("best_transcript_per_video"),
+    )
+    expect(transcriptOrderIndex).toBeGreaterThan(-1)
+    expect(transcriptOrderIndex).toBeLessThan(transcriptCandidateLimitIndex)
   })
 
   it("uses bounded per-source candidate windows after per-video collapse", async () => {
@@ -309,7 +385,7 @@ describe("searchVideoSemantic", () => {
     })
 
     const values = latestRawValues(prisma)
-    expect(values).toContain(14)
+    expect(values.filter((value) => value === 14)).toHaveLength(2)
   })
 })
 
