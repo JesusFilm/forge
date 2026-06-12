@@ -1,5 +1,5 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
-import client from "@/lib/admin-client"
+import { semanticSearchAdminClient } from "@/lib/admin-client"
 import type { SearchLanguageResolution } from "./search-language"
 
 // Admin's `search(q, locale, type, limit, offset, mode, debug)` is the
@@ -164,7 +164,7 @@ export async function searchVideos(
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
 
   const startedAt = performance.now()
-  const result = await client.query({
+  const result = await semanticSearchAdminClient.query({
     query: searchVideosOperation,
     variables: {
       q: truncatedQuery,

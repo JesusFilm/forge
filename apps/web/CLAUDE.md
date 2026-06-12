@@ -12,7 +12,7 @@
 - Route groups for layout boundaries: `(marketing)`, `(app)`, `(auth)`.
 - Loading states: always add `loading.tsx` for async routes.
 - Error boundaries: `error.tsx` at each route segment.
-- Data fetching: RSC async components calling resolvers in `src/lib/content.ts` / `search.ts` / `recommendations.ts` / `demo-search.ts`, which use `adminGraphql()` from `@forge/admin-graphql` + the singleton Apollo client at `src/lib/admin-client.ts`.
+- Data fetching: RSC async components calling resolvers in `src/lib/content.ts` / `recommendations.ts` / `demo-search.ts`, which use `adminGraphql()` from `@forge/admin-graphql` + the default Apollo client at `src/lib/admin-client.ts`. `src/lib/search.ts` uses the semantic-search Admin client from the same module so production semantic search gets a longer bounded timeout without widening every Admin GraphQL call.
 - Client components that need data go through a `"use server"` action (e.g. `src/lib/search-actions.ts`) — admin's bearer is server-only and must never reach the browser bundle.
 - Metadata: export `metadata` or `generateMetadata` from every page.
 
@@ -20,7 +20,7 @@
 
 Web reads from admin via the typed `adminGraphql()` factory exported from `@forge/admin-graphql`. The package consumes admin's committed SDL (`apps/admin/schema.graphql`); SDL drift breaks codegen at the package level, not at the app level.
 
-- `src/lib/admin-client.ts` — singleton Apollo client pointed at `env.ADMIN_GRAPHQL_URL` with `Authorization: Bearer ${env.WEB_ADMIN_API_KEYS.split(",")[0]}`. 15 s timeout (temporary headroom for admin's slow `videoBySlug` resolver on COLLECTION rows; see the comment in `admin-client.ts`).
+- `src/lib/admin-client.ts` — lazy Apollo clients pointed at `env.ADMIN_GRAPHQL_URL` with `Authorization: Bearer ${env.WEB_ADMIN_API_KEYS.split(",")[0]}`. The default export keeps the 15 s timeout for general Admin GraphQL calls; `semanticSearchAdminClient` uses a 45 s bounded timeout for `src/lib/search.ts` only.
 - `src/lib/content.ts` — `resolveWatchPage`, `resolveWatchVideo*`, `resolveSeriesBySlug`, plus the 6 synthetic-watch-block builders. Returns admin shapes flattened via `normalizeAdminVideo`.
 - `src/lib/fragments/watch-experience.ts` — re-exports `adminWatchExperienceFragment` from `@forge/admin-graphql/fragments` (the root composition over admin's 17 block fragments).
 - `src/lib/fragments/watch-video.ts` — local `WatchVideo` fragment + the two query operations on admin's `Video` with field aliases bridging vocab (`documentId: id`, `variants: dubs`, `value: text`).
