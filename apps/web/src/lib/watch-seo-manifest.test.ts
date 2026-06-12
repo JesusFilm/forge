@@ -84,6 +84,8 @@ describe("getWatchSeoManifest", () => {
   it("fetches through the admin SEO manifest endpoint with the first consumer bearer", async () => {
     process.env.ADMIN_GRAPHQL_URL = "https://admin.test/api/graphql"
     process.env.WEB_ADMIN_API_KEYS = "key-one,key-two"
+    const signal = new AbortController().signal
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockReturnValue(signal)
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(manifest), {
         status: 200,
@@ -92,15 +94,21 @@ describe("getWatchSeoManifest", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
 
-    await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
+    try {
+      await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://admin.test/api/watch-seo-manifest",
-      expect.objectContaining({
-        headers: { Authorization: "Bearer key-one" },
-        cache: "no-store",
-      }),
-    )
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://admin.test/api/watch-seo-manifest",
+        expect.objectContaining({
+          headers: { Authorization: "Bearer key-one" },
+          cache: "no-store",
+          signal,
+        }),
+      )
+      expect(timeoutSpy).toHaveBeenCalledWith(10_000)
+    } finally {
+      timeoutSpy.mockRestore()
+    }
   })
 
   it("reuses the cached manifest on 304 and failed refreshes", async () => {
@@ -126,6 +134,32 @@ describe("getWatchSeoManifest", () => {
       await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
       now += 61_000
       await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
+    } finally {
+      dateSpy.mockRestore()
+    }
+  })
+
+  it("retries initial fetch failures after a short miss TTL", async () => {
+    process.env.ADMIN_GRAPHQL_URL = "https://admin.test/api/graphql"
+    process.env.WEB_ADMIN_API_KEYS = "key-one"
+    let now = 1_000
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("timeout"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(manifest), {
+          status: 200,
+          headers: { etag: '"version-1"' },
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    try {
+      await expect(getWatchSeoManifest()).resolves.toBeNull()
+      now += 6_000
+      await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
     } finally {
       dateSpy.mockRestore()
     }
