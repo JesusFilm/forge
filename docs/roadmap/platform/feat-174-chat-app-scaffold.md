@@ -3,7 +3,7 @@ id: "feat-174"
 title: "Chat app scaffold with stubbed agent"
 owner: "jianwei"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-06-10"
 duration: 3
 depends_on: []

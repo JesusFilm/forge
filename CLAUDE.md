@@ -27,6 +27,7 @@ This is a pnpm + Turborepo monorepo.
 - `apps/mobile/` — React Native / Expo app (active development, EAS for builds); reads from admin via `packages/admin-graphql`
 - `apps/tv/` — React Native TV app; reads from admin via `packages/admin-graphql`
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
+- `apps/chat/` — Next.js chat UI scaffold for the `apps/mastra` agents (client-side stub only; no agent wiring yet)
 - `packages/admin-graphql/` — gql.tada typed GraphQL client (generated from admin's `schema.graphql`); consumed by web
 - `CONCEPTS.md` (repo root) — shared domain vocabulary (entities like Video, Dub, Video Edition); relevant when orienting to the codebase or discussing domain concepts
 
@@ -40,6 +41,7 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 - Working in `apps/tv/`? Also read `apps/tv/CLAUDE.md`
 - Working in `packages/admin-graphql/`? Also read `packages/admin-graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
+- Working in `apps/chat/`? Also read `apps/chat/CLAUDE.md`
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 
