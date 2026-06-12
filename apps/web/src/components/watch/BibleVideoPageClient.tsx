@@ -21,6 +21,8 @@ export function BibleVideoPageClient(props: BibleVideoPageClientProps) {
       showHeroTitle={false}
       hideBibleQuotes={true}
       transcriptPlacement="belowHero"
+      transcriptDisplayMode="inlineFlow"
+      heroViewportHeight="half"
     />
   )
 }

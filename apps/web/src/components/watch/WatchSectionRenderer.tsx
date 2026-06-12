@@ -54,6 +54,7 @@ export function WatchSectionRenderer({
   showHeroCta = true,
   showHeroOverlay = true,
   showHeroTitle = true,
+  heroViewportHeight = "default",
   afterTopContent = null,
 }: {
   blocks: MergedWatchBlock[]
@@ -78,6 +79,7 @@ export function WatchSectionRenderer({
   showHeroCta?: boolean
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
+  heroViewportHeight?: "default" | "half"
   afterTopContent?: ReactNode
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -127,6 +129,7 @@ export function WatchSectionRenderer({
           showHeroCta={showHeroCta}
           showHeroOverlay={showHeroOverlay}
           showHeroTitle={showHeroTitle}
+          heroViewportHeight={heroViewportHeight}
         />
       ))}
       {afterTopContent}
@@ -176,6 +179,7 @@ export function WatchSectionRenderer({
                   showHeroCta={showHeroCta}
                   showHeroOverlay={showHeroOverlay}
                   showHeroTitle={showHeroTitle}
+                  heroViewportHeight={heroViewportHeight}
                 />
               ))}
             </div>
@@ -211,6 +215,7 @@ function WatchBlockEntry({
   showHeroCta,
   showHeroOverlay,
   showHeroTitle,
+  heroViewportHeight,
 }: {
   block: MergedWatchBlock
   index: number
@@ -236,6 +241,7 @@ function WatchBlockEntry({
   showHeroCta: boolean
   showHeroOverlay: boolean
   showHeroTitle: boolean
+  heroViewportHeight: "default" | "half"
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -263,6 +269,7 @@ function WatchBlockEntry({
         showHeroCta={showHeroCta}
         showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
+        heroViewportHeight={heroViewportHeight}
       />
     )
   }
@@ -293,6 +300,7 @@ function SyntheticBlock({
   showHeroCta,
   showHeroOverlay,
   showHeroTitle,
+  heroViewportHeight,
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
@@ -317,6 +325,7 @@ function SyntheticBlock({
   showHeroCta: boolean
   showHeroOverlay: boolean
   showHeroTitle: boolean
+  heroViewportHeight: "default" | "half"
 }) {
   const optimisticVisual =
     pendingChapter != null
@@ -348,6 +357,7 @@ function SyntheticBlock({
           showCta={showHeroCta}
           showOverlay={showHeroOverlay}
           showTitle={showHeroTitle}
+          viewportHeight={heroViewportHeight}
         />
       )
     }

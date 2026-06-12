@@ -169,6 +169,8 @@ type WatchPageClientProps = {
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
   transcriptPlacement?: "afterContent" | "belowHero"
+  transcriptDisplayMode?: "timeline" | "inlineFlow"
+  heroViewportHeight?: "default" | "half"
 }
 
 type LanguageOptionsState =
@@ -256,6 +258,8 @@ export function WatchPageClient({
   showHeroOverlay = true,
   showHeroTitle = true,
   transcriptPlacement = "afterContent",
+  transcriptDisplayMode = "timeline",
+  heroViewportHeight = "default",
 }: WatchPageClientProps) {
   const router = useRouter()
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
@@ -614,6 +618,7 @@ export function WatchPageClient({
       audioSlug={currentLanguageSlug}
       durationSeconds={variant.duration ?? null}
       initialTranscript={initialTranscript}
+      displayMode={transcriptDisplayMode}
     />
   )
   const placeTranscriptBelowHero = transcriptPlacement === "belowHero"
@@ -651,6 +656,7 @@ export function WatchPageClient({
         showHeroCta={showHeroCta}
         showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
+        heroViewportHeight={heroViewportHeight}
         afterTopContent={placeTranscriptBelowHero ? transcript : null}
       />
 

@@ -67,6 +67,31 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
+function makePlayerRef(currentTime = 0) {
+  const player = new EventTarget() as HTMLMediaElement
+  Object.defineProperty(player, "currentTime", {
+    configurable: true,
+    value: currentTime,
+    writable: true,
+  })
+  Object.defineProperty(player, "muted", {
+    configurable: true,
+    value: false,
+    writable: true,
+  })
+  Object.defineProperty(player, "play", {
+    configurable: true,
+    value: vi.fn(() => Promise.resolve()),
+  })
+
+  return {
+    player,
+    playerRef: {
+      current: player as unknown as MuxPlayerRef,
+    },
+  }
+}
+
 describe("SubtitleTranscript rendering", () => {
   it("does not render the transcript section when subtitles do not match the selected audio language", () => {
     act(() => {
@@ -104,5 +129,84 @@ describe("SubtitleTranscript rendering", () => {
         ?.textContent,
     ).toContain("Server-rendered cue")
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("renders inline flow cues without timestamps inside a half-height scroll pane", () => {
+    const { playerRef } = makePlayerRef()
+
+    act(() => {
+      root.render(
+        <SubtitleTranscript
+          subtitles={[englishSubtitle]}
+          audioSlug="english"
+          playerRef={playerRef}
+          displayMode="inlineFlow"
+          initialTranscript={{
+            vttSrc: englishSubtitle.vttSrc,
+            cues: [
+              { start: 5, end: 8, text: "Tell us:" },
+              {
+                start: 8,
+                end: 12,
+                text: "what right do You have to say these things?",
+              },
+            ],
+          }}
+        />,
+      )
+    })
+
+    const section = container.querySelector(
+      '[data-testid="watch-subtitle-transcript"]',
+    )
+    const cues = container.querySelector('[data-testid="watch-subtitle-cues"]')
+
+    expect(section?.getAttribute("data-display-mode")).toBe("inlineFlow")
+    expect(section?.getAttribute("class")).toContain("h-[50svh]")
+    expect(cues?.getAttribute("class")).toContain("overflow-y-auto")
+    expect(cues?.textContent).toContain(
+      "Tell us: what right do You have to say these things?",
+    )
+    expect(cues?.querySelector("time")).toBeNull()
+    expect(cues?.textContent).not.toContain("0:05")
+  })
+
+  it("highlights the active inline cue as the player time changes", async () => {
+    const { player, playerRef } = makePlayerRef(6)
+
+    await act(async () => {
+      root.render(
+        <SubtitleTranscript
+          subtitles={[englishSubtitle]}
+          audioSlug="english"
+          playerRef={playerRef}
+          displayMode="inlineFlow"
+          initialTranscript={{
+            vttSrc: englishSubtitle.vttSrc,
+            cues: [
+              { start: 5, end: 8, text: "First active cue." },
+              { start: 8, end: 12, text: "Second active cue." },
+            ],
+          }}
+        />,
+      )
+    })
+
+    expect(
+      Array.from(container.querySelectorAll("button"))
+        .find((button) => button.textContent?.includes("First active cue."))
+        ?.getAttribute("aria-current"),
+    ).toBe("true")
+
+    await act(async () => {
+      player.currentTime = 9
+      player.dispatchEvent(new Event("timeupdate"))
+    })
+
+    expect(
+      Array.from(container.querySelectorAll("button"))
+        .find((button) => button.textContent?.includes("Second active cue."))
+        ?.getAttribute("aria-current"),
+    ).toBe("true")
   })
 })

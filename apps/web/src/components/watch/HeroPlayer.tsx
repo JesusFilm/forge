@@ -183,6 +183,7 @@ export function HeroPlayer({
   showCta = true,
   showOverlay = true,
   showTitle = true,
+  viewportHeight = "default",
   subtitleVttSrc,
   optimisticVisual,
   coverBlackoutKey,
@@ -198,6 +199,7 @@ export function HeroPlayer({
   showCta?: boolean
   showOverlay?: boolean
   showTitle?: boolean
+  viewportHeight?: "default" | "half"
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
   coverBlackoutKey?: string | null
@@ -211,6 +213,8 @@ export function HeroPlayer({
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
   const heroPlaybackFallbackHref = buildHeroPlaybackFallbackHref(playbackId)
+  const heroFrameHeightClass =
+    viewportHeight === "half" ? "h-[50svh]" : HERO_FRAME_HEIGHT_CLASS
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
@@ -1034,7 +1038,7 @@ export function HeroPlayer({
         data-mobile-portrait-preview={
           mobilePortraitPreviewEnabled ? "true" : "false"
         }
-        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${
+        className={`sticky relative w-full ${heroFrameHeightClass} bg-black transition-[margin-bottom] duration-500 ease-out ${
           chromeRevealed
             ? "overflow-hidden"
             : `overflow-x-clip ${
