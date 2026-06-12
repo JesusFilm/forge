@@ -168,6 +168,7 @@ type WatchPageClientProps = {
   showHeroCta?: boolean
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
+  showHeroBottomGradient?: boolean
   transcriptPlacement?: "afterContent" | "belowHero"
   transcriptDisplayMode?: "timeline" | "inlineFlow"
   showTranscriptHeader?: boolean
@@ -258,6 +259,7 @@ export function WatchPageClient({
   showHeroCta = true,
   showHeroOverlay = true,
   showHeroTitle = true,
+  showHeroBottomGradient = true,
   transcriptPlacement = "afterContent",
   transcriptDisplayMode = "timeline",
   showTranscriptHeader = true,
@@ -659,6 +661,7 @@ export function WatchPageClient({
         showHeroCta={showHeroCta}
         showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
+        showHeroBottomGradient={showHeroBottomGradient}
         heroViewportHeight={heroViewportHeight}
         afterTopContent={placeTranscriptBelowHero ? transcript : null}
       />

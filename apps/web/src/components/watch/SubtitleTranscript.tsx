@@ -233,7 +233,7 @@ export function SubtitleTranscript({
       ? `${s.language.name} (${s.language.nativeName})`
       : s.language.name
   const sectionClassName = isInlineFlow
-    ? "h-[50svh] min-h-80"
+    ? "relative z-10 h-[50svh] min-h-80 bg-stone-950/80 backdrop-blur-md"
     : "bg-stone-900/60 pt-12 pb-20 backdrop-blur-md sm:pt-16 sm:pb-24"
   const contentClassName = isInlineFlow
     ? `${WATCH_PAGE_CONTENT_CLASSES} h-full`

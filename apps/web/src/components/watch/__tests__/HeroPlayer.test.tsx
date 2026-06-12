@@ -175,7 +175,11 @@ import {
   type WatchHeaderLanguageSwitcherDetail,
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
-import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import {
+  WATCH_PRODUCTION_BOTTOM_GRADIENT_BACKGROUND,
+  WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+  WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND,
+} from "@/lib/watch-production-overlays"
 
 let container: HTMLDivElement
 let root: Root
@@ -1208,6 +1212,23 @@ describe("HeroPlayer — initial mount", () => {
     expect(backdrop).not.toBeNull()
     expect(backdrop.getAttribute("style")).toContain(
       WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+    )
+  })
+
+  it("can omit the bottom fade from the muted overlay backdrop", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} showBottomGradient={false} />)
+    })
+
+    const backdrop = container.querySelector(
+      '[data-testid="hero-player-muted-backdrop"]',
+    ) as HTMLDivElement
+    expect(backdrop).not.toBeNull()
+    expect(backdrop.getAttribute("style")).toContain(
+      WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND,
+    )
+    expect(backdrop.getAttribute("style")).not.toContain(
+      WATCH_PRODUCTION_BOTTOM_GRADIENT_BACKGROUND,
     )
   })
 })

@@ -54,6 +54,7 @@ export function WatchSectionRenderer({
   showHeroCta = true,
   showHeroOverlay = true,
   showHeroTitle = true,
+  showHeroBottomGradient = true,
   heroViewportHeight = "default",
   afterTopContent = null,
 }: {
@@ -79,6 +80,7 @@ export function WatchSectionRenderer({
   showHeroCta?: boolean
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
+  showHeroBottomGradient?: boolean
   heroViewportHeight?: "default" | "half"
   afterTopContent?: ReactNode
 }) {
@@ -129,6 +131,7 @@ export function WatchSectionRenderer({
           showHeroCta={showHeroCta}
           showHeroOverlay={showHeroOverlay}
           showHeroTitle={showHeroTitle}
+          showHeroBottomGradient={showHeroBottomGradient}
           heroViewportHeight={heroViewportHeight}
         />
       ))}
@@ -179,6 +182,7 @@ export function WatchSectionRenderer({
                   showHeroCta={showHeroCta}
                   showHeroOverlay={showHeroOverlay}
                   showHeroTitle={showHeroTitle}
+                  showHeroBottomGradient={showHeroBottomGradient}
                   heroViewportHeight={heroViewportHeight}
                 />
               ))}
@@ -215,6 +219,7 @@ function WatchBlockEntry({
   showHeroCta,
   showHeroOverlay,
   showHeroTitle,
+  showHeroBottomGradient,
   heroViewportHeight,
 }: {
   block: MergedWatchBlock
@@ -241,6 +246,7 @@ function WatchBlockEntry({
   showHeroCta: boolean
   showHeroOverlay: boolean
   showHeroTitle: boolean
+  showHeroBottomGradient: boolean
   heroViewportHeight: "default" | "half"
 }) {
   if (isWatchBlock(block)) {
@@ -269,6 +275,7 @@ function WatchBlockEntry({
         showHeroCta={showHeroCta}
         showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
+        showHeroBottomGradient={showHeroBottomGradient}
         heroViewportHeight={heroViewportHeight}
       />
     )
@@ -300,6 +307,7 @@ function SyntheticBlock({
   showHeroCta,
   showHeroOverlay,
   showHeroTitle,
+  showHeroBottomGradient,
   heroViewportHeight,
 }: {
   block: WatchBlock
@@ -325,6 +333,7 @@ function SyntheticBlock({
   showHeroCta: boolean
   showHeroOverlay: boolean
   showHeroTitle: boolean
+  showHeroBottomGradient: boolean
   heroViewportHeight: "default" | "half"
 }) {
   const optimisticVisual =
@@ -357,6 +366,7 @@ function SyntheticBlock({
           showCta={showHeroCta}
           showOverlay={showHeroOverlay}
           showTitle={showHeroTitle}
+          showBottomGradient={showHeroBottomGradient}
           viewportHeight={heroViewportHeight}
         />
       )

@@ -168,8 +168,9 @@ describe("SubtitleTranscript rendering", () => {
 
     expect(section?.getAttribute("data-display-mode")).toBe("inlineFlow")
     expect(section?.getAttribute("class")).toContain("h-[50svh]")
-    expect(section?.getAttribute("class")).not.toContain("bg-stone")
-    expect(section?.getAttribute("class")).not.toContain("backdrop-blur")
+    expect(section?.getAttribute("class")).toContain("bg-stone-950/80")
+    expect(section?.getAttribute("class")).toContain("backdrop-blur")
+    expect(section?.getAttribute("class")).toContain("z-10")
     expect(panel?.getAttribute("class")).not.toContain("rounded")
     expect(panel?.getAttribute("class")).not.toContain("bg-stone")
     expect(panel?.getAttribute("class")).not.toContain("ring-")

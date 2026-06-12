@@ -41,7 +41,10 @@ import {
   type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
-import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import {
+  WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+  WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND,
+} from "@/lib/watch-production-overlays"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -183,6 +186,7 @@ export function HeroPlayer({
   showCta = true,
   showOverlay = true,
   showTitle = true,
+  showBottomGradient = true,
   viewportHeight = "default",
   subtitleVttSrc,
   optimisticVisual,
@@ -199,6 +203,7 @@ export function HeroPlayer({
   showCta?: boolean
   showOverlay?: boolean
   showTitle?: boolean
+  showBottomGradient?: boolean
   viewportHeight?: "default" | "half"
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
@@ -982,6 +987,9 @@ export function HeroPlayer({
   const showTopLanguageSwitch = showLanguageSwitch
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
+  const mutedBackdropBackground = showBottomGradient
+    ? WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND
+    : WATCH_PRODUCTION_PLAYER_OVERLAY_WITHOUT_BOTTOM_GRADIENT_BACKGROUND
   const effectivePreviewBodyOverlapPx = chromeRevealed
     ? 0
     : previewBodyOverlapPx
@@ -1149,8 +1157,7 @@ export function HeroPlayer({
                   className="pointer-events-none absolute inset-0 [background:var(--watch-player-muted-backdrop)]"
                   style={
                     {
-                      "--watch-player-muted-backdrop":
-                        WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+                      "--watch-player-muted-backdrop": mutedBackdropBackground,
                     } as CSSProperties
                   }
                 />
@@ -1210,8 +1217,7 @@ export function HeroPlayer({
               className="pointer-events-none absolute inset-0 [background:var(--watch-player-muted-backdrop)]"
               style={
                 {
-                  "--watch-player-muted-backdrop":
-                    WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+                  "--watch-player-muted-backdrop": mutedBackdropBackground,
                 } as CSSProperties
               }
             />

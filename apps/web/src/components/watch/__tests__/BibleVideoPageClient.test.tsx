@@ -51,6 +51,7 @@ describe("BibleVideoPageClient", () => {
     expect(props?.showHeroCta).toBe(false)
     expect(props?.showHeroOverlay).toBe(false)
     expect(props?.showHeroTitle).toBe(false)
+    expect(props?.showHeroBottomGradient).toBe(false)
     expect(props?.hideBibleQuotes).toBe(true)
     expect(props?.transcriptPlacement).toBe("belowHero")
     expect(props?.transcriptDisplayMode).toBe("inlineFlow")
