@@ -142,6 +142,14 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     )
   })
 
+  it("appends .html under the Bible Video prefix without episode-normalizing it", async () => {
+    const response = await proxy(makeRequest("/bible-video/jesus/english"))
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toContain(
+      "/bible-video/jesus.html/english.html",
+    )
+  })
+
   it("resolves chinese-mandarin alias → mandarin-china → 307", async () => {
     const response = await proxy(
       makeRequest("/jesus.html/chinese-mandarin.html"),
@@ -384,6 +392,26 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     )
   })
 
+  it("rewrites Bible Video pages through the static locale tree", async () => {
+    const response = await proxy(
+      makeRequest("/bible-video/jesus.html/english.html"),
+    )
+    expect(response.status).not.toBe(307)
+    expect(response.status).not.toBe(308)
+    expect(rewritePath(response)).toBe(
+      "/en/en/bible-video/jesus.html/english.html",
+    )
+  })
+
+  it("uses regional htmlLang for Bible Video public audio URLs", async () => {
+    const response = await proxy(
+      makeRequest("/bible-video/jesus.html/spanish-latin-american.html"),
+    )
+    expect(rewritePath(response)).toBe(
+      "/es/es-419/bible-video/jesus.html/spanish-latin-american.html",
+    )
+  })
+
   it("falls back chrome identity for unsupported audio-language families", async () => {
     const response = await proxy(makeRequest("/jesus.html/aari.html"))
     expect(rewritePath(response)).toBe("/en/en/jesus.html/aari.html")
@@ -405,6 +433,14 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBeNull()
   })
 
+  it("404s unknown Bible Video public audio slugs before they reach the app route", async () => {
+    const response = await proxy(
+      makeRequest("/bible-video/jesus.html/non-existent.html"),
+    )
+    expect(response.status).toBe(404)
+    expect(rewritePath(response)).toBeNull()
+  })
+
   it("404s stale public audio aliases that current production no longer serves", async () => {
     const response = await proxy(makeRequest("/jesus.html/swahili.html"))
     expect(response.status).toBe(404)
@@ -413,6 +449,14 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
   it("404s safe-looking unknown content slugs before catch-all page resolution", async () => {
     const response = await proxy(makeRequest("/anything.html/english.html"))
+    expect(response.status).toBe(404)
+    expect(rewritePath(response)).toBeNull()
+  })
+
+  it("404s unknown Bible Video content slugs before page resolution", async () => {
+    const response = await proxy(
+      makeRequest("/bible-video/anything.html/english.html"),
+    )
     expect(response.status).toBe(404)
     expect(rewritePath(response)).toBeNull()
   })
@@ -506,6 +550,10 @@ describe("proxy — visible internal-prefix policy", () => {
       [
         "/es/es-419/jesus.html/spanish-latin-american.html",
         "/jesus.html/spanish-latin-american.html",
+      ],
+      [
+        "/es/es-419/bible-video/jesus.html/spanish-latin-american.html",
+        "/bible-video/jesus.html/spanish-latin-american.html",
       ],
     ] as const) {
       const response = await proxy(makeRequest(visible))

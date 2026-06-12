@@ -12,6 +12,7 @@
 
 import { tryResolveLanguageAlias } from "./language-aliases"
 import {
+  BIBLE_VIDEO_PATH_PREFIX,
   HTML_SUFFIX,
   RESERVED_PREFIXES,
   SAFE_SLUG_PATTERN,
@@ -141,6 +142,7 @@ export function canonicalizeWatchPath(
     const segs = path.split("/").filter(Boolean)
     if (
       segs.length === 3 &&
+      segs[0] !== BIBLE_VIDEO_PATH_PREFIX &&
       !hasHtmlSuffix(segs[0]) &&
       hasHtmlSuffix(segs[1]) &&
       hasHtmlSuffix(segs[2])
@@ -170,11 +172,26 @@ export function canonicalizeWatchPath(
         onlyTrailingSlashChanged = false
       }
     } else if (segs.length === 3) {
-      const next = [
-        hasHtmlSuffix(segs[0]) ? segs[0] : `${segs[0]}${HTML_SUFFIX_LOWER}`,
-        segs[1],
-        hasHtmlSuffix(segs[2]) ? segs[2] : `${segs[2]}${HTML_SUFFIX_LOWER}`,
-      ]
+      const next =
+        segs[0] === BIBLE_VIDEO_PATH_PREFIX
+          ? [
+              segs[0],
+              hasHtmlSuffix(segs[1])
+                ? segs[1]
+                : `${segs[1]}${HTML_SUFFIX_LOWER}`,
+              hasHtmlSuffix(segs[2])
+                ? segs[2]
+                : `${segs[2]}${HTML_SUFFIX_LOWER}`,
+            ]
+          : [
+              hasHtmlSuffix(segs[0])
+                ? segs[0]
+                : `${segs[0]}${HTML_SUFFIX_LOWER}`,
+              segs[1],
+              hasHtmlSuffix(segs[2])
+                ? segs[2]
+                : `${segs[2]}${HTML_SUFFIX_LOWER}`,
+            ]
       const candidate = `/${next.join("/")}`
       if (candidate !== path) {
         path = candidate
@@ -189,7 +206,11 @@ export function canonicalizeWatchPath(
   // /series.html/ep.html/lang.html redirects to the canonical form.
   {
     const segs = path.split("/").filter(Boolean)
-    if (segs.length === 3 && hasHtmlSuffix(segs[1])) {
+    if (
+      segs.length === 3 &&
+      segs[0] !== BIBLE_VIDEO_PATH_PREFIX &&
+      hasHtmlSuffix(segs[1])
+    ) {
       const next = [segs[0], stripHtmlSuffix(segs[1]), segs[2]]
       const candidate = `/${next.join("/")}`
       if (candidate !== path) {

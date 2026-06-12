@@ -17,6 +17,7 @@ import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import type { WatchVideoPathBuilder } from "@/lib/routes"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
 //
@@ -45,6 +46,7 @@ export function WatchSectionRenderer({
   pendingChapter,
   routePosterBridgeKey,
   onChapterNavigateIntent,
+  videoPathBuilder,
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
@@ -61,6 +63,7 @@ export function WatchSectionRenderer({
   pendingChapter?: WatchChapterNavigationIntent | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  videoPathBuilder?: WatchVideoPathBuilder
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -102,6 +105,7 @@ export function WatchSectionRenderer({
           pendingChapter={pendingChapter}
           routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
+          videoPathBuilder={videoPathBuilder}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -143,6 +147,7 @@ export function WatchSectionRenderer({
                   pendingChapter={pendingChapter}
                   routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
+                  videoPathBuilder={videoPathBuilder}
                 />
               ))}
             </div>
@@ -171,6 +176,7 @@ function WatchBlockEntry({
   pendingChapter,
   routePosterBridgeKey,
   onChapterNavigateIntent,
+  videoPathBuilder,
 }: {
   block: MergedWatchBlock
   index: number
@@ -189,6 +195,7 @@ function WatchBlockEntry({
   pendingChapter?: WatchChapterNavigationIntent | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  videoPathBuilder?: WatchVideoPathBuilder
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -209,6 +216,7 @@ function WatchBlockEntry({
         pendingChapter={pendingChapter}
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
+        videoPathBuilder={videoPathBuilder}
       />
     )
   }
@@ -232,6 +240,7 @@ function SyntheticBlock({
   pendingChapter,
   routePosterBridgeKey,
   onChapterNavigateIntent,
+  videoPathBuilder,
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
@@ -249,6 +258,7 @@ function SyntheticBlock({
   pendingChapter?: WatchChapterNavigationIntent | null
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  videoPathBuilder?: WatchVideoPathBuilder
 }) {
   const optimisticVisual =
     pendingChapter != null
@@ -285,6 +295,7 @@ function SyntheticBlock({
           languageSlug={languageSlug ?? ""}
           pendingNavigation={pendingChapter ?? null}
           onChapterNavigateIntent={onChapterNavigateIntent}
+          videoPathBuilder={videoPathBuilder}
         />
       )
 

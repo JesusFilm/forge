@@ -5,6 +5,8 @@ import {
   WATCH_CANONICAL_ORIGIN,
   asContentSlug,
   asLocaleSlug,
+  bibleVideoAbsolute,
+  bibleVideoPath,
   localizedHomeAbsolute,
   localizedHomePath,
   parseWatchPath,
@@ -121,6 +123,24 @@ describe("watchVideoPath", () => {
   })
 })
 
+describe("bibleVideoPath", () => {
+  it("returns prefixed Bible Video shape", () => {
+    expect(bibleVideoPath(jesus, english)).toBe(
+      "/bible-video/jesus.html/english.html",
+    )
+  })
+
+  it("preserves one-shot params and locale-resolved sentinel", () => {
+    expect(
+      bibleVideoPath(jesus, english, {
+        t: 42,
+        autoplay: true,
+        reason: "locale-resolved",
+      }),
+    ).toBe("/bible-video/jesus.html/english.html?t=42&autoplay=1&_lr=1")
+  })
+})
+
 describe("watchEpisodePath", () => {
   it("returns series.html/episode/lang.html shape (episode is bare)", () => {
     expect(watchEpisodePath(lumo, wedding, english)).toBe(
@@ -172,6 +192,12 @@ describe("absolute URL builders", () => {
   it("watchEpisodeAbsolute matches three-segment shape with origin", () => {
     expect(watchEpisodeAbsolute(lumo, wedding, english)).toBe(
       `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/lumo-the-gospel-of-john.html/wedding-in-cana/english.html`,
+    )
+  })
+
+  it("bibleVideoAbsolute prepends origin + basePath", () => {
+    expect(bibleVideoAbsolute(jesus, english)).toBe(
+      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/bible-video/jesus.html/english.html`,
     )
   })
 
@@ -282,6 +308,14 @@ describe("parseWatchPath", () => {
     })
   })
 
+  it("parses /bible-video/jesus.html/english.html as bible-video", () => {
+    expect(parseWatchPath("/bible-video/jesus.html/english.html")).toEqual({
+      kind: "bible-video",
+      slug: "jesus",
+      lang: "english",
+    })
+  })
+
   it("parses three-segment as episode (with .html on first + third only)", () => {
     expect(
       parseWatchPath(
@@ -306,6 +340,16 @@ describe("parseWatchPath", () => {
     const emitted = watchVideoPath(jesus, english)
     const parsed = parseWatchPath(emitted)
     expect(parsed).toEqual({ kind: "video", slug: "jesus", lang: "english" })
+  })
+
+  it("inverts bibleVideoPath", () => {
+    const emitted = bibleVideoPath(jesus, english)
+    const parsed = parseWatchPath(emitted)
+    expect(parsed).toEqual({
+      kind: "bible-video",
+      slug: "jesus",
+      lang: "english",
+    })
   })
 
   it("inverts watchEpisodePath", () => {

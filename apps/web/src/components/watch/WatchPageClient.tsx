@@ -62,6 +62,7 @@ import {
   WATCH_BASE_PATH,
   tryAsContentSlug,
   tryAsLocaleSlug,
+  type WatchVideoPathBuilder,
   watchVideoPath,
 } from "@/lib/routes"
 import { buildFbShareUrl } from "@/lib/share"
@@ -112,6 +113,7 @@ function isPendingChapterStillRoutable(
   pendingChapter: WatchChapterNavigationIntent,
   blocks: MergedWatchBlock[],
   languageSlug: string,
+  videoPathBuilder: WatchVideoPathBuilder,
 ): boolean {
   const lang = tryAsLocaleSlug(languageSlug)
   if (!lang) return false
@@ -131,7 +133,7 @@ function isPendingChapterStillRoutable(
       if (typeof child.slug !== "string") return false
       const slug = tryAsContentSlug(child.slug)
       if (!slug) return false
-      return watchVideoPath(slug, lang) === pendingChapter.href
+      return videoPathBuilder(slug, lang) === pendingChapter.href
     }
   }
 
@@ -158,6 +160,7 @@ type WatchPageClientProps = {
   hideBibleQuotes?: boolean
   questionPanelEnabled?: boolean
   initialTranscript?: InitialSubtitleTranscript
+  videoPathBuilder?: WatchVideoPathBuilder
 }
 
 type LanguageOptionsState =
@@ -170,10 +173,12 @@ function buildShareFallbackHref({
   origin,
   currentLanguageSlug,
   videoSlug,
+  videoPathBuilder,
 }: {
   origin: string
   currentLanguageSlug: string
   videoSlug: string
+  videoPathBuilder: WatchVideoPathBuilder
 }): string | undefined {
   const slug = tryAsContentSlug(videoSlug)
   const lang = tryAsLocaleSlug(currentLanguageSlug)
@@ -182,7 +187,7 @@ function buildShareFallbackHref({
   const shareOrigin = isPublicShareableOrigin(origin)
     ? origin
     : PUBLIC_SHARE_FALLBACK_ORIGIN
-  const shareableUrl = `${shareOrigin}${WATCH_BASE_PATH}${watchVideoPath(
+  const shareableUrl = `${shareOrigin}${WATCH_BASE_PATH}${videoPathBuilder(
     slug,
     lang,
   )}`
@@ -199,6 +204,7 @@ export function WatchPageClient({
   hideBibleQuotes = false,
   questionPanelEnabled = false,
   initialTranscript = null,
+  videoPathBuilder = watchVideoPath,
 }: WatchPageClientProps) {
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
@@ -244,6 +250,7 @@ export function WatchPageClient({
       pendingChapter,
       mergedBlocks,
       currentLanguageSlug,
+      videoPathBuilder,
     )
       ? pendingChapter
       : null
@@ -354,8 +361,9 @@ export function WatchPageClient({
         origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
         currentLanguageSlug,
         videoSlug,
+        videoPathBuilder,
       }),
-    [currentLanguageSlug, videoSlug],
+    [currentLanguageSlug, videoPathBuilder, videoSlug],
   )
 
   // Prefer the editorial cinematic still over `images[].url` — that raw
@@ -519,6 +527,7 @@ export function WatchPageClient({
         pendingChapter={validPendingChapter}
         routePosterBridgeKey={forcedRoutePosterBridgeKey}
         onChapterNavigateIntent={handleChapterNavigateIntent}
+        videoPathBuilder={videoPathBuilder}
       />
 
       <SubtitleTranscript
@@ -557,6 +566,7 @@ export function WatchPageClient({
           languageOptionsLoading={languageOptionsState.status === "loading"}
           languageOptionsError={languageOptionsState.status === "error"}
           onRetryLanguageOptions={loadLanguageOptions}
+          videoPathBuilder={videoPathBuilder}
         />
       ) : null}
       {enabledModalChunks.share ? (
@@ -569,6 +579,7 @@ export function WatchPageClient({
           posterUrl={posterUrl}
           playbackId={variant.muxVideo?.playbackId ?? null}
           onClose={closeModal}
+          videoPathBuilder={videoPathBuilder}
         />
       ) : null}
       {questionPanelEnabled ? (

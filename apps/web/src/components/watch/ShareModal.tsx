@@ -32,6 +32,7 @@ import {
   WATCH_BASE_PATH,
   tryAsContentSlug,
   tryAsLocaleSlug,
+  type WatchVideoPathBuilder,
   watchVideoPath,
 } from "@/lib/routes"
 import {
@@ -60,6 +61,7 @@ export type ShareModalProps = {
   /** Mux playback id — used to build a portable iframe embed via player.mux.com. */
   playbackId?: string | null
   onClose: () => void
+  videoPathBuilder?: WatchVideoPathBuilder
 }
 
 type ShareTab = "link" | "embed"
@@ -74,6 +76,7 @@ export function ShareModal({
   posterUrl,
   playbackId,
   onClose,
+  videoPathBuilder = watchVideoPath,
 }: ShareModalProps) {
   const t = useTranslations("ShareModal")
   const [tab, setTab] = useState<ShareTab>("link")
@@ -88,7 +91,7 @@ export function ShareModal({
   // origin rather than emitting a malformed path.
   const slug = tryAsContentSlug(videoSlug)
   const lang = tryAsLocaleSlug(currentLanguageSlug)
-  const watchPath = slug && lang ? watchVideoPath(slug, lang) : null
+  const watchPath = slug && lang ? videoPathBuilder(slug, lang) : null
   const canonicalUrl = watchPath
     ? `${origin}${WATCH_BASE_PATH}${watchPath}`
     : origin
