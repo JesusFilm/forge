@@ -27,12 +27,8 @@ import {
   SHORTS_CAPTIONS_ARTIFACT_TYPE,
   SHORTS_CLIP_META_ARTIFACT_TYPE,
 } from "@/lib/shorts-artifacts"
-import {
-  buildShortsMetadataArtifact,
-  mergeShortsReport,
-  readShortsReport,
-} from "@/lib/shorts-report"
-import { getJob, mergeJobArtifacts } from "@/lib/state"
+import { readShortsReport } from "@/lib/shorts-report"
+import { getJob, mergeShortsReportEntry } from "@/lib/state"
 import type { ShortsPhase } from "@/types/job"
 
 // Top-level unknown keys (e.g. a client-supplied updatedBy/draftVersion) are
@@ -121,7 +117,7 @@ export async function GET(
   const shorts = job.options.shorts
   if (!shorts) {
     return NextResponse.json(
-      { error: "Job is not a shorts job" },
+      { error: "Job is not a shorts job", reason: "not_shorts_job" },
       { status: 404 },
     )
   }
@@ -206,7 +202,7 @@ export async function POST(
   const shorts = job.options.shorts
   if (!shorts) {
     return NextResponse.json(
-      { error: "Job is not a shorts job" },
+      { error: "Job is not a shorts job", reason: "not_shorts_job" },
       { status: 409 },
     )
   }
@@ -289,11 +285,11 @@ export async function POST(
   })
 
   // draftVersion mirror only — phase is owned by the workflows (plan
-  // decision 2, single-writer rule), and mergeShortsReport keeps it.
-  await mergeJobArtifacts(
-    job.id,
-    buildShortsMetadataArtifact(mergeShortsReport(report, { draftVersion })),
-  )
+  // decision 2, single-writer rule). The patch carries ONLY draftVersion and
+  // mergeShortsReportEntry re-reads the CURRENT entry inside the per-job
+  // write lock, so this save structurally cannot revert a phase written by a
+  // render workflow that started after our gate check above.
+  await mergeShortsReportEntry(job.id, { draftVersion })
 
   console.log(
     `[shorts] event=draft_saved jobId=${job.id} assetId=${shorts.assetId} draftVersion=${draftVersion} actor=${updatedBy}`,

@@ -13,6 +13,7 @@ import {
   isActiveShortsPhase,
   isEditorShortsPhase,
   isShortsDraftStale,
+  isShortsLaunchFailed,
   parseClipTime,
   shortsPhaseTone,
   validateClipSelection,
@@ -221,6 +222,14 @@ describe("phase presentation", () => {
     const editor = ALL_PHASES.filter(isEditorShortsPhase)
     expect(editor).toEqual(["ready_for_review", "completed", "render_failed"])
   })
+
+  it("detects launch failure only for queued + failed", () => {
+    expect(isShortsLaunchFailed("queued", "failed")).toBe(true)
+    expect(isShortsLaunchFailed("queued", "pending")).toBe(false)
+    expect(isShortsLaunchFailed("queued", "running")).toBe(false)
+    expect(isShortsLaunchFailed("preparing", "failed")).toBe(false)
+    expect(isShortsLaunchFailed("prepare_failed", "failed")).toBe(false)
+  })
 })
 
 describe("formatShortsAnnotation", () => {
@@ -313,6 +322,41 @@ describe("getShortsJobSummary", () => {
     expect(summary?.title).toBe("mux-1-short-abcd1234")
     expect(summary?.phase).toBe("queued")
     expect(summary?.isStale).toBe(false)
+  })
+
+  it("presents queued + failed as launch failed (todo 010)", () => {
+    const summary = getShortsJobSummary(
+      buildJob({ artifacts: {}, status: "failed" }),
+    )
+    expect(summary).toMatchObject({
+      phase: "queued",
+      phaseLabel: "Launch failed",
+      phaseTone: "failed",
+      isLaunchFailed: true,
+    })
+  })
+
+  it("keeps a genuinely queued job presented as queued", () => {
+    const summary = getShortsJobSummary(
+      buildJob({ artifacts: {}, status: "pending" }),
+    )
+    expect(summary).toMatchObject({
+      phase: "queued",
+      phaseLabel: "Queued",
+      phaseTone: "pending",
+      isLaunchFailed: false,
+    })
+  })
+
+  it("does not flag failed jobs in non-queued phases as launch failed", () => {
+    // A failed render leaves phase "render_failed" — the phase mapping owns
+    // that label; isLaunchFailed stays false.
+    const summary = getShortsJobSummary(buildJob({ status: "failed" }))
+    expect(summary).toMatchObject({
+      phase: "ready_for_review",
+      phaseLabel: "Ready for review",
+      isLaunchFailed: false,
+    })
   })
 })
 

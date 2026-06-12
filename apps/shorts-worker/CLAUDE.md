@@ -115,6 +115,13 @@ clipDurationSec, captionsCount, annotation }`; render report:
   restart loses everything; manager treats a 404 poll as `job_lost` and
   resubmits (bounded, 2 resubmits). **Single replica only** — see
   railway.toml notes below.
+- **Terminal record eviction:** every `submit` first prunes completed/failed
+  records older than 24h (`TERMINAL_RECORD_RETENTION_MS` in `jobs.ts`;
+  a terminal record's `updatedAt` is its finish time) so the registry can't
+  grow unboundedly over the process lifetime. Active (queued/running) jobs
+  are never evicted regardless of age. 24h is orders of magnitude beyond
+  manager's longest poll ceiling (80min render), so an outcome is always
+  still readable when manager polls for it.
 - The job runner wraps the ENTIRE async body in try/catch/finally
   (fire-and-forget slot-leak guard — root CLAUDE.md Known Patterns).
 
@@ -159,8 +166,17 @@ lane slot) AND again inside `runPrepare` before any ffmpeg/ffprobe spawn
   serves its synthetic source. Production rejects all non-https schemes.
 - Every ffmpeg/ffprobe invocation that reads the request-supplied URL passes
   `-protocol_whitelist https,tls,tcp,crypto,hls` (plus `http` only on the
-  validated loopback smoke path). Worker-generated local temp files keep
+  validated loopback smoke path), and receives the RE-SERIALIZED parsed URL
+  (`validated.url.toString()`) — exactly the string that passed validation,
+  never the raw caller-supplied bytes. Worker-generated local temp files keep
   ffmpeg's default protocol set — do NOT add the restrictive whitelist there.
+- **No protocol-whitelist env knob — deliberate.** crop-worker exposes
+  `CROP_WORKER_SOURCE_PROTOCOL_WHITELIST` as a CSV override; shorts-worker
+  intentionally DROPS that knob. The whitelist is derived in code only
+  (`sourceProtocolWhitelist()` in `ffmpeg.ts`, keyed off the validated
+  loopback flag), so loosening the SSRF posture requires a code change and
+  review — not a quiet env edit on the Railway dashboard. Do not add the
+  env var back.
 - The render's loopback clip server binds `127.0.0.1` explicitly on an
   ephemeral port, serves EXACTLY `GET/HEAD /clip.mp4` (404s everything
   else), and is torn down in `finally`. `Access-Control-Allow-Origin: *` is
@@ -235,15 +251,24 @@ fonts-noto-cjk` (fallback glyphs only; brand fonts are vendored in the
    whisper.cpp 1.7.4 **hard-verified against commit
    `8a9ad7844d6e2a10cddf4b92de4089d7ac2b14a9`** (a moved tag fails the
    build); downloads `ggml-large-v3-turbo` and **SHA-256-verifies it against
-   the HuggingFace LFS pointer** (build fails on mismatch); downloads
-   chrome-headless-shell via `ensureBrowser()` (pinned transitively by the
-   exact `@remotion/renderer` version).
+   the pinned `WHISPER_MODEL_SHA256` ARG constant** (build fails on
+   mismatch). The expected hash is a LITERAL baked into the Dockerfile —
+   never fetched at build time from the HuggingFace LFS pointer, which lives
+   on the same mutable `main` ref as the model bytes (an upstream re-push
+   would rotate both together). Rotate the ARG deliberately on an
+   intentional model upgrade, same posture as `WHISPER_CPP_COMMIT_SHA`.
+   Finally downloads chrome-headless-shell via `ensureBrowser()` (pinned
+   transitively by the exact `@remotion/renderer` version).
 3. **build** — pnpm workspace install + `tsc` + `prebundle` (Remotion
    `bundle()` over `@forge/shorts-compositions/entry` → `/app/bundle`).
    Webpack never runs at runtime; the first render after deploy costs the
-   same as the Nth.
+   same as the Nth. COPYies root `patches/` before `pnpm install` — pnpm
+   hashes every root `pnpm.patchedDependencies` file even when the patched
+   package is outside the `--filter`, so a missing patch ENOENTs the
+   install.
 4. **prod-deps** — production-only `pnpm install` PRESERVING the workspace
-   symlink layout. **Deliberately NOT `pnpm deploy`:** deploy materializes
+   symlink layout (also COPYies `patches/`, same pnpm requirement as the
+   build stage). **Deliberately NOT `pnpm deploy`:** deploy materializes
    the source-shipped TS compositions package UNDER `node_modules`, where
    Node refuses type-stripping. The workspace symlink (realpath
    `/app/packages/shorts-compositions`, outside `node_modules`) is what
@@ -280,8 +305,14 @@ Keep it that way.
    means `SHORTS_WORKER_API_KEYS` isn't set. Only THEN set manager's
    `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Reverse order
    produces a dead minute where manager's first call 401s.
-6. Healthcheck `/health` (configured in railway.toml). Boot fails fast in
-   production if the model/whisper/bundle paths are missing in the image.
+6. Healthcheck `/health` with `healthcheckTimeout = 120` (railway.toml).
+   120s is deliberately BELOW Railway's 300s default: boot does no heavy
+   work (the Remotion bundle is pre-baked, the whisper model is loaded
+   per-transcription, and `assertRuntimeEnv` only stats paths), so a healthy
+   container answers `/health` within seconds of start — if it hasn't
+   answered in 2 minutes the image is broken (missing model/bundle/whisper
+   path throws at startup) and the deploy should fail fast instead of
+   hanging for the full default window.
 
 ## Development
 
@@ -306,13 +337,19 @@ manager↔worker local parity.
 ## Known gaps
 
 - **The container smoke has NOT yet been run** (here or in CI): `docker
-build` + running the smoke inside the image is the only proof that
-  Chromium launches, vendored + fallback fonts resolve, the whisper model
-  loads, and the baked bundle resolves IN-IMAGE. The host smoke passed
-  (~31s, real prepare + real Chromium render verified by ffprobe), but it
-  exercises the runtime-bundle path, not the baked image. Run the container
-  smoke before the first production job; wiring it into CI is a recorded
-  fast-follow on feat-178.
+build` + driving the image is the only proof that Chromium launches,
+  vendored + fallback fonts resolve, the whisper model loads, and the baked
+  bundle resolves IN-IMAGE. The host smoke passed (~31s, real prepare + real
+  Chromium render verified by ffprobe), but it exercises the runtime-bundle
+  path, not the baked image. Run the container smoke before the first
+  production job; wiring it into CI is a recorded fast-follow on feat-178.
+  **The container smoke must be HTTP-driven:** the runtime image ships only
+  `dist/`, the baked bundle, and prod node_modules — `tsx` and `scripts/`
+  are NOT in the image, so `scripts/smoke.ts` cannot execute inside the
+  container. Drive it from the host instead: start the container, then
+  POST /jobs and poll GET /jobs/{workerJobId} against the published port
+  (serve the synthetic source to the container over a host-reachable URL
+  added to `SHORTS_WORKER_ALLOWED_SOURCE_HOSTS`).
 
 ## Conventions
 

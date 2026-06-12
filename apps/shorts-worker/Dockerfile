@@ -80,15 +80,19 @@ RUN node --input-type=module -e "import('@remotion/install-whisper-cpp').then(({
     && echo "whisper.cpp HEAD: $ACTUAL_SHA" \
     && test "$ACTUAL_SHA" = "$WHISPER_CPP_COMMIT_SHA"
 
-# Model download + SHA-256 verification: the expected hash comes from the
-# HuggingFace LFS pointer at IMAGE BUILD time and the downloaded model must
-# match it (build fails on mismatch — plan security P2-4).
+# Model supply-chain pin: known-good SHA-256 of ggml-large-v3-turbo.bin,
+# resolved 2026-06-11 from the HuggingFace LFS pointer
+# (https://huggingface.co/ggerganov/whisper.cpp/raw/main/ggml-large-v3-turbo.bin,
+# `oid sha256:<hash>` line). The download is verified against this CONSTANT —
+# never against a build-time fetch of the pointer, which lives on the same
+# mutable `main` ref as the model bytes (self-referential trust: an upstream
+# re-push would rotate both together). To rotate deliberately (intentional
+# model upgrade): curl the LFS pointer above, read the `oid sha256:` line,
+# and update this ARG — same operational posture as WHISPER_CPP_COMMIT_SHA.
+# Rotating invalidates (and reships) the ~1.6GB model layer.
+ARG WHISPER_MODEL_SHA256=1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69
 RUN node --input-type=module -e "import('@remotion/install-whisper-cpp').then(({ downloadWhisperModel }) => downloadWhisperModel({ model: 'large-v3-turbo', folder: '/opt/whisper-models' }))" \
-    && curl -fsSL https://huggingface.co/ggerganov/whisper.cpp/raw/main/ggml-large-v3-turbo.bin -o /tmp/model-pointer.txt \
-    && EXPECTED_SHA="$(sed -n 's/^oid sha256:\(.*\)$/\1/p' /tmp/model-pointer.txt)" \
-    && test -n "$EXPECTED_SHA" \
-    && echo "$EXPECTED_SHA  /opt/whisper-models/ggml-large-v3-turbo.bin" | sha256sum -c - \
-    && rm /tmp/model-pointer.txt
+    && echo "${WHISPER_MODEL_SHA256}  /opt/whisper-models/ggml-large-v3-turbo.bin" | sha256sum -c -
 
 # chrome-headless-shell, pinned transitively by the exact @remotion/renderer
 # version. ensureBrowser() downloads into <nearest package.json dir>/
@@ -109,6 +113,10 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/shorts-worker/package.json apps/shorts-worker/package.json
 COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
+# patches/ is REQUIRED: pnpm hashes every root pnpm.patchedDependencies file
+# at install time even when the patched package is outside the --filter — a
+# missing patch file ENOENTs the install.
+COPY patches patches
 # --ignore-scripts: the repo root prepare hook (husky) needs the full repo;
 # none of this subtree's deps require install scripts at build time.
 RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts \
@@ -135,6 +143,9 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/shorts-worker/package.json apps/shorts-worker/package.json
 COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
+# patches/ required here too — same pnpm patchedDependencies hashing as the
+# build stage.
+COPY patches patches
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts \
       --filter @forge/shorts-worker...
 

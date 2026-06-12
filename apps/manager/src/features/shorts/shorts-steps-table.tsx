@@ -12,49 +12,19 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { CollapsibleStepRow } from "@/features/jobs/collapsible-step-row"
-import { StepStatusGlyph } from "@/features/jobs/live-job-steps-table"
+import {
+  formatDuration,
+  STEP_DESCRIPTION_BY_NAME,
+  StepStatusGlyph,
+} from "@/features/jobs/live-job-steps-table"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord, WorkflowStepName } from "@/types/job"
-
-const SHORTS_STEP_DESCRIPTIONS: Partial<Record<WorkflowStepName, string>> = {
-  shorts_prepare:
-    "Trims the source clip and generates whisper word captions via the shorts worker.",
-  shorts_render: "Renders the 1080x1920 short through the shorts worker.",
-  shorts_mux_output: "Creates the Mux output asset from the rendered short.",
-}
 
 const SHORTS_STEP_ICONS: Partial<Record<WorkflowStepName, LucideIcon>> = {
   shorts_prepare: Scissors,
   shorts_render: Clapperboard,
   shorts_mux_output: CloudUpload,
-}
-
-function formatDuration(startedAt?: string, finishedAt?: string): string {
-  if (!startedAt || !finishedAt) {
-    return "–"
-  }
-
-  const startedMs = Date.parse(startedAt)
-  const finishedMs = Date.parse(finishedAt)
-  if (!Number.isFinite(startedMs) || !Number.isFinite(finishedMs)) {
-    return "–"
-  }
-
-  const totalSeconds = Math.max(0, Math.floor((finishedMs - startedMs) / 1000))
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`
-  }
-
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
-  }
-
-  const hours = Math.floor(minutes / 60)
-  const remainingMinutes = minutes % 60
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`
 }
 
 export function ShortsStepsTable({ job }: { job: JobRecord }) {
@@ -87,7 +57,7 @@ export function ShortsStepsTable({ job }: { job: JobRecord }) {
                   key={step.name}
                   stepName={step.name}
                   title={formatStepName(step.name)}
-                  description={SHORTS_STEP_DESCRIPTIONS[step.name] ?? ""}
+                  description={STEP_DESCRIPTION_BY_NAME[step.name]}
                   icon={SHORTS_STEP_ICONS[step.name] ?? Clapperboard}
                   duration={formatDuration(step.startedAt, step.finishedAt)}
                   artifacts={getArtifactsForStep(

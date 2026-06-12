@@ -431,10 +431,28 @@ describe("POST /api/shorts/jobs", () => {
       }),
     )
     expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "asset_mismatch",
+      retryable: false,
+    })
     expect(createJobMock).not.toHaveBeenCalled()
   })
 
-  it("marks the job failed and returns 500 when the launch throws", async () => {
+  it("returns 502 mux_error when the Mux lookup fails", async () => {
+    getMuxAssetPlaybackMock.mockRejectedValue(new Error("mux 503"))
+
+    const response = await POST(
+      postRequest({ muxAssetId: "mux-1", clip: validClip }),
+    )
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "mux_error",
+      retryable: true,
+    })
+    expect(createJobMock).not.toHaveBeenCalled()
+  })
+
+  it("marks the job failed and returns the retry pointer when the launch throws", async () => {
     launchShortsMock.mockRejectedValue(new Error("workflow runtime down"))
 
     const response = await POST(
@@ -442,6 +460,13 @@ describe("POST /api/shorts/jobs", () => {
     )
     expect(response.status).toBe(500)
     expect(updateJobMock).toHaveBeenCalledWith("job-1", { status: "failed" })
+    // retryable:false — callers recover via the retry route on the returned
+    // jobId, not by re-POSTing this route (which would duplicate the job).
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "launch_failed",
+      retryable: false,
+      jobId: "job-1",
+    })
   })
 
   it("fails the job even when the launch throws synchronously", async () => {
@@ -492,5 +517,8 @@ describe("GET /api/shorts/jobs", () => {
     expect(response.status).toBe(200)
     const payload = (await response.json()) as { jobs: JobRecord[] }
     expect(payload.jobs.map((job) => job.id)).toEqual(["shorts-job"])
+    // Documented cross-kind cap: the limit applies across ALL job kinds
+    // before the shorts filter, so it stays well above the shorts volume.
+    expect(listJobsMock).toHaveBeenCalledWith({ limit: 250 })
   })
 })

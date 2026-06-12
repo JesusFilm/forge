@@ -223,6 +223,36 @@ describe("runPrepare", () => {
     expect(meta.clip).toEqual({ startSec: 50, endSec: 60 })
   })
 
+  it("hands ffprobe/ffmpeg the RE-SERIALIZED validated URL, never the raw string", async () => {
+    const { runCommand, calls } = createFakeRunCommand()
+    // Raw string whose canonical serialization differs (URL lowercases the
+    // host): the subprocess argv must carry EXACTLY the string that passed
+    // validation — validated.url.toString() — not the caller's raw bytes.
+    const rawUrl = "https://STREAM.MUX.COM/pb_abc.m3u8"
+
+    await runPrepare({
+      assetId: "asset1",
+      sourceUrl: rawUrl,
+      clip: { startSec: 5, endSec: 15 },
+      language: null,
+      deps: {
+        runCommand,
+        storage,
+        allowedHosts: ALLOWED,
+        nodeEnv: "test",
+        transcribe: null,
+      },
+    })
+
+    const probe = calls.find((call) => call.command === "ffprobe")!
+    expect(probe.args[probe.args.length - 1]).toBe(SOURCE_URL)
+    expect(probe.args).not.toContain(rawUrl)
+
+    const trim = calls.find((call) => call.command === "ffmpeg")!
+    expect(trim.args[trim.args.indexOf("-i") + 1]).toBe(SOURCE_URL)
+    expect(trim.args).not.toContain(rawUrl)
+  })
+
   it("writes clip, meta, and captions artifacts with host-only provenance", async () => {
     const { runCommand } = createFakeRunCommand()
     const fakeTranscribe: TranscribeClip = async () => ({

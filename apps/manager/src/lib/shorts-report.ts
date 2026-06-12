@@ -31,10 +31,14 @@ const SHORTS_PHASES = new Set<ShortsPhase>([
 export function buildShortsMetadataArtifact(
   report: ShortsJobReport,
 ): JobArtifactManifest {
+  // ShortsJobReport is a type alias of an object literal type, so it carries
+  // an implicit index signature and widens to the manifest entry's
+  // Record<string, unknown> data without casts.
+  const data: Record<string, unknown> = report
   return {
     [SHORTS_ARTIFACT_KEY]: {
       kind: "metadata",
-      data: report as unknown as Record<string, unknown>,
+      data,
     },
   }
 }

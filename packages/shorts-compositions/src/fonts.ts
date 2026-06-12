@@ -47,6 +47,10 @@ export const loadShortFonts = (): Promise<void> => {
       continueRender(handle)
     })
     .catch((error: unknown) => {
+      // Clear the memoized promise BEFORE cancelRender (which throws) so the
+      // failure is not cached forever — the next mount retries the load
+      // instead of reusing a stale rejected promise and dead render handle.
+      fontsPromise = null
       // No silent fallback-font renders: abort the render with the error.
       cancelRender(error)
     })

@@ -32,6 +32,17 @@ export function isActiveShortsPhase(phase: ShortsPhase): boolean {
   return ACTIVE_PHASES.has(phase)
 }
 
+// The create route's workflow launch failed before any phase transition:
+// the report still shows the initial "queued" intent but the job is failed
+// and NOTHING is running (todo 010). The retry route accepts a plain retry
+// from this state and relaunches prepare from scratch.
+export function isShortsLaunchFailed(
+  phase: ShortsPhase,
+  jobStatus: JobRecord["status"],
+): boolean {
+  return phase === "queued" && jobStatus === "failed"
+}
+
 export function isEditorShortsPhase(phase: ShortsPhase): boolean {
   return EDITOR_PHASES.has(phase)
 }
@@ -245,6 +256,8 @@ export type ShortsJobSummary = {
   phase: ShortsPhase
   phaseLabel: string
   phaseTone: ShortsPhaseTone
+  /** Phase "queued" + job status "failed": the create launch never ran. */
+  isLaunchFailed: boolean
   annotationLabel: string | null
   isStale: boolean
   report: ShortsJobReport | null
@@ -258,8 +271,12 @@ export function getShortsJobSummary(job: JobRecord): ShortsJobSummary | null {
 
   const report = getShortsReport(job.artifacts)
   // The report is the phase source of truth (plan decision 2) — workflows
-  // own every transition including the failure phases.
+  // own every transition including the failure phases. One status-based
+  // exception: "queued" + job status "failed" means the create route's
+  // launch itself failed, so the label/tone must read as a failure, not as
+  // a workflow that is about to run.
   const phase = report?.phase ?? "queued"
+  const isLaunchFailed = isShortsLaunchFailed(phase, job.status)
 
   return {
     assetId: shorts.assetId,
@@ -269,8 +286,9 @@ export function getShortsJobSummary(job: JobRecord): ShortsJobSummary | null {
     clip: shorts.clip,
     clipRangeLabel: formatClipRange(shorts.clip),
     phase,
-    phaseLabel: formatShortsPhase(phase),
-    phaseTone: shortsPhaseTone(phase),
+    phaseLabel: isLaunchFailed ? "Launch failed" : formatShortsPhase(phase),
+    phaseTone: isLaunchFailed ? "failed" : shortsPhaseTone(phase),
+    isLaunchFailed,
     annotationLabel: formatShortsAnnotation(report?.annotation ?? null),
     isStale: isShortsDraftStale(report),
     report,

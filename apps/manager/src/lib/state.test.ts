@@ -5,6 +5,7 @@ import {
   listJobSummaries,
   mergeArtifactEntries,
   mergeJobArtifacts,
+  mergeShortsReportEntry,
   normalizeJobArtifacts,
   toJobRecord,
   updateJob,
@@ -222,6 +223,92 @@ describe("admin job event publishing", () => {
       transcript: { kind: "downloadable" },
     })
     expect(publishJobEventMock).toHaveBeenCalledWith(updatedJob)
+  })
+
+  it("merges a shorts report patch field-level against the CURRENT entry", async () => {
+    // Lost-update regression (todo 011): the persisted phase is "rendering"
+    // (a render workflow moved it after the caller's stale read); a
+    // draftVersion-only patch must NOT revert the phase — the entry is
+    // re-read inside the per-job write lock and merged field-level.
+    const persistedShorts = {
+      kind: "metadata",
+      data: {
+        domain: "shorts",
+        phase: "rendering",
+        annotation: null,
+        hasAudio: true,
+        clipDurationSec: 30,
+        captionsCount: 42,
+        draftVersion: 3,
+        lastRenderedDraftVersion: 2,
+        lastRenderedPropsHash: "a".repeat(64),
+        output: { muxAssetId: "mux-old", playbackId: "pb-old", ready: true },
+        updatedAt: "2026-06-11T10:00:00.000Z",
+      },
+    }
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-20"),
+      artifacts: {
+        shorts: persistedShorts,
+        transcript: { kind: "downloadable" },
+      },
+    })
+    adminUpdateJobMock.mockImplementation(
+      async (_id: string, updates: Record<string, unknown>) => ({
+        ...buildGraphqlJob("job-20"),
+        artifacts: updates.artifacts,
+      }),
+    )
+
+    await mergeShortsReportEntry("job-20", { draftVersion: 4 })
+
+    const [, updates] = adminUpdateJobMock.mock.calls[0] as [
+      string,
+      { artifacts: Record<string, { data: Record<string, unknown> }> },
+    ]
+    expect(updates.artifacts.shorts.data).toMatchObject({
+      domain: "shorts",
+      phase: "rendering", // preserved — patch never carried it
+      draftVersion: 4, // patched
+      hasAudio: true,
+      captionsCount: 42,
+      output: { muxAssetId: "mux-old", playbackId: "pb-old", ready: true },
+    })
+    // Sibling manifest entries survive the merge.
+    expect(updates.artifacts).toMatchObject({
+      transcript: { kind: "downloadable" },
+    })
+  })
+
+  it("builds the shorts entry from defaults when none is persisted yet", async () => {
+    adminGetJobMock.mockResolvedValueOnce(buildGraphqlJob("job-21"))
+    adminUpdateJobMock.mockImplementation(
+      async (_id: string, updates: Record<string, unknown>) => ({
+        ...buildGraphqlJob("job-21"),
+        artifacts: updates.artifacts,
+      }),
+    )
+
+    await mergeShortsReportEntry("job-21", { phase: "preparing" })
+
+    const [, updates] = adminUpdateJobMock.mock.calls[0] as [
+      string,
+      { artifacts: Record<string, { data: Record<string, unknown> }> },
+    ]
+    expect(updates.artifacts.shorts.data).toMatchObject({
+      domain: "shorts",
+      phase: "preparing",
+      draftVersion: 0,
+    })
+  })
+
+  it("returns null without writing when the job is missing", async () => {
+    adminGetJobMock.mockResolvedValueOnce(null)
+
+    await expect(
+      mergeShortsReportEntry("job-gone", { draftVersion: 1 }),
+    ).resolves.toBeNull()
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
   })
 
   it("publishes the normalized job after updateStepStatus succeeds", async () => {

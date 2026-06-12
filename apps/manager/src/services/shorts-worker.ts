@@ -135,9 +135,15 @@ export type ShortsWorkerClientOptions = {
   fetchImpl?: typeof fetch
 }
 
+type ShortsWorkerResolvedConfig = {
+  ok: true
+  baseUrl: string
+  bearer: string
+}
+
 function resolveConfig(
   options: ShortsWorkerClientOptions,
-): { baseUrl: string; bearer: string } | ShortsWorkerFailure {
+): ShortsWorkerResolvedConfig | ShortsWorkerFailure {
   const baseUrl = options.baseUrl ?? env.SHORTS_WORKER_BASE_URL
   const bearer = options.bearer ?? env.SHORTS_WORKER_API_KEY
   if (!baseUrl || !bearer) {
@@ -151,7 +157,7 @@ function resolveConfig(
     }
   }
 
-  return { baseUrl, bearer }
+  return { ok: true, baseUrl, bearer }
 }
 
 function networkFailure(error: unknown): ShortsWorkerFailure {
@@ -246,13 +252,21 @@ function parseJobSnapshot(value: unknown): ShortsWorkerJobSnapshot | null {
     return null
   }
 
+  // Same policy as a malformed result: a PRESENT but malformed error object
+  // is a worker contract drift and must surface loudly as parse_error, not
+  // be silently nulled into the "failed without an envelope" path.
+  const error = record.error == null ? null : parseJobError(record.error)
+  if (record.error != null && error === null) {
+    return null
+  }
+
   return {
     workerJobId: record.workerJobId,
     kind: record.kind as ShortsWorkerJobKind,
     status: record.status as ShortsWorkerJobStatus,
     progress: typeof record.progress === "number" ? record.progress : null,
     message: typeof record.message === "string" ? record.message : null,
-    error: record.error == null ? null : parseJobError(record.error),
+    error,
     result,
   }
 }
@@ -262,7 +276,7 @@ export async function submitShortsWorkerJob(
   options: ShortsWorkerClientOptions = {},
 ): Promise<ShortsWorkerEnvelope<ShortsWorkerSubmitAccepted>> {
   const config = resolveConfig(options)
-  if ("ok" in config) {
+  if (!config.ok) {
     return config
   }
 
@@ -331,7 +345,7 @@ export async function getShortsWorkerJob(
   options: ShortsWorkerClientOptions = {},
 ): Promise<ShortsWorkerEnvelope<ShortsWorkerJobSnapshot>> {
   const config = resolveConfig(options)
-  if ("ok" in config) {
+  if (!config.ok) {
     return config
   }
 
@@ -397,9 +411,14 @@ const defaultSleep = (ms: number) =>
 
 // Polls a shorts-worker job until it completes, fails, or the deadline is
 // exceeded. Elapsed time is accumulated from intervalMs (deterministic for
-// tests with an injected sleep). Transient poll failures (network/parse)
-// keep polling until the deadline; job_lost returns immediately so the
-// caller can resubmit.
+// tests with an injected sleep) — HTTP round-trip time is NOT counted, so
+// wall-clock can overrun the nominal timeoutMs by up to one round-trip per
+// interval. That slack is acceptable by design: the budget is interval-based,
+// and the worker's own per-job deadline (strictly BELOW this manager ceiling
+// — see the poll-ceiling constants above) is the real bound that classifies
+// an overrunning job first. Transient poll failures (network/parse) keep
+// polling until the deadline; job_lost returns immediately so the caller can
+// resubmit.
 export async function pollShortsWorkerJob(
   input: PollShortsWorkerJobInput,
   options: ShortsWorkerClientOptions = {},

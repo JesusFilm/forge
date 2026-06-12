@@ -54,7 +54,9 @@ type LiveJobStepsTableProps = {
   onJobUpdate?: (job: JobRecord) => void
 }
 
-const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail) —
+// single source of truth for step description copy.
+export const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   download_video: "Fetches source media and validates job inputs.",
   transcription: "Generates a timestamped transcript from the source audio.",
   structured_transcript:
@@ -90,7 +92,11 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   shorts_mux_output: "Creates the Mux output asset from the rendered short.",
 }
 
-function formatDuration(startedAt?: string, finishedAt?: string): string {
+// Exported for reuse by other job UIs (shorts steps table, detail header).
+export function formatDuration(
+  startedAt?: string,
+  finishedAt?: string,
+): string {
   if (!startedAt || !finishedAt) {
     return "–"
   }

@@ -23,6 +23,7 @@ import {
   buildShortsMetadataArtifact,
   getShortsReport,
   mergeShortsReport,
+  type ShortsReportPatch,
 } from "@/lib/shorts-report"
 import type {
   JobArtifactManifest,
@@ -118,11 +119,7 @@ async function markStepSkipped(
   step: WorkflowStepName,
   note?: string,
 ) {
-  if (note === undefined) {
-    await stepUpdateStepStatus(jobId, step, "skipped")
-    return
-  }
-
+  // stepUpdateStepStatus already drops an undefined note — no branch needed.
   await stepUpdateStepStatus(jobId, step, "skipped", note)
 }
 
@@ -148,11 +145,28 @@ async function persistMergedArtifacts(
   }
 }
 
+// Wholesale report write — failJob's FALLBACK only. Main-path persists go
+// through applyReportPatch so the merge happens against the CURRENT
+// persisted entry inside the per-job state lock.
 async function persistReport(
   jobId: string,
   report: ShortsJobReport,
 ): Promise<void> {
   await persistMergedArtifacts(jobId, buildShortsMetadataArtifact(report))
+}
+
+// Field-level report persist: the patch is merged onto the CURRENT persisted
+// entry inside the per-job write lock (state.mergeShortsReportEntry), so a
+// persist landing after a multi-minute step cannot clobber interim writes —
+// e.g. the draft route's draftVersion mirror. Returns the patch layered onto
+// the caller's local snapshot, which survives only as failJob's fallback.
+async function applyReportPatch(
+  jobId: string,
+  snapshot: ShortsJobReport,
+  patch: ShortsReportPatch,
+): Promise<ShortsJobReport> {
+  await stepMergeShortsReport(jobId, patch)
+  return mergeShortsReport(snapshot, patch)
 }
 
 async function completeJob(jobId: string): Promise<void> {
@@ -166,7 +180,7 @@ async function completeJob(jobId: string): Promise<void> {
 
 async function failJob(
   jobId: string,
-  report: ShortsJobReport,
+  fallbackReport: ShortsJobReport,
   error: unknown,
   phase: "prepare_failed" | "render_failed",
 ): Promise<void> {
@@ -174,11 +188,25 @@ async function failJob(
   console.error(`[shorts] event=workflow_error jobId=${jobId} error=${message}`)
 
   try {
-    await persistReport(jobId, mergeShortsReport(report, { phase }))
-  } catch (persistError) {
+    // Patch ONLY the phase via the locked field-level merge: an early failure
+    // (context/report read threw before the local snapshot hydrated) must not
+    // wipe previously persisted fields — hasAudio/captionsCount/draftVersion/
+    // output all survive, only phase (+updatedAt) moves.
+    await stepMergeShortsReport(jobId, { phase })
+  } catch (mergeError) {
     console.error(
-      `[shorts] event=report_persist_failed jobId=${jobId} error=${errorMessage(persistError)}`,
+      `[shorts] event=report_merge_failed jobId=${jobId} error=${errorMessage(mergeError)}`,
     )
+    try {
+      // Best-effort fallback when the locked re-read itself fails: persist
+      // the failure phase from the local snapshot so the operator still sees
+      // a terminal phase instead of a job stuck in a running one.
+      await persistReport(jobId, mergeShortsReport(fallbackReport, { phase }))
+    } catch (persistError) {
+      console.error(
+        `[shorts] event=report_persist_failed jobId=${jobId} error=${errorMessage(persistError)}`,
+      )
+    }
   }
 
   await stepUpdateJob(jobId, { status: "failed", currentStep: undefined })
@@ -202,16 +230,19 @@ export async function runShortsPrepare(
     startedAt: new Date().toISOString(),
   })
 
+  // Local snapshot — used ONLY as failJob's fallback when the locked
+  // field-level merge is unavailable; all main-path persists re-read the
+  // persisted entry inside the state lock (applyReportPatch).
   let report = mergeShortsReport(null, { phase: "queued" })
 
   try {
     const ctx = await stepGetShortsContext(input.jobId)
-    report = mergeShortsReport(await stepReadShortsReport(input.jobId), {
-      phase: "preparing",
-    })
+    report = (await stepReadShortsReport(input.jobId)) ?? report
 
     await markStepRunning(input.jobId, "shorts_prepare")
-    await persistReport(input.jobId, report)
+    report = await applyReportPatch(input.jobId, report, {
+      phase: "preparing",
+    })
 
     let result: Awaited<ReturnType<typeof stepShortsPrepare>>
     try {
@@ -229,7 +260,7 @@ export async function runShortsPrepare(
       throw error
     }
 
-    report = mergeShortsReport(report, {
+    report = await applyReportPatch(input.jobId, report, {
       phase: "ready_for_review",
       hasAudio: result.hasAudio,
       clipDurationSec: result.clipDurationSec,
@@ -237,7 +268,6 @@ export async function runShortsPrepare(
       annotation: result.annotation,
       draftVersion: result.draftVersion,
     })
-    await persistReport(input.jobId, report)
 
     if (result.workerSkipped) {
       await markStepSkipped(
@@ -270,16 +300,17 @@ export async function runShortsRender(
     startedAt: new Date().toISOString(),
   })
 
+  // Local snapshot — failJob's fallback only (see runShortsPrepare).
   let report = mergeShortsReport(null, { phase: "rendering" })
 
   try {
     const ctx = await stepGetShortsContext(input.jobId)
-    report = mergeShortsReport(await stepReadShortsReport(input.jobId), {
-      phase: "rendering",
-    })
+    report = (await stepReadShortsReport(input.jobId)) ?? report
 
     await markStepRunning(input.jobId, "shorts_render")
-    await persistReport(input.jobId, report)
+    report = await applyReportPatch(input.jobId, report, {
+      phase: "rendering",
+    })
 
     // Resolve props + propsHash and write the audit artifact; only scalars
     // cross the step boundary. The submit step re-reads the audit artifact
@@ -315,14 +346,16 @@ export async function runShortsRender(
     }
 
     await markStepRunning(input.jobId, "shorts_mux_output")
-    report = mergeShortsReport(report, { phase: "mux_processing" })
-    await persistReport(input.jobId, report)
+    report = await applyReportPatch(input.jobId, report, {
+      phase: "mux_processing",
+    })
 
     let mux: Awaited<ReturnType<typeof stepShortsMuxOutput>>
     try {
       mux = await stepShortsMuxOutput({
         jobId: input.jobId,
         assetId: ctx.assetId,
+        propsHash: resolved.propsHash,
       })
     } catch (error) {
       await markStepFailed(
@@ -337,20 +370,19 @@ export async function runShortsRender(
       // Local mode degradation: the render output exists in storage but no
       // Mux asset can be created — the job still completes with
       // output.ready=false (download stays available via the media route).
-      report = mergeShortsReport(report, {
+      report = await applyReportPatch(input.jobId, report, {
         phase: "completed",
         lastRenderedDraftVersion: resolved.draftVersion,
         lastRenderedPropsHash: resolved.propsHash,
         output: { muxAssetId: null, playbackId: null, ready: false },
       })
-      await persistReport(input.jobId, report)
       await markStepSkipped(
         input.jobId,
         "shorts_mux_output",
         STORAGE_PRESIGN_UNAVAILABLE,
       )
     } else {
-      report = mergeShortsReport(report, {
+      report = await applyReportPatch(input.jobId, report, {
         phase: "completed",
         lastRenderedDraftVersion: resolved.draftVersion,
         lastRenderedPropsHash: resolved.propsHash,
@@ -360,7 +392,6 @@ export async function runShortsRender(
           ready: true,
         },
       })
-      await persistReport(input.jobId, report)
       if (mux.outcome === "exists") {
         await markStepSkipped(input.jobId, "shorts_mux_output")
       } else {
@@ -464,6 +495,23 @@ async function stepReadShortsReport(
 
   const job = await getJob(jobId)
   return job ? getShortsReport(job.artifacts) : null
+}
+
+// Persists a field-level report patch through state.mergeShortsReportEntry —
+// the current entry is re-read INSIDE the per-job write lock, so workflow
+// persists are true read-modify-writes (no lost updates against the draft
+// route's draftVersion mirror or any other interim writer).
+async function stepMergeShortsReport(
+  jobId: string,
+  patch: ShortsReportPatch,
+): Promise<void> {
+  "use step"
+  const { mergeShortsReportEntry } = await import("@/lib/state")
+
+  const updated = await mergeShortsReportEntry(jobId, patch)
+  if (!updated) {
+    throw new Error(`Failed to persist shorts report for job ${jobId}`)
+  }
 }
 
 async function stepShortsPrepare(args: {
@@ -570,15 +618,16 @@ async function stepShortsPrepare(args: {
     writeShortsDraft,
   } = await import("@/lib/shorts-draft")
 
+  // Null-check first so the kept-draft branch narrows without casts —
+  // shouldResetDraft(null, ...) is always true, so the ordering is identical.
   const existingDraft = await readShortsDraft(args.assetId)
   let draftVersion: number
-  if (shouldResetDraft(existingDraft, captions.generatedAt)) {
+  if (existingDraft && !shouldResetDraft(existingDraft, captions.generatedAt)) {
+    draftVersion = existingDraft.draftVersion
+  } else {
     const initial = buildInitialDraft(captions.captions, captions.generatedAt)
     await writeShortsDraft(args.assetId, initial)
     draftVersion = initial.draftVersion
-  } else {
-    draftVersion = (existingDraft as NonNullable<typeof existingDraft>)
-      .draftVersion
   }
 
   return {
@@ -694,32 +743,40 @@ async function stepShortsSubmitRender(args: {
   const { artifactExists } = await import("@/services/storage")
   const shortsArtifacts = await import("@/lib/shorts-artifacts")
   const { parseShortsRenderPropsArtifact } = await import("@/lib/shorts-props")
+  // Pure-subpath import (constant only) — allowed in manager server code.
+  const { COMPOSITIONS_VERSION } =
+    await import("@forge/shorts-compositions/version")
 
-  // Reuse-not-rerun: a previous render with the SAME propsHash whose output
-  // still exists is reused (provenance-checked via the worker's render meta
-  // echoing the opaque hash back) — e.g. a relaunch after a Mux-output
-  // failure must not re-pay a full Remotion render.
-  const renderMetaExists = await artifactExists(
-    args.assetId,
-    shortsArtifacts.SHORTS_RENDER_META_ARTIFACT_TYPE,
-    "json",
+  // Reuse-not-rerun: a previous render with the SAME propsHash AND the SAME
+  // compositions version whose output still exists is reused (provenance-
+  // checked via the worker's render meta echoing the opaque hash back) —
+  // e.g. a relaunch after a Mux-output failure must not re-pay a full
+  // Remotion render. The version check compares against MANAGER's baked
+  // COMPOSITIONS_VERSION: after a @forge/shorts-compositions deploy
+  // (template/styling fix) an unchanged draft must re-render instead of
+  // returning the old output forever. The worker may carry a different baked
+  // version (deploy skew) — a mismatch just re-renders, and the worker then
+  // stamps its own version into fresh render meta.
+  // A missing render meta falls out of the read-with-catch as null — no
+  // existence pre-check needed.
+  const renderMeta = shortsArtifacts.parseShortsRenderMeta(
+    await readJsonArtifact(
+      args.assetId,
+      shortsArtifacts.SHORTS_RENDER_META_ARTIFACT_TYPE,
+    ).catch(() => null),
   )
-  if (renderMetaExists) {
-    const renderMeta = shortsArtifacts.parseShortsRenderMeta(
-      await readJsonArtifact(
-        args.assetId,
-        shortsArtifacts.SHORTS_RENDER_META_ARTIFACT_TYPE,
-      ).catch(() => null),
+  if (
+    renderMeta &&
+    renderMeta.propsHash === args.propsHash &&
+    renderMeta.compositionsVersion === COMPOSITIONS_VERSION
+  ) {
+    const outputExists = await artifactExists(
+      args.assetId,
+      shortsArtifacts.SHORTS_OUTPUT_ARTIFACT_TYPE,
+      "mp4",
     )
-    if (renderMeta && renderMeta.propsHash === args.propsHash) {
-      const outputExists = await artifactExists(
-        args.assetId,
-        shortsArtifacts.SHORTS_OUTPUT_ARTIFACT_TYPE,
-        "mp4",
-      )
-      if (outputExists) {
-        return { workerSkipped: true }
-      }
+    if (outputExists) {
+      return { workerSkipped: true }
     }
   }
 
@@ -804,6 +861,7 @@ async function pollMuxOutputAsset(
 async function stepShortsMuxOutput(args: {
   jobId: string
   assetId: string
+  propsHash: string
 }): Promise<
   | { outcome: "presign_unavailable" }
   | { outcome: "exists" | "created"; muxAssetId: string; playbackId?: string }
@@ -828,7 +886,11 @@ async function stepShortsMuxOutput(args: {
 
   // Idempotency: the output record is written immediately after asset
   // creation (before readiness polling), so any retry resumes the SAME asset
-  // instead of minting another billable one.
+  // instead of minting another billable one. Reuse/resume applies ONLY when
+  // the record's propsHash matches the current render — a stale hash means
+  // the operator edited the draft and re-rendered, so the recorded asset
+  // points at the OLD output bytes and a fresh asset must be created (the
+  // edit -> re-render loop must never serve the previous render via Mux).
   const recordExists = await artifactExists(
     args.assetId,
     shortsArtifacts.SHORTS_MUX_OUTPUT_ARTIFACT_TYPE,
@@ -841,14 +903,14 @@ async function stepShortsMuxOutput(args: {
         shortsArtifacts.SHORTS_MUX_OUTPUT_ARTIFACT_TYPE,
       ).catch(() => null),
     )
-    if (record?.ready) {
-      return {
-        outcome: "exists",
-        muxAssetId: record.muxAssetId,
-        playbackId: record.playbackId,
+    if (record && record.propsHash === args.propsHash) {
+      if (record.ready) {
+        return {
+          outcome: "exists",
+          muxAssetId: record.muxAssetId,
+          playbackId: record.playbackId,
+        }
       }
-    }
-    if (record) {
       // Asset created on a previous attempt but readiness was never recorded
       // — resume polling instead of creating a duplicate.
       const resumed = await pollMuxOutputAsset(getMuxAsset, record.muxAssetId)
@@ -857,6 +919,7 @@ async function stepShortsMuxOutput(args: {
           shortsArtifacts.buildShortsMuxOutputRecord({
             jobId: args.jobId,
             muxAssetId: record.muxAssetId,
+            propsHash: args.propsHash,
             ready: true,
             playbackId: resumed.playbackId,
             createdAt: record.createdAt,
@@ -872,6 +935,13 @@ async function stepShortsMuxOutput(args: {
       // overwriting the record so future retries track the new asset.
       console.warn(
         `[shorts] event=mux_output_recreate jobId=${args.jobId} assetId=${args.assetId} muxAssetId=${record.muxAssetId} reason=errored`,
+      )
+    } else if (record) {
+      // Record from a DIFFERENT render (stale propsHash, or a legacy record
+      // without one) — never reuse or resume it; create a fresh asset from
+      // the new output and overwrite the record.
+      console.warn(
+        `[shorts] event=mux_output_recreate jobId=${args.jobId} assetId=${args.assetId} muxAssetId=${record.muxAssetId} reason=stale_props_hash`,
       )
     }
     // Malformed record — fall through and recreate.
@@ -898,6 +968,7 @@ async function stepShortsMuxOutput(args: {
     shortsArtifacts.buildShortsMuxOutputRecord({
       jobId: args.jobId,
       muxAssetId: created.assetId,
+      propsHash: args.propsHash,
       ready: false,
     }),
   )
@@ -921,6 +992,7 @@ async function stepShortsMuxOutput(args: {
     shortsArtifacts.buildShortsMuxOutputRecord({
       jobId: args.jobId,
       muxAssetId: created.assetId,
+      propsHash: args.propsHash,
       ready: true,
       playbackId: polled.playbackId,
     }),

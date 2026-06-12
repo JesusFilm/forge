@@ -11,6 +11,7 @@ const {
   updateJobMock,
   updateStepStatusStepMock,
   mergeJobArtifactsMock,
+  mergeShortsReportEntryMock,
   getJobMock,
   stateUpdateStepStatusMock,
   artifactExistsMock,
@@ -24,6 +25,7 @@ const {
   updateJobMock: vi.fn(),
   updateStepStatusStepMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
+  mergeShortsReportEntryMock: vi.fn(),
   getJobMock: vi.fn(),
   stateUpdateStepStatusMock: vi.fn(),
   artifactExistsMock: vi.fn(),
@@ -45,6 +47,7 @@ vi.mock("@/workflows/jobStateSteps", () => ({
 vi.mock("@/lib/state", () => ({
   getJob: getJobMock,
   updateStepStatus: stateUpdateStepStatusMock,
+  mergeShortsReportEntry: mergeShortsReportEntryMock,
 }))
 
 vi.mock("@/services/storage", () => ({
@@ -67,7 +70,13 @@ vi.mock("@/services/mux", () => ({
   getMuxAsset: getMuxAssetMock,
 }))
 
-import { getShortsReport } from "@/lib/shorts-report"
+import { COMPOSITIONS_VERSION } from "@forge/shorts-compositions/version"
+import {
+  buildShortsMetadataArtifact,
+  getShortsReport,
+  mergeShortsReport,
+  type ShortsReportPatch,
+} from "@/lib/shorts-report"
 import { runShortsPrepare, runShortsRender } from "@/workflows/shortsStudio"
 
 // ---------------------------------------------------------------------------
@@ -190,6 +199,16 @@ beforeEach(() => {
       return buildJobRecord()
     },
   )
+  // Test double for state.mergeShortsReportEntry: field-level merge against
+  // the CURRENT persisted entry using the REAL pure helpers (the production
+  // helper does exactly this inside the per-job write lock).
+  mergeShortsReportEntryMock.mockImplementation(
+    async (_jobId: string, patch: ShortsReportPatch) => {
+      const merged = mergeShortsReport(getShortsReport(jobArtifacts), patch)
+      jobArtifacts = { ...jobArtifacts, ...buildShortsMetadataArtifact(merged) }
+      return buildJobRecord()
+    },
+  )
 
   artifactExistsMock.mockImplementation(
     async (assetId: string, artifactType: string, ext: string) =>
@@ -246,7 +265,7 @@ beforeEach(() => {
       seedArtifact(input.body.assetId, "shorts-render-meta-v1", "json", {
         propsHash: input.body.propsHash,
         renderedDraftVersion: input.body.draftVersion,
-        compositionsVersion: "2026-06-11.1",
+        compositionsVersion: COMPOSITIONS_VERSION,
         generatedAt: "2026-06-11T12:00:00.000Z",
       })
       return {
@@ -417,7 +436,9 @@ describe("runShortsPrepare", () => {
 })
 
 describe("runShortsRender", () => {
-  function seedDraft(draftVersion = 2): void {
+  // `accentColor` is part of the resolved render props — overriding it
+  // simulates an operator edit and produces a DIFFERENT propsHash.
+  function seedDraft(draftVersion = 2, accentColor = "#facc15"): void {
     seedArtifact(ASSET_ID, "shorts-draft-v1", "json", {
       draftVersion,
       captionsGeneratedAt: CAPTIONS_AT,
@@ -425,7 +446,7 @@ describe("runShortsRender", () => {
       updatedAt: "2026-06-11T11:00:00.000Z",
       draft: {
         templateId: "focus",
-        accentColor: "#facc15",
+        accentColor,
         captionPosition: "lower",
         captionFont: "montserrat",
         waveformStyle: "bars",
@@ -533,16 +554,122 @@ describe("runShortsRender", () => {
 
     await runShortsRender({ jobId: JOB_ID })
     expect(runShortsWorkerJobMock).toHaveBeenCalledTimes(1)
+    expect(createMuxAssetMock).toHaveBeenCalledTimes(1)
 
-    // Same draft, same clip — identical propsHash → render reuse.
+    // Same draft, same clip — identical propsHash → render reuse AND the
+    // recorded ready Mux asset is reused (no duplicate billable asset).
     await runShortsRender({ jobId: JOB_ID })
     expect(runShortsWorkerJobMock).toHaveBeenCalledTimes(1)
+    expect(createMuxAssetMock).toHaveBeenCalledTimes(1)
     expect(updateStepStatusStepMock).toHaveBeenCalledWith(
       JOB_ID,
       "shorts_render",
       "skipped",
       expect.stringContaining("identical propsHash"),
     )
+    expect(lastPersistedReport()).toMatchObject({
+      phase: "completed",
+      output: { muxAssetId: "mux-out-1", ready: true },
+    })
+  })
+
+  it("creates a fresh Mux asset when re-rendering a changed draft (stale record propsHash)", async () => {
+    // The core edit -> re-render loop (todo 007): render #1 records asset A;
+    // the operator edits the draft (new propsHash); render #2 must mint a
+    // NEW Mux asset from the new output bytes — never return asset A.
+    seedPrepareArtifacts()
+    seedDraft(2)
+    await runShortsRender({ jobId: JOB_ID })
+
+    const firstRecord = readSeededArtifact(
+      ASSET_ID,
+      "shorts-mux-output-v1",
+    ) as { muxAssetId: string; propsHash: string }
+    expect(firstRecord).toMatchObject({ muxAssetId: "mux-out-1" })
+    expect(firstRecord.propsHash).toMatch(/^[a-f0-9]{64}$/)
+
+    seedDraft(3, "#ff0000") // operator edit — different propsHash
+    createMuxAssetMock.mockResolvedValue({
+      assetId: "mux-out-2",
+      playbackId: "",
+      status: "preparing",
+      duration: null,
+    })
+
+    await runShortsRender({ jobId: JOB_ID })
+
+    expect(runShortsWorkerJobMock).toHaveBeenCalledTimes(2)
+    expect(createMuxAssetMock).toHaveBeenCalledTimes(2)
+    const secondRecord = readSeededArtifact(
+      ASSET_ID,
+      "shorts-mux-output-v1",
+    ) as { muxAssetId: string; propsHash: string; ready: boolean }
+    expect(secondRecord.muxAssetId).toBe("mux-out-2")
+    expect(secondRecord.ready).toBe(true)
+    expect(secondRecord.propsHash).not.toBe(firstRecord.propsHash)
+    expect(lastPersistedReport()).toMatchObject({
+      phase: "completed",
+      lastRenderedDraftVersion: 3,
+      lastRenderedPropsHash: secondRecord.propsHash,
+      output: { muxAssetId: "mux-out-2", ready: true },
+    })
+  })
+
+  it("treats a legacy mux-output record without propsHash as stale", async () => {
+    seedPrepareArtifacts()
+    seedDraft(2)
+    // Ready record written before the propsHash field existed — no
+    // provenance, so it must never be reused.
+    seedArtifact(ASSET_ID, "shorts-mux-output-v1", "json", {
+      version: 1,
+      kind: "shorts-mux-output",
+      jobId: JOB_ID,
+      muxAssetId: "mux-out-legacy",
+      ready: true,
+      createdAt: "2026-06-10T00:00:00.000Z",
+    })
+    createMuxAssetMock.mockResolvedValue({
+      assetId: "mux-out-fresh",
+      playbackId: "",
+      status: "preparing",
+      duration: null,
+    })
+
+    await runShortsRender({ jobId: JOB_ID })
+
+    expect(createMuxAssetMock).toHaveBeenCalledTimes(1)
+    expect(readSeededArtifact(ASSET_ID, "shorts-mux-output-v1")).toMatchObject({
+      muxAssetId: "mux-out-fresh",
+      ready: true,
+    })
+    expect(lastPersistedReport()).toMatchObject({
+      output: { muxAssetId: "mux-out-fresh", ready: true },
+    })
+  })
+
+  it("resumes polling a not-ready record with the same propsHash instead of duplicating", async () => {
+    seedPrepareArtifacts()
+    seedDraft(2)
+    await runShortsRender({ jobId: JOB_ID })
+
+    // Simulate a prior attempt where the asset was created but readiness was
+    // never recorded (same propsHash — same render).
+    const record = readSeededArtifact(ASSET_ID, "shorts-mux-output-v1") as {
+      muxAssetId: string
+    }
+    seedArtifact(ASSET_ID, "shorts-mux-output-v1", "json", {
+      ...record,
+      ready: false,
+    })
+    createMuxAssetMock.mockClear()
+
+    await runShortsRender({ jobId: JOB_ID })
+
+    expect(createMuxAssetMock).not.toHaveBeenCalled()
+    expect(readSeededArtifact(ASSET_ID, "shorts-mux-output-v1")).toMatchObject({
+      muxAssetId: "mux-out-1",
+      ready: true,
+    })
   })
 
   it("refuses to render a draft with stale captions provenance", async () => {
@@ -597,12 +724,20 @@ describe("runShortsRender", () => {
   it("recreates an errored recorded Mux asset instead of resuming it", async () => {
     seedPrepareArtifacts()
     seedDraft(2)
-    seedArtifact(ASSET_ID, "shorts-output-v1", "mp4", "<mp4>")
+    await runShortsRender({ jobId: JOB_ID })
+
+    // Simulate a prior attempt whose asset errored before readiness was
+    // recorded — SAME propsHash (same render), so this exercises the
+    // errored→recreate path, not the stale-hash path.
+    const record = readSeededArtifact(ASSET_ID, "shorts-mux-output-v1") as {
+      propsHash: string
+    }
     seedArtifact(ASSET_ID, "shorts-mux-output-v1", "json", {
       version: 1,
       kind: "shorts-mux-output",
       jobId: JOB_ID,
       muxAssetId: "mux-out-errored",
+      propsHash: record.propsHash,
       ready: false,
       createdAt: "2026-06-11T11:30:00.000Z",
     })
@@ -612,6 +747,7 @@ describe("runShortsRender", () => {
       status: muxAssetId === "mux-out-errored" ? "errored" : "ready",
       duration: 30,
     }))
+    createMuxAssetMock.mockClear()
     createMuxAssetMock.mockResolvedValue({
       assetId: "mux-out-fresh",
       playbackId: "",
@@ -629,6 +765,123 @@ describe("runShortsRender", () => {
     })
     expect(lastPersistedReport()).toMatchObject({
       output: { muxAssetId: "mux-out-fresh", ready: true },
+    })
+  })
+
+  it("re-renders an unchanged draft when render meta carries a stale compositions version", async () => {
+    // Todo 012: after a @forge/shorts-compositions deploy, the reuse gate
+    // must NOT skip the worker for an unchanged draft — the stored output
+    // was rendered by an older template revision.
+    seedPrepareArtifacts()
+    seedDraft(2)
+    await runShortsRender({ jobId: JOB_ID })
+    expect(runShortsWorkerJobMock).toHaveBeenCalledTimes(1)
+
+    const meta = readSeededArtifact(ASSET_ID, "shorts-render-meta-v1") as {
+      propsHash: string
+    }
+    seedArtifact(ASSET_ID, "shorts-render-meta-v1", "json", {
+      propsHash: meta.propsHash, // unchanged draft — hash still matches
+      renderedDraftVersion: 2,
+      compositionsVersion: "2020-01-01.0", // pre-deploy revision
+      generatedAt: "2026-06-10T00:00:00.000Z",
+    })
+
+    await runShortsRender({ jobId: JOB_ID })
+
+    expect(runShortsWorkerJobMock).toHaveBeenCalledTimes(2)
+    expect(updateStepStatusStepMock).toHaveBeenCalledWith(
+      JOB_ID,
+      "shorts_render",
+      "completed",
+    )
+    // The worker re-stamped the current version into fresh render meta.
+    expect(readSeededArtifact(ASSET_ID, "shorts-render-meta-v1")).toMatchObject(
+      { compositionsVersion: COMPOSITIONS_VERSION },
+    )
+  })
+
+  it("preserves persisted report fields when a render fails before the snapshot hydrates", async () => {
+    // Todo 009: failJob merges ONLY the failure phase via the locked
+    // field-level merge — an early failure (context read threw) must not
+    // wipe a previously completed short's report.
+    jobArtifacts = buildShortsMetadataArtifact({
+      domain: "shorts",
+      phase: "completed",
+      annotation: null,
+      hasAudio: true,
+      clipDurationSec: 30,
+      captionsCount: 2,
+      draftVersion: 3,
+      lastRenderedDraftVersion: 3,
+      lastRenderedPropsHash: "a".repeat(64),
+      output: { muxAssetId: "mux-keep", playbackId: "pb-keep", ready: true },
+      updatedAt: "2026-06-11T11:00:00.000Z",
+    })
+    getJobMock.mockRejectedValue(new Error("transient job-state read failure"))
+
+    await expect(runShortsRender({ jobId: JOB_ID })).rejects.toThrow(
+      /transient job-state read failure/,
+    )
+
+    expect(lastPersistedReport()).toMatchObject({
+      phase: "render_failed",
+      hasAudio: true,
+      captionsCount: 2,
+      draftVersion: 3,
+      lastRenderedDraftVersion: 3,
+      output: { muxAssetId: "mux-keep", playbackId: "pb-keep", ready: true },
+    })
+    expect(updateJobMock).toHaveBeenCalledWith(
+      JOB_ID,
+      expect.objectContaining({ status: "failed" }),
+    )
+  })
+
+  it("failJob falls back to the local snapshot when the locked merge is unavailable", async () => {
+    seedPrepareArtifacts()
+    seedDraft(2)
+    mergeShortsReportEntryMock.mockRejectedValue(new Error("admin unreachable"))
+
+    await expect(runShortsRender({ jobId: JOB_ID })).rejects.toThrow(
+      /admin unreachable/,
+    )
+
+    // The wholesale fallback still landed the terminal phase.
+    expect(lastPersistedReport()).toMatchObject({ phase: "render_failed" })
+    expect(updateJobMock).toHaveBeenCalledWith(
+      JOB_ID,
+      expect.objectContaining({ status: "failed" }),
+    )
+  })
+
+  it("does not clobber an interim draftVersion mirror written during the render", async () => {
+    // Todo 011 (workflow half): the draft route's draftVersion mirror lands
+    // while the worker renders; the workflow's completed persist re-reads
+    // the current entry inside the lock, so the mirror survives.
+    seedPrepareArtifacts()
+    seedDraft(2)
+
+    const baseWorkerImpl = runShortsWorkerJobMock.getMockImplementation()
+    runShortsWorkerJobMock.mockImplementation(async (input: unknown) => {
+      const result = await baseWorkerImpl?.(
+        input as Parameters<NonNullable<typeof baseWorkerImpl>>[0],
+      )
+      // Interleaved writer: mirror draftVersion 9 into the persisted entry
+      // (what state.mergeShortsReportEntry does for the draft route).
+      const merged = mergeShortsReport(getShortsReport(jobArtifacts), {
+        draftVersion: 9,
+      })
+      jobArtifacts = { ...jobArtifacts, ...buildShortsMetadataArtifact(merged) }
+      return result
+    })
+
+    await runShortsRender({ jobId: JOB_ID })
+
+    expect(lastPersistedReport()).toMatchObject({
+      phase: "completed",
+      draftVersion: 9, // interim mirror survived the completed persist
+      output: { muxAssetId: "mux-out-1", ready: true },
     })
   })
 })

@@ -2,7 +2,9 @@
 // lifecycle contract (plan 2026-06-11-002 decision 2). Shorts jobs gate on
 // PHASE, not the generic `status === "failed"` retry rule — `completed` is
 // not terminal for shorts (a completed prepare awaits review; a completed
-// render can be re-rendered after edits).
+// render can be re-rendered after edits). One status-based exception: phase
+// "queued" + job status "failed" means the create route's launch itself
+// failed, and a plain retry relaunches prepare from scratch.
 //
 // Body: optional `{ force?: "prepare" | "render" }`.
 // - force:"prepare" regenerates the clip + captions (the documented
@@ -14,16 +16,19 @@
 
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { authenticateRequest } from "@/lib/auth"
-import { env } from "@/config/env"
+import {
+  authenticateManagerOverrideRequest,
+  managerActorIdentity,
+} from "@/lib/auth"
 import {
   claimShortsLaunchSlot,
   releaseShortsLaunchSlot,
 } from "@/lib/shorts-claim"
+import { requireShortsWorkerConfig } from "@/lib/shorts-config"
 import { readShortsReport } from "@/lib/shorts-report"
 import { resetShortsStepsForLaunch } from "@/lib/workflow-steps"
 import { getJob, updateJob } from "@/lib/state"
-import type { ShortsPhase } from "@/types/job"
+import type { JobRecord, ShortsPhase } from "@/types/job"
 
 const retryBodySchema = z.object({
   force: z.enum(["prepare", "render"]).optional(),
@@ -48,19 +53,49 @@ const RETRY_RENDER_PHASES: ReadonlySet<ShortsPhase> = new Set([
   "completed",
 ])
 
-function getMissingShortsConfig(): string[] {
-  const missing: string[] = []
-  if (!env.SHORTS_WORKER_BASE_URL) missing.push("SHORTS_WORKER_BASE_URL")
-  if (!env.SHORTS_WORKER_API_KEY) missing.push("SHORTS_WORKER_API_KEY")
-  return missing
+// Phases owned by an in-flight workflow ("queued" is the create route's
+// launching intent). The exception: phase "queued" with job status "failed"
+// means the create route's launch itself failed — nothing is running.
+const WORKFLOW_IN_FLIGHT_PHASES: ReadonlySet<ShortsPhase> = new Set([
+  "queued",
+  "preparing",
+  "rendering",
+  "mux_processing",
+])
+
+// 409 copy must not claim "a workflow is running" for phases where none is
+// (todo 010) — differentiate in-flight phases from settled-but-unretryable
+// ones. `subject` reads as the start of the sentence ('Retries are' /
+// 'force:"prepare" is').
+function phaseInvalidResponse(
+  subject: string,
+  phase: ShortsPhase,
+  jobStatus: JobRecord["status"],
+): NextResponse {
+  const workflowInFlight =
+    WORKFLOW_IN_FLIGHT_PHASES.has(phase) &&
+    !(phase === "queued" && jobStatus === "failed")
+  return NextResponse.json(
+    {
+      error: workflowInFlight
+        ? `${subject} not allowed while a workflow is running (phase: ${phase})`
+        : `${subject} not allowed from phase ${phase}`,
+      reason: "phase_invalid",
+      phase,
+    },
+    { status: 409 },
+  )
 }
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const authError = await authenticateRequest(request)
-  if (authError) return authError
+  // Identity-returning auth (same credentials as authenticateRequest;
+  // smart-crop approve precedent) so the audit note + log line record WHO
+  // requested the retry.
+  const actor = await authenticateManagerOverrideRequest(request)
+  if (actor instanceof NextResponse) return actor
 
   const { id } = await params
 
@@ -93,7 +128,7 @@ export async function POST(
   const shorts = job.options.shorts
   if (!shorts) {
     return NextResponse.json(
-      { error: "Job is not a shorts job" },
+      { error: "Job is not a shorts job", reason: "not_shorts_job" },
       { status: 409 },
     )
   }
@@ -106,44 +141,25 @@ export async function POST(
   let forcePrepare = false
   if (force === "prepare") {
     if (!FORCE_PREPARE_PHASES.has(phase)) {
-      return NextResponse.json(
-        {
-          error: `force:"prepare" is not allowed while a workflow is running (phase: ${phase})`,
-          reason: "phase_invalid",
-          phase,
-        },
-        { status: 409 },
-      )
+      return phaseInvalidResponse('force:"prepare" is', phase, job.status)
     }
     kind = "prepare"
     forcePrepare = true
   } else if (RETRY_PREPARE_PHASES.has(phase)) {
     kind = "prepare"
+  } else if (phase === "queued" && job.status === "failed") {
+    // The create route's workflow launch failed before any phase transition
+    // (todo 010): no workflow ever ran, so a prepare from scratch is the
+    // correct dispatch — otherwise the job is permanently unretryable.
+    kind = "prepare"
   } else if (RETRY_RENDER_PHASES.has(phase)) {
     kind = "render"
   } else {
-    return NextResponse.json(
-      {
-        error: `Retries are not allowed while a workflow is running (phase: ${phase})`,
-        reason: "phase_invalid",
-        phase,
-      },
-      { status: 409 },
-    )
+    return phaseInvalidResponse("Retries are", phase, job.status)
   }
 
-  const missingConfig = getMissingShortsConfig()
-  if (missingConfig.length > 0) {
-    return NextResponse.json(
-      {
-        error: "Shorts Studio is not configured on this Manager deployment",
-        reason: "config_missing",
-        messages: [`Missing env vars: ${missingConfig.join(", ")}`],
-        retryable: false,
-      },
-      { status: 503 },
-    )
-  }
+  const configMissing = requireShortsWorkerConfig()
+  if (configMissing) return configMissing
 
   // Same slot as the render route (both launch workflows on this JobRecord):
   // sync claim before any await, release in finally (slot-leak guard).
@@ -157,11 +173,23 @@ export async function POST(
     )
   }
 
+  const actorIdentity = managerActorIdentity(actor)
+
   try {
     // Reset/replace the relaunched kind's step subset in place (lifecycle
-    // contract — the other kind's steps are preserved as history).
+    // contract — the other kind's steps are preserved as history). Error
+    // history is kept; an operator audit note records who requested the
+    // retry (smart-crop retry precedent).
     await updateJob(job.id, {
       steps: resetShortsStepsForLaunch(job.steps, kind),
+      errors: [
+        ...job.errors,
+        {
+          step: kind === "prepare" ? "shorts_prepare" : "shorts_render",
+          message: `Retry (${kind}) requested by ${actorIdentity}`,
+          at: new Date().toISOString(),
+        },
+      ],
     })
 
     const { launchShorts } = await import("@/workflows/launchShorts")
@@ -189,7 +217,7 @@ export async function POST(
   }
 
   console.log(
-    `[shorts] event=retry_accepted jobId=${job.id} kind=${kind} force=${force ?? "none"} phase=${phase}`,
+    `[shorts] event=retry_accepted jobId=${job.id} kind=${kind} force=${force ?? "none"} phase=${phase} actor=${actorIdentity}`,
   )
 
   return NextResponse.json(

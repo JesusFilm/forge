@@ -5,7 +5,7 @@ const {
   authenticateManagerOverrideRequestMock,
   authenticateRequestMock,
   getJobMock,
-  mergeJobArtifactsMock,
+  mergeShortsReportEntryMock,
   artifactExistsMock,
   readArtifactMock,
   readShortsDraftMock,
@@ -14,7 +14,7 @@ const {
   authenticateManagerOverrideRequestMock: vi.fn(),
   authenticateRequestMock: vi.fn(),
   getJobMock: vi.fn(),
-  mergeJobArtifactsMock: vi.fn(),
+  mergeShortsReportEntryMock: vi.fn(),
   artifactExistsMock: vi.fn(),
   readArtifactMock: vi.fn(),
   readShortsDraftMock: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/state", () => ({
   getJob: getJobMock,
-  mergeJobArtifacts: mergeJobArtifactsMock,
+  mergeShortsReportEntry: mergeShortsReportEntryMock,
 }))
 
 vi.mock("@/services/storage", () => ({
@@ -188,7 +188,7 @@ beforeEach(() => {
   authenticateManagerOverrideRequestMock.mockReset()
   authenticateRequestMock.mockReset()
   getJobMock.mockReset()
-  mergeJobArtifactsMock.mockReset()
+  mergeShortsReportEntryMock.mockReset()
   artifactExistsMock.mockReset()
   readArtifactMock.mockReset()
   readShortsDraftMock.mockReset()
@@ -197,7 +197,7 @@ beforeEach(() => {
   authenticateManagerOverrideRequestMock.mockResolvedValue(sessionActor)
   authenticateRequestMock.mockResolvedValue(null)
   getJobMock.mockResolvedValue(buildShortsJob())
-  mergeJobArtifactsMock.mockResolvedValue(buildShortsJob())
+  mergeShortsReportEntryMock.mockResolvedValue(buildShortsJob())
   artifactExistsMock.mockResolvedValue(true)
   readArtifactMock.mockImplementation(
     (_assetId: string, artifactType: string) =>
@@ -235,13 +235,16 @@ describe("GET /api/shorts/jobs/[id]/draft", () => {
     expect(response.status).toBe(404)
   })
 
-  it("returns 404 for non-shorts jobs", async () => {
+  it("returns 404 not_shorts_job for non-shorts jobs", async () => {
     getJobMock.mockResolvedValue(
       buildShortsJob("ready_for_review", { options: {} }),
     )
 
     const response = await GET(getRequest(), routeParams)
     expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "not_shorts_job",
+    })
   })
 
   it("returns the stored draft, captions summary, and clip meta", async () => {
@@ -352,7 +355,7 @@ describe("POST /api/shorts/jobs/[id]/draft", () => {
     expect(response.status).toBe(404)
   })
 
-  it("returns 409 for non-shorts jobs", async () => {
+  it("returns 409 not_shorts_job for non-shorts jobs", async () => {
     getJobMock.mockResolvedValue(
       buildShortsJob("ready_for_review", { options: {} }),
     )
@@ -362,6 +365,9 @@ describe("POST /api/shorts/jobs/[id]/draft", () => {
       routeParams,
     )
     expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "not_shorts_job",
+    })
   })
 
   it.each<ShortsPhase>([
@@ -446,16 +452,30 @@ describe("POST /api/shorts/jobs/[id]/draft", () => {
       }),
     )
 
-    const [jobId, manifest] = mergeJobArtifactsMock.mock.calls[0] as [
-      string,
-      Record<string, { kind: string; data: Record<string, unknown> }>,
-    ]
-    expect(jobId).toBe("job-1")
-    expect(manifest.shorts.data).toMatchObject({
-      domain: "shorts",
-      phase: "ready_for_review",
+    expect(mergeShortsReportEntryMock).toHaveBeenCalledWith("job-1", {
       draftVersion: 4,
     })
+  })
+
+  it("patches ONLY draftVersion — a save racing a render workflow cannot revert the phase", async () => {
+    // Lost-update regression (todo 011): the gate read saw
+    // "ready_for_review", but by write time a render workflow may have moved
+    // the persisted phase to "rendering". The mirror write must carry NO
+    // phase at all — mergeShortsReportEntry re-reads the current entry inside
+    // the per-job lock, so the workflow-owned phase survives structurally.
+    const response = await POST(
+      postRequest({ draft: validDraft() }),
+      routeParams,
+    )
+    expect(response.status).toBe(200)
+
+    expect(mergeShortsReportEntryMock).toHaveBeenCalledTimes(1)
+    const [, patch] = mergeShortsReportEntryMock.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ]
+    expect(patch).toEqual({ draftVersion: 4 })
+    expect(patch).not.toHaveProperty("phase")
   })
 
   it("starts at draftVersion 1 when no draft exists yet", async () => {

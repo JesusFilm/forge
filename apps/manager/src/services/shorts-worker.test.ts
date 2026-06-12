@@ -323,6 +323,25 @@ describe("getShortsWorkerJob", () => {
       })
     }
   })
+
+  it("rejects a present-but-malformed error object as parse_error (contract drift)", async () => {
+    // Same policy as a malformed result: silently nulling the envelope would
+    // hide a worker contract drift behind "failed without an envelope".
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        ...buildSnapshot({ status: "failed" }),
+        error: { reason: "render_failed", messages: "not-an-array" },
+      }),
+    )
+
+    await expect(
+      getShortsWorkerJob("wj_1", { ...CLIENT, fetchImpl }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+    })
+  })
 })
 
 describe("pollShortsWorkerJob", () => {

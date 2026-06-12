@@ -160,13 +160,17 @@ describe("parseShortsRenderMeta", () => {
 })
 
 describe("shorts Mux output record", () => {
-  it("round-trips through build + parse", () => {
+  const PROPS_HASH = "a".repeat(64)
+
+  it("round-trips through build + parse (propsHash carried)", () => {
     const record = buildShortsMuxOutputRecord({
       jobId: "job-1",
       muxAssetId: "mux-out-1",
+      propsHash: PROPS_HASH,
       ready: false,
       createdAt: "2026-06-11T12:00:00.000Z",
     })
+    expect(record.propsHash).toBe(PROPS_HASH)
     expect(parseShortsMuxOutputRecord(record)).toEqual(record)
   })
 
@@ -174,11 +178,27 @@ describe("shorts Mux output record", () => {
     const ready = buildShortsMuxOutputRecord({
       jobId: "job-1",
       muxAssetId: "mux-out-1",
+      propsHash: PROPS_HASH,
       ready: true,
       playbackId: "pb-1",
     })
     expect(ready.playbackId).toBe("pb-1")
     expect(parseShortsMuxOutputRecord(ready)?.playbackId).toBe("pb-1")
+  })
+
+  it("parses a legacy record without propsHash as propsHash undefined", () => {
+    // Pre-propsHash records must still parse — and the undefined hash never
+    // matches a real one, so the Mux output step treats them as stale.
+    const parsed = parseShortsMuxOutputRecord({
+      version: 1,
+      kind: "shorts-mux-output",
+      jobId: "job-1",
+      muxAssetId: "mux-out-legacy",
+      ready: true,
+      createdAt: "2026-06-11T12:00:00.000Z",
+    })
+    expect(parsed).toMatchObject({ muxAssetId: "mux-out-legacy", ready: true })
+    expect(parsed?.propsHash).toBeUndefined()
   })
 
   it("rejects foreign record kinds", () => {

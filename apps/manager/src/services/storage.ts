@@ -245,15 +245,20 @@ export class ArtifactRangeNotSatisfiableError extends Error {
   }
 }
 
-export type ArtifactStreamRange = {
-  /** Inclusive start byte offset (bytes=a- / bytes=a-b). */
-  start?: number
-  /** Inclusive end byte offset (bytes=a-b). */
-  end?: number
-  /** Last-n-bytes suffix length (bytes=-n) — mutually exclusive with
-   * start/end. */
-  suffix?: number
-}
+// Discriminated union: a range is EITHER offset-based or a suffix — the
+// mutually-exclusive shapes are unrepresentable as one object, so consumers
+// narrow with `"suffix" in range` instead of re-validating field combos.
+export type ArtifactStreamRange =
+  | {
+      /** Inclusive start byte offset (bytes=a- / bytes=a-b). */
+      start: number
+      /** Inclusive end byte offset (bytes=a-b). */
+      end?: number
+    }
+  | {
+      /** Last-n-bytes suffix length (bytes=-n). */
+      suffix: number
+    }
 
 export type ArtifactStat = {
   size: number
@@ -341,13 +346,13 @@ export async function statArtifact(
   }
 }
 
-function hasRequestedRange(range: ArtifactStreamRange | undefined): boolean {
-  return (
-    range !== undefined &&
-    (range.start !== undefined ||
-      range.end !== undefined ||
-      range.suffix !== undefined)
-  )
+// Type predicate so callers narrow `range` without a cast. With the
+// discriminated union an "empty" range is unrepresentable, so presence of
+// the value IS the request.
+function hasRequestedRange(
+  range: ArtifactStreamRange | undefined,
+): range is ArtifactStreamRange {
+  return range !== undefined
 }
 
 // Resolves a requested byte range against the object size. Throws
@@ -357,14 +362,14 @@ function resolveRange(
   range: ArtifactStreamRange,
   size: number,
 ): { start: number; end: number } {
-  if (range.suffix !== undefined) {
+  if ("suffix" in range) {
     if (range.suffix <= 0 || size === 0) {
       throw new ArtifactRangeNotSatisfiableError(size)
     }
     return { start: Math.max(0, size - range.suffix), end: size - 1 }
   }
 
-  const start = range.start ?? 0
+  const { start } = range
   if (start >= size) {
     throw new ArtifactRangeNotSatisfiableError(size)
   }
@@ -394,9 +399,10 @@ export async function openArtifactStream(options: {
     options.ext,
   )
 
-  const ranged = hasRequestedRange(options.range)
+  const requestedRange = options.range
+  const ranged = hasRequestedRange(requestedRange)
   const resolved = ranged
-    ? resolveRange(options.range as ArtifactStreamRange, info.size)
+    ? resolveRange(requestedRange, info.size)
     : { start: 0, end: Math.max(0, info.size - 1) }
   const contentLength = info.size === 0 ? 0 : resolved.end - resolved.start + 1
 

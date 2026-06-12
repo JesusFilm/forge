@@ -56,7 +56,15 @@ export type LaneConfig = {
 export type CreateJobLanesOptions = {
   prepare?: Partial<LaneConfig>
   render?: Partial<LaneConfig>
+  /** Injectable clock (tests). Defaults to `() => new Date()`. */
+  now?: () => Date
 }
+
+// Terminal (completed/failed) records are kept long enough for manager's
+// poll loop to read the outcome, then evicted on the next submit so the
+// in-memory registry can't grow unboundedly over the process lifetime.
+// 24h is orders of magnitude beyond the longest poll ceiling (80min render).
+export const TERMINAL_RECORD_RETENTION_MS = 24 * 60 * 60 * 1000
 
 function clampProgress(value: number): number {
   if (!Number.isFinite(value)) return 0
@@ -75,6 +83,23 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
   // Registry is shared across lanes (GET /jobs/{id} doesn't know the kind);
   // execution capacity is per-lane so a long render never starves prepares.
   const jobs = new Map<string, JobRecord>()
+  const now = options.now ?? (() => new Date())
+
+  // Submit-time eviction of stale terminal records: a terminal record's
+  // updatedAt IS its finish time (nothing mutates it after completed/failed),
+  // so prune anything terminal older than the retention window. Active
+  // (queued/running) jobs are never evicted regardless of age.
+  function evictStaleTerminalRecords(): void {
+    const cutoff = now().getTime() - TERMINAL_RECORD_RETENTION_MS
+    for (const [workerJobId, record] of jobs) {
+      if (
+        (record.status === "completed" || record.status === "failed") &&
+        record.updatedAt.getTime() < cutoff
+      ) {
+        jobs.delete(workerJobId)
+      }
+    }
+  }
 
   function lane(kind: JobKind, overrides?: Partial<LaneConfig>): Lane {
     return {
@@ -114,7 +139,7 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
     // in-memory slot reservation fire-and-forget).
     try {
       job.status = "running"
-      job.updatedAt = new Date()
+      job.updatedAt = now()
       console.log(
         `[shorts-worker] event=job_started workerJobId=${job.workerJobId} kind=${job.kind}`,
       )
@@ -123,7 +148,7 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
         onProgress: (progress, message) => {
           job.progress = clampProgress(progress)
           job.message = message
-          job.updatedAt = new Date()
+          job.updatedAt = now()
         },
       })
 
@@ -131,14 +156,14 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
       job.progress = 1
       job.result = result
       job.error = null
-      job.updatedAt = new Date()
+      job.updatedAt = now()
       console.log(
         `[shorts-worker] event=job_completed workerJobId=${job.workerJobId} kind=${job.kind}`,
       )
     } catch (error) {
       job.status = "failed"
       job.error = toJobErrorBody(error)
-      job.updatedAt = new Date()
+      job.updatedAt = now()
       console.error(
         `[shorts-worker] event=job_failed workerJobId=${job.workerJobId} kind=${job.kind} reason=${job.error.reason} retryable=${job.error.retryable} error=${JSON.stringify(job.error.messages.join("; "))}`,
       )
@@ -150,6 +175,8 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
 
   return {
     submit(kind, dedupeKey, execute) {
+      evictStaleTerminalRecords()
+
       // In-flight dedupe: a resubmission with the same logical identity
       // re-attaches to the ACTIVE (queued/running) job instead of enqueueing
       // a duplicate render (manager restarts, SDK step retries, operator
@@ -169,7 +196,7 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
         return { ok: false, reason: "queue_full" }
       }
 
-      const now = new Date()
+      const submittedAt = now()
       const job: JobRecord = {
         workerJobId: `wj_${randomUUID()}`,
         kind,
@@ -179,8 +206,8 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
         message: null,
         error: null,
         result: null,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: submittedAt,
+        updatedAt: submittedAt,
       }
       jobs.set(job.workerJobId, job)
       target.pending.push({ job, execute })

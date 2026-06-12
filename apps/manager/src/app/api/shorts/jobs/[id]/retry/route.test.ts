@@ -1,16 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { JobRecord, JobStepState, ShortsPhase } from "@/types/job"
 
-const { authenticateRequestMock, getJobMock, updateJobMock, launchShortsMock } =
-  vi.hoisted(() => ({
-    authenticateRequestMock: vi.fn(),
-    getJobMock: vi.fn(),
-    updateJobMock: vi.fn(),
-    launchShortsMock: vi.fn(),
-  }))
+const {
+  authenticateManagerOverrideRequestMock,
+  getJobMock,
+  updateJobMock,
+  launchShortsMock,
+} = vi.hoisted(() => ({
+  authenticateManagerOverrideRequestMock: vi.fn(),
+  getJobMock: vi.fn(),
+  updateJobMock: vi.fn(),
+  launchShortsMock: vi.fn(),
+}))
 
 vi.mock("@/lib/auth", () => ({
-  authenticateRequest: authenticateRequestMock,
+  authenticateManagerOverrideRequest: authenticateManagerOverrideRequestMock,
+  managerActorIdentity: (actor: {
+    kind: string
+    user?: { email: string }
+    approvedByUserId: string
+  }) =>
+    actor.kind === "session"
+      ? actor.user?.email || actor.approvedByUserId
+      : actor.approvedByUserId,
 }))
 
 vi.mock("@/lib/state", () => ({
@@ -101,14 +113,25 @@ function postRequest(body?: unknown): Request {
 
 const routeParams = { params: Promise.resolve({ id: "job-1" }) }
 
+const sessionActor = {
+  kind: "session" as const,
+  user: {
+    id: "user-1",
+    username: "op",
+    email: "op@jesusfilm.org",
+    role: { name: "Manager" as const, type: "manager" as const },
+  },
+  approvedByUserId: "user-1",
+}
+
 beforeEach(() => {
-  authenticateRequestMock.mockReset()
+  authenticateManagerOverrideRequestMock.mockReset()
   getJobMock.mockReset()
   updateJobMock.mockReset()
   launchShortsMock.mockReset()
   clearShortsLaunchSlots()
 
-  authenticateRequestMock.mockResolvedValue(null)
+  authenticateManagerOverrideRequestMock.mockResolvedValue(sessionActor)
   getJobMock.mockResolvedValue(buildShortsJob("prepare_failed"))
   updateJobMock.mockResolvedValue(buildShortsJob("prepare_failed"))
   launchShortsMock.mockResolvedValue(undefined)
@@ -119,12 +142,17 @@ beforeEach(() => {
 
 describe("POST /api/shorts/jobs/[id]/retry", () => {
   it("rejects unauthorized callers", async () => {
-    authenticateRequestMock.mockResolvedValue(
-      Response.json({ error: "Authentication required" }, { status: 401 }),
+    const { NextResponse } = await import("next/server")
+    authenticateManagerOverrideRequestMock.mockResolvedValue(
+      NextResponse.json(
+        { error: "Interactive Manager session or API key required" },
+        { status: 403 },
+      ),
     )
 
     const response = await POST(postRequest(), routeParams)
-    expect(response.status).toBe(401)
+    expect(response.status).toBe(403)
+    expect(launchShortsMock).not.toHaveBeenCalled()
   })
 
   it("returns 404 for unknown jobs", async () => {
@@ -134,13 +162,16 @@ describe("POST /api/shorts/jobs/[id]/retry", () => {
     expect(response.status).toBe(404)
   })
 
-  it("returns 409 for non-shorts jobs", async () => {
+  it("returns 409 not_shorts_job for non-shorts jobs", async () => {
     getJobMock.mockResolvedValue(
       buildShortsJob("prepare_failed", { options: {} }),
     )
 
     const response = await POST(postRequest(), routeParams)
     expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "not_shorts_job",
+    })
   })
 
   it("returns 400 for invalid bodies", async () => {
@@ -187,10 +218,40 @@ describe("POST /api/shorts/jobs/[id]/retry", () => {
       await expect(response.json()).resolves.toMatchObject({
         reason: "phase_invalid",
         phase,
+        error: expect.stringContaining("while a workflow is running"),
       })
       expect(launchShortsMock).not.toHaveBeenCalled()
     },
   )
+
+  it("relaunches prepare for a launch-failed job (phase queued, status failed)", async () => {
+    // The create route's workflow launch failed before any phase transition:
+    // the report still says "queued" but the job is failed. A plain retry
+    // must relaunch prepare instead of returning a permanent 409 (todo 010).
+    getJobMock.mockResolvedValue(buildShortsJob("queued", { status: "failed" }))
+
+    const response = await POST(postRequest(), routeParams)
+    expect(response.status).toBe(202)
+    await expect(response.json()).resolves.toEqual({
+      launched: true,
+      kind: "prepare",
+    })
+    expect(launchShortsMock).toHaveBeenCalledWith("prepare", "job-1")
+  })
+
+  it("does not claim a workflow is running when rejecting a non-running phase", async () => {
+    // force:"prepare" from a launch-failed job is still rejected (only plain
+    // retries cover that state), but the copy must not pretend a workflow is
+    // in flight.
+    getJobMock.mockResolvedValue(buildShortsJob("queued", { status: "failed" }))
+
+    const response = await POST(postRequest({ force: "prepare" }), routeParams)
+    expect(response.status).toBe(409)
+    const payload = (await response.json()) as { error: string; reason: string }
+    expect(payload.reason).toBe("phase_invalid")
+    expect(payload.error).not.toContain("while a workflow is running")
+    expect(payload.error).toContain("from phase queued")
+  })
 
   it.each<ShortsPhase>([
     "ready_for_review",
@@ -244,7 +305,7 @@ describe("POST /api/shorts/jobs/[id]/retry", () => {
     expect(launchShortsMock).toHaveBeenCalledWith("render", "job-1")
   })
 
-  it("resets the relaunched kind's step subset in place", async () => {
+  it("resets the relaunched kind's step subset in place and appends an audit note", async () => {
     getJobMock.mockResolvedValue(
       buildShortsJob("prepare_failed", {
         steps: [
@@ -263,9 +324,18 @@ describe("POST /api/shorts/jobs/[id]/retry", () => {
 
     const updates = updateJobMock.mock.calls[0]?.[1] as {
       steps: JobStepState[]
+      errors: { step: string; message: string; at: string }[]
     }
     expect(updates.steps).toEqual([
       { name: "shorts_prepare", status: "pending", retries: 0 },
+    ])
+    // Error history is preserved; the operator audit note carries the actor
+    // identity (smart-crop retry precedent).
+    expect(updates.errors).toEqual([
+      expect.objectContaining({
+        step: "shorts_prepare",
+        message: "Retry (prepare) requested by op@jesusfilm.org",
+      }),
     ])
   })
 

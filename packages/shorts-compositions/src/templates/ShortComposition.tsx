@@ -10,9 +10,16 @@ export const ShortComposition = (props: ShortInputProps) => {
   // wait for the vendored fonts before painting text.
   void loadShortFonts()
 
-  return props.templateId === "frame" ? (
-    <Frame {...props} />
-  ) : (
-    <Focus {...props} />
-  )
+  // Exhaustive over the schema's templateId enum — adding a template id to
+  // schema.ts fails compilation here instead of silently falling through.
+  switch (props.templateId) {
+    case "frame":
+      return <Frame {...props} />
+    case "focus":
+      return <Focus {...props} />
+    default: {
+      const exhausted: never = props.templateId
+      throw new Error(`Unknown shorts template id: ${String(exhausted)}`)
+    }
+  }
 }

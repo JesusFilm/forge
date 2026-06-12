@@ -121,11 +121,20 @@ export function shouldSkipPrepareWorker(input: {
 // Written IMMEDIATELY after createMuxAsset returns (before readiness
 // polling) so a step retry resumes polling the recorded asset instead of
 // creating a duplicate billable Mux asset.
+//
+// `propsHash` is the render provenance the asset was created FROM: the Mux
+// output step only reuses/resumes a record whose propsHash matches the
+// current resolved hash — otherwise the record belongs to a previous render
+// (the operator edited the draft and re-rendered) and a fresh asset must be
+// created from the new output bytes. Optional in the parsed type ONLY for
+// legacy records written before the field existed; those are treated as
+// stale (never reused). The builder always requires it.
 export type ShortsMuxOutputRecord = {
   version: 1
   kind: "shorts-mux-output"
   jobId: string
   muxAssetId: string
+  propsHash?: string
   ready: boolean
   playbackId?: string
   createdAt: string
@@ -134,6 +143,7 @@ export type ShortsMuxOutputRecord = {
 export function buildShortsMuxOutputRecord(input: {
   jobId: string
   muxAssetId: string
+  propsHash: string
   ready: boolean
   playbackId?: string
   createdAt?: string
@@ -143,6 +153,7 @@ export function buildShortsMuxOutputRecord(input: {
     kind: "shorts-mux-output",
     jobId: input.jobId,
     muxAssetId: input.muxAssetId,
+    propsHash: input.propsHash,
     ready: input.ready,
     ...(input.playbackId ? { playbackId: input.playbackId } : {}),
     createdAt: input.createdAt ?? new Date().toISOString(),
@@ -170,6 +181,10 @@ export function parseShortsMuxOutputRecord(
     kind: "shorts-mux-output",
     jobId: record.jobId,
     muxAssetId: record.muxAssetId,
+    // Legacy records have no propsHash — parsed as undefined, which never
+    // matches a real hash, so they are treated as stale and recreated.
+    propsHash:
+      typeof record.propsHash === "string" ? record.propsHash : undefined,
     ready: record.ready,
     playbackId:
       typeof record.playbackId === "string" ? record.playbackId : undefined,

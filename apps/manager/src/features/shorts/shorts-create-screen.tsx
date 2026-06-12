@@ -22,6 +22,9 @@ import {
   Search,
 } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
+// Type-only import (erased at compile time) — the route module itself never
+// enters the client bundle; its response type is the single source of truth.
+import type { ShortsVideoResolution } from "@/app/api/shorts/videos/[coreId]/route"
 import type { JobRecord } from "@/types/job"
 import {
   formatClipInput,
@@ -49,17 +52,6 @@ type VideosApiItem = {
 type VideosApiResponse = {
   collections: Array<VideosApiItem & { videos: VideosApiItem[] }>
   standalone: VideosApiItem[]
-}
-
-type ShortsVideoResolution = {
-  coreId: string
-  title: string | null
-  muxAssetId: string | null
-  playbackId: string | null
-  durationSec: number | null
-  language: { bcp47: string | null; whisper: string | null }
-  eligible: boolean
-  reason: "missing_mux_asset" | "playback_not_public" | null
 }
 
 export type ShortsCreatePrefill = {
@@ -101,6 +93,8 @@ function describeCreateFailure(payload: {
       return "This video has no Mux asset — it cannot be clipped into a short."
     case "video_not_found":
       return "The selected video no longer exists."
+    case "mux_error":
+      return "Mux could not be reached to resolve the source video — this is usually transient, try again."
     case "config_missing":
       return `Shorts Studio is not configured on this deployment. ${(payload.messages ?? []).join(" ")}`
     default:
@@ -279,13 +273,7 @@ function ClipScrubber({
       <div className="jobs-review-video" ref={containerRef}>
         <div className="jobs-review-video-stage">
           <video
-            className="video-js vjs-fluid vjs-default-skin"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-            }}
+            className="video-js vjs-fluid vjs-default-skin shorts-video-fill"
             ref={videoRef}
             playsInline
           />
@@ -295,7 +283,7 @@ function ClipScrubber({
       <div className="grid cols-2 jobs-form-grid">
         <label className="jobs-field">
           <div className="small jobs-field-label">In point (mm:ss)</div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="shorts-time-input-row">
             <input
               value={startText}
               onChange={(e) => onTimeInput("in", e.target.value)}
@@ -316,7 +304,7 @@ function ClipScrubber({
         </label>
         <label className="jobs-field">
           <div className="small jobs-field-label">Out point (mm:ss)</div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="shorts-time-input-row">
             <input
               value={endText}
               onChange={(e) => onTimeInput("out", e.target.value)}
@@ -347,7 +335,7 @@ function ClipScrubber({
         </label>
         <div className="jobs-field">
           <div className="small jobs-field-label">Clip</div>
-          <p className="small" style={{ margin: 0 }}>
+          <p className="small shorts-clip-summary">
             {formatClipTime(startSec)}–{formatClipTime(endSec)} ·{" "}
             {clipDurationSec > 0 ? clipDurationSec.toFixed(1) : "0.0"}s (allowed{" "}
             {SHORT_CLIP_DURATION.minSec}–{SHORT_CLIP_DURATION.maxSec}s)
@@ -516,12 +504,12 @@ export function ShortsCreateScreen({
             <h2 className="jobs-card-title">Pick a source video</h2>
           </div>
 
-          <label className="jobs-field" style={{ maxWidth: 420 }}>
+          <label className="jobs-field shorts-picker-search">
             <div className="small jobs-field-label">
               <Search
                 size={12}
                 aria-hidden="true"
-                style={{ verticalAlign: "-1px" }}
+                className="shorts-picker-search-icon"
               />{" "}
               Search
             </div>
@@ -562,30 +550,37 @@ export function ShortsCreateScreen({
                     return (
                       <tr
                         key={video.id}
-                        style={issue ? { opacity: 0.55 } : undefined}
+                        className={
+                          issue ? "shorts-picker-row-ineligible" : undefined
+                        }
                       >
                         <td>
                           <button
                             type="button"
-                            className="jobs-step-artifact-link"
+                            className="jobs-step-artifact-link shorts-picker-video-button"
                             disabled={issue != null || resolvingId !== null}
                             onClick={() => void resolveVideo(video.id)}
                             title={issue ?? `Select ${video.title}`}
-                            style={{ alignItems: "center" }}
                           >
-                            <span
-                              aria-hidden="true"
-                              style={{
-                                display: "inline-block",
-                                width: 48,
-                                height: 27,
-                                borderRadius: 4,
-                                background: video.imageUrl
-                                  ? `center / cover no-repeat url("${video.imageUrl}")`
-                                  : "#e7dfd2",
-                                flexShrink: 0,
-                              }}
-                            />
+                            {video.imageUrl ? (
+                              // An <img> keeps the admin-sourced URL out of
+                              // CSS string interpolation (no url() injection
+                              // surface). Raw <img> matches the coverage
+                              // screen's thumbnail precedent.
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                className="shorts-picker-thumb"
+                                src={video.imageUrl}
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span
+                                className="shorts-picker-thumb"
+                                aria-hidden="true"
+                              />
+                            )}
                             <span className="jobs-step-artifact-label">
                               {video.title}
                             </span>

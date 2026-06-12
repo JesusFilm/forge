@@ -85,17 +85,10 @@ export function shouldResetDraft(
 export async function readShortsDraft(
   assetId: string,
 ): Promise<ShortsDraftArtifact | null> {
-  const { artifactExists, readArtifact } = await import("@/services/storage")
+  const { readArtifact } = await import("@/services/storage")
 
-  const exists = await artifactExists(
-    assetId,
-    SHORTS_DRAFT_ARTIFACT_TYPE,
-    "json",
-  )
-  if (!exists) {
-    return null
-  }
-
+  // No existence pre-check: a missing artifact throws into the same catch as
+  // a malformed one — both mean "no usable draft" (null).
   try {
     const bytes = await readArtifact(
       assetId,

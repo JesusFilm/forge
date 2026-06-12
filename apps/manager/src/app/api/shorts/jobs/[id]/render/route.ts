@@ -13,11 +13,11 @@ import {
   authenticateManagerOverrideRequest,
   managerActorIdentity,
 } from "@/lib/auth"
-import { env } from "@/config/env"
 import {
   claimShortsLaunchSlot,
   releaseShortsLaunchSlot,
 } from "@/lib/shorts-claim"
+import { requireShortsWorkerConfig } from "@/lib/shorts-config"
 import { readShortsReport } from "@/lib/shorts-report"
 import { resetShortsStepsForLaunch } from "@/lib/workflow-steps"
 import { getJob, updateJob } from "@/lib/state"
@@ -30,13 +30,6 @@ const RENDERABLE_PHASES: ReadonlySet<ShortsPhase> = new Set([
   "render_failed",
   "completed",
 ])
-
-function getMissingShortsConfig(): string[] {
-  const missing: string[] = []
-  if (!env.SHORTS_WORKER_BASE_URL) missing.push("SHORTS_WORKER_BASE_URL")
-  if (!env.SHORTS_WORKER_API_KEY) missing.push("SHORTS_WORKER_API_KEY")
-  return missing
-}
 
 export async function POST(
   request: Request,
@@ -55,7 +48,7 @@ export async function POST(
   const shorts = job.options.shorts
   if (!shorts) {
     return NextResponse.json(
-      { error: "Job is not a shorts job" },
+      { error: "Job is not a shorts job", reason: "not_shorts_job" },
       { status: 409 },
     )
   }
@@ -73,18 +66,8 @@ export async function POST(
     )
   }
 
-  const missingConfig = getMissingShortsConfig()
-  if (missingConfig.length > 0) {
-    return NextResponse.json(
-      {
-        error: "Shorts Studio is not configured on this Manager deployment",
-        reason: "config_missing",
-        messages: [`Missing env vars: ${missingConfig.join(", ")}`],
-        retryable: false,
-      },
-      { status: 503 },
-    )
-  }
+  const configMissing = requireShortsWorkerConfig()
+  if (configMissing) return configMissing
 
   // Double-launch guard, first line (the worker's render:{assetId}:{propsHash}
   // dedupe is the second): sync claim BEFORE any await, release in finally

@@ -399,6 +399,19 @@ private, max-age=3600`. The legacy buffering artifact route must NEVER
   `transcription_skipped_no_audio`). ElevenLabs cue-level transcription
   (enrichment) and whisper word-level captions (shorts) deliberately
   coexist — word timings ARE the shorts product; do not "unify" them.
+- **Templates** (source of truth: `SHORT_TEMPLATES` in
+  `packages/shorts-compositions/src/templates/registry.ts` — per-template
+  default knobs applied when an operator PICKS a template in the editor):
+
+  | id      | label | accentColor | captionPosition | captionFont  | waveformStyle | showCaptions |
+  | ------- | ----- | ----------- | --------------- | ------------ | ------------- | ------------ |
+  | `focus` | Focus | `#f97316`   | `center`        | `montserrat` | `bars`        | `true`       |
+  | `frame` | Frame | `#f97316`   | `lower`         | `montserrat` | `bars`        | `true`       |
+
+  Distinct from the freshly-prepared INITIAL draft (`buildInitialDraft` in
+  `src/lib/shorts-draft.ts`, plan decision 14): Focus template, brand-yellow
+  `#facc15` accent, `lower` caption band.
+
 - Licensing: JFP is a non-profit → free Remotion license per Remotion's
   LICENSE.md; `acknowledgeRemotionLicense` is set on the Player. Re-verify
   at Remotion 5.0.

@@ -154,13 +154,16 @@ describe("POST /api/shorts/jobs/[id]/render", () => {
     expect(response.status).toBe(404)
   })
 
-  it("returns 409 for non-shorts jobs", async () => {
+  it("returns 409 not_shorts_job for non-shorts jobs", async () => {
     getJobMock.mockResolvedValue(
       buildShortsJob("ready_for_review", { options: {} }),
     )
 
     const response = await POST(postRequest(), routeParams)
     expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "not_shorts_job",
+    })
   })
 
   it.each<ShortsPhase>([

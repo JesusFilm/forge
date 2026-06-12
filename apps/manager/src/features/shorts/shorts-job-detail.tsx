@@ -38,6 +38,9 @@ import {
   Trash2,
 } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
+// Type-only import (erased at compile time) — the route module itself never
+// enters the client bundle; its response type is the single source of truth.
+import type { ShortsDraftStateResponse } from "@/app/api/shorts/jobs/[id]/draft/route"
 import type { JobRecord } from "@/types/job"
 import {
   buildShortsCloneHref,
@@ -65,28 +68,15 @@ type ShortsJobDetailProps = {
   initialJob: JobRecord
 }
 
-type EditorCaptionsSummary = {
-  generatedAt: string
-  count: number
-  annotation: string | null
-  language: string | null
-}
-
-type EditorClipMeta = {
-  durationSec: number
-  fps: number
-  hasAudio: boolean
-}
-
 type EditorState =
-  | { status: "idle" | "loading" }
+  | { status: "loading" }
   | { status: "failed"; message: string }
   | {
       status: "loaded"
       draft: ShortDraft | null
       draftVersion: number
-      captions: EditorCaptionsSummary | null
-      clipMeta: EditorClipMeta | null
+      captions: ShortsDraftStateResponse["captions"]
+      clipMeta: ShortsDraftStateResponse["clipMeta"]
     }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -109,8 +99,7 @@ function TemplatePicker({
     <div
       role="radiogroup"
       aria-label="Template"
-      className="grid cols-2"
-      style={{ gap: 10 }}
+      className="grid cols-2 shorts-template-grid"
     >
       {SHORT_TEMPLATES.map((template) => {
         const isSelected = template.id === value
@@ -121,18 +110,11 @@ function TemplatePicker({
             role="radio"
             aria-checked={isSelected}
             onClick={() => onPick(template)}
-            className="collection-card jobs-card"
-            style={{
-              textAlign: "left",
-              cursor: "pointer",
-              padding: 12,
-              border: isSelected
-                ? "2px solid var(--ds-black, #111)"
-                : "1px solid #e7dfd2",
-            }}
+            // The selected border is driven by [aria-checked] in globals.css.
+            className="collection-card jobs-card shorts-template-card"
           >
             <strong>{template.label}</strong>
-            <p className="small" style={{ margin: "4px 0 0" }}>
+            <p className="small shorts-template-card-description">
               {template.description}
             </p>
           </button>
@@ -158,10 +140,7 @@ function CaptionPagesEditor({
       <div className="small jobs-field-label">
         Captions ({pages.length} page{pages.length === 1 ? "" : "s"})
       </div>
-      <ul
-        className="jobs-step-detail-list"
-        style={{ maxHeight: 320, overflowY: "auto", margin: 0 }}
-      >
+      <ul className="jobs-step-detail-list shorts-caption-pages">
         {pages.map((page, pageIndex) => {
           const isExpanded = expandedPage === pageIndex
           return (
@@ -169,14 +148,13 @@ function CaptionPagesEditor({
               key={`${page.startMs}-${pageIndex}`}
               className="jobs-step-detail-item"
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div className="shorts-caption-page-row">
                 <button
                   type="button"
-                  className="jobs-step-artifact-link"
+                  className="jobs-step-artifact-link shorts-caption-page-toggle"
                   aria-expanded={isExpanded}
                   onClick={() => setExpandedPage(isExpanded ? null : pageIndex)}
                   title={isExpanded ? "Collapse page" : "Edit page tokens"}
-                  style={{ flex: 1, minWidth: 0 }}
                 >
                   <span className="jobs-step-artifact-label">
                     {formatClipInput(page.startMs / 1000)} · {page.text}
@@ -202,32 +180,21 @@ function CaptionPagesEditor({
                 </button>
               </div>
               {isExpanded ? (
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 6,
-                    marginTop: 8,
-                  }}
-                >
+                <div className="shorts-caption-tokens">
                   {page.tokens.map((token, tokenIndex) => (
                     <span
                       key={`${token.fromMs}-${tokenIndex}`}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 2,
-                      }}
+                      className="shorts-caption-token"
                     >
                       <input
-                        className="jobs-input"
+                        className="jobs-input shorts-caption-token-input"
                         // Token text carries the leading-space convention;
                         // applyTokenTextEdit preserves it on edit.
                         value={token.text}
                         aria-label={`Token ${tokenIndex + 1} of page ${pageIndex + 1}`}
+                        // Genuinely dynamic: sized to the token's text.
                         style={{
                           width: `${Math.max(4, token.text.length + 1)}ch`,
-                          padding: "2px 6px",
                         }}
                         onChange={(event) =>
                           onDraftChange({
@@ -328,25 +295,9 @@ function OutputMuxPlayer({ playbackId }: { playbackId: string }) {
 
   return (
     <div className="jobs-review-video" ref={containerRef}>
-      <div
-        style={{
-          position: "relative",
-          aspectRatio: "9 / 16",
-          maxHeight: 480,
-          margin: "0 auto",
-          overflow: "hidden",
-          borderRadius: 8,
-          background: "#000",
-        }}
-      >
+      <div className="shorts-output-frame">
         <video
-          className="video-js vjs-default-skin"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-          }}
+          className="video-js vjs-default-skin shorts-video-fill"
           ref={videoRef}
           playsInline
         />
@@ -357,7 +308,7 @@ function OutputMuxPlayer({ playbackId }: { playbackId: string }) {
 
 export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
   const [job, setJob] = useState<JobRecord>(initialJob)
-  const [editor, setEditor] = useState<EditorState>({ status: "idle" })
+  const [editor, setEditor] = useState<EditorState>({ status: "loading" })
   const [dirty, setDirty] = useState(false)
   const [pendingAction, setPendingAction] = useState<
     "save" | "render" | "retry" | "force-prepare" | null
@@ -370,7 +321,11 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
 
   const summary = getShortsJobSummary(job)
   const phase = summary?.phase ?? "queued"
-  const isActive = isActiveShortsPhase(phase)
+  const isLaunchFailed = summary?.isLaunchFailed ?? false
+  // A launch-failed job (phase "queued" + status "failed") is NOT active:
+  // nothing is running, so skip the progress section and phase polling
+  // (recentLaunch covers the window right after a retry 202).
+  const isActive = isActiveShortsPhase(phase) && !isLaunchFailed
   const isEditor = isEditorShortsPhase(phase)
 
   // -------------------------------------------------------------------
@@ -446,11 +401,7 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
           }
           return
         }
-        const payload = (await response.json()) as {
-          draft: { draftVersion: number; draft: ShortDraft } | null
-          captions: EditorCaptionsSummary | null
-          clipMeta: EditorClipMeta | null
-        }
+        const payload = (await response.json()) as ShortsDraftStateResponse
         if (cancelled) return
         setEditor({
           status: "loaded",
@@ -681,7 +632,10 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
 
   const report = summary.report
   const latestError = job.errors.at(-1)
-  const isFailed = phase === "prepare_failed" || phase === "render_failed"
+  // Launch-failed (queued + failed) surfaces the same failure card: a plain
+  // retry POST relaunches prepare from scratch (todo 010).
+  const isFailed =
+    phase === "prepare_failed" || phase === "render_failed" || isLaunchFailed
   // Stale detection prefers the local draftVersion (polling is stopped in
   // editor phases, so the report mirror may lag the latest save).
   const effectiveDraftVersion = Math.max(
@@ -766,19 +720,13 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
                 ? Math.round(runningStepDetails.progress * 100)
                 : undefined
             }
-            style={{
-              height: 6,
-              borderRadius: 3,
-              background: "#e7dfd2",
-              overflow: "hidden",
-            }}
+            className="shorts-progress-track"
           >
             <div
+              className="shorts-progress-fill"
+              // Genuinely dynamic: live worker progress.
               style={{
-                height: "100%",
                 width: `${Math.round((runningStepDetails?.progress ?? 0.03) * 100)}%`,
-                background: "#111",
-                transition: "width 600ms ease",
               }}
             />
           </div>
@@ -789,7 +737,11 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
         <section className="collection-card jobs-card">
           <div className="jobs-card-header">
             <h3 className="jobs-section-title">
-              {phase === "prepare_failed" ? "Prepare failed" : "Render failed"}
+              {phase === "prepare_failed"
+                ? "Prepare failed"
+                : phase === "render_failed"
+                  ? "Render failed"
+                  : "Launch failed"}
             </h3>
             <div className="studio-page-intro-actions">
               <button
@@ -897,7 +849,7 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
             </div>
           </div>
 
-          {editor.status === "loading" || editor.status === "idle" ? (
+          {editor.status === "loading" ? (
             <p className="small jobs-empty-state">Loading editor…</p>
           ) : editor.status === "failed" ? (
             <p className="jobs-error-text">{editor.message}</p>
@@ -909,7 +861,7 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
           ) : (
             <div className="grid cols-2 jobs-form-grid">
               {/* Left column: controls */}
-              <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
+              <div className="shorts-editor-controls">
                 <div className="jobs-field">
                   <div className="small jobs-field-label">Template</div>
                   <TemplatePicker
@@ -931,12 +883,11 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
                     <div className="small jobs-field-label">Accent color</div>
                     <input
                       type="color"
-                      className="jobs-input"
+                      className="jobs-input shorts-color-input"
                       value={draft.accentColor}
                       onChange={(event) =>
                         updateDraft({ accentColor: event.target.value })
                       }
-                      style={{ height: 38, padding: 4 }}
                     />
                   </label>
                   <label className="jobs-field">
@@ -1011,10 +962,7 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
                         </select>
                       </label>
                       {captionsAvailable ? (
-                        <label
-                          className="jobs-option"
-                          style={{ alignSelf: "end" }}
-                        >
+                        <label className="jobs-option shorts-option-align-end">
                           <input
                             type="checkbox"
                             checked={draft.showCaptions}
@@ -1065,7 +1013,7 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
               </div>
 
               {/* Right column: live preview */}
-              <div style={{ maxWidth: 380, justifySelf: "center" }}>
+              <div className="shorts-preview-pane">
                 {previewInputProps ? (
                   <ShortPreview inputProps={previewInputProps} />
                 ) : (

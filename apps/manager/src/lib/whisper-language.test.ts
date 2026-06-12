@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  isWhisperSupportedLanguage,
-  toWhisperLanguage,
-} from "@/lib/whisper-language"
+import { toWhisperLanguage } from "@/lib/whisper-language"
 
 describe("toWhisperLanguage", () => {
   it("maps plain ISO-639-1 primary subtags through unchanged", () => {
@@ -86,13 +83,5 @@ describe("toWhisperLanguage", () => {
     expect(toWhisperLanguage("")).toBeNull()
     expect(toWhisperLanguage("   ")).toBeNull()
     expect(toWhisperLanguage("-US")).toBeNull()
-  })
-})
-
-describe("isWhisperSupportedLanguage", () => {
-  it("mirrors toWhisperLanguage's nullability", () => {
-    expect(isWhisperSupportedLanguage("pt-BR")).toBe(true)
-    expect(isWhisperSupportedLanguage("xyz")).toBe(false)
-    expect(isWhisperSupportedLanguage(null)).toBe(false)
   })
 })

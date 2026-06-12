@@ -217,12 +217,15 @@ export async function runPrepare({
     nodeEnv === "production",
   )
   const protocolWhitelist = sourceProtocolWhitelist(validated.loopbackHttp)
+  // Every subprocess receives the RE-SERIALIZED parsed URL — exactly the
+  // string that passed validation — never the raw caller-supplied string.
+  const canonicalSourceUrl = validated.url.toString()
   onProgress?.(0.02, "Validated source URL")
 
   const tempDir = await mkdtemp(join(tmpdir(), "shorts-worker-prepare-"))
   try {
     // Probe the source URL (input-seek-friendly: probe the URL itself).
-    const source = await probeMedia(sourceUrl, {
+    const source = await probeMedia(canonicalSourceUrl, {
       runCommand,
       timeoutMs: invocationTimeoutMs(DEFAULT_PROBE_TIMEOUT_MS),
       protocolWhitelist,
@@ -241,7 +244,7 @@ export async function runPrepare({
       await runCommand(
         "ffmpeg",
         buildTrimArgs({
-          sourceUrl,
+          sourceUrl: canonicalSourceUrl,
           startSec: bounds.startSec,
           durationSec: trimDurationSec,
           protocolWhitelist,

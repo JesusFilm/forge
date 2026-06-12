@@ -3,6 +3,7 @@
 # monorepo context out of the daemon — the Dockerfile only COPYies the
 # manifests, apps/shorts-worker, and packages/shorts-compositions.
 **/node_modules
+**/.env*
 **/dist
 **/build
 **/.next

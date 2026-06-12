@@ -10,6 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "eslint": "^9.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "3.2.4"

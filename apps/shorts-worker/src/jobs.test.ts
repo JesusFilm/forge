@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { createJobLanes, type JobExecutor } from "./jobs.js"
+import {
+  createJobLanes,
+  TERMINAL_RECORD_RETENTION_MS,
+  type JobExecutor,
+} from "./jobs.js"
 import type { JobResult } from "./types.js"
 
 function deferred<T>() {
@@ -243,6 +247,83 @@ describe("createJobLanes — failure containment", () => {
       "sync boom",
     ])
     expect(lanes.get(following.job.workerJobId)!.status).toBe("completed")
+  })
+})
+
+describe("createJobLanes — terminal record eviction", () => {
+  it("evicts completed/failed records older than the retention window on submit", async () => {
+    let clock = new Date("2026-06-11T00:00:00.000Z")
+    const lanes = createJobLanes({
+      render: { concurrency: 2, limit: 5 },
+      now: () => clock,
+    })
+
+    const completed = lanes.submit("render", "render:a:h1", async () =>
+      fakeResult("a"),
+    )
+    const failed = lanes.submit("render", "render:b:h2", async () => {
+      throw new Error("boom")
+    })
+    if (!completed.ok || !failed.ok) throw new Error("submit failed")
+    await settle()
+    expect(lanes.get(completed.job.workerJobId)!.status).toBe("completed")
+    expect(lanes.get(failed.job.workerJobId)!.status).toBe("failed")
+
+    // Just inside the window: both records survive the next submit.
+    clock = new Date(clock.getTime() + TERMINAL_RECORD_RETENTION_MS - 1)
+    const within = lanes.submit("render", "render:c:h3", async () =>
+      fakeResult("c"),
+    )
+    if (!within.ok) throw new Error("submit failed")
+    expect(lanes.get(completed.job.workerJobId)).toBeDefined()
+    expect(lanes.get(failed.job.workerJobId)).toBeDefined()
+    await settle()
+
+    // Beyond the window: the stale terminal records are pruned.
+    clock = new Date(clock.getTime() + TERMINAL_RECORD_RETENTION_MS + 1)
+    const later = lanes.submit("render", "render:d:h4", async () =>
+      fakeResult("d"),
+    )
+    if (!later.ok) throw new Error("submit failed")
+    expect(lanes.get(completed.job.workerJobId)).toBeUndefined()
+    expect(lanes.get(failed.job.workerJobId)).toBeUndefined()
+    await settle()
+  })
+
+  it("never evicts ACTIVE jobs, no matter how old", async () => {
+    let clock = new Date("2026-06-11T00:00:00.000Z")
+    const lanes = createJobLanes({
+      render: { concurrency: 1, limit: 5 },
+      now: () => clock,
+    })
+    const gate = deferred<JobResult>()
+
+    const running = lanes.submit(
+      "render",
+      "render:a:h1",
+      async () => gate.promise,
+    )
+    const queued = lanes.submit(
+      "render",
+      "render:b:h2",
+      async () => gate.promise,
+    )
+    if (!running.ok || !queued.ok) throw new Error("submit failed")
+    await settle()
+    expect(lanes.get(running.job.workerJobId)!.status).toBe("running")
+    expect(lanes.get(queued.job.workerJobId)!.status).toBe("queued")
+
+    // Advance far beyond the retention window — active jobs must survive.
+    clock = new Date(clock.getTime() + TERMINAL_RECORD_RETENTION_MS * 3)
+    const trigger = lanes.submit("render", "render:c:h3", async () =>
+      fakeResult("c"),
+    )
+    if (!trigger.ok) throw new Error("submit failed")
+    expect(lanes.get(running.job.workerJobId)!.status).toBe("running")
+    expect(lanes.get(queued.job.workerJobId)!.status).toBe("queued")
+
+    gate.resolve(fakeResult("a"))
+    await settle()
   })
 })
 

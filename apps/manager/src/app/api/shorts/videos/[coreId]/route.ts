@@ -68,7 +68,10 @@ export async function GET(
   const video = envelope.data.get(coreId)
   if (!video) {
     return NextResponse.json(
-      { error: `No admin video found for coreId ${coreId}` },
+      {
+        error: `No admin video found for coreId ${coreId}`,
+        reason: "video_not_found",
+      },
       { status: 404 },
     )
   }

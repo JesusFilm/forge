@@ -75,11 +75,14 @@ describe("GET /api/shorts/videos/[coreId]", () => {
     expect(lookupVideosMock).not.toHaveBeenCalled()
   })
 
-  it("returns 404 for unknown coreIds", async () => {
+  it("returns 404 video_not_found for unknown coreIds", async () => {
     lookupVideosMock.mockResolvedValue({ ok: true, data: new Map() })
 
     const response = await GET(getRequest(), routeParams)
     expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toMatchObject({
+      reason: "video_not_found",
+    })
   })
 
   it("maps lookup config_missing to 503 and transport failures to 502", async () => {

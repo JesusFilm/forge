@@ -16,7 +16,7 @@ import {
   authenticateRequest,
   managerActorIdentity,
 } from "@/lib/auth"
-import { env } from "@/config/env"
+import { requireShortsWorkerConfig } from "@/lib/shorts-config"
 import {
   buildShortsMetadataArtifact,
   mergeShortsReport,
@@ -58,17 +58,11 @@ const createShortsJobSchema = z
     }
   })
 
-function getMissingShortsConfig(): string[] {
-  const missing: string[] = []
-  if (!env.SHORTS_WORKER_BASE_URL) missing.push("SHORTS_WORKER_BASE_URL")
-  if (!env.SHORTS_WORKER_API_KEY) missing.push("SHORTS_WORKER_API_KEY")
-  return missing
-}
-
 export type ShortsCreateRejectionReason =
   | "video_not_found"
   | "missing_mux_asset"
   | "playback_not_public"
+  | "asset_mismatch"
   | "clip_too_short"
   | "clip_too_long"
   | "clip_out_of_bounds"
@@ -103,18 +97,8 @@ export async function POST(request: Request) {
     )
   }
 
-  const missingConfig = getMissingShortsConfig()
-  if (missingConfig.length > 0) {
-    return NextResponse.json(
-      {
-        error: "Shorts Studio is not configured on this Manager deployment",
-        reason: "config_missing",
-        messages: [`Missing env vars: ${missingConfig.join(", ")}`],
-        retryable: false,
-      },
-      { status: 503 },
-    )
-  }
+  const configMissing = requireShortsWorkerConfig()
+  if (configMissing) return configMissing
 
   const body = parsed.data
 
@@ -164,11 +148,10 @@ export async function POST(request: Request) {
       )
     }
     if (body.muxAssetId && body.muxAssetId !== video.muxAssetId) {
-      return NextResponse.json(
-        {
-          error: `muxAssetId ${body.muxAssetId} does not match the Mux asset of video ${body.coreId} (${video.muxAssetId}) — supply one or the other`,
-        },
-        { status: 400 },
+      return validationFailed(
+        "asset_mismatch",
+        `muxAssetId ${body.muxAssetId} does not match the Mux asset of video ${body.coreId} (${video.muxAssetId}) — supply one or the other`,
+        400,
       )
     }
 
@@ -213,13 +196,18 @@ export async function POST(request: Request) {
     muxDuration = playback.duration
     publicPlaybackId = playback.publicPlaybackId
   } catch (error) {
+    // Upstream failure, not a validation rejection — mirror the videos
+    // route's agent-native envelope (502 mux_error, retryable) so a
+    // transient Mux outage never reads as a permanent 4xx.
     return NextResponse.json(
       {
         error: `Could not resolve Mux asset ${sourceMuxAssetId}: ${
           error instanceof Error ? error.message : "unknown Mux error"
         }`,
+        reason: "mux_error",
+        retryable: true,
       },
-      { status: 400 },
+      { status: 502 },
     )
   }
 
@@ -272,16 +260,10 @@ export async function POST(request: Request) {
   // Mint the per-short storage prefix (plan decision 1) and assemble the
   // job options. requestedBy comes from the authenticated actor.
   // ---------------------------------------------------------------------
+  // No re-validation needed: sourceMuxAssetId already passed
+  // ASSET_ID_PATTERN above and the appended suffix is hex-only.
   const suffix = randomBytes(4).toString("hex")
   const shortAssetId = `${sourceMuxAssetId}-short-${suffix}`
-  if (!ASSET_ID_PATTERN.test(shortAssetId)) {
-    return NextResponse.json(
-      {
-        error: `Minted short assetId ${shortAssetId} is not a valid storage assetId`,
-      },
-      { status: 500 },
-    )
-  }
 
   const shorts: ShortsJobOptions = {
     assetId: shortAssetId,
@@ -317,10 +299,18 @@ export async function POST(request: Request) {
       }`,
     )
     // Fail the job rather than leaking a stuck pending record (smart-crop
-    // create precedent).
+    // create precedent). The failed job's id is returned so callers recover
+    // via POST /api/shorts/jobs/{id}/retry (which allows a prepare relaunch
+    // from phase "queued" + status "failed") instead of re-POSTing this
+    // route and minting a duplicate job — hence retryable: false here.
     await updateJob(job.id, { status: "failed" }).catch(() => null)
     return NextResponse.json(
-      { error: "Failed to launch the shorts prepare workflow" },
+      {
+        error: "Failed to launch the shorts prepare workflow",
+        reason: "launch_failed",
+        retryable: false,
+        jobId: job.id,
+      },
       { status: 500 },
     )
   }
@@ -336,7 +326,12 @@ export async function GET(request: Request) {
   const authError = await authenticateRequest(request)
   if (authError) return authError
 
-  const jobs = await listJobs({ limit: 100 })
+  // Cross-kind cap tradeoff: listJobs limits across ALL job kinds BEFORE the
+  // shorts filter below, so a busy enrichment/smart-crop fleet can crowd
+  // shorts jobs out of the window. 250 keeps the read bounded while leaving
+  // ample headroom for the realistic shorts volume (3-operator tool); if the
+  // fleet outgrows it, page until N shorts are collected instead.
+  const jobs = await listJobs({ limit: 250 })
   const shortsJobs = jobs.filter((job) => job.options.shorts != null)
 
   return NextResponse.json({ jobs: shortsJobs })

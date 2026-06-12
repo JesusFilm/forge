@@ -139,8 +139,3 @@ export function toWhisperLanguage(bcp47: string | null): string | null {
   const mapped = BCP47_TO_WHISPER_ALIASES[primary] ?? primary
   return WHISPER_LANGUAGES.has(mapped) ? mapped : null
 }
-
-// Exported for the per-video resolution route (whisper-support flag).
-export function isWhisperSupportedLanguage(bcp47: string | null): boolean {
-  return toWhisperLanguage(bcp47) !== null
-}
