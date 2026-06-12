@@ -49,6 +49,7 @@ export function WatchSectionRenderer({
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
+  showRelatedQuestions = true,
   showHeroCta = true,
   showHeroOverlay = true,
   showHeroTitle = true,
@@ -71,6 +72,7 @@ export function WatchSectionRenderer({
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
+  showRelatedQuestions?: boolean
   showHeroCta?: boolean
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
@@ -118,6 +120,7 @@ export function WatchSectionRenderer({
           routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
           videoPathBuilder={videoPathBuilder}
+          showRelatedQuestions={showRelatedQuestions}
           showHeroCta={showHeroCta}
           showHeroOverlay={showHeroOverlay}
           showHeroTitle={showHeroTitle}
@@ -165,6 +168,7 @@ export function WatchSectionRenderer({
                   routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                   videoPathBuilder={videoPathBuilder}
+                  showRelatedQuestions={showRelatedQuestions}
                   showHeroCta={showHeroCta}
                   showHeroOverlay={showHeroOverlay}
                   showHeroTitle={showHeroTitle}
@@ -199,6 +203,7 @@ function WatchBlockEntry({
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
+  showRelatedQuestions,
   showHeroCta,
   showHeroOverlay,
   showHeroTitle,
@@ -223,6 +228,7 @@ function WatchBlockEntry({
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
+  showRelatedQuestions: boolean
   showHeroCta: boolean
   showHeroOverlay: boolean
   showHeroTitle: boolean
@@ -249,6 +255,7 @@ function WatchBlockEntry({
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
         videoPathBuilder={videoPathBuilder}
+        showRelatedQuestions={showRelatedQuestions}
         showHeroCta={showHeroCta}
         showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
@@ -278,6 +285,7 @@ function SyntheticBlock({
   routePosterBridgeKey,
   onChapterNavigateIntent,
   videoPathBuilder,
+  showRelatedQuestions,
   showHeroCta,
   showHeroOverlay,
   showHeroTitle,
@@ -301,6 +309,7 @@ function SyntheticBlock({
   routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
+  showRelatedQuestions: boolean
   showHeroCta: boolean
   showHeroOverlay: boolean
   showHeroTitle: boolean
@@ -360,6 +369,7 @@ function SyntheticBlock({
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
           optimisticTitle={pendingChapter?.title ?? null}
+          showRelatedQuestions={showRelatedQuestions}
         />
       )
     case "StudyQuestions":

@@ -233,6 +233,39 @@ describe("WatchBody — two-column layout", () => {
     expect(description?.className).not.toContain("font-medium")
   })
 
+  it("can hide the Related Questions column while keeping the body copy", () => {
+    const block = makeBlock({ downloadCount: 1 })
+    const sq = makeStudyQuestions(["Q1?", "Q2?"])
+
+    act(() => {
+      root.render(
+        <WatchBody
+          block={block}
+          studyQuestions={sq}
+          onDownloadClick={vi.fn()}
+          showRelatedQuestions={false}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-body-right"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-study-questions"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-body-title"]')?.textContent,
+    ).toBe("Jesus")
+    expect(
+      container.querySelector('[data-testid="watch-body-description"]')
+        ?.textContent,
+    ).toBe("A description.")
+    expect(
+      container.querySelector('[data-testid="watch-download-button"]'),
+    ).not.toBeNull()
+  })
+
   it("does not render the duplicated body label tag when present", () => {
     const block = makeBlock({ label: "EPISODE", downloadCount: 1 })
 

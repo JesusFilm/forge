@@ -13,6 +13,7 @@ export function WatchBody({
   studyQuestions,
   onDownloadClick,
   optimisticTitle,
+  showRelatedQuestions = true,
 }: {
   block: WatchBodyBlock
   downloadButtonLabel?: string
@@ -22,6 +23,7 @@ export function WatchBody({
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
   optimisticTitle?: string | null
+  showRelatedQuestions?: boolean
 }) {
   const { video, variant } = block
   const visualTitle = optimisticTitle ?? video.title ?? ""
@@ -30,7 +32,7 @@ export function WatchBody({
     .map((q) => q.value)
     .filter((v): v is string => v != null && v.length > 0)
 
-  // The right column (Related Questions + Ask Yours CTA) always renders.
+  // The right column (Related Questions + Ask Yours CTA) normally renders.
   // When there are no editorial prompts, WatchStudyQuestions falls back to
   // a single placeholder row -- the Ask Yours flow is always relevant, so
   // hiding the section was leaving the CTA stranded on prompt-less videos.
@@ -90,12 +92,14 @@ export function WatchBody({
         ) : null}
       </div>
 
-      <div
-        data-testid="watch-body-right"
-        className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-5"
-      >
-        <WatchStudyQuestions prompts={prompts} />
-      </div>
+      {showRelatedQuestions ? (
+        <div
+          data-testid="watch-body-right"
+          className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-5"
+        >
+          <WatchStudyQuestions prompts={prompts} />
+        </div>
+      ) : null}
     </section>
   )
 }

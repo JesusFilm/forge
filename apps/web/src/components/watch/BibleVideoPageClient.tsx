@@ -15,6 +15,7 @@ export function BibleVideoPageClient(props: BibleVideoPageClientProps) {
     <WatchPageClient
       {...props}
       videoPathBuilder={bibleVideoPath}
+      showRelatedQuestions={false}
       showHeroCta={false}
       showHeroOverlay={false}
       showHeroTitle={false}

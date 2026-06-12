@@ -164,6 +164,7 @@ type WatchPageClientProps = {
   questionPanelEnabled?: boolean
   initialTranscript?: InitialSubtitleTranscript
   videoPathBuilder?: WatchVideoPathBuilder
+  showRelatedQuestions?: boolean
   showHeroCta?: boolean
   showHeroOverlay?: boolean
   showHeroTitle?: boolean
@@ -249,6 +250,7 @@ export function WatchPageClient({
   questionPanelEnabled = false,
   initialTranscript = null,
   videoPathBuilder = watchVideoPath,
+  showRelatedQuestions = true,
   showHeroCta = true,
   showHeroOverlay = true,
   showHeroTitle = true,
@@ -633,6 +635,7 @@ export function WatchPageClient({
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={handleChapterNavigateIntent}
         videoPathBuilder={videoPathBuilder}
+        showRelatedQuestions={showRelatedQuestions}
         showHeroCta={showHeroCta}
         showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}

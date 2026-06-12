@@ -47,6 +47,7 @@ describe("BibleVideoPageClient", () => {
       | undefined
 
     expect(props?.videoPathBuilder).toBe(bibleVideoPath)
+    expect(props?.showRelatedQuestions).toBe(false)
     expect(props?.showHeroCta).toBe(false)
     expect(props?.showHeroOverlay).toBe(false)
     expect(props?.showHeroTitle).toBe(false)
