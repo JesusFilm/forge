@@ -165,6 +165,7 @@ type WatchPageClientProps = {
   initialTranscript?: InitialSubtitleTranscript
   videoPathBuilder?: WatchVideoPathBuilder
   showHeroCta?: boolean
+  showHeroOverlay?: boolean
   showHeroTitle?: boolean
 }
 
@@ -249,6 +250,7 @@ export function WatchPageClient({
   initialTranscript = null,
   videoPathBuilder = watchVideoPath,
   showHeroCta = true,
+  showHeroOverlay = true,
   showHeroTitle = true,
 }: WatchPageClientProps) {
   const router = useRouter()
@@ -632,6 +634,7 @@ export function WatchPageClient({
         onChapterNavigateIntent={handleChapterNavigateIntent}
         videoPathBuilder={videoPathBuilder}
         showHeroCta={showHeroCta}
+        showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
       />
 

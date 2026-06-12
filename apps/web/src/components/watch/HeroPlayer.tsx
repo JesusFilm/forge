@@ -181,6 +181,7 @@ export function HeroPlayer({
   darkenOverlay = false,
   overlay,
   showCta = true,
+  showOverlay = true,
   showTitle = true,
   subtitleVttSrc,
   optimisticVisual,
@@ -195,6 +196,7 @@ export function HeroPlayer({
   darkenOverlay?: boolean
   overlay?: ReactNode
   showCta?: boolean
+  showOverlay?: boolean
   showTitle?: boolean
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
@@ -1254,7 +1256,7 @@ export function HeroPlayer({
         data-testid="hero-player-overlay-anchor"
         className="relative z-10 h-0 w-full"
       >
-        {!chromeRevealed
+        {!chromeRevealed && showOverlay
           ? (overlay ?? (
               <div
                 data-testid="hero-player-overlay"

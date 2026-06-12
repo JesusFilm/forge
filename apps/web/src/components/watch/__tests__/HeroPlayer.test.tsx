@@ -1178,6 +1178,25 @@ describe("HeroPlayer — initial mount", () => {
     ).toBe("Jesus")
   })
 
+  it("can hide the entire pre-reveal overlay", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} showOverlay={false} />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+  })
+
   it("uses the production muted overlay backdrop before chrome is revealed", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)

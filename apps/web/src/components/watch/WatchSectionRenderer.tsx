@@ -50,6 +50,7 @@ export function WatchSectionRenderer({
   onChapterNavigateIntent,
   videoPathBuilder,
   showHeroCta = true,
+  showHeroOverlay = true,
   showHeroTitle = true,
 }: {
   blocks: MergedWatchBlock[]
@@ -71,6 +72,7 @@ export function WatchSectionRenderer({
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
   showHeroCta?: boolean
+  showHeroOverlay?: boolean
   showHeroTitle?: boolean
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -117,6 +119,7 @@ export function WatchSectionRenderer({
           onChapterNavigateIntent={onChapterNavigateIntent}
           videoPathBuilder={videoPathBuilder}
           showHeroCta={showHeroCta}
+          showHeroOverlay={showHeroOverlay}
           showHeroTitle={showHeroTitle}
         />
       ))}
@@ -163,6 +166,7 @@ export function WatchSectionRenderer({
                   onChapterNavigateIntent={onChapterNavigateIntent}
                   videoPathBuilder={videoPathBuilder}
                   showHeroCta={showHeroCta}
+                  showHeroOverlay={showHeroOverlay}
                   showHeroTitle={showHeroTitle}
                 />
               ))}
@@ -196,6 +200,7 @@ function WatchBlockEntry({
   onChapterNavigateIntent,
   videoPathBuilder,
   showHeroCta,
+  showHeroOverlay,
   showHeroTitle,
 }: {
   block: MergedWatchBlock
@@ -219,6 +224,7 @@ function WatchBlockEntry({
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
   showHeroCta: boolean
+  showHeroOverlay: boolean
   showHeroTitle: boolean
 }) {
   if (isWatchBlock(block)) {
@@ -244,6 +250,7 @@ function WatchBlockEntry({
         onChapterNavigateIntent={onChapterNavigateIntent}
         videoPathBuilder={videoPathBuilder}
         showHeroCta={showHeroCta}
+        showHeroOverlay={showHeroOverlay}
         showHeroTitle={showHeroTitle}
       />
     )
@@ -272,6 +279,7 @@ function SyntheticBlock({
   onChapterNavigateIntent,
   videoPathBuilder,
   showHeroCta,
+  showHeroOverlay,
   showHeroTitle,
 }: {
   block: WatchBlock
@@ -294,6 +302,7 @@ function SyntheticBlock({
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
   videoPathBuilder?: WatchVideoPathBuilder
   showHeroCta: boolean
+  showHeroOverlay: boolean
   showHeroTitle: boolean
 }) {
   const optimisticVisual =
@@ -324,6 +333,7 @@ function SyntheticBlock({
           coverBlackoutPhase={coverBlackoutPhase}
           forcePosterBridgeKey={routePosterBridgeKey}
           showCta={showHeroCta}
+          showOverlay={showHeroOverlay}
           showTitle={showHeroTitle}
         />
       )
