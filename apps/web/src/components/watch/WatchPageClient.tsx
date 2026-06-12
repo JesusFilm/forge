@@ -318,7 +318,7 @@ export function WatchPageClient({
       void routeWarmPromise.finally(() => {
         if (cancelled) return
         writeWatchChapterPosterBridgeIntent(intent)
-        router.push(intent.href as Route)
+        router.push(intent.href as Route, { scroll: window.scrollY > 1 })
       })
     }, delay)
 

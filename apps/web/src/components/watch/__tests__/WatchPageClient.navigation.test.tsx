@@ -114,6 +114,10 @@ beforeEach(() => {
   })
   window.sessionStorage.clear()
   window.history.replaceState({}, "", "/watch/current-video.html/english.html")
+  Object.defineProperty(window, "scrollY", {
+    configurable: true,
+    value: 0,
+  })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -201,6 +205,23 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+async function clickChapterAndFlushNavigation() {
+  const renderer = () =>
+    container.querySelector('[data-testid="watch-section-renderer"]')
+
+  act(() => {
+    ;(renderer() as HTMLButtonElement).click()
+  })
+  act(() => {
+    vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_BLACKOUT_MS)
+  })
+  await act(async () => {
+    vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_REVEAL_MS)
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
 describe("WatchPageClient chapter navigation", () => {
   it("validates pending chapter state and self-invalidates after route commit", async () => {
     vi.useFakeTimers()
@@ -247,7 +268,9 @@ describe("WatchPageClient chapter navigation", () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    expect(routerPushMock).toHaveBeenCalledWith("/child-2.html/english.html")
+    expect(routerPushMock).toHaveBeenCalledWith("/child-2.html/english.html", {
+      scroll: false,
+    })
 
     window.history.replaceState({}, "", "/watch/child-2.html/english.html")
     renderWatchPage(makeVideo("child-2", "Clicked Child"))
@@ -305,6 +328,23 @@ describe("WatchPageClient chapter navigation", () => {
       await Promise.resolve()
     })
 
-    expect(routerPushMock).toHaveBeenCalledWith("/child-2.html/english.html")
+    expect(routerPushMock).toHaveBeenCalledWith("/child-2.html/english.html", {
+      scroll: false,
+    })
+  })
+
+  it("keeps route-change scrolling enabled for chapter clicks below the top", async () => {
+    vi.useFakeTimers()
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 240,
+    })
+    renderWatchPage()
+
+    await clickChapterAndFlushNavigation()
+
+    expect(routerPushMock).toHaveBeenCalledWith("/child-2.html/english.html", {
+      scroll: true,
+    })
   })
 })
