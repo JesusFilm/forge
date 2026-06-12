@@ -32,7 +32,8 @@ type WatchSeoManifestCache = {
 export type WatchSeoManifestSource = () => Promise<WatchSeoManifest | null>
 
 const WATCH_SEO_MANIFEST_CACHE_TTL_MS = 60_000
-const WATCH_SEO_MANIFEST_TIMEOUT_MS = 3_000
+const WATCH_SEO_MANIFEST_MISS_CACHE_TTL_MS = 5_000
+const WATCH_SEO_MANIFEST_TIMEOUT_MS = 10_000
 
 let manifestCache: WatchSeoManifestCache = {
   etag: null,
@@ -224,7 +225,11 @@ export async function getWatchSeoManifest(): Promise<WatchSeoManifest | null> {
 
   manifestCache.inFlight = fetchWatchSeoManifest().then((manifest) => {
     manifestCache.manifest = manifest
-    manifestCache.expiresAt = Date.now() + WATCH_SEO_MANIFEST_CACHE_TTL_MS
+    manifestCache.expiresAt =
+      Date.now() +
+      (manifest
+        ? WATCH_SEO_MANIFEST_CACHE_TTL_MS
+        : WATCH_SEO_MANIFEST_MISS_CACHE_TTL_MS)
     manifestCache.inFlight = null
     return manifest
   })
