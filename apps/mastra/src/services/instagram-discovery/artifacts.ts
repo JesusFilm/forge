@@ -46,6 +46,7 @@ export const DiscoveryTotalsSchema = z
     candidates: z.number().int().nonnegative(),
     instagram: z.number().int().nonnegative(),
     deduped: z.number().int().nonnegative(),
+    excludedCommentary: z.number().int().nonnegative(),
     qualified: z.number().int().nonnegative(),
   })
   .strict()

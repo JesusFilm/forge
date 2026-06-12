@@ -6,8 +6,11 @@ export type InstagramMediaType = "post" | "reel" | "tv"
 export type MatchSignals = {
   isAiGenerated: boolean
   isChristian: boolean
+  /** True when the caption reads as commentary/news/tutorial about AI content. */
+  isCommentary: boolean
   matchedAi: string[]
   matchedChristian: string[]
+  matchedCommentary: string[]
 }
 
 /** A normalized Instagram post discovered via Firecrawl search. */
@@ -41,6 +44,8 @@ export type DiscoveryTotals = {
   candidates: number
   instagram: number
   deduped: number
+  /** Deduped posts dropped because they read as commentary, not a creation. */
+  excludedCommentary: number
   qualified: number
 }
 

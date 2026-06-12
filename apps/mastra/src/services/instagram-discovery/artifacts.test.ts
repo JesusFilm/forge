@@ -21,7 +21,13 @@ function sampleReport(
     startedAt: "2026-06-08T00:00:00.000Z",
     finishedAt: "2026-06-08T00:00:05.000Z",
     queries: ["AI generated Jesus reel site:instagram.com"],
-    totals: { candidates: 3, instagram: 2, deduped: 2, qualified: 1 },
+    totals: {
+      candidates: 3,
+      instagram: 2,
+      deduped: 2,
+      excludedCommentary: 0,
+      qualified: 1,
+    },
     queryFailures: [],
     posts: [
       {

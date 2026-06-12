@@ -270,15 +270,31 @@ export function selectQualifyingPosts(
   const deduped = [...byShortcode.values()]
 
   const qualified: InstagramPost[] = []
+  let excludedCommentary = 0
   for (const post of deduped) {
     const signals = classifyPost(post)
-    if (!qualifies(signals)) continue
-    qualified.push({
-      ...post,
-      matchedAi: signals.matchedAi,
-      matchedChristian: signals.matchedChristian,
-    })
-    if (qualified.length >= input.maxResults) break
+    if (!qualifies(signals)) {
+      // Count posts dropped solely because they read as commentary (they would
+      // otherwise have qualified on AI + Christian keywords) so the operator can
+      // see the exclusion filter working.
+      if (
+        signals.isAiGenerated &&
+        signals.isChristian &&
+        signals.isCommentary
+      ) {
+        excludedCommentary += 1
+      }
+      continue
+    }
+    // Cap the kept set, but keep scanning so excludedCommentary counts every
+    // commentary drop, not just those before the cap. Classification is cheap.
+    if (qualified.length < input.maxResults) {
+      qualified.push({
+        ...post,
+        matchedAi: signals.matchedAi,
+        matchedChristian: signals.matchedChristian,
+      })
+    }
   }
 
   return {
@@ -287,6 +303,7 @@ export function selectQualifyingPosts(
       candidates: hits.length,
       instagram: parsed.length,
       deduped: deduped.length,
+      excludedCommentary,
       qualified: qualified.length,
     },
   }

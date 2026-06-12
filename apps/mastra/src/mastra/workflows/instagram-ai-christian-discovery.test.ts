@@ -43,6 +43,11 @@ const aiOnlyHit = {
   description: "Made with Midjourney, neon city",
 }
 const nonInstagramHit = { url: "https://youtube.com/watch?v=1" }
+const commentaryHit = {
+  url: "https://www.instagram.com/reel/COMMENT1/",
+  description:
+    "Should we be listening to AI generated Christian music? Here's my thoughts",
+}
 
 describe("runInstagramDiscovery", () => {
   it("returns only qualifying posts and writes an artifact", async () => {
@@ -73,10 +78,32 @@ describe("runInstagramDiscovery", () => {
       candidates: 3,
       instagram: 2,
       deduped: 2,
+      excludedCommentary: 0,
       qualified: 1,
     })
     expect(result.artifactPath).toBe("/tmp/fake/reports/run-1.json")
     expect(store.written).toHaveLength(1)
+  })
+
+  it("excludes commentary posts and counts them", async () => {
+    const store = fakeStore()
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-comment",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit, commentaryHit],
+        artifactStore: store,
+      },
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.posts).toHaveLength(1)
+    expect(result.posts[0]!.shortcode).toBe("ABC123")
+    expect(result.posts.some((p) => p.shortcode === "COMMENT1")).toBe(false)
+    expect(result.totals.excludedCommentary).toBe(1)
+    expect(result.totals.qualified).toBe(1)
   })
 
   it("dedupes the same shortcode across queries", async () => {
@@ -216,7 +243,13 @@ describe("handleInstagramDiscoveryRouteRequest", () => {
   const okResult: InstagramDiscoveryWorkflowResult = {
     ok: true,
     mastraRunId: "r",
-    totals: { candidates: 0, instagram: 0, deduped: 0, qualified: 0 },
+    totals: {
+      candidates: 0,
+      instagram: 0,
+      deduped: 0,
+      excludedCommentary: 0,
+      qualified: 0,
+    },
     posts: [],
     queryFailures: [],
   }
