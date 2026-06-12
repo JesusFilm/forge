@@ -164,6 +164,7 @@ type WatchPageClientProps = {
   questionPanelEnabled?: boolean
   initialTranscript?: InitialSubtitleTranscript
   videoPathBuilder?: WatchVideoPathBuilder
+  showHeroTitle?: boolean
 }
 
 type LanguageOptionsState =
@@ -246,6 +247,7 @@ export function WatchPageClient({
   questionPanelEnabled = false,
   initialTranscript = null,
   videoPathBuilder = watchVideoPath,
+  showHeroTitle = true,
 }: WatchPageClientProps) {
   const router = useRouter()
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
@@ -627,6 +629,7 @@ export function WatchPageClient({
         routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={handleChapterNavigateIntent}
         videoPathBuilder={videoPathBuilder}
+        showHeroTitle={showHeroTitle}
       />
 
       <SubtitleTranscript

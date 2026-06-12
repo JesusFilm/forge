@@ -180,6 +180,7 @@ export function HeroPlayer({
   playableLanguageCount,
   darkenOverlay = false,
   overlay,
+  showTitle = true,
   subtitleVttSrc,
   optimisticVisual,
   coverBlackoutKey,
@@ -192,6 +193,7 @@ export function HeroPlayer({
   playableLanguageCount?: number
   darkenOverlay?: boolean
   overlay?: ReactNode
+  showTitle?: boolean
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
   coverBlackoutKey?: string | null
@@ -1264,7 +1266,7 @@ export function HeroPlayer({
                     {videoLabels(videoLabelMessageKey(visualLabel))}
                   </span>
                 ) : null}
-                {visualTitle ? (
+                {showTitle && visualTitle ? (
                   <h1
                     data-testid="hero-player-overlay-title"
                     className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"

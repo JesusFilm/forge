@@ -11,5 +11,11 @@ type BibleVideoPageClientProps = Omit<
 >
 
 export function BibleVideoPageClient(props: BibleVideoPageClientProps) {
-  return <WatchPageClient {...props} videoPathBuilder={bibleVideoPath} />
+  return (
+    <WatchPageClient
+      {...props}
+      videoPathBuilder={bibleVideoPath}
+      showHeroTitle={false}
+    />
+  )
 }

@@ -1142,6 +1142,24 @@ describe("HeroPlayer — initial mount", () => {
     expect(surface?.getAttribute("tabindex")).toBe("-1")
   })
 
+  it("can hide the pre-reveal overlay title while keeping the label and Watch now pill", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} showTitle={false} />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]')
+        ?.textContent,
+    ).toBe("Episode")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]')
+        ?.textContent,
+    ).toContain("Watch now")
+  })
+
   it("uses the production muted overlay backdrop before chrome is revealed", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
