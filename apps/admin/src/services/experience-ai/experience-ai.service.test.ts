@@ -216,6 +216,59 @@ describe("loadExperienceAiVideoCandidates", () => {
     })
   })
 
+  it("requires playable, non-container videos in the catalog query", async () => {
+    const prisma = makePrisma()
+    seedCatalog(prisma)
+
+    await loadExperienceAiVideoCandidates(prisma, {
+      locale: "en",
+      prompt: "hope",
+      limit: 2,
+    })
+
+    const where = prisma.video.findMany.mock.calls[0]?.[0]?.where
+    expect(where).toMatchObject({
+      deletedAt: null,
+      OR: [{ label: null }, { label: { notIn: ["COLLECTION", "SERIES"] } }],
+      dubs: { some: { deletedAt: null, published: true } },
+    })
+  })
+
+  it("falls back to any playable dub when the locale dub has no stream", async () => {
+    const prisma = makePrisma()
+    seedCatalog(prisma)
+    prisma.videoDub.findMany.mockResolvedValue([
+      {
+        videoId: "video-1",
+        published: true,
+        hls: null,
+        dash: null,
+        share: null,
+        language: { bcp47: "en", iso3: "eng", slug: "english" },
+        updatedAt: new Date("2026-04-23T10:00:00Z"),
+      },
+      {
+        videoId: "video-1",
+        published: true,
+        hls: "https://example.com/french.m3u8",
+        dash: null,
+        share: null,
+        language: { bcp47: "fr", iso3: "fra", slug: "french" },
+        updatedAt: new Date("2026-04-22T10:00:00Z"),
+      },
+    ])
+
+    const candidates = await loadExperienceAiVideoCandidates(prisma, {
+      locale: "en",
+      prompt: "hope",
+      limit: 1,
+    })
+
+    expect(candidates[0]?.previewStreamUrl).toBe(
+      "https://example.com/french.m3u8",
+    )
+  })
+
   it("uses a matching-language dub for preview streams", async () => {
     const prisma = makePrisma()
     seedCatalog(prisma)
@@ -278,10 +331,11 @@ describe("loadExperienceAiVideoCandidates", () => {
     )
     expect(prisma.video.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           id: { in: ["video-2", "video-1"] },
           deletedAt: null,
-        },
+          dubs: { some: expect.objectContaining({ published: true }) },
+        }),
       }),
     )
     expect(candidates.map((candidate) => candidate.videoId)).toEqual([
