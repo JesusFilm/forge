@@ -55,6 +55,10 @@ vi.mock("next-intl", () => ({
         : key,
 }))
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 vi.mock("@/components/FloatingSearchProvider", () => ({
   useFloatingSearchPinned: () => ({ searchOpen: false }),
 }))

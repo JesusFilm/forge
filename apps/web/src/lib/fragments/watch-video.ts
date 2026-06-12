@@ -233,6 +233,34 @@ export const getWatchVideoShellBySlugOperation = adminGraphql(
   [watchVideoShellFragment],
 )
 
+export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
+  query GetWatchVideoCarouselMuxPlaybackIds(
+    $languageSlug: String
+    $videoSlug: String!
+  ) {
+    videoBySlug(slug: $videoSlug) {
+      documentId: id
+      parents {
+        parent {
+          documentId: id
+          children {
+            child {
+              documentId: id
+              muxPlaybackId(languageSlug: $languageSlug)
+            }
+          }
+        }
+      }
+      children {
+        child {
+          documentId: id
+          muxPlaybackId(languageSlug: $languageSlug)
+        }
+      }
+    }
+  }
+`)
+
 export const getWatchVideoLocalizedCopyBySlugOperation = adminGraphql(
   `
     query GetWatchVideoLocalizedCopyBySlug(

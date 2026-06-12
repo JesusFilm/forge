@@ -127,6 +127,17 @@ function makeRussianDub(
   })
 }
 
+function makeCarouselMuxPlaybackIds(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    documentId: "video-1",
+    parents: [],
+    children: [],
+    ...overrides,
+  }
+}
+
 describe("resolveWatchPage", () => {
   afterEach(() => {
     queryMock.mockReset()
@@ -606,6 +617,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -614,7 +630,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     const result = await resolveWatchVideoBySlug("jesus", "russian")
 
-    expect(queryMock).toHaveBeenCalledTimes(3)
+    expect(queryMock).toHaveBeenCalledTimes(4)
     const primaryCall = queryMock.mock.calls[1][0] as {
       variables: {
         locale: string
@@ -669,6 +685,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -681,6 +702,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { videoSlug: "jesus" },
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
       { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+      { languageSlug: "russian", videoSlug: "jesus" },
       { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU broad")
@@ -760,6 +782,20 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds({
+            children: [
+              {
+                child: {
+                  documentId: "child-1",
+                  muxPlaybackId: "mux-child-1",
+                },
+              },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -772,10 +808,12 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { videoSlug: "jesus" },
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
       { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+      { languageSlug: "russian", videoSlug: "jesus" },
       { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.video.children[0]?.title).toBe("The Beginning RU")
+    expect(result?.video.children[0]?.muxPlaybackId).toBe("mux-child-1")
   })
 
   it("falls back to English questions without losing localized title or dub selection", async () => {
@@ -839,6 +877,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -852,6 +895,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
       { locale: "ru", languageSlug: null, videoSlug: "jesus" },
       { locale: "en", languageSlug: null, videoSlug: "jesus" },
+      { languageSlug: "russian", videoSlug: "jesus" },
       { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU")
