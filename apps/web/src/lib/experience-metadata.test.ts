@@ -100,7 +100,7 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.robots).toEqual({ index: true, follow: true })
   })
 
-  it("generates resolved video metadata with Twitter parity and hreflang alternates", async () => {
+  it("generates resolved video metadata with Twitter parity and no page-head hreflang", async () => {
     const { generateWatchVideoMetadata } = await import("./experience-metadata")
     const selectedVariant = {
       documentId: "dub-en",
@@ -215,11 +215,8 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.alternates).toMatchObject({
       canonical:
         "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
-      languages: {
-        en: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
-        es: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/spanish-castilian.html",
-      },
     })
+    expect(metadata.alternates).not.toHaveProperty("languages")
   })
 
   it("uses a 1200x630 Mux social thumbnail before the generic image for playable videos", async () => {
