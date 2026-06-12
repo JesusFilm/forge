@@ -144,7 +144,6 @@ export type WatchVideoMetadataModel = {
   noIndex: boolean
   inLanguage: string | null
   durationSeconds: number | null
-  alternatesLanguages?: Record<string, string>
 }
 
 type WatchVideoMetadataOptions = {
@@ -153,26 +152,6 @@ type WatchVideoMetadataOptions = {
   routeSlug: string
   pathLocale: string
   seriesSlug?: string
-}
-
-function buildWatchVideoAlternateLanguages(
-  options: WatchVideoMetadataOptions,
-): Record<string, string> | undefined {
-  const languages: Record<string, string> = {}
-  const episodeSlug = options.video.slug ?? options.routeSlug
-
-  for (const variant of options.video.variants ?? []) {
-    if (variant.published !== true || !variant.hls) continue
-    const slug = variant.language?.slug
-    const bcp47 = variant.language?.bcp47
-    if (!slug || !bcp47 || languages[bcp47]) continue
-
-    languages[bcp47] = options.seriesSlug
-      ? buildEpisodeCanonicalUrl(options.seriesSlug, episodeSlug, slug)
-      : buildCanonicalUrl(options.routeSlug, slug)
-  }
-
-  return Object.keys(languages).length ? languages : undefined
 }
 
 export function buildWatchVideoMetadataModel(
@@ -223,7 +202,6 @@ export function buildWatchVideoMetadataModel(
       options.selectedVariant.language?.slug ??
       null,
     durationSeconds: options.selectedVariant.duration ?? null,
-    alternatesLanguages: buildWatchVideoAlternateLanguages(options),
   }
 }
 
@@ -265,9 +243,6 @@ export function generateWatchVideoMetadata(
     ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
     alternates: {
       canonical: model.canonicalUrl,
-      ...(model.alternatesLanguages && {
-        languages: model.alternatesLanguages,
-      }),
     },
   }
 }
