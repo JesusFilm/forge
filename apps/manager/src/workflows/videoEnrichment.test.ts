@@ -14,7 +14,7 @@ const {
   sceneEmbeddingSyncMock,
   analyzeAllScenesMock,
   persistedJobArtifacts,
-  subtitleTranslationMock,
+  mastraSubtitleEnrichmentMock,
   syncTranslatedSubtitlesToMuxMock,
   transcribeMock,
   updateJobMock,
@@ -33,7 +33,7 @@ const {
   sceneEmbeddingSyncMock: vi.fn(),
   analyzeAllScenesMock: vi.fn(),
   persistedJobArtifacts: {} as Record<string, unknown>,
-  subtitleTranslationMock: vi.fn(),
+  mastraSubtitleEnrichmentMock: vi.fn(),
   syncTranslatedSubtitlesToMuxMock: vi.fn(),
   transcribeMock: vi.fn(),
   updateJobMock: vi.fn(),
@@ -57,8 +57,8 @@ vi.mock("@/services/metadata", () => ({
   extractMetadata: metadataMock,
 }))
 
-vi.mock("@/services/subtitleTranslation", () => ({
-  translateSubtitles: subtitleTranslationMock,
+vi.mock("@/services/mastra-subtitle-enrichment", () => ({
+  launchMastraSubtitleEnrichment: mastraSubtitleEnrichmentMock,
 }))
 
 vi.mock("@/services/mastra-transcript-embeddings", () => ({
@@ -96,6 +96,24 @@ vi.mock("@/workflows/jobStateSteps", () => ({
 
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 
+function subtitleSuccess(
+  languages: Array<{
+    lang: string
+    status: "completed" | "failed"
+    error?: string
+    artifactKeys?: { vtt: string; json: string }
+  }>,
+) {
+  return {
+    ok: true,
+    mastraRunId: "subtitle-run-1",
+    languages,
+    succeeded: languages.filter((language) => language.status === "completed")
+      .length,
+    failed: languages.filter((language) => language.status === "failed").length,
+  }
+}
+
 describe("runVideoEnrichment", () => {
   beforeEach(() => {
     chaptersMock.mockReset()
@@ -110,7 +128,7 @@ describe("runVideoEnrichment", () => {
     analyzeAllScenesMock.mockReset()
     audioCleanupMock.mockReset()
     runAudioCleanupMock.mockReset()
-    subtitleTranslationMock.mockReset()
+    mastraSubtitleEnrichmentMock.mockReset()
     syncTranslatedSubtitlesToMuxMock.mockReset()
     transcribeMock.mockReset()
     updateJobMock.mockReset()
@@ -225,9 +243,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -296,9 +314,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -369,9 +387,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -432,9 +450,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -525,10 +543,12 @@ describe("runVideoEnrichment", () => {
         ],
       },
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-      { lang: "fr", status: "failed", error: "bad glossary" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([
+        { lang: "en", status: "completed" },
+        { lang: "fr", status: "failed", error: "bad glossary" },
+      ]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -597,6 +617,11 @@ describe("runVideoEnrichment", () => {
     })
 
     expect(metadataMock).toHaveBeenCalledWith("asset-1", "hello world", "ru")
+    expect(mastraSubtitleEnrichmentMock).toHaveBeenCalledWith({
+      assetId: "asset-1",
+      sourceLanguage: "ru",
+      targetLanguages: ["en", "fr"],
+    })
 
     expect(updateJobMock.mock.calls).toEqual([
       [
@@ -771,9 +796,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -830,9 +855,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -896,9 +921,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -981,9 +1006,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -1059,9 +1084,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -1119,9 +1144,9 @@ describe("runVideoEnrichment", () => {
       language: "fr",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -1274,11 +1299,14 @@ describe("runVideoEnrichment", () => {
       language: "ru",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockRejectedValue(
-      new Error(
-        "Subtitle translation failed for all target languages (en: llm offline)",
-      ),
-    )
+    mastraSubtitleEnrichmentMock.mockResolvedValue({
+      ok: false,
+      mastraRunId: "subtitle-run-1",
+      reason: "all_languages_failed",
+      retryable: true,
+      message: "Subtitle enrichment failed for all target languages.",
+      languages: [{ lang: "en", status: "failed", error: "llm offline" }],
+    })
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
@@ -1310,14 +1338,14 @@ describe("runVideoEnrichment", () => {
         translateTo: ["en"],
       }),
     ).rejects.toThrow(
-      "Subtitle translation failed for all target languages (en: llm offline)",
+      "Mastra subtitle enrichment failed (all_languages_failed): Subtitle enrichment failed for all target languages.",
     )
 
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
       "translation",
       "failed",
-      "Subtitle translation failed for all target languages (en: llm offline)",
+      "Mastra subtitle enrichment failed (all_languages_failed): Subtitle enrichment failed for all target languages.",
     ])
     expect(updateJobMock.mock.calls).toContainEqual([
       "job-1",
@@ -1335,9 +1363,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockRejectedValue(
       new Error("Chapter extraction produced no chapters"),
     )
@@ -1392,9 +1420,9 @@ describe("runVideoEnrichment", () => {
       language: "en",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockRejectedValue(new Error("VTT write failed"))
     metadataMock.mockResolvedValue({
       title: "Title",
@@ -1499,9 +1527,9 @@ describe("runVideoEnrichment", () => {
       language: "ru",
       artifactKeys: ["transcript", "subtitles"],
     })
-    subtitleTranslationMock.mockResolvedValue([
-      { lang: "en", status: "completed" },
-    ])
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "en", status: "completed" }]),
+    )
     chaptersMock.mockResolvedValue({
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
