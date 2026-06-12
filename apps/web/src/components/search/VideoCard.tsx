@@ -8,6 +8,7 @@ import {
   asLocaleSlug,
   searchPath,
   tryAsContentSlug,
+  tryAsLocaleSlug,
   watchVideoPath,
 } from "@/lib/routes"
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
@@ -25,9 +26,14 @@ const ENGLISH_LOCALE = asLocaleSlug("english")
 
 export const defaultHrefBuilder = (result: SearchResult): Route => {
   const slug = tryAsContentSlug(result.slug)
+  const resultLanguage = result.languageSlug
+    ? tryAsLocaleSlug(result.languageSlug)
+    : null
   // On a malformed slug, fall back to the modal-capable watch home rather than
   // emitting a broken deep link or resurrecting the deprecated /search page.
-  return slug ? watchVideoPath(slug, ENGLISH_LOCALE) : searchPath()
+  return slug
+    ? watchVideoPath(slug, resultLanguage ?? ENGLISH_LOCALE)
+    : searchPath()
 }
 
 // Full tailwind class strings so JIT can extract them at build time.

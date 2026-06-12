@@ -195,7 +195,9 @@ describe("getWatchPageMetadata", () => {
       url: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
       images: [
         {
-          url: "https://cdn.example/still-high.jpg",
+          url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+          width: 1200,
+          height: 630,
           alt: "Jesus speaks to a crowd",
         },
       ],
@@ -205,7 +207,7 @@ describe("getWatchPageMetadata", () => {
       description: "Watch the life of Jesus from the Gospel of John.",
       images: [
         {
-          url: "https://cdn.example/still-high.jpg",
+          url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
           alt: "Jesus speaks to a crowd",
         },
       ],
@@ -220,7 +222,7 @@ describe("getWatchPageMetadata", () => {
     })
   })
 
-  it("uses a Mux thumbnail before the generic image for playable videos", async () => {
+  it("uses a 1200x630 Mux social thumbnail before the generic image for playable videos", async () => {
     const { generateWatchVideoMetadata } = await import("./experience-metadata")
     const selectedVariant = {
       documentId: "dub-en",
@@ -266,8 +268,70 @@ describe("getWatchPageMetadata", () => {
 
     expect(metadata.openGraph?.images).toEqual([
       expect.objectContaining({
-        url: "https://image.mux.com/mux-playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop",
+        url: "https://image.mux.com/mux-playback-id/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+        width: 1200,
+        height: 630,
         alt: "Jesus",
+      }),
+    ])
+  })
+
+  it("keeps the editorial still when no selected Mux playback id exists", async () => {
+    const { generateWatchVideoMetadata } = await import("./experience-metadata")
+    const selectedVariant = {
+      documentId: "dub-en",
+      slug: null,
+      published: true,
+      hls: "https://cdn.example/jesus-en.m3u8",
+      duration: null,
+      language: {
+        slug: "english",
+        bcp47: "en",
+        coreId: "529",
+        name: "English",
+        nativeName: "English",
+      },
+      downloads: [],
+      muxVideo: null,
+    }
+
+    const metadata = generateWatchVideoMetadata("en", {
+      routeSlug: "jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        documentId: "video-1",
+        slug: "jesus",
+        title: "Jesus",
+        snippet: null,
+        description: null,
+        noIndex: false,
+        label: "featureFilm",
+        imageAlt: "Jesus teaching outside",
+        images: [
+          {
+            documentId: "img-1",
+            url: "https://bad.example/raw",
+            thumbnail: "https://cdn.example/thumb.jpg",
+            mobileCinematicHigh: "https://cdn.example/still-high.jpg",
+            mobileCinematicLow: "https://cdn.example/still-low.jpg",
+          },
+        ],
+        primaryLanguage: null,
+        parents: [],
+        children: [],
+        childDubLanguages: [],
+        variants: [selectedVariant],
+        subtitles: [],
+        studyQuestions: [],
+        bibleCitations: [],
+      },
+    })
+
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining({
+        url: "https://cdn.example/still-high.jpg",
+        alt: "Jesus teaching outside",
       }),
     ])
   })

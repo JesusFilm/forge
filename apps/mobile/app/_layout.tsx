@@ -263,6 +263,56 @@ export default function RootLayout() {
                       }}
                     />
                     <Stack.Screen
+                      name="experience/[slug]"
+                      options={{
+                        headerShown: true,
+                        headerTintColor: ACCENT,
+                        headerTitle: "",
+                        headerStyle: { backgroundColor: BG_COLOR },
+                        headerShadowVisible: false,
+                        headerTitleAlign: "center",
+                        headerLeft: () => (
+                          <Pressable
+                            onPress={() => router.back()}
+                            accessibilityRole="button"
+                            accessibilityLabel="Go back"
+                            hitSlop={12}
+                          >
+                            <Ionicons
+                              name="chevron-back"
+                              size={28}
+                              color={ACCENT}
+                            />
+                          </Pressable>
+                        ),
+                      }}
+                    />
+                    <Stack.Screen
+                      name="mission"
+                      options={{
+                        headerShown: true,
+                        headerTintColor: ACCENT,
+                        headerTitle: "",
+                        headerStyle: { backgroundColor: BG_COLOR },
+                        headerShadowVisible: false,
+                        headerTitleAlign: "center",
+                        headerLeft: () => (
+                          <Pressable
+                            onPress={() => router.back()}
+                            accessibilityRole="button"
+                            accessibilityLabel="Go back"
+                            hitSlop={12}
+                          >
+                            <Ionicons
+                              name="chevron-back"
+                              size={28}
+                              color={ACCENT}
+                            />
+                          </Pressable>
+                        ),
+                      }}
+                    />
+                    <Stack.Screen
                       name="watch"
                       options={{ headerShown: false }}
                     />

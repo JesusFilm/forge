@@ -16,9 +16,43 @@ From the Forge repo root:
 
 ```sh
 pnpm --filter @forge/yt-video-mapper-backend dev
+pnpm --filter @forge/yt-video-mapper-backend sync:catalog
+pnpm --filter @forge/yt-video-mapper-backend index:media
 pnpm --filter @forge/yt-video-mapper-backend test
 pnpm --filter @forge/yt-video-mapper-backend typecheck
 ```
+
+## Catalog Sync
+
+`sync:catalog` reads Admin's `videoMapperCatalog(first, after)` GraphQL
+projection and upserts mapper-owned `CatalogVideo`, `CatalogVariant`, and
+`CatalogSyncRun` rows. It requires:
+
+- `ADMIN_GRAPHQL_URL`
+- `ADMIN_SERVICE_BEARER_TOKEN`
+
+Admin remains the catalog source of truth. The mapper tables are a local
+projection for matching and indexing.
+
+## Media Indexing
+
+`index:media` indexes official media signatures from local `CatalogVariant`
+projection rows where Admin marked the variant indexable. It records an
+`IndexRun`, writes versioned `MediaSignature` rows, skips variants already
+indexed for the same algorithm version, and captures per-variant failures
+without stopping the whole run.
+
+Optional runtime settings:
+
+- `MEDIA_SIGNATURE_ALGORITHM_VERSION` defaults to
+  `official-media-signature-v1`
+- `MEDIA_INDEX_PAGE_SIZE` defaults to `100`
+- `MEDIA_INDEX_MAX_FETCH_BYTES` defaults to `262144`
+- `MEDIA_INDEX_FETCH_TIMEOUT_MS` defaults to `15000`
+- `MEDIA_INDEX_ALLOWED_HOSTS` optionally restricts official media fetches to
+  comma-separated exact hostnames
+- `MEDIA_INDEX_RESUME_AFTER_VARIANT_ID` resumes after a stored
+  `CatalogVariant.id` cursor
 
 ## Current Artifacts
 

@@ -76,54 +76,59 @@ pnpm --filter @forge/mastra lint
 
 ## Environment
 
-| Variable                                  | Purpose                                                                                                                                                                                |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                            | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                 |
-| `MASTRA_SERVICE_API_KEYS`                 | CSV allowlist for service bearer calls. Required in production runtime.                                                                                                                |
-| `MASTRA_NATIVE_EVAL_ENVIRONMENT`          | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                    |
-| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.                                                                     |
-| `AI_GATEWAY_EMBEDDINGS_API_KEY`           | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.                                                                          |
-| `AI_GATEWAY_EMBEDDINGS_BASE_URL`          | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                                                                                   |
-| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`     | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                                                                            |
-| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`        | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.                                                                           |
-| `AI_GATEWAY_EMBEDDINGS_MODEL`             | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                                                                            |
-| `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                                                                                     |
-| `MASTRA_STORAGE_DIR`                      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway.                                                             |
-| `MASTRA_STORAGE_BACKEND`                  | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.                                                                       |
-| `OPENROUTER_API_KEY`                      | OpenRouter key for the seeker agent's model (`openrouter/...`), locale-quality eval query generation, and offline compare judging. Required for the seeker agent and for compare mode. |
-| `OPENROUTER_EMBEDDINGS_BASE_URL`          | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                                                                                        |
-| `OPENAI_API_KEY`                          | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.                                                               |
-| `OPENAI_EMBEDDINGS_BASE_URL`              | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                                                                                           |
-| `TRANSCRIPT_EMBEDDING_MODEL`              | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                    |
-| `TRANSCRIPT_EMBEDDING_PROVIDER`           | Provider stamp for transcript embeddings. Defaults to `openai`.                                                                                                                        |
-| `SCENE_EMBEDDING_MODEL`                   | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                         |
-| `SCENE_EMBEDDING_PROVIDER`                | Provider stamp for scene embeddings. Defaults to `openai`.                                                                                                                             |
-| `EXPERIENCE_EMBEDDING_MODEL`              | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                    |
-| `EXPERIENCE_EMBEDDING_PROVIDER`           | Provider stamp for experience embeddings. Defaults to `openai`.                                                                                                                        |
-| `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.                                                                        |
-| `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                                                                             |
-| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                                                                                 |
-| `ADMIN_SCENE_INGEST_URL`                  | Admin internal scene ingest endpoint. Required in production runtime.                                                                                                                  |
-| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`       | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                                                                                      |
-| `ADMIN_EXPERIENCE_INGEST_URL`             | Admin internal experience ingest endpoint. Required in production runtime.                                                                                                             |
-| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`  | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                                                                                 |
-| `ADMIN_SEARCH_TRACE_SAMPLE_URL`           | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                                                                              |
-| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`   | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.                                                                   |
-| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`        | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.                                                               |
-| `ADMIN_SEARCH_EVAL_SEARCH_URL`            | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.                                                                 |
-| `ADMIN_SEARCH_EVAL_API_KEY`               | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.                                                                      |
-| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage.                                                             |
-| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.                                                                   |
-| `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                                                                                 |
-| `FIRECRAWL_API_KEY`                       | Firecrawl bearer key for Mastra-owned web search/scrape tools. Required in production runtime.                                                                                         |
-| `FIRECRAWL_API_URL`                       | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`; production must use HTTPS and an allowlisted host.                                                                    |
-| `FIRECRAWL_ALLOWED_HOSTS`                 | CSV host allowlist for production Firecrawl egress. Defaults to `api.firecrawl.dev`.                                                                                                   |
-| `FIRECRAWL_USER_AGENT`                    | Non-default user agent for Firecrawl requests. Defaults to `forge-mastra-firecrawl/1.0`.                                                                                               |
-| `FIRECRAWL_TIMEOUT_MS`                    | Default Firecrawl request timeout. Defaults to `60000`.                                                                                                                                |
-| `FIRECRAWL_MAX_SEARCH_RESULTS`            | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                                                                                       |
-| `FIRECRAWL_MAX_MARKDOWN_CHARS`            | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                                                                                       |
-| `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                      |
-| `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                      |
+| Variable                                  | Purpose                                                                                                                    |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                            | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
+| `MASTRA_SERVICE_API_KEYS`                 | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
+| `MASTRA_NATIVE_EVAL_ENVIRONMENT`          | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
+| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.         |
+| `AI_GATEWAY_EMBEDDINGS_API_KEY`           | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.              |
+| `AI_GATEWAY_EMBEDDINGS_BASE_URL`          | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                       |
+| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`     | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                |
+| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`        | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.               |
+| `AI_GATEWAY_EMBEDDINGS_MODEL`             | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                |
+| `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                         |
+| `MASTRA_STORAGE_DIR`                      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
+| `MASTRA_STORAGE_BACKEND`                  | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
+| `OPENROUTER_API_PAID_KEY`                 | Preferred OpenRouter key for eval generation, offline judging, and legacy embedding mode.                                  |
+| `OPENROUTER_API_KEY`                      | Legacy OpenRouter fallback for those paths when `OPENROUTER_API_PAID_KEY` is absent.                                       |
+| `OPENROUTER_EMBEDDINGS_BASE_URL`          | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
+| `OPENAI_API_KEY`                          | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |
+| `OPENAI_EMBEDDINGS_BASE_URL`              | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                               |
+| `TRANSCRIPT_EMBEDDING_MODEL`              | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
+| `TRANSCRIPT_EMBEDDING_PROVIDER`           | Provider stamp for transcript embeddings. Defaults to `openai`.                                                            |
+| `SCENE_EMBEDDING_MODEL`                   | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                             |
+| `SCENE_EMBEDDING_PROVIDER`                | Provider stamp for scene embeddings. Defaults to `openai`.                                                                 |
+| `EXPERIENCE_EMBEDDING_MODEL`              | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
+| `EXPERIENCE_EMBEDDING_PROVIDER`           | Provider stamp for experience embeddings. Defaults to `openai`.                                                            |
+| `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.            |
+| `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                 |
+| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                     |
+| `ADMIN_SCENE_INGEST_URL`                  | Admin internal scene ingest endpoint. Required in production runtime.                                                      |
+| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`       | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                          |
+| `ADMIN_EXPERIENCE_INGEST_URL`             | Admin internal experience ingest endpoint. Required in production runtime.                                                 |
+| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`  | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                     |
+| `ADMIN_SEARCH_TRACE_SAMPLE_URL`           | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                  |
+| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`   | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.       |
+| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`        | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.   |
+| `ADMIN_SEARCH_EVAL_SEARCH_URL`            | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.     |
+| `ADMIN_SEARCH_EVAL_API_KEY`               | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.          |
+| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
+| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.       |
+| `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
+| `SMART_CROP_PLAN_MODEL`                   | OpenRouter vision model for smart-crop plan intents. Defaults to `qwen/qwen2.5-vl-72b-instruct`.                           |
+| `SMART_CROP_QA_MODEL`                     | OpenRouter vision model for smart-crop preview QA. Defaults to `google/gemini-2.5-flash`.                                  |
+| `SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`      | CSV host allowlist for smart-crop frame URLs. Defaults to `image.mux.com`.                                                 |
+| `FIRECRAWL_API_KEY`                       | Firecrawl bearer key for Mastra-owned web search/scrape tools. Required in production runtime.                             |
+| `FIRECRAWL_API_URL`                       | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`; production must use HTTPS and an allowlisted host.        |
+| `FIRECRAWL_ALLOWED_HOSTS`                 | CSV host allowlist for production Firecrawl egress. Defaults to `api.firecrawl.dev`.                                       |
+| `FIRECRAWL_USER_AGENT`                    | Non-default user agent for Firecrawl requests. Defaults to `forge-mastra-firecrawl/1.0`.                                   |
+| `FIRECRAWL_TIMEOUT_MS`                    | Default Firecrawl request timeout. Defaults to `60000`.                                                                    |
+| `FIRECRAWL_MAX_SEARCH_RESULTS`            | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                           |
+| `FIRECRAWL_MAX_MARKDOWN_CHARS`            | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                           |
+| `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`        | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                      |
+| `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
+| `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
 ## Eval query generation
 
@@ -263,6 +268,50 @@ explicit seed-only payload:
 }
 ```
 
+## Smart crop workflows
+
+Smart crop (plan: `docs/plans/2026-06-09-002-feat-smart-crop-plan.md`) splits
+ownership across three apps; Mastra owns the AI decisions only. Manager owns
+job orchestration, artifact storage addressing, and Mux; crop-worker owns
+ffprobe/FFmpeg and S3 bytes. This runtime never touches S3 or Mux credentials —
+frames arrive as caller-provided, host-allowlisted https URLs
+(`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`, default `image.mux.com`; https only,
+exact hostname match).
+
+**Production precondition for QA:** the `smart-crop-qa` route receives
+presigned Railway S3 URLs for preview frames, so production must extend
+`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS` with the Railway S3 endpoint hostname
+(the host of manager's `RAILWAY_S3_ENDPOINT`) alongside `image.mux.com`.
+Without it the QA route rejects every frame with `frame_host_not_allowed`;
+manager degrades that to a skipped QA step rather than a failed job, but no
+QA report is produced.
+
+Three bounded synchronous workflows, each with a service route protected by
+`MASTRA_SERVICE_API_KEYS`:
+
+- `smart-crop-plan` / `POST /forge-smart-crop-plan` — one OpenRouter vision
+  call covering up to 8 shots (max 3 frame URLs each) produces per-shot crop
+  intents; the deterministic planner (`smart-crop-planner-v1`,
+  `src/services/smart-crop/planner.ts`) converts intents into 9:16 crop
+  keyframes (full source height, even crop width, 8% dead zone, 240 px/s max
+  pan scaled by source width, center fallback below confidence 0.5,
+  slide_aware stays static centered in MVP).
+- `smart-crop-align` / `POST /forge-smart-crop-align` — pure deterministic
+  alignment (`src/services/smart-crop/alignment.ts`) between canonical and
+  localized `smart-crop-fingerprint` artifacts: tier-1 identical-duration or
+  tier-2 monotonic shot-sequence matching (duration similarity + dhash
+  Hamming), plus confidence gates with stable failure literals. No model call.
+- `smart-crop-qa` / `POST /forge-smart-crop-qa` — one OpenRouter vision call
+  reviews up to 8 rendered preview frames against the plan summary and returns
+  `pass | needs_repair | fail` plus structured issues.
+
+Results use a discriminated `{ ok: true, ... } | { ok: false, reason,
+retryable, message, mastraRunId }` envelope with the shared reasons
+`invalid_input | provider_config_missing | provider_auth_failed |
+provider_failed | provider_invalid_output | frame_host_not_allowed`. The
+planner and alignment modules are pure functions — keep them free of I/O and
+env reads so they stay property-testable.
+
 ## Firecrawl web data
 
 Firecrawl web data access is Mastra-owned. The runtime exposes:
@@ -362,6 +411,43 @@ Production imports are disabled by default through
 returned JSON artifact in the approved secure handoff location, then import it
 into local Mastra so native Evaluation and local artifacts can compare future
 search work against the same seed snapshot without logging into production.
+
+## Instagram AI/Christian discovery
+
+The service route `POST /forge-instagram-discovery` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `instagram-ai-christian-discovery`
+workflow. It discovers AI-generated Christian videos on Instagram using
+the shared **Firecrawl web search** client (`POST /v2/search`) — Instagram is
+heavily gated, so direct crawling is unreliable; search returns post/reel URLs
+plus title/snippet that the keyword heuristic acts on.
+
+Input is Studio-friendly with defaults (runs with no hand-written JSON):
+`queries` (defaults to two Instagram-targeted AI/Christian queries),
+`limitPerQuery` (5, max 20), `scrapeMetadata` (false — set true to request bounded
+markdown hydration for each search hit, slower), `maxResults` (50),
+`persistArtifact` (true). The
+workflow searches each query (tolerant to per-query failures), parses Instagram
+permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
+signal **both** AI-generation and Christian content.
+
+Results are returned in the response and, by default, written to a validated
+JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
+(`<storage>/instagram-discovery/reports/<runId>.json`).
+
+Limitations to keep in mind:
+
+- **Keyword classification is heuristic and noisy.** It flags keyword signals,
+  not verified AI-generation or Christian intent. An optional LLM confirmation
+  step is deferred follow-up work.
+- **`publishedAt` is best-effort.** Instagram rarely exposes a reliable
+  timestamp through search snippets, so it is frequently `null` unless scrape
+  metadata includes it.
+
+Failure reasons: `invalid_input` (400), `config_missing` (503, when
+`FIRECRAWL_API_KEY` is unset in a non-production/dev-style runtime),
+`all_queries_failed` (502, only when every query errors), `artifact_failed`
+(500, when report persistence fails). Production already requires the shared
+Firecrawl env vars for Mastra's web-data surface.
 
 ## Railway Storage
 

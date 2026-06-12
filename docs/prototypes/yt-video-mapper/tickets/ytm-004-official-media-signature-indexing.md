@@ -1,7 +1,7 @@
 ---
 id: YTM-004
 title: "Index official media signatures for catalog variants"
-status: todo
+status: complete
 priority: P1
 depends_on:
   - YTM-003

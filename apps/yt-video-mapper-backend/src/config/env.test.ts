@@ -7,6 +7,12 @@ const envKeys = [
   "ADMIN_GRAPHQL_URL",
   "ADMIN_SERVICE_BEARER_TOKEN",
   "MAPPER_API_TOKEN",
+  "MEDIA_SIGNATURE_ALGORITHM_VERSION",
+  "MEDIA_INDEX_PAGE_SIZE",
+  "MEDIA_INDEX_MAX_FETCH_BYTES",
+  "MEDIA_INDEX_FETCH_TIMEOUT_MS",
+  "MEDIA_INDEX_ALLOWED_HOSTS",
+  "MEDIA_INDEX_RESUME_AFTER_VARIANT_ID",
 ]
 
 describe("runtime env", () => {
@@ -20,7 +26,7 @@ describe("runtime env", () => {
     resetProcessEnv()
   })
 
-  it("allows production startup without future admin sync vars", async () => {
+  it("allows production startup without catalog sync vars", async () => {
     const { assertRuntimeEnv, env } = await loadEnv({
       NODE_ENV: "production",
       DATABASE_URL: "postgresql://forge:forge@localhost:5432/mapper",
@@ -32,6 +38,80 @@ describe("runtime env", () => {
     expect(env.ADMIN_GRAPHQL_URL).toBeUndefined()
     expect(env.ADMIN_SERVICE_BEARER_TOKEN).toBeUndefined()
     expect(assertRuntimeEnv).not.toThrow()
+  })
+
+  it("requires the Admin GraphQL URL when running catalog sync", async () => {
+    const { assertAdminCatalogSyncEnv } = await loadEnv({
+      ADMIN_SERVICE_BEARER_TOKEN: "service-token",
+    })
+
+    expect(assertAdminCatalogSyncEnv).toThrow(
+      "ADMIN_GRAPHQL_URL is required to sync the yt-video-mapper catalog",
+    )
+  })
+
+  it("requires the Admin service bearer token when running catalog sync", async () => {
+    const { assertAdminCatalogSyncEnv } = await loadEnv({
+      ADMIN_GRAPHQL_URL: "https://admin.example.com/graphql",
+    })
+
+    expect(assertAdminCatalogSyncEnv).toThrow(
+      "ADMIN_SERVICE_BEARER_TOKEN is required to sync the yt-video-mapper catalog",
+    )
+  })
+
+  it("returns Admin catalog sync configuration when both sync vars are set", async () => {
+    const { assertAdminCatalogSyncEnv } = await loadEnv({
+      ADMIN_GRAPHQL_URL: "https://admin.example.com/graphql",
+      ADMIN_SERVICE_BEARER_TOKEN: "service-token",
+    })
+
+    expect(assertAdminCatalogSyncEnv()).toEqual({
+      adminGraphqlUrl: "https://admin.example.com/graphql",
+      adminServiceBearerToken: "service-token",
+    })
+  })
+
+  it("defaults media indexing settings and treats empty resume cursor as unset", async () => {
+    const { env } = await loadEnv({
+      MEDIA_SIGNATURE_ALGORITHM_VERSION: "",
+      MEDIA_INDEX_PAGE_SIZE: "",
+      MEDIA_INDEX_MAX_FETCH_BYTES: "",
+      MEDIA_INDEX_FETCH_TIMEOUT_MS: "",
+      MEDIA_INDEX_ALLOWED_HOSTS: "",
+      MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: "",
+    })
+
+    expect(env.MEDIA_SIGNATURE_ALGORITHM_VERSION).toBe(
+      "official-media-signature-v1",
+    )
+    expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(100)
+    expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(262_144)
+    expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(15_000)
+    expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBeUndefined()
+    expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBeUndefined()
+  })
+
+  it("parses media indexing overrides", async () => {
+    const { env } = await loadEnv({
+      MEDIA_SIGNATURE_ALGORITHM_VERSION: "official-media-signature-v2",
+      MEDIA_INDEX_PAGE_SIZE: "25",
+      MEDIA_INDEX_MAX_FETCH_BYTES: "1024",
+      MEDIA_INDEX_FETCH_TIMEOUT_MS: "5000",
+      MEDIA_INDEX_ALLOWED_HOSTS: "media.example.com,cdn.example.com",
+      MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: "catalog-variant-123",
+    })
+
+    expect(env.MEDIA_SIGNATURE_ALGORITHM_VERSION).toBe(
+      "official-media-signature-v2",
+    )
+    expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(25)
+    expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(1_024)
+    expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(5_000)
+    expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBe(
+      "media.example.com,cdn.example.com",
+    )
+    expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBe("catalog-variant-123")
   })
 
   it("requires DATABASE_URL in production", async () => {

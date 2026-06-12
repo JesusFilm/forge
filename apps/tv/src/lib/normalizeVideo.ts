@@ -22,6 +22,7 @@ export type WatchSubtitle = {
   documentId: string
   languageSlug: string
   languageName: string
+  languageNameNative: string | null
   languageBcp47: string
   vttSrc: string
   primary: boolean
@@ -164,6 +165,22 @@ function pickFirstPlayableVariant(
   )
 }
 
+// Native-language display name for a language, or null when it would just echo
+// the English name (no distinct native form) or the language IS English. `name`
+// is admin's jsonb locale map; `bcp47` selects the locale. Shared by audio
+// variants and subtitle tracks so both render the same "English · Native" pair.
+function pickNativeName(
+  name: unknown,
+  bcp47: string | null | undefined,
+): string | null {
+  if (name == null || !bcp47) return null
+  const locale = bcp47.split("-")[0]
+  if (locale === "en") return null
+  const native = pickLocalizedName(name, locale)
+  const english = pickLocalizedName(name, "en")
+  return native && native !== english ? native : null
+}
+
 function dedupeByDocumentId<T extends { documentId: string | null }>(
   items: T[],
 ): T[] {
@@ -208,6 +225,7 @@ export function normalizeDubMedia(
         languageName: s.language?.name
           ? (pickLocalizedName(s.language.name) ?? "")
           : "",
+        languageNameNative: pickNativeName(s.language?.name, s.language?.bcp47),
         languageBcp47: s.language?.bcp47 ?? "",
         vttSrc: s.vttSrc ?? "",
         primary: s.primary ?? false,
@@ -261,14 +279,7 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
       languageName: v.language?.name
         ? (pickLocalizedName(v.language.name) ?? null)
         : null,
-      languageNameNative: (() => {
-        if (!v.language?.name || !v.language?.bcp47) return null
-        const bcp47 = v.language.bcp47.split("-")[0]
-        if (bcp47 === "en") return null
-        const native = pickLocalizedName(v.language.name, bcp47)
-        const english = pickLocalizedName(v.language.name, "en")
-        return native && native !== english ? native : null
-      })(),
+      languageNameNative: pickNativeName(v.language?.name, v.language?.bcp47),
       muxPlaybackId: v.muxVideo?.playbackId ?? null,
     }))
 

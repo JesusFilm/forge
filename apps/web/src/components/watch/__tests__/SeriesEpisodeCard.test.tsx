@@ -81,6 +81,7 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
       },
     ],
     durationSeconds: 120,
+    muxPlaybackId: null,
   }
   return { ...base, ...overrides }
 }

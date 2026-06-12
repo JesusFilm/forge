@@ -6,13 +6,6 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the web inline watch player migration.",
   },
-  watchHeroMuxVideo: {
-    key: "forge.watch.heroMuxVideo",
-    defaultValue: false,
-    localOverrideEnv: "FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT",
-    description:
-      "Runtime rollout gate for the web watch hero MuxVideo backend.",
-  },
   watchCtaTextCopy: {
     key: "forge.watch.ctaTextCopy",
     defaultValue: false,
@@ -47,6 +40,13 @@ export const featureFlags = {
     localOverrideEnv: "FORGE_WATCH_QUESTION_PANEL_DEFAULT",
     description:
       "Runtime rollout gate for the watch-page floating question panel.",
+  },
+  watchAlgoliaSearch: {
+    key: "forge.watch.algoliaSearch",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT",
+    description:
+      "Runtime rollout gate for Algolia-backed video results in the Forge watch search modal.",
   },
 } as const
 

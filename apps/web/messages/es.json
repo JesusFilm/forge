@@ -100,7 +100,7 @@
     "fallbackBody": "Ten una conversación privada con alguien dispuesto a escuchar.",
     "questionsShort": "Preguntas",
     "questions": "Preguntas relacionadas",
-    "askYours": "Haz tu pregunta",
+    "askYours": "Tu pregunta",
     "chatWithPerson": "Habla con alguien",
     "askBibleQuestion": "Hacer una pregunta bíblica"
   },
@@ -182,10 +182,20 @@
     "categoryAnimated": "Animados",
     "categoryStudy": "Estudio",
     "categoryFamily": "Familia",
-    "categoryChristmas": "Navidad"
+    "categoryChristmas": "Navidad",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
-    "playWithSound": "Reproducir con sonido",
+    "playWithSound": "Ver ahora",
     "tapToUnmute": "Activar sonido"
   },
   "ExperienceSkeleton": {

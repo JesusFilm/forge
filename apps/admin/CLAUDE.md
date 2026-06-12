@@ -198,7 +198,8 @@ not in the script.
 ### Web ISR revalidation webhook (U21)
 
 `apps/admin/src/services/revalidate-webhook.ts` emits ISR refresh hints
-to web on Experience publish / update / archive. Best-effort:
+to web on Experience publish / update / archive and broad watch video-data
+changes from Core sync. Best-effort:
 `emitRevalidateWebhook` catches every failure mode (config missing, 5xx,
 network, timeout) and is called via `void` so admin's publish UX never
 blocks on web. Wired into `ExperienceService.publishLocale`,
@@ -220,9 +221,11 @@ Deploy ordering (receiver-first, per
    Until both are set, `emitRevalidateWebhook` silently no-ops with a
    structured log per attempt (`event=web_revalidate.skipped
 reason=config_missing`).
-3. Verify end-to-end: publish an Experience, fetch the matching
-   `/[slug]/[locale]` on web within 30 s, confirm refresh. Tail admin
-   logs for `event=web_revalidate.sent httpStatus=200`.
+3. Verify end-to-end: publish an Experience, fetch the matching public watch URL
+   such as `/watch/jesus.html/english.html`, and confirm refresh. Tail admin logs for
+   `event=web_revalidate.sent httpStatus=200`. Web's receiver invalidates
+   route paths with `revalidatePath` and resolver Data Cache entries with
+   `revalidateTag(tag, { expire: 0 })`.
 
 Reversing the order produces a dead minute where admin's first call 401s
 against an unconfigured web. The webhook itself swallows the 401, so the
@@ -266,6 +269,12 @@ the full manifest payload is intentionally needed. Like `seed-web-fixtures`, it
 refuses production-like `DATABASE_URL` hosts (`*.railway.app`,
 `*.jesusfilm.org`, and unparseable URLs) so operators do not accidentally mutate
 production snapshots from a workstation.
+
+Core sync also has a broader watch-render invalidation set: `languages`,
+`videos`, `video-images`, `video-editions`, `video-subtitles`, `video-dubs`,
+and `video-dub-downloads`. When any of those phases run, admin emits a broad
+`model: "video"` webhook with no slug so web clears video, series, child-dub,
+and home resolver caches even when the manifest itself does not need refreshing.
 
 ### Video database backup and clone
 
@@ -1366,8 +1375,9 @@ error_class=… message=…`. Process-local counters in
    `https://admin.jesusfilm.org/api/search/health`. Body's `status`
    field is the signal; HTTP is always 200 so infra-level liveness is
    not confused with provider reachability.
-2. Ensure `OPENROUTER_API_KEY` is set on the `forge-admin` Railway service.
-   `OPENAI_API_KEY` does not satisfy live query embedding readiness.
+2. Ensure `OPENROUTER_API_PAID_KEY` is set on the `forge-admin` Railway
+   service. `OPENROUTER_API_KEY` remains a fallback; `OPENAI_API_KEY` does not
+   satisfy live query embedding readiness.
 3. Canary diff vs cms: for a fixed query set × locales, compare
    `admin/api/search?q=…&locale=…` to `cms/api/search?q=…&locale=…`.
    Top-10 should overlap within ranking ±1. Drift signals either a

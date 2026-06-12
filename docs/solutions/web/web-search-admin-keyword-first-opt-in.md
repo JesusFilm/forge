@@ -95,6 +95,8 @@ expect(options.variables).toEqual({
 })
 ```
 
+The `limit: 20` example describes the shared helper default. Do not copy it into Watch overlay pagination when the product surface needs a different page size; `apps/web/src/components/FloatingSearchProvider.tsx` owns its local `SEARCH_PAGE_SIZE` instead.
+
 Add a response mapping assertion beside the request-mode assertions:
 
 ```ts
@@ -111,6 +113,7 @@ That keeps the two mode concepts from collapsing into each other during later re
 ## Related
 
 - [Admin hybrid search keyword-first mode](../platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md)
+- [Watch search overlay page size mismatch](../logic-errors/watch-search-overlay-page-size-mismatch.md)
 - [Admin hybrid search R4 pattern](../platform/admin-hybrid-search-r4-pattern.md)
 - [Dual-client gql.tada multi-schema codegen pattern](../architecture-patterns/dual-client-gql-tada-multi-schema-codegen-pattern-20260507.md)
 - [Codegen strips optional GraphQL variable definitions from DocumentNode AST](../cms/codegen-strips-optional-graphql-variables.md)

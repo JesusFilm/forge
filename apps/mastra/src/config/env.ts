@@ -116,6 +116,7 @@ const envSchema = z.object({
     .url()
     .default("https://api.openai.com/v1"),
   OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   OPENROUTER_EMBEDDINGS_BASE_URL: z
     .string()
@@ -156,10 +157,14 @@ const envSchema = z.object({
     .max(300_000)
     .default(DEFAULT_FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: z.string().min(1).default(DEFAULT_FIRECRAWL_USER_AGENT),
+  INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
+  SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: z.string().min(1).optional(),
+  SMART_CROP_PLAN_MODEL: z.string().min(1).optional(),
+  SMART_CROP_QA_MODEL: z.string().min(1).optional(),
   SCENE_EMBEDDING_MODEL: z
     .string()
     .min(1)
@@ -249,6 +254,9 @@ export const env = envSchema.parse({
     process.env.OPENAI_EMBEDDINGS_BASE_URL,
   ),
   OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
+  OPENROUTER_API_PAID_KEY: emptyToUndefined(
+    process.env.OPENROUTER_API_PAID_KEY,
+  ),
   OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
   OPENROUTER_EMBEDDINGS_BASE_URL: emptyToUndefined(
     process.env.OPENROUTER_EMBEDDINGS_BASE_URL,
@@ -278,9 +286,17 @@ export const env = envSchema.parse({
   ),
   FIRECRAWL_TIMEOUT_MS: emptyToUndefined(process.env.FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: emptyToUndefined(process.env.FIRECRAWL_USER_AGENT),
+  INSTAGRAM_DISCOVERY_ARTIFACT_DIR: emptyToUndefined(
+    process.env.INSTAGRAM_DISCOVERY_ARTIFACT_DIR,
+  ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
+  SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.SMART_CROP_IMAGE_URL_ALLOWED_HOSTS,
+  ),
+  SMART_CROP_PLAN_MODEL: emptyToUndefined(process.env.SMART_CROP_PLAN_MODEL),
+  SMART_CROP_QA_MODEL: emptyToUndefined(process.env.SMART_CROP_QA_MODEL),
   SCENE_EMBEDDING_MODEL: emptyToUndefined(process.env.SCENE_EMBEDDING_MODEL),
   SCENE_EMBEDDING_PROVIDER: emptyToUndefined(
     process.env.SCENE_EMBEDDING_PROVIDER,
@@ -387,8 +403,8 @@ export function assertMastraRuntimeEnv() {
     assertGatewayProviderContractAllowedForProduction()
   } else {
     missing.push([
-      "OPENROUTER_API_KEY or OPENAI_API_KEY",
-      env.OPENROUTER_API_KEY ?? env.OPENAI_API_KEY,
+      "OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY",
+      getOpenRouterApiKey() ?? env.OPENAI_API_KEY,
     ])
   }
 
@@ -413,6 +429,10 @@ export function getMastraStorageDir() {
   return ".mastra/storage"
 }
 
+export function getOpenRouterApiKey(): string | undefined {
+  return env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
+}
+
 export function getFirecrawlConfig(): FirecrawlConfig {
   return {
     apiKey: env.FIRECRAWL_API_KEY,
@@ -428,9 +448,10 @@ function getLegacyEmbeddingProviderConfig(
   model: string,
   provider: string,
 ): ContentEmbeddingProviderConfig {
-  if (env.OPENROUTER_API_KEY) {
+  const openRouterApiKey = getOpenRouterApiKey()
+  if (openRouterApiKey) {
     return {
-      apiKey: env.OPENROUTER_API_KEY,
+      apiKey: openRouterApiKey,
       baseUrl: env.OPENROUTER_EMBEDDINGS_BASE_URL,
       model,
       provider,

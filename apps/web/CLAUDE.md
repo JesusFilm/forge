@@ -39,7 +39,7 @@ Required env vars (both flipped from `.optional()` in U13):
 - `'use client'` is a boundary — everything imported below it is also client.
 - The admin bearer (`WEB_ADMIN_API_KEYS`) is in the server-only env block. Never reference it from a client component or `NEXT_PUBLIC_*` var.
 - For browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. The browser hits the action; the action hits admin with the bearer.
-- ISR cache: `unstable_cache` wrappers in `src/lib/content.ts` use `revalidate: 60`. `revalidatePath` from `/api/revalidate` does NOT invalidate `unstable_cache` entries — tag-based invalidation is a known follow-up. Today the worst-case staleness is 60 s after a publish.
+- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` use route-level `revalidate = 3600`. Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. The 1 hour route TTL is the fallback for a missed webhook or process-local invalidation miss; do not raise resolver TTLs until production cache topology and webhook reliability are proven.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
 - **Static locale root layout**: cacheable watch surfaces live under the internal route tree `src/app/[locale]/[htmlLang]/**`. `src/proxy.ts` rewrites public `/watch` URLs into that tree, so the root layout gets static params for both the next-intl message catalog key (`[locale]`) and `<html lang>` (`[htmlLang]`) without calling `headers()` or `cookies()`. Keep request-time dynamic APIs out of this tree unless the route is intentionally dynamic.
 
@@ -49,11 +49,33 @@ Locale propagation flow: public URL (`/watch/{slug}.html/{raw-audio-slug}.html`)
 
 Public watch links must always use the raw audio language slug, never the message-catalog key. Any button, card, carousel, modal, or component that emits a `/watch` href should pass `variant.language.slug`, `languageSlug`, or `currentLanguageSlug` into the route builders in `src/lib/routes.ts`. For English, the public URL is `/watch/{slug}.html/english.html`; `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
 
+Watch chapter/sibling carousel links should keep `next/link` and the public
+audio-language href, but normal left-clicks may optimistically make the clicked
+card the visual current item while the next route resolves. Preserve modified
+click browser behavior, keep pending state scoped to the source video/language,
+and derive the visual active card from that pending payload so it self-invalidates
+when the route commits. See
+`docs/solutions/design-patterns/watch-chapter-optimistic-navigation-feedback.md`.
+
 Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forge/web generate:ui-locales` or any build/test script that runs it. The generated edge-safe catalog module drives middleware, route helpers, and next-intl catalog membership without a manual TypeScript whitelist. CI runs `check:ui-locales` during lint before build/test scripts can regenerate the file, and the drift gate in `src/i18n/__tests__/messages-parity.test.ts` verifies the generated list matches filesystem catalogs. The structural-parity test also enforces every namespace key exists in every catalog.
 
 Critical: `src/i18n/generated-ui-locales.ts` is the only catalog list safe to import from middleware, route helpers, and client-reachable modules. Do NOT copy filesystem discovery into request-path modules (filesystem I/O in the request path is a regression), and do NOT import `src/i18n/locales.ts` into middleware or client-safe helpers because it is a server-only re-export for next-intl request configuration. Keep the internal `[locale]` segment bounded to generated message catalogs; use `[htmlLang]` only for the static HTML language tag.
 
-See `docs/plans/2026-05-28-001-feat-i18n-migration-next-intl-plan.md`.
+## Watch cache invalidation
+
+Admin sends semantic revalidation webhooks to `src/app/api/revalidate/route.ts`.
+The receiver maps each semantic model to both paths and Data Cache tags:
+
+- `watch-setting` invalidates home/settings/experience/video/series/child-dub tags plus the watch layouts and homepage paths.
+- `experience` invalidates experience/home tags plus the current slug matrix.
+- `video` invalidates video/series/child-dub/home tags; slug-less payloads are valid broad invalidations for Core sync and revalidate the watch layouts.
+- `watch-route-manifest` clears the receiving process's in-memory manifest cache, invalidates the route-manifest tag, and revalidates the watch layouts.
+
+The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
+
+Production proof on 2026-06-10 showed `@forge/web` online in Railway US West behind Cloudflare, live watch HTML served with `cf-cache-status: DYNAMIC`, and authorized `experience`, broad `video`, and `watch-route-manifest` webhooks returning healthy first post-webhook renders. The Railway CLI path available here did not expose exact web replica count.
+
+See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.
 
 ## Feature flags
 
@@ -65,29 +87,26 @@ Never expose the LaunchDarkly server-side SDK key to client components or
 `NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
 `packages/feature-flags/src/registry.ts` before using them in an app.
 
-Two composable `NEXT_PUBLIC_*` toggles control the watch player surface:
+One `NEXT_PUBLIC_*` toggle still controls the inline watch player surface:
 
 - `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the
   player backend for the inline section components (`VideoHero`, `Video`,
   `CarouselVideo`). `false` keeps the video.js path via
   `useVideoPlayerCore`; `true` renders `<MuxVideo>` from
   `@forge/video-player`. Sunset gate for the video.js drop (R19).
-- `NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` (default `false`) — selects the
-  player backend for the watch-page hero (`HeroPlayer`). `false` keeps the
-  existing `<MuxPlayer>` path (full `@mux/mux-player-react` chrome bundle,
-  including `cast_sender.js`); `true` renders `<MuxVideo>` (smaller, no
-  cast, light-DOM poster discoverable as the LCP element). The two
-  backends are dynamic-imported through subpath specifiers
-  (`@forge/video-player/mux-player` vs `/mux-video`) and the inactive
-  branch is build-time DCE'd via `process.env.NEXT_PUBLIC_*` substitution,
-  so exactly one ships per build. See
-  `docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md`.
 
-Both flags are per-environment / per-build — set via Railway env vars and
-baked at `next build` time. They do NOT support per-request override.
-LaunchDarkly runtime evaluation does not replace these build-time branches yet
-because the inactive player implementation is intentionally dead-code
-eliminated by `process.env.NEXT_PUBLIC_*` substitution.
+The watch-page hero (`HeroPlayer`) always renders the optimized `<MuxVideo>`
+backend from `@forge/video-player/mux-video` after poster-first activation.
+Do not reintroduce a MuxPlayer hero fallback or a
+`NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` build flag; that rollout graduated in
+the non-Cloudflare performance hardening work.
+
+The remaining inline player flag is per-environment / per-build — set via
+Railway env vars and baked at `next build` time. It does NOT support
+per-request override. LaunchDarkly runtime evaluation does not replace this
+build-time branch yet because the inactive inline player implementation is
+intentionally dead-code eliminated by `process.env.NEXT_PUBLIC_*`
+substitution.
 
 `forge.watch.ctaTextCopy` is a temporary LaunchDarkly-backed production smoke
 flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`

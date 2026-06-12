@@ -13,11 +13,14 @@ import {
   isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
+  type MergedWatchBlock,
   resolveSeriesBySlug,
   resolveSeriesEpisodeBySlug,
   resolveWatchExperiencePage,
   resolveWatchPage,
   resolveWatchVideoBySlug,
+  type WatchVariant,
+  type WatchVideoRecord,
 } from "@/lib/content"
 import {
   buildWatchVideoMetadataModel,
@@ -51,15 +54,19 @@ import {
   stripHtmlSuffix,
 } from "@/lib/url-shape"
 import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
+import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
-// ISR: pages cached for 60s. Cookie-driven language redirect lives in
+// ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
 // route preserves ISR for the majority of traffic without the preference
-// cookie. Keep the build output clean so runtime ISR artifacts from old
-// deploys cannot be packaged as fresh pages. See
+// cookie. Admin revalidation clears both route paths and tagged resolver data;
+// the route TTL is the fallback when a webhook or process-local invalidation is
+// missed.
+// Keep the build output clean so runtime ISR artifacts from old deploys cannot
+// be packaged as fresh pages. See
 // docs/solutions/web/nextjs-headers-defeats-route-cache.md.
-export const revalidate = 60
+export const revalidate = 3600
 export const dynamic = "force-static"
 export const dynamicParams = true
 
@@ -69,6 +76,37 @@ export function generateStaticParams(): Array<{
   rest: string[]
 }> {
   return []
+}
+
+function pruneWatchVideoForClient(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): WatchVideoRecord {
+  const selected =
+    video.variants.find(
+      (variant) => variant.documentId === selectedVariant.documentId,
+    ) ?? selectedVariant
+  return { ...video, variants: [selected] }
+}
+
+function pruneMergedWatchBlocksForClient(
+  blocks: MergedWatchBlock[],
+  selectedVariant: WatchVariant,
+): MergedWatchBlock[] {
+  return blocks.map((block) => {
+    if (!("kind" in block)) return block
+    switch (block.kind) {
+      case "HeroPlayer":
+      case "WatchBody":
+      case "Share":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+        }
+      default:
+        return block
+    }
+  })
 }
 
 // Catch-all dispatcher for the one-, two-, and three-segment watch URL shapes.
@@ -222,14 +260,6 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
-      const watchPage = await resolveWatchPage(locale, slug)
-      if (watchPage.data?.kind === "experience") {
-        return getWatchPageMetadata(locale, {
-          slug,
-          pathLocale: rawLocale,
-        })
-      }
-
       const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
       if (watchVideo && isSeriesRecord(watchVideo.video)) {
         return generateSeriesMetadata(locale, {
@@ -245,14 +275,12 @@ export async function generateMetadata({
           pathLocale: rawLocale,
         })
       }
-      if (!watchVideo) {
-        const series = await resolveSeriesBySlug(slug, rawLocale)
-        if (series) {
-          return generateSeriesMetadata(locale, {
-            series: series.video,
-            pathLocale: rawLocale,
-          })
-        }
+      const series = await resolveSeriesBySlug(slug, rawLocale)
+      if (series) {
+        return generateSeriesMetadata(locale, {
+          series: series.video,
+          pathLocale: rawLocale,
+        })
       }
     } catch {
       // Fall through to getWatchPageMetadata.
@@ -429,18 +457,30 @@ async function renderEpisode(shape: {
       getQuestionPanelEnabled(route),
       getHideBibleQuotesEnabled(route),
     ])
-  const youVersionPassages = hideBibleQuotes
-    ? []
-    : await getYouVersionBibleQuotePassages(
-        route,
-        resolved.video.bibleCitations,
-      )
+  const [youVersionPassages, initialTranscript] = await Promise.all([
+    hideBibleQuotes
+      ? Promise.resolve([])
+      : getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
+    getInitialSubtitleTranscript({
+      subtitles: resolved.video.subtitles,
+      audioSlug: resolved.selectedVariant.language?.slug ?? rawLocale,
+      durationSeconds: resolved.selectedVariant.duration ?? null,
+    }),
+  ])
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
     youVersionPassages,
   })
+  const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+    mergedBlocks,
+    resolved.selectedVariant,
+  )
+  const clientVideo = pruneWatchVideoForClient(
+    resolved.video,
+    resolved.selectedVariant,
+  )
   if (!mergedBlocks.length) return <ExperienceEmpty />
   const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
   const metadataModel = buildWatchVideoMetadataModel({
@@ -458,19 +498,20 @@ async function renderEpisode(shape: {
         <link
           rel="preload"
           as="image"
-          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
           fetchPriority="high"
         />
       ) : null}
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
-        mergedBlocks={mergedBlocks}
+        mergedBlocks={clientMergedBlocks}
         variant={resolved.selectedVariant}
-        video={resolved.video}
+        video={clientVideo}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
         locale={locale}
         hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
+        initialTranscript={initialTranscript}
       />
     </>
   )
@@ -485,52 +526,11 @@ async function renderVideo(shape: {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
 
-  // Experience-first precedence: when an editor curated an Experience at
-  // this slug, that's the intended landing — even when a slug-colliding
-  // Video (e.g. an `easter` Video alongside an `easter` Experience) exists.
-  // `resolveWatchPage` is React `cache()`-wrapped so the tail-end call
-  // for the video-template fallback is free.
-  const watchPage = await resolveWatchPage(locale, slug)
-  if (watchPage.data?.kind === "experience") {
-    const blocks = (watchPage.data.experience.blocks ?? []).filter(
-      (b): b is Section => b !== null,
-    )
-    if (blocks.length) {
-      const questionPanelEnabled = await getQuestionPanelEnabled(route)
-      return (
-        <main
-          className={`min-h-screen bg-stone-900 ${
-            questionPanelEnabled
-              ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
-              : ""
-          }`}
-        >
-          {blocks.map((block, i) => {
-            const key =
-              "id" in block && typeof block.id === "string"
-                ? block.id
-                : `block-${i}`
-            return (
-              <ExperienceSectionRenderer
-                key={key}
-                section={block}
-                routeVideo={null}
-              />
-            )
-          })}
-          {questionPanelEnabled ? (
-            <WatchQuestionPanel enabled={questionPanelEnabled} />
-          ) : null}
-        </main>
-      )
-    }
-    return <ExperienceEmpty />
-  }
-
-  // Video-by-slug second. Pass rawLocale (not the bcp47-normalised
+  // Video-by-slug first. Pass rawLocale (not the bcp47-normalised
   // `locale`) so the resolver matches either variant.language.slug OR
   // variant.language.bcp47 — slug-form URLs like /the-call/korean need to
-  // land in the resolver as "korean", not "en".
+  // land in the resolver as "korean", not "en". A same-slug Experience is
+  // only a fallback after video and series routes fail to render.
   const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
@@ -560,18 +560,33 @@ async function renderVideo(shape: {
         getQuestionPanelEnabled(route),
         getHideBibleQuotesEnabled(route),
       ])
-    const youVersionPassages = hideBibleQuotes
-      ? []
-      : await getYouVersionBibleQuotePassages(
-          route,
-          watchVideo.video.bibleCitations,
-        )
+    const [youVersionPassages, initialTranscript] = await Promise.all([
+      hideBibleQuotes
+        ? Promise.resolve([])
+        : getYouVersionBibleQuotePassages(
+            route,
+            watchVideo.video.bibleCitations,
+          ),
+      getInitialSubtitleTranscript({
+        subtitles: watchVideo.video.subtitles,
+        audioSlug: watchVideo.selectedVariant.language?.slug ?? rawLocale,
+        durationSeconds: watchVideo.selectedVariant.duration ?? null,
+      }),
+    ])
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
       youVersionPassages,
     })
+    const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+      mergedBlocks,
+      watchVideo.selectedVariant,
+    )
+    const clientVideo = pruneWatchVideoForClient(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
     const lcpPlaybackId =
       watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     const metadataModel = buildWatchVideoMetadataModel({
@@ -587,19 +602,20 @@ async function renderVideo(shape: {
           <link
             rel="preload"
             as="image"
-            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
             fetchPriority="high"
           />
         ) : null}
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
-          mergedBlocks={mergedBlocks}
+          mergedBlocks={clientMergedBlocks}
           variant={watchVideo.selectedVariant}
-          video={watchVideo.video}
+          video={clientVideo}
           languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
           locale={locale}
           hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
+          initialTranscript={initialTranscript}
         />
       </>
     )
