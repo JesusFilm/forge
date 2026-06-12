@@ -233,13 +233,13 @@ export function SubtitleTranscript({
       ? `${s.language.name} (${s.language.nativeName})`
       : s.language.name
   const sectionClassName = isInlineFlow
-    ? "h-[50svh] min-h-80 bg-stone-950/80 backdrop-blur-md"
+    ? "h-[50svh] min-h-80"
     : "bg-stone-900/60 pt-12 pb-20 backdrop-blur-md sm:pt-16 sm:pb-24"
   const contentClassName = isInlineFlow
     ? `${WATCH_PAGE_CONTENT_CLASSES} h-full`
     : WATCH_PAGE_CONTENT_CLASSES
   const panelClassName = isInlineFlow
-    ? `flex h-full min-h-0 flex-col overflow-hidden rounded-t-2xl bg-stone-900/55 ${GLASS_OUTLINE_CLASS}`
+    ? "flex h-full min-h-0 flex-col overflow-hidden"
     : `rounded-2xl bg-stone-800/40 ${GLASS_OUTLINE_CLASS}`
   const headerClassName = isInlineFlow
     ? "flex shrink-0 flex-col gap-2 border-b border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8"

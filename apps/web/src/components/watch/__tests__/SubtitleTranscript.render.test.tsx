@@ -164,9 +164,15 @@ describe("SubtitleTranscript rendering", () => {
       '[data-testid="watch-subtitle-transcript"]',
     )
     const cues = container.querySelector('[data-testid="watch-subtitle-cues"]')
+    const panel = cues?.parentElement
 
     expect(section?.getAttribute("data-display-mode")).toBe("inlineFlow")
     expect(section?.getAttribute("class")).toContain("h-[50svh]")
+    expect(section?.getAttribute("class")).not.toContain("bg-stone")
+    expect(section?.getAttribute("class")).not.toContain("backdrop-blur")
+    expect(panel?.getAttribute("class")).not.toContain("rounded")
+    expect(panel?.getAttribute("class")).not.toContain("bg-stone")
+    expect(panel?.getAttribute("class")).not.toContain("ring-")
     expect(section?.getAttribute("aria-label")).toBe("heading")
     expect(section?.getAttribute("aria-labelledby")).toBeNull()
     expect(cues?.getAttribute("class")).toContain("overflow-y-auto")
