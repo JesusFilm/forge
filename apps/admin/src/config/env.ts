@@ -7,15 +7,25 @@ import { z } from "zod"
 const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
 
 export const DEFAULT_WEB_CANONICAL_ORIGIN = "https://www.jesusfilm.org"
+export const DEFAULT_WATCH_CANONICAL_ORIGIN = "https://watch.jesusfilm.org"
 
-export const webCanonicalOriginEnvSchema = z
-  .string()
-  .url()
-  .refine((value) => {
-    const protocol = new URL(value).protocol
-    return protocol === "http:" || protocol === "https:"
-  }, "WEB_CANONICAL_ORIGIN must be an HTTP(S) URL")
-  .transform((value) => new URL(value).origin)
+const httpOriginEnvSchema = (varName: string) =>
+  z
+    .string()
+    .url()
+    .refine((value) => {
+      const protocol = new URL(value).protocol
+      return protocol === "http:" || protocol === "https:"
+    }, `${varName} must be an HTTP(S) URL`)
+    .transform((value) => new URL(value).origin)
+
+export const webCanonicalOriginEnvSchema = httpOriginEnvSchema(
+  "WEB_CANONICAL_ORIGIN",
+)
+
+export const watchCanonicalOriginEnvSchema = httpOriginEnvSchema(
+  "WATCH_CANONICAL_ORIGIN",
+)
 
 /**
  * Shared schema fragment for env vars representing a positive-int
@@ -72,6 +82,12 @@ export const env = createEnv({
     WEB_CANONICAL_ORIGIN: webCanonicalOriginEnvSchema
       .optional()
       .default(DEFAULT_WEB_CANONICAL_ORIGIN),
+    // Forge watch-app origin for experience preview links. Experiences only
+    // render on the forge watch site, so this defaults to the watch host —
+    // distinct from the indexed www host WEB_CANONICAL_ORIGIN targets.
+    WATCH_CANONICAL_ORIGIN: watchCanonicalOriginEnvSchema
+      .optional()
+      .default(DEFAULT_WATCH_CANONICAL_ORIGIN),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
@@ -83,6 +99,7 @@ export const env = createEnv({
     CORE_API_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
     CORE_API_RETRIES: z.coerce.number().int().min(0).optional(),
     CORE_SYNC_CRON_SECRET: z.string().min(1).optional(),
+    OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
@@ -205,6 +222,8 @@ export const env = createEnv({
     // ingest outcomes after writing through Admin's internal ingest.
     MASTRA_BASE_URL: z.string().url().optional(),
     MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_GATEWAY_BASE_URL: z.string().url().optional(),
+    MASTRA_GATEWAY_ADMIN_API_KEY: z.string().min(1).optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -310,6 +329,9 @@ export const env = createEnv({
     WEB_CANONICAL_ORIGIN:
       emptyToUndefined(process.env.WEB_CANONICAL_ORIGIN) ??
       DEFAULT_WEB_CANONICAL_ORIGIN,
+    WATCH_CANONICAL_ORIGIN:
+      emptyToUndefined(process.env.WATCH_CANONICAL_ORIGIN) ??
+      DEFAULT_WATCH_CANONICAL_ORIGIN,
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
@@ -323,6 +345,9 @@ export const env = createEnv({
     CORE_API_TIMEOUT_MS: emptyToUndefined(process.env.CORE_API_TIMEOUT_MS),
     CORE_API_RETRIES: emptyToUndefined(process.env.CORE_API_RETRIES),
     CORE_SYNC_CRON_SECRET: emptyToUndefined(process.env.CORE_SYNC_CRON_SECRET),
+    OPENROUTER_API_PAID_KEY: emptyToUndefined(
+      process.env.OPENROUTER_API_PAID_KEY,
+    ),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
     OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
       process.env.OPENROUTER_IMAGE_TEXT_MODEL,
@@ -411,6 +436,12 @@ export const env = createEnv({
     MASTRA_BASE_URL: emptyToUndefined(process.env.MASTRA_BASE_URL),
     MASTRA_SERVICE_API_KEY: emptyToUndefined(
       process.env.MASTRA_SERVICE_API_KEY,
+    ),
+    MASTRA_GATEWAY_BASE_URL: emptyToUndefined(
+      process.env.MASTRA_GATEWAY_BASE_URL,
+    ),
+    MASTRA_GATEWAY_ADMIN_API_KEY: emptyToUndefined(
+      process.env.MASTRA_GATEWAY_ADMIN_API_KEY,
     ),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,

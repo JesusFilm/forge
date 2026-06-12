@@ -1,13 +1,22 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, useEffect } from "react"
+import { act, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
+import { FloatingSearchController } from "@/components/FloatingSearchController"
+import {
+  FloatingSearchProvider,
+  useFloatingSearch,
+} from "@/components/FloatingSearchProvider"
 import { runSearch } from "@/lib/search-actions"
-import type { SearchResult } from "@/lib/search"
+import { getSearchLanguageOptions } from "@/lib/search-language-actions"
+import type {
+  SearchActionResult,
+  SearchActionResultSource,
+  SearchResult,
+} from "@/lib/search"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_REVEAL_EVENT,
@@ -29,10 +38,24 @@ vi.mock("@/lib/search-actions", () => ({
   runSearch: vi.fn(),
 }))
 
+vi.mock("@/lib/search-language-actions", () => ({
+  getSearchLanguageOptions: vi.fn(async () => ({
+    ok: true,
+    algoliaEnabled: false,
+    options: [],
+    countrySuggestion: null,
+    recommendedLanguage: null,
+    countryCode: null,
+    countryName: null,
+  })),
+}))
+
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  vi.clearAllMocks()
+  window.history.replaceState(null, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -77,6 +100,43 @@ function dispatchLanguageSwitcher(detail: WatchHeaderLanguageSwitcherDetail) {
   )
 }
 
+function searchResult(
+  source: SearchActionResultSource,
+  overrides: Partial<Extract<SearchActionResult, { ok: true }>> = {},
+): SearchActionResult {
+  return {
+    ok: true,
+    results: [],
+    hasMore: false,
+    query: "jesus",
+    searchMode: source,
+    latencyMs: 1,
+    resultSource: source,
+    resolvedLanguage: {
+      locale: "en",
+      publicSlug: "english",
+      englishName: "English",
+      source: "fallback",
+    },
+    ...overrides,
+  }
+}
+
+const videoResult = (id: string): SearchResult => ({
+  type: "video",
+  id,
+  slug: id,
+  title: id,
+  imageUrl: null,
+  snippet: "",
+  startSeconds: null,
+  playbackId: null,
+  score: 1,
+  label: "FEATURE_FILM",
+  durationSeconds: null,
+  childCount: 0,
+})
+
 function makeSearchResult(id: string, title: string): SearchResult {
   return {
     type: "video",
@@ -94,14 +154,17 @@ function makeSearchResult(id: string, title: string): SearchResult {
   }
 }
 
-function makeSearchResponse(results: SearchResult[], hasMore: boolean) {
-  return {
+function makeSearchResponse(
+  results: SearchResult[],
+  hasMore: boolean,
+): SearchActionResult {
+  return searchResult("semantic", {
     results,
     hasMore,
     query: "the bible project",
     searchMode: "hybrid",
     latencyMs: 12,
-  }
+  })
 }
 
 function setInputValue(input: HTMLInputElement, value: string) {
@@ -128,9 +191,13 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
   const searchButton = document.querySelector(
     '[aria-label="Search videos"]',
   ) as HTMLButtonElement
-  act(() => {
+  await act(async () => {
     searchButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
   })
+  await flushSearchControllerMount()
 
   const input = document.querySelector(
     'input[aria-label="Search videos by keyword"]',
@@ -139,6 +206,14 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
     throw new Error("Expected search overlay input to render")
   }
   return input
+}
+
+async function flushSearchControllerMount() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
 }
 
 async function submitDebouncedSearch(input: HTMLInputElement, query: string) {
@@ -169,6 +244,73 @@ function PlaybackStatePublisher({
   }, [detail])
 
   return <main>Page</main>
+}
+
+function SearchModeHarness() {
+  const {
+    algoliaSearchEnabled,
+    displayResults,
+    error,
+    loadMore,
+    search,
+    setOpen,
+  } = useFloatingSearch()
+
+  return (
+    <div>
+      <span data-testid="algolia-search-enabled">
+        {String(algoliaSearchEnabled)}
+      </span>
+      <span data-testid="search-result-count">{displayResults.length}</span>
+      <span data-testid="search-error">{error ?? ""}</span>
+      <button
+        type="button"
+        data-testid="search-mode-harness-open-button"
+        onClick={() => setOpen(true)}
+      >
+        Open
+      </button>
+      <button
+        type="button"
+        data-testid="search-mode-harness-button"
+        onClick={() => void search("jesus")}
+      >
+        Search
+      </button>
+      <button
+        type="button"
+        data-testid="search-mode-harness-load-more-button"
+        onClick={() => void loadMore()}
+      >
+        Load more
+      </button>
+    </div>
+  )
+}
+
+function SearchControllerTestShell({
+  children,
+  initialOpen = false,
+  initialQuery = "",
+}: {
+  children?: ReactNode
+  initialOpen?: boolean
+  initialQuery?: string
+}) {
+  const [open, setOpen] = useState(initialOpen)
+  const [query, setQuery] = useState(initialQuery)
+
+  return (
+    <FloatingSearchController
+      open={open}
+      closing={false}
+      query={query}
+      setOpen={setOpen}
+      setQuery={setQuery}
+    >
+      {children}
+    </FloatingSearchController>
+  )
 }
 
 describe("FloatingSearchProvider — header backdrop", () => {
@@ -243,6 +385,230 @@ describe("FloatingSearchProvider — header backdrop", () => {
     })
 
     expect(backdrop?.className).toContain("opacity-0")
+  })
+})
+
+describe("FloatingSearchProvider — search mode", () => {
+  it("uses the server language metadata response to enable Algolia UI on open", async () => {
+    vi.mocked(getSearchLanguageOptions).mockResolvedValueOnce({
+      ok: true,
+      algoliaEnabled: true,
+      options: [
+        {
+          englishName: "English",
+          nativeName: "English",
+          bcp47: "en",
+          publicSlug: "english",
+          regionNames: ["Europe"],
+        },
+        {
+          englishName: "Swahili",
+          nativeName: "Kiswahili",
+          bcp47: "sw",
+          publicSlug: "swahili",
+          regionNames: ["Africa"],
+        },
+        {
+          englishName: "Hindi",
+          nativeName: "हिंदी",
+          bcp47: "hi",
+          publicSlug: "hindi",
+          regionNames: ["Asia"],
+        },
+        {
+          englishName: "Spanish, Latin American",
+          nativeName: "Español",
+          bcp47: "es-419",
+          publicSlug: "spanish-latin-american",
+          regionNames: ["South America"],
+        },
+        {
+          englishName: "Navajo",
+          nativeName: "Diné Bizaad",
+          bcp47: "nv",
+          publicSlug: "navajo",
+          regionNames: ["North America"],
+        },
+        {
+          englishName: "Fijian",
+          nativeName: "Vosa Vakaviti",
+          bcp47: "fj",
+          publicSlug: "fijian",
+          regionNames: ["Oceania"],
+        },
+      ],
+      countrySuggestion: null,
+      recommendedLanguage: {
+        englishName: "English",
+        nativeName: "English",
+        bcp47: "en",
+        publicSlug: "english",
+        regionNames: ["Europe"],
+      },
+      countryCode: null,
+      countryName: null,
+    })
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const state = document.querySelector(
+      '[data-testid="algolia-search-enabled"]',
+    )
+    const openButton = document.querySelector(
+      '[data-testid="search-mode-harness-open-button"]',
+    ) as HTMLButtonElement
+
+    expect(state?.textContent).toBe("false")
+
+    await act(async () => {
+      openButton.click()
+      await Promise.resolve()
+    })
+
+    expect(state?.textContent).toBe("true")
+    expect(document.body.textContent).toContain("Search Suggestions")
+    expect(document.body.textContent).toContain("Languages")
+    expect(document.body.textContent).toContain("Europe")
+    expect(document.body.textContent).toContain("Africa")
+    expect(document.body.textContent).toContain("Asia")
+    expect(document.body.textContent).toContain("South America")
+    expect(document.body.textContent).toContain("North America")
+    expect(document.body.textContent).toContain("Oceania")
+
+    const suggestionsTab = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Search Suggestions"),
+    )
+    await act(async () => {
+      suggestionsTab?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain("Recommended language")
+    expect(document.body.textContent).toContain("in English")
+
+    vi.mocked(runSearch).mockResolvedValueOnce(searchResult("algolia"))
+    const recommendedJesusSuggestion = document.querySelector(
+      '[aria-label="Search Jesus in English"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      recommendedJesusSuggestion.click()
+      await Promise.resolve()
+    })
+    expect(runSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "Jesus",
+        languageEnglishNames: ["English"],
+        languageOptions: expect.arrayContaining([
+          expect.objectContaining({ englishName: "English" }),
+          expect.objectContaining({ englishName: "Swahili" }),
+          expect.objectContaining({ englishName: "Spanish, Latin American" }),
+        ]),
+      }),
+    )
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-category-parables"]',
+      ),
+    ).toBeNull()
+  })
+
+  it("uses the latest server search source to toggle Algolia-only UI state", async () => {
+    vi.mocked(runSearch)
+      .mockResolvedValueOnce(searchResult("algolia"))
+      .mockResolvedValueOnce(searchResult("semantic"))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const state = document.querySelector(
+      '[data-testid="algolia-search-enabled"]',
+    )
+    const searchButton = document.querySelector(
+      '[data-testid="search-mode-harness-button"]',
+    ) as HTMLButtonElement
+
+    expect(state?.textContent).toBe("false")
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    expect(state?.textContent).toBe("true")
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    expect(state?.textContent).toBe("false")
+  })
+
+  it("does not append load-more results if the server search source changes mid-query", async () => {
+    vi.mocked(runSearch)
+      .mockResolvedValueOnce(
+        searchResult("algolia", {
+          results: [videoResult("algolia-1")],
+          hasMore: true,
+          nextOffset: 20,
+        }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("semantic", {
+          results: [videoResult("semantic-1")],
+          hasMore: false,
+        }),
+      )
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="search-mode-harness-button"]',
+    ) as HTMLButtonElement
+    const loadMoreButton = document.querySelector(
+      '[data-testid="search-mode-harness-load-more-button"]',
+    ) as HTMLButtonElement
+    const resultCount = document.querySelector(
+      '[data-testid="search-result-count"]',
+    )
+    const error = document.querySelector('[data-testid="search-error"]')
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    expect(resultCount?.textContent).toBe("1")
+
+    await act(async () => {
+      loadMoreButton.click()
+      await Promise.resolve()
+    })
+
+    expect(resultCount?.textContent).toBe("1")
+    expect(runSearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        offset: 20,
+      }),
+    )
+    expect(error?.textContent).toBe("Failed to load more results.")
   })
 })
 
@@ -552,6 +918,42 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it("does not mount the full search overlay on initial render without query intent", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).toBeNull()
+    expect(getSearchLanguageOptions).not.toHaveBeenCalled()
+  })
+
+  it("loads the search controller immediately for direct query URLs", async () => {
+    vi.mocked(runSearch).mockResolvedValueOnce(searchResult("semantic"))
+    window.history.replaceState(null, "", "/?q=jesus")
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await flushSearchControllerMount()
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).not.toBeNull()
+    expect(runSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "jesus" }),
+    )
+  })
+
   it("aligns the search overlay close button with the watch modal close control", async () => {
     act(() => {
       root.render(
@@ -567,9 +969,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const searchButton = document.querySelector(
       '[aria-label="Search videos"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
     })
+    await flushSearchControllerMount()
 
     const close = document.querySelector(
       '[data-testid="search-overlay-close"]',
@@ -644,11 +1050,13 @@ describe("FloatingSearchProvider — search pagination", () => {
     await submitDebouncedSearch(input, "the bible project")
 
     expect(mockedRunSearch).toHaveBeenCalledTimes(1)
-    expect(mockedRunSearch).toHaveBeenCalledWith({
-      query: "the bible project",
-      limit: 10,
-      offset: 0,
-    })
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "the bible project",
+        limit: 10,
+        offset: 0,
+      }),
+    )
     expect(document.body.textContent).toContain("The Bible Project Result")
   })
 
@@ -680,16 +1088,22 @@ describe("FloatingSearchProvider — search pagination", () => {
     })
     await flushResolvedSearch()
 
-    expect(mockedRunSearch).toHaveBeenNthCalledWith(1, {
-      query: "the bible project",
-      limit: 10,
-      offset: 0,
-    })
-    expect(mockedRunSearch).toHaveBeenNthCalledWith(2, {
-      query: "the bible project",
-      limit: 10,
-      offset: 7,
-    })
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        query: "the bible project",
+        limit: 10,
+        offset: 0,
+      }),
+    )
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        query: "the bible project",
+        limit: 10,
+        offset: 7,
+      }),
+    )
     expect(document.body.textContent).toContain(
       "Initial Bible Project Result 1",
     )

@@ -7,10 +7,15 @@ const rateLimitAuthRoute = vi.fn(async (_input: unknown) => ({
   source: "local",
 }))
 const signUpEmail = vi.fn()
+const getSession = vi.fn()
+const canRedeemAgentLoginHandle = vi.fn(
+  async (_prisma: unknown, _input: unknown) => false,
+)
 
 vi.mock("@/auth/config", () => ({
   auth: {
     api: {
+      getSession: (input: unknown) => getSession(input),
       signUpEmail: (...args: unknown[]) => signUpEmail(...args),
     },
   },
@@ -38,12 +43,23 @@ vi.mock("@/db/client", () => ({
     ),
     user: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
+    },
+    appEnvironment: {
+      findUnique: vi.fn(),
     },
   },
 }))
 
 vi.mock("@/auth/rate-limit", () => ({
   rateLimitAuthRoute: (input: unknown) => rateLimitAuthRoute(input),
+}))
+
+vi.mock("@/services/agent-login.service", () => ({
+  canRedeemAgentLoginHandle: (prisma: unknown, input: unknown) =>
+    canRedeemAgentLoginHandle(prisma, input),
+  isAgentLoginHandle: (value: string) =>
+    value.trim().toLowerCase().endsWith("@agent-login.jesusfilm.internal"),
 }))
 
 vi.mock("@/auth/firebase-rest", () => ({
@@ -60,6 +76,10 @@ describe("Auth route wrapper", () => {
     authGet.mockReset()
     authGet.mockResolvedValue(Response.json({ ok: true }))
     authPost.mockReset()
+    getSession.mockReset()
+    getSession.mockResolvedValue(null)
+    canRedeemAgentLoginHandle.mockReset()
+    canRedeemAgentLoginHandle.mockResolvedValue(false)
     rateLimitAuthRoute.mockReset()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     signUpEmail.mockReset()
@@ -386,6 +406,55 @@ describe("Auth route wrapper", () => {
     await expect(response.json()).resolves.toEqual({ method: "password" })
   })
 
+  it("returns agent-handle for a valid agent login handle", async () => {
+    canRedeemAgentLoginHandle.mockResolvedValueOnce(true)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/login-method", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "agent+jfp-admin-local.abc@agent-login.jesusfilm.internal",
+          oauth_query:
+            "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["login-method"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ method: "agent-handle" })
+    expect(canRedeemAgentLoginHandle).toHaveBeenCalledWith(expect.anything(), {
+      handle: "agent+jfp-admin-local.abc@agent-login.jesusfilm.internal",
+      oauthQuery:
+        "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+    })
+  })
+
+  it("falls back generically for an invalid agent login handle", async () => {
+    canRedeemAgentLoginHandle.mockResolvedValueOnce(false)
+    const { prisma } = await import("@/db/client")
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/login-method", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "agent+jfp-admin-local.bad@agent-login.jesusfilm.internal",
+          oauth_query:
+            "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["login-method"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ method: "password" })
+    expect(prisma.user.findFirst).not.toHaveBeenCalled()
+  })
+
   it("does not expose provider lookup failures when rate limited", async () => {
     rateLimitAuthRoute.mockResolvedValueOnce({
       allowed: false,
@@ -405,6 +474,7 @@ describe("Auth route wrapper", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ method: "password" })
     expect(authPost).not.toHaveBeenCalled()
+    expect(canRedeemAgentLoginHandle).not.toHaveBeenCalled()
   })
 
   it("forwards OAuth continuation as callbackURL through email sign-in", async () => {
@@ -696,5 +766,55 @@ describe("Auth route wrapper", () => {
     expect(response.headers.get("set-cookie") ?? "").not.toContain(
       "forge_auth_last_login_method",
     )
+  })
+
+  it("allows agent sessions to authorize approved local clients", async () => {
+    const { prisma } = await import("@/db/client")
+    getSession.mockResolvedValueOnce({ user: { id: "agent_user_1" } })
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      actorType: "AGENT",
+    } as never)
+    vi.mocked(prisma.appEnvironment.findUnique).mockResolvedValueOnce({
+      kind: "LOCAL",
+      status: "APPROVED",
+      app: { status: "ACTIVE" },
+      grants: [{ id: "grant_1" }],
+    } as never)
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(authGet).toHaveBeenCalled()
+  })
+
+  it("blocks agent sessions from authorizing production clients", async () => {
+    const { prisma } = await import("@/db/client")
+    getSession.mockResolvedValueOnce({ user: { id: "agent_user_1" } })
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      actorType: "AGENT",
+    } as never)
+    vi.mocked(prisma.appEnvironment.findUnique).mockResolvedValueOnce({
+      kind: "PRODUCTION",
+      status: "APPROVED",
+      app: { status: "ACTIVE" },
+      grants: [{ id: "grant_1" }],
+    } as never)
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_production&redirect_uri=https%3A%2F%2Fadmin.jesusfilm.org%2Fapi%2Fauth%2Fcallback",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(authGet).not.toHaveBeenCalled()
   })
 })

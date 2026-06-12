@@ -4,6 +4,42 @@ import { retrieveTextCandidates } from "./text-retriever.js"
 import { retrieveVisualCandidates } from "./visual-retriever.js"
 
 describe("retrievers", () => {
+  it("searches seeded official media signatures by composite variant identity", () => {
+    const officialSignatures = [
+      storedSignature({
+        coreId: "core-1",
+        videoVariantId: "variant-1",
+        value: "frame-a",
+      }),
+      storedSignature({
+        coreId: "core-1",
+        videoVariantId: "variant-1",
+        value: "frame-b",
+        offsetMilliseconds: 5_000,
+      }),
+      storedSignature({
+        coreId: "core-2",
+        videoVariantId: "variant-2",
+        value: "frame-z",
+      }),
+    ]
+
+    expect(
+      retrieveVisualCandidates({
+        uploadFrameHashes: ["frame-a", "frame-b"],
+        officialFrameSignatures: officialSignatures.map(
+          toTimecodedStringSignature,
+        ),
+      }),
+    ).toEqual([
+      {
+        coreId: "core-1",
+        videoVariantId: "variant-1",
+        visualScore: 1,
+      },
+    ])
+  })
+
   it("scores visual frame hash overlap by variant", () => {
     expect(
       retrieveVisualCandidates({
@@ -42,13 +78,27 @@ describe("retrievers", () => {
   })
 
   it("scores transcript token overlap by variant", () => {
+    const officialTextSignatures = [
+      storedSignature({
+        coreId: "core-1",
+        videoVariantId: "variant-en",
+        signatureType: "TEXT_SEGMENT",
+        value: "peace be with you",
+      }),
+      storedSignature({
+        coreId: "core-2",
+        videoVariantId: "variant-es",
+        signatureType: "TEXT_SEGMENT",
+        value: "different words entirely",
+      }),
+    ]
+
     expect(
       retrieveTextCandidates({
         uploadTranscriptText: "peace be with you",
-        officialTextSignatures: [
-          signature("core-1", "variant-en", "peace be with you"),
-          signature("core-2", "variant-es", "different words entirely"),
-        ],
+        officialTextSignatures: officialTextSignatures.map(
+          toTimecodedStringSignature,
+        ),
       }),
     ).toEqual([
       {
@@ -66,5 +116,55 @@ function signature(coreId: string, videoVariantId: string, value: string) {
     videoVariantId,
     offsetMilliseconds: 0,
     value,
+  }
+}
+
+type StoredMediaSignatureFixture = {
+  coreId: string
+  videoVariantId: string
+  signatureType: "VISUAL_FRAME" | "TEXT_SEGMENT"
+  algorithmVersion: string
+  offsetMilliseconds: number
+  signature: {
+    kind: "visual_frame_v1" | "text_segment_v1"
+    value: string
+  }
+}
+
+function storedSignature({
+  coreId,
+  videoVariantId,
+  signatureType = "VISUAL_FRAME",
+  value,
+  offsetMilliseconds = 0,
+}: {
+  coreId: string
+  videoVariantId: string
+  signatureType?: StoredMediaSignatureFixture["signatureType"]
+  value: string
+  offsetMilliseconds?: number
+}): StoredMediaSignatureFixture {
+  return {
+    coreId,
+    videoVariantId,
+    signatureType,
+    algorithmVersion: "official-media-signature-v1",
+    offsetMilliseconds,
+    signature: {
+      kind:
+        signatureType === "VISUAL_FRAME"
+          ? "visual_frame_v1"
+          : "text_segment_v1",
+      value,
+    },
+  }
+}
+
+function toTimecodedStringSignature(signature: StoredMediaSignatureFixture) {
+  return {
+    coreId: signature.coreId,
+    videoVariantId: signature.videoVariantId,
+    offsetMilliseconds: signature.offsetMilliseconds,
+    value: signature.signature.value,
   }
 }

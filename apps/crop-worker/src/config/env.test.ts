@@ -46,6 +46,12 @@ describe("parseEnv", () => {
     expect(env.PORT).toBe(3011)
   })
 
+  it("falls back to the NODE_ENV default when given an empty string", () => {
+    // Railway provides NODE_ENV as "" rather than leaving it unset; the enum
+    // default only fires on undefined, so an unwrapped "" used to crash boot.
+    expect(parseEnv({ NODE_ENV: "" }).NODE_ENV).toBe("development")
+  })
+
   it("coerces numeric overrides", () => {
     const env = parseEnv({
       PORT: "4001",

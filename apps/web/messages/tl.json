@@ -100,7 +100,7 @@
     "fallbackBody": "Magsimula ng pribadong usapan sa taong handang makinig.",
     "questionsShort": "Mga tanong",
     "questions": "Mga kaugnay na tanong",
-    "askYours": "Itanong ang tanong mo",
+    "askYours": "Tanong mo",
     "chatWithPerson": "Makipag-usap sa tao",
     "askBibleQuestion": "Magtanong tungkol sa Bibliya"
   },
@@ -182,10 +182,20 @@
     "categoryAnimated": "Animated",
     "categoryStudy": "Pag-aaral",
     "categoryFamily": "Pamilya",
-    "categoryChristmas": "Pasko"
+    "categoryChristmas": "Pasko",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear"
   },
   "HeroPlayer": {
-    "playWithSound": "I-play na may tunog",
+    "playWithSound": "Manood ngayon",
     "tapToUnmute": "I-unmute"
   },
   "ExperienceSkeleton": {

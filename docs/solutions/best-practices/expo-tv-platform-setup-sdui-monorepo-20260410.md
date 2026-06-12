@@ -263,6 +263,13 @@ FlatList with complex SDUI block content may render all items at zero height, pr
 
 Horizontal FlatList (used in ContentRail) works correctly — the issue is specific to vertical FlatList with variable-height SDUI content.
 
+Vertical FlatList IS viable on tvOS when rows are **fixed-height** with
+`getItemLayout` provided (no dynamic measurement) — the watch menus virtualize
+2,000+ fixed-height rows this way. See
+`docs/solutions/best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md`
+for that configuration and its own pitfalls (Yoga maxHeight, one-shot
+`hasTVPreferredFocus`, mount-once `initialScrollIndex`).
+
 ### 8. GraphQL Fragment Alias Pitfalls
 
 When gql.tada fragments use field aliases (e.g., `videoRef: video`), the normalized SDUI block carries the **aliased** name. Renderers must read the alias, not the original field name:

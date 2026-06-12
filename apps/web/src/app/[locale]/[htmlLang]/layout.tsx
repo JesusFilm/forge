@@ -79,7 +79,7 @@ export default async function RootLayout({
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
       <head>
-        {/* Watch pages render <mux-player> as the hero. Establishing the
+        {/* Watch pages render MuxVideo as the hero. Establishing the
             TLS handshake to Mux's image + segment hosts in the document's
             first byte cuts the LCP element's discovery delay because the
             preconnect lands before page.tsx finishes its data fetch. */}

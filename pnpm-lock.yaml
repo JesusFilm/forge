@@ -900,9 +900,6 @@ importers:
       '@hebcal/hdate':
         specifier: ^0.21.1
         version: 0.21.1
-      '@mux/mux-player-react':
-        specifier: ^3.12
-        version: 3.13.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@mux/mux-video-react':
         specifier: ^0.30
         version: 0.30.7(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

@@ -863,28 +863,82 @@ function localizedVideoLabelFallback(label: string | null, localeCode: string) {
   return labels[label as keyof typeof labels] ?? ""
 }
 
-function inferWatchBaseUrl() {
-  // NEXT_PUBLIC_WATCH_URL was retired with main's web-revalidation
-  // rework; browser-side inference below covers local + deployed hosts.
-  if (typeof window === "undefined") return ""
+function inferLocalWatchBaseUrl() {
+  // Local dev runs the watch site on :3000 next to admin on :3003; on
+  // deployed hosts the server-provided watchOrigin is authoritative.
+  if (typeof window === "undefined") return null
 
-  const { protocol, hostname, origin } = window.location
+  const { protocol, hostname } = window.location
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     return `${protocol}//${hostname}:3000`
   }
 
-  return origin.replace(/\/$/, "")
+  return null
 }
 
-function buildPublishedWatchUrl(slug: string, locale: string) {
-  const normalizedSlug = cleanRoutePart(slug)
-  const normalizedLocale = cleanLocaleCode(locale)
-  if (!normalizedSlug || !normalizedLocale) return null
+function cleanWatchOrigin(value: string) {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null
+    return url.origin
+  } catch {
+    return null
+  }
+}
 
-  const baseUrl = inferWatchBaseUrl()
+// SYNC: mirrors PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE in
+// apps/web/src/lib/locale.ts — the watch site resolves the language path
+// segment through that table, so entries here must stay aligned with web.
+// Keys are lowercased to match cleanLocaleCode output.
+const WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE: Readonly<Record<string, string>> = {
+  en: "english",
+  es: "spanish-castilian",
+  fr: "french",
+  pt: "portuguese-brazil",
+  de: "german-standard",
+  ar: "arabic-modern-standard",
+  id: "indonesian-isa",
+  ja: "japanese",
+  ko: "korean",
+  ms: "malay",
+  ne: "nepali",
+  ru: "russian",
+  th: "thai",
+  tl: "tagalog",
+  tr: "turkish",
+  vi: "vietnamese",
+  zh: "mandarin-china",
+  "zh-hans": "chinese-simplified",
+  "zh-hant": "chinese-traditional",
+}
+
+export function watchLanguageSlugForLocale(locale: string) {
+  const normalized = cleanLocaleCode(locale, true)
+  if (!normalized) return null
+
+  return (
+    WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE[normalized] ??
+    WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE[normalized.split("-")[0] ?? ""] ??
+    null
+  )
+}
+
+// Public watch URLs are always two .html segments: {slug}.html/{language}.html.
+// A bare slug expands to the broken {slug}.html/{slug}.html on the watch site.
+// See docs/solutions/conventions/public-watch-url-two-segment-contract-20260608.md.
+export function buildPublishedWatchUrl(
+  slug: string,
+  locale: string,
+  watchOrigin: string,
+) {
+  const normalizedSlug = cleanRoutePart(slug)
+  const languageSlug = watchLanguageSlugForLocale(locale)
+  if (!normalizedSlug || !languageSlug) return null
+
+  const baseUrl = inferLocalWatchBaseUrl() ?? cleanWatchOrigin(watchOrigin)
   if (!baseUrl) return null
 
-  return `${baseUrl}/watch/${normalizedSlug}/${normalizedLocale}`
+  return `${baseUrl}/watch/${normalizedSlug}.html/${languageSlug}.html`
 }
 
 export function ExperienceEditor({
@@ -895,6 +949,7 @@ export function ExperienceEditor({
   videoLibrary,
   mediaLibrary,
   calendarDate,
+  watchOrigin,
   initialValues,
   saveAction,
   publishAction,
@@ -909,6 +964,8 @@ export function ExperienceEditor({
   videoLibrary: VideoLibraryItem[]
   mediaLibrary: MediaLibraryItem[]
   calendarDate: string
+  /** Forge watch-app origin (env.WATCH_CANONICAL_ORIGIN) for preview links. */
+  watchOrigin: string
   initialValues: {
     localeId: string
     title: string
@@ -1328,6 +1385,7 @@ export function ExperienceEditor({
     const nextPublishedWatchUrl = buildPublishedWatchUrl(
       routeSlug,
       activeLocaleCode,
+      watchOrigin,
     )
     if (!nextPublishedWatchUrl) {
       pushToast("Unable to build the published preview URL.", "error")

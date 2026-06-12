@@ -50,6 +50,24 @@ A Catalog Sync Run tracks page progress, counts, terminal status, and safe
 failure summaries so broad catalog refreshes can be inspected and retried
 without treating Admin as the mapper's database.
 
+### Media Signature
+
+A compact, versioned media signal derived from an official catalog variant and
+stored for future content-first retrieval.
+
+A Media Signature is keyed by the source `coreId`, the variant
+`videoVariantId`, signature type, algorithm version, and time offset. It is
+evidence for matching, not catalog metadata.
+
+### Index Run
+
+A durable record of one pass that turns indexable Mapper Catalog variants into
+Media Signatures.
+
+An Index Run tracks algorithm version, cursor, counts, terminal status, and
+safe failure summaries so broad indexing can be resumed or inspected without
+reprocessing the whole catalog.
+
 ### Match Job
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
@@ -84,6 +102,26 @@ The metadata that says which provider contract produced a stored Content Embeddi
 
 An evaluation or backfill approval artifact that binds quality evidence to a specific embedding provider contract before high-churn content vectors are rewritten. A Provider-Bound Gate needs both configuration provenance and corpus provenance: it must show what the system is configured to generate and what stored rows the evaluation actually searched.
 
+## Known-caller auth
+
+### Search Passport
+
+The request-level check on the public search surface that asks "are you a known caller?" rather than "what may you do?". Any key from any known-caller class satisfies it, and it grants no data permissions — a passport identifies the caller class, nothing more. Distinct from editor/session auth.
+
+### Consumer Bearer
+
+A known-caller key issued to a consumer-facing app surface (web, mobile, TV) that satisfies the Search Passport while carrying no permissions beyond public access. Each surface holds its own dedicated key so revocation and rotation stay per-surface.
+
+A Consumer Bearer doubles as the request's Rate-Limit Identity: every request presenting the same key spends one shared budget. That is correct for a single-egress server and hazardous for a Fleet Client — on a fleet, the key must ride only on the operations the server actually gates.
+
+### Rate-Limit Identity
+
+The identity a request's rate budget is counted under: an authenticated user's own identity, else the presented Consumer Bearer's key, else the caller's network address. Which identity a request lands on determines whose budget it spends — a shared key pools many callers into one budget, while anonymous callers each spend their own.
+
+### Fleet Client
+
+A client app distributed as many installed copies (mobile, TV) that share one baked-in credential and one release cycle. Contrast with a single-egress server client: a fleet cannot rotate its credential without a release and field adoption lag, each device has its own network address, and any globally attached shared credential pools the whole fleet onto one Rate-Limit Identity.
+
 ## Admin schema operations
 
 ### Forward-Only Migration
@@ -104,10 +142,49 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
 
+## Home hero UI
+
+### Three-Layer Hero
+
+The mobile layering pattern for a screen whose feed scrolls over a full-bleed video hero: a display-only hero layer behind the feed, the scrolling feed itself, and a touch overlay above the feed that owns every tappable hero control.
+
+Touches go to the topmost layer and are never re-offered downward, so anything interactive placed in the hero layer is unreachable — the hero's Chrome must live in the overlay, which passes gestures it doesn't own through to the feed. When the hero itself needs a gesture (such as swiping between paged slides), a shared ancestor intercepts it before the feed's scroll can claim it, taking only gestures whose direction marks them as the hero's.
+
+### Hero Insert
+
+An editorial slide in the watch-home Hero Queue sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
+_Avoid:_ Mux insert.
+
+### Hero Queue
+
+The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
+
+A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+
+### Carousel Pool
+
+One curated group of collections whose videos are candidates for the Hero Queue. Pools are drawn from in a fixed round-robin order, with the day's date-seeded pick choosing which candidate each pool contributes.
+
+### Played Set
+
+The per-user memory of which videos the watch-home rotation has already shown, used to exclude them from Hero Queue rebuilds so returning users lead with unseen content. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+
+### Home Snapshot
+
+The last successful watch-home content response a client keeps on device and paints immediately at the next launch while a live fetch revalidates in the background. It exists to mask a slow content resolver; it is only ever the first paint.
+
+An expired, shape-drifted, or empty Home Snapshot never paints — launch falls back to the loading state. When the live response matches the painted snapshot, the client keeps the painted view rather than rebuilding the Hero Queue; an empty live response never replaces a painted snapshot.
+
 ## Watch player UI
 
 ### Chrome
 
-The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it.
+The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
 
-The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches.
+The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
+
+### Watch Session
+
+The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
+
+A Watch Session belongs to the currently-viewed Video: it is published when the details screen resolves its Video and cleared when that screen goes away, and switching the active Dub mid-playback updates the session rather than restarting playback. Player features that depend on it (the in-player language/subtitle menu, subtitle rendering) gate on the session matching what is actually playing, so playback started outside a details screen runs without them.

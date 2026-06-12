@@ -61,6 +61,16 @@ function parseSearchError(e: unknown): string {
     if (code === "SERVICE_UNAVAILABLE") {
       return "Search is temporarily unavailable. Please try again."
     }
+    // Admin rejected the search bearer (missing, or rotated out of the CSV).
+    // Retrying can't help — only a new token (dev) or app update (prod) can.
+    if (code === "UNAUTHENTICATED") {
+      if (__DEV__) {
+        console.warn(
+          "[search] UNAUTHENTICATED — set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN in .env.local and cold-restart Metro",
+        )
+      }
+      return "Search isn't available in this app version. Please update the app."
+    }
   }
 
   return "Search failed. Please try again."
@@ -102,7 +112,7 @@ export default function DiscoverScreen() {
     (result: SearchResult) => {
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
-        router.navigate("/(tabs)")
+        router.push(`/experience/${encodeURIComponent(result.slug)}`)
         return
       }
       // Carry seed data forward so the detail screen paints instantly.

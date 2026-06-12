@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { env } from "../../config/env"
+import { env, getOpenRouterApiKey } from "../../config/env"
 import type { JudgeVerdict, SearchEvalResult } from "./types"
 
 const OPENROUTER_CHAT_COMPLETIONS_URL =
@@ -162,11 +162,11 @@ export function createOfflineSearchEvalJudge(
     sleep?: (ms: number) => Promise<void>
   } = {},
 ): OfflineSearchEvalJudge {
-  const apiKey = options.apiKey ?? env.OPENROUTER_API_KEY
+  const apiKey = options.apiKey ?? getOpenRouterApiKey()
   if (!apiKey) {
     throw new OfflineSearchEvalJudgeError(
       "missing_credentials",
-      "OPENROUTER_API_KEY is required for offline search eval judging",
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required for offline search eval judging",
     )
   }
   const model = options.model ?? env.SEARCH_EVAL_JUDGE_MODEL

@@ -23,7 +23,7 @@ describe("createFeatureFlagClient", () => {
     const client = createFeatureFlagClient({ initClient })
 
     await expect(
-      client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+      client.booleanVariation(featureFlags.watchPlayerMigration, context),
     ).resolves.toBe(false)
     expect(initClient).not.toHaveBeenCalled()
   })
@@ -31,12 +31,16 @@ describe("createFeatureFlagClient", () => {
   it("uses local boolean overrides when LaunchDarkly is not configured", async () => {
     const client = createFeatureFlagClient({
       localEnv: {
-        FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "yes",
+        FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "yes",
+        FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: "on",
       },
     })
 
     await expect(
-      client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+      client.booleanVariation(featureFlags.watchPlayerMigration, context),
+    ).resolves.toBe(true)
+    await expect(
+      client.booleanVariation(featureFlags.watchAlgoliaSearch, context),
     ).resolves.toBe(true)
   })
 
@@ -80,11 +84,11 @@ describe("createFeatureFlagClient", () => {
     })
 
     await expect(
-      client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+      client.booleanVariation(featureFlags.watchPlayerMigration, context),
     ).resolves.toBe(true)
     expect(initClient).toHaveBeenCalledOnce()
     expect(ldClient.variation).toHaveBeenCalledWith(
-      "forge.watch.heroMuxVideo",
+      "forge.watch.playerMigration",
       expect.objectContaining({
         kind: "user",
         key: "test-user",
@@ -105,7 +109,7 @@ describe("createFeatureFlagClient", () => {
       initClient: () => ldClient,
     })
 
-    await client.booleanVariation(featureFlags.watchHeroMuxVideo, {
+    await client.booleanVariation(featureFlags.watchPlayerMigration, {
       kind: "user",
       key: "test-user",
       custom: {
@@ -116,7 +120,7 @@ describe("createFeatureFlagClient", () => {
     })
 
     expect(ldClient.variation).toHaveBeenCalledWith(
-      "forge.watch.heroMuxVideo",
+      "forge.watch.playerMigration",
       expect.objectContaining({
         kind: "user",
         key: "test-user",
@@ -139,13 +143,13 @@ describe("createFeatureFlagClient", () => {
       sdkKey: "sdk-test",
       initClient: () => ldClient,
       localEnv: {
-        FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "true",
+        FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
       },
       logger: { warn },
     })
 
     await expect(
-      client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+      client.booleanVariation(featureFlags.watchPlayerMigration, context),
     ).resolves.toBe(true)
     expect(ldClient.variation).not.toHaveBeenCalled()
     expect(warn).toHaveBeenCalledOnce()
@@ -164,16 +168,16 @@ describe("createFeatureFlagClient", () => {
       sdkKey: "sdk-test",
       initClient: () => ldClient,
       localEnv: {
-        FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "true",
+        FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
       },
       logger: { warn },
     })
 
     await expect(
-      client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+      client.booleanVariation(featureFlags.watchPlayerMigration, context),
     ).resolves.toBe(true)
     await expect(
-      client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+      client.booleanVariation(featureFlags.watchPlayerMigration, context),
     ).resolves.toBe(true)
     expect(ldClient.waitForInitialization).toHaveBeenCalledOnce()
     expect(warn).toHaveBeenCalledOnce()
@@ -192,13 +196,13 @@ describe("createFeatureFlagClient", () => {
       sdkKey: "sdk-test",
       initClient: () => ldClient,
       localEnv: {
-        FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "true",
+        FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
       },
       logger: { warn },
     })
 
     await expect(
-      client.booleanVariation(featureFlags.watchHeroMuxVideo, context),
+      client.booleanVariation(featureFlags.watchPlayerMigration, context),
     ).resolves.toBe(true)
     expect(warn).toHaveBeenCalledOnce()
   })

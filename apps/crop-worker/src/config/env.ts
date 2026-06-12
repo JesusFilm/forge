@@ -73,7 +73,10 @@ export type EnvSource = Partial<Record<keyof Env, string | undefined>>
 
 export function parseEnv(source: EnvSource): Env {
   return envSchema.parse({
-    NODE_ENV: source.NODE_ENV,
+    // emptyToUndefined so an empty-string NODE_ENV (Railway provides "" rather
+    // than leaving it unset) falls through to the schema default instead of
+    // failing the enum and crashing boot before the server can listen.
+    NODE_ENV: emptyToUndefined(source.NODE_ENV),
     PORT: emptyToUndefined(source.PORT),
     CROP_WORKER_API_KEYS: emptyToUndefined(source.CROP_WORKER_API_KEYS),
     RAILWAY_S3_ENDPOINT: emptyToUndefined(source.RAILWAY_S3_ENDPOINT),

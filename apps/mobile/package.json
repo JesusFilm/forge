@@ -57,7 +57,10 @@
     "preset": "jest-expo",
     "transformIgnorePatterns": [
       "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    }
   },
   "private": true
 }
