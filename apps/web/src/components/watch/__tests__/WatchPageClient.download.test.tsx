@@ -55,6 +55,10 @@ vi.mock("next-intl", () => ({
         : key,
 }))
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 vi.mock("@/components/FloatingSearchProvider", () => ({
   useFloatingSearchPinned: () => ({ searchOpen: false }),
 }))
@@ -66,18 +70,24 @@ vi.mock("@/components/watch/SubtitleTranscript", () => ({
 vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     downloadError,
+    downloadHref,
     downloadPending,
     languageSlug,
     modalCallbacks,
+    shareHref,
   }: {
     downloadError?: string | null
+    downloadHref?: string
     downloadPending?: boolean
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
+    shareHref?: string
   }) => (
     <div
       data-testid="watch-section-renderer"
+      data-download-href={downloadHref ?? ""}
       data-language-slug={languageSlug ?? ""}
+      data-share-href={shareHref ?? ""}
     >
       <button
         data-testid="watch-download-button"
@@ -187,6 +197,25 @@ describe("WatchPageClient download boundary", () => {
     expect(scheduleWatchInteractionWarmupMock).toHaveBeenCalledWith({
       videoSlug: "jesus",
     })
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "/watch/api/download?",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "downloadId=download-1",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "variantId=variant-1",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "videoSlug=jesus",
+    )
+    expect(renderer?.getAttribute("data-share-href")).toContain(
+      "https://www.facebook.com/sharer/sharer.php",
+    )
+    expect(renderer?.getAttribute("data-share-href")).toContain("jesus")
   })
 
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {

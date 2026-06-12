@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react"
 import { flushSync } from "react-dom"
@@ -44,6 +45,7 @@ import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-producti
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
+import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
 import { MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
@@ -113,13 +115,24 @@ const HERO_HLS_CONFIG = {
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
 }
+const HERO_PLAYER_ID = "watch-hero-player"
+const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
+const HERO_POSTER_TIME_SECONDS = 2
+const WATCH_NOW_LINK_CLASS =
+  "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
 
 function buildHeroPosterUrl(
   playbackId: string | undefined,
 ): string | undefined {
   return playbackId
-    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
+    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&time=${HERO_POSTER_TIME_SECONDS}`
     : undefined
+}
+
+function buildHeroPlaybackFallbackHref(playbackId: string | undefined): string {
+  return playbackId
+    ? `https://stream.mux.com/${encodeURIComponent(playbackId)}.m3u8`
+    : `#${HERO_PLAYER_MEDIA_ID}`
 }
 
 const IDLE_PREVIEW_FALLBACK_DELAY_MS = 1200
@@ -168,6 +181,10 @@ export function HeroPlayer({
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
+  optimisticVisual,
+  coverBlackoutKey,
+  coverBlackoutPhase,
+  forcePosterBridgeKey,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -176,6 +193,10 @@ export function HeroPlayer({
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
+  optimisticVisual?: WatchChapterOptimisticVisual | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
+  forcePosterBridgeKey?: string | null
 }) {
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
@@ -183,6 +204,7 @@ export function HeroPlayer({
   const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
+  const heroPlaybackFallbackHref = buildHeroPlaybackFallbackHref(playbackId)
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
@@ -340,8 +362,12 @@ export function HeroPlayer({
   // hero — the viewport/aspect-ratio height class below pins the layout, this
   // hides the empty box behind a spinner until there's something to show.
   const [videoReady, setVideoReady] = useState(false)
+  const [playerFrameRevealed, setPlayerFrameRevealed] = useState(false)
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
+  }, [])
+  const handlePlaying = useCallback(() => {
+    setPlayerFrameRevealed(true)
   }, [])
 
   useEffect(() => {
@@ -790,15 +816,6 @@ export function HeroPlayer({
     })
   }, [playerActivated])
 
-  const handleIntentKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLButtonElement>) => {
-      if (event.key === "Enter" || event.key === " ") {
-        activatePlayerForIntent()
-      }
-    },
-    [activatePlayerForIntent],
-  )
-
   // iOS user-activation gate: NO `await` between click and play(), or
   // play() will be rejected as not-from-user-gesture. When the poster-first
   // path has not mounted Mux yet, flush the activation synchronously so the
@@ -819,6 +836,28 @@ export function HeroPlayer({
     runSoundIntent(player, pillState)
   }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
 
+  const handleWatchNowClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault()
+      handleUnmuteClick()
+    },
+    [handleUnmuteClick],
+  )
+
+  const handleWatchNowKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLAnchorElement>) => {
+      if (event.key === " ") {
+        event.preventDefault()
+        handleUnmuteClick()
+        return
+      }
+      if (event.key === "Enter") {
+        activatePlayerForIntent()
+      }
+    },
+    [activatePlayerForIntent, handleUnmuteClick],
+  )
+
   const handlePlayerError = useCallback((event: Event) => {
     // MuxVideo emits a plain Event — autoplay rejection arrives via the
     // play() promise catch handlers above, not here. This branch tolerates
@@ -836,6 +875,7 @@ export function HeroPlayer({
     // forever and the spinner would sit on a black box. Reveal the player
     // element so the underlying media element can render its native error UI.
     setVideoReady(true)
+    setPlayerFrameRevealed(true)
   }, [])
 
   // Reset the buffered/ready spinner when the playable identity changes
@@ -851,6 +891,7 @@ export function HeroPlayer({
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
+    setPlayerFrameRevealed(false)
     setPlayerActivated(autoplayParam === "1" || heroPosterUrl == null)
   }
   // Variant-scope the autoplay one-shot — without this, a same-component
@@ -864,6 +905,51 @@ export function HeroPlayer({
 
   const loop = !chromeRevealed
   const muted = !chromeRevealed
+  const canUseOptimisticVisual = !chromeRevealed
+  const visualHeroPosterUrl = canUseOptimisticVisual
+    ? (optimisticVisual?.posterUrl ?? heroPosterUrl)
+    : heroPosterUrl
+  const visualTitle = canUseOptimisticVisual
+    ? (optimisticVisual?.title ?? video.title)
+    : video.title
+  const visualLabel = canUseOptimisticVisual
+    ? (optimisticVisual?.label ?? video.label)
+    : video.label
+  const showOptimisticPoster =
+    canUseOptimisticVisual && optimisticVisual?.posterUrl != null
+  const showPendingPosterTransition =
+    showOptimisticPoster && optimisticVisual?.loading === true
+  const posterIdentity = visualHeroPosterUrl ?? "none"
+  const [posterTransitionState, setPosterTransitionState] = useState({
+    identity: posterIdentity,
+    shouldBridge: false,
+  })
+  if (posterTransitionState.identity !== posterIdentity) {
+    setPosterTransitionState({
+      identity: posterIdentity,
+      shouldBridge: true,
+    })
+  }
+  const coverLoading =
+    showPendingPosterTransition || (playerActivated && !videoReady)
+  const showPosterBlackBridge =
+    visualHeroPosterUrl != null &&
+    (showPendingPosterTransition ||
+      posterTransitionState.shouldBridge ||
+      forcePosterBridgeKey != null)
+  const posterLayerKey = posterIdentity
+  const posterOpacityClass =
+    playerFrameRevealed && !showOptimisticPoster ? "opacity-0" : "opacity-100"
+  const posterTransitionClass = showOptimisticPoster
+    ? ""
+    : "transition-opacity duration-[1000ms]"
+  const posterImageMotionClass = showPosterBlackBridge
+    ? "watch-hero-cover-reveal"
+    : ""
+  const coverBlackoutMotionClass =
+    coverBlackoutPhase === "revealing"
+      ? "watch-hero-cover-black-bridge"
+      : "watch-hero-cover-to-black"
 
   // Hide the language-switch globe while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
@@ -929,6 +1015,7 @@ export function HeroPlayer({
   return (
     <>
       <div
+        id={HERO_PLAYER_ID}
         ref={wrapperRef}
         data-block-type="HeroPlayer"
         data-testid="hero-player-wrapper"
@@ -975,6 +1062,7 @@ export function HeroPlayer({
         ) : null}
 
         <div
+          id={HERO_PLAYER_MEDIA_ID}
           data-testid="hero-player-media-frame"
           className={mediaFrameClassName}
         >
@@ -1013,6 +1101,7 @@ export function HeroPlayer({
               }
               onLoadedMetadata={handleLoadedMetadata}
               onCanPlay={handleCanPlay}
+              onPlaying={handlePlaying}
               // React's SyntheticEvent<HTMLVideoElement> is structurally
               // narrower than the native Event the handler consumes at
               // runtime; cast bridges the type-system difference.
@@ -1021,13 +1110,19 @@ export function HeroPlayer({
             />
           ) : null}
 
-          {heroPosterUrl ? (
+          {visualHeroPosterUrl ? (
             <div
-              className={`pointer-events-none absolute inset-0 transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`}
+              key={posterLayerKey}
+              data-testid="hero-player-poster-layer"
+              data-cover-loading={coverLoading ? "true" : "false"}
+              data-cover-transition={
+                showPosterBlackBridge ? "black-bridge" : "none"
+              }
+              className={`pointer-events-none absolute inset-0 z-1 ${posterTransitionClass} ${posterOpacityClass}`}
             >
               <Image
                 data-testid="hero-player-poster"
-                src={heroPosterUrl}
+                src={visualHeroPosterUrl}
                 alt=""
                 aria-hidden="true"
                 fill
@@ -1035,18 +1130,54 @@ export function HeroPlayer({
                 loading="eager"
                 fetchPriority="high"
                 sizes="100vw"
-                className="object-cover"
+                className={`object-cover ${posterImageMotionClass}`}
               />
+              {!chromeRevealed ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="hero-player-poster-muted-backdrop"
+                  className="pointer-events-none absolute inset-0 [background:var(--watch-player-muted-backdrop)]"
+                  style={
+                    {
+                      "--watch-player-muted-backdrop":
+                        WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+                    } as CSSProperties
+                  }
+                />
+              ) : null}
+              {darkenOverlay ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="hero-player-poster-darken-overlay"
+                  className="pointer-events-none absolute inset-0 bg-black/50"
+                />
+              ) : null}
+              {showPosterBlackBridge ? (
+                <div
+                  data-testid="hero-player-cover-black-bridge"
+                  aria-hidden="true"
+                  className="watch-hero-cover-black-bridge pointer-events-none absolute inset-0 bg-black"
+                />
+              ) : null}
             </div>
+          ) : null}
+
+          {coverBlackoutKey != null && coverBlackoutPhase != null ? (
+            <div
+              key={`${coverBlackoutKey}:${coverBlackoutPhase}`}
+              data-testid="hero-player-cover-blackout"
+              aria-hidden="true"
+              className={`${coverBlackoutMotionClass} pointer-events-none absolute inset-0 z-2 bg-black`}
+            />
           ) : null}
 
           {!chromeRevealed && overlay == null ? (
             <button
               type="button"
               data-testid="hero-player-pre-reveal-click-surface"
-              aria-label={preRevealActionLabel}
+              aria-hidden="true"
+              tabIndex={-1}
               onPointerDown={activatePlayerForIntent}
-              onKeyDown={handleIntentKeyDown}
               onClick={handleUnmuteClick}
               className="absolute inset-0 z-1 cursor-pointer bg-transparent focus:outline-none"
             />
@@ -1125,34 +1256,35 @@ export function HeroPlayer({
                 data-testid="hero-player-overlay"
                 className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-3 pb-12 md:right-auto`}
               >
-                {video.label ? (
+                {visualLabel ? (
                   <span
                     data-testid="hero-player-overlay-label"
                     className={WATCH_SECTION_EYEBROW_CLASS}
                   >
-                    {videoLabels(videoLabelMessageKey(video.label))}
+                    {videoLabels(videoLabelMessageKey(visualLabel))}
                   </span>
                 ) : null}
-                {video.title ? (
+                {visualTitle ? (
                   <h1
                     data-testid="hero-player-overlay-title"
                     className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"
                   >
-                    {video.title}
+                    {visualTitle}
                   </h1>
                 ) : null}
-                <button
-                  type="button"
+                <a
+                  href={heroPlaybackFallbackHref}
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
+                  aria-controls={HERO_PLAYER_MEDIA_ID}
                   onPointerDown={activatePlayerForIntent}
-                  onKeyDown={handleIntentKeyDown}
-                  onClick={handleUnmuteClick}
+                  onKeyDown={handleWatchNowKeyDown}
+                  onClick={handleWatchNowClick}
                   className={
                     pillState === "tap-to-unmute"
-                      ? "inline-flex cursor-pointer items-center gap-3 rounded-full bg-amber-500 px-5 py-2.5 text-base font-medium text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400 md:py-3 md:text-lg"
-                      : "inline-flex cursor-pointer items-center gap-3 rounded-full bg-brand-red px-5 py-2.5 text-base font-medium text-white shadow-lg transition hover:bg-brand-red md:py-3 md:text-lg"
+                      ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                      : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
                   }
                 >
                   {pillState === "tap-to-unmute" ? (
@@ -1161,7 +1293,7 @@ export function HeroPlayer({
                     <PlayIcon />
                   )}
                   <span>{preRevealActionLabel}</span>
-                </button>
+                </a>
               </div>
             ))
           : null}

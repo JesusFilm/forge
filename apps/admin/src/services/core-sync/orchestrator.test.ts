@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest"
 import { resolveScope } from "./orchestrator"
 
 const refreshAfterCoreSyncMock = vi.hoisted(() => vi.fn())
+const refreshSeoAfterCoreSyncMock = vi.hoisted(() => vi.fn())
 
 vi.mock("./lock", () => ({
   acquireSyncLock: vi.fn(),
@@ -11,6 +12,10 @@ vi.mock("./lock", () => ({
 
 vi.mock("../watch-route-manifest-refresh.service", () => ({
   refreshWatchRouteManifestAfterCoreSync: refreshAfterCoreSyncMock,
+}))
+
+vi.mock("../watch-seo-manifest-refresh.service", () => ({
+  refreshWatchSeoManifestAfterCoreSync: refreshSeoAfterCoreSyncMock,
 }))
 
 vi.mock("./watermark", () => ({
@@ -122,6 +127,7 @@ describe("runSync", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     refreshAfterCoreSyncMock.mockResolvedValue({ status: "skipped" })
+    refreshSeoAfterCoreSyncMock.mockResolvedValue({ status: "skipped" })
   })
 
   it("returns skipped when lock is held", async () => {
@@ -167,6 +173,16 @@ describe("runSync", () => {
       expect.stringMatching(/^sync-\d+$/),
     )
     expect(refreshAfterCoreSyncMock).toHaveBeenCalledWith({
+      prisma: mockPrisma,
+      phases: [
+        expect.objectContaining({
+          phase: "languages",
+          created: 5,
+          errors: 0,
+        }),
+      ],
+    })
+    expect(refreshSeoAfterCoreSyncMock).toHaveBeenCalledWith({
       prisma: mockPrisma,
       phases: [
         expect.objectContaining({

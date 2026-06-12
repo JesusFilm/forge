@@ -272,11 +272,11 @@ function makeBibleCitations() {
   ]
 }
 
-function makeSeriesResult() {
+function makeSeriesResult(slug = "storyclubs") {
   return {
     video: {
       documentId: "s1",
-      slug: "storyclubs",
+      slug,
       title: "StoryClubs",
       label: "collection",
       images: [],
@@ -511,7 +511,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 })
 
 describe("Catch-all routing — metadata for playable watch pages", () => {
-  it("uses resolved video data for two-segment metadata before falling back to the template resolver", async () => {
+  it("uses resolved video data for two-segment metadata without page-head hreflang", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("featureFilm"),
     )
@@ -547,19 +547,16 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     })
     expect(metadata.alternates).toMatchObject({
       canonical: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
-      languages: {
-        en: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
-        es: "https://www.jesusfilm.org/watch/storyclubs.html/spanish-castilian.html",
-      },
     })
-    expect(resolveWatchPageMock).toHaveBeenCalledWith("en", "storyclubs")
+    expect(metadata.alternates).not.toHaveProperty("languages")
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
     expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
   })
 
-  it("keeps curated Experience metadata ahead of same-slug video metadata", async () => {
+  it("keeps same-slug video metadata ahead of curated Experience metadata", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -588,17 +585,59 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       }),
     })
 
-    expect(metadata.title).toBe("Easter Watch")
+    expect(metadata.title).toBe("StoryClubs | Jesus Film Project")
     expect(metadata.openGraph).toMatchObject({
-      title: "Easter OG",
+      title: "StoryClubs | Jesus Film Project",
       url: "https://www.jesusfilm.org/watch/easter.html/english.html",
       images: [
         {
-          url: "https://cdn.example/easter-og.jpg",
+          url: "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
         },
       ],
     })
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "easter",
+      "english",
+    )
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps same-slug trailerless series metadata ahead of curated Experience metadata", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter Watch",
+          metaDescription: "Curated Easter page.",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+    resolveWatchVideoBySlugMock.mockResolvedValue(null)
+    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult("easter"))
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: ["easter.html", "english.html"],
+      }),
+    })
+
+    expect(metadata.title).toBe("StoryClubs | Jesus Film Project")
+    expect(metadata.openGraph).toMatchObject({
+      title: "StoryClubs | Jesus Film Project",
+      url: "https://www.jesusfilm.org/watch/easter.html/english.html",
+    })
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "easter",
+      "english",
+    )
+    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("easter", "english")
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 
   it("uses the three-segment production URL for episode metadata", async () => {
@@ -875,8 +914,35 @@ describe("Catch-all routing — series branch (2-seg)", () => {
   })
 })
 
-describe("Catch-all routing — Experience precedence (2-seg)", () => {
-  it("renders Experience and skips video resolver when Experience exists for the slug", async () => {
+describe("Catch-all routing — video precedence (2-seg)", () => {
+  it("renders video and skips Experience when both exist for the slug", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm"),
+    )
+    await render2Seg("easter", "english")
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(watchQuestionPanelMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "easter",
+      "english",
+    )
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+  })
+
+  it("renders playlist/series and skips Experience when both exist for the slug", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -893,14 +959,45 @@ describe("Catch-all routing — Experience precedence (2-seg)", () => {
       makeWatchVideoResult("collection"),
     )
     await render2Seg("easter", "english")
-    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
     expect(watchQuestionPanelMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 
-  it("renders the gated question panel for curated watch experiences when enabled", async () => {
+  it("renders trailerless series fallback before same-slug Experience", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-1",
+          slug: "storyclubs-no-trailer",
+          title: "StoryClubs landing",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+    resolveWatchVideoBySlugMock.mockResolvedValue(null)
+    resolveSeriesBySlugMock.mockResolvedValue(
+      makeSeriesResult("storyclubs-no-trailer"),
+    )
+
+    await render2Seg("storyclubs-no-trailer", "english")
+
+    expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
+      "storyclubs-no-trailer",
+      "english",
+    )
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+  })
+
+  it("renders the gated question panel for curated watch experiences when no video or series resolves", async () => {
     isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
+    resolveWatchVideoBySlugMock.mockResolvedValue(null)
+    resolveSeriesBySlugMock.mockResolvedValue(null)
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -926,10 +1023,16 @@ describe("Catch-all routing — Experience precedence (2-seg)", () => {
       undefined,
     )
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "easter",
+      "english",
+    )
+    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("easter", "english")
   })
 
   it("falls through to ExperienceEmpty when Experience has no blocks", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(null)
+    resolveSeriesBySlugMock.mockResolvedValue(null)
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -939,7 +1042,8 @@ describe("Catch-all routing — Experience precedence (2-seg)", () => {
     })
     await render2Seg("x", "english")
     expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith("x", "english")
+    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("x", "english")
   })
 })
 

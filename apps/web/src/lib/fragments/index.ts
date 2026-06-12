@@ -5,6 +5,7 @@ export {
 } from "./watch-home"
 export {
   getVideoChildDubLanguagesBySlugOperation,
+  getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoShellBySlugOperation,

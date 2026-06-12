@@ -263,11 +263,14 @@ describe("proxy config matcher — reserved first-segment exclusions", () => {
     expect(matcherRegex.test("/demo-recommendations/jesus/en")).toBe(false)
     expect(matcherRegex.test("/_next/data/build/x.json")).toBe(false)
     expect(matcherRegex.test("/.well-known/security.txt")).toBe(false)
+    expect(matcherRegex.test("/sitemap.xml")).toBe(false)
+    expect(matcherRegex.test("/sitemap/0.xml")).toBe(false)
   })
 
   it("does not exclude content routes that only start with a reserved word", async () => {
     expect(matcherRegex.test("/images-of-jesus.html/english.html")).toBe(true)
     expect(matcherRegex.test("/fonts-of-worship.html/english.html")).toBe(true)
+    expect(matcherRegex.test("/sitemap-of-jesus.html/english.html")).toBe(true)
   })
 })
 

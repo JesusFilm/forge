@@ -64,8 +64,13 @@ export function resolvePosterUrl(
     image?.thumbnail ??
     null
   if (editorial) return editorial
-  if (muxPlaybackId) {
-    return `https://image.mux.com/${muxPlaybackId}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop`
-  }
-  return null
+  return resolveMuxFrameThumbnailUrl(muxPlaybackId)
+}
+
+export function resolveMuxFrameThumbnailUrl(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2`
 }

@@ -106,6 +106,29 @@ function makeStudyQuestions(values: string[]): WatchStudyQuestionsBlock {
 }
 
 describe("WatchBody — two-column layout", () => {
+  it("renders an optimistic title without replacing route-owned description", () => {
+    const block = makeBlock({ title: "Current Video" })
+
+    act(() => {
+      root.render(
+        <WatchBody
+          block={block}
+          studyQuestions={null}
+          onDownloadClick={vi.fn()}
+          optimisticTitle="Clicked Video"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-body-title"]')?.textContent,
+    ).toBe("Clicked Video")
+    expect(
+      container.querySelector('[data-testid="watch-body-description"]')
+        ?.textContent,
+    ).toBe("A description.")
+  })
+
   it("happy path: video with 3 study questions + 5 downloads renders two columns, bullet list, and Download button", () => {
     const block = makeBlock({ downloadCount: 5 })
     const sq = makeStudyQuestions(["Q1?", "Q2?", "Q3?"])
@@ -782,5 +805,42 @@ describe("DownloadButton — isolated render", () => {
     expect(btn).not.toBeNull()
     expect(btn.textContent).toContain("Save Video")
     expect(btn.getAttribute("aria-label")).toBe("Save Video")
+  })
+
+  it("renders a concrete fallback link when an href is supplied", () => {
+    const onClick = vi.fn()
+
+    act(() => {
+      root.render(
+        <DownloadButton
+          href="/watch/api/download?downloadId=dl-1&variantId=variant-1&videoSlug=jesus"
+          onClick={onClick}
+        />,
+      )
+    })
+
+    const link = container.querySelector(
+      '[data-testid="watch-download-button"]',
+    ) as HTMLAnchorElement
+    expect(link).not.toBeNull()
+    expect(link.tagName.toLowerCase()).toBe("a")
+    expect(link.getAttribute("href")).toContain("/watch/api/download?")
+    expect(link.getAttribute("href")).toContain("downloadId=dl-1")
+    expect(link.getAttribute("download")).toBe("")
+    expect(link.getAttribute("aria-label")).toBe("Download")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(link.className).toContain(token)
+    }
+
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+    act(() => {
+      expect(link.dispatchEvent(clickEvent)).toBe(false)
+    })
+
+    expect(clickEvent.defaultPrevented).toBe(true)
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 })

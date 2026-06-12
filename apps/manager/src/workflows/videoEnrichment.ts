@@ -25,7 +25,7 @@ import type {
   TranslationLanguageResult,
 } from "@/types/job"
 import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
-import type { LanguageResult } from "@/services/subtitleTranslation/types"
+import type { LanguageResult } from "@/services/mastra-subtitle-enrichment"
 import {
   stepGetJob,
   stepMergeJobArtifacts,
@@ -580,8 +580,21 @@ async function stepSubtitleTranslation(
   targetLanguages: string[],
 ) {
   "use step"
-  const { translateSubtitles } = await import("@/services/subtitleTranslation")
-  return translateSubtitles({ assetId, sourceLanguage, targetLanguages })
+  const { launchMastraSubtitleEnrichment } =
+    await import("@/services/mastra-subtitle-enrichment")
+  const result = await launchMastraSubtitleEnrichment({
+    assetId,
+    sourceLanguage,
+    targetLanguages,
+  })
+
+  if (!result.ok) {
+    throw new Error(
+      `Mastra subtitle enrichment failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
+    )
+  }
+
+  return result.languages
 }
 
 async function stepChapters(assetId: string, input: GenerateChaptersInput) {

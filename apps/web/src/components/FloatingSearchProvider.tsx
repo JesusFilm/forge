@@ -265,7 +265,6 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       setPlayerChromeVisible(true)
       setPlayerChromeOpacity(1)
       setPlayerPlaybackState({ playing: false, muted: true, preview: false })
-      setHeaderLanguageSwitcher({ visible: false, onClick: null })
       setHeaderHovered(false)
     })
     return () => window.cancelAnimationFrame(frame)

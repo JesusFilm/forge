@@ -260,14 +260,6 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
-      const watchPage = await resolveWatchPage(locale, slug)
-      if (watchPage.data?.kind === "experience") {
-        return getWatchPageMetadata(locale, {
-          slug,
-          pathLocale: rawLocale,
-        })
-      }
-
       const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
       if (watchVideo && isSeriesRecord(watchVideo.video)) {
         return generateSeriesMetadata(locale, {
@@ -283,14 +275,12 @@ export async function generateMetadata({
           pathLocale: rawLocale,
         })
       }
-      if (!watchVideo) {
-        const series = await resolveSeriesBySlug(slug, rawLocale)
-        if (series) {
-          return generateSeriesMetadata(locale, {
-            series: series.video,
-            pathLocale: rawLocale,
-          })
-        }
+      const series = await resolveSeriesBySlug(slug, rawLocale)
+      if (series) {
+        return generateSeriesMetadata(locale, {
+          series: series.video,
+          pathLocale: rawLocale,
+        })
       }
     } catch {
       // Fall through to getWatchPageMetadata.
@@ -508,7 +498,7 @@ async function renderEpisode(shape: {
         <link
           rel="preload"
           as="image"
-          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
           fetchPriority="high"
         />
       ) : null}
@@ -537,52 +527,11 @@ async function renderVideo(shape: {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
 
-  // Experience-first precedence: when an editor curated an Experience at
-  // this slug, that's the intended landing — even when a slug-colliding
-  // Video (e.g. an `easter` Video alongside an `easter` Experience) exists.
-  // `resolveWatchPage` is React `cache()`-wrapped so the tail-end call
-  // for the video-template fallback is free.
-  const watchPage = await resolveWatchPage(locale, slug)
-  if (watchPage.data?.kind === "experience") {
-    const blocks = (watchPage.data.experience.blocks ?? []).filter(
-      (b): b is Section => b !== null,
-    )
-    if (blocks.length) {
-      const questionPanelEnabled = await getQuestionPanelEnabled(route)
-      return (
-        <main
-          className={`min-h-screen bg-stone-900 ${
-            questionPanelEnabled
-              ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
-              : ""
-          }`}
-        >
-          {blocks.map((block, i) => {
-            const key =
-              "id" in block && typeof block.id === "string"
-                ? block.id
-                : `block-${i}`
-            return (
-              <ExperienceSectionRenderer
-                key={key}
-                section={block}
-                routeVideo={null}
-              />
-            )
-          })}
-          {questionPanelEnabled ? (
-            <WatchQuestionPanel enabled={questionPanelEnabled} />
-          ) : null}
-        </main>
-      )
-    }
-    return <ExperienceEmpty />
-  }
-
-  // Video-by-slug second. Pass rawLocale (not the bcp47-normalised
+  // Video-by-slug first. Pass rawLocale (not the bcp47-normalised
   // `locale`) so the resolver matches either variant.language.slug OR
   // variant.language.bcp47 — slug-form URLs like /the-call/korean need to
-  // land in the resolver as "korean", not "en".
+  // land in the resolver as "korean", not "en". A same-slug Experience is
+  // only a fallback after video and series routes fail to render.
   const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
@@ -654,7 +603,7 @@ async function renderVideo(shape: {
           <link
             rel="preload"
             as="image"
-            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
             fetchPriority="high"
           />
         ) : null}

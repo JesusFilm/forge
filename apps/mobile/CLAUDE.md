@@ -67,3 +67,4 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
+- Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (a dedicated entry in admin's `WEB_ADMIN_API_KEYS` CSV; provision in EAS Environments per profile, `.env.local` for dev). Missing/rotated key → `UNAUTHENTICATED` → "Search isn't available in this app version." The bearer rides ONLY on the `Search` operation — never attach it to public queries, or the whole fleet collapses into one `consumer:<key>` rate-limit bucket on admin (60 queries/min total). See `src/lib/authHeaders.ts`.

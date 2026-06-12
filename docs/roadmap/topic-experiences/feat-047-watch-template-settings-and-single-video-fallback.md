@@ -61,7 +61,7 @@ The new watch-template settings flow adds a generic single-video fallback, but t
 - Do not remove the `WatchSetting` singleton or the `Experience.isTemplate` model introduced by the plan.
 - Do not break the GraphQL contract flow: if CMS schema changes, regenerate `apps/cms/schema.graphql` and `packages/graphql` outputs in the same work.
 - Do not introduce inline GraphQL operations in random web files; keep operations in the existing data layer and fragments.
-- Do not weaken the existing route precedence: explicit `Experience.slug` must still win before generic `Video.slug` fallback.
+- Historical precedence note: this ticket originally kept explicit `Experience.slug` ahead of generic `Video.slug` fallback. That rule was superseded for two-segment Watch video/playlist URLs by `docs/plans/2026-06-11-002-fix-watch-video-precedence-plan.md`; video-side content now wins before same-slug Experiences at `/watch/{slug}.html/{language}.html`.
 
 ## Verification
 

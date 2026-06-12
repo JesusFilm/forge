@@ -22,6 +22,7 @@ type MuxVideoCapturedProps = Record<string, unknown> & {
   ref?: React.Ref<unknown>
   onLoadedMetadata?: (event: Event) => void
   onCanPlay?: (event: Event) => void
+  onPlaying?: (event: Event) => void
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
@@ -306,6 +307,13 @@ async function fireCanPlay() {
   })
 }
 
+async function firePlaying() {
+  const handler = lastMuxProps()?.onPlaying
+  await act(async () => {
+    handler?.(new Event("playing"))
+  })
+}
+
 async function fireError(code: string) {
   const handler = lastMuxProps()?.onError
   const evt = new Event("error") as Event & { detail?: { code?: string } }
@@ -326,7 +334,7 @@ describe("HeroPlayer — initial mount", () => {
     ) as HTMLImageElement
     expect(poster).not.toBeNull()
     expect(poster.getAttribute("src")).toBe(
-      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280&time=2",
     )
     expect(poster.getAttribute("loading")).toBe("eager")
     expect(poster.getAttribute("fetchpriority")).toBe("high")
@@ -334,6 +342,320 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).toBeNull()
+  })
+
+  it("renders optimistic title and poster on the pre-reveal shell only", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+          }}
+        />,
+      )
+    })
+
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    expect(poster).not.toBeNull()
+    expect(poster.getAttribute("src")).toBe("https://cdn.test/clicked.jpg")
+    expect(poster.parentElement?.getAttribute("data-cover-loading")).toBe(
+      "false",
+    )
+    expect(poster.parentElement?.getAttribute("data-cover-transition")).toBe(
+      "none",
+    )
+    expect(poster.parentElement?.className).not.toContain("transition-opacity")
+    expect(poster.parentElement?.className).toContain("opacity-100")
+    expect(poster.getAttribute("class")).not.toContain("pulse")
+    const posterBackdrop = container.querySelector(
+      '[data-testid="hero-player-poster-muted-backdrop"]',
+    ) as HTMLDivElement
+    expect(posterBackdrop).not.toBeNull()
+    expect(posterBackdrop.getAttribute("style")).toContain(
+      WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+    )
+    expect(
+      container.querySelector('[data-testid="hero-player-cover-black-bridge"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]')
+        ?.textContent,
+    ).toBe("Clicked Chapter")
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]')
+        ?.textContent,
+    ).toBe("Segment")
+    expect(muxVideoMock).not.toHaveBeenCalled()
+  })
+
+  it("mirrors muted video darkening on an optimistic poster", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          darkenOverlay
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+          }}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-muted-backdrop"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-poster-muted-backdrop"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-darken-overlay"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-poster-darken-overlay"]',
+      ),
+    ).not.toBeNull()
+  })
+
+  it("bridges a pending optimistic poster through black without pulsing the cover", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+            loading: true,
+            transitionKey: "chapter-2",
+          }}
+        />,
+      )
+    })
+
+    const layer = container.querySelector(
+      '[data-testid="hero-player-poster-layer"]',
+    )
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const bridge = container.querySelector(
+      '[data-testid="hero-player-cover-black-bridge"]',
+    )
+
+    expect(layer?.getAttribute("data-cover-loading")).toBe("true")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(poster.getAttribute("src")).toBe("https://cdn.test/clicked.jpg")
+    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
+    expect(poster.getAttribute("class")).not.toContain("pulse")
+    expect(bridge).not.toBeNull()
+  })
+
+  it("blacks out the current cover before optimistic title and poster swap", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          coverBlackoutKey="chapter-2:0"
+          coverBlackoutPhase="covering"
+        />,
+      )
+    })
+
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const blackout = container.querySelector(
+      '[data-testid="hero-player-cover-blackout"]',
+    )
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]')
+        ?.textContent,
+    ).toBe("Jesus")
+    expect(poster.getAttribute("src")).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280&time=2",
+    )
+    expect(poster.parentElement?.getAttribute("data-cover-transition")).toBe(
+      "none",
+    )
+    expect(blackout).not.toBeNull()
+  })
+
+  it("bridges the committed route poster when it replaces the clicked poster", () => {
+    const baseBlock = makeBlock()
+    const committedBlock: WatchHeroPlayerBlock = {
+      ...baseBlock,
+      video: {
+        ...(baseBlock.video as object),
+        documentId: "video-2",
+        title: "Clicked Chapter",
+      } as never,
+      variant: {
+        ...(baseBlock.variant as object),
+        documentId: "variant-2",
+        muxVideo: { playbackId: "route-playback-456" },
+      } as never,
+    }
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={baseBlock}
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+            loading: true,
+            transitionKey: "chapter-2",
+          }}
+        />,
+      )
+    })
+
+    act(() => {
+      root.render(<HeroPlayer block={committedBlock} />)
+    })
+
+    const layer = container.querySelector(
+      '[data-testid="hero-player-poster-layer"]',
+    )
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const bridge = container.querySelector(
+      '[data-testid="hero-player-cover-black-bridge"]',
+    )
+
+    expect(layer?.getAttribute("data-cover-loading")).toBe("false")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(poster.getAttribute("src")).toBe(
+      "https://image.mux.com/route-playback-456/thumbnail.webp?width=1280&time=2",
+    )
+    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
+    expect(poster.getAttribute("class")).not.toContain("pulse")
+    expect(bridge).not.toBeNull()
+  })
+
+  it("bridges a route poster on mount when a route bridge key is forced", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          forcePosterBridgeKey="video-1:variant-1"
+        />,
+      )
+    })
+
+    const layer = container.querySelector(
+      '[data-testid="hero-player-poster-layer"]',
+    )
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    const bridge = container.querySelector(
+      '[data-testid="hero-player-cover-black-bridge"]',
+    )
+
+    expect(layer?.getAttribute("data-cover-loading")).toBe("false")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
+    expect(poster.getAttribute("class")).not.toContain("pulse")
+    expect(bridge).not.toBeNull()
+  })
+
+  it("keeps an optimistic poster visible after the muted preview starts", async () => {
+    const idle = installIdleCallbackStub()
+    const block = makeBlock()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={block} />)
+      })
+      await idle.runNext()
+      await fireCanPlay()
+
+      const routePoster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      )
+      expect(routePoster?.parentElement?.className).toContain("opacity-100")
+
+      await firePlaying()
+
+      expect(routePoster?.parentElement?.className).toContain("opacity-0")
+
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={block}
+            optimisticVisual={{
+              title: "Clicked Chapter",
+              label: "SEGMENT",
+              posterUrl: "https://cdn.test/clicked.jpg",
+            }}
+          />,
+        )
+      })
+
+      const optimisticPoster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      ) as HTMLImageElement
+      expect(optimisticPoster.getAttribute("src")).toBe(
+        "https://cdn.test/clicked.jpg",
+      )
+      expect(optimisticPoster.parentElement?.className).toContain("opacity-100")
+    } finally {
+      idle.restore()
+    }
+  })
+
+  it("keeps the route poster still until playback starts", async () => {
+    const idle = installIdleCallbackStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await idle.runNext()
+
+      const layer = container.querySelector(
+        '[data-testid="hero-player-poster-layer"]',
+      )
+      const poster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      ) as HTMLImageElement
+      expect(layer?.getAttribute("data-cover-loading")).toBe("true")
+      expect(layer?.getAttribute("data-cover-transition")).toBe("none")
+      expect(poster.getAttribute("class")).not.toContain("pulse")
+
+      await fireCanPlay()
+
+      const readyLayer = container.querySelector(
+        '[data-testid="hero-player-poster-layer"]',
+      )
+      const readyPoster = container.querySelector(
+        '[data-testid="hero-player-poster"]',
+      ) as HTMLImageElement
+      expect(readyLayer?.getAttribute("data-cover-loading")).toBe("false")
+      expect(readyLayer?.className).toContain("opacity-100")
+      expect(readyPoster.getAttribute("class")).not.toContain("pulse")
+
+      await firePlaying()
+
+      const playingLayer = container.querySelector(
+        '[data-testid="hero-player-poster-layer"]',
+      )
+      expect(playingLayer?.className).toContain("opacity-0")
+    } finally {
+      idle.restore()
+    }
   })
 
   it("mounts MuxVideo with LCP poster, bounded HLS config, and Mux Data after idle activation", async () => {
@@ -349,7 +671,7 @@ describe("HeroPlayer — initial mount", () => {
     // Must match the server-rendered <link rel="preload"> URL exactly so the
     // MuxVideo poster reuses the LCP poster request.
     expect(props.poster).toBe(
-      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280&time=2",
     )
     expect(props.disableTracking).toBe(false)
     expect(props.disableCookies).toBe(true)
@@ -769,6 +1091,11 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-overlay"]',
     )
     expect(pill).not.toBeNull()
+    expect(pill?.tagName.toLowerCase()).toBe("a")
+    expect(pill?.getAttribute("href")).toBe(
+      "https://stream.mux.com/playback-id-123.m3u8",
+    )
+    expect(pill?.getAttribute("aria-controls")).toBe("watch-hero-player-media")
     expect(overlay?.getAttribute("class")).toContain("bottom-0")
     expect(overlay?.getAttribute("class")).toContain("gap-3")
     expect(overlay?.getAttribute("class")).not.toContain("gap-4")
@@ -781,6 +1108,8 @@ describe("HeroPlayer — initial mount", () => {
     expect(pillClassTokens).toContain("cursor-pointer")
     expect(pillClassTokens).toContain("bg-brand-red")
     expect(pillClassTokens).toContain("px-5")
+    expect(pillClassTokens).toContain("focus-visible:outline-2")
+    expect(pillClassTokens).toContain("focus-visible:ring-2")
     expect(pillClassTokens).not.toContain("px-7")
     expect(pillClassTokens).not.toContain("md:px-8")
     expect(pillClassTokens.some((token) => token.startsWith("min-w"))).toBe(
@@ -805,6 +1134,12 @@ describe("HeroPlayer — initial mount", () => {
     // visible "Watch now" text so voice-control engines that match on
     // accessible name still resolve "click watch now".
     expect(pill?.getAttribute("aria-label")).toBe("Watch now")
+
+    const surface = container.querySelector(
+      '[data-testid="hero-player-pre-reveal-click-surface"]',
+    )
+    expect(surface?.getAttribute("aria-hidden")).toBe("true")
+    expect(surface?.getAttribute("tabindex")).toBe("-1")
   })
 
   it("uses the production muted overlay backdrop before chrome is revealed", () => {
@@ -836,7 +1171,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
-    ) as HTMLButtonElement
+    ) as HTMLAnchorElement
     expect(pill).not.toBeNull()
 
     // Order check: capture the order in which mutations & play() happen
@@ -872,10 +1207,15 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     // Dispatch the click event synchronously (no await between dispatch and
     // assertion) — proves play() is called inside the same task as the
     // click event, which is the iOS user-activation requirement.
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
     await act(async () => {
-      pill.click()
+      expect(pill.dispatchEvent(clickEvent)).toBe(false)
     })
 
+    expect(clickEvent.defaultPrevented).toBe(true)
     expect(events).toEqual(["currentTime=0", "muted=false", "play()"])
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
@@ -1028,6 +1368,10 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-poster-layer"]')
+        ?.className,
+    ).toContain("opacity-0")
   })
 
   it("keeps the spinner up when the error is autoplay-blocked (recovery path is the unmute pill, not the player UI)", async () => {

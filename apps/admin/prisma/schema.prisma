@@ -576,6 +576,22 @@ model WatchRouteManifestSnapshot {
   @@map("watch_route_manifest_snapshot")
 }
 
+/// Latest admin-owned Watch hreflang sitemap manifest. This singleton
+/// snapshot lets apps/web generate sitemap XML without recomputing the full
+/// video-language alternate graph in page render paths.
+model WatchSeoManifestSnapshot {
+  key              String   @id
+  version          String
+  generatedAt      DateTime @map("generated_at")
+  payload          Json
+  payloadSizeBytes Int      @map("payload_size_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([generatedAt])
+  @@map("watch_seo_manifest_snapshot")
+}
+
 /// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
 /// existing Manager JobRecord so Manager can move transport without UI churn.
 model ManagerEnrichmentJob {

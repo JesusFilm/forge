@@ -11,7 +11,7 @@
  * verifying U6's auto-scroll-on-mount behavior.
  */
 
-import { act } from "react"
+import { act, type MouseEventHandler, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -46,6 +46,33 @@ vi.mock("next/image", () => ({
       data-alt={alt}
       className={className}
     />
+  ),
+}))
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    onClick,
+    onNavigate: _onNavigate,
+    children,
+    ...props
+  }: {
+    href: string
+    onClick?: MouseEventHandler<HTMLAnchorElement>
+    onNavigate?: unknown
+    children: ReactNode
+    [key: string]: unknown
+  }) => (
+    <a
+      href={href}
+      onClick={(event) => {
+        onClick?.(event)
+        event.preventDefault()
+      }}
+      {...props}
+    >
+      {children}
+    </a>
   ),
 }))
 
@@ -105,7 +132,11 @@ type ImageVariantFields = {
 
 function makeChild(
   i: number,
-  opts: { thumb?: boolean; image?: ImageVariantFields } = {},
+  opts: {
+    thumb?: boolean
+    image?: ImageVariantFields
+    muxPlaybackId?: string | null
+  } = {},
 ) {
   // When `opts.image` is supplied, use it verbatim — lets tests assert on
   // the priority chain (`mobileCinematicHigh` > `mobileCinematicLow` >
@@ -124,6 +155,8 @@ function makeChild(
     title: `Child ${i}`,
     label: i % 2 === 0 ? `Label ${i}` : null,
     images,
+    durationSeconds: null,
+    muxPlaybackId: opts.muxPlaybackId ?? null,
   }
 }
 
@@ -307,6 +340,211 @@ describe("SiblingCarousel — happy path", () => {
     )
   })
 
+  it("makes the clicked chapter card current while navigation is pending", () => {
+    const block = makeBlock(4, 0)
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+    const previousCurrent = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
+    )
+
+    expect(target).not.toBeNull()
+    expect(previousCurrent).not.toBeNull()
+    expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(target!.getAttribute("data-active")).toBe("false")
+    expect(target!.getAttribute("aria-busy")).toBeNull()
+    expect(previousCurrent!.getAttribute("data-active")).toBe("true")
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(target!.getAttribute("data-pending")).toBe("true")
+    expect(target!.getAttribute("data-active")).toBe("true")
+    expect(target!.getAttribute("aria-busy")).toBe("true")
+    expect(target!.className).toContain("border-white")
+    expect(previousCurrent!.getAttribute("data-active")).toBe("false")
+    expect(previousCurrent!.className).not.toContain("border-white")
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).not.toBeNull()
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("2 of 4")
+    expect(desktopLabel?.textContent).toBe("Clip 2 of 4")
+  })
+
+  it("emits full pending chapter metadata for a normal inactive click", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+
+    const event = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    })
+    act(() => {
+      target!.dispatchEvent(event)
+    })
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(onChapterNavigateIntent).toHaveBeenCalledTimes(1)
+    expect(onChapterNavigateIntent).toHaveBeenCalledWith({
+      href: "/jesus-collection.html/child-2-slug/english.html",
+      languageSlug: "english",
+      sourceVideoDocumentId: "child-1",
+      targetVideoDocumentId: "child-2",
+      title: "Child 2",
+      slug: "child-2-slug",
+      label: "Label 2",
+      posterUrl: "https://cdn.test/2.jpg",
+    })
+  })
+
+  it("uses controlled pending state when the parent supplies it", () => {
+    const block = makeBlock(4, 0)
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          pendingNavigation={{
+            href: "/jesus-collection.html/child-3-slug/english.html",
+            languageSlug: "english",
+            sourceVideoDocumentId: "child-1",
+            targetVideoDocumentId: "child-3",
+            title: "Child 3",
+            slug: "child-3-slug",
+            label: null,
+            posterUrl: "https://cdn.test/3.jpg",
+          }}
+        />,
+      )
+    })
+
+    const previousCurrent = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
+    )
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-3-slug/english.html']",
+    )
+
+    expect(previousCurrent!.getAttribute("data-active")).toBe("false")
+    expect(target!.getAttribute("data-active")).toBe("true")
+    expect(target!.getAttribute("data-pending")).toBe("true")
+    expect(target!.getAttribute("aria-busy")).toBe("true")
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).not.toBeNull()
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    expect(label?.textContent).toContain("3 of 4")
+    expect(label?.textContent).toContain("Clip 3 of 4")
+  })
+
+  it("does not show pending feedback for modified chapter clicks", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          metaKey: true,
+        }),
+      )
+    })
+
+    expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+    expect(target!.getAttribute("aria-busy")).toBeNull()
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).toBeNull()
+  })
+
+  it("does not emit pending feedback for the already-current chapter", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const current = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
+    )
+
+    act(() => {
+      current!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+    expect(current!.getAttribute("data-pending")).toBe("false")
+    expect(current!.getAttribute("aria-busy")).toBeNull()
+  })
+
   it("renders an in-app href without the /watch/ basePath prefix", () => {
     const block = makeBlock(3, 0)
 
@@ -481,14 +719,17 @@ describe("SiblingCarousel — edge cases", () => {
   })
 })
 
-describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
+describe("SiblingCarousel — image priority", () => {
   // Each test renders a single-active-item block and reads the active item's
   // <Image> stand-in (`data-src`) to assert which image variant won the
   // priority chain. The variant order is:
+  //   muxPlaybackId second-2 frame > editorial image chain > placeholder
+  // The editorial fallback order is:
   //   mobileCinematicHigh > mobileCinematicLow > thumbnail > placeholder
   //   (`url` is intentionally NOT in the chain — it 400s on Cloudflare.)
   function singleChildBlock(
     image: ImageVariantFields,
+    muxPlaybackId: string | null = null,
   ): WatchSiblingCarouselBlock {
     return {
       kind: "SiblingCarousel",
@@ -497,7 +738,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
         slug: "p",
         title: "P",
         children: [
-          makeChild(1, { image }),
+          makeChild(1, { image, muxPlaybackId }),
           makeChild(2), // sibling so children.length >= 2 (carousel renders)
         ],
       } as never,
@@ -516,6 +757,26 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
       "[data-testid='sibling-carousel-item'][data-active='true'] [data-testid='sibling-carousel-thumb-placeholder']",
     )
   }
+
+  it("uses the language-aware Mux second-2 frame before curated image fallbacks", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          languageSlug="english"
+          block={singleChildBlock(
+            {
+              mobileCinematicHigh: "https://cdn.test/high.jpg",
+              thumbnail: "https://cdn.test/thumb.jpg",
+            },
+            "mux-playback-1",
+          )}
+        />,
+      )
+    })
+    expect(activeImage()!.getAttribute("data-src")).toBe(
+      "https://image.mux.com/mux-playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+  })
 
   it("uses mobileCinematicHigh when all four variants are present", () => {
     act(() => {

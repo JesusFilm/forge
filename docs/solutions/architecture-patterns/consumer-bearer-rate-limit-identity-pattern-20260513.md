@@ -1,7 +1,7 @@
 ---
 module: apps/admin
 date: "2026-05-13"
-last_updated: "2026-05-13"
+last_updated: "2026-06-12"
 problem_type: architecture_pattern
 component: authentication
 severity: medium
@@ -33,6 +33,8 @@ A bearer-key auth principal whose entire purpose is to label SSR traffic for rat
 Web's SSR rendering on Railway runs multiple concurrent requests that share a single egress IP (Railway's outbound NAT). Admin's rate-limit `identifyFn` was bucketing anonymous traffic as `public:<cf-connecting-ip>`. With 100 concurrent SSR renders, all 100 hits landed on one bucket — admin rate-limited web's SSR traffic as if a single IP was hammering it, causing self-DoS during traffic spikes. The core issue: shared-egress callers collapse to one rate-limit slot.
 
 Mobile and TV don't share this problem. Each device hits admin from its own IP (mobile-carrier NAT or device egress), so the anonymous-IP bucket naturally distributes across the device population. The fix is only needed when a known service routes through a shared upstream IP.
+
+**Fleet-client corollary (2026-06-12).** The inverse also holds and is a real failure mode, not a no-op: a device fleet that ships one baked-in consumer bearer and attaches it globally collapses every install into the single `consumer:<key>` bucket — strictly worse than the anonymous per-IP bucketing the fleet already gets for free. When a fleet client must present the bearer for a gated operation (e.g. `Query.search` under `SEARCH_AUTH_REQUIRED`), scope it to exactly that operation and leave all public queries anonymous. See [`fleet-client-bearer-must-be-operation-scoped-not-global.md`](./fleet-client-bearer-must-be-operation-scoped-not-global.md).
 
 The pattern adds a dedicated principal role — `CONSUMER_BEARER` — that identifies web's SSR traffic to admin using a bearer key, giving the rate-limiter a per-app stable identity to bucket against instead of the shared egress IP.
 
@@ -143,7 +145,7 @@ Apply this pattern when all four conditions hold:
 1. The caller is a known service (web SSR, internal tool, another app) with a stable, operator-controlled identity.
 2. The caller's traffic routes through a shared upstream IP — Railway egress NAT, a proxy cluster, a VPC egress, or any shared NAT that collapses multiple logical clients onto one IP.
 3. You need rate-limit isolation for the caller, NOT permission elevation. If the caller needs to satisfy any permission key, either extend `WORKFLOW_TRIGGER_PERMISSIONS` with deliberate blast-radius analysis (when the audience is genuinely the same) OR mint a new bearer role with its own narrow allowlist (see [PARITY_BEARER pattern](./parity-bearer-narrow-carveout-pattern-20260513.md)).
-4. Per-device callers (mobile, TV, end-user browsers) don't need this — their IPs are already distinct and distribute naturally across the anonymous-IP bucket.
+4. Per-device callers (mobile, TV, end-user browsers) don't need this — their IPs are already distinct and distribute naturally across the anonymous-IP bucket. **Never attach a consumer bearer globally from a fleet client** — that pools the whole fleet onto one bucket; if a fleet must satisfy a gated operation, scope the bearer to that operation only (see [`fleet-client-bearer-must-be-operation-scoped-not-global.md`](./fleet-client-bearer-must-be-operation-scoped-not-global.md)).
 
 ## Examples
 
@@ -199,6 +201,7 @@ expect(env.WEB_ADMIN_API_KEYS).not.toBe(env.WORKFLOW_API_KEYS)
 
 ## Related Patterns
 
+- [`docs/solutions/architecture-patterns/fleet-client-bearer-must-be-operation-scoped-not-global.md`](./fleet-client-bearer-must-be-operation-scoped-not-global.md) — **the fleet-client corollary**: what happens when a device fleet presents this bearer globally (single-bucket collapse), and the operation-scoped ApolloLink shape that avoids it.
 - [`docs/solutions/architecture-patterns/parity-bearer-narrow-carveout-pattern-20260513.md`](./parity-bearer-narrow-carveout-pattern-20260513.md) — **second worked instance**, extending this pattern in three ways: (1) narrow non-empty permission allowlist (one key grant rather than the empty set), (2) three-way disjointness invariant across N bearer CSVs with module-load assertion, (3) distinct rate-limit namespace prefixes per role so siblings don't share quotas. Read first when introducing a third bearer-minted principal — the two-way `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS` assertion in this doc doesn't generalize to N siblings.
 - [`docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`](../platform/admin-manager-enrichment-trigger-endpoint-20260506.md) — cross-app receiver-first rotation rule. Apply the same deploy-receiver-first ordering when rotating `WEB_ADMIN_API_KEYS`: update admin's keyring CSV first, deploy admin, then update web's value, then deploy web. Reverse ordering produces a dead window where the caller's request 401s.
 - [`docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`](../runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md) — `WEB_ADMIN_API_KEYS` must be `.optional()` in both web and admin env schemas. Required-without-default has bricked Railway deploys before; opt-in scaffolding env vars need defensive optionality.
