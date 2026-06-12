@@ -511,7 +511,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 })
 
 describe("Catch-all routing — metadata for playable watch pages", () => {
-  it("uses resolved video data for two-segment metadata before falling back to the template resolver", async () => {
+  it("uses resolved video data for two-segment metadata without page-head hreflang", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("featureFilm"),
     )
@@ -547,11 +547,8 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     })
     expect(metadata.alternates).toMatchObject({
       canonical: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
-      languages: {
-        en: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
-        es: "https://www.jesusfilm.org/watch/storyclubs.html/spanish-castilian.html",
-      },
     })
+    expect(metadata.alternates).not.toHaveProperty("languages")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
     expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
