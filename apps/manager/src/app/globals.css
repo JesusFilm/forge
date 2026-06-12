@@ -13395,6 +13395,10 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 }
 
 .shorts-preview-pane {
+  /* Explicit width is load-bearing: justify-self makes this grid item
+     shrink-to-fit, and the Player inside sizes itself width:100% — without a
+     concrete width the pane collapses to 0 and the preview never renders. */
+  width: min(380px, 100%);
   max-width: 380px;
   justify-self: center;
 }
