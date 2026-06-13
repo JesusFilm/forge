@@ -555,7 +555,7 @@ build` smoke.
       config_missing; worker boots fail-fast on missing model/keys in
       production only.
 - [ ] Tests green: `pnpm --filter @forge/shorts-compositions --filter
-    @forge/shorts-worker --filter @forge/manager test` + typecheck +
+@forge/shorts-worker --filter @forge/manager test` + typecheck +
       lint + build; host smoke passes; container smoke passes.
       (Tests + host smoke pass; the CONTAINER smoke — docker build + run,
       the in-image Chromium/fonts/model/bundle proof — has not been
