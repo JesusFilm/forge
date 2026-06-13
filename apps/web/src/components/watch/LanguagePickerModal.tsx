@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import type { RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { flushSync } from "react-dom"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { SpinnerIcon } from "@/components/ui/spinner"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import type { WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
@@ -186,6 +188,20 @@ export function LanguagePickerModal({
   const navigating =
     pendingNavTo !== null && currentLanguageSlug !== pendingNavTo
 
+  const buildTargetPath = useCallback(
+    (languageSlug: string) => {
+      const slug = tryAsContentSlug(videoSlug)
+      const lang = tryAsLocaleSlug(languageSlug)
+      if (!slug || !lang) return null
+      if (kind === "series") return watchVideoPath(slug, lang)
+
+      const rawT = playerRef.current?.currentTime
+      const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
+      return watchVideoPath(slug, lang, { t, autoplay: true })
+    },
+    [kind, playerRef, videoSlug],
+  )
+
   // Release the sync guard once the URL catches up. The ref-mirror effect
   // is the only path that touches `.inFlight = false` outside the open
   // reset and timeout — fires once per slug change.
@@ -206,6 +222,18 @@ export function LanguagePickerModal({
     return () => window.clearTimeout(timer)
   }, [pendingNavTo])
 
+  const lastPrefetchedPathRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!open) return
+    if (!languageDirty) return
+    const targetPath = buildTargetPath(draftSlug)
+    if (!targetPath) return
+    if (targetPath === lastPrefetchedPathRef.current) return
+
+    lastPrefetchedPathRef.current = targetPath
+    Promise.resolve(router.prefetch(targetPath)).catch(() => undefined)
+  }, [buildTargetPath, draftSlug, languageDirty, open, router])
+
   const handleApply = useCallback(() => {
     if (!isDirty) return
     if (navigatingRef.current.inFlight) return
@@ -222,33 +250,30 @@ export function LanguagePickerModal({
       // navigation — rather than poison the cookie then no-op (matches
       // SeriesPageClient's validate-before-write ordering). The rest of
       // handleApply (incl. onClose) still runs.
-      const slug = tryAsContentSlug(videoSlug)
-      const lang = tryAsLocaleSlug(draftSlug)
-      if (slug && lang) {
+      const targetPath = buildTargetPath(draftSlug)
+      if (targetPath) {
         navigatingRef.current.inFlight = true
-        setPendingNavTo(draftSlug)
+        // Commit the visible pending state before starting App Router
+        // navigation. Otherwise React may batch the state update with
+        // router.push, which is exactly the "nothing happened" feeling
+        // this modal is meant to avoid on cold language routes.
+        flushSync(() => setPendingNavTo(draftSlug))
         writePreferredLanguageSlug(draftSlug)
-        if (kind === "series") {
-          router.push(watchVideoPath(slug, lang))
-        } else {
-          const rawT = playerRef.current?.currentTime
-          const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
-          router.push(watchVideoPath(slug, lang, { t, autoplay: true }))
-        }
+        router.push(targetPath)
+        return
       }
     }
 
     onClose()
   }, [
+    buildTargetPath,
     draftSlug,
     draftSubtitleEnabled,
     draftSubtitleSlug,
     isDirty,
-    kind,
     languageDirty,
     onClose,
     onSubtitleChange,
-    playerRef,
     router,
     subtitleDirty,
     videoSlug,
@@ -388,9 +413,16 @@ export function LanguagePickerModal({
               data-testid="watch-language-picker-apply"
               disabled={!isDirty || navigating}
               onClick={handleApply}
-              className="bg-stone-300 px-7 py-4 text-sm text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
+              className="inline-flex min-w-28 items-center justify-center gap-2 bg-stone-300 px-7 py-4 text-sm text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
             >
-              {t("apply")}
+              {navigating ? (
+                <>
+                  <SpinnerIcon className="size-4 animate-spin" />
+                  {t("switching")}
+                </>
+              ) : (
+                t("apply")
+              )}
             </Button>
           </div>
         </div>

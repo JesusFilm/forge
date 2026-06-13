@@ -65,7 +65,8 @@
     "translateWithAi": "Translate with AI",
     "noSubtitles": "No subtitles",
     "close": "Close",
-    "apply": "Apply"
+    "apply": "Apply",
+    "switching": "Switching..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",

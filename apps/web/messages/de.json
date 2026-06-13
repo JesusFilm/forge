@@ -65,7 +65,8 @@
     "translateWithAi": "Mit KI übersetzen",
     "noSubtitles": "Keine Untertitel",
     "close": "Schließen",
-    "apply": "Anwenden"
+    "apply": "Anwenden",
+    "switching": "Wechseln..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 FOLGE} other {# FOLGEN}}",
