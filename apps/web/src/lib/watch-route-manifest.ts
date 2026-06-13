@@ -1,3 +1,5 @@
+import { logWatchServerEvent } from "./watch-observability"
+
 export type WatchRouteManifest = {
   version: string
   generatedAt: string
@@ -328,35 +330,26 @@ async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
       return manifestCache.manifest
     }
     if (!response.ok) {
-      console.warn(
-        JSON.stringify({
-          event: "watch_route_manifest.fetch.failed",
-          status: response.status,
-        }),
-      )
+      logWatchServerEvent("watch_route_manifest.fetch.failed", {
+        status: response.status,
+        url,
+      })
       return manifestCache.manifest
     }
 
     const parsed = parseWatchRouteManifest(await response.json())
     if (!parsed) {
-      console.warn(
-        JSON.stringify({
-          event: "watch_route_manifest.fetch.invalid_payload",
-        }),
-      )
+      logWatchServerEvent("watch_route_manifest.fetch.invalid_payload", { url })
       return manifestCache.manifest
     }
 
     manifestCache.etag = response.headers.get("etag")
     return parsed
   } catch (error) {
-    console.warn(
-      JSON.stringify({
-        event: "watch_route_manifest.fetch.error",
-        detail:
-          error instanceof Error ? error.message.slice(0, 500) : String(error),
-      }),
-    )
+    logWatchServerEvent("watch_route_manifest.fetch.error", {
+      detail: error instanceof Error ? error : String(error),
+      url,
+    })
     return manifestCache.manifest
   }
 }
