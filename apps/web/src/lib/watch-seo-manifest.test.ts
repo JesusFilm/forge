@@ -36,6 +36,7 @@ afterEach(() => {
   process.env.ADMIN_GRAPHQL_URL = originalEnv.ADMIN_GRAPHQL_URL
   process.env.WEB_ADMIN_API_KEYS = originalEnv.WEB_ADMIN_API_KEYS
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   clearWatchSeoManifestCache()
 })
 
@@ -116,6 +117,7 @@ describe("getWatchSeoManifest", () => {
     process.env.WEB_ADMIN_API_KEYS = "key-one"
     let now = 1_000
     const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -134,6 +136,9 @@ describe("getWatchSeoManifest", () => {
       await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
       now += 61_000
       await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[watch] event=watch_seo_manifest.fetch.failed status=503 url=https://admin.test/api/watch-seo-manifest",
+      )
     } finally {
       dateSpy.mockRestore()
     }
@@ -144,6 +149,7 @@ describe("getWatchSeoManifest", () => {
     process.env.WEB_ADMIN_API_KEYS = "key-one"
     let now = 1_000
     const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new Error("timeout"))
@@ -160,8 +166,29 @@ describe("getWatchSeoManifest", () => {
       now += 6_000
       await expect(getWatchSeoManifest()).resolves.toEqual(manifest)
       expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[watch] event=watch_seo_manifest.fetch.error detail=timeout url=https://admin.test/api/watch-seo-manifest",
+      )
     } finally {
       dateSpy.mockRestore()
     }
+  })
+
+  it("logs invalid payloads in the Watch event format", async () => {
+    process.env.ADMIN_GRAPHQL_URL = "https://admin.test/api/graphql"
+    process.env.WEB_ADMIN_API_KEYS = "key-one"
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
+    )
+
+    await expect(getWatchSeoManifest()).resolves.toBeNull()
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[watch] event=watch_seo_manifest.fetch.invalid_payload url=https://admin.test/api/watch-seo-manifest",
+    )
   })
 })
