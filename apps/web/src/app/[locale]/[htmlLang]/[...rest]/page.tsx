@@ -54,6 +54,7 @@ import {
   stripHtmlSuffix,
 } from "@/lib/url-shape"
 import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
+import { logWatchServerEvent } from "@/lib/watch-observability"
 import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
@@ -282,7 +283,12 @@ export async function generateMetadata({
           pathLocale: rawLocale,
         })
       }
-    } catch {
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.video.fallback", {
+        slug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
       // Fall through to getWatchPageMetadata.
     }
     return getWatchPageMetadata(locale, {
@@ -310,7 +316,13 @@ export async function generateMetadata({
           seriesSlug,
         })
       }
-    } catch {
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.episode.fallback", {
+        seriesSlug,
+        episodeSlug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
       // Fall through to the safe template metadata path.
     }
     return getWatchPageMetadata(locale, {
