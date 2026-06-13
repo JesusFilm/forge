@@ -24,6 +24,16 @@ type EnrichSelectionResponse = {
   errors?: EnrichErrorResult[]
 }
 
+type EnrichRequestErrorResponse = {
+  error?: string
+  details?: {
+    formErrors?: string[]
+    fieldErrors?: Record<string, string[] | undefined>
+  }
+  errors?: EnrichErrorResult[]
+  unresolvedTargetLanguageIds?: string[]
+}
+
 type EnrichSelectionOutcome = {
   nextSelectedVideoIds: Set<string>
   redirectPath?: "/dashboard/jobs" | `/dashboard/jobs/${string}` | null
@@ -69,6 +79,35 @@ function formatStartedJobsMessage(count: number): string {
   return `${count} enrichment job${count === 1 ? "" : "s"} started.`
 }
 
+function getFirstRequestErrorDetail(
+  response: EnrichRequestErrorResponse,
+): string | null {
+  const [formError] = response.details?.formErrors ?? []
+  if (formError) {
+    return formError
+  }
+
+  for (const [fieldName, fieldErrors] of Object.entries(
+    response.details?.fieldErrors ?? {},
+  )) {
+    const firstFieldError = fieldErrors?.find((error) => error.length > 0)
+    if (firstFieldError) {
+      return `${fieldName}: ${firstFieldError}`
+    }
+  }
+
+  const [firstError] = response.errors ?? []
+  if (firstError) {
+    return `${firstError.videoId}: ${firstError.error}`
+  }
+
+  if (response.unresolvedTargetLanguageIds?.length) {
+    return `Unresolved language IDs: ${response.unresolvedTargetLanguageIds.join(", ")}`
+  }
+
+  return null
+}
+
 export function isVideoQaSelectable(videoId: string): boolean {
   return !videoId.startsWith(COLLECTION_VIDEO_ID_PREFIX)
 }
@@ -107,6 +146,20 @@ export function isEnrichSelectionInputEnabled({
   isSubmitting: boolean
 }): boolean {
   return isSelectMode && isSelectable && !isSubmitting
+}
+
+export function formatEnrichRequestErrorMessage(
+  response: EnrichRequestErrorResponse,
+  fallback = "Failed to create enrichment jobs.",
+): string {
+  const baseMessage = response.error?.trim() || fallback
+  const detail = getFirstRequestErrorDetail(response)
+
+  if (!detail || detail === baseMessage) {
+    return baseMessage
+  }
+
+  return `${baseMessage}: ${detail}`
 }
 
 export function resolveEnrichSelectionOutcome(

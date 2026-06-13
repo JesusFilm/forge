@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  formatEnrichRequestErrorMessage,
   getVideoQaSelectionDisabledReason,
   isEnrichActionReady,
   isEnrichSelectionInputEnabled,
@@ -60,6 +61,32 @@ describe("enrich-selection", () => {
         isSubmitting: false,
       }),
     ).toBe(false)
+  })
+
+  it("surfaces structured request validation details", () => {
+    expect(
+      formatEnrichRequestErrorMessage({
+        error: "Validation failed",
+        details: {
+          fieldErrors: {
+            targetLanguageIds: ["String must contain at most 10 character(s)"],
+          },
+        },
+      }),
+    ).toBe(
+      "Validation failed: targetLanguageIds: String must contain at most 10 character(s)",
+    )
+  })
+
+  it("surfaces unresolved Admin language IDs from enrichment responses", () => {
+    expect(
+      formatEnrichRequestErrorMessage({
+        error: "Could not resolve one or more requested target languages",
+        unresolvedTargetLanguageIds: ["cmokkxw5v03uyqsccis58pea6"],
+      }),
+    ).toBe(
+      "Could not resolve one or more requested target languages: Unresolved language IDs: cmokkxw5v03uyqsccis58pea6",
+    )
   })
 
   it("shows accepted feedback with a job detail link when one selected video succeeds", () => {
