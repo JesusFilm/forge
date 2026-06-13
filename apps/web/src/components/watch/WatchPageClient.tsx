@@ -65,6 +65,7 @@ import {
   WATCH_BASE_PATH,
   tryAsContentSlug,
   tryAsLocaleSlug,
+  watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
 import { buildFbShareUrl } from "@/lib/share"
@@ -123,6 +124,10 @@ function isPendingChapterStillRoutable(
     if (!isWatchBlock(block) || block.kind !== "SiblingCarousel") continue
 
     const carouselBlock: WatchSiblingCarouselBlock = block
+    const parentSlug =
+      typeof carouselBlock.canonicalParent.slug === "string"
+        ? tryAsContentSlug(carouselBlock.canonicalParent.slug)
+        : null
     for (const child of carouselBlock.canonicalParent.children ?? []) {
       if (
         child == null ||
@@ -134,7 +139,10 @@ function isPendingChapterStillRoutable(
       if (typeof child.slug !== "string") return false
       const slug = tryAsContentSlug(child.slug)
       if (!slug) return false
-      return watchVideoPath(slug, lang) === pendingChapter.href
+      const href = parentSlug
+        ? watchEpisodePath(parentSlug, slug, lang)
+        : watchVideoPath(slug, lang)
+      return href === pendingChapter.href
     }
   }
 
