@@ -35,9 +35,9 @@ applies_when:
 Watch chapter cards are ordinary `next/link` navigations to another public
 watch route. On slow route resolution, the old page can remain visible long
 enough that a user wonders whether their click registered. The browser did not
-need a different URL contract; the page needed an immediate local
-acknowledgment using data already present in the carousel: target href, target
-title, and target thumbnail.
+need a new URL contract; the page needed an immediate local acknowledgment
+using data already present in the carousel: parent collection slug, target
+href, target title, and target thumbnail.
 
 The fix lives in `apps/web/src/components/watch/SiblingCarousel.tsx` and keeps
 the carousel server-data model unchanged. A normal click makes the clicked
@@ -50,13 +50,27 @@ card while the next route is still loading.
 Keep the chapter card as a `Link`. Do not replace it with imperative
 `router.push()` or a raw `<a>` just to get immediate feedback. The route
 builder in `apps/web/src/lib/routes.ts` still owns the canonical public watch
-href shape and base-path behavior:
+href shape and base-path behavior. In a collection carousel, preserve the
+current parent collection with the existing three-segment contextual route;
+fall back to the standalone video route only when no valid parent slug is
+available:
 
 ```tsx
+const parentSlug = tryAsContentSlug(canonicalParent.slug)
 const slug = tryAsContentSlug(child.slug)
 const lang = tryAsLocaleSlug(languageSlug)
-const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+const href =
+  slug && lang
+    ? parentSlug
+      ? watchEpisodePath(parentSlug, slug, lang)
+      : watchVideoPath(slug, lang)
+    : undefined
 ```
+
+This distinction matters for multi-parent clips. A slug-only chapter href can
+resolve through a different parent, changing the carousel order and active
+index after navigation. The contextual href keeps chapter progression inside
+the collection the user is already browsing.
 
 Capture only normal left-click navigations. Modified clicks must keep browser
 semantics, and active-card clicks should not create a fake pending state:
@@ -190,6 +204,9 @@ Focused coverage belongs in
 - The clicked card exposes `aria-busy="true"` and the loading icon.
 - The clip label follows the clicked card while navigation is pending.
 - Modified clicks do not set pending feedback.
+- Collection carousels emit contextual hrefs such as
+  `/anticipate-the-resurrection.html/jesus-is-crucified/english.html`, not
+  slug-only child hrefs.
 
 Run:
 

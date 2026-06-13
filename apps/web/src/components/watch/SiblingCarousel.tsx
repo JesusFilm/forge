@@ -54,6 +54,10 @@ export function SiblingCarousel({
   )
   const clipTotal = children.length
   const parentTitle = canonicalParent.title ?? videoLabels("collection")
+  const parentSlug =
+    typeof canonicalParent.slug === "string"
+      ? tryAsContentSlug(canonicalParent.slug)
+      : null
 
   // All carousel thumbnails ship with `loading="lazy"`. Native browser
   // lazy-loading still fetches above-fold images immediately — it only
@@ -190,9 +194,6 @@ export function SiblingCarousel({
               resolveMuxFrameThumbnailUrl(child.muxPlaybackId) ??
               resolvePosterUrl(child.images?.[0])
             const slug = tryAsContentSlug(child.slug)
-            const parentSlug = canonicalParent.slug
-              ? tryAsContentSlug(canonicalParent.slug)
-              : null
             const lang = tryAsLocaleSlug(languageSlug)
             const href =
               parentSlug && slug && lang

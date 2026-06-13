@@ -180,6 +180,38 @@ function makeBlock(
   }
 }
 
+const pilatePageChapterSlugs = [
+  "triumphal-entry-and-results",
+  "last-supper",
+  "betrayal-and-denial-foretold",
+  "jesus-promises-the-holy-spirit",
+  "the-arrest-of-jesus-and-peter-denial",
+  "my-kingdom-is-not-of-this-world",
+  "jesus-sentenced-to-be-crucified",
+  "the-crucifixion-of-jesus",
+  "jesus-is-alive",
+  "doubting-thomas",
+  "miraculous-catch",
+  "do-you-love-me",
+  "upper-room-teaching",
+  "jesus-is-betrayed-and-arrested",
+  "jesus-is-mocked-and-questioned",
+  "jesus-is-brought-to-pilate",
+  "jesus-is-brought-to-herod",
+  "jesus-is-sentenced",
+  "jesus-carries-his-cross",
+  "jesus-is-crucified",
+  "sign-on-the-cross",
+  "crucified-convicts",
+  "my-last-day",
+  "death-of-jesus",
+  "jesus-is-buried",
+  "angels-at-the-tomb",
+  "the-tomb-is-empty",
+  "resurrected-jesus-appears",
+  "invitation-to-know-jesus-personally",
+]
+
 describe("SiblingCarousel — happy path", () => {
   it("renders one thumbnail per child with the current item highlighted", () => {
     const block = makeBlock(10, 2)
@@ -337,6 +369,54 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(active!.getAttribute("href")).toBe(
       "/jesus-collection.html/magdalena/english.html",
+    )
+  })
+
+  it("preserves the Anticipate collection segment for all 29 Pilate page chapters", () => {
+    const children = pilatePageChapterSlugs.map((slug, index) => ({
+      ...makeChild(index + 1),
+      documentId: `pilate-chapter-${index + 1}`,
+      slug,
+      title: `Pilate chapter ${index + 1}`,
+    }))
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "anticipate-parent",
+        slug: "anticipate-the-resurrection",
+        title: "Anticipate the Resurrection",
+        children,
+      } as never,
+      currentVideoDocumentId: "pilate-chapter-12",
+    }
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const hrefs = Array.from(
+      container.querySelectorAll("[data-testid='sibling-carousel-item']"),
+      (item) => item.getAttribute("data-href"),
+    )
+    expect(hrefs).toHaveLength(29)
+    expect(hrefs).toEqual(
+      pilatePageChapterSlugs.map(
+        (slug) => `/anticipate-the-resurrection.html/${slug}/english.html`,
+      ),
+    )
+    expect(hrefs).toContain(
+      "/anticipate-the-resurrection.html/jesus-is-crucified/english.html",
+    )
+    expect(hrefs).toContain(
+      "/anticipate-the-resurrection.html/resurrected-jesus-appears/english.html",
+    )
+    expect(hrefs).toContain(
+      "/anticipate-the-resurrection.html/invitation-to-know-jesus-personally/english.html",
+    )
+    expect(hrefs).not.toContain("/jesus-is-crucified.html/english.html")
+    expect(hrefs).not.toContain("/resurrected-jesus-appears.html/english.html")
+    expect(hrefs).not.toContain(
+      "/invitation-to-know-jesus-personally.html/english.html",
     )
   })
 
@@ -706,7 +786,7 @@ describe("SiblingCarousel — edge cases", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(item).not.toBeNull()
-    // Empty languageSlug fails the slug regex, so `watchVideoPath` is never built.
+    // Empty languageSlug fails the slug regex, so no watch route is built.
     // The card still renders — as a plain <div>, not an <a> — with no href.
     expect(item!.tagName).toBe("DIV")
     expect(item!.getAttribute("href")).toBeNull()
