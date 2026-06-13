@@ -13571,6 +13571,34 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   letter-spacing: 0;
 }
 
+.smart-crop-picker-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+}
+
+.smart-crop-picker-close:hover,
+.smart-crop-picker-close:focus-visible {
+  outline: none;
+  background: rgba(236, 234, 229, 0.72);
+  color: var(--ds-ink);
+}
+
+.smart-crop-picker-close:active {
+  background: rgba(226, 222, 215, 0.9);
+}
+
 .smart-crop-picker-search-panel {
   padding: 0 22px 18px;
   border-bottom: 1px solid var(--ds-line);

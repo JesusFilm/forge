@@ -264,7 +264,7 @@ function SmartCropVideoPickerModal({
           </div>
           <button
             type="button"
-            className="agents-modal-close"
+            className="smart-crop-picker-close"
             aria-label="Close video search"
             title="Close video search"
             onClick={onClose}
@@ -378,6 +378,9 @@ function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState<RequestStatus>({ type: "idle" })
   const modalRoot = typeof document === "undefined" ? null : document.body
+  const openPicker = useCallback(() => {
+    setIsPickerOpen(true)
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -531,7 +534,19 @@ function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
         <button
           type="button"
           className={`smart-crop-video-select${selectedVideo ? " is-selected" : ""}`}
-          onClick={() => setIsPickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={isPickerOpen}
+          onPointerDown={(event) => {
+            event.preventDefault()
+            openPicker()
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault()
+              openPicker()
+            }
+          }}
+          onClick={openPicker}
         >
           <span className="smart-crop-video-select-icon" aria-hidden="true">
             {selectedVideo ? (
