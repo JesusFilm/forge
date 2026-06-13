@@ -16,29 +16,32 @@ vi.mock("@/lib/admin-client", () => ({
 
 afterEach(() => {
   queryMock.mockReset()
+  vi.restoreAllMocks()
   vi.resetModules()
 })
 
-function adminVideo({
+function adminVideoDub({
+  downloadable = true,
   downloadId = "download-1",
   published = true,
+  slug = "jesus/english",
   url = "https://stream.mux.com/abc.mp4",
   variantId = "variant-1",
 }: {
+  downloadable?: boolean
   downloadId?: string
   published?: boolean
+  slug?: string | null
   url?: string | null
   variantId?: string
 } = {}) {
   return {
-    videoBySlug: {
-      variants: [
-        {
-          documentId: variantId,
-          published,
-          downloads: [{ documentId: downloadId, url }],
-        },
-      ],
+    videoDub: {
+      downloadable,
+      documentId: variantId,
+      downloads: [{ documentId: downloadId, url }],
+      published,
+      slug,
     },
   }
 }
@@ -59,6 +62,9 @@ describe("resolveWatchDownloadTarget", () => {
 
   it("returns unavailable when the admin lookup rejects", async () => {
     queryMock.mockRejectedValueOnce(new Error("admin down"))
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     const { resolveWatchDownloadTarget } = await import("./download-target")
 
     await expect(
@@ -68,10 +74,85 @@ describe("resolveWatchDownloadTarget", () => {
         videoSlug: "jesus",
       }),
     ).resolves.toEqual({ ok: false, reason: "unavailable" })
+    expect(consoleError).toHaveBeenCalledWith(
+      "[watch-download-target] admin lookup failed",
+      expect.objectContaining({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
+  })
+
+  it("queries admin by variant id only", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: adminVideoDub({ url: "https://stream.mux.com/abc.mp4" }),
+    })
+    const { resolveWatchDownloadTarget } = await import("./download-target")
+
+    await expect(
+      resolveWatchDownloadTarget({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    ).resolves.toEqual({ ok: true, url: "https://stream.mux.com/abc.mp4" })
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { variantId: "variant-1" },
+      }),
+    )
+  })
+
+  it("rejects missing dubs", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: { videoDub: null },
+    })
+    const { resolveWatchDownloadTarget } = await import("./download-target")
+
+    await expect(
+      resolveWatchDownloadTarget({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    ).resolves.toEqual({ ok: false, reason: "not-found" })
   })
 
   it("rejects unpublished variants", async () => {
-    queryMock.mockResolvedValueOnce({ data: adminVideo({ published: false }) })
+    queryMock.mockResolvedValueOnce({
+      data: adminVideoDub({ published: false }),
+    })
+    const { resolveWatchDownloadTarget } = await import("./download-target")
+
+    await expect(
+      resolveWatchDownloadTarget({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    ).resolves.toEqual({ ok: false, reason: "not-found" })
+  })
+
+  it("rejects non-downloadable variants", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: adminVideoDub({ downloadable: false }),
+    })
+    const { resolveWatchDownloadTarget } = await import("./download-target")
+
+    await expect(
+      resolveWatchDownloadTarget({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    ).resolves.toEqual({ ok: false, reason: "not-found" })
+  })
+
+  it("rejects dubs whose slug belongs to another video", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: adminVideoDub({ slug: "other-video/english" }),
+    })
     const { resolveWatchDownloadTarget } = await import("./download-target")
 
     await expect(
@@ -85,7 +166,7 @@ describe("resolveWatchDownloadTarget", () => {
 
   it("rejects mismatched variants and downloads", async () => {
     queryMock.mockResolvedValueOnce({
-      data: adminVideo({ downloadId: "download-2", variantId: "variant-2" }),
+      data: adminVideoDub({ downloadId: "download-2", variantId: "variant-2" }),
     })
     const { resolveWatchDownloadTarget } = await import("./download-target")
 
@@ -99,7 +180,10 @@ describe("resolveWatchDownloadTarget", () => {
   })
 
   it("treats empty admin URLs as unavailable", async () => {
-    queryMock.mockResolvedValueOnce({ data: adminVideo({ url: "" }) })
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    queryMock.mockResolvedValueOnce({ data: adminVideoDub({ url: "" }) })
     const { resolveWatchDownloadTarget } = await import("./download-target")
 
     await expect(
@@ -109,11 +193,19 @@ describe("resolveWatchDownloadTarget", () => {
         videoSlug: "jesus",
       }),
     ).resolves.toEqual({ ok: false, reason: "unavailable" })
+    expect(consoleError).toHaveBeenCalledWith(
+      "[watch-download-target] resolved empty download url",
+      expect.objectContaining({
+        downloadId: "download-1",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
   })
 
   it("returns the server-side URL for the matching published variant download", async () => {
     queryMock.mockResolvedValueOnce({
-      data: adminVideo({ url: "https://stream.mux.com/abc.mp4" }),
+      data: adminVideoDub({ url: "https://stream.mux.com/abc.mp4" }),
     })
     const { resolveWatchDownloadTarget } = await import("./download-target")
 
