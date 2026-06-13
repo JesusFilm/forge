@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (June 4, 2026)
 
-- **Total tickets:** 190
-- **Complete:** 115
+- **Total tickets:** 191
+- **Complete:** 116
 - **In progress:** 9
 - **Not started:** 21
 - **Blocked:** 43
@@ -107,6 +107,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-184](media-generation/feat-184-mastra-subtitle-enrichment-execution.md)             | Mastra subtitle enrichment execution                      | vlad  | P1       | 2026-06-12 | 2    | 2026-06-13 | complete    |
 | [feat-186](media-generation/feat-186-manager-coverage-admin-enrich-now.md)                | Manager coverage Admin Enrich Now                         | vlad  | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-187](media-generation/feat-187-manager-validation-detail-modal.md)                  | Manager validation detail modal                           | vlad  | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
+| [feat-188](media-generation/feat-188-manager-job-state-mastra-correlation.md)             | Manager job state and Mastra correlation hardening        | vlad  | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-056](media-generation/feat-056-ai-video-template-system.md)                         | AI Video Template System                                  | vlad  | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-057](media-generation/feat-057-automated-video-rendering-engine.md)                 | Automated Video Rendering Engine                          | vlad  | P1       | 2026-08-01 | 31   | 2026-08-31 | blocked     |
 | [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)          | On-Demand Personalized Video Generation                   | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
@@ -181,6 +182,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-166](platform/feat-166-manager-coverage-region-image-assets.md)            | Manager coverage region image assets                         | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-167](platform/feat-167-manager-coverage-video-aggregation.md)              | Manager coverage video aggregation                           | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-168](platform/feat-168-manager-coverage-title-locale-preference.md)        | Manager coverage title locale preference                     | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
+| [feat-187](platform/feat-187-manager-coverage-thumbnail-url-normalization.md)    | Manager coverage thumbnail URL normalization                 | vlad      | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-169](platform/feat-169-watch-language-picker-search-ranking.md)            | Watch language picker search ranking                         | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-175](platform/feat-175-watch-cold-path-performance-follow-up.md)           | Watch cold-path performance follow-up                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-176](platform/feat-176-watch-hero-poster-idle-autoplay.md)                 | Watch hero poster-first idle autoplay                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |

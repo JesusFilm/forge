@@ -186,6 +186,79 @@ describe("ManagerReadModelService", () => {
     })
   })
 
+  it("normalizes coverage image URLs for Manager browser thumbnails", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-cloudflare-bare",
+        coreId: "core-cloudflare-bare",
+        slug: "cloudflare-bare",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [
+          {
+            url: "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/0ec667e3-7f67-4158-f2cb-054e665e4800",
+          },
+        ],
+        parents: [],
+      },
+      {
+        id: "video-cloudflare-variant",
+        coreId: "core-cloudflare-variant",
+        slug: "cloudflare-variant",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [
+          {
+            url: "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/poster.videoStill.jpg/public",
+          },
+        ],
+        parents: [],
+      },
+      {
+        id: "video-other-host",
+        coreId: "core-other-host",
+        slug: "other-host",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [{ url: " https://images.example.com/neon.jpg " }],
+        parents: [],
+      },
+      {
+        id: "video-blank",
+        coreId: "core-blank",
+        slug: "blank",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [{ url: "   " }],
+        parents: [],
+      },
+    ])
+    prisma.videoSubtitle.groupBy.mockResolvedValueOnce([])
+    prisma.videoDub.groupBy.mockResolvedValueOnce([])
+
+    const result = await service.getVideoCoverage({
+      user: MANAGER_BACKEND_PRINCIPAL,
+    })
+
+    const imageUrlsById = new Map(
+      result.map((video) => [video.documentId, video.imageUrl]),
+    )
+    expect(imageUrlsById.get("video-cloudflare-bare")).toBe(
+      "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/0ec667e3-7f67-4158-f2cb-054e665e4800/public",
+    )
+    expect(imageUrlsById.get("video-cloudflare-variant")).toBe(
+      "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/poster.videoStill.jpg/public",
+    )
+    expect(imageUrlsById.get("video-other-host")).toBe(
+      "https://images.example.com/neon.jpg",
+    )
+    expect(imageUrlsById.get("video-blank")).toBeNull()
+  })
+
   it("builds enrichment video metadata from selected Admin or Core IDs", async () => {
     prisma.video.findMany.mockResolvedValueOnce([
       {

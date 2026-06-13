@@ -21,6 +21,7 @@ import type {
   JobRecord,
   JobStatus,
   JobStepDetails,
+  MastraStepCorrelation,
   JobStepState,
   WorkflowStepName,
   StepStatus,
@@ -32,6 +33,25 @@ type JobListOptions = {
   limit?: number
   offset?: number
 }
+
+type JobUpdateFields = Partial<
+  Pick<
+    JobRecord,
+    | "status"
+    | "currentStep"
+    | "artifacts"
+    | "errors"
+    | "startedAt"
+    | "completedAt"
+    | "retries"
+    | "steps"
+    | "sourceLanguageId"
+    | "sourceLanguageCode"
+    | "sourceSelectionReason"
+    | "primaryRequestedTargetLanguageCode"
+    | "resolvedTargetLanguageCodes"
+  >
+>
 
 export type JobLookupResult =
   | {
@@ -353,6 +373,65 @@ function normalizeTranslationLanguageResult(
   }
 }
 
+function normalizeMastraStepCorrelation(
+  raw: unknown,
+): MastraStepCorrelation | undefined {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return undefined
+  }
+
+  const candidate = raw as {
+    runId?: unknown
+    status?: unknown
+    reason?: unknown
+    retryable?: unknown
+    provider?: unknown
+    model?: unknown
+    chunks?: unknown
+    totalTokens?: unknown
+    sourceContentHash?: unknown
+    languages?: unknown
+  }
+
+  if (typeof candidate.runId !== "string" || candidate.runId.length === 0) {
+    return undefined
+  }
+
+  const languages = Array.isArray(candidate.languages)
+    ? candidate.languages.filter(
+        (language): language is string =>
+          typeof language === "string" && language.length > 0,
+      )
+    : []
+
+  return {
+    runId: candidate.runId,
+    ...(typeof candidate.status === "string"
+      ? { status: candidate.status }
+      : {}),
+    ...(typeof candidate.reason === "string"
+      ? { reason: candidate.reason }
+      : {}),
+    ...(typeof candidate.retryable === "boolean"
+      ? { retryable: candidate.retryable }
+      : {}),
+    ...(typeof candidate.provider === "string"
+      ? { provider: candidate.provider }
+      : {}),
+    ...(typeof candidate.model === "string" ? { model: candidate.model } : {}),
+    ...(typeof candidate.chunks === "number"
+      ? { chunks: candidate.chunks }
+      : {}),
+    ...(typeof candidate.totalTokens === "number"
+      ? { totalTokens: candidate.totalTokens }
+      : {}),
+    ...(typeof candidate.sourceContentHash === "string"
+      ? { sourceContentHash: candidate.sourceContentHash }
+      : {}),
+    ...(languages.length > 0 ? { languages } : {}),
+  }
+}
+
 function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
     return undefined
@@ -360,6 +439,7 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
 
   const candidate = raw as {
     languageResults?: unknown
+    mastra?: unknown
     progress?: unknown
     message?: unknown
   }
@@ -372,13 +452,20 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
     typeof candidate.progress === "number" ? candidate.progress : undefined
   const message =
     typeof candidate.message === "string" ? candidate.message : undefined
+  const mastra = normalizeMastraStepCorrelation(candidate.mastra)
 
-  if (languageResults.length === 0 && progress === undefined && !message) {
+  if (
+    languageResults.length === 0 &&
+    mastra === undefined &&
+    progress === undefined &&
+    !message
+  ) {
     return undefined
   }
 
   return {
     ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(mastra !== undefined ? { mastra } : {}),
     ...(progress !== undefined ? { progress } : {}),
     ...(message !== undefined ? { message } : {}),
   }
@@ -612,13 +699,14 @@ export async function updateJob(
 
   if (gateway.mode === "admin") {
     try {
-      const adminUpdates =
+      const updatesWithDerivedFields =
         updates.artifacts !== undefined
           ? {
               ...updates,
               ...deriveMaterializationFields(updates.artifacts),
             }
           : updates
+      const adminUpdates = buildJobUpdateData(updatesWithDerivedFields)
       const job = await getAdminJobClient().updateJob(id, adminUpdates)
       if (job) {
         publishJobEvent(job)
@@ -634,19 +722,7 @@ export async function updateJob(
 }
 
 export function buildJobUpdateData(
-  updates: Partial<
-    Pick<
-      JobRecord,
-      | "status"
-      | "currentStep"
-      | "artifacts"
-      | "errors"
-      | "startedAt"
-      | "completedAt"
-      | "retries"
-      | "steps"
-    >
-  >,
+  updates: JobUpdateFields,
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {}
 
@@ -658,6 +734,22 @@ export function buildJobUpdateData(
   if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
   if (updates.retries !== undefined) data.retries = updates.retries
   if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
+  if (updates.sourceLanguageId !== undefined) {
+    data.sourceLanguageId = updates.sourceLanguageId
+  }
+  if (updates.sourceLanguageCode !== undefined) {
+    data.sourceLanguageCode = updates.sourceLanguageCode
+  }
+  if (updates.sourceSelectionReason !== undefined) {
+    data.sourceSelectionReason = updates.sourceSelectionReason
+  }
+  if (updates.primaryRequestedTargetLanguageCode !== undefined) {
+    data.primaryRequestedTargetLanguageCode =
+      updates.primaryRequestedTargetLanguageCode
+  }
+  if (updates.resolvedTargetLanguageCodes !== undefined) {
+    data.resolvedTargetLanguageCodes = updates.resolvedTargetLanguageCodes
+  }
 
   return data
 }
