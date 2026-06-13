@@ -368,6 +368,38 @@ function makeEpisodeResult(
   }
 }
 
+const pilatePageChapterSlugs = [
+  "triumphal-entry",
+  "jesus-cleanses-the-temple",
+  "jesus-teaches-in-the-temple",
+  "judas-agrees-to-betray-jesus",
+  "the-last-supper",
+  "jesus-prays-in-gethsemane",
+  "jesus-is-arrested",
+  "jesus-before-caiaphas",
+  "peter-denies-jesus",
+  "jesus-is-condemned-by-the-council",
+  "judas-hangs-himself",
+  "jesus-is-brought-to-pilate",
+  "jesus-is-brought-before-herod",
+  "jesus-is-sentenced",
+  "jesus-is-scourged-and-mocked",
+  "jesus-is-brought-to-pilate-again",
+  "jesus-sentenced-to-be-crucified",
+  "jesus-carries-his-cross",
+  "jesus-is-nailed-to-the-cross",
+  "jesus-is-crucified",
+  "jesus-dies-on-the-cross",
+  "jesus-is-buried",
+  "the-tomb-is-guarded",
+  "the-tomb-is-empty",
+  "jesus-appears-to-mary",
+  "resurrected-jesus-appears",
+  "jesus-appears-to-his-disciples",
+  "jesus-commissions-his-followers",
+  "invitation-to-know-jesus-personally",
+]
+
 function internalLocaleParams(rawLocale?: string) {
   return resolveWatchLocaleIdentity(
     rawLocale ? stripHtmlSuffix(rawLocale) : null,
@@ -1234,6 +1266,79 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "wedding-in-cana",
       "english",
     )
+  })
+
+  it("keeps the requested parent collection for multi-parent chapter routes", async () => {
+    const result = makeEpisodeResult() as unknown as {
+      video: Record<string, unknown>
+      canonicalParent: Record<string, unknown>
+      series: Record<string, unknown>
+    }
+    const anticipateChildren = pilatePageChapterSlugs.map((slug, index) => ({
+      documentId: `pilate-chapter-${index + 1}`,
+      slug,
+      title: `Pilate chapter ${index + 1}`,
+      label: "clip",
+      images: [],
+      durationSeconds: null,
+      muxPlaybackId: null,
+    }))
+    const anticipateParent = {
+      documentId: "anticipate-parent",
+      slug: "anticipate-the-resurrection",
+      title: "Anticipate the Resurrection",
+      label: "collection",
+      images: [],
+      children: anticipateChildren,
+    }
+    result.video.documentId = "pilate-chapter-20"
+    result.video.slug = "jesus-is-crucified"
+    result.video.title = "Jesus is Crucified"
+    result.video.parents = [
+      {
+        documentId: "jesus-parent",
+        slug: "jesus",
+        title: "JESUS",
+        label: "collection",
+        images: [],
+        children: [],
+      },
+      anticipateParent,
+    ]
+    result.canonicalParent = anticipateParent
+    result.series = anticipateParent
+
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(result)
+
+    await render3Seg(
+      "anticipate-the-resurrection",
+      "jesus-is-crucified",
+      "english",
+    )
+
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "anticipate-the-resurrection",
+      "jesus-is-crucified",
+      "english",
+    )
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks?: Array<{
+        kind?: string
+        canonicalParent?: {
+          slug?: string | null
+          title?: string | null
+          children?: unknown[]
+        }
+        currentVideoDocumentId?: string
+      }>
+    }
+    const carousel = props.mergedBlocks?.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.slug).toBe("anticipate-the-resurrection")
+    expect(carousel?.canonicalParent?.title).toBe("Anticipate the Resurrection")
+    expect(carousel?.canonicalParent?.children).toHaveLength(29)
+    expect(carousel?.currentVideoDocumentId).toBe("pilate-chapter-20")
   })
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
