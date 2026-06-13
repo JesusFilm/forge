@@ -554,9 +554,9 @@ build` smoke.
 - [x] All manager env vars optional: unconfigured envs → 503
       config_missing; worker boots fail-fast on missing model/keys in
       production only.
-- [ ] Tests green: `pnpm --filter @forge/shorts-compositions --filter
-    @forge/shorts-worker --filter @forge/manager test` + typecheck +
-      lint + build; host smoke passes; container smoke passes.
+- [ ] Tests green: package tests plus typecheck, lint, build; host smoke
+      passes; container smoke passes. Test command:
+      `pnpm --filter @forge/shorts-compositions --filter @forge/shorts-worker --filter @forge/manager test`.
       (Tests + host smoke pass; the CONTAINER smoke — docker build + run,
       the in-image Chromium/fonts/model/bundle proof — has not been
       executed yet; tracked as remaining deploy work on feat-178.)
