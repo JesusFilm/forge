@@ -1,6 +1,12 @@
+export type EnrichFeedbackDetail = {
+  label: string
+  message: string
+}
+
 export type EnrichFeedback = {
   tone: "neutral" | "success" | "error"
   message: string
+  details?: EnrichFeedbackDetail[]
   action?: {
     href: "/dashboard/jobs" | `/dashboard/jobs/${string}`
     label: string
@@ -50,6 +56,17 @@ function formatFailureSummary(errors: EnrichErrorResult[]): string {
   return formatErrorList(errors)
 }
 
+function formatFeedbackDetail({
+  label,
+  message,
+}: EnrichFeedbackDetail): string {
+  if (label === "Request") {
+    return message
+  }
+
+  return label ? `${label}: ${message}` : message
+}
+
 function formatErrorList(errors: EnrichErrorResult[]): string {
   return errors.map(({ videoId, error }) => `${videoId}: ${error}`).join("; ")
 }
@@ -82,30 +99,65 @@ function formatStartedJobsMessage(count: number): string {
 function getFirstRequestErrorDetail(
   response: EnrichRequestErrorResponse,
 ): string | null {
-  const [formError] = response.details?.formErrors ?? []
-  if (formError) {
-    return formError
+  const [detail] = getRequestErrorDetails(response)
+  return detail ? formatFeedbackDetail(detail) : null
+}
+
+function getRequestErrorDetails(
+  response: EnrichRequestErrorResponse,
+): EnrichFeedbackDetail[] {
+  const details: EnrichFeedbackDetail[] = []
+
+  for (const formError of response.details?.formErrors ?? []) {
+    const message = formError.trim()
+    if (message) {
+      details.push({ label: "Request", message })
+    }
   }
 
   for (const [fieldName, fieldErrors] of Object.entries(
     response.details?.fieldErrors ?? {},
   )) {
-    const firstFieldError = fieldErrors?.find((error) => error.length > 0)
-    if (firstFieldError) {
-      return `${fieldName}: ${firstFieldError}`
+    for (const fieldError of fieldErrors ?? []) {
+      const message = fieldError.trim()
+      if (message) {
+        details.push({ label: fieldName, message })
+      }
     }
   }
 
-  const [firstError] = response.errors ?? []
-  if (firstError) {
-    return `${firstError.videoId}: ${firstError.error}`
-  }
+  details.push(...getPerVideoErrorDetails(response.errors ?? []))
 
   if (response.unresolvedTargetLanguageIds?.length) {
-    return `Unresolved language IDs: ${response.unresolvedTargetLanguageIds.join(", ")}`
+    details.push({
+      label: "Unresolved language IDs",
+      message: response.unresolvedTargetLanguageIds.join(", "),
+    })
   }
 
-  return null
+  return details
+}
+
+function getPerVideoErrorDetails(
+  errors: readonly EnrichErrorResult[],
+): EnrichFeedbackDetail[] {
+  return errors
+    .map(({ videoId, error }) => ({
+      label: videoId,
+      message: error.trim(),
+    }))
+    .filter((detail) => detail.message.length > 0)
+}
+
+function withDetails(
+  feedback: EnrichFeedback,
+  details: EnrichFeedbackDetail[],
+): EnrichFeedback {
+  if (details.length === 0) {
+    return feedback
+  }
+
+  return { ...feedback, details }
 }
 
 export function isVideoQaSelectable(videoId: string): boolean {
@@ -162,6 +214,19 @@ export function formatEnrichRequestErrorMessage(
   return `${baseMessage}: ${detail}`
 }
 
+export function buildEnrichRequestErrorFeedback(
+  response: EnrichRequestErrorResponse,
+  fallback = "Failed to create enrichment jobs.",
+): EnrichFeedback {
+  return withDetails(
+    {
+      tone: "error",
+      message: formatEnrichRequestErrorMessage(response, fallback),
+    },
+    getRequestErrorDetails(response),
+  )
+}
+
 export function resolveEnrichSelectionOutcome(
   selectedVideoIds: ReadonlySet<string>,
   response: EnrichSelectionResponse,
@@ -196,6 +261,7 @@ export function resolveEnrichSelectionOutcome(
       feedback: {
         tone: "neutral",
         message: `${formatStartedJobsMessage(response.created)} ${errors.length} video${errors.length === 1 ? "" : "s"} failed: ${formatErrorList(errors)}`,
+        details: getPerVideoErrorDetails(errors),
         action: getJobsAction(jobs),
       },
       redirectPath: null,
@@ -204,10 +270,13 @@ export function resolveEnrichSelectionOutcome(
 
   return {
     nextSelectedVideoIds,
-    feedback: {
-      tone: "error",
-      message: formatFailureSummary(errors),
-    },
+    feedback: withDetails(
+      {
+        tone: "error",
+        message: formatFailureSummary(errors),
+      },
+      getPerVideoErrorDetails(errors),
+    ),
     redirectPath: null,
   }
 }

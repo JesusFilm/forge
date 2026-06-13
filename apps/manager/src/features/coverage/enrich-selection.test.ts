@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildEnrichRequestErrorFeedback,
   formatEnrichRequestErrorMessage,
   getVideoQaSelectionDisabledReason,
   isEnrichActionReady,
@@ -64,18 +65,43 @@ describe("enrich-selection", () => {
   })
 
   it("surfaces structured request validation details", () => {
+    const response = {
+      error: "Validation failed",
+      details: {
+        fieldErrors: {
+          targetLanguageIds: ["String must contain at most 10 character(s)"],
+        },
+      },
+    }
+
+    expect(formatEnrichRequestErrorMessage(response)).toBe(
+      "Validation failed: targetLanguageIds: String must contain at most 10 character(s)",
+    )
     expect(
-      formatEnrichRequestErrorMessage({
-        error: "Validation failed",
+      buildEnrichRequestErrorFeedback({
+        ...response,
         details: {
+          formErrors: ["Request body is malformed"],
           fieldErrors: {
-            targetLanguageIds: ["String must contain at most 10 character(s)"],
+            targetLanguageIds: [
+              "String must contain at most 10 character(s)",
+              "Expected a language id",
+            ],
           },
         },
       }),
-    ).toBe(
-      "Validation failed: targetLanguageIds: String must contain at most 10 character(s)",
-    )
+    ).toEqual({
+      tone: "error",
+      message: "Validation failed: Request body is malformed",
+      details: [
+        { label: "Request", message: "Request body is malformed" },
+        {
+          label: "targetLanguageIds",
+          message: "String must contain at most 10 character(s)",
+        },
+        { label: "targetLanguageIds", message: "Expected a language id" },
+      ],
+    })
   })
 
   it("surfaces unresolved Admin language IDs from enrichment responses", () => {
@@ -159,6 +185,12 @@ describe("enrich-selection", () => {
       tone: "neutral",
       message:
         "1 enrichment job started. 1 video failed: video-2: No downloadable MP4 source available for QA enrichment",
+      details: [
+        {
+          label: "video-2",
+          message: "No downloadable MP4 source available for QA enrichment",
+        },
+      ],
       action: {
         href: "/dashboard/jobs/job-1",
         label: "Open job",
@@ -190,6 +222,13 @@ describe("enrich-selection", () => {
       tone: "error",
       message:
         "video-1: Video not found; video-2: No downloadable MP4 source available for QA enrichment",
+      details: [
+        { label: "video-1", message: "Video not found" },
+        {
+          label: "video-2",
+          message: "No downloadable MP4 source available for QA enrichment",
+        },
+      ],
     })
   })
 })
