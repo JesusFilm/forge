@@ -33,7 +33,7 @@ contract.
   catalogue or the lookup is unavailable.
 - R4. Search results expose enough identity to disambiguate similar titles:
   title, slug, label/type, and core ID.
-- R5. Videos without an admin-resolved Mux asset surface an inline, per-row
+- R5. Videos without an admin-resolved Mux asset surface a modal row-level
   reason and do not fill the canonical form.
 - R6. The Smart Crop job creation API contract stays unchanged:
   `/api/smart-crop/jobs` still receives `kind`, `muxAssetId`, optional
@@ -59,6 +59,9 @@ contract.
 - Use client-side filtering for the first slice: `/api/videos` is already a
   bounded, cached dashboard list. Client-side title/slug/core-ID filtering
   matches the Shorts picker precedent and avoids a new query shape.
+- Keep search in a modal, not the form card: the canonical form should stay
+  compact, and the video library needs enough width for thumbnail, title, slug,
+  type, and resolution state.
 
 ## Implementation Units
 
@@ -99,17 +102,19 @@ contract.
 - **Patterns:** Reuse the Shorts picker flow in
   `apps/manager/src/features/shorts/shorts-create-screen.tsx`: load
   `/api/videos`, flatten collections plus standalone rows, filter client-side,
-  keep per-row resolution issues, and use existing table/button styles.
-- **Test Scenarios:** Search matches by title and slug; selecting an eligible
-  result fills `Mux Asset ID`; ineligible or failed rows show a row-level reason;
-  manual Mux ID editing remains possible and keeps the submit button behavior
-  tied to the field value.
+  keep per-row resolution issues, and render results in a Studio-style modal
+  list rather than an inline table.
+- **Test Scenarios:** Clicking the source-video search trigger opens a focused
+  modal; search matches by title and slug; selecting an eligible result fills
+  `Mux Asset ID`; ineligible or failed rows show a row-level reason; manual Mux
+  ID editing remains possible and keeps the submit button behavior tied to the
+  field value.
 
 ## Acceptance Examples
 
 - AE1. Given the canonical form has loaded the video library, when an operator
-  searches `a-new-beginning`, then the standalone video with that slug appears
-  and can be selected.
+  clicks `Search by title or slug` and searches `a-new-beginning`, then the
+  standalone video with that slug appears in a modal and can be selected.
 - AE2. Given a selected video resolves to `mux-1`, when the operator clicks the
   row, then `Mux Asset ID` becomes `mux-1` and the canonical job button enables.
 - AE3. Given admin returns a video with no Mux asset, when the operator selects
