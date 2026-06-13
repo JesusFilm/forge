@@ -591,7 +591,9 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       },
       error: null,
     })
-    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    watchVideoResult.video.slug = "easter"
+    mockRouteVideo(watchVideoResult)
 
     const metadata = await generateMetadata({
       params: Promise.resolve({
@@ -674,7 +676,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 
-  it("uses the three-segment production URL for episode metadata", async () => {
+  it("uses the standalone video URL for contextual episode metadata", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
 
     const metadata = await generateMetadata({
@@ -691,7 +693,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
 
     expect(metadata.title).toBe("Wedding in Cana | Jesus Film Project")
     expect(metadata.openGraph).toMatchObject({
-      url: "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      url: "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
       images: [
         {
           url: "https://image.mux.com/pb-1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -700,7 +702,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       ],
     })
     expect(metadata.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
     )
   })
 })
