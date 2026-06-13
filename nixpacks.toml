@@ -1,2 +1,8 @@
 [phases.setup]
 nixPkgs = ["...", "ffmpeg"]
+
+# Railway runs Nixpacks' install phase before a service buildCommand. Some
+# services set NODE_ENV=production at deploy time, which otherwise makes pnpm
+# skip devDependencies needed by monorepo lifecycle scripts and TS builds.
+[phases.install]
+cmds = ["NODE_ENV=development pnpm install --frozen-lockfile"]
