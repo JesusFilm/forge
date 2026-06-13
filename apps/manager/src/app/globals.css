@@ -13300,3 +13300,157 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
     min-height: 84px;
   }
 }
+
+/* ------------------------------------------------------------------------ */
+/* Shorts Studio (feat-178) — semantic classes for the create picker and the */
+/* job detail editor. Genuinely dynamic values (live progress width, token   */
+/* input width sized to its text) stay inline in the components. The         */
+/* .design-system-eleven variants are listed so these rules win the cascade  */
+/* against the equally-specific scoped jobs-/collection- base rules above.   */
+/* ------------------------------------------------------------------------ */
+
+.shorts-template-grid {
+  gap: 10px;
+}
+
+.shorts-template-card,
+.design-system-eleven .shorts-template-card {
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--ds-line, #e7dfd2);
+}
+
+.shorts-template-card[aria-checked="true"],
+.design-system-eleven .shorts-template-card[aria-checked="true"] {
+  border: 2px solid var(--ds-black, #111111);
+}
+
+.shorts-template-card-description {
+  margin: 4px 0 0;
+}
+
+.shorts-caption-pages {
+  max-height: 320px;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.shorts-caption-page-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shorts-caption-page-toggle {
+  flex: 1;
+  min-width: 0;
+}
+
+.shorts-caption-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.shorts-caption-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.shorts-caption-token-input,
+.design-system-eleven .shorts-caption-token-input {
+  padding: 2px 6px;
+}
+
+.shorts-progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--ds-line, #e7dfd2);
+}
+
+.shorts-progress-fill {
+  height: 100%;
+  background: var(--ds-ink, #111111);
+  transition: width 600ms ease;
+}
+
+.shorts-editor-controls {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.shorts-color-input,
+.design-system-eleven .shorts-color-input {
+  height: 38px;
+  padding: 4px;
+}
+
+.shorts-option-align-end {
+  align-self: end;
+}
+
+.shorts-preview-pane {
+  /* Explicit width is load-bearing: justify-self makes this grid item
+     shrink-to-fit, and the Player inside sizes itself width:100% — without a
+     concrete width the pane collapses to 0 and the preview never renders. */
+  width: min(380px, 100%);
+  max-width: 380px;
+  justify-self: center;
+}
+
+.shorts-output-frame {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  max-height: 480px;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+
+.shorts-video-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.shorts-time-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.shorts-clip-summary {
+  margin: 0;
+}
+
+.shorts-picker-search {
+  max-width: 420px;
+}
+
+.shorts-picker-search-icon {
+  vertical-align: -1px;
+}
+
+.shorts-picker-row-ineligible {
+  opacity: 0.55;
+}
+
+.shorts-picker-video-button {
+  align-items: center;
+}
+
+.shorts-picker-thumb {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 48px;
+  height: 27px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--ds-line, #e7dfd2);
+}

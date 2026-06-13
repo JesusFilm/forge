@@ -54,7 +54,9 @@ type LiveJobStepsTableProps = {
   onJobUpdate?: (job: JobRecord) => void
 }
 
-const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail) —
+// single source of truth for step description copy.
+export const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   download_video: "Fetches source media and validates job inputs.",
   transcription: "Generates a timestamped transcript from the source audio.",
   structured_transcript:
@@ -84,9 +86,17 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   smart_crop_qa: "Runs AI review over the rendered preview frames.",
   smart_crop_render: "Renders the full 9:16 output through the crop worker.",
   smart_crop_mux_output: "Creates the Mux output asset from the rendered file.",
+  shorts_prepare:
+    "Trims the source clip and generates whisper word captions via the shorts worker.",
+  shorts_render: "Renders the 1080x1920 short through the shorts worker.",
+  shorts_mux_output: "Creates the Mux output asset from the rendered short.",
 }
 
-function formatDuration(startedAt?: string, finishedAt?: string): string {
+// Exported for reuse by other job UIs (shorts steps table, detail header).
+export function formatDuration(
+  startedAt?: string,
+  finishedAt?: string,
+): string {
   if (!startedAt || !finishedAt) {
     return "–"
   }
@@ -322,7 +332,8 @@ function TranscriptionRoutingInlineDetails({
   )
 }
 
-function StepStatusGlyph({ status }: { status: StepStatus }) {
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail).
+export function StepStatusGlyph({ status }: { status: StepStatus }) {
   if (status === "completed") {
     return (
       <svg viewBox="0 0 20 20" aria-hidden="true">
