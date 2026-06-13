@@ -56,6 +56,7 @@ import {
 } from "./coverage-report-model"
 import {
   getVideoQaSelectionDisabledReason,
+  formatEnrichRequestErrorMessage,
   isEnrichActionReady,
   isEnrichSelectionInputEnabled,
   isVideoQaSelectable,
@@ -1563,13 +1564,18 @@ export function CoverageReportClient({
         jobs?: Array<{ videoId: string; jobId: string }>
         errors?: Array<{ videoId: string; error: string }>
         error?: string
+        details?: {
+          formErrors?: string[]
+          fieldErrors?: Record<string, string[] | undefined>
+        }
+        unresolvedTargetLanguageIds?: string[]
       }
       if (shouldIgnoreRequest()) return
 
       if (!res.ok) {
         setEnrichFeedback({
           tone: "error",
-          message: data.error ?? "Failed to create enrichment jobs.",
+          message: formatEnrichRequestErrorMessage(data),
         })
         return
       }

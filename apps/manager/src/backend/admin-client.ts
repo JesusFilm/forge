@@ -71,6 +71,28 @@ type UpdateAdminJobInput = Partial<
   >
 >
 
+export type AdminVideoForEnrichment = {
+  documentId: string
+  coreId?: string | null
+  primaryLanguage?: {
+    coreId?: string | null
+    bcp47?: string | null
+    iso3?: string | null
+  } | null
+  variants?: Array<{
+    language?: {
+      coreId?: string | null
+      bcp47?: string | null
+      iso3?: string | null
+    } | null
+    muxVideo?: {
+      assetId?: string | null
+      playbackId?: string | null
+    } | null
+    downloads?: Array<{ url?: string | null } | null> | null
+  } | null> | null
+}
+
 const VIDEO_COVERAGE_SELECTION = `
   documentId
   coreId
@@ -91,11 +113,38 @@ const LANGUAGE_GEO_SELECTION = `
   countries { id name continentId }
   languages {
     id
+    coreId
+    bcp47
+    iso3
     englishLabel
     nativeLabel
     countryIds
     continentIds
     countrySpeakers
+  }
+`
+
+const VIDEO_ENRICHMENT_SELECTION = `
+  documentId
+  coreId
+  primaryLanguage {
+    coreId
+    bcp47
+    iso3
+  }
+  variants {
+    language {
+      coreId
+      bcp47
+      iso3
+    }
+    muxVideo {
+      assetId
+      playbackId
+    }
+    downloads {
+      url
+    }
   }
 `
 
@@ -338,6 +387,26 @@ export class AdminGraphqlClient {
     )
 
     return readField<MockVideoCoverage[]>(data, "managerVideoCoverage") ?? []
+  }
+
+  async getVideosForEnrichment(
+    ids: string[] = [],
+  ): Promise<AdminVideoForEnrichment[]> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        query ManagerVideosForEnrichment($ids: [String!]!) {
+          managerVideosForEnrichment(ids: $ids) { ${VIDEO_ENRICHMENT_SELECTION} }
+        }
+      `,
+      { ids },
+    )
+
+    return (
+      readField<AdminVideoForEnrichment[]>(
+        data,
+        "managerVideosForEnrichment",
+      ) ?? []
+    )
   }
 
   async getCoverageSnapshots(

@@ -484,6 +484,27 @@ type ManagerCoverageSnapshot {
   videosWithHumanMetadata: Int
 }
 
+type ManagerEnrichmentDownload {
+  url: String
+}
+
+type ManagerEnrichmentLanguage {
+  bcp47: String
+  coreId: String
+  iso3: String
+}
+
+type ManagerEnrichmentMuxVideo {
+  assetId: String
+  playbackId: String
+}
+
+type ManagerEnrichmentVariant {
+  downloads: [ManagerEnrichmentDownload!]
+  language: ManagerEnrichmentLanguage
+  muxVideo: ManagerEnrichmentMuxVideo
+}
+
 type ManagerJob {
   artifacts: JSON
   completedAt: String
@@ -547,11 +568,14 @@ enum ManagerJobStepStatus {
 }
 
 type ManagerLanguage {
+  bcp47: String
   continentIds: [String!]
+  coreId: String
   countryIds: [String!]
   countrySpeakers: JSON
   englishLabel: String
   id: ID
+  iso3: String
   nativeLabel: String
 }
 
@@ -580,6 +604,13 @@ type ManagerVideoCoverage {
 type ManagerVideoCoverageBreakdown {
   audio: ManagerCoverageCounts
   subtitles: ManagerCoverageCounts
+}
+
+type ManagerVideoForEnrichment {
+  coreId: String
+  documentId: ID
+  primaryLanguage: ManagerEnrichmentLanguage
+  variants: [ManagerEnrichmentVariant!]
 }
 
 """
@@ -958,6 +989,7 @@ type Query {
   managerJobsTotal: Int
   managerLanguageGeo: ManagerLanguageGeo
   managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
+  managerVideosForEnrichment(ids: [String!]!): [ManagerVideoForEnrichment!]
   """
   Current Admin session projected into the narrow Manager access contract.
   """

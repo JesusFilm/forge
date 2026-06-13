@@ -75,6 +75,22 @@ describe("enrich language contract", () => {
     })
   })
 
+  it("does not treat unknown Admin IDs as raw language codes", () => {
+    expect(
+      resolveTargetLanguageCodes(["cmokkxw5v03uyqsccis58pea6"], new Map()),
+    ).toEqual({
+      codes: [],
+      unresolvedIds: ["cmokkxw5v03uyqsccis58pea6"],
+    })
+  })
+
+  it("still accepts explicit raw BCP-47 language tags", () => {
+    expect(resolveTargetLanguageCodes(["pt-BR"], new Map())).toEqual({
+      codes: ["pt"],
+      unresolvedIds: [],
+    })
+  })
+
   it("builds an enrich plan with source and target concerns separated", () => {
     const languagesById = new Map([
       ["6414", { coreId: "6414", bcp47: "fr-FR", iso3: "fra" }],

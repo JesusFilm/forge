@@ -10,11 +10,36 @@ export type ManagerLanguageGeo = {
   countries: Array<{ id: string; name: string; continentId: string }>
   languages: Array<{
     id: string
+    coreId: string | null
+    bcp47: string | null
+    iso3: string | null
     englishLabel: string
     nativeLabel: string
     countryIds: string[]
     continentIds: string[]
     countrySpeakers: Record<string, number>
+  }>
+}
+
+export type ManagerVideoForEnrichment = {
+  documentId: string
+  coreId: string | null
+  primaryLanguage: {
+    coreId: string | null
+    bcp47: string | null
+    iso3: string | null
+  } | null
+  variants: Array<{
+    language: {
+      coreId: string | null
+      bcp47: string | null
+      iso3: string | null
+    } | null
+    muxVideo: {
+      assetId: string | null
+      playbackId: string | null
+    } | null
+    downloads: Array<{ url: string | null }>
   }>
 }
 
@@ -60,6 +85,8 @@ type VideoTitleLocale = {
   languageId: string | null
   title: string | null
 }
+
+const MANAGER_ENRICHMENT_VIDEO_MAX_IDS = 100
 
 function assertManagerReadAccess(user: Principal | null) {
   if (!hasPermission(user, "read:manager-read-models")) {
@@ -211,6 +238,9 @@ export class ManagerReadModelService {
         const englishLabel = nameFrom(language.name, language.locales)
         return {
           id: language.id,
+          coreId: language.coreId ?? null,
+          bcp47: language.bcp47 ?? null,
+          iso3: language.iso3 ?? null,
           englishLabel,
           nativeLabel: englishLabel,
           countryIds: Array.from(facts?.countryIds ?? []),
@@ -219,6 +249,100 @@ export class ManagerReadModelService {
         }
       }),
     }
+  }
+
+  async getVideosForEnrichment({
+    user,
+    ids = [],
+  }: {
+    user: Principal | null
+    ids?: string[]
+  }): Promise<ManagerVideoForEnrichment[]> {
+    assertManagerReadAccess(user)
+
+    const selectedIds = Array.from(
+      new Set(ids.map((id) => id.trim()).filter(Boolean)),
+    )
+
+    if (selectedIds.length > MANAGER_ENRICHMENT_VIDEO_MAX_IDS) {
+      throw new Error(
+        `ids.length=${selectedIds.length} exceeds max ${MANAGER_ENRICHMENT_VIDEO_MAX_IDS}`,
+      )
+    }
+
+    if (selectedIds.length === 0) {
+      return []
+    }
+
+    const videos = await this.prisma.video.findMany({
+      where: {
+        deletedAt: null,
+        OR: [{ id: { in: selectedIds } }, { coreId: { in: selectedIds } }],
+      },
+      include: {
+        primaryLanguage: {
+          select: {
+            coreId: true,
+            bcp47: true,
+            iso3: true,
+          },
+        },
+        dubs: {
+          where: { deletedAt: null },
+          include: {
+            language: {
+              select: {
+                coreId: true,
+                bcp47: true,
+                iso3: true,
+              },
+            },
+            muxVideo: {
+              select: {
+                assetId: true,
+                playbackId: true,
+              },
+            },
+            downloads: {
+              where: { deletedAt: null },
+              select: { url: true },
+              orderBy: { updatedAt: "desc" },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+        },
+      },
+    })
+
+    return videos.map((video) => ({
+      documentId: video.id,
+      coreId: video.coreId ?? null,
+      primaryLanguage: video.primaryLanguage
+        ? {
+            coreId: video.primaryLanguage.coreId ?? null,
+            bcp47: video.primaryLanguage.bcp47 ?? null,
+            iso3: video.primaryLanguage.iso3 ?? null,
+          }
+        : null,
+      variants: video.dubs.map((dub) => ({
+        language: dub.language
+          ? {
+              coreId: dub.language.coreId ?? null,
+              bcp47: dub.language.bcp47 ?? null,
+              iso3: dub.language.iso3 ?? null,
+            }
+          : null,
+        muxVideo: dub.muxVideo
+          ? {
+              assetId: dub.muxVideo.assetId ?? null,
+              playbackId: dub.muxVideo.playbackId ?? null,
+            }
+          : null,
+        downloads: dub.downloads.map((download) => ({
+          url: download.url ?? null,
+        })),
+      })),
+    }))
   }
 
   async getVideoCoverage({
