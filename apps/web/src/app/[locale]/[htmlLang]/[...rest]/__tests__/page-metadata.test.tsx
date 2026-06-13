@@ -5,13 +5,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
-  resolveWatchVideoBySlugMock,
-  resolveSeriesBySlugMock,
+  resolveWatchRouteBySlugMock,
   resolveSeriesEpisodeBySlugMock,
   resolveWatchPageMock,
 } = vi.hoisted(() => ({
-  resolveWatchVideoBySlugMock: vi.fn(),
-  resolveSeriesBySlugMock: vi.fn(),
+  resolveWatchRouteBySlugMock: vi.fn(),
   resolveSeriesEpisodeBySlugMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
 }))
@@ -25,8 +23,7 @@ vi.mock("@/lib/content", async () => {
     await vi.importActual<typeof import("@/lib/content")>("@/lib/content")
   return {
     ...actual,
-    resolveWatchVideoBySlug: resolveWatchVideoBySlugMock,
-    resolveSeriesBySlug: resolveSeriesBySlugMock,
+    resolveWatchRouteBySlug: resolveWatchRouteBySlugMock,
     resolveSeriesEpisodeBySlug: resolveSeriesEpisodeBySlugMock,
     resolveWatchPage: resolveWatchPageMock,
   }
@@ -87,8 +84,7 @@ vi.mock("@/lib/youversion-passage", () => ({
 import { generateMetadata } from "@/app/[locale]/[htmlLang]/[...rest]/page"
 
 beforeEach(() => {
-  resolveWatchVideoBySlugMock.mockReset()
-  resolveSeriesBySlugMock.mockReset()
+  resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchPageMock.mockReset()
   resolveWatchPageMock.mockResolvedValue({
@@ -100,7 +96,7 @@ beforeEach(() => {
 describe("Watch metadata fallback observability", () => {
   it("logs video metadata resolver fallbacks in the Watch event format", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    resolveWatchVideoBySlugMock.mockRejectedValue(
+    resolveWatchRouteBySlugMock.mockRejectedValue(
       new Error("Apollo resolver failed"),
     )
 

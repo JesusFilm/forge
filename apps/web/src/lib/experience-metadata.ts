@@ -360,6 +360,13 @@ export async function getWatchPageMetadata(
   return toMetadata(locale, result.data, options)
 }
 
+export function getWatchRouteFallbackMetadata(
+  locale: string,
+  options?: { slug?: string; pathLocale?: string },
+): Metadata {
+  return toMetadata(locale, null, options)
+}
+
 // Series-page metadata helper. Mirrors the shape `getWatchPageMetadata`
 // produces but reads title / description / poster directly from the
 // resolved series record rather than going through `resolveWatchPage`'s
