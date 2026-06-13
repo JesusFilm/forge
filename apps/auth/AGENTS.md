@@ -26,3 +26,12 @@ Full context lives in `apps/auth/CLAUDE.md`. Keep both files aligned.
 - `pnpm --filter @forge/auth test`
 - `pnpm --filter @forge/auth typecheck`
 - `pnpm --filter @forge/auth lint`
+
+## Agent Login
+
+- Agent handles are Auth-owned, short-lived bearer credentials shaped like
+  email addresses for local/preview browser testing.
+- Do not add app-local auth bypasses in relying apps when this flow applies.
+- The mint helper prints the generated handle once for immediate browser use;
+  never commit it, pipe it into durable logs, or paste it into issue/PR text.
+- Never log raw `AGENT_LOGIN_MINTING_KEY` values.

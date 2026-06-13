@@ -100,7 +100,7 @@
     "fallbackBody": "Tenha uma conversa privada com alguém disposto a ouvir.",
     "questionsShort": "Perguntas",
     "questions": "Perguntas relacionadas",
-    "askYours": "Faça sua pergunta",
+    "askYours": "Sua pergunta",
     "chatWithPerson": "Fale com alguém",
     "askBibleQuestion": "Fazer uma pergunta bíblica"
   },
@@ -195,7 +195,7 @@
     "clearLanguages": "Clear"
   },
   "HeroPlayer": {
-    "playWithSound": "Reproduzir com som",
+    "playWithSound": "Assistir agora",
     "tapToUnmute": "Ativar som"
   },
   "ExperienceSkeleton": {

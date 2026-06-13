@@ -1,10 +1,11 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, useEffect } from "react"
+import { act, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { FloatingSearchController } from "@/components/FloatingSearchController"
 import {
   FloatingSearchProvider,
   useFloatingSearch,
@@ -54,6 +55,7 @@ let root: Root
 
 beforeEach(() => {
   vi.clearAllMocks()
+  window.history.replaceState(null, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -189,9 +191,13 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
   const searchButton = document.querySelector(
     '[aria-label="Search videos"]',
   ) as HTMLButtonElement
-  act(() => {
+  await act(async () => {
     searchButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
   })
+  await flushSearchControllerMount()
 
   const input = document.querySelector(
     'input[aria-label="Search videos by keyword"]',
@@ -200,6 +206,14 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
     throw new Error("Expected search overlay input to render")
   }
   return input
+}
+
+async function flushSearchControllerMount() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
 }
 
 async function submitDebouncedSearch(input: HTMLInputElement, query: string) {
@@ -271,6 +285,31 @@ function SearchModeHarness() {
         Load more
       </button>
     </div>
+  )
+}
+
+function SearchControllerTestShell({
+  children,
+  initialOpen = false,
+  initialQuery = "",
+}: {
+  children?: ReactNode
+  initialOpen?: boolean
+  initialQuery?: string
+}) {
+  const [open, setOpen] = useState(initialOpen)
+  const [query, setQuery] = useState(initialQuery)
+
+  return (
+    <FloatingSearchController
+      open={open}
+      closing={false}
+      query={query}
+      setOpen={setOpen}
+      setQuery={setQuery}
+    >
+      {children}
+    </FloatingSearchController>
   )
 }
 
@@ -412,9 +451,9 @@ describe("FloatingSearchProvider — search mode", () => {
 
     act(() => {
       root.render(
-        <FloatingSearchProvider>
+        <SearchControllerTestShell>
           <SearchModeHarness />
-        </FloatingSearchProvider>,
+        </SearchControllerTestShell>,
       )
     })
 
@@ -485,9 +524,9 @@ describe("FloatingSearchProvider — search mode", () => {
 
     act(() => {
       root.render(
-        <FloatingSearchProvider>
+        <SearchControllerTestShell>
           <SearchModeHarness />
-        </FloatingSearchProvider>,
+        </SearchControllerTestShell>,
       )
     })
 
@@ -533,9 +572,9 @@ describe("FloatingSearchProvider — search mode", () => {
 
     act(() => {
       root.render(
-        <FloatingSearchProvider>
+        <SearchControllerTestShell>
           <SearchModeHarness />
-        </FloatingSearchProvider>,
+        </SearchControllerTestShell>,
       )
     })
 
@@ -830,6 +869,40 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps the language globe after the pathname chrome reset frame", () => {
+    vi.useFakeTimers()
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: onLanguageClick })
+    })
+
+    expect(
+      document.querySelector('[data-testid="floating-header-language-button"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(20)
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement | null
+    expect(languageButton).not.toBeNull()
+
+    act(() => {
+      languageButton?.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+
   it("hides the floating language globe with the rest of the header chrome", () => {
     act(() => {
       root.render(
@@ -879,6 +952,42 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it("does not mount the full search overlay on initial render without query intent", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).toBeNull()
+    expect(getSearchLanguageOptions).not.toHaveBeenCalled()
+  })
+
+  it("loads the search controller immediately for direct query URLs", async () => {
+    vi.mocked(runSearch).mockResolvedValueOnce(searchResult("semantic"))
+    window.history.replaceState(null, "", "/?q=jesus")
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await flushSearchControllerMount()
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).not.toBeNull()
+    expect(runSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "jesus" }),
+    )
+  })
+
   it("aligns the search overlay close button with the watch modal close control", async () => {
     act(() => {
       root.render(
@@ -894,9 +1003,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const searchButton = document.querySelector(
       '[aria-label="Search videos"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
     })
+    await flushSearchControllerMount()
 
     const close = document.querySelector(
       '[data-testid="search-overlay-close"]',

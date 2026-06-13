@@ -201,8 +201,19 @@ export function VideoBackdrop({
 
       {/* Video — mounted only once ready, held invisible over the poster for
           POSTER_HOLD_MS then crossfaded in. Wrapped in pointerEvents="none"
-          (KTD4) so it can never steal D-pad focus from the action row below. */}
-      {hasValidStream && videoReady ? (
+          (KTD4) so it can never steal D-pad focus from the action row below.
+
+          Unmount (not just pause) while the overlay is open: on tvOS a mounted
+          VideoView holds an AVPlayerLayer/decode slot even when its player is
+          paused, so leaving it mounted starves the fullscreen overlay player —
+          it starts then stalls on black at 0:00. R6's pause() alone is not
+          enough; the slot is only freed by detaching the view. Since the
+          backdrop sits entirely behind the overlay (zIndex 1000) while it
+          plays, unmounting it here is invisible. The videoReady latch (kept for
+          the loop seam) means it never reset on its own, so this gate is the
+          piece that releases the decoder for the overlay. On close it remounts
+          with videoReady still latched true (no poster re-fade) and R6 resumes. */}
+      {hasValidStream && videoReady && !overlayVisible ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
           pointerEvents="none"

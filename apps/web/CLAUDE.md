@@ -12,15 +12,18 @@
 - Route groups for layout boundaries: `(marketing)`, `(app)`, `(auth)`.
 - Loading states: always add `loading.tsx` for async routes.
 - Error boundaries: `error.tsx` at each route segment.
-- Data fetching: RSC async components calling resolvers in `src/lib/content.ts` / `search.ts` / `recommendations.ts` / `demo-search.ts`, which use `adminGraphql()` from `@forge/admin-graphql` + the singleton Apollo client at `src/lib/admin-client.ts`.
+- Data fetching: RSC async components calling resolvers in `src/lib/content.ts` / `recommendations.ts` / `demo-search.ts`, which use `adminGraphql()` from `@forge/admin-graphql` + the default Apollo client at `src/lib/admin-client.ts`. `src/lib/search.ts` uses the semantic-search Admin client from the same module so production semantic search gets a longer bounded timeout without widening every Admin GraphQL call.
 - Client components that need data go through a `"use server"` action (e.g. `src/lib/search-actions.ts`) — admin's bearer is server-only and must never reach the browser bundle.
 - Metadata: export `metadata` or `generateMetadata` from every page.
+- Watch video and episode metadata must not emit page-head hreflang alternates.
+  Canonical, Open Graph, Twitter, robots, and JSON-LD stay in page metadata;
+  localized Watch hreflang belongs to sitemap XML only.
 
 ## Data layer
 
 Web reads from admin via the typed `adminGraphql()` factory exported from `@forge/admin-graphql`. The package consumes admin's committed SDL (`apps/admin/schema.graphql`); SDL drift breaks codegen at the package level, not at the app level.
 
-- `src/lib/admin-client.ts` — singleton Apollo client pointed at `env.ADMIN_GRAPHQL_URL` with `Authorization: Bearer ${env.WEB_ADMIN_API_KEYS.split(",")[0]}`. 15 s timeout (temporary headroom for admin's slow `videoBySlug` resolver on COLLECTION rows; see the comment in `admin-client.ts`).
+- `src/lib/admin-client.ts` — lazy Apollo clients pointed at `env.ADMIN_GRAPHQL_URL` with `Authorization: Bearer ${env.WEB_ADMIN_API_KEYS.split(",")[0]}`. The default export keeps the 15 s timeout for general Admin GraphQL calls; `semanticSearchAdminClient` uses a 45 s bounded timeout for `src/lib/search.ts` only.
 - `src/lib/content.ts` — `resolveWatchPage`, `resolveWatchVideo*`, `resolveSeriesBySlug`, plus the 6 synthetic-watch-block builders. Returns admin shapes flattened via `normalizeAdminVideo`.
 - `src/lib/fragments/watch-experience.ts` — re-exports `adminWatchExperienceFragment` from `@forge/admin-graphql/fragments` (the root composition over admin's 17 block fragments).
 - `src/lib/fragments/watch-video.ts` — local `WatchVideo` fragment + the two query operations on admin's `Video` with field aliases bridging vocab (`documentId: id`, `variants: dubs`, `value: text`).
@@ -49,6 +52,14 @@ Locale propagation flow: public URL (`/watch/{slug}.html/{raw-audio-slug}.html`)
 
 Public watch links must always use the raw audio language slug, never the message-catalog key. Any button, card, carousel, modal, or component that emits a `/watch` href should pass `variant.language.slug`, `languageSlug`, or `currentLanguageSlug` into the route builders in `src/lib/routes.ts`. For English, the public URL is `/watch/{slug}.html/english.html`; `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
 
+Watch chapter/sibling carousel links should keep `next/link` and the public
+audio-language href, but normal left-clicks may optimistically make the clicked
+card the visual current item while the next route resolves. Preserve modified
+click browser behavior, keep pending state scoped to the source video/language,
+and derive the visual active card from that pending payload so it self-invalidates
+when the route commits. See
+`docs/solutions/design-patterns/watch-chapter-optimistic-navigation-feedback.md`.
+
 Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forge/web generate:ui-locales` or any build/test script that runs it. The generated edge-safe catalog module drives middleware, route helpers, and next-intl catalog membership without a manual TypeScript whitelist. CI runs `check:ui-locales` during lint before build/test scripts can regenerate the file, and the drift gate in `src/i18n/__tests__/messages-parity.test.ts` verifies the generated list matches filesystem catalogs. The structural-parity test also enforces every namespace key exists in every catalog.
 
 Critical: `src/i18n/generated-ui-locales.ts` is the only catalog list safe to import from middleware, route helpers, and client-reachable modules. Do NOT copy filesystem discovery into request-path modules (filesystem I/O in the request path is a regression), and do NOT import `src/i18n/locales.ts` into middleware or client-safe helpers because it is a server-only re-export for next-intl request configuration. Keep the internal `[locale]` segment bounded to generated message catalogs; use `[htmlLang]` only for the static HTML language tag.
@@ -62,8 +73,14 @@ The receiver maps each semantic model to both paths and Data Cache tags:
 - `experience` invalidates experience/home tags plus the current slug matrix.
 - `video` invalidates video/series/child-dub/home tags; slug-less payloads are valid broad invalidations for Core sync and revalidate the watch layouts.
 - `watch-route-manifest` clears the receiving process's in-memory manifest cache, invalidates the route-manifest tag, and revalidates the watch layouts.
+- `watch-seo-manifest` clears the receiving process's in-memory SEO manifest cache, invalidates the SEO manifest tag, and revalidates the sitemap index plus child sitemap routes.
 
 The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
+
+The SEO sitemap manifest cache in `src/lib/watch-seo-manifest.ts` follows the
+same process-local pattern. Sitemap routes read the cached snapshot and return
+a controlled 503 when no valid snapshot is available; Watch page metadata does
+not depend on this manifest and continues to render without page-head hreflang.
 
 Production proof on 2026-06-10 showed `@forge/web` online in Railway US West behind Cloudflare, live watch HTML served with `cf-cache-status: DYNAMIC`, and authorized `experience`, broad `video`, and `watch-route-manifest` webhooks returning healthy first post-webhook renders. The Railway CLI path available here did not expose exact web replica count.
 

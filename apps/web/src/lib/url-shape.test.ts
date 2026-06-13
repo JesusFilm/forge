@@ -153,6 +153,7 @@ describe("RESERVED_PREFIXES", () => {
     expect(RESERVED_PREFIXES.has("_next")).toBe(true)
     expect(RESERVED_PREFIXES.has(".well-known")).toBe(true)
     expect(RESERVED_PREFIXES.has("robots.txt")).toBe(true)
+    expect(RESERVED_PREFIXES.has("sitemap")).toBe(true)
     expect(RESERVED_PREFIXES.has("sitemap.xml")).toBe(true)
   })
 })

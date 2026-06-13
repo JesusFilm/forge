@@ -1,9 +1,7 @@
 "use client"
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -11,30 +9,22 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { createPortal } from "react-dom"
+import dynamic from "next/dynamic"
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Globe } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { runSearch } from "@/lib/search-actions"
-import { getSearchLanguageOptions } from "@/lib/search-language-actions"
-import type { SearchActionResultSource, SearchResult } from "@/lib/search"
+import type { FloatingSearchControllerProps } from "./FloatingSearchController"
+import { FloatingSearchBar } from "./FloatingSearchBar"
 import {
-  MAX_SEARCH_LANGUAGE_FILTERS,
-  groupSearchLanguagesByRegion,
-  normalizeSearchLanguageEnglishNames,
-  stripLanguageFromSearchQuery,
-  type SearchLanguageCountrySuggestion,
-  type SearchLanguageOption,
-  type SearchLanguageRegionGroup,
-} from "@/lib/search-language"
-import { writeSearchLanguagePreferenceSlug } from "@/lib/search-language-preference-client"
-import { buildSearchUrl } from "@/lib/search-url"
-import { parseWatchPath } from "@/lib/routes"
+  FloatingSearchPinnedContext,
+  type FloatingSearchPinnedContextValue,
+} from "./FloatingSearchContext"
 import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
+import { loadWatchInteraction } from "@/lib/watch-interaction-loader"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_REVEAL_EVENT,
@@ -45,123 +35,39 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 
-import { FloatingSearchBar } from "./FloatingSearchBar"
-import { SearchOverlay } from "./SearchOverlay"
+export {
+  useFloatingSearch,
+  useFloatingSearchPinned,
+} from "./FloatingSearchContext"
+export type {
+  FloatingSearchContextValue,
+  FloatingSearchPinnedContextValue,
+} from "./FloatingSearchContext"
 
 const HEADER_HOVER_HEIGHT_PX = 144
-const SEARCH_PAGE_SIZE = 10
 
-type ActiveSearchSignature = {
-  query: string
-  languageKey: string
-  routeLanguageSlug: string | null
-  resultSource: SearchActionResultSource
-  nextOffset: number
-}
-
-export type FloatingSearchContextValue = {
-  open: boolean
-  closing: boolean
-  query: string
-  results: SearchResult[]
-  displayResults: SearchResult[]
-  exiting: boolean
-  resultsKey: number
-  hasMore: boolean
-  loading: boolean
-  showSkeleton: boolean
-  loadingMore: boolean
-  error: string | null
-  searched: boolean
-  resultSource: SearchActionResultSource | null
-  algoliaSearchEnabled: boolean
-  languageOptions: SearchLanguageOption[]
-  languageGroups: SearchLanguageRegionGroup[]
-  languageCountrySuggestion: SearchLanguageCountrySuggestion | null
-  recommendedLanguage: SearchLanguageOption | null
-  languageOptionsLoading: boolean
-  languageOptionsError: string | null
-  selectedLanguageEnglishNames: string[]
-  selectedLanguageRegionByName: Record<string, string>
-  setOpen: (open: boolean) => void
-  setQuery: (q: string) => void
-  search: (
-    q: string,
-    options?: { languageEnglishNames?: string[] },
-  ) => Promise<void>
-  loadMore: () => Promise<void>
-  toggleSearchLanguage: (
-    option: SearchLanguageOption,
-    regionName?: string,
-  ) => void
-  selectSearchLanguage: (
-    option: SearchLanguageOption,
-    regionName?: string,
-  ) => void
-  clearSearchLanguages: () => void
-  closeAndKeepQuery: () => void
-}
-
-export type FloatingSearchPinnedContextValue = {
-  pinned: boolean
-  playerChromeVisible: boolean
-  searchChromeVisible: boolean
-  searchChromeDimmed: boolean
-  // True while the search overlay is open OR running its close animation.
-  // Watch-page modal coordinators read this to pause/resume the video
-  // alongside their own (download / language / share) modal state.
-  searchOpen: boolean
-}
-
-const FloatingSearchContext = createContext<FloatingSearchContextValue | null>(
-  null,
+const LazyFloatingSearchController = dynamic<FloatingSearchControllerProps>(
+  () =>
+    import("./FloatingSearchController").then((module) => ({
+      default: module.FloatingSearchController,
+    })),
+  { ssr: false },
 )
-const FloatingSearchPinnedContext =
-  createContext<FloatingSearchPinnedContextValue | null>(null)
 
 type HeaderLanguageSwitcherState = {
   visible: boolean
   onClick: (() => void) | null
 }
 
-export function useFloatingSearch(): FloatingSearchContextValue {
-  const ctx = useContext(FloatingSearchContext)
-  if (ctx === null) {
-    throw new Error(
-      "useFloatingSearch must be used inside <FloatingSearchProvider>",
-    )
-  }
-  return ctx
-}
-
-export function useFloatingSearchPinned(): FloatingSearchPinnedContextValue {
-  const ctx = useContext(FloatingSearchPinnedContext)
-  if (ctx === null) {
-    throw new Error(
-      "useFloatingSearchPinned must be used inside <FloatingSearchProvider>",
-    )
-  }
-  return ctx
-}
-
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("FloatingSearch")
-  const tSearchOverlay = useTranslations("SearchOverlay")
-  const router = useRouter()
-  // usePathname() returns the app-relative path (no basePath prefix). The
-  // router.replace() call auto-prefixes basePath, so feeding it
-  // window.location.pathname (which includes basePath) would double-prefix
-  // on every search. usePathname() does NOT force the Full Route Cache
-  // deopt that useSearchParams() would.
   const pathname = usePathname()
 
-  // Open/query state starts false — the URL-hydration effect below seeds it
-  // after mount. Reading useSearchParams() here would force every route under
-  // this layout out of the Full Route Cache, so we trade a one-frame flash of
-  // closed modal for preserved ISR on all pages.
   const [open, setOpenState] = useState<boolean>(false)
   const [closing, setClosing] = useState<boolean>(false)
-  const [query, setQueryState] = useState<string>("")
+  const [query, setQuery] = useState<string>("")
+  const [searchControllerEnabled, setSearchControllerEnabled] = useState(false)
+  const [searchResetToken, setSearchResetToken] = useState(0)
   const [pinned, setPinned] = useState<boolean>(false)
   const [playerChromeVisible, setPlayerChromeVisible] = useState(true)
   const [playerChromeOpacity, setPlayerChromeOpacity] = useState(1)
@@ -178,9 +84,69 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     })
   const [headerHovered, setHeaderHovered] = useState(false)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Whether the modal was opened via URL hydration (vs user click). Gates a
-  // shorter skeleton threshold so the URL-hydrated blank window is less jarring.
-  const hydratedOpenRef = useRef<boolean>(false)
+
+  const setOpen = useCallback((next: boolean) => {
+    if (closingTimerRef.current) {
+      clearTimeout(closingTimerRef.current)
+      closingTimerRef.current = null
+    }
+    if (next) {
+      setClosing(false)
+      setOpenState(true)
+    } else {
+      setClosing(true)
+      closingTimerRef.current = setTimeout(() => {
+        setOpenState(false)
+        setClosing(false)
+        closingTimerRef.current = null
+      }, 200)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (closingTimerRef.current) clearTimeout(closingTimerRef.current)
+    }
+  }, [])
+
+  const enableSearchController = useCallback(() => {
+    setSearchControllerEnabled(true)
+    void loadWatchInteraction("search").catch(() => {})
+  }, [])
+
+  const openSearch = useCallback(() => {
+    enableSearchController()
+    setOpen(true)
+  }, [enableSearchController, setOpen])
+
+  const didHydrateSearchUrlRef = useRef(false)
+  useEffect(() => {
+    if (didHydrateSearchUrlRef.current) return
+    didHydrateSearchUrlRef.current = true
+    if (typeof window === "undefined") return
+
+    const seeded = new URLSearchParams(window.location.search).get("q") ?? ""
+    const trimmed = seeded.slice(0, 200)
+    if (trimmed.length === 0) return
+
+    let cancelled = false
+    const hydrateSearchIntent = () => {
+      if (cancelled) return
+      setQuery(trimmed)
+      enableSearchController()
+      setOpen(true)
+    }
+
+    window.queueMicrotask(hydrateSearchIntent)
+    return () => {
+      cancelled = true
+    }
+  }, [enableSearchController, setOpen])
+
+  useEffect(() => {
+    if (!searchControllerEnabled) return
+    void loadWatchInteraction("search").catch(() => {})
+  }, [searchControllerEnabled])
 
   // Scroll-driven pinned state. Shared between the floating searchbar and
   // the floating logo so they track together. Listener registers only while
@@ -294,575 +260,30 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useLayoutEffect(() => {
-    setPlayerChromeVisible(true)
-    setPlayerChromeOpacity(1)
-    setPlayerPlaybackState({ playing: false, muted: true, preview: false })
-    setHeaderLanguageSwitcher({ visible: false, onClick: null })
-    setHeaderHovered(false)
-  }, [pathname])
-
-  const setOpen = useCallback((next: boolean) => {
-    if (closingTimerRef.current) {
-      clearTimeout(closingTimerRef.current)
-      closingTimerRef.current = null
-    }
-    if (next) {
-      setClosing(false)
-      setOpenState(true)
-    } else {
-      setClosing(true)
-      closingTimerRef.current = setTimeout(() => {
-        setOpenState(false)
-        setClosing(false)
-        closingTimerRef.current = null
-      }, 200)
-    }
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      if (closingTimerRef.current) clearTimeout(closingTimerRef.current)
-    }
-  }, [])
-
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [displayResults, setDisplayResults] = useState<SearchResult[]>([])
-  const [exiting, setExiting] = useState(false)
-  const [resultsKey, setResultsKey] = useState(0)
-  const [hasMore, setHasMore] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [showSkeleton, setShowSkeleton] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [searched, setSearched] = useState(false)
-  const [resultSource, setResultSource] =
-    useState<SearchActionResultSource | null>(null)
-  const [algoliaSearchEnabled, setAlgoliaSearchEnabled] = useState(false)
-  const [languageOptions, setLanguageOptions] = useState<
-    SearchLanguageOption[]
-  >([])
-  const [languageCountrySuggestion, setLanguageCountrySuggestion] =
-    useState<SearchLanguageCountrySuggestion | null>(null)
-  const [recommendedLanguage, setRecommendedLanguage] =
-    useState<SearchLanguageOption | null>(null)
-  const [languageOptionsLoading, setLanguageOptionsLoading] = useState(false)
-  const [languageOptionsError, setLanguageOptionsError] = useState<
-    string | null
-  >(null)
-  const [languageFacets, setLanguageFacets] = useState<Record<string, number>>(
-    {},
-  )
-  const [selectedLanguageEnglishNames, setSelectedLanguageEnglishNames] =
-    useState<string[]>([])
-  const [selectedLanguageRegionByName, setSelectedLanguageRegionByName] =
-    useState<Record<string, string>>({})
-
-  const requestIdRef = useRef(0)
-  const languageOptionsRequestIdRef = useRef(0)
-  const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const loadingMoreRef = useRef(false)
-  const loadMoreRunIdRef = useRef(0)
-  const displayResultsRef = useRef<SearchResult[]>([])
-  const languageOptionsRef = useRef<SearchLanguageOption[]>([])
-  const queryRef = useRef("")
-  const selectedLanguageEnglishNamesRef = useRef<string[]>([])
-  const activeSearchSignatureRef = useRef<ActiveSearchSignature | null>(null)
-  useEffect(() => {
-    displayResultsRef.current = displayResults
-  }, [displayResults])
-  useEffect(() => {
-    languageOptionsRef.current = languageOptions
-  }, [languageOptions])
-  useEffect(() => {
-    selectedLanguageEnglishNamesRef.current = selectedLanguageEnglishNames
-  }, [selectedLanguageEnglishNames])
-
-  const setQuery = useCallback((nextQuery: string) => {
-    queryRef.current = nextQuery
-    setQueryState(nextQuery)
-  }, [])
-
-  // Cancel any pending skeleton timer on unmount.
-  useEffect(() => {
-    return () => {
-      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-    }
-  }, [])
-
-  const [portalReady, setPortalReady] = useState(false)
-  useEffect(() => {
-    setPortalReady(true)
-  }, [])
-
-  const languageGroups = useMemo(
-    () => groupSearchLanguagesByRegion(languageOptions),
-    [languageOptions],
-  )
-  const routeLanguageSlug = useMemo(() => {
-    const parsed = parseWatchPath(pathname)
-    if (
-      parsed.kind === "localized-home" ||
-      parsed.kind === "video" ||
-      parsed.kind === "episode"
-    ) {
-      return parsed.lang
-    }
-    return null
-  }, [pathname])
-
-  const refreshLanguageOptions = useCallback(
-    async (
-      availableLanguageFacets?: Record<string, number>,
-    ): Promise<SearchLanguageOption[]> => {
-      const thisRequest = ++languageOptionsRequestIdRef.current
-      setLanguageOptionsLoading(true)
-      setLanguageOptionsError(null)
-
-      try {
-        const response = await getSearchLanguageOptions({
-          availableLanguageFacets,
-        })
-        if (languageOptionsRequestIdRef.current !== thisRequest) {
-          return response.ok ? response.options : []
-        }
-        setAlgoliaSearchEnabled(response.algoliaEnabled)
-
-        if (response.ok) {
-          setLanguageOptions(response.options)
-          setLanguageCountrySuggestion(response.countrySuggestion)
-          setRecommendedLanguage(response.recommendedLanguage)
-          return response.options
-        }
-
-        setLanguageOptions([])
-        setLanguageCountrySuggestion(null)
-        setRecommendedLanguage(null)
-        setLanguageOptionsError(response.error.message)
-        return []
-      } catch {
-        if (languageOptionsRequestIdRef.current !== thisRequest) return []
-        setLanguageOptions([])
-        setLanguageCountrySuggestion(null)
-        setRecommendedLanguage(null)
-        setLanguageOptionsError("Language options are unavailable.")
-        return []
-      } finally {
-        if (languageOptionsRequestIdRef.current === thisRequest) {
-          setLanguageOptionsLoading(false)
-        }
-      }
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!open) return
-    void refreshLanguageOptions(
-      Object.keys(languageFacets).length > 0 ? languageFacets : undefined,
-    )
-  }, [open, languageFacets, refreshLanguageOptions])
-
-  const maybeSetLanguageFacets = useCallback(
-    (
-      nextLanguageFacets: Record<string, number>,
-      activeLanguageEnglishNames: readonly string[],
-    ): void => {
-      if (activeLanguageEnglishNames.length > 0) return
-      setLanguageFacets(nextLanguageFacets)
-    },
-    [],
-  )
-
-  const search = useCallback(
-    async (
-      q: string,
-      options?: { languageEnglishNames?: string[] },
-    ): Promise<void> => {
-      const trimmed = q.trim()
-      setQuery(q)
-      const activeLanguageEnglishNames =
-        options?.languageEnglishNames ?? selectedLanguageEnglishNamesRef.current
-      const activeLanguageKey = searchLanguageKey(activeLanguageEnglishNames)
-
-      // Bump the request id immediately so any in-flight request (from a prior
-      // call in any branch — exit-animation, Apollo, or clear) fails its
-      // freshness check when it resolves.
-      const thisRequest = ++requestIdRef.current
-      loadMoreRunIdRef.current += 1
-      loadingMoreRef.current = false
-      activeSearchSignatureRef.current = null
-      setLoadingMore(false)
-
-      // URL sync — preserves any existing params (utm_*, etc.) and strips ?q=
-      // when the query is empty. Use usePathname() (app-relative) so
-      // router.replace's auto basePath prefix isn't applied twice.
-      const currentParams =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search)
-          : new URLSearchParams()
-      const nextUrl = buildSearchUrl(pathname, currentParams, trimmed)
-      router.replace(nextUrl as Route)
-
-      if (!trimmed) {
-        if (displayResultsRef.current.length > 0) {
-          setExiting(true)
-          await new Promise<void>((resolve) => setTimeout(resolve, 200))
-          if (requestIdRef.current !== thisRequest) return
-          setExiting(false)
-        }
-        if (requestIdRef.current !== thisRequest) return
-        setResults([])
-        setDisplayResults([])
-        setHasMore(false)
-        setSearched(false)
-        setError(null)
-        setResultSource(null)
-        activeSearchSignatureRef.current = null
-        return
-      }
-
-      if (displayResultsRef.current.length > 0) {
-        setExiting(true)
-        await new Promise<void>((resolve) => setTimeout(resolve, 200))
-        if (requestIdRef.current !== thisRequest) return
-        setExiting(false)
-        setDisplayResults([])
-      }
-
-      setLoading(true)
-      setError(null)
-      setSearched(true)
-      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-      const skeletonThreshold = hydratedOpenRef.current ? 150 : 500
-      skeletonTimerRef.current = setTimeout(() => {
-        if (requestIdRef.current === thisRequest) setShowSkeleton(true)
-      }, skeletonThreshold)
-
-      try {
-        const currentLanguageOptions =
-          languageOptionsRef.current.length > 0
-            ? languageOptionsRef.current
-            : await refreshLanguageOptions(
-                Object.keys(languageFacets).length > 0
-                  ? languageFacets
-                  : undefined,
-              )
-        if (requestIdRef.current !== thisRequest) return
-
-        const data = await runSearch({
-          query: trimmed.slice(0, 200),
-          limit: SEARCH_PAGE_SIZE,
-          offset: 0,
-          languageEnglishNames: activeLanguageEnglishNames,
-          languageOptions: currentLanguageOptions,
-          routeLanguageSlug,
-        })
-
-        if (requestIdRef.current !== thisRequest) return
-
-        if (!data.ok) {
-          setResults([])
-          setDisplayResults([])
-          setHasMore(false)
-          setResultSource(data.resultSource)
-          activeSearchSignatureRef.current = null
-          setError(tSearchOverlay("searchFailed"))
-          setAlgoliaSearchEnabled(data.resultSource === "algolia")
-          if (data.languageFacets) {
-            maybeSetLanguageFacets(
-              data.languageFacets,
-              activeLanguageEnglishNames,
-            )
-          }
-          return
-        }
-
-        const newResults = data.results
-        setResults(newResults)
-        setDisplayResults(newResults)
-        setResultsKey((k) => k + 1)
-        setHasMore(data.hasMore)
-        setResultSource(data.resultSource)
-        activeSearchSignatureRef.current = {
-          query: trimmed.slice(0, 200),
-          languageKey: activeLanguageKey,
-          routeLanguageSlug,
-          resultSource: data.resultSource,
-          nextOffset: data.nextOffset ?? newResults.length,
-        }
-        setAlgoliaSearchEnabled(data.resultSource === "algolia")
-        if (data.languageFacets) {
-          maybeSetLanguageFacets(
-            data.languageFacets,
-            activeLanguageEnglishNames,
-          )
-        }
-      } catch {
-        if (requestIdRef.current === thisRequest) {
-          activeSearchSignatureRef.current = null
-          setError(tSearchOverlay("searchFailed"))
-        }
-      } finally {
-        // Only clear loading state for the winning request — otherwise a
-        // stale response's finally would drop the active spinner mid-fetch.
-        if (requestIdRef.current === thisRequest) {
-          if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-          setShowSkeleton(false)
-          setLoading(false)
-        }
-      }
-    },
-    [
-      languageFacets,
-      maybeSetLanguageFacets,
-      pathname,
-      refreshLanguageOptions,
-      routeLanguageSlug,
-      router,
-      setQuery,
-      tSearchOverlay,
-    ],
-  )
-
-  const loadMore = useCallback(async (): Promise<void> => {
-    const expectedSignature = activeSearchSignatureRef.current
-    if (!expectedSignature) return
-    const currentQuery = queryRef.current.trim().slice(0, 200)
-    const currentLanguageKey = searchLanguageKey(
-      selectedLanguageEnglishNamesRef.current,
-    )
-    if (
-      expectedSignature.query !== currentQuery ||
-      expectedSignature.languageKey !== currentLanguageKey ||
-      expectedSignature.routeLanguageSlug !== routeLanguageSlug ||
-      expectedSignature.resultSource !== resultSource
-    ) {
-      return
-    }
-
-    // Synchronous guard against double-fire before React commits `disabled`.
-    if (loadingMoreRef.current) return
-    loadingMoreRef.current = true
-    const thisLoadMoreRun = ++loadMoreRunIdRef.current
-    setLoadingMore(true)
-    setError(null)
-    // Capture the current search's request id; bail out of the append if a
-    // new search supersedes us mid-fetch.
-    const thisRequest = requestIdRef.current
-    try {
-      const data = await runSearch({
-        query: currentQuery,
-        limit: SEARCH_PAGE_SIZE,
-        offset: expectedSignature.nextOffset,
-        languageEnglishNames: selectedLanguageEnglishNamesRef.current,
-        languageOptions: languageOptionsRef.current,
-        routeLanguageSlug,
-      })
-      if (requestIdRef.current !== thisRequest) return
-      if (data.resultSource !== expectedSignature.resultSource) {
-        setError(tSearchOverlay("loadMoreFailed"))
-        return
-      }
-      if (!data.ok) {
-        setError(tSearchOverlay("loadMoreFailed"))
-        setAlgoliaSearchEnabled(data.resultSource === "algolia")
-        return
-      }
-      setResults((prev) => [...prev, ...data.results])
-      setDisplayResults((prev) => [...prev, ...data.results])
-      setHasMore(data.hasMore)
-      setResultSource(data.resultSource)
-      activeSearchSignatureRef.current = {
-        ...expectedSignature,
-        nextOffset:
-          data.nextOffset ?? expectedSignature.nextOffset + data.results.length,
-      }
-      setAlgoliaSearchEnabled(data.resultSource === "algolia")
-    } catch {
-      if (requestIdRef.current === thisRequest) {
-        setError(tSearchOverlay("loadMoreFailed"))
-      }
-    } finally {
-      if (loadMoreRunIdRef.current === thisLoadMoreRun) {
-        loadingMoreRef.current = false
-        setLoadingMore(false)
-      }
-    }
-  }, [resultSource, routeLanguageSlug, tSearchOverlay])
-
-  const toggleSearchLanguage = useCallback(
-    (option: SearchLanguageOption, regionName?: string): void => {
-      const selected = selectedLanguageEnglishNamesRef.current.some(
-        (language) => language === option.englishName,
-      )
-      if (
-        !selected &&
-        selectedLanguageEnglishNamesRef.current.length >=
-          MAX_SEARCH_LANGUAGE_FILTERS
-      ) {
-        return
-      }
-      const nextLanguages = selected
-        ? selectedLanguageEnglishNamesRef.current.filter(
-            (language) => language !== option.englishName,
-          )
-        : normalizeSearchLanguageEnglishNames([
-            ...selectedLanguageEnglishNamesRef.current,
-            option.englishName,
-          ])
-
-      selectedLanguageEnglishNamesRef.current = nextLanguages
-      setSelectedLanguageEnglishNames(nextLanguages)
-      setSelectedLanguageRegionByName((prev) => {
-        const next = { ...prev }
-        if (selected) {
-          delete next[option.englishName]
-        } else if (regionName) {
-          next[option.englishName] = regionName
-        }
-        return next
-      })
-
-      if (!selected && option.publicSlug) {
-        writeSearchLanguagePreferenceSlug(option.publicSlug)
-      }
-
-      const nextQuery = selected
-        ? query
-        : stripLanguageFromSearchQuery(option.englishName, query)
-      void search(nextQuery, { languageEnglishNames: nextLanguages })
-    },
-    [query, search],
-  )
-
-  const selectSearchLanguage = useCallback(
-    (option: SearchLanguageOption, regionName?: string): void => {
-      const nextLanguages = [option.englishName]
-      selectedLanguageEnglishNamesRef.current = nextLanguages
-      setSelectedLanguageEnglishNames(nextLanguages)
-      setSelectedLanguageRegionByName(
-        regionName ? { [option.englishName]: regionName } : {},
-      )
-
-      if (option.publicSlug) {
-        writeSearchLanguagePreferenceSlug(option.publicSlug)
-      }
-    },
-    [],
-  )
-
-  const clearSearchLanguages = useCallback((): void => {
-    selectedLanguageEnglishNamesRef.current = []
-    setSelectedLanguageEnglishNames([])
-    setSelectedLanguageRegionByName({})
-    if (query.trim().length > 0) {
-      void search(query, { languageEnglishNames: [] })
-    }
-  }, [query, search])
-
-  const closeAndKeepQuery = useCallback(() => {
-    setOpen(false)
-  }, [setOpen])
-
-  // On first client mount, seed state from ?q= in the URL.
-  const didHydrateRef = useRef(false)
-  useEffect(() => {
-    if (didHydrateRef.current) return
-    didHydrateRef.current = true
     if (typeof window === "undefined") return
-    const seeded = new URLSearchParams(window.location.search).get("q") ?? ""
-    const trimmed = seeded.slice(0, 200)
-    if (trimmed.length === 0) return
-    hydratedOpenRef.current = true
-    setQuery(trimmed)
-    setOpenState(true)
-    void search(trimmed)
-  }, [search, setQuery])
+    const frame = window.requestAnimationFrame(() => {
+      setPlayerChromeVisible(true)
+      setPlayerChromeOpacity(1)
+      setPlayerPlaybackState({ playing: false, muted: true, preview: false })
+      setHeaderHovered(false)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [pathname])
 
-  const value = useMemo<FloatingSearchContextValue>(
-    () => ({
-      open,
-      closing,
-      query,
-      results,
-      displayResults,
-      exiting,
-      resultsKey,
-      hasMore,
-      loading,
-      showSkeleton,
-      loadingMore,
-      error,
-      searched,
-      resultSource,
-      algoliaSearchEnabled,
-      languageOptions,
-      languageGroups,
-      languageCountrySuggestion,
-      recommendedLanguage,
-      languageOptionsLoading,
-      languageOptionsError,
-      selectedLanguageEnglishNames,
-      selectedLanguageRegionByName,
-      setOpen,
-      setQuery,
-      search,
-      loadMore,
-      toggleSearchLanguage,
-      selectSearchLanguage,
-      clearSearchLanguages,
-      closeAndKeepQuery,
-    }),
-    [
-      open,
-      closing,
-      query,
-      results,
-      displayResults,
-      exiting,
-      resultsKey,
-      hasMore,
-      loading,
-      showSkeleton,
-      loadingMore,
-      error,
-      searched,
-      resultSource,
-      algoliaSearchEnabled,
-      languageOptions,
-      languageGroups,
-      languageCountrySuggestion,
-      recommendedLanguage,
-      languageOptionsLoading,
-      languageOptionsError,
-      selectedLanguageEnglishNames,
-      selectedLanguageRegionByName,
-      setOpen,
-      setQuery,
-      search,
-      loadMore,
-      toggleSearchLanguage,
-      selectSearchLanguage,
-      clearSearchLanguages,
-      closeAndKeepQuery,
-    ],
-  )
-
-  // Pinned lives on its own context so scroll-rate state updates don't
-  // re-render the modal result grid (up to 20 VideoCards).
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
-  const headerChromeOpacity =
-    headerHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
-  const headerChromeHidden = modalChromeHidden || headerChromeOpacity <= 0
-  const headerChromeDimmed = !headerChromeHidden && headerChromeOpacity < 1
-  const searchChromeVisible = !headerChromeHidden
-  const searchChromeDimmed = headerChromeDimmed
   const headerBackdropHidden = modalChromeHidden || !playerPlaybackState.preview
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
+  const effectiveHeaderHovered = headerHoverZoneActive && headerHovered
+  const headerChromeOpacity =
+    effectiveHeaderHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
+  const headerChromeHidden = modalChromeHidden || headerChromeOpacity <= 0
+  const headerChromeDimmed = !headerChromeHidden && headerChromeOpacity < 1
+  const searchChromeVisible = !headerChromeHidden
+  const searchChromeDimmed = headerChromeDimmed
   const headerCanBrightenLocally = playerChromeOpacity <= 0
   const headerPointerRevealAllowed = playerChromeOpacity < 1
 
@@ -883,7 +304,6 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!headerHoverZoneActive) {
-      setHeaderHovered(false)
       return
     }
 
@@ -922,77 +342,49 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <FloatingSearchContext.Provider value={value}>
-      <FloatingSearchPinnedContext.Provider value={pinnedValue}>
-        <div
-          inert={modalChromeHidden || undefined}
-          aria-hidden={modalChromeHidden || undefined}
-          className={
-            modalChromeHidden
-              ? "blur-[12px] transition-[filter] duration-200"
-              : "transition-[filter] duration-200"
-          }
-        >
-          {children}
-        </div>
-        <div
-          aria-hidden="true"
-          data-testid="floating-header-backdrop"
-          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(6rem+env(safe-area-inset-top,0px))] bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)] transition-opacity duration-300 ease-out md:h-[calc(8rem+env(safe-area-inset-top,0px))] ${
-            headerBackdropHidden ? "opacity-0" : "opacity-100"
-          }`}
-        />
-        <div
-          aria-hidden="true"
-          data-testid="floating-header-hover-zone"
-          onPointerEnter={handleHeaderPointerEnter}
-          className={`fixed inset-x-0 top-0 z-[45] h-[calc(6.75rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] ${
-            headerHoverZoneActive
-              ? "pointer-events-auto"
-              : "pointer-events-none"
-          }`}
-        />
-        <FloatingSearchBar />
-        {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
-          <button
-            type="button"
-            data-testid="floating-header-language-button"
-            onClick={headerLanguageSwitcher.onClick}
-            aria-label={t("changeAudioLanguage")}
-            title={t("changeAudioLanguage")}
-            inert={headerChromeHidden || undefined}
-            aria-hidden={headerChromeHidden || undefined}
-            className={`fixed right-10 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
-              pinned
-                ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
-                : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
-            } ${
-              headerChromeHidden
-                ? "opacity-0 pointer-events-none"
-                : headerChromeDimmed
-                  ? "opacity-30"
-                  : "opacity-100"
-            }`}
-          >
-            <Globe
-              aria-hidden
-              className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
-            />
-          </button>
-        ) : null}
-        <Link
-          href={"/" as Route}
-          aria-label={t("home")}
-          data-testid="floating-header-logo"
+    <FloatingSearchPinnedContext.Provider value={pinnedValue}>
+      <div
+        inert={modalChromeHidden || undefined}
+        aria-hidden={modalChromeHidden || undefined}
+        className={
+          modalChromeHidden
+            ? "blur-[12px] transition-[filter] duration-200"
+            : "transition-[filter] duration-200"
+        }
+      >
+        {children}
+      </div>
+      <div
+        aria-hidden="true"
+        data-testid="floating-header-backdrop"
+        className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(6rem+env(safe-area-inset-top,0px))] bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)] transition-opacity duration-300 ease-out md:h-[calc(8rem+env(safe-area-inset-top,0px))] ${
+          headerBackdropHidden ? "opacity-0" : "opacity-100"
+        }`}
+      />
+      <div
+        aria-hidden="true"
+        data-testid="floating-header-hover-zone"
+        onPointerEnter={handleHeaderPointerEnter}
+        className={`fixed inset-x-0 top-0 z-[45] h-[calc(6.75rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] ${
+          headerHoverZoneActive ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+      />
+      <FloatingSearchBar
+        open={open}
+        closing={closing}
+        query={query}
+        onOpen={openSearch}
+      />
+      {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
+        <button
+          type="button"
+          data-testid="floating-header-language-button"
+          onClick={headerLanguageSwitcher.onClick}
+          aria-label={t("changeAudioLanguage")}
+          title={t("changeAudioLanguage")}
           inert={headerChromeHidden || undefined}
           aria-hidden={headerChromeHidden || undefined}
-          // Clear the search query (and ?q= URL param + cached results) on
-          // click so the home navigation lands on a fresh search bar instead
-          // of carrying the previous query across.
-          onClick={() => {
-            void search("")
-          }}
-          className={`fixed ${WATCH_PAGE_LEFT_RAIL_CLASSES} z-50 flex h-[52px] items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
+          className={`fixed right-10 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
             pinned
               ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
               : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
@@ -1004,25 +396,53 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
                 : "opacity-100"
           }`}
         >
-          <Image
-            src="/watch/images/jesusfilm-sign.svg"
-            alt="JesusFilm"
-            width={70}
-            height={70}
-            unoptimized
-            className="h-auto max-w-[42px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+          <Globe
+            aria-hidden
+            className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
           />
-        </Link>
-        {portalReady && modalChromeHidden
-          ? createPortal(<SearchOverlay />, document.body)
-          : null}
-      </FloatingSearchPinnedContext.Provider>
-    </FloatingSearchContext.Provider>
-  )
-}
-
-function searchLanguageKey(languageEnglishNames: readonly string[]): string {
-  return normalizeSearchLanguageEnglishNames(languageEnglishNames).join(
-    "\u0001",
+        </button>
+      ) : null}
+      <Link
+        href={"/" as Route}
+        aria-label={t("home")}
+        data-testid="floating-header-logo"
+        inert={headerChromeHidden || undefined}
+        aria-hidden={headerChromeHidden || undefined}
+        onClick={() => {
+          setQuery("")
+          setSearchResetToken((token) => token + 1)
+        }}
+        className={`fixed ${WATCH_PAGE_LEFT_RAIL_CLASSES} z-50 flex h-[52px] items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
+          pinned
+            ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+            : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
+        } ${
+          headerChromeHidden
+            ? "opacity-0 pointer-events-none"
+            : headerChromeDimmed
+              ? "opacity-30"
+              : "opacity-100"
+        }`}
+      >
+        <Image
+          src="/watch/images/jesusfilm-sign.svg"
+          alt="JesusFilm"
+          width={70}
+          height={70}
+          unoptimized
+          className="h-auto max-w-[42px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+        />
+      </Link>
+      {searchControllerEnabled ? (
+        <LazyFloatingSearchController
+          open={open}
+          closing={closing}
+          query={query}
+          setOpen={setOpen}
+          setQuery={setQuery}
+          resetToken={searchResetToken}
+        />
+      ) : null}
+    </FloatingSearchPinnedContext.Provider>
   )
 }

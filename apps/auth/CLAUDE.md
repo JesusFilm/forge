@@ -42,6 +42,20 @@ pnpm --filter @forge/auth lint
 pnpm --filter @forge/auth typecheck
 ```
 
+## Agent login handles
+
+Trusted developer environments can mint short-lived email-like login handles
+for local/preview browser testing. Set `AGENT_LOGIN_MINTING_KEY` in Auth for
+the API endpoint, then mint a handle:
+
+```bash
+pnpm --filter @forge/auth mint:agent-handle
+```
+
+Paste the printed handle into the normal Auth email field and click Continue.
+The raw `AGENT_LOGIN_MINTING_KEY` and printed handles are bearer credentials; do
+not commit them, pipe them into durable logs, or paste them into issue/PR text.
+
 ## Deployment
 
 Auth deploys as its own Railway service. `auth.jesusfilm.org` should point to

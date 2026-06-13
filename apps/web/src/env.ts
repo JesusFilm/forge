@@ -62,6 +62,47 @@ function productionDefault(
   return process.env.NODE_ENV === "production" ? productionValue : localValue
 }
 
+function normalizeDatadogEnv(value: string | undefined): string | undefined {
+  const normalized = value?.trim()
+  if (!normalized) return undefined
+
+  switch (normalized.toLowerCase()) {
+    case "production":
+    case "prod":
+      return "prod"
+    case "staging":
+    case "stage":
+      return "stage"
+    case "preview":
+      return "preview"
+    case "development":
+    case "dev":
+      return "development"
+    case "test":
+      return "test"
+    default:
+      return normalized
+  }
+}
+
+function datadogEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
+function datadogVersionFallback(): string | undefined {
+  return (
+    emptyToUndefined(process.env.NEXT_PUBLIC_DATADOG_VERSION) ??
+    emptyToUndefined(process.env.RAILWAY_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.VERCEL_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.GIT_COMMIT_SHA)
+  )
+}
+
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
   ".jesusfilm.org",
   ".railway.app",
@@ -77,6 +118,16 @@ const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS = [
 const ADMIN_GRAPHQL_URL_HOST_REJECT_SET = new Set<string>([
   "auth.jesusfilm.org",
 ])
+
+const DATADOG_SITE_VALUES = [
+  "datadoghq.com",
+  "us3.datadoghq.com",
+  "us5.datadoghq.com",
+  "datadoghq.eu",
+  "ddog-gov.com",
+  "ap1.datadoghq.com",
+  "ap2.datadoghq.com",
+] as const
 
 function optionalPositiveIntDefault(defaultValue: number) {
   return z.preprocess((value) => {
@@ -174,6 +225,16 @@ export const env = createEnv({
     // R19 trigger: drop `video.js` from apps/web after this has been `true`
     // in production for one stable release.
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: booleanEnv(false),
+    // Optional Datadog RUM configuration. Application id + client token gate
+    // initialization; when absent, the client component no-ops so local and
+    // preview environments can boot before Datadog is provisioned.
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_SITE: z
+      .enum(DATADOG_SITE_VALUES)
+      .default("datadoghq.com"),
+    NEXT_PUBLIC_DATADOG_ENV: z.string().default("development"),
+    NEXT_PUBLIC_DATADOG_VERSION: z.string().optional(),
     // U5 — Mux Data env key for the watch-page Mux Player. Optional because
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
@@ -235,6 +296,13 @@ export const env = createEnv({
     YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID:
+      process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN:
+      process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
+    NEXT_PUBLIC_DATADOG_SITE: process.env.NEXT_PUBLIC_DATADOG_SITE,
+    NEXT_PUBLIC_DATADOG_ENV: datadogEnvFallback(),
+    NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },

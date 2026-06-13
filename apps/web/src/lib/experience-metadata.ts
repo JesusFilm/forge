@@ -13,7 +13,6 @@ import {
   localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
 import { getSocialConfig } from "@/lib/social-config"
@@ -70,26 +69,6 @@ function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
   return root
 }
 
-function buildEpisodeCanonicalUrl(
-  seriesSlug: string,
-  episodeSlug: string,
-  pathLocale: string,
-): string {
-  const root = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}`
-  const series = stripHtmlSuffix(seriesSlug)
-  const episode = stripHtmlSuffix(episodeSlug)
-  const locale = stripHtmlSuffix(pathLocale)
-
-  const seriesContentSlug = tryAsContentSlug(series)
-  const episodeContentSlug = tryAsContentSlug(episode)
-  const localeSlug = tryAsLocaleSlug(locale)
-  if (seriesContentSlug && episodeContentSlug && localeSlug) {
-    return `${root}${watchEpisodePath(seriesContentSlug, episodeContentSlug, localeSlug)}`
-  }
-
-  return `${root}/${series}/${episode}/${locale}`
-}
-
 const OG_LOCALE_OVERRIDES: Record<string, string> = {
   en: "en_US",
   pt: "pt_BR",
@@ -144,7 +123,6 @@ export type WatchVideoMetadataModel = {
   noIndex: boolean
   inLanguage: string | null
   durationSeconds: number | null
-  alternatesLanguages?: Record<string, string>
 }
 
 type WatchVideoMetadataOptions = {
@@ -155,37 +133,11 @@ type WatchVideoMetadataOptions = {
   seriesSlug?: string
 }
 
-function buildWatchVideoAlternateLanguages(
-  options: WatchVideoMetadataOptions,
-): Record<string, string> | undefined {
-  const languages: Record<string, string> = {}
-  const episodeSlug = options.video.slug ?? options.routeSlug
-
-  for (const variant of options.video.variants ?? []) {
-    if (variant.published !== true || !variant.hls) continue
-    const slug = variant.language?.slug
-    const bcp47 = variant.language?.bcp47
-    if (!slug || !bcp47 || languages[bcp47]) continue
-
-    languages[bcp47] = options.seriesSlug
-      ? buildEpisodeCanonicalUrl(options.seriesSlug, episodeSlug, slug)
-      : buildCanonicalUrl(options.routeSlug, slug)
-  }
-
-  return Object.keys(languages).length ? languages : undefined
-}
-
 export function buildWatchVideoMetadataModel(
   options: WatchVideoMetadataOptions,
 ): WatchVideoMetadataModel {
   const episodeSlug = options.video.slug ?? options.routeSlug
-  const canonicalUrl = options.seriesSlug
-    ? buildEpisodeCanonicalUrl(
-        options.seriesSlug,
-        episodeSlug,
-        options.pathLocale,
-      )
-    : buildCanonicalUrl(options.routeSlug, options.pathLocale)
+  const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
   const videoTitle = options.video.title || options.routeSlug || "Watch"
   const title = `${videoTitle} ${TITLE_SUFFIX}`
   const description = options.video.description ?? options.video.snippet ?? ""
@@ -223,7 +175,6 @@ export function buildWatchVideoMetadataModel(
       options.selectedVariant.language?.slug ??
       null,
     durationSeconds: options.selectedVariant.duration ?? null,
-    alternatesLanguages: buildWatchVideoAlternateLanguages(options),
   }
 }
 
@@ -265,9 +216,6 @@ export function generateWatchVideoMetadata(
     ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
     alternates: {
       canonical: model.canonicalUrl,
-      ...(model.alternatesLanguages && {
-        languages: model.alternatesLanguages,
-      }),
     },
   }
 }

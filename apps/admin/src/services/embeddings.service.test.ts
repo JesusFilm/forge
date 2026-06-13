@@ -46,6 +46,7 @@ describe("generateExperienceEmbedding", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
@@ -53,6 +54,7 @@ describe("generateExperienceEmbedding", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
@@ -111,12 +113,39 @@ describe("generateExperienceEmbedding", () => {
     expect(body.model).toBe("qwen/qwen3-embedding-8b")
     expect(body.dimensions).toBe(1536)
   })
+
+  it("prefers OPENROUTER_API_PAID_KEY over the legacy OpenRouter key", async () => {
+    process.env.OPENROUTER_API_PAID_KEY = "test-paid-openrouter-key"
+    process.env.OPENROUTER_API_KEY = "test-legacy-openrouter-key"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openrouter.ai/api/v1/embeddings",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          authorization: "Bearer test-paid-openrouter-key",
+        }),
+      }),
+    )
+  })
 })
 
 describe("generateExperienceEmbeddings (batched)", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
@@ -124,6 +153,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
@@ -277,6 +307,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
 
   it("surfaces missing credentials with EmbeddingsBatchError(missing_credentials)", async () => {
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENAI_API_KEY
     const { generateExperienceEmbeddings, EmbeddingsBatchError } =
       await import("./embeddings.service")
@@ -287,6 +318,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
 
   it("does not fall back to OpenAI credentials when OpenRouter is missing", async () => {
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENAI_API_KEY = "test-openai-key"
     process.env.OPENAI_BASE_URL = "https://api.openai.example/v1"
     const fetchMock = vi.fn()
@@ -349,6 +381,7 @@ describe("generateExperienceEmbedding (singular) — back-compat error contract"
   beforeEach(() => {
     vi.resetModules()
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
@@ -356,6 +389,7 @@ describe("generateExperienceEmbedding (singular) — back-compat error contract"
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL

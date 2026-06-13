@@ -100,7 +100,7 @@
     "fallbackBody": "Начните личный разговор с человеком, который готов выслушать.",
     "questionsShort": "Вопросы",
     "questions": "Вопросы по теме",
-    "askYours": "Задать свой вопрос",
+    "askYours": "Ваш вопрос",
     "chatWithPerson": "Поговорить с человеком",
     "askBibleQuestion": "Задать вопрос о Библии"
   },
@@ -195,7 +195,7 @@
     "clearLanguages": "Clear"
   },
   "HeroPlayer": {
-    "playWithSound": "Воспроизвести со звуком",
+    "playWithSound": "Смотреть",
     "tapToUnmute": "Включить звук"
   },
   "ExperienceSkeleton": {

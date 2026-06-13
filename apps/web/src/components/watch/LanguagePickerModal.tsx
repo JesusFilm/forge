@@ -24,7 +24,12 @@ import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+  watchVideoPath,
+} from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
@@ -34,6 +39,7 @@ export type LanguagePickerModalProps = {
   open: boolean
   variants: LanguagePickerVariant[]
   currentLanguageSlug: string
+  collectionSlug?: string | null
   videoSlug: string
   /** Read `currentTime` for the `?t=` clamp on language switch. */
   playerRef: RefObject<MuxPlayerRef | null>
@@ -265,6 +271,7 @@ export function LanguagePickerModal({
   open,
   variants,
   currentLanguageSlug,
+  collectionSlug = null,
   videoSlug,
   playerRef,
   onClose,
@@ -506,7 +513,14 @@ export function LanguagePickerModal({
         } else {
           const rawT = playerRef.current?.currentTime
           const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
-          router.push(watchVideoPath(slug, lang, { t, autoplay: true }))
+          const collection = collectionSlug
+            ? tryAsContentSlug(collectionSlug)
+            : null
+          router.push(
+            collection
+              ? watchEpisodePath(collection, slug, lang, { t, autoplay: true })
+              : watchVideoPath(slug, lang, { t, autoplay: true }),
+          )
         }
       }
     }
@@ -518,6 +532,7 @@ export function LanguagePickerModal({
     draftSubtitleSlug,
     isDirty,
     kind,
+    collectionSlug,
     languageDirty,
     onClose,
     onSubtitleChange,

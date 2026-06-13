@@ -202,9 +202,10 @@ type EmbeddingProvider = {
 }
 
 function selectProvider(): EmbeddingProvider {
-  if (env.OPENROUTER_API_KEY) {
+  const openRouterApiKey = env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
+  if (openRouterApiKey) {
     return {
-      apiKey: env.OPENROUTER_API_KEY,
+      apiKey: openRouterApiKey,
       model: OPENROUTER_EMBEDDING_MODEL,
       url: "https://openrouter.ai/api/v1/embeddings",
       dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
@@ -212,7 +213,7 @@ function selectProvider(): EmbeddingProvider {
   }
   throw new EmbeddingsBatchError(
     "missing_credentials",
-    "OPENROUTER_API_KEY is required for embedding generation",
+    "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required for embedding generation",
   )
 }
 

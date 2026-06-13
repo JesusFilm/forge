@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react"
 
-import { useFloatingSearch } from "./FloatingSearchProvider"
+import { useFloatingSearch } from "./FloatingSearchContext"
 import { FloatingSearchFieldInput } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"

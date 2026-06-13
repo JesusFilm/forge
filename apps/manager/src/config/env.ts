@@ -71,6 +71,11 @@ export const env = createEnv({
       .int()
       .positive()
       .default(120_000),
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(300_000),
 
     // Smart Crop (plan 2026-06-09-002). All optional opt-in scaffolding —
     // default deploys must not require these. The smart-crop job creation
@@ -155,6 +160,8 @@ export const env = createEnv({
     MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS:
+      process.env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS,
     CROP_WORKER_BASE_URL: process.env.CROP_WORKER_BASE_URL,
     CROP_WORKER_API_KEY: process.env.CROP_WORKER_API_KEY,
     MASTRA_SMART_CROP_TIMEOUT_MS: process.env.MASTRA_SMART_CROP_TIMEOUT_MS,

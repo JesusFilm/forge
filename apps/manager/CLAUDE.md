@@ -2,7 +2,7 @@
 
 ## What this app does
 
-AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; Manager only supplies source artifacts.
+AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; subtitle translation/retiming execution also belongs to Mastra. Manager supplies source artifacts, owns job state, and keeps Mux subtitle sync.
 
 ## Source
 
@@ -472,9 +472,10 @@ manager's `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Full checklist
 | ADMIN_GRAPHQL_URL                      | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)              |
 | ADMIN_EMBED_TRIGGER_API_KEY            | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                  |
 | ADMIN_TRIGGER_API_KEYS                 | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2)  |
-| MASTRA_BASE_URL                        | Internal Mastra runtime URL for transcript embedding launches                   |
+| MASTRA_BASE_URL                        | Internal Mastra runtime URL for transcript embedding and subtitle launches      |
 | MASTRA_SERVICE_API_KEY                 | Bearer key Manager presents to Mastra service routes                            |
 | MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS | Optional timeout for the Manager to Mastra transcript launch call               |
+| MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS  | Optional timeout for the Manager to Mastra subtitle enrichment launch call      |
 | CROP_WORKER_BASE_URL                   | crop-worker base URL (optional — enables Smart Crop)                            |
 | CROP_WORKER_API_KEY                    | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)      |
 | MASTRA_SMART_CROP_TIMEOUT_MS           | Optional per-call timeout for Mastra smart-crop launches (default 120000)       |

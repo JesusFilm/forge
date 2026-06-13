@@ -100,7 +100,7 @@
     "fallbackBody": "與願意傾聽的人開始一次私下交流。",
     "questionsShort": "問題",
     "questions": "相關問題",
-    "askYours": "提出你的問題",
+    "askYours": "提問",
     "chatWithPerson": "與真人聊天",
     "askBibleQuestion": "提出聖經問題"
   },
@@ -195,7 +195,7 @@
     "clearLanguages": "Clear"
   },
   "HeroPlayer": {
-    "playWithSound": "開啟聲音播放",
+    "playWithSound": "立即觀看",
     "tapToUnmute": "取消靜音"
   },
   "ExperienceSkeleton": {

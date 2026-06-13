@@ -5,7 +5,7 @@ import type {
   MuxSyncOverrideAuditEntry,
   MuxSyncReport,
 } from "@/types/job"
-import type { LanguageResult } from "@/services/subtitleTranslation/types"
+import type { LanguageResult } from "@/services/mastra-subtitle-enrichment"
 import { readArtifact } from "@/services/storage"
 
 type MuxTrackInfo = {

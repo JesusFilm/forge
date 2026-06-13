@@ -626,7 +626,7 @@ export default async function ExperienceEditorPage({
       canPublish={selectedLocale.status !== "PUBLISHED"}
       hasPublishedVersion={selectedLocale.publishedAt !== null}
       calendarDate={new Date().toISOString().slice(0, 10)}
-      watchOrigin={env.WEB_CANONICAL_ORIGIN}
+      watchOrigin={env.WATCH_CANONICAL_ORIGIN}
       initialValues={{
         localeId: selectedLocale.id,
         title: selectedLocale.title ?? "",

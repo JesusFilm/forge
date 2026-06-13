@@ -5,7 +5,8 @@
  *
  * Covers:
  *  - Apply disabled until selection differs from current
- *  - Apply navigates via watchVideoPath: `/{videoSlug}.html/{newSlug}.html?t={currentTime}&autoplay=1`
+ *  - Apply navigates via watchVideoPath or contextual watchEpisodePath when
+ *    collectionSlug is present.
  *  - Apply writes the language-preference cookie BEFORE router.push
  *  - Close does nothing besides onClose
  *  - Draft resets when the modal reopens
@@ -172,6 +173,7 @@ function renderModal({
   currentLanguageSlug = "english",
   variants,
   videoSlug = "the-call",
+  collectionSlug,
   playerRef = makePlayerRef(42),
   onClose = vi.fn(),
   kind,
@@ -184,6 +186,7 @@ function renderModal({
   currentLanguageSlug?: string
   variants: LanguagePickerVariant[]
   videoSlug?: string
+  collectionSlug?: string | null
   playerRef?: ReturnType<typeof makePlayerRef>
   onClose?: () => void
   kind?: "video" | "series"
@@ -198,6 +201,7 @@ function renderModal({
         open={open}
         variants={variants}
         currentLanguageSlug={currentLanguageSlug}
+        collectionSlug={collectionSlug}
         videoSlug={videoSlug}
         playerRef={playerRef}
         onClose={onClose}
@@ -832,6 +836,30 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
     })
     expect(routerPushMock).toHaveBeenCalledWith(
       "/the-call.html/spanish.html?t=42&autoplay=1",
+    )
+  })
+
+  it("kind='video' preserves collection context when collectionSlug is present", () => {
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      collectionSlug: "jesus",
+      videoSlug: "jesus-is-brought-to-pilate",
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/jesus.html/jesus-is-brought-to-pilate/spanish.html?t=42&autoplay=1",
     )
   })
 

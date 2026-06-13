@@ -127,6 +127,17 @@ function makeRussianDub(
   })
 }
 
+function makeCarouselMuxPlaybackIds(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    documentId: "video-1",
+    parents: [],
+    children: [],
+    ...overrides,
+  }
+}
+
 describe("resolveWatchPage", () => {
   afterEach(() => {
     queryMock.mockReset()
@@ -231,7 +242,7 @@ describe("resolveWatchPage", () => {
     expect(result.error?.message).toBe("No experience found")
   })
 
-  it("prefers an explicit experience when the slug doesn't match the template slug", async () => {
+  it("falls back to an explicit experience when no route video exists", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
@@ -245,6 +256,11 @@ describe("resolveWatchPage", () => {
               title: "Single Video Template",
             },
           },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: null,
         },
       })
       .mockResolvedValueOnce({
@@ -262,7 +278,7 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "christmas")
 
-    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(queryMock).toHaveBeenCalledTimes(3)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "experience",
@@ -272,7 +288,7 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("falls back to the default template for plain video slugs", async () => {
+  it("uses the default template for video slugs before same-slug experience lookup", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
@@ -286,11 +302,6 @@ describe("resolveWatchPage", () => {
               title: "Single Video Template",
             },
           },
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          experienceBySlug: null,
         },
       })
       .mockResolvedValueOnce({
@@ -351,6 +362,7 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "jesus")
 
+    expect(queryMock).toHaveBeenCalledTimes(3)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "video-template",
@@ -380,9 +392,6 @@ describe("resolveWatchPage", () => {
             defaultTemplateExperience: null,
           },
         },
-      })
-      .mockResolvedValueOnce({
-        data: { experienceBySlug: null },
       })
       .mockResolvedValueOnce({
         data: {
@@ -419,7 +428,6 @@ describe("resolveWatchPage", () => {
           },
         },
       })
-      .mockResolvedValueOnce({ data: { experienceBySlug: null } })
       .mockResolvedValueOnce({
         data: {
           // Empty variants — selectPlayableVariant returns null, so
@@ -609,6 +617,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -617,7 +630,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     const result = await resolveWatchVideoBySlug("jesus", "russian")
 
-    expect(queryMock).toHaveBeenCalledTimes(3)
+    expect(queryMock).toHaveBeenCalledTimes(4)
     const primaryCall = queryMock.mock.calls[1][0] as {
       variables: {
         locale: string
@@ -672,6 +685,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -684,6 +702,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { videoSlug: "jesus" },
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
       { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+      { languageSlug: "russian", videoSlug: "jesus" },
       { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU broad")
@@ -763,6 +782,20 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds({
+            children: [
+              {
+                child: {
+                  documentId: "child-1",
+                  muxPlaybackId: "mux-child-1",
+                },
+              },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -775,10 +808,12 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { videoSlug: "jesus" },
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
       { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+      { languageSlug: "russian", videoSlug: "jesus" },
       { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.video.children[0]?.title).toBe("The Beginning RU")
+    expect(result?.video.children[0]?.muxPlaybackId).toBe("mux-child-1")
   })
 
   it("falls back to English questions without losing localized title or dub selection", async () => {
@@ -842,6 +877,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
+          videoBySlug: makeCarouselMuxPlaybackIds(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
           videoDub: makeRussianDub(),
         },
       })
@@ -855,6 +895,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
       { locale: "ru", languageSlug: null, videoSlug: "jesus" },
       { locale: "en", languageSlug: null, videoSlug: "jesus" },
+      { languageSlug: "russian", videoSlug: "jesus" },
       { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU")
