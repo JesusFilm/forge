@@ -87,6 +87,7 @@ type VideoTitleLocale = {
 }
 
 const MANAGER_ENRICHMENT_VIDEO_MAX_IDS = 100
+const CLOUDFLARE_IMAGE_DELIVERY_HOST = "imagedelivery.net"
 
 function assertManagerReadAccess(user: Principal | null) {
   if (!hasPermission(user, "read:manager-read-models")) {
@@ -136,6 +137,26 @@ function countsForVideo(
   videoId: string,
 ): ManagerCoverageCounts {
   return countsByVideoId.get(videoId) ?? { human: 0, ai: 0 }
+}
+
+function normalizeManagerVideoImageUrl(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+
+  try {
+    const url = new URL(trimmed)
+    if (url.hostname !== CLOUDFLARE_IMAGE_DELIVERY_HOST) return trimmed
+
+    const pathParts = url.pathname.split("/").filter(Boolean)
+    if (pathParts.length === 2) {
+      url.pathname = `${url.pathname.replace(/\/+$/, "")}/public`
+    }
+    return url.toString()
+  } catch {
+    return trimmed
+  }
 }
 
 function titleFrom(
@@ -425,7 +446,7 @@ export class ManagerReadModelService {
       label: video.label ?? null,
       slug: video.slug ?? null,
       aiMetadata: video.aiMetadata ?? null,
-      imageUrl: video.images[0]?.url ?? null,
+      imageUrl: normalizeManagerVideoImageUrl(video.images[0]?.url),
       parentDocumentIds: video.parents.map((parent) => parent.parentId),
       coverage: {
         subtitles: countsForVideo(subtitleCountsByVideoId, video.id),

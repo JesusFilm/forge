@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (June 4, 2026)
 
-- **Total tickets:** 190
-- **Complete:** 115
+- **Total tickets:** 191
+- **Complete:** 116
 - **In progress:** 9
 - **Not started:** 21
 - **Blocked:** 43
@@ -180,6 +180,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-166](platform/feat-166-manager-coverage-region-image-assets.md)            | Manager coverage region image assets                         | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-167](platform/feat-167-manager-coverage-video-aggregation.md)              | Manager coverage video aggregation                           | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-168](platform/feat-168-manager-coverage-title-locale-preference.md)        | Manager coverage title locale preference                     | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
+| [feat-187](platform/feat-187-manager-coverage-thumbnail-url-normalization.md)    | Manager coverage thumbnail URL normalization                 | vlad      | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-169](platform/feat-169-watch-language-picker-search-ranking.md)            | Watch language picker search ranking                         | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-175](platform/feat-175-watch-cold-path-performance-follow-up.md)           | Watch cold-path performance follow-up                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-176](platform/feat-176-watch-hero-poster-idle-autoplay.md)                 | Watch hero poster-first idle autoplay                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
