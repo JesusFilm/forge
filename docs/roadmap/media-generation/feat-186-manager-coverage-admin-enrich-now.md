@@ -10,7 +10,8 @@ depends_on:
   - "feat-031"
   - "feat-084"
   - "feat-184"
-blocks: []
+blocks:
+  - "feat-188"
 tags:
   - "manager"
   - "coverage"

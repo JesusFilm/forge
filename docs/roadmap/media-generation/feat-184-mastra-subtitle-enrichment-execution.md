@@ -9,7 +9,8 @@ duration: 2
 depends_on:
   - "feat-031"
   - "feat-129"
-blocks: []
+blocks:
+  - "feat-188"
 tags:
   - "manager"
   - "mastra"

@@ -193,6 +193,19 @@ export type TranslationLanguageResult = {
   error?: string
 }
 
+export type MastraStepCorrelation = {
+  runId: string
+  status?: string
+  reason?: string
+  retryable?: boolean
+  provider?: string
+  model?: string
+  chunks?: number
+  totalTokens?: number
+  sourceContentHash?: string
+  languages?: string[]
+}
+
 export type SceneEmbeddingSyncStatus =
   | "source_ready"
   | "skipped_empty"
@@ -292,6 +305,7 @@ export type TranscriptionRoutingReport = {
 
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
+  mastra?: MastraStepCorrelation
   // Live crop-worker render progress (0..1) + human-readable message,
   // written throttled by the smart-crop workflow steps.
   progress?: number

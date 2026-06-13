@@ -1,7 +1,7 @@
 ---
 title: "Fix Manager job state and Mastra correlation"
 type: fix
-status: active
+status: completed
 date: 2026-06-13
 ---
 
