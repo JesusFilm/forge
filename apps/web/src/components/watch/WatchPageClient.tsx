@@ -11,11 +11,9 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
 import {
-  consumeWatchChapterPosterBridgeIntent,
   WATCH_CHAPTER_POSTER_BLACKOUT_MS,
   WATCH_CHAPTER_POSTER_REVEAL_MS,
   type WatchChapterNavigationIntent,
-  writeWatchChapterPosterBridgeIntent,
 } from "@/components/watch/chapter-navigation"
 // Modals are user-triggered (download / language picker / share). Split
 // them into separate chunks so they don't ship with the hero-critical
@@ -280,9 +278,6 @@ export function WatchPageClient({
     useState<WatchChapterNavigationIntent | null>(null)
   const [chapterCoverTransition, setChapterCoverTransition] =
     useState<ChapterCoverTransition | null>(null)
-  const [routePosterBridgeKey, setRoutePosterBridgeKey] = useState<
-    string | null
-  >(null)
   const validPendingChapter =
     pendingChapter != null &&
     pendingChapter.languageSlug === currentLanguageSlug &&
@@ -327,7 +322,6 @@ export function WatchPageClient({
       const routeWarmPromise = warmChapterRoute(intent.href)
       void routeWarmPromise.finally(() => {
         if (cancelled) return
-        writeWatchChapterPosterBridgeIntent(intent)
         router.push(intent.href as Route, { scroll: window.scrollY > 1 })
       })
     }, delay)
@@ -337,20 +331,6 @@ export function WatchPageClient({
       window.clearTimeout(timer)
     }
   }, [chapterCoverTransition, router, warmChapterRoute])
-
-  useEffect(() => {
-    const matched = consumeWatchChapterPosterBridgeIntent({
-      languageSlug: currentLanguageSlug,
-      targetVideoDocumentId: video.documentId,
-    })
-    if (matched) {
-      setRoutePosterBridgeKey(`${video.documentId}:${variant.documentId}`)
-    } else {
-      setRoutePosterBridgeKey(null)
-    }
-
-    return undefined
-  }, [currentLanguageSlug, variant.documentId, video.documentId])
 
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
@@ -626,7 +606,6 @@ export function WatchPageClient({
         pendingChapter={validPendingChapter}
         coverBlackoutKey={coverBlackoutKey}
         coverBlackoutPhase={coverBlackoutPhase}
-        routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={handleChapterNavigateIntent}
       />
 

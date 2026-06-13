@@ -153,14 +153,12 @@ black, fade the clicked chapter poster in, and pulse the visible cover while
 the route is pending. The real player source, Mux metadata, downloads,
 subtitles, and share data still remain route-owned until navigation commits.
 
-If the route-owned poster can differ from the clicked carousel thumbnail, carry
-a separate one-shot destination bridge intent across the route boundary. The
-optimistic chapter payload should still self-invalidate when
-`currentVideoDocumentId` changes; do not keep it alive just to animate the
-destination. Instead, write a small client-only intent for normal clicks and
-consume it only when the destination video id, language slug, and href match.
-That lets the committed route poster reveal out of black without preserving
-stale title, card, playback, or share state.
+Do not carry a separate destination black-bridge intent across the route
+boundary. The optimistic chapter payload should self-invalidate when
+`currentVideoDocumentId` changes, and the committed route-owned poster should
+settle without another black overlay. A post-route black bridge creates a
+visible double transition: current media to black, clicked cover reveal, then
+the landed route dims from black again.
 
 When the requested order is "current player to black, then title/cover swap,"
 do not let `next/link` commit the route immediately for normal clicks. Keep the
