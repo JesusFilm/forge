@@ -11,8 +11,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
-  resolveWatchVideoBySlugMock,
-  resolveSeriesBySlugMock,
+  resolveWatchRouteBySlugMock,
   resolveSeriesEpisodeBySlugMock,
   resolveWatchExperiencePageMock,
   resolveWatchPageMock,
@@ -32,8 +31,7 @@ const {
   isWatchQuestionPanelEnabledMock,
   getInitialSubtitleTranscriptMock,
 } = vi.hoisted(() => ({
-  resolveWatchVideoBySlugMock: vi.fn(),
-  resolveSeriesBySlugMock: vi.fn(),
+  resolveWatchRouteBySlugMock: vi.fn(),
   resolveSeriesEpisodeBySlugMock: vi.fn(),
   resolveWatchExperiencePageMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
@@ -70,8 +68,7 @@ vi.mock("@/lib/content", async () => {
     await vi.importActual<typeof import("@/lib/content")>("@/lib/content")
   return {
     ...actual,
-    resolveWatchVideoBySlug: resolveWatchVideoBySlugMock,
-    resolveSeriesBySlug: resolveSeriesBySlugMock,
+    resolveWatchRouteBySlug: resolveWatchRouteBySlugMock,
     resolveSeriesEpisodeBySlug: resolveSeriesEpisodeBySlugMock,
     resolveWatchExperiencePage: resolveWatchExperiencePageMock,
     resolveWatchPage: resolveWatchPageMock,
@@ -140,8 +137,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
-  resolveWatchVideoBySlugMock.mockReset()
-  resolveSeriesBySlugMock.mockReset()
+  resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
   resolveWatchPageMock.mockReset()
@@ -295,6 +291,30 @@ function makeSeriesResult(slug = "storyclubs") {
   }
 }
 
+function mockRouteVideo(result: ReturnType<typeof makeWatchVideoResult>) {
+  resolveWatchRouteBySlugMock.mockResolvedValue({
+    kind: "video",
+    ...result,
+  })
+  return result
+}
+
+function mockRouteSeries(
+  result:
+    | ReturnType<typeof makeWatchVideoResult>
+    | ReturnType<typeof makeSeriesResult>,
+) {
+  resolveWatchRouteBySlugMock.mockResolvedValue({
+    kind: "series",
+    ...result,
+  })
+  return result
+}
+
+function mockRouteNone() {
+  resolveWatchRouteBySlugMock.mockResolvedValue({ kind: "none" })
+}
+
 function makeEpisodeResult(
   variantLang: { slug: string; bcp47: string; name: string } = {
     slug: "english",
@@ -424,7 +444,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     expect(resolveWatchExperiencePageMock).toHaveBeenCalledWith("en", "easter")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
 
@@ -445,7 +465,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(watchHomePageMock).toHaveBeenCalled()
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
     expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
   })
 
   it("canonicalizes one-segment language-home metadata to the public language URL", async () => {
@@ -481,7 +501,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(notFoundMock).toHaveBeenCalledTimes(1)
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
@@ -512,9 +532,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
 describe("Catch-all routing — metadata for playable watch pages", () => {
   it("uses resolved video data for two-segment metadata without page-head hreflang", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     const metadata = await generateMetadata({
       params: Promise.resolve({
@@ -550,7 +568,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     })
     expect(metadata.alternates).not.toHaveProperty("languages")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
@@ -573,9 +591,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     const metadata = await generateMetadata({
       params: Promise.resolve({
@@ -595,7 +611,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
         },
       ],
     })
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
@@ -616,8 +632,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult("easter"))
+    mockRouteSeries(makeSeriesResult("easter"))
 
     const metadata = await generateMetadata({
       params: Promise.resolve({
@@ -632,11 +647,30 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       title: "StoryClubs | Jesus Film Project",
       url: "https://www.jesusfilm.org/watch/easter.html/english.html",
     })
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("easter", "english")
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+  })
+
+  it("uses lightweight fallback metadata when watch route resolution throws", async () => {
+    resolveWatchRouteBySlugMock.mockRejectedValue(
+      new Error("You are trying to access 'videoBySlug' too often"),
+    )
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: ["easter.html", "english.html"],
+      }),
+    })
+
+    expect(metadata.title).toBe("easter | Jesus Film Project")
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/easter.html/english.html",
+    )
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 
@@ -672,29 +706,22 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
 })
 
 describe("Catch-all routing — series branch (2-seg)", () => {
-  it("renders SeriesPageClient when video resolver returns a COLLECTION-labeled record", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+  it("renders SeriesPageClient when route resolver returns a COLLECTION-labeled record", async () => {
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("storyclubs", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    expect(resolveSeriesBySlugMock).not.toHaveBeenCalled()
   })
 
   it("renders SeriesPageClient when label is 'series' (defensive OR)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("series"),
-    )
+    mockRouteSeries(makeWatchVideoResult("series"))
     await render2Seg("any-series", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
 
   it("renders WatchPageClient when label is non-series (regression guard)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
     await render2Seg("jesus", "english")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
@@ -715,7 +742,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       initialTranscript as never,
     )
     const watchVideoResult = makeWatchVideoResult("featureFilm")
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus", "english")
 
@@ -744,7 +771,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     watchVideoResult.video.title = "Story < Clubs"
     watchVideoResult.video.description = "Story < Clubs description"
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("storyclubs", "english")
 
@@ -764,11 +791,8 @@ describe("Catch-all routing — series branch (2-seg)", () => {
   })
 
   it("404s bcp47 catalog keys in public audio slots", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
     await expect(render2Seg("jesus", "en")).rejects.toThrow("NEXT_NOT_FOUND")
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
   })
 
   it("404s unknown public audio slugs before content or experience lookup", async () => {
@@ -777,7 +801,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     )
 
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
   })
 
   it("keeps the YouVersion Bible Quotes panel disabled by default", async () => {
@@ -786,7 +810,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     ;(
       watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
     ).bibleCitations = bibleCitations
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus.html", "english.html")
 
@@ -826,7 +850,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     ;(
       watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
     ).bibleCitations = bibleCitations
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus.html", "english.html")
 
@@ -861,7 +885,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     ;(
       watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
     ).bibleCitations = bibleCitations
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus.html", "english.html")
 
@@ -879,9 +903,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
     isWatchCtaTextCopyEnabledMock.mockResolvedValue(true)
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     await render2Seg("jesus.html", "english.html")
 
@@ -897,9 +919,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
   it("passes the LaunchDarkly question panel flag to WatchPageClient when enabled", async () => {
     isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     await render2Seg("jesus.html", "english.html")
 
@@ -928,14 +948,12 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
     await render2Seg("easter", "english")
     expect(seriesPageClientMock).not.toHaveBeenCalled()
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchQuestionPanelMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
@@ -955,9 +973,7 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("easter", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
@@ -978,16 +994,13 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(
-      makeSeriesResult("storyclubs-no-trailer"),
-    )
+    mockRouteSeries(makeSeriesResult("storyclubs-no-trailer"))
 
     await render2Seg("storyclubs-no-trailer", "english")
 
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs-no-trailer",
       "english",
     )
@@ -996,8 +1009,7 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
 
   it("renders the gated question panel for curated watch experiences when no video or series resolves", async () => {
     isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(null)
+    mockRouteNone()
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -1023,16 +1035,14 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       undefined,
     )
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("easter", "english")
   })
 
   it("falls through to ExperienceEmpty when Experience has no blocks", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(null)
+    mockRouteNone()
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -1042,27 +1052,24 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
     })
     await render2Seg("x", "english")
     expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith("x", "english")
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("x", "english")
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith("x", "english")
   })
 })
 
 describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () => {
-  it("falls through to resolveSeriesBySlug when video resolver returns null", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
+  it("renders a trailerless series when the route resolver returns one", async () => {
+    mockRouteSeries(makeSeriesResult())
     await render2Seg("storyclubs-no-trailer", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs-no-trailer",
       "english",
     )
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
 
-  it("404s when both resolvers return null and watchPage reports missing", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(null)
+  it("404s when route resolver returns none and watchPage reports missing", async () => {
+    mockRouteNone()
     resolveWatchPageMock.mockResolvedValue({
       data: null,
       error: { message: "No experience found" },
@@ -1080,7 +1087,7 @@ describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () 
 describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () => {
   it("passes selectedVariant in trailer-mode series rendering", async () => {
     const watchVideo = makeWatchVideoResult("collection")
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
+    mockRouteSeries(watchVideo)
     await render2Seg("storyclubs", "english")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
@@ -1088,8 +1095,7 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
   })
 
   it("passes selectedVariant=null in static-mode (trailerless) series rendering", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
+    mockRouteSeries(makeSeriesResult())
     await render2Seg("storyclubs-no-trailer", "english")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBeNull()
@@ -1102,15 +1108,14 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
       bcp47: "es",
       name: "Spanish, Castilian",
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
+    mockRouteSeries(watchVideo)
     await render2Seg("storyclubs", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.locale).toBe("spanish-castilian")
   })
 
   it("passes raw slug-form locale in static-mode (trailerless) too", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
+    mockRouteSeries(makeSeriesResult())
     await render2Seg("storyclubs-no-trailer", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.locale).toBe("spanish-castilian")
@@ -1119,11 +1124,9 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
 
 describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
   it("strips .html from slug and locale params before dispatch (canonical shape)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("storyclubs.html", "english.html")
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
@@ -1132,7 +1135,7 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
   })
 
   it("handles .html suffix with slug-form locale (spanish-castilian.html)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteSeries(
       makeWatchVideoResult("collection", {
         slug: "spanish-castilian",
         bcp47: "es",
@@ -1140,7 +1143,7 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
       }),
     )
     await render2Seg("storyclubs.html", "spanish-castilian.html")
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "spanish-castilian",
     )
@@ -1149,11 +1152,9 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
   })
 
   it("still accepts bare-shape input (transitional)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("storyclubs", "english")
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
@@ -1163,7 +1164,7 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
 describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-seg)", () => {
   it("renders Spanish UI chrome when URL locale is 'spanish-castilian'", async () => {
     // Non-series record so WatchPageClient receives the locale prop.
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "spanish-castilian",
         bcp47: "es-ES",
@@ -1182,7 +1183,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
   })
 
   it("renders Portuguese UI chrome for portuguese-brazil + portuguese-mozambique", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "portuguese-brazil",
         bcp47: "pt",
@@ -1195,7 +1196,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
   })
 
   it("renders French UI chrome for french-african (ISO 639-3 fallback)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "french-african",
         bcp47: "fra",
@@ -1211,7 +1212,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
   it("falls back to DEFAULT_LOCALE='en' when language family has no generated catalog", async () => {
     // Aari is a valid public audio language, but it is outside the
     // official-language inventory catalog rollout.
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "aari",
         bcp47: "aiw",
@@ -1494,7 +1495,7 @@ describe("Catch-all routing — unknown shape", () => {
       }),
     })
     await expect(element).rejects.toThrow("NEXT_NOT_FOUND")
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 })
