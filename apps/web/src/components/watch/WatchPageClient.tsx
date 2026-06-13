@@ -152,6 +152,7 @@ type WatchPageClientProps = {
    * links round-trip cleanly.
    */
   languageSlug?: string
+  collectionSlug?: string | null
   /**
    * Validated ISO locale ("en" | "es" | ...) from the URL `[locale]` segment.
    * Threaded into `BibleQuotesSection` so the wldeh/bible-api fetch and
@@ -236,6 +237,7 @@ export function WatchPageClient({
   variant,
   video,
   languageSlug,
+  collectionSlug = null,
   locale,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
@@ -646,6 +648,7 @@ export function WatchPageClient({
           open={modalState === "language"}
           variants={languageOptionsState.variants}
           currentLanguageSlug={currentLanguageSlug}
+          collectionSlug={collectionSlug}
           videoSlug={videoSlug}
           playerRef={playerRef}
           onClose={closeModal}

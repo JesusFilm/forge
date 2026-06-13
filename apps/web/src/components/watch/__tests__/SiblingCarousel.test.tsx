@@ -246,10 +246,10 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.className).not.toContain("after:border-4")
     expect(active!.className).toContain("focus-visible:outline-white/80")
     expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
-    // Canonical 2-segment `.html` shape `/{slug}.html/{locale}.html`,
-    // emitted by the `watchVideoPath` builder.
+    // Contextual 3-segment shape keeps chapter navigation inside the
+    // collection instead of resolving by the child slug alone.
     expect(active!.getAttribute("data-href")).toBe(
-      "/child-3-slug.html/english.html",
+      "/jesus-collection.html/child-3-slug/english.html",
     )
     const caption = active!.querySelector(
       "[data-testid='sibling-carousel-caption']",
@@ -307,9 +307,9 @@ describe("SiblingCarousel — happy path", () => {
     expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
   })
 
-  it("routes a child through watchVideoPath to the canonical `.html` 2-segment shape", () => {
-    // Builder contract: slug `magdalena` + locale `english` →
-    // `/magdalena.html/english.html` (no manual encodeURIComponent, no cast).
+  it("routes a child through the contextual collection shape", () => {
+    // Builder contract: parent `jesus-collection` + child `magdalena`
+    // + locale `english` → `/jesus-collection.html/magdalena/english.html`.
     const block: WatchSiblingCarouselBlock = {
       kind: "SiblingCarousel",
       canonicalParent: {
@@ -333,9 +333,11 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(active!.tagName).toBe("A")
     expect(active!.getAttribute("data-href")).toBe(
-      "/magdalena.html/english.html",
+      "/jesus-collection.html/magdalena/english.html",
     )
-    expect(active!.getAttribute("href")).toBe("/magdalena.html/english.html")
+    expect(active!.getAttribute("href")).toBe(
+      "/jesus-collection.html/magdalena/english.html",
+    )
   })
 
   it("makes the clicked chapter card current while navigation is pending", () => {
@@ -346,10 +348,10 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     const target = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
     )
     const previousCurrent = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-href='/child-1-slug.html/english.html']",
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
     )
 
     expect(target).not.toBeNull()
@@ -403,7 +405,7 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     const target = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
     )
 
     const event = new MouseEvent("click", {
@@ -418,7 +420,7 @@ describe("SiblingCarousel — happy path", () => {
     expect(event.defaultPrevented).toBe(true)
     expect(onChapterNavigateIntent).toHaveBeenCalledTimes(1)
     expect(onChapterNavigateIntent).toHaveBeenCalledWith({
-      href: "/child-2-slug.html/english.html",
+      href: "/jesus-collection.html/child-2-slug/english.html",
       languageSlug: "english",
       sourceVideoDocumentId: "child-1",
       targetVideoDocumentId: "child-2",
@@ -438,7 +440,7 @@ describe("SiblingCarousel — happy path", () => {
           block={block}
           languageSlug="english"
           pendingNavigation={{
-            href: "/child-3-slug.html/english.html",
+            href: "/jesus-collection.html/child-3-slug/english.html",
             languageSlug: "english",
             sourceVideoDocumentId: "child-1",
             targetVideoDocumentId: "child-3",
@@ -452,10 +454,10 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     const previousCurrent = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-href='/child-1-slug.html/english.html']",
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
     )
     const target = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-href='/child-3-slug.html/english.html']",
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-3-slug/english.html']",
     )
 
     expect(previousCurrent!.getAttribute("data-active")).toBe("false")
@@ -488,7 +490,7 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     const target = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-href='/child-2-slug.html/english.html']",
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
     )
 
     act(() => {
@@ -525,7 +527,7 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     const current = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-href='/child-1-slug.html/english.html']",
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
     )
 
     act(() => {
@@ -557,9 +559,10 @@ describe("SiblingCarousel — happy path", () => {
       const href = item.getAttribute("data-href") ?? ""
       // basePath auto-prepends; in-app hrefs MUST NOT include /watch/ literal.
       expect(href.startsWith("/watch/")).toBe(false)
-      // Canonical 2-segment `.html` shape — child slug then locale, no
-      // parent segment.
-      expect(href).toMatch(/^\/child-\d+-slug\.html\/english\.html$/)
+      // Contextual 3-segment shape — parent slug, child slug, then locale.
+      expect(href).toMatch(
+        /^\/jesus-collection\.html\/child-\d+-slug\/english\.html$/,
+      )
       expect(href.endsWith("/english.html")).toBe(true)
     }
   })
@@ -681,7 +684,7 @@ describe("SiblingCarousel — edge cases", () => {
     )
     expect(active).not.toBeNull()
     expect(active!.getAttribute("data-href")).toBe(
-      "/child-12-slug.html/english.html",
+      "/jesus-collection.html/child-12-slug/english.html",
     )
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
