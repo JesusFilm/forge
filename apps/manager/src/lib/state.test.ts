@@ -194,6 +194,50 @@ describe("admin job event publishing", () => {
     expect(publishJobEventMock).toHaveBeenCalledWith(updatedJob)
   })
 
+  it("normalizes admin-mode update variables before serialization", async () => {
+    adminUpdateJobMock.mockImplementation(
+      async (_id: string, updates: Record<string, unknown>) => ({
+        ...buildGraphqlJob("job-10"),
+        ...updates,
+      }),
+    )
+
+    await updateJob("job-10", {
+      status: "completed",
+      currentStep: undefined,
+      completedAt: undefined,
+      artifacts: {
+        materialization: {
+          kind: "metadata",
+          data: {
+            sourceLanguageId: "529",
+            sourceLanguageCode: "en",
+            resolvedTargetLanguageCodes: ["es"],
+          },
+        },
+      },
+    })
+
+    expect(adminUpdateJobMock).toHaveBeenCalledWith("job-10", {
+      status: "completed",
+      currentStep: null,
+      completedAt: null,
+      artifacts: {
+        materialization: {
+          kind: "metadata",
+          data: {
+            sourceLanguageId: "529",
+            sourceLanguageCode: "en",
+            resolvedTargetLanguageCodes: ["es"],
+          },
+        },
+      },
+      sourceLanguageId: "529",
+      sourceLanguageCode: "en",
+      resolvedTargetLanguageCodes: ["es"],
+    })
+  })
+
   it("publishes the merged job after mergeJobArtifacts succeeds", async () => {
     adminGetJobMock.mockResolvedValueOnce({
       ...buildGraphqlJob("job-11"),
@@ -432,6 +476,59 @@ describe("toJobRecord", () => {
     // Wrong-typed fields are dropped; an all-invalid payload reads back as
     // undefined details.
     expect(record.steps[1]?.details).toBeUndefined()
+  })
+
+  it("preserves allowlisted Mastra step diagnostics on read-back", () => {
+    const record = toJobRecord({
+      documentId: "job-mastra",
+      muxAssetId: "asset-1",
+      muxPlaybackId: "playback-1",
+      languages: [],
+      status: "running",
+      currentStep: "embeddings",
+      retries: 0,
+      createdAt: "2026-06-13T00:00:00.000Z",
+      updatedAt: "2026-06-13T00:01:00.000Z",
+      startedAt: "2026-06-13T00:00:10.000Z",
+      completedAt: null,
+      artifacts: {},
+      errors: [],
+      steps: [
+        {
+          name: "embeddings",
+          status: "completed",
+          retries: 0,
+          startedAt: "2026-06-13T00:00:10.000Z",
+          finishedAt: "2026-06-13T00:00:20.000Z",
+          error: null,
+          details: {
+            mastra: {
+              runId: "run-1",
+              status: "created",
+              provider: "openai",
+              model: "text-embedding-3-small",
+              chunks: 4,
+              totalTokens: 123,
+              sourceContentHash: "sha256:abc",
+              transcript: "must not round-trip",
+              requestBody: { secret: true },
+            },
+          },
+        },
+      ],
+    } as unknown as Parameters<typeof toJobRecord>[0])
+
+    expect(record.steps[0]?.details).toEqual({
+      mastra: {
+        runId: "run-1",
+        status: "created",
+        provider: "openai",
+        model: "text-embedding-3-small",
+        chunks: 4,
+        totalTokens: 123,
+        sourceContentHash: "sha256:abc",
+      },
+    })
   })
 
   it("promotes the related CMS video document id when present", () => {
