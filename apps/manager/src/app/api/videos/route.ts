@@ -54,8 +54,10 @@ export async function GET(request: Request) {
     function toVideoItem(video: CmsVideoCoverage) {
       return {
         id: String(video.coreId ?? video.documentId),
+        coreId: video.coreId ?? null,
         title:
           video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
+        slug: video.slug ?? null,
         imageUrl: video.imageUrl,
         label: video.label ?? "unknown",
         coverage: {
@@ -86,7 +88,9 @@ export async function GET(request: Request) {
 
     const collections: Array<{
       id: string
+      coreId: string | null
       title: string
+      slug: string | null
       imageUrl: string | null
       label: string
       labelDisplay: string
@@ -106,7 +110,9 @@ export async function GET(request: Request) {
 
       collections.push({
         id: parentItem.id,
+        coreId: parentItem.coreId,
         title: parentItem.title,
+        slug: parentItem.slug,
         imageUrl: parentItem.imageUrl,
         label: parentItem.label,
         labelDisplay:

@@ -13454,3 +13454,53 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   object-fit: cover;
   background: var(--ds-line, #e7dfd2);
 }
+
+.smart-crop-video-search {
+  max-width: 520px;
+}
+
+.smart-crop-video-search-icon {
+  vertical-align: -1px;
+}
+
+.smart-crop-picker-results {
+  max-height: 280px;
+  overflow: auto;
+}
+
+.smart-crop-picker-results .jobs-table {
+  min-width: 680px;
+}
+
+.smart-crop-picker-row-issue {
+  opacity: 0.65;
+}
+
+.smart-crop-picker-video-button {
+  align-items: center;
+}
+
+.smart-crop-picker-thumb {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 48px;
+  height: 27px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--ds-line);
+}
+
+.smart-crop-picker-title {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+
+.smart-crop-picker-slug {
+  overflow-wrap: anywhere;
+}
+
+.smart-crop-selected-video {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
