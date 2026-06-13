@@ -242,7 +242,7 @@ export function BibleQuotesSection({
                     variant="pill"
                     nativeButton={false}
                     data-testid="watch-bible-quotes-promo-cta"
-                    className={`${WATCH_PILL_BUTTON_CLASS} self-start`}
+                    className={`${WATCH_PILL_BUTTON_CLASS} max-w-full self-start whitespace-normal text-center leading-tight break-words`}
                     render={
                       <a
                         href={JOIN_BIBLE_STUDY_URL}

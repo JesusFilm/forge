@@ -150,6 +150,9 @@ describe("BibleQuotesSection — promo CTA", () => {
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(cta!.className).toContain(token)
     }
+    expect(cta!.className).toContain("max-w-full")
+    expect(cta!.className).toContain("whitespace-normal")
+    expect(cta!.className).toContain("break-words")
   })
 })
 
