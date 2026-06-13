@@ -19,13 +19,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
-const { routerPushMock, writePreferredLanguageSlugMock } = vi.hoisted(() => ({
-  routerPushMock: vi.fn(),
-  writePreferredLanguageSlugMock: vi.fn(),
-}))
+const { routerPrefetchMock, routerPushMock, writePreferredLanguageSlugMock } =
+  vi.hoisted(() => ({
+    routerPrefetchMock: vi.fn(),
+    routerPushMock: vi.fn(),
+    writePreferredLanguageSlugMock: vi.fn(),
+  }))
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: routerPushMock }),
+  useRouter: () => ({
+    prefetch: routerPrefetchMock,
+    push: routerPushMock,
+  }),
 }))
 
 vi.mock("@/lib/language-preference-client", () => ({
@@ -43,6 +48,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  routerPrefetchMock.mockReset()
   routerPushMock.mockReset()
   writePreferredLanguageSlugMock.mockReset()
   container = document.createElement("div")
@@ -248,7 +254,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(apply.disabled).toBe(false)
   })
 
-  it("Apply writes the cookie BEFORE calling router.push, then closes", () => {
+  it("Apply writes the cookie BEFORE calling router.push and keeps the modal open while switching", () => {
     const onClose = vi.fn()
     renderModal({ open: true, variants: baseVariants, onClose })
 
@@ -273,7 +279,13 @@ describe("LanguagePickerModal — globe overlay", () => {
       writePreferredLanguageSlugMock.mock.invocationCallOrder[0]!
     const pushOrder = routerPushMock.mock.invocationCallOrder[0]!
     expect(writeOrder).toBeLessThan(pushOrder)
-    expect(onClose).toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    const apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.disabled).toBe(true)
+    expect(apply.textContent).toContain("Switching...")
   })
 
   it("uses t=0 when the player ref is null", () => {
@@ -820,6 +832,39 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
     expect(writePreferredLanguageSlugMock).toHaveBeenCalledTimes(1)
   })
 
+  it("clears the switching state when the current language catches up", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+
+    let apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.textContent).toContain("Switching...")
+
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      currentLanguageSlug: "spanish",
+    })
+
+    apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.textContent).toContain("Apply")
+    expect(apply.disabled).toBe(true)
+  })
+
   it("kind='video' (default) appends ?t and autoplay=1", () => {
     renderModal({ open: true, variants: baseVariants })
     act(() => {
@@ -916,8 +961,91 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
         '[data-testid="watch-language-picker-apply"]',
       ) as HTMLButtonElement
       expect(apply.disabled).toBe(false)
+      expect(apply.textContent).toContain("Apply")
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe("LanguagePickerModal — selective language prefetch", () => {
+  it("prefetches the selected target language path once", () => {
+    renderModal({ open: true, variants: baseVariants })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+
+    expect(routerPrefetchMock).toHaveBeenCalledTimes(1)
+    expect(routerPrefetchMock).toHaveBeenCalledWith(
+      "/the-call.html/spanish.html?t=42&autoplay=1",
+    )
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanishAgain = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanishAgain.click()
+    })
+
+    expect(routerPrefetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not prefetch the current language or invalid target paths", () => {
+    renderModal({ open: true, variants: baseVariants })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const english = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "english",
+    )!
+    act(() => {
+      english.click()
+    })
+    expect(routerPrefetchMock).not.toHaveBeenCalled()
+
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      videoSlug: "bad slug",
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+
+    expect(routerPrefetchMock).not.toHaveBeenCalled()
+  })
+
+  it("swallows prefetch failures", async () => {
+    routerPrefetchMock.mockRejectedValueOnce(new Error("prefetch failed"))
+    renderModal({ open: true, variants: baseVariants })
+
+    await act(async () => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    await act(async () => {
+      spanish.click()
+    })
+
+    expect(routerPrefetchMock).toHaveBeenCalledTimes(1)
   })
 })
