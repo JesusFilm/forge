@@ -3,14 +3,16 @@
 // Smart Crop dashboard screen: two creation forms (canonical / localized) and
 // a polling jobs table. Plan 2026-06-09-002 "UI".
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Crop, Languages, RefreshCw } from "lucide-react"
+import { Crop, Languages, RefreshCw, Search } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
+import type { SmartCropVideoResolution } from "@/app/api/smart-crop/videos/[coreId]/route"
 import type { JobRecord, SmartCropCropMode } from "@/types/job"
 import { getSmartCropJobSummary } from "./smart-crop-presenter"
 
 const SMART_CROP_POLL_INTERVAL_MS = 5_000
+const VIDEO_PICKER_RESULT_LIMIT = 40
 
 const CROP_MODES: SmartCropCropMode[] = [
   "auto",
@@ -27,6 +29,67 @@ type RequestStatus =
 
 type SmartCropScreenProps = {
   initialJobs: JobRecord[]
+}
+
+type VideoPickerItem = {
+  id: string
+  coreId: string | null
+  title: string
+  slug: string | null
+  imageUrl: string | null
+  label: string
+}
+
+type VideosApiItem = VideoPickerItem
+
+type VideosApiResponse = {
+  collections: Array<VideosApiItem & { videos: VideosApiItem[] }>
+  standalone: VideosApiItem[]
+}
+
+function flattenVideoPickerItems(
+  payload: VideosApiResponse,
+): VideoPickerItem[] {
+  const byId = new Map<string, VideoPickerItem>()
+  const add = (item: VideosApiItem) => {
+    if (!byId.has(item.id)) {
+      byId.set(item.id, {
+        id: item.id,
+        coreId: item.coreId,
+        title: item.title,
+        slug: item.slug,
+        imageUrl: item.imageUrl,
+        label: item.label,
+      })
+    }
+  }
+
+  for (const collection of payload.collections ?? []) {
+    add(collection)
+    for (const video of collection.videos ?? []) {
+      add(video)
+    }
+  }
+  for (const video of payload.standalone ?? []) {
+    add(video)
+  }
+
+  return [...byId.values()].sort((left, right) =>
+    left.title.localeCompare(right.title),
+  )
+}
+
+function describeVideoResolutionIssue(
+  reason: SmartCropVideoResolution["reason"],
+): string {
+  switch (reason) {
+    case "missing_mux_asset":
+      return "No Mux asset"
+    case "invalid_mux_asset":
+      return "Invalid Mux asset"
+    default:
+      return "Cannot use this video"
+  }
 }
 
 function formatUpdatedAt(iso: string): string {
@@ -109,12 +172,120 @@ function FormStatus({ status }: { status: RequestStatus }) {
 }
 
 function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
+  const [videos, setVideos] = useState<VideoPickerItem[] | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [query, setQuery] = useState("")
+  const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [rowIssues, setRowIssues] = useState<Record<string, string>>({})
+  const [selectedVideo, setSelectedVideo] = useState<{
+    coreId: string
+    title: string
+    slug: string | null
+    muxAssetId: string
+  } | null>(null)
   const [muxAssetId, setMuxAssetId] = useState("")
   const [assetId, setAssetId] = useState("")
   const [playbackId, setPlaybackId] = useState("")
   const [cropMode, setCropMode] = useState<SmartCropCropMode>("auto")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState<RequestStatus>({ type: "idle" })
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const response = await apiFetch("/api/videos", {
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          setLoadFailed(true)
+          return
+        }
+        const payload = (await response.json()) as VideosApiResponse
+        setVideos(flattenVideoPickerItems(payload))
+      } catch {
+        if (!controller.signal.aborted) setLoadFailed(true)
+      }
+    })()
+    return () => controller.abort()
+  }, [])
+
+  const filteredVideos = useMemo(() => {
+    if (!videos) return []
+    const needle = query.trim().toLowerCase()
+    if (needle.length === 0) return []
+
+    return videos
+      .filter((video) =>
+        [video.title, video.slug ?? "", video.coreId ?? "", video.id].some(
+          (value) => value.toLowerCase().includes(needle),
+        ),
+      )
+      .slice(0, VIDEO_PICKER_RESULT_LIMIT)
+  }, [query, videos])
+
+  const resolveVideo = useCallback(async (video: VideoPickerItem) => {
+    if (!video.coreId) {
+      setRowIssues((current) => ({
+        ...current,
+        [video.id]: "No Core ID",
+      }))
+      return
+    }
+
+    setResolvingId(video.id)
+    try {
+      const response = await apiFetch(
+        `/api/smart-crop/videos/${encodeURIComponent(video.coreId)}`,
+        { cache: "no-store" },
+      )
+      const payload = (await response.json().catch(() => ({}))) as
+        | SmartCropVideoResolution
+        | { error?: string; reason?: string }
+
+      if (!response.ok) {
+        const failure = payload as { error?: string; reason?: string }
+        setRowIssues((current) => ({
+          ...current,
+          [video.id]:
+            failure.error ??
+            `Could not resolve video (${failure.reason ?? response.status}).`,
+        }))
+        return
+      }
+
+      const resolution = payload as SmartCropVideoResolution
+      if (!resolution.eligible || !resolution.muxAssetId) {
+        setRowIssues((current) => ({
+          ...current,
+          [video.id]: describeVideoResolutionIssue(resolution.reason),
+        }))
+        return
+      }
+
+      setMuxAssetId(resolution.muxAssetId)
+      setSelectedVideo({
+        coreId: resolution.coreId,
+        title: video.title,
+        slug: video.slug,
+        muxAssetId: resolution.muxAssetId,
+      })
+      setQuery("")
+      setStatus({ type: "idle" })
+      setRowIssues((current) => {
+        const next = { ...current }
+        delete next[video.id]
+        return next
+      })
+    } catch {
+      setRowIssues((current) => ({
+        ...current,
+        [video.id]: "Could not resolve video",
+      }))
+    } finally {
+      setResolvingId(null)
+    }
+  }, [])
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -147,12 +318,129 @@ function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
       <div className="jobs-card-header">
         <h2 className="jobs-card-title">Canonical crop plan</h2>
       </div>
+      <label className="jobs-field smart-crop-video-search">
+        <div className="small jobs-field-label">
+          <Search
+            size={12}
+            aria-hidden="true"
+            className="smart-crop-video-search-icon"
+          />{" "}
+          Video search
+        </div>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="jobs-input"
+          placeholder="Title or slug"
+        />
+      </label>
+
+      {loadFailed ? (
+        <p className="jobs-error-text">Could not load the video library.</p>
+      ) : query.trim().length > 0 && videos === null ? (
+        <p className="small jobs-empty-state">Loading video library...</p>
+      ) : query.trim().length > 0 && filteredVideos.length === 0 ? (
+        <p className="small jobs-empty-state">
+          No videos match <span>{query.trim()}</span>.
+        </p>
+      ) : query.trim().length > 0 ? (
+        <div className="jobs-table-wrap smart-crop-picker-results">
+          <table className="table jobs-table">
+            <thead>
+              <tr>
+                <th>Video</th>
+                <th>Type</th>
+                <th>Core ID</th>
+                <th aria-label="Resolution" />
+              </tr>
+            </thead>
+            <tbody>
+              {filteredVideos.map((video) => {
+                const issue = rowIssues[video.id]
+                const isResolving = resolvingId === video.id
+                return (
+                  <tr
+                    key={video.id}
+                    className={
+                      issue ? "smart-crop-picker-row-issue" : undefined
+                    }
+                  >
+                    <td>
+                      <button
+                        type="button"
+                        className="jobs-step-artifact-link smart-crop-picker-video-button"
+                        disabled={resolvingId !== null}
+                        onClick={() => void resolveVideo(video)}
+                        title={issue ?? `Use ${video.title}`}
+                      >
+                        {video.imageUrl ? (
+                          // Keep admin-sourced URLs in an img src, not CSS.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            className="smart-crop-picker-thumb"
+                            src={video.imageUrl}
+                            alt=""
+                            aria-hidden="true"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span
+                            className="smart-crop-picker-thumb"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span className="smart-crop-picker-title">
+                          <span className="jobs-step-artifact-label">
+                            {video.title}
+                          </span>
+                          {video.slug ? (
+                            <span className="small smart-crop-picker-slug">
+                              {video.slug}
+                            </span>
+                          ) : null}
+                        </span>
+                      </button>
+                    </td>
+                    <td>
+                      <span className="jobs-language-badge">{video.label}</span>
+                    </td>
+                    <td>{video.coreId ?? "n/a"}</td>
+                    <td>
+                      {isResolving ? (
+                        <RefreshCw
+                          className="icon is-spinning"
+                          aria-hidden="true"
+                          size={14}
+                        />
+                      ) : issue ? (
+                        <span className="jobs-error-text small">{issue}</span>
+                      ) : null}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {selectedVideo ? (
+        <p className="small smart-crop-selected-video">
+          Selected {selectedVideo.title}
+          {selectedVideo.slug ? ` / ${selectedVideo.slug}` : ""} /{" "}
+          {selectedVideo.muxAssetId}
+        </p>
+      ) : null}
+
       <div className="grid cols-2 jobs-form-grid">
         <label className="jobs-field">
           <div className="small jobs-field-label">Mux Asset ID</div>
           <input
             value={muxAssetId}
-            onChange={(e) => setMuxAssetId(e.target.value)}
+            onChange={(e) => {
+              setMuxAssetId(e.target.value)
+              setSelectedVideo(null)
+            }}
             required
             className="jobs-input"
           />
