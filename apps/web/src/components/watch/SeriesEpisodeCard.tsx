@@ -6,7 +6,11 @@ import { Play } from "lucide-react"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+} from "@/lib/routes"
 
 type Episodes = NonNullable<ResolvedSeriesBySlug["video"]["children"]>
 type Episode = NonNullable<Episodes[number]>
@@ -15,6 +19,7 @@ type SeriesEpisodeCardProps = {
   episode: Episode
   index: number
   languageSlug: string
+  parentSlug: string
   // Backdrop URL surfaced via data-backdrop-url so the parent grid can
   // delegate pointer/focus events at the container level instead of
   // attaching per-card handlers (avoids 20+ rerenders during keyboard
@@ -39,12 +44,14 @@ export function SeriesEpisodeCard({
   episode,
   index,
   languageSlug,
+  parentSlug,
   backdropUrl,
 }: SeriesEpisodeCardProps) {
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
+  const parent = tryAsContentSlug(parentSlug)
   const lang = tryAsLocaleSlug(languageSlug)
-  // Episodes link as standalone videos: canonical two-segment shape.
-  const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+  const href =
+    parent && slug && lang ? watchEpisodePath(parent, slug, lang) : undefined
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
   // Per-chapter runtime now arrives precomputed as a single Int
   // (admin's Video.durationSeconds — the primary playable dub's runtime)

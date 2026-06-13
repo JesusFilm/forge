@@ -20,7 +20,6 @@ import {
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
-  watchVideoPath,
 } from "@/lib/routes"
 import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
 import type { WatchChapterNavigationIntent } from "./chapter-navigation"
@@ -197,10 +196,8 @@ export function SiblingCarousel({
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
             const href =
-              slug && lang
-                ? parentSlug
-                  ? watchEpisodePath(parentSlug, slug, lang)
-                  : watchVideoPath(slug, lang)
+              parentSlug && slug && lang
+                ? watchEpisodePath(parentSlug, slug, lang)
                 : undefined
             const isPending =
               validPendingNavigation != null &&

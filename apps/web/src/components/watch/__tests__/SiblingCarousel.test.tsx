@@ -181,34 +181,34 @@ function makeBlock(
 }
 
 const pilatePageChapterSlugs = [
-  "triumphal-entry",
-  "jesus-cleanses-the-temple",
-  "jesus-teaches-in-the-temple",
-  "judas-agrees-to-betray-jesus",
-  "the-last-supper",
-  "jesus-prays-in-gethsemane",
-  "jesus-is-arrested",
-  "jesus-before-caiaphas",
-  "peter-denies-jesus",
-  "jesus-is-condemned-by-the-council",
-  "judas-hangs-himself",
-  "jesus-is-brought-to-pilate",
-  "jesus-is-brought-before-herod",
-  "jesus-is-sentenced",
-  "jesus-is-scourged-and-mocked",
-  "jesus-is-brought-to-pilate-again",
+  "triumphal-entry-and-results",
+  "last-supper",
+  "betrayal-and-denial-foretold",
+  "jesus-promises-the-holy-spirit",
+  "the-arrest-of-jesus-and-peter-denial",
+  "my-kingdom-is-not-of-this-world",
   "jesus-sentenced-to-be-crucified",
+  "the-crucifixion-of-jesus",
+  "jesus-is-alive",
+  "doubting-thomas",
+  "miraculous-catch",
+  "do-you-love-me",
+  "upper-room-teaching",
+  "jesus-is-betrayed-and-arrested",
+  "jesus-is-mocked-and-questioned",
+  "jesus-is-brought-to-pilate",
+  "jesus-is-brought-to-herod",
+  "jesus-is-sentenced",
   "jesus-carries-his-cross",
-  "jesus-is-nailed-to-the-cross",
   "jesus-is-crucified",
-  "jesus-dies-on-the-cross",
+  "sign-on-the-cross",
+  "crucified-convicts",
+  "my-last-day",
+  "death-of-jesus",
   "jesus-is-buried",
-  "the-tomb-is-guarded",
+  "angels-at-the-tomb",
   "the-tomb-is-empty",
-  "jesus-appears-to-mary",
   "resurrected-jesus-appears",
-  "jesus-appears-to-his-disciples",
-  "jesus-commissions-his-followers",
   "invitation-to-know-jesus-personally",
 ]
 
@@ -278,9 +278,8 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.className).not.toContain("after:border-4")
     expect(active!.className).toContain("focus-visible:outline-white/80")
     expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
-    // Contextual 3-segment `.html` shape
-    // `/{parent}.html/{slug}/{locale}.html`, emitted by the
-    // `watchEpisodePath` builder.
+    // Contextual 3-segment shape keeps chapter navigation inside the
+    // collection instead of resolving by the child slug alone.
     expect(active!.getAttribute("data-href")).toBe(
       "/jesus-collection.html/child-3-slug/english.html",
     )
@@ -340,10 +339,9 @@ describe("SiblingCarousel — happy path", () => {
     expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
   })
 
-  it("routes a child through watchEpisodePath to preserve collection context", () => {
-    // Builder contract: parent `jesus-collection` + slug `magdalena` +
-    // locale `english` → `/jesus-collection.html/magdalena/english.html`
-    // (no manual encodeURIComponent, no cast).
+  it("routes a child through the contextual collection shape", () => {
+    // Builder contract: parent `jesus-collection` + child `magdalena`
+    // + locale `english` → `/jesus-collection.html/magdalena/english.html`.
     const block: WatchSiblingCarouselBlock = {
       kind: "SiblingCarousel",
       canonicalParent: {
@@ -372,23 +370,6 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.getAttribute("href")).toBe(
       "/jesus-collection.html/magdalena/english.html",
     )
-  })
-
-  it("falls back to the standalone watch path without a usable parent slug", () => {
-    const block = makeBlock(3, 0, "")
-
-    act(() => {
-      root.render(<SiblingCarousel block={block} languageSlug="english" />)
-    })
-
-    const active = container.querySelector(
-      "[data-testid='sibling-carousel-item'][data-active='true']",
-    )
-    expect(active!.tagName).toBe("A")
-    expect(active!.getAttribute("data-href")).toBe(
-      "/child-1-slug.html/english.html",
-    )
-    expect(active!.getAttribute("href")).toBe("/child-1-slug.html/english.html")
   })
 
   it("preserves the Anticipate collection segment for all 29 Pilate page chapters", () => {
@@ -658,8 +639,7 @@ describe("SiblingCarousel — happy path", () => {
       const href = item.getAttribute("data-href") ?? ""
       // basePath auto-prepends; in-app hrefs MUST NOT include /watch/ literal.
       expect(href.startsWith("/watch/")).toBe(false)
-      // Contextual 3-segment `.html` shape — parent collection, child slug,
-      // then locale.
+      // Contextual 3-segment shape — parent slug, child slug, then locale.
       expect(href).toMatch(
         /^\/jesus-collection\.html\/child-\d+-slug\/english\.html$/,
       )
