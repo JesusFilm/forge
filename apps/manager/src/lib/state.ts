@@ -8,6 +8,12 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
+import {
+  buildShortsMetadataArtifact,
+  getShortsReport,
+  mergeShortsReport,
+  type ShortsReportPatch,
+} from "@/lib/shorts-report"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -704,6 +710,26 @@ export async function updateStepStatus(
   return next
 }
 
+// Field-level merge of the shorts report entry INSIDE the per-job write
+// lock: the CURRENT persisted entry is re-read at write time and the patch
+// is layered onto it via mergeShortsReport, so callers holding a stale
+// snapshot cannot clobber concurrent writers. Two races this closes:
+// a draft save (patching ONLY draftVersion) racing a render workflow must
+// never revert the workflow-owned phase, and a workflow persist landing
+// after a multi-minute step must not erase an interim draftVersion mirror.
+export async function mergeShortsReportEntry(
+  jobId: string,
+  patch: ShortsReportPatch,
+): Promise<JobRecord | null> {
+  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
+  const next = previous.then(() => doMergeShortsReportEntry(jobId, patch))
+  jobUpdateLocks.set(
+    jobId,
+    next.catch(() => {}),
+  )
+  return next
+}
+
 async function doMergeJobArtifacts(
   jobId: string,
   artifacts: JobArtifactManifest,
@@ -713,6 +739,22 @@ async function doMergeJobArtifacts(
 
   return updateJob(jobId, {
     artifacts: mergeArtifactEntries(job.artifacts, artifacts),
+  })
+}
+
+async function doMergeShortsReportEntry(
+  jobId: string,
+  patch: ShortsReportPatch,
+): Promise<JobRecord | null> {
+  const job = await getJob(jobId)
+  if (!job) return null
+
+  const merged = mergeShortsReport(getShortsReport(job.artifacts), patch)
+  return updateJob(jobId, {
+    artifacts: mergeArtifactEntries(
+      job.artifacts,
+      buildShortsMetadataArtifact(merged),
+    ),
   })
 }
 

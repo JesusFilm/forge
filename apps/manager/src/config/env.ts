@@ -84,6 +84,15 @@ export const env = createEnv({
     CROP_WORKER_API_KEY: z.string().min(1).optional(),
     MASTRA_SMART_CROP_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
 
+    // Shorts Studio (plan 2026-06-11-002). Same opt-in scaffolding pattern
+    // as CROP_WORKER_*: optional at schema load so default deploys don't
+    // require them; the shorts job creation route returns 503 config_missing
+    // when invoked without them. SHORTS_WORKER_API_KEY must be a DISTINCT
+    // secret from CROP_WORKER_API_KEY (one worker's bearer must not
+    // authorize the other).
+    SHORTS_WORKER_BASE_URL: z.string().url().optional(),
+    SHORTS_WORKER_API_KEY: z.string().min(1).optional(),
+
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
     // which admin's `triggerManagerEnrichment` GraphQL mutation calls
@@ -156,6 +165,8 @@ export const env = createEnv({
     CROP_WORKER_BASE_URL: process.env.CROP_WORKER_BASE_URL,
     CROP_WORKER_API_KEY: process.env.CROP_WORKER_API_KEY,
     MASTRA_SMART_CROP_TIMEOUT_MS: process.env.MASTRA_SMART_CROP_TIMEOUT_MS,
+    SHORTS_WORKER_BASE_URL: process.env.SHORTS_WORKER_BASE_URL,
+    SHORTS_WORKER_API_KEY: process.env.SHORTS_WORKER_API_KEY,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:

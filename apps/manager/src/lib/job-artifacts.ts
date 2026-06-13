@@ -230,15 +230,21 @@ export function buildJobArtifactHref(
 }
 
 // Smart-crop artifacts are stored under the job's smartCrop assetId
-// (`options.smartCrop.assetId`), which may differ from `job.muxAssetId` —
-// the storage prefix used by enrichment artifacts. Keep both halves of this
-// contract in sync: POST /api/smart-crop/jobs stores the assetId on
-// `options.smartCrop`, and the artifact download route resolves the storage
-// prefix through this helper.
+// (`options.smartCrop.assetId`) and shorts artifacts under the job's shorts
+// assetId (`options.shorts.assetId`), which may differ from `job.muxAssetId`
+// — the storage prefix used by enrichment artifacts. Keep both halves of
+// this contract in sync: POST /api/smart-crop/jobs and POST /api/shorts/jobs
+// store the assetId on their options discriminator, and the artifact routes
+// resolve the storage prefix through this helper. A job carries at most one
+// of the two discriminators.
 export function getJobArtifactStorageAssetId(
   job: Pick<JobRecord, "muxAssetId" | "options">,
 ): string {
-  return job.options.smartCrop?.assetId ?? job.muxAssetId
+  return (
+    job.options.smartCrop?.assetId ??
+    job.options.shorts?.assetId ??
+    job.muxAssetId
+  )
 }
 
 export function buildDownloadableArtifactManifest(

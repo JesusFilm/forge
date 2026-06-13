@@ -19,6 +19,14 @@ const {
 
 vi.mock("@/lib/auth", () => ({
   authenticateManagerOverrideRequest: authenticateOverrideMock,
+  managerActorIdentity: (actor: {
+    kind: string
+    user?: { email: string }
+    approvedByUserId: string
+  }) =>
+    actor.kind === "session"
+      ? actor.user?.email || actor.approvedByUserId
+      : actor.approvedByUserId,
 }))
 
 vi.mock("@/lib/state", () => ({
