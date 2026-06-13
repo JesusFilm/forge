@@ -3142,6 +3142,87 @@ html[data-coverage-loading="true"] .collections::after {
   outline: none;
 }
 
+.translation-feedback-detail-trigger {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.translation-feedback-detail-trigger:hover,
+.translation-feedback-detail-trigger:focus-visible {
+  opacity: 0.86;
+  outline: none;
+}
+
+.translation-error-modal {
+  max-width: min(600px, calc(100vw - 32px));
+}
+
+.translation-error-modal-kicker {
+  margin: 0 0 4px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+}
+
+.translation-error-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.translation-error-modal-body {
+  padding: 20px 24px 24px;
+}
+
+.translation-error-modal-summary {
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+
+.translation-error-detail-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.translation-error-detail-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--secondary);
+}
+
+.translation-error-detail-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--muted-foreground);
+}
+
+.translation-error-detail-message {
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+
 .translation-toast-wrap {
   position: absolute;
   left: 0;

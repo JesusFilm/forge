@@ -55,8 +55,8 @@ import {
   type ReportType,
 } from "./coverage-report-model"
 import {
+  buildEnrichRequestErrorFeedback,
   getVideoQaSelectionDisabledReason,
-  formatEnrichRequestErrorMessage,
   isEnrichActionReady,
   isEnrichSelectionInputEnabled,
   isVideoQaSelectable,
@@ -1573,10 +1573,7 @@ export function CoverageReportClient({
       if (shouldIgnoreRequest()) return
 
       if (!res.ok) {
-        setEnrichFeedback({
-          tone: "error",
-          message: formatEnrichRequestErrorMessage(data),
-        })
+        setEnrichFeedback(buildEnrichRequestErrorFeedback(data))
         return
       }
 
