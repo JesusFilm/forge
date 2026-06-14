@@ -91,7 +91,8 @@ RUN node --input-type=module -e "import('@remotion/install-whisper-cpp').then(({
 # and update this ARG — same operational posture as WHISPER_CPP_COMMIT_SHA.
 # Rotating invalidates (and reships) the ~1.6GB model layer.
 ARG WHISPER_MODEL_SHA256=1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69
-RUN node --input-type=module -e "import('@remotion/install-whisper-cpp').then(({ downloadWhisperModel }) => downloadWhisperModel({ model: 'large-v3-turbo', folder: '/opt/whisper-models' }))" \
+RUN mkdir -p /opt/whisper-models \
+    && node --input-type=module -e "import('@remotion/install-whisper-cpp').then(({ downloadWhisperModel }) => downloadWhisperModel({ model: 'large-v3-turbo', folder: '/opt/whisper-models' }))" \
     && echo "${WHISPER_MODEL_SHA256}  /opt/whisper-models/ggml-large-v3-turbo.bin" | sha256sum -c -
 
 # chrome-headless-shell, pinned transitively by the exact @remotion/renderer
