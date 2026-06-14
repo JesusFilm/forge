@@ -798,8 +798,17 @@ export function SmartCropScreen({ initialJobs }: SmartCropScreenProps) {
             No smart-crop jobs yet. Create a canonical job to start.
           </p>
         ) : (
-          <div className="jobs-table-wrap">
-            <table className="table jobs-table">
+          <div className="jobs-table-wrap smart-crop-jobs-table-wrap">
+            <table className="table jobs-table smart-crop-jobs-table">
+              <colgroup>
+                <col className="smart-crop-jobs-col-job" />
+                <col className="smart-crop-jobs-col-kind" />
+                <col className="smart-crop-jobs-col-asset" />
+                <col className="smart-crop-jobs-col-language" />
+                <col className="smart-crop-jobs-col-status" />
+                <col className="smart-crop-jobs-col-phase" />
+                <col className="smart-crop-jobs-col-updated" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Job</th>
@@ -819,7 +828,7 @@ export function SmartCropScreen({ initialJobs }: SmartCropScreenProps) {
                     <tr key={job.id}>
                       <td>
                         <Link href={`/dashboard/smart-crop/${job.id}`}>
-                          {job.id}
+                          <span className="smart-crop-jobs-id">{job.id}</span>
                         </Link>
                       </td>
                       <td>
@@ -827,7 +836,14 @@ export function SmartCropScreen({ initialJobs }: SmartCropScreenProps) {
                           {summary.kind}
                         </span>
                       </td>
-                      <td>{summary.assetId}</td>
+                      <td>
+                        <span
+                          className="smart-crop-jobs-asset"
+                          title={summary.assetId}
+                        >
+                          {summary.assetId}
+                        </span>
+                      </td>
                       <td>{summary.language ?? "—"}</td>
                       <td>
                         <span

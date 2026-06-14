@@ -13603,6 +13603,52 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   line-height: 1.35;
 }
 
+.smart-crop-jobs-table {
+  table-layout: fixed;
+  min-width: 920px;
+}
+
+.smart-crop-jobs-table th,
+.smart-crop-jobs-table td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-job {
+  width: 21%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-kind {
+  width: 12%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-asset {
+  width: 30%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-language {
+  width: 8%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-status {
+  width: 9%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-phase {
+  width: 10%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-updated {
+  width: 10%;
+}
+
+.smart-crop-jobs-id,
+.smart-crop-jobs-asset {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .smart-crop-picker-backdrop {
   position: fixed;
   inset: 0;
