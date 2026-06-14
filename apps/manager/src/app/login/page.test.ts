@@ -1,5 +1,5 @@
 import React from "react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const { studioAuthShellMock } = vi.hoisted(() => ({
   studioAuthShellMock: vi.fn(
@@ -13,6 +13,10 @@ const { redirectMock } = vi.hoisted(() => ({
   }),
 }))
 
+const { isLocalMockManagerLoginEnabledMock } = vi.hoisted(() => ({
+  isLocalMockManagerLoginEnabledMock: vi.fn(() => false),
+}))
+
 vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }))
@@ -22,6 +26,7 @@ vi.mock("@/features/shell/studio-auth-shell", () => ({
 }))
 
 vi.mock("@/lib/oauth-client", () => ({
+  getManagerBaseUrl: vi.fn(() => "http://localhost:3002"),
   getManagerOAuthConfig: vi.fn(() => ({
     issuerUrl: "https://auth.jesusfilm.org",
     clientId: "jfp_manager_local",
@@ -29,9 +34,19 @@ vi.mock("@/lib/oauth-client", () => ({
   })),
 }))
 
+vi.mock("@/lib/mock-manager-login", () => ({
+  isLocalMockManagerLoginEnabled: isLocalMockManagerLoginEnabledMock,
+}))
+
 import LoginPage from "./page"
 
 describe("login page", () => {
+  beforeEach(() => {
+    redirectMock.mockClear()
+    isLocalMockManagerLoginEnabledMock.mockReset()
+    isLocalMockManagerLoginEnabledMock.mockReturnValue(false)
+  })
+
   it("redirects directly into Manager OAuth login by default", async () => {
     await expect(
       LoginPage({
@@ -52,6 +67,20 @@ describe("login page", () => {
       }),
     ).rejects.toThrow(
       "NEXT_REDIRECT:http://localhost:3002/api/auth/login?returnTo=%2Fdashboard%2Fjobs%2Fjob-1%3FlanguageId%3D529",
+    )
+  })
+
+  it("uses the local mock login route when mock Manager login is enabled", async () => {
+    isLocalMockManagerLoginEnabledMock.mockReturnValue(true)
+
+    await expect(
+      LoginPage({
+        searchParams: Promise.resolve({
+          returnTo: "/dashboard/smart-crop",
+        }),
+      }),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:http://localhost:3002/api/auth/mock-login?returnTo=%2Fdashboard%2Fsmart-crop",
     )
   })
 

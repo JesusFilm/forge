@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (June 4, 2026)
 
-- **Total tickets:** 190
-- **Complete:** 115
+- **Total tickets:** 191
+- **Complete:** 116
 - **In progress:** 9
 - **Not started:** 21
 - **Blocked:** 43
@@ -104,6 +104,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-041](media-generation/feat-041-alternative-report-sections.md)                      | Alternative Report Sections                               | vlad  | P1       | 2026-05-26 | 14   | 2026-06-08 | blocked     |
 | [feat-145](media-generation/feat-145-watch-mobile-player-controls-width.md)               | Watch Mobile Player Controls Width                        | vlad  | P1       | 2026-05-28 | 1    | 2026-05-28 | complete    |
 | [feat-146](media-generation/feat-146-watch-transcript-audio-language-match.md)            | Watch Transcript Audio Language Match                     | vlad  | P1       | 2026-05-29 | 1    | 2026-05-29 | complete    |
+| [feat-184](media-generation/feat-184-mastra-subtitle-enrichment-execution.md)             | Mastra subtitle enrichment execution                      | vlad  | P1       | 2026-06-12 | 2    | 2026-06-13 | complete    |
+| [feat-186](media-generation/feat-186-manager-coverage-admin-enrich-now.md)                | Manager coverage Admin Enrich Now                         | vlad  | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
+| [feat-187](media-generation/feat-187-manager-validation-detail-modal.md)                  | Manager validation detail modal                           | vlad  | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
+| [feat-188](media-generation/feat-188-manager-job-state-mastra-correlation.md)             | Manager job state and Mastra correlation hardening        | vlad  | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-056](media-generation/feat-056-ai-video-template-system.md)                         | AI Video Template System                                  | vlad  | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-057](media-generation/feat-057-automated-video-rendering-engine.md)                 | Automated Video Rendering Engine                          | vlad  | P1       | 2026-08-01 | 31   | 2026-08-31 | blocked     |
 | [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)          | On-Demand Personalized Video Generation                   | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
@@ -178,6 +182,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-166](platform/feat-166-manager-coverage-region-image-assets.md)            | Manager coverage region image assets                         | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-167](platform/feat-167-manager-coverage-video-aggregation.md)              | Manager coverage video aggregation                           | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
 | [feat-168](platform/feat-168-manager-coverage-title-locale-preference.md)        | Manager coverage title locale preference                     | vlad      | P1       | 2026-06-05 | 1    | 2026-06-05 | complete    |
+| [feat-187](platform/feat-187-manager-coverage-thumbnail-url-normalization.md)    | Manager coverage thumbnail URL normalization                 | vlad      | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-169](platform/feat-169-watch-language-picker-search-ranking.md)            | Watch language picker search ranking                         | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-175](platform/feat-175-watch-cold-path-performance-follow-up.md)           | Watch cold-path performance follow-up                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
 | [feat-176](platform/feat-176-watch-hero-poster-idle-autoplay.md)                 | Watch hero poster-first idle autoplay                        | vlad      | P1       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -186,6 +191,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-181](platform/feat-181-watch-chapter-cover-loading-transition.md)          | Watch chapter cover loading transition                       | vlad      | P1       | 2026-06-11 | 1    | 2026-06-11 | complete    |
 | [feat-182](platform/feat-182-watch-route-poster-black-transition.md)             | Watch route poster black transition                          | vlad      | P1       | 2026-06-11 | 1    | 2026-06-11 | complete    |
 | [feat-183](platform/feat-183-watch-cover-sequenced-transition.md)                | Watch cover sequenced transition                             | vlad      | P1       | 2026-06-12 | 1    | 2026-06-12 | complete    |
+| [feat-188](platform/feat-188-watch-no-post-route-black-bridge.md)                | Watch no post-route black bridge                             | vlad      | P1       | 2026-06-13 | 1    | 2026-06-13 | complete    |
+| [feat-190](platform/feat-190-admin-video-relation-order.md)                      | Admin Video Relation Order Preservation                      | tataihono | P1       | 2026-06-14 | 2    | 2026-06-15 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                                   | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                          | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                      | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -235,4 +242,5 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                 | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                         | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                   | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
+| [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                           | urim      | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                       | tataihono | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |

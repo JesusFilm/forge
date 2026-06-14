@@ -491,7 +491,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(blackout).not.toBeNull()
   })
 
-  it("bridges the committed route poster when it replaces the clicked poster", () => {
+  it("does not bridge the committed route poster after the clicked poster", () => {
     const baseBlock = makeBlock()
     const committedBlock: WatchHeroPlayerBlock = {
       ...baseBlock,
@@ -537,40 +537,15 @@ describe("HeroPlayer — initial mount", () => {
     )
 
     expect(layer?.getAttribute("data-cover-loading")).toBe("false")
-    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("none")
     expect(poster.getAttribute("src")).toBe(
       "https://image.mux.com/route-playback-456/thumbnail.webp?width=1280&time=2",
     )
-    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
-    expect(poster.getAttribute("class")).not.toContain("pulse")
-    expect(bridge).not.toBeNull()
-  })
-
-  it("bridges a route poster on mount when a route bridge key is forced", () => {
-    act(() => {
-      root.render(
-        <HeroPlayer
-          block={makeBlock()}
-          forcePosterBridgeKey="video-1:variant-1"
-        />,
-      )
-    })
-
-    const layer = container.querySelector(
-      '[data-testid="hero-player-poster-layer"]',
+    expect(poster.getAttribute("class")).not.toContain(
+      "watch-hero-cover-reveal",
     )
-    const poster = container.querySelector(
-      '[data-testid="hero-player-poster"]',
-    ) as HTMLImageElement
-    const bridge = container.querySelector(
-      '[data-testid="hero-player-cover-black-bridge"]',
-    )
-
-    expect(layer?.getAttribute("data-cover-loading")).toBe("false")
-    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
-    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
     expect(poster.getAttribute("class")).not.toContain("pulse")
-    expect(bridge).not.toBeNull()
+    expect(bridge).toBeNull()
   })
 
   it("keeps an optimistic poster visible after the muted preview starts", async () => {

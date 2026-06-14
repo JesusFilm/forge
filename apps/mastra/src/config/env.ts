@@ -26,6 +26,9 @@ const DEFAULT_FIRECRAWL_USER_AGENT = "forge-mastra-firecrawl/1.0"
 const DEFAULT_FIRECRAWL_TIMEOUT_MS = 60_000
 const DEFAULT_FIRECRAWL_MAX_SEARCH_RESULTS = 5
 const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
+const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
+const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
+const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
 const AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS =
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS
 const AI_GATEWAY_TRANSFORM_VERSION = DEFAULT_EMBEDDING_TRANSFORM_VERSION
@@ -158,10 +161,31 @@ const envSchema = z.object({
     .default(DEFAULT_FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: z.string().min(1).default(DEFAULT_FIRECRAWL_USER_AGENT),
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
+  RAILWAY_S3_ENDPOINT: z.string().url().optional(),
+  RAILWAY_S3_REGION: z.string().min(1).default("auto"),
+  RAILWAY_S3_BUCKET: z.string().min(1).optional(),
+  RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
+  SUBTITLE_ENRICHMENT_MODEL: z
+    .string()
+    .min(1)
+    .default(DEFAULT_SUBTITLE_ENRICHMENT_MODEL),
+  SUBTITLE_ENRICHMENT_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(300_000)
+    .default(DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS),
+  SUBTITLE_ENRICHMENT_CONCURRENCY: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(25)
+    .default(DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY),
   SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: z.string().min(1).optional(),
   SMART_CROP_PLAN_MODEL: z.string().min(1).optional(),
   SMART_CROP_QA_MODEL: z.string().min(1).optional(),
@@ -289,8 +313,26 @@ export const env = envSchema.parse({
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: emptyToUndefined(
     process.env.INSTAGRAM_DISCOVERY_ARTIFACT_DIR,
   ),
+  RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
+  RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),
+  RAILWAY_S3_BUCKET: emptyToUndefined(process.env.RAILWAY_S3_BUCKET),
+  RAILWAY_S3_ACCESS_KEY_ID: emptyToUndefined(
+    process.env.RAILWAY_S3_ACCESS_KEY_ID,
+  ),
+  RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
+    process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
+  ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
+  ),
+  SUBTITLE_ENRICHMENT_MODEL: emptyToUndefined(
+    process.env.SUBTITLE_ENRICHMENT_MODEL,
+  ),
+  SUBTITLE_ENRICHMENT_TIMEOUT_MS: emptyToUndefined(
+    process.env.SUBTITLE_ENRICHMENT_TIMEOUT_MS,
+  ),
+  SUBTITLE_ENRICHMENT_CONCURRENCY: emptyToUndefined(
+    process.env.SUBTITLE_ENRICHMENT_CONCURRENCY,
   ),
   SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.SMART_CROP_IMAGE_URL_ALLOWED_HOSTS,

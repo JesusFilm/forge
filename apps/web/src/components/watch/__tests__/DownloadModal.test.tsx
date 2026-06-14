@@ -834,13 +834,26 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
     const close = $(
       '[data-testid="watch-download-modal-close"]',
     ) as HTMLButtonElement
+    const mobileClose = $(
+      '[data-testid="watch-download-modal-mobile-close"]',
+    ) as HTMLButtonElement
+    const poster = $(
+      '[data-testid="watch-download-modal-poster"]',
+    ) as HTMLElement
     expect(close.className).toContain("fixed")
     expect(close.className).toContain("top-12")
     expect(close.className).toContain("right-10")
+    expect(close.className).toContain("hidden")
+    expect(close.className).toContain("sm:flex")
     expect(close.className).toContain("h-[52px]")
     expect(close.className).toContain("w-12")
     expect(close.className).toContain("z-[60]")
     expect(close.querySelector("svg")?.getAttribute("class")).toContain("h-6")
+    expect(mobileClose.className).toContain("sm:hidden")
+    expect(
+      mobileClose.compareDocumentPosition(poster) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
 
     // Click the fullscreen close button. This mirrors the language
     // switcher-style chrome and still routes through handleOpenChange(false),

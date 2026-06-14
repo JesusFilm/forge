@@ -183,16 +183,16 @@
     "categoryStudy": "Studium",
     "categoryFamily": "Familie",
     "categoryChristmas": "Weihnachten",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "searchLanguageLabel": "Suchsprache",
+    "allLanguages": "Alle Sprachen",
+    "searchSuggestions": "Suchvorschläge",
+    "languages": "Sprachen",
+    "recommendedLanguage": "Empfohlene Sprache",
+    "searchSuggestion": "{suggestion} suchen",
+    "searchSuggestionWithLanguage": "{suggestion} auf {language} suchen",
+    "inLanguage": "auf {language}",
+    "browseByRegion": "Nach Region stöbern",
+    "clearLanguages": "Zurücksetzen"
   },
   "HeroPlayer": {
     "playWithSound": "Jetzt ansehen",
@@ -225,7 +225,7 @@
     "nextChapter": "Nächstes Kapitel"
   },
   "SearchResultCard": {
-    "experience": "Experience",
+    "experience": "Erlebnis",
     "episodeCount": "{count, plural, one {# Folge} other {# Folgen}}",
     "thumbnailAlt": "Video-Miniaturbild"
   }

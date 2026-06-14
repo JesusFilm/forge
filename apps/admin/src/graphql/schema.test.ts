@@ -58,6 +58,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "managerViewer",
         "managerLanguageGeo",
         "managerVideoCoverage",
+        "managerVideosForEnrichment",
         "managerCoverageSnapshots",
         "managerJobs",
         "managerJob",
@@ -77,6 +78,20 @@ describe("GraphQL schema — Unit 4 content types", () => {
     )
     expect(Object.keys(fieldsOf("ManagerLanguageGeo"))).toEqual(
       expect.arrayContaining(["continents", "countries", "languages"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerLanguage"))).toEqual(
+      expect.arrayContaining(["id", "coreId", "bcp47", "iso3"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerVideoForEnrichment"))).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "coreId",
+        "primaryLanguage",
+        "variants",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerEnrichmentVariant"))).toEqual(
+      expect.arrayContaining(["language", "muxVideo", "downloads"]),
     )
     expect(Object.keys(fieldsOf("ManagerVideoCoverage"))).toEqual(
       expect.arrayContaining([

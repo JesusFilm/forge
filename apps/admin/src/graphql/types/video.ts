@@ -100,10 +100,19 @@ export function videoStudyQuestionsFilter(args: {
   }
 }
 
-export function videoParentsFilter(
-  user: Principal | null,
-): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
-  if (isEditorOrAdmin(user)) return {}
+const videoRelationOrderBy = [
+  { order: { sort: "asc" as const, nulls: "last" as const } },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+] satisfies Prisma.VideoRelationOrderByWithRelationInput[]
+
+type VideoRelationQuery = {
+  where?: Prisma.VideoRelationWhereInput
+  orderBy: Prisma.VideoRelationOrderByWithRelationInput[]
+}
+
+export function videoParentsFilter(user: Principal | null): VideoRelationQuery {
+  if (isEditorOrAdmin(user)) return { orderBy: videoRelationOrderBy }
   return {
     where: {
       parent: {
@@ -111,13 +120,14 @@ export function videoParentsFilter(
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
+    orderBy: videoRelationOrderBy,
   }
 }
 
 export function videoChildrenFilter(
   user: Principal | null,
-): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
-  if (isEditorOrAdmin(user)) return {}
+): VideoRelationQuery {
+  if (isEditorOrAdmin(user)) return { orderBy: videoRelationOrderBy }
   return {
     where: {
       child: {
@@ -125,6 +135,7 @@ export function videoChildrenFilter(
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
+    orderBy: videoRelationOrderBy,
   }
 }
 
