@@ -322,7 +322,7 @@ type HybridSearchResponse {
 }
 
 """
-A single hybrid-search hit. Video results may carry scene-level snippet + timecode + playback id; experience results carry experience-level data.
+A single hybrid-search hit. Video results carry video-level display metadata plus optional match timecode/playback data; experience results carry experience-level data.
 """
 type HybridSearchResult {
   """

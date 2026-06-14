@@ -181,9 +181,9 @@ export type SearchResult = {
   title: string
   imageUrl: string | null
   snippet: string
-  /** null when the match is keyword-only or for non-video results. */
+  /** null when the match has no timed evidence or for non-video results. */
   startSeconds: number | null
-  /** null when the match is keyword-only or for non-video results. */
+  /** null when no playable Mux-backed dub was found or for non-video results. */
   playbackId: string | null
   score: number
   /**
@@ -274,10 +274,11 @@ const defaultEmbedder: QueryEmbedder = async (text) => {
 /**
  * Map a fused result to the API response contract.
  *
- * Video rows may carry scene-level data (description as snippet,
- * startSeconds + playbackId for semantic matches; null for
- * keyword-only). Experience rows carry experience-level data
- * (metaDescription as snippet) with null startSeconds/playbackId.
+ * Video rows may carry evidence-level data from retrievers (scene/transcript
+ * text, startSeconds + playbackId for semantic matches; null for keyword-only).
+ * The post-fusion hydration pass below replaces the public snippet with
+ * video-level metadata when it exists. Experience rows carry experience-level
+ * data (metaDescription as snippet) with null startSeconds/playbackId.
  */
 function mapToSearchResult(result: FusedResult): SearchResult {
   const score = Math.round(result.score * 1000) / 1000
@@ -307,10 +308,9 @@ function mapToSearchResult(result: FusedResult): SearchResult {
     slug: (result.videoSlug as string) ?? "",
     title: (result.videoTitle as string) ?? "",
     imageUrl: (result.imageUrl as string | null) ?? null,
-    // Semantic-video rows carry scene-level `sceneDescription`; keyword
-    // rows carry video-level `description`. Fusion merges earlier-list
-    // properties first, so a video that hits both lists keeps the
-    // semantic scene description (the richer signal).
+    // Initial fallback only. `hydrateCardDisplayFields` replaces this
+    // evidence text with VideoLocale description/snippet for the public
+    // card surface when localized metadata exists.
     snippet:
       (result.sceneDescription as string | undefined) ??
       (result.description as string | undefined) ??
@@ -336,17 +336,23 @@ function mapToSearchResult(result: FusedResult): SearchResult {
  * the catalogue carry 200+ published dubs).
  */
 const HYDRATION_DUBS_PER_VIDEO = 5
+const HYDRATION_IMAGES_PER_VIDEO = 5
 
 /**
- * Card-pill hydration. Given the final page of video-type results,
- * batch-load `label`, primary playable dub duration, and child count
- * in ONE Prisma query and return a new array with those fields filled
- * in. Experience results pass through untouched (their card surface
- * doesn't carry a pill in the current design).
+ * Card display hydration. Given the final page of video-type results,
+ * batch-load card metadata in ONE Prisma query and return a new array
+ * with display fields filled in:
+ *
+ * - public snippet from VideoLocale description/snippet
+ * - imageUrl from VideoImage variants
+ * - playbackId fallback from a playable Mux-backed dub
+ * - label, primary playable dub duration, and child count
+ *
+ * Experience results pass through untouched.
  *
  * Why a post-mapping pass instead of fetching the data inline in each
  * retriever: the retrievers project tightly via `$queryRaw` for index
- * use; adding 3 extra fields per retriever would either duplicate the
+ * use; adding extra display fields per retriever would either duplicate the
  * LATERALs across 4+ SQL paths or force a UNION shape change. A single
  * `findMany({ where: { id: { in: [...] } } })` after pagination is
  * O(page-size) — at most ~50 rows for MAX_LIMIT — and keeps the SQL
@@ -359,19 +365,19 @@ const HYDRATION_DUBS_PER_VIDEO = 5
  * fixture to per-id hydration stubs argues against dropping; if the
  * UX of "card-then-404" becomes meaningful, switch to a drop here.
  */
-async function hydrateCardPillFields(
+async function hydrateCardDisplayFields(
   prisma: PrismaClient,
   results: SearchResult[],
+  locale: string,
   logger?: { error: (msg: string) => void },
 ): Promise<SearchResult[]> {
   const videoIds = results.filter((r) => r.type === "video").map((r) => r.id)
   if (videoIds.length === 0) return results
 
-  // Hydration data (label / durationSeconds / childCount) is cosmetic —
-  // a card renders without it. A Prisma error here must NOT take the
-  // search endpoint down. Catch, log, and pass through the pre-hydration
-  // array; consumers see a search response with null pill fields rather
-  // than HTTP 503 for the whole request.
+  // Hydration data is display-only — a card renders without it. A Prisma
+  // error here must NOT take the search endpoint down. Catch, log, and pass
+  // through the pre-hydration array; consumers see a search response with
+  // sparse card metadata rather than HTTP 503 for the whole request.
   let rows
   try {
     rows = await prisma.video.findMany({
@@ -380,6 +386,30 @@ async function hydrateCardPillFields(
         id: true,
         label: true,
         primaryLanguageId: true,
+        locales: {
+          where: {
+            locale,
+            status: "PUBLISHED",
+            deletedAt: null,
+          },
+          take: 1,
+          select: {
+            description: true,
+            snippet: true,
+          },
+        },
+        images: {
+          where: { deletedAt: null },
+          orderBy: [{ createdAt: "asc" }],
+          take: HYDRATION_IMAGES_PER_VIDEO,
+          select: {
+            mobileCinematicHigh: true,
+            mobileCinematicLow: true,
+            videoStill: true,
+            thumbnail: true,
+            url: true,
+          },
+        },
         dubs: {
           // `duration: { gt: 0 }` excludes sync-glitch rows (Core
           // occasionally returns a published dub with duration=0; the
@@ -401,7 +431,11 @@ async function hydrateCardPillFields(
           // widen `take` (cost is bounded at 50 × N rows per request).
           orderBy: [{ duration: "desc" }],
           take: HYDRATION_DUBS_PER_VIDEO,
-          select: { languageId: true, duration: true },
+          select: {
+            languageId: true,
+            duration: true,
+            muxVideo: { select: { playbackId: true } },
+          },
         },
         // `_count.children` mirrors the consumer-facing ABAC at
         // videoChildrenFilter (apps/admin/src/graphql/types/video.ts):
@@ -439,6 +473,9 @@ async function hydrateCardPillFields(
   const hydration = new Map<
     string,
     {
+      snippet: string | null
+      imageUrl: string | null
+      playbackId: string | null
       label: VideoLabel | null
       durationSeconds: number | null
       childCount: number
@@ -453,10 +490,19 @@ async function hydrateCardPillFields(
     const primaryDub = row.primaryLanguageId
       ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
       : undefined
-    const dub = primaryDub ?? row.dubs[0] ?? null
+    const durationDub = primaryDub ?? row.dubs[0] ?? null
+    const playbackDub =
+      (nonEmptyString(primaryDub?.muxVideo?.playbackId) != null
+        ? primaryDub
+        : undefined) ??
+      row.dubs.find((d) => nonEmptyString(d.muxVideo?.playbackId) != null) ??
+      durationDub
     hydration.set(row.id, {
+      snippet: pickLocalizedSnippet(row.locales),
+      imageUrl: pickImageUrl(row.images),
+      playbackId: nonEmptyString(playbackDub?.muxVideo?.playbackId),
       label: row.label,
-      durationSeconds: dub?.duration ?? null,
+      durationSeconds: durationDub?.duration ?? null,
       childCount: row._count.children,
     })
   }
@@ -467,11 +513,60 @@ async function hydrateCardPillFields(
     if (h == null) return r
     return {
       ...r,
+      snippet: h.snippet ?? r.snippet,
+      imageUrl: nonEmptyString(r.imageUrl) ?? h.imageUrl,
+      playbackId: nonEmptyString(r.playbackId) ?? h.playbackId,
       label: h.label,
       durationSeconds: h.durationSeconds,
       childCount: h.childCount,
     }
   })
+}
+
+function pickLocalizedSnippet(
+  locales:
+    | readonly ({
+        description?: string | null
+        snippet?: string | null
+      } | null)[]
+    | undefined,
+): string | null {
+  const locale = locales?.[0]
+  return nonEmptyString(locale?.description) ?? nonEmptyString(locale?.snippet)
+}
+
+function pickImageUrl(
+  images:
+    | readonly ({
+        mobileCinematicHigh?: string | null
+        mobileCinematicLow?: string | null
+        videoStill?: string | null
+        thumbnail?: string | null
+        url?: string | null
+      } | null)[]
+    | undefined,
+): string | null {
+  const priorities = [
+    "mobileCinematicHigh",
+    "mobileCinematicLow",
+    "videoStill",
+    "thumbnail",
+    "url",
+  ] as const
+
+  for (const field of priorities) {
+    for (const image of images ?? []) {
+      const value = nonEmptyString(image?.[field])
+      if (value != null) return value
+    }
+  }
+  return null
+}
+
+function nonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 export type HybridSearchServiceDeps = {
@@ -720,14 +815,12 @@ export class HybridSearchService {
       return { ...base, debug: trace }
     })
 
-    // Hydrate card-pill fields (label, durationSeconds, childCount) for
-    // video results in one batched query. Experience rows are left as
-    // (null, null, null) by the mapper; this pass only touches videos
-    // and returns a fresh array — soft-deleted-mid-search rows are
-    // filtered out rather than surfaced with stale title + null pill.
-    const results = await hydrateCardPillFields(
+    // Hydrate card display fields for video results in one batched query.
+    // Experience rows pass through untouched.
+    const results = await hydrateCardDisplayFields(
       this.prisma,
       mapped,
+      locale,
       this.logger,
     )
 
