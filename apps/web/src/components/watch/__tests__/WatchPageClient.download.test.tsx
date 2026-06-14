@@ -153,11 +153,11 @@ afterEach(() => {
 
 function renderWatchPage() {
   const variant = {
-    documentId: "variant-1",
+    documentId: "5fc705b9-1b3b-4a58-abef-755b98457de6",
     duration: 7674,
     downloads: [
       {
-        documentId: "download-1",
+        documentId: "47420a5c-0ae1-465e-bcc9-98056566d087",
         quality: "fhd",
         size: "1048576",
         url: "https://stream.mux.com/raw-client-leak.mp4",
@@ -168,8 +168,8 @@ function renderWatchPage() {
   }
   const video = {
     documentId: "video-1",
-    slug: "jesus",
-    title: "JESUS",
+    slug: "jesus-is-brought-to-pilate",
+    title: "Jesus Is Brought to Pilate",
     snippet: null,
     description: null,
     images: [],
@@ -195,7 +195,7 @@ describe("WatchPageClient download boundary", () => {
     expect(downloadModalProps).toHaveLength(0)
     expect(languageModalProps).toHaveLength(0)
     expect(scheduleWatchInteractionWarmupMock).toHaveBeenCalledWith({
-      videoSlug: "jesus",
+      videoSlug: "jesus-is-brought-to-pilate",
     })
     const renderer = document.querySelector(
       '[data-testid="watch-section-renderer"]',
@@ -204,13 +204,16 @@ describe("WatchPageClient download boundary", () => {
       "/watch/api/download?",
     )
     expect(renderer?.getAttribute("data-download-href")).toContain(
-      "downloadId=download-1",
+      "downloadId=47420a5c-0ae1-465e-bcc9-98056566d087",
     )
     expect(renderer?.getAttribute("data-download-href")).toContain(
-      "variantId=variant-1",
+      "variantId=5fc705b9-1b3b-4a58-abef-755b98457de6",
     )
     expect(renderer?.getAttribute("data-download-href")).toContain(
-      "videoSlug=jesus",
+      "videoSlug=jesus-is-brought-to-pilate",
+    )
+    expect(renderer?.getAttribute("data-download-href")).not.toContain(
+      "stream.mux.com",
     )
     expect(renderer?.getAttribute("data-share-href")).toContain(
       "https://www.facebook.com/sharer/sharer.php",
@@ -239,11 +242,11 @@ describe("WatchPageClient download boundary", () => {
       variantId: string
       videoSlug: string
     }
-    expect(latestProps.variantId).toBe("variant-1")
-    expect(latestProps.videoSlug).toBe("jesus")
+    expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
+    expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
     expect(latestProps.downloads).toEqual([
       {
-        documentId: "download-1",
+        documentId: "47420a5c-0ae1-465e-bcc9-98056566d087",
         quality: "fhd",
         size: 1048576,
       },
@@ -285,7 +288,9 @@ describe("WatchPageClient download boundary", () => {
         ?.click()
     })
 
-    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith("jesus")
+    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith(
+      "jesus-is-brought-to-pilate",
+    )
     expect(loadWatchInteractionMock).toHaveBeenCalledWith("language")
     expect(languageModalProps.at(-1)).toEqual(
       expect.objectContaining({

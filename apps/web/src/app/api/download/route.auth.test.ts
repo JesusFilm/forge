@@ -42,6 +42,23 @@ function makeRequest(
   return new Request(url, init)
 }
 
+function adminVideoDub() {
+  return {
+    videoDub: {
+      documentId: "variant-1",
+      downloadable: true,
+      downloads: [
+        {
+          documentId: "download-1",
+          url: "https://stream.mux.com/abc.mp4",
+        },
+      ],
+      published: true,
+      slug: "jesus/english",
+    },
+  }
+}
+
 async function importRouteWithGate(enabled: boolean) {
   vi.resetModules()
   vi.stubEnv("WEB_AUTH_BASE_URL", "http://localhost:3004")
@@ -109,22 +126,7 @@ describe("GET /watch/api/download - account gate", () => {
 
   it("resolves signed-in downloads by opaque IDs instead of requiring the browser to send a CDN URL", async () => {
     queryMock.mockResolvedValueOnce({
-      data: {
-        videoBySlug: {
-          variants: [
-            {
-              documentId: "variant-1",
-              published: true,
-              downloads: [
-                {
-                  documentId: "download-1",
-                  url: "https://stream.mux.com/abc.mp4",
-                },
-              ],
-            },
-          ],
-        },
-      },
+      data: adminVideoDub(),
     })
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -154,7 +156,7 @@ describe("GET /watch/api/download - account gate", () => {
     expect(response.status).toBe(200)
     expect(queryMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        variables: { videoSlug: "jesus" },
+        variables: { variantId: "variant-1" },
       }),
     )
     expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
@@ -180,6 +182,29 @@ describe("GET /watch/api/download - account gate", () => {
     expect(response.status).toBe(503)
     await expect(response.json()).resolves.toEqual({
       error: "Download lookup unavailable",
+    })
+    expect(dns.resolve4).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("returns a shaped 404 when opaque IDs do not resolve to a downloadable target", async () => {
+    queryMock.mockResolvedValueOnce({ data: { videoDub: null } })
+    const fetchMock = vi.fn(async () => new Response("should not happen"))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { GET } = await importRouteWithGate(false)
+    const response = await GET(
+      makeRequest({
+        downloadId: "download-1",
+        filename: "jesus-highest.mp4",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      error: "Download unavailable",
     })
     expect(dns.resolve4).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -230,22 +255,7 @@ describe("HEAD /watch/api/download - opaque download target", () => {
 
   it("resolves file-size probes by opaque IDs instead of requiring a browser CDN URL", async () => {
     queryMock.mockResolvedValueOnce({
-      data: {
-        videoBySlug: {
-          variants: [
-            {
-              documentId: "variant-1",
-              published: true,
-              downloads: [
-                {
-                  documentId: "download-1",
-                  url: "https://stream.mux.com/abc.mp4",
-                },
-              ],
-            },
-          ],
-        },
-      },
+      data: adminVideoDub(),
     })
     const fetchMock = vi.fn(
       async (_input: RequestInfo | URL, _init?: RequestInit) => {
@@ -273,7 +283,7 @@ describe("HEAD /watch/api/download - opaque download target", () => {
     expect(response.headers.get("content-length")).toBe("123456")
     expect(queryMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        variables: { videoSlug: "jesus" },
+        variables: { variantId: "variant-1" },
       }),
     )
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(

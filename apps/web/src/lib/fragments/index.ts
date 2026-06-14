@@ -8,6 +8,7 @@ export {
   getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
+  getWatchVideoRouteSnapshotBySlugOperation,
   getWatchVideoShellBySlugOperation,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,

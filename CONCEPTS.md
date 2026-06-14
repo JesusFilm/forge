@@ -102,6 +102,10 @@ The metadata that says which provider contract produced a stored Content Embeddi
 
 An evaluation or backfill approval artifact that binds quality evidence to a specific embedding provider contract before high-churn content vectors are rewritten. A Provider-Bound Gate needs both configuration provenance and corpus provenance: it must show what the system is configured to generate and what stored rows the evaluation actually searched.
 
+### Semantic Evidence
+
+The content fragment that explains why a search result matched a query, such as a scene description or transcript chunk. Semantic Evidence belongs to retrieval, ranking, debug context, and optional timecodes; consumer card surfaces should render display metadata unless they are intentionally showing match context.
+
 ## Known-caller auth
 
 ### Search Passport

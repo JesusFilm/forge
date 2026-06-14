@@ -7,7 +7,10 @@
 
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { authenticateManagerOverrideRequest } from "@/lib/auth"
+import {
+  authenticateManagerOverrideRequest,
+  managerActorIdentity,
+} from "@/lib/auth"
 import {
   buildSmartCropMetadataArtifact,
   getSmartCropReport,
@@ -99,10 +102,7 @@ export async function POST(
     )
   }
 
-  const approvedBy =
-    actor.kind === "session"
-      ? actor.user.email || actor.approvedByUserId
-      : actor.approvedByUserId
+  const approvedBy = managerActorIdentity(actor)
 
   const qa = {
     status: parsed.data.action === "approve" ? "approved" : "rejected",

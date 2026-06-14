@@ -19,9 +19,6 @@ describe("watchVideoStructuredDataJson", () => {
       noIndex: false,
       inLanguage: "en",
       durationSeconds: 91.4,
-      alternatesLanguages: {
-        en: "https://www.jesusfilm.org/watch/life.html/english.html",
-      },
     })
 
     expect(json).not.toContain("<")

@@ -2,7 +2,8 @@ import { redirect } from "next/navigation"
 import { LogOut } from "lucide-react"
 
 import { StudioAuthShell } from "@/features/shell/studio-auth-shell"
-import { getManagerOAuthConfig } from "@/lib/oauth-client"
+import { isLocalMockManagerLoginEnabled } from "@/lib/mock-manager-login"
+import { getManagerBaseUrl } from "@/lib/oauth-client"
 
 export default async function LoginPage({
   searchParams,
@@ -10,13 +11,13 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; expired?: string; returnTo?: string }>
 }) {
   const params = await searchParams
-  const managerBaseUrl = getManagerOAuthConfig().managerBaseUrl.replace(
-    /\/$/,
-    "",
-  )
+  const managerBaseUrl = getManagerBaseUrl()
 
   if (!params.error) {
-    const loginUrl = new URL(`${managerBaseUrl}/api/auth/login`)
+    const loginPath = isLocalMockManagerLoginEnabled()
+      ? "/api/auth/mock-login"
+      : "/api/auth/login"
+    const loginUrl = new URL(`${managerBaseUrl}${loginPath}`)
     if (params.returnTo) {
       loginUrl.searchParams.set("returnTo", params.returnTo)
     }

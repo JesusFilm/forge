@@ -16,7 +16,11 @@ import {
 } from "@/components/ui/carousel"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+} from "@/lib/routes"
 import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
 import type { WatchChapterNavigationIntent } from "./chapter-navigation"
 
@@ -50,6 +54,10 @@ export function SiblingCarousel({
   )
   const clipTotal = children.length
   const parentTitle = canonicalParent.title ?? videoLabels("collection")
+  const parentSlug =
+    typeof canonicalParent.slug === "string"
+      ? tryAsContentSlug(canonicalParent.slug)
+      : null
 
   // All carousel thumbnails ship with `loading="lazy"`. Native browser
   // lazy-loading still fetches above-fold images immediately — it only
@@ -185,11 +193,12 @@ export function SiblingCarousel({
             const thumb =
               resolveMuxFrameThumbnailUrl(child.muxPlaybackId) ??
               resolvePosterUrl(child.images?.[0])
-            // The builder emits the canonical 2-segment `.html` shape
-            // (`/{slug}.html/{languageSlug}.html`).
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
-            const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+            const href =
+              parentSlug && slug && lang
+                ? watchEpisodePath(parentSlug, slug, lang)
+                : undefined
             const isPending =
               validPendingNavigation != null &&
               validPendingNavigation.href === href &&

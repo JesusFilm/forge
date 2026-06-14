@@ -45,7 +45,6 @@ export function WatchSectionRenderer({
   pendingChapter,
   coverBlackoutKey,
   coverBlackoutPhase,
-  routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
   blocks: MergedWatchBlock[]
@@ -63,7 +62,6 @@ export function WatchSectionRenderer({
   pendingChapter?: WatchChapterNavigationIntent | null
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
-  routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -106,7 +104,6 @@ export function WatchSectionRenderer({
           pendingChapter={pendingChapter}
           coverBlackoutKey={coverBlackoutKey}
           coverBlackoutPhase={coverBlackoutPhase}
-          routePosterBridgeKey={routePosterBridgeKey}
           onChapterNavigateIntent={onChapterNavigateIntent}
         />
       ))}
@@ -149,7 +146,6 @@ export function WatchSectionRenderer({
                   pendingChapter={pendingChapter}
                   coverBlackoutKey={coverBlackoutKey}
                   coverBlackoutPhase={coverBlackoutPhase}
-                  routePosterBridgeKey={routePosterBridgeKey}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                 />
               ))}
@@ -179,7 +175,6 @@ function WatchBlockEntry({
   pendingChapter,
   coverBlackoutKey,
   coverBlackoutPhase,
-  routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
   block: MergedWatchBlock
@@ -199,7 +194,6 @@ function WatchBlockEntry({
   pendingChapter?: WatchChapterNavigationIntent | null
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
-  routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   if (isWatchBlock(block)) {
@@ -221,7 +215,6 @@ function WatchBlockEntry({
         pendingChapter={pendingChapter}
         coverBlackoutKey={coverBlackoutKey}
         coverBlackoutPhase={coverBlackoutPhase}
-        routePosterBridgeKey={routePosterBridgeKey}
         onChapterNavigateIntent={onChapterNavigateIntent}
       />
     )
@@ -246,7 +239,6 @@ function SyntheticBlock({
   pendingChapter,
   coverBlackoutKey,
   coverBlackoutPhase,
-  routePosterBridgeKey,
   onChapterNavigateIntent,
 }: {
   block: WatchBlock
@@ -265,7 +257,6 @@ function SyntheticBlock({
   pendingChapter?: WatchChapterNavigationIntent | null
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
-  routePosterBridgeKey?: string | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   const optimisticVisual =
@@ -294,7 +285,6 @@ function SyntheticBlock({
           optimisticVisual={optimisticVisual}
           coverBlackoutKey={coverBlackoutKey}
           coverBlackoutPhase={coverBlackoutPhase}
-          forcePosterBridgeKey={routePosterBridgeKey}
         />
       )
     }

@@ -35,6 +35,9 @@ export type WorkflowStepName =
   | "smart_crop_qa"
   | "smart_crop_render"
   | "smart_crop_mux_output"
+  | "shorts_prepare"
+  | "shorts_render"
+  | "shorts_mux_output"
 
 export type SmartCropKind = "canonical" | "localized"
 
@@ -60,11 +63,29 @@ export type SmartCropJobOptions = {
   force?: boolean
 }
 
+// Job options discriminator for Shorts Studio jobs (plan 2026-06-11-002).
+// `assetId` is the per-short storage-key prefix ("{muxAssetId}-short-{suffix}",
+// plan decision 1) — shorts artifacts live under this id, NOT the job's
+// muxAssetId. `language.whisper` is the pre-resolved whisper ISO-639-1 code
+// (null = unsupported → worker skips transcription with the
+// transcription_unsupported_language annotation).
+export type ShortsJobOptions = {
+  assetId: string
+  sourceMuxAssetId: string
+  sourcePlaybackId: string
+  sourceCoreId?: string
+  sourceTitle?: string
+  clip: { startSec: number; endSec: number }
+  language: { bcp47: string | null; whisper: string | null }
+  requestedBy?: string
+}
+
 export interface JobOptions {
   generateVoiceover?: boolean
   uploadMux?: boolean
   notifyCms?: boolean
   smartCrop?: SmartCropJobOptions
+  shorts?: ShortsJobOptions
 }
 
 // ---------------------------------------------------------------------------
@@ -127,10 +148,62 @@ export type SmartCropJobReport = {
   usage?: SmartCropUsageSummary
 }
 
+// ---------------------------------------------------------------------------
+// Shorts Studio metadata artifact entry (plan 2026-06-11-002 decision 2):
+// the `shorts` metadata artifact entry is the UI/API source of truth for the
+// shorts phase state machine — JobStatus stays closed. Single-writer rule:
+// workflows own all phase transitions; routes only set launching intents.
+// ---------------------------------------------------------------------------
+
+export type ShortsPhase =
+  | "queued"
+  | "preparing"
+  | "ready_for_review"
+  | "rendering"
+  | "mux_processing"
+  | "completed"
+  | "prepare_failed"
+  | "render_failed"
+
+export type ShortsJobReport = {
+  domain: "shorts"
+  phase: ShortsPhase
+  // transcription_skipped_no_audio | transcription_unsupported_language
+  // (worker-defined annotation literals — kept open as string for forward
+  // compatibility with new worker annotations).
+  annotation: string | null
+  hasAudio: boolean | null
+  clipDurationSec: number | null
+  captionsCount: number | null
+  // Current draft artifact version (0 = no draft written yet).
+  draftVersion: number
+  lastRenderedDraftVersion: number | null
+  lastRenderedPropsHash: string | null
+  output: {
+    muxAssetId: string | null
+    playbackId: string | null
+    ready: boolean
+  }
+  updatedAt: string
+}
+
 export type TranslationLanguageResult = {
   lang: string
   status: "completed" | "failed"
   error?: string
+}
+
+export type MastraStepCorrelation = {
+  runId: string
+  status?: string
+  reason?: string
+  retryable?: boolean
+  provider?: string
+  model?: string
+  chunks?: number
+  totalTokens?: number
+  sourceContentHash?: string
+  languages?: string[]
 }
 
 export type SceneEmbeddingSyncStatus =
@@ -232,6 +305,7 @@ export type TranscriptionRoutingReport = {
 
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
+  mastra?: MastraStepCorrelation
   // Live crop-worker render progress (0..1) + human-readable message,
   // written throttled by the smart-crop workflow steps.
   progress?: number

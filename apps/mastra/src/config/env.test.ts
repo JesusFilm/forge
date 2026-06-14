@@ -175,6 +175,9 @@ describe("Mastra env", () => {
     vi.stubEnv("EXPERIENCE_EMBEDDING_MODEL", "")
     vi.stubEnv("EXPERIENCE_EMBEDDING_PROVIDER", "")
     vi.stubEnv("EVAL_QUERY_GENERATION_MODEL", "")
+    vi.stubEnv("SUBTITLE_ENRICHMENT_MODEL", "")
+    vi.stubEnv("SUBTITLE_ENRICHMENT_TIMEOUT_MS", "")
+    vi.stubEnv("SUBTITLE_ENRICHMENT_CONCURRENCY", "")
     vi.stubEnv("OPENAI_EMBEDDINGS_BASE_URL", "")
     vi.stubEnv("OPENROUTER_EMBEDDINGS_BASE_URL", "")
 
@@ -187,6 +190,9 @@ describe("Mastra env", () => {
     expect(env.EXPERIENCE_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
     expect(env.EXPERIENCE_EMBEDDING_PROVIDER).toBe("openai")
     expect(env.EVAL_QUERY_GENERATION_MODEL).toBe("anthropic/claude-haiku-4-5")
+    expect(env.SUBTITLE_ENRICHMENT_MODEL).toBe("google/gemini-2.5-flash")
+    expect(env.SUBTITLE_ENRICHMENT_TIMEOUT_MS).toBe(120_000)
+    expect(env.SUBTITLE_ENRICHMENT_CONCURRENCY).toBe(10)
     expect(env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS).toBe(
       "ai-gateway.jesusfilm.org",
     )

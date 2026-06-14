@@ -81,6 +81,10 @@ import {
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
 import {
+  handleSubtitleEnrichmentRouteRequest,
+  subtitleEnrichmentWorkflow,
+} from "./workflows/subtitle-enrichment"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -133,6 +137,7 @@ export const mastra = new Mastra({
     smartCropAlignWorkflow,
     smartCropQaWorkflow,
     instagramAiChristianDiscoveryWorkflow,
+    subtitleEnrichmentWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -392,6 +397,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleInstagramDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-subtitle-enrichment", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSubtitleEnrichmentRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
