@@ -1,17 +1,11 @@
 import { Image } from "expo-image"
-import { useRef, useState } from "react"
-import {
-  Animated,
-  Easing,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native"
+import { useMemo } from "react"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 
 import { type SearchResult } from "../../lib/queries"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
+import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import { resultChipLabel, resultKindLabel } from "./searchDisplay"
 import { SEARCH_THEME } from "./searchTheme"
 
@@ -50,55 +44,44 @@ export function ResultCard({
   // docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md.
   const handlePress = () => onPress(result)
 
-  const [isFocused, setIsFocused] = useState(false)
+  // Focus lift driven by the shared useFocusAnimation hook (same as
+  // HomeCard): one 0→1 `progress` feeds focusTransform (native-driver
+  // translateY + scale), and it stops the prior timing before starting
+  // the next so a rapid D-pad sweep can't orphan animations. `focused`
+  // gates the non-animated focus styles (shadow, ring, title color).
+  const { focused, setFocused, progress } = useFocusAnimation()
 
-  // Native-driver lift: one value drives both translateY and scale,
-  // approximating the design's .18s ease-out transform transition.
-  const focusAnim = useRef(new Animated.Value(0)).current
-  const animateTo = (toValue: number) => {
-    Animated.timing(focusAnim, {
-      toValue,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-  }
-  const lift = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -scale(8)],
-  })
-  const cardScale = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.06],
-  })
+  // Memoized: progress is a stable ref, so the interpolations are built
+  // once rather than on every focus/blur re-render.
+  const liftStyle = useMemo(
+    () => ({
+      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
+    }),
+    [progress],
+  )
 
   return (
     <Pressable
       onPress={handlePress}
       onFocus={() => {
-        setIsFocused(true)
-        animateTo(1)
+        setFocused(true)
         onFocus?.()
       }}
-      onBlur={() => {
-        setIsFocused(false)
-        animateTo(0)
-      }}
+      onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={result.title}
       accessibilityHint="Opens this experience"
+      testID={`search-result-${result.type}-${result.id}`}
     >
       {/* Width comes from the grid cell wrapper via cross-axis stretch;
           height is content-driven (16:9 art + two text lines). */}
-      <Animated.View
-        style={{ transform: [{ translateY: lift }, { scale: cardScale }] }}
-      >
+      <Animated.View style={liftStyle}>
         {/* Outer/inner split (same pattern as FocusableCard): iOS sets
             masksToBounds for overflow:"hidden", which would clip the
             focused layer's own shadow — so the shadow lives on this
             non-clipping wrapper and the art clips inside. */}
-        <View style={[styles.thumbShadow, isFocused && styles.thumbFocused]}>
+        <View style={[styles.thumbShadow, focused && styles.thumbFocused]}>
           <View style={styles.thumb}>
             {imageUrl != null ? (
               <Image
@@ -120,11 +103,11 @@ export function ResultCard({
               an absolute inset border so toggling it never reflows the
               image underneath (a borderWidth change on the thumb itself
               would shrink the art by 2×ring while focused). */}
-          {isFocused ? <View style={styles.ring} pointerEvents="none" /> : null}
+          {focused ? <View style={styles.ring} pointerEvents="none" /> : null}
         </View>
         <View style={styles.meta}>
           <Text
-            style={[styles.title, isFocused && styles.titleFocused]}
+            style={[styles.title, focused && styles.titleFocused]}
             numberOfLines={1}
           >
             {result.title}
@@ -183,7 +166,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontFamily: "System",
-    fontSize: scale(16),
+    fontSize: Math.round(scale(16)),
     fontWeight: "600",
     color: SEARCH_THEME.text,
   },
@@ -203,7 +186,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: "System",
-    fontSize: scale(24),
+    fontSize: Math.round(scale(24)),
     fontWeight: "600",
     letterSpacing: scale(-0.2),
     color: SEARCH_THEME.textDim(0.85),
@@ -213,7 +196,7 @@ const styles = StyleSheet.create({
   },
   kind: {
     fontFamily: "System",
-    fontSize: scale(17),
+    fontSize: Math.round(scale(17)),
     fontWeight: "500",
     color: SEARCH_THEME.textDim(0.45),
     marginTop: scale(3),

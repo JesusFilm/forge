@@ -1,4 +1,4 @@
-import { buildSearchStrip } from "./keyStrip"
+import { applyStripKey, buildSearchStrip } from "./keyStrip"
 
 describe("buildSearchStrip", () => {
   const strip = buildSearchStrip()
@@ -32,5 +32,34 @@ describe("buildSearchStrip", () => {
   it("ids are unique (stable React keys)", () => {
     const ids = strip.map((k) => k.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe("applyStripKey", () => {
+  it("appends a char to the query", () => {
+    expect(applyStripKey("AB", { kind: "char", char: "C" })).toBe("ABC")
+    expect(applyStripKey("", { kind: "char", char: "A" })).toBe("A")
+  })
+
+  it("appends a space only when the query is non-empty", () => {
+    expect(applyStripKey("AB", { kind: "space" })).toBe("AB ")
+  })
+
+  it("ignores space on an empty query (no leading space)", () => {
+    expect(applyStripKey("", { kind: "space" })).toBeNull()
+  })
+
+  it("drops the last char on backspace", () => {
+    expect(applyStripKey("ABC", { kind: "backspace" })).toBe("AB")
+    expect(applyStripKey("A", { kind: "backspace" })).toBe("")
+  })
+
+  it("ignores backspace on an empty query", () => {
+    expect(applyStripKey("", { kind: "backspace" })).toBeNull()
+  })
+
+  it("returns null for submit (no value change)", () => {
+    expect(applyStripKey("AB", { kind: "submit" })).toBeNull()
+    expect(applyStripKey("", { kind: "submit" })).toBeNull()
   })
 })

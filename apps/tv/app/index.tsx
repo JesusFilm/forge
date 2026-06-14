@@ -140,6 +140,14 @@ export default function HomeScreen() {
   }
   useEffect(() => () => focusDebouncerRef.current?.cancel(), [])
 
+  // Also cancel a pending commit whenever the screen loses focus (navigating
+  // to /search, a card detail, etc.) — not just on unmount. Otherwise a
+  // debounce armed by the last focus move before navigation fires ~150ms
+  // later into the now-backgrounded Home, committing a stale showcase card.
+  useFocusEffect(
+    useCallback(() => () => focusDebouncerRef.current?.cancel(), []),
+  )
+
   const handleCardFocus = useCallback((card: WatchHomeCard) => {
     focusDebouncerRef.current?.focus(card)
   }, [])
@@ -156,18 +164,42 @@ export default function HomeScreen() {
   const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
   const scrollRef = useRef<ScrollView | null>(null)
   const rowYsRef = useRef<number[]>([])
+  // When a row is focused before its onLayout has measured its y (cold first
+  // paint, or the window a background refetch reopens by remounting rows),
+  // resolveRowScrollTarget returns null. With native focus-scroll disabled
+  // that would strand the focused card off-screen, so we stash the row and
+  // fire the scroll the moment its onLayout lands (recordRowY below).
+  const pendingScrollRowRef = useRef<number | null>(null)
 
-  const handleRowFocus = useCallback((rowIndex: number) => {
-    setBrowseState(resolveBrowseState(rowIndex))
+  const scrollToRow = useCallback((rowIndex: number): boolean => {
     const target = resolveRowScrollTarget({
       rowIndex,
       rowLayoutYs: rowYsRef.current,
       anchorOffset: scale(ROW_ANCHOR_OFFSET),
     })
-    if (target != null) {
-      scrollRef.current?.scrollTo({ y: target, animated: true })
-    }
+    if (target == null) return false
+    scrollRef.current?.scrollTo({ y: target, animated: true })
+    return true
   }, [])
+
+  const handleRowFocus = useCallback(
+    (rowIndex: number) => {
+      setBrowseState(resolveBrowseState(rowIndex))
+      // Defer if the row's y isn't measured yet; recordRowY flushes it.
+      pendingScrollRowRef.current = scrollToRow(rowIndex) ? null : rowIndex
+    },
+    [scrollToRow],
+  )
+
+  const recordRowY = useCallback(
+    (rowIndex: number, y: number) => {
+      rowYsRef.current[rowIndex] = y
+      if (pendingScrollRowRef.current === rowIndex && scrollToRow(rowIndex)) {
+        pendingScrollRowRef.current = null
+      }
+    },
+    [scrollToRow],
+  )
 
   // Tab bar / hero actions focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
@@ -190,11 +222,22 @@ export default function HomeScreen() {
       Array.from(
         { length: rowCount },
         (_, rowIndex) => (event: LayoutChangeEvent) => {
-          rowYsRef.current[rowIndex] = event.nativeEvent.layout.y
+          recordRowY(rowIndex, event.nativeEvent.layout.y)
         },
       ),
-    [rowCount],
+    [rowCount, recordRowY],
   )
+
+  // Drop stale row measurements when the model's section set changes (a
+  // background refetch can reorder/resize rows). Otherwise a focus landing
+  // before the new rows re-measure would anchor to a previous section's y.
+  // The cleared entries re-populate via onLayout; the null window is handled
+  // by the deferred-scroll path above.
+  const sections = model?.sections
+  useEffect(() => {
+    rowYsRef.current = []
+    pendingScrollRowRef.current = null
+  }, [sections])
 
   // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
   // seeded for instant first paint. Null path (no slug) is a no-op press.

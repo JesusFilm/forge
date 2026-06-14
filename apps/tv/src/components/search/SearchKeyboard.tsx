@@ -1,10 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { useMemo, useRef, useState } from "react"
-import { Animated, Easing, Pressable, StyleSheet, Text } from "react-native"
+import { useMemo } from "react"
+import { Animated, Pressable, StyleSheet, Text } from "react-native"
 
 import { scale } from "../../lib/scale"
 import { TVFocusGuideView } from "../TVFocusGuideView"
+import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import {
+  applyStripKey,
   buildSearchStrip,
   KEY_GAP,
   KEY_HEIGHT,
@@ -33,32 +35,17 @@ type Props = {
 export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
   const keys = useMemo(() => buildSearchStrip(), [])
 
+  // Thin caller over applyStripKey (the tested pure reducer in keyStrip.ts):
+  // submit fires onSubmit; every value-mutating action forwards its non-null
+  // next-value to onChange. Guarded no-ops (space/backspace on empty) return
+  // null and fall through without touching onChange.
   const dispatch = (action: StripKeyAction) => {
-    switch (action.kind) {
-      case "char":
-        onChange(value + action.char)
-        return
-      case "space":
-        // No leading space — matches the design's guard and avoids a
-        // whitespace-only query flipping the results region to an
-        // idle-state grid.
-        if (value.length === 0) return
-        onChange(value + " ")
-        return
-      case "backspace":
-        if (value.length === 0) return
-        onChange(value.slice(0, -1))
-        return
-      case "submit":
-        onSubmit()
-        return
-      default: {
-        // Compile-time exhaustiveness check: a future StripKeyAction
-        // variant errors at tsc until the new `case` is handled above.
-        const _exhaustive: never = action
-        return _exhaustive
-      }
+    if (action.kind === "submit") {
+      onSubmit()
+      return
     }
+    const next = applyStripKey(value, action)
+    if (next != null) onChange(next)
   }
 
   // trapFocusLeft / trapFocusRight keep D-pad horizontal travel inside the
@@ -91,39 +78,27 @@ function StripKeyButton({
   hasTVPreferredFocus: boolean
   onPress: () => void
 }) {
-  // onFocus/onBlur + state pattern (react-native-tvos exposes `focused`
-  // at runtime but not in the upstream Pressable types).
-  const [isFocused, setIsFocused] = useState(false)
+  // Focus pop driven by the shared useFocusAnimation hook (same as HomeCard
+  // / WatchOptionRow): one 0→1 `progress` feeds focusTransform, which stops
+  // the prior timing before starting the next so a rapid D-pad sweep can't
+  // orphan animations. `focused` gates the non-animated focus styles
+  // (background, ink color). The key only magnifies (no lift), so lift: 0.
+  const { focused, setFocused, progress } = useFocusAnimation()
 
-  // Focus pop to 1.12 — native-driver timing approximating the design's
-  // .15s ease-out transition.
-  const focusAnim = useRef(new Animated.Value(0)).current
-  const animateTo = (toValue: number) => {
-    Animated.timing(focusAnim, {
-      toValue,
-      duration: 140,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-  }
-  const keyScale = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.12],
-  })
+  // Memoized: progress is a stable ref, so the interpolations are built once
+  // rather than on every focus/blur re-render.
+  const keyTransform = useMemo(
+    () => focusTransform(progress, { lift: 0, magnify: 1.12 }),
+    [progress],
+  )
 
-  const inkColor = isFocused ? SEARCH_THEME.keyFocusText : SEARCH_THEME.keyText
+  const inkColor = focused ? SEARCH_THEME.keyFocusText : SEARCH_THEME.keyText
 
   return (
     <Pressable
       onPress={onPress}
-      onFocus={() => {
-        setIsFocused(true)
-        animateTo(1)
-      }}
-      onBlur={() => {
-        setIsFocused(false)
-        animateTo(0)
-      }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={cell.accessibilityLabel ?? cell.label}
@@ -132,8 +107,8 @@ function StripKeyButton({
         style={[
           styles.key,
           cell.wide && styles.keyWide,
-          isFocused && styles.keyFocused,
-          { transform: [{ scale: keyScale }] },
+          focused && styles.keyFocused,
+          { transform: keyTransform },
         ]}
       >
         {cell.action.kind === "backspace" ? (
@@ -179,7 +154,7 @@ const styles = StyleSheet.create({
   },
   keyLabel: {
     fontFamily: "System",
-    fontSize: scale(24),
+    fontSize: Math.round(scale(24)),
     fontWeight: "600",
   },
 })

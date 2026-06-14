@@ -78,7 +78,7 @@ export default function SearchScreen() {
   )
 
   const showResultsGrid = query.length > 0
-  const meta = resolveSearchMeta(state, results.length)
+  const meta = resolveSearchMeta(state, results.length, query.length > 0)
 
   return (
     <View style={styles.screen}>
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontFamily: "System",
-    fontSize: scale(18),
+    fontSize: Math.round(scale(18)),
     fontWeight: "700",
     letterSpacing: scale(2.9),
     color: SEARCH_THEME.textDim(0.45),

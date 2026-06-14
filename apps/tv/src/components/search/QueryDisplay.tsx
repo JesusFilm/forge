@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
 import { scale } from "../../lib/scale"
@@ -39,10 +39,16 @@ export function QueryDisplay({ value }: Props) {
     loop.start()
     return () => loop.stop()
   }, [blink])
-  const caretOpacity = blink.interpolate({
-    inputRange: [0, 0.4999, 0.5, 1],
-    outputRange: [1, 1, 0, 0],
-  })
+  // Memoized: blink is a stable ref, so the interpolation is built once
+  // rather than rebuilt on every keystroke re-render.
+  const caretOpacity = useMemo(
+    () =>
+      blink.interpolate({
+        inputRange: [0, 0.4999, 0.5, 1],
+        outputRange: [1, 1, 0, 0],
+      }),
+    [blink],
+  )
 
   return (
     <View style={styles.container}>
@@ -70,7 +76,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: "System",
-    fontSize: scale(56),
+    fontSize: Math.round(scale(56)),
     fontWeight: "800",
     letterSpacing: scale(-1),
     color: SEARCH_THEME.text,

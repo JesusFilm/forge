@@ -13,14 +13,22 @@ import { type SearchState } from "../../lib/search"
  * "Browse all"; ours introduces the browse panel), results show a count,
  * and transient states (loading / error / empty) stay quiet — their region
  * below carries the message.
+ *
+ * `hasQuery` distinguishes the genuinely-empty browse state from the brief
+ * idle window AFTER the first keystroke (debounce pending, no results yet):
+ * showing "BROWSE" over a non-empty query flashed the browse label across
+ * the results region. Idle + non-empty stays quiet until the search fires.
  */
 export function resolveSearchMeta(
   state: SearchState,
   resultCount: number,
+  hasQuery: boolean,
 ): string {
   switch (state) {
     case "idle":
-      return "BROWSE"
+      // Empty query → the browse panel is showing below, so label it.
+      // Non-empty query → debounce is pending; stay quiet (no BROWSE flash).
+      return hasQuery ? "" : "BROWSE"
     case "ready":
     case "degraded":
       // Degraded still renders whatever results came back, so the count

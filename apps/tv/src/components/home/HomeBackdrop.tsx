@@ -110,6 +110,11 @@ export const HomeBackdrop = memo(function HomeBackdrop({
     if (generation !== generationRef.current) return
     const opacities = slotOpacitiesRef.current
     const other: SlotIndex = slot === 0 ? 1 : 0
+    // Mark intent eagerly: `slot` is the front from now on, even before the
+    // fade finishes. A focus change that supersedes this fade then reads the
+    // correct front/back and crossfades FROM the in-flight target rather than
+    // snapping back to the prior front.
+    frontIndexRef.current = slot
     Animated.parallel([
       Animated.timing(opacities[slot], {
         toValue: 1,
@@ -121,10 +126,7 @@ export const HomeBackdrop = memo(function HomeBackdrop({
         duration: CROSSFADE_MS,
         useNativeDriver: true,
       }),
-    ]).start(({ finished }) => {
-      if (!finished || generation !== generationRef.current) return
-      frontIndexRef.current = slot
-    })
+    ]).start()
   }, [])
 
   // The incoming slot's image finished loading (or errored — degrade to
@@ -163,6 +165,17 @@ export const HomeBackdrop = memo(function HomeBackdrop({
           useNativeDriver: true,
         }),
       ]).start()
+      return
+    }
+
+    // Back slot ALREADY holds the target artwork (e.g. A->B->A): its Image is
+    // mounted and loaded, so its URL-keyed onLoad will NOT fire again. Waiting
+    // on pendingRef for that load would stall forever — the backdrop would
+    // stay stuck on the front card while the billboard shows the target.
+    // Crossfade to the back slot directly instead.
+    if (imageUrl != null && slotUrlsRef.current[back] === imageUrl) {
+      pendingRef.current = null
+      startCrossfade(back, generation)
       return
     }
 

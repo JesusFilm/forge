@@ -78,3 +78,44 @@ export function buildSearchStrip(): StripKey[] {
     },
   ]
 }
+
+/**
+ * Pure reducer for a key press over the current query string. Returns the
+ * NEXT query value for the value-mutating actions, or `null` when the action
+ * doesn't change the value (submit, or a guarded no-op).
+ *
+ * Kept here (not inside SearchKeyboard.tsx) so the keyboard's edit semantics
+ * are unit-testable without loading the component's React/JSX module graph
+ * under jest-expo. SearchKeyboard is the thin caller: a non-null return is
+ * forwarded to onChange; a "submit" action triggers onSubmit instead.
+ *
+ *   - char:      appends action.char
+ *   - space:     appends " " ONLY when the query is non-empty (no leading
+ *                space — avoids a whitespace-only query flipping the results
+ *                region to an idle-state grid); no-op (null) on empty
+ *   - backspace: drops the last char; no-op (null) on empty
+ *   - submit:    no value change (null) — caller fires onSubmit
+ */
+export function applyStripKey(
+  value: string,
+  action: StripKeyAction,
+): string | null {
+  switch (action.kind) {
+    case "char":
+      return value + action.char
+    case "space":
+      if (value.length === 0) return null
+      return value + " "
+    case "backspace":
+      if (value.length === 0) return null
+      return value.slice(0, -1)
+    case "submit":
+      return null
+    default: {
+      // Compile-time exhaustiveness check: a future StripKeyAction
+      // variant errors at tsc until the new `case` is handled above.
+      const _exhaustive: never = action
+      return _exhaustive
+    }
+  }
+}

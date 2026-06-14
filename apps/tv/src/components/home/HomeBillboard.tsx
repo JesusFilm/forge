@@ -167,6 +167,7 @@ function PlayButton({ card, onPress, onChromeFocus }: ActionButtonProps) {
         onChromeFocus()
       }}
       onBlur={() => setFocused(false)}
+      testID="home-billboard-play"
       accessibilityRole="button"
       accessibilityLabel={`Play, ${card.title}`}
     >
@@ -223,6 +224,7 @@ function MoreInfoButton({ card, onPress, onChromeFocus }: ActionButtonProps) {
         onChromeFocus()
       }}
       onBlur={() => setFocused(false)}
+      testID="home-billboard-more-info"
       accessibilityRole="button"
       accessibilityLabel={`More info, ${card.title}`}
     >

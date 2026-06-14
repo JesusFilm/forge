@@ -8,9 +8,11 @@
 // The design layers the search UI as a blur over home; as a standalone route
 // we use a solid deep background instead (no backdrop blur on TV).
 
+import { NEAR_BLACK } from "../watch/watchDetailTheme"
+
 export const SEARCH_THEME = {
   /** Solid stand-in for the design's rgba(9,9,11,.62) blur-over-home layer. */
-  bg: "#0a0a0b",
+  bg: NEAR_BLACK,
 
   /** Full-strength text (typed query, focused card titles). */
   text: "#ffffff",
@@ -22,7 +24,7 @@ export const SEARCH_THEME = {
   keyText: "rgba(255,255,255,0.78)",
   /** Letter-strip key, focused: inverts to white fill + near-black ink. */
   keyFocusBg: "#ffffff",
-  keyFocusText: "#0a0a0b",
+  keyFocusText: NEAR_BLACK,
 
   /** Thumb chip (episode count) backdrop. */
   chipBg: "rgba(0,0,0,0.6)",

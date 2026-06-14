@@ -250,14 +250,14 @@ const styles = StyleSheet.create({
   },
   message: {
     fontFamily: "System",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(22)),
     fontWeight: "600",
     color: SEARCH_THEME.text,
     textAlign: "center",
   },
   messageDetail: {
     fontFamily: "System",
-    fontSize: scale(16),
+    fontSize: Math.round(scale(16)),
     color: SEARCH_THEME.textDim(0.5),
     textAlign: "center",
   },
@@ -268,14 +268,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: "System",
-    fontSize: scale(32),
+    fontSize: Math.round(scale(32)),
     fontWeight: "700",
     letterSpacing: scale(-0.4),
     color: SEARCH_THEME.text,
   },
   emptyDetail: {
     fontFamily: "System",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(22)),
     color: SEARCH_THEME.textDim(0.5),
     marginTop: scale(10),
   },
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     fontFamily: "System",
-    fontSize: scale(18),
+    fontSize: Math.round(scale(18)),
     fontWeight: "600",
     color: WATCH_THEME.accentText,
   },
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   },
   degradedText: {
     fontFamily: "System",
-    fontSize: scale(14),
+    fontSize: Math.round(scale(14)),
     color: SEARCH_THEME.textDim(0.6),
     textAlign: "center",
   },

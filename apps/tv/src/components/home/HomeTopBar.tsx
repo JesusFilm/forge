@@ -18,6 +18,7 @@ import { scale } from "../../lib/scale"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { useFocusAnimation } from "../watch/useFocusAnimation"
+import { formatClock } from "./clockFormat"
 
 /**
  * In-flow height of the bar: paddingTop 40 + tab bar (8 padding ×2 + 60 tab).
@@ -34,14 +35,6 @@ const TAB_SELECTED_BG = "rgba(255,255,255,0.12)"
 // hexToRgba is for hex inputs; this literal zero-alpha white (never the
 // string "transparent") keeps the focus bg interpolation hue-stable.
 const TAB_BG_REST = "rgba(255,255,255,0)"
-
-/** h:mm, 12-hour, no AM/PM — matches the design's clock. Manual formatting
- *  (not toLocaleTimeString) so Hermes' Intl coverage is never a factor. */
-export function formatClock(date: Date): string {
-  const hours = date.getHours() % 12 || 12
-  const minutes = String(date.getMinutes()).padStart(2, "0")
-  return `${hours}:${minutes}`
-}
 
 type HomeTopBarProps = {
   /** Deep-in-feed: fade the bar out and make its tabs unfocusable. */
@@ -113,6 +106,7 @@ export const HomeTopBar = memo(function HomeTopBar({
 
       <View style={styles.tabBar}>
         <TopBarTab
+          testID="home-topbar-search-tab"
           iconName="search"
           accessibilityLabel="Search"
           accessibilityHint="Opens the search screen"
@@ -122,6 +116,7 @@ export const HomeTopBar = memo(function HomeTopBar({
           hasTVPreferredFocus={searchTabPreferredFocus}
         />
         <TopBarTab
+          testID="home-topbar-home-tab"
           label="Home"
           selected
           accessibilityLabel="Home"
@@ -149,6 +144,8 @@ const NO_ACTION = () => {}
 const SEARCH_ICON_SIZE = Math.round(scale(24))
 
 type TopBarTabProps = {
+  /** Stable id for D-pad sim automation (mirrors HomeCard's testID pattern). */
+  testID: string
   /** Icon-only tab (60×60) when set; label tab otherwise. */
   iconName?: "search"
   label?: string
@@ -163,6 +160,7 @@ type TopBarTabProps = {
 }
 
 function TopBarTab({
+  testID,
   iconName,
   label,
   selected = false,
@@ -223,6 +221,7 @@ function TopBarTab({
       onBlur={() => setFocused(false)}
       focusable={focusable}
       hasTVPreferredFocus={hasTVPreferredFocus}
+      testID={testID}
       accessibilityRole="tab"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}

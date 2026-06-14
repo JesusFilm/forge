@@ -6,23 +6,36 @@ import {
 
 describe("resolveSearchMeta", () => {
   it("shows BROWSE for the empty-query idle state", () => {
-    expect(resolveSearchMeta("idle", 0)).toBe("BROWSE")
+    expect(resolveSearchMeta("idle", 0, false)).toBe("BROWSE")
+  })
+
+  it("stays quiet for idle with a non-empty query (no BROWSE flash)", () => {
+    // After the first keystroke the state is idle (debounce pending) with a
+    // non-empty query — labelling it BROWSE flashed the browse label across
+    // the results region. Only the genuinely-empty browse state shows BROWSE.
+    expect(resolveSearchMeta("idle", 0, true)).toBe("")
   })
 
   it("pluralizes the ready-state result count", () => {
-    expect(resolveSearchMeta("ready", 1)).toBe("1 RESULT")
-    expect(resolveSearchMeta("ready", 12)).toBe("12 RESULTS")
+    expect(resolveSearchMeta("ready", 1, true)).toBe("1 RESULT")
+    expect(resolveSearchMeta("ready", 12, true)).toBe("12 RESULTS")
+  })
+
+  it("stays quiet for ready with zero results", () => {
+    // Branch discipline: pin the ready+zero path independently from the
+    // degraded+zero path below so deleting either branch fails a test.
+    expect(resolveSearchMeta("ready", 0, true)).toBe("")
   })
 
   it("counts degraded results too, but stays quiet at zero", () => {
-    expect(resolveSearchMeta("degraded", 3)).toBe("3 RESULTS")
-    expect(resolveSearchMeta("degraded", 0)).toBe("")
+    expect(resolveSearchMeta("degraded", 3, true)).toBe("3 RESULTS")
+    expect(resolveSearchMeta("degraded", 0, true)).toBe("")
   })
 
   it("stays quiet while loading, on empty, and on error", () => {
-    expect(resolveSearchMeta("loading", 0)).toBe("")
-    expect(resolveSearchMeta("empty", 0)).toBe("")
-    expect(resolveSearchMeta("error", 0)).toBe("")
+    expect(resolveSearchMeta("loading", 0, true)).toBe("")
+    expect(resolveSearchMeta("empty", 0, true)).toBe("")
+    expect(resolveSearchMeta("error", 0, true)).toBe("")
   })
 })
 
