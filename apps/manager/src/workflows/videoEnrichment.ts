@@ -25,13 +25,82 @@ import type {
   TranslationLanguageResult,
 } from "@/types/job"
 import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
-import type { LanguageResult } from "@/services/subtitleTranslation/types"
+import type { LanguageResult } from "@/services/mastra-subtitle-enrichment"
+import type { MastraTranscriptEmbeddingResult } from "@/services/mastra-transcript-embeddings"
 import {
   stepGetJob,
   stepMergeJobArtifacts,
   stepUpdateJob,
   stepUpdateStepStatus,
 } from "@/workflows/jobStateSteps"
+
+type SubtitleTranslationStepResult = {
+  mastraRunId: string
+  languages: LanguageResult[]
+}
+
+type MastraStepDetailsError = Error & {
+  stepDetails?: JobStepDetails
+}
+
+function buildMastraFailureStepDetails(input: {
+  mastraRunId?: string
+  status?: string
+  reason?: string
+  retryable?: boolean
+  languages?: LanguageResult[]
+}): JobStepDetails | undefined {
+  const details: JobStepDetails = {}
+  if (input.mastraRunId) {
+    details.mastra = {
+      runId: input.mastraRunId,
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.reason ? { reason: input.reason } : {}),
+      ...(input.retryable !== undefined ? { retryable: input.retryable } : {}),
+      ...(input.languages
+        ? { languages: input.languages.map((language) => language.lang) }
+        : {}),
+    }
+  }
+
+  if (input.languages && input.languages.length > 0) {
+    details.languageResults = input.languages.map((result) => ({
+      lang: result.lang,
+      status: result.status,
+      error: result.error,
+    }))
+  }
+
+  return details.mastra || details.languageResults ? details : undefined
+}
+
+function errorWithStepDetails(
+  message: string,
+  details: JobStepDetails | undefined,
+): MastraStepDetailsError {
+  const error = new Error(message) as MastraStepDetailsError
+  if (details) {
+    error.stepDetails = details
+  }
+  return error
+}
+
+function getStepDetailsFromError(error: unknown): JobStepDetails | undefined {
+  if (typeof error !== "object" || error == null) {
+    return undefined
+  }
+
+  const details = (error as { stepDetails?: unknown }).stepDetails
+  if (
+    typeof details !== "object" ||
+    details == null ||
+    Array.isArray(details)
+  ) {
+    return undefined
+  }
+
+  return details as JobStepDetails
+}
 
 function getRoutingReportFromError(error: unknown): JobArtifactManifest | null {
   if (
@@ -106,8 +175,14 @@ async function markStepFailed(
   jobId: string,
   step: WorkflowStepName,
   error: string,
+  details?: JobStepDetails,
 ) {
-  await stepUpdateStepStatus(jobId, step, "failed", error)
+  if (details === undefined) {
+    await stepUpdateStepStatus(jobId, step, "failed", error)
+    return
+  }
+
+  await stepUpdateStepStatus(jobId, step, "failed", error, details)
 }
 
 async function markStepSkipped(jobId: string, step: WorkflowStepName) {
@@ -157,11 +232,11 @@ async function persistMergedArtifacts(
   }
 }
 
-function getTranslationArtifactManifest(
-  results: LanguageResult[],
-): JobArtifactManifest {
+function getTranslationArtifactManifest({
+  languages,
+}: SubtitleTranslationStepResult): JobArtifactManifest {
   return buildDownloadableArtifactManifest(
-    results.flatMap((result) =>
+    languages.flatMap((result) =>
       result.status === "completed"
         ? [`subtitles-${result.lang}`, `translation-${result.lang}`]
         : [],
@@ -170,13 +245,9 @@ function getTranslationArtifactManifest(
 }
 
 function getTranslationStepDetails(
-  results: LanguageResult[],
+  result: SubtitleTranslationStepResult,
 ): JobStepDetails | undefined {
-  if (results.length === 0) {
-    return undefined
-  }
-
-  const languageResults: TranslationLanguageResult[] = results.map(
+  const languageResults: TranslationLanguageResult[] = result.languages.map(
     (result) => ({
       lang: result.lang,
       status: result.status,
@@ -184,7 +255,30 @@ function getTranslationStepDetails(
     }),
   )
 
-  return { languageResults }
+  return {
+    ...(languageResults.length > 0 ? { languageResults } : {}),
+    mastra: {
+      runId: result.mastraRunId,
+      status: "completed",
+      languages: result.languages.map((language) => language.lang),
+    },
+  }
+}
+
+function getTranscriptEmbeddingsStepDetails(
+  result: Extract<MastraTranscriptEmbeddingResult, { ok: true }>,
+): JobStepDetails {
+  return {
+    mastra: {
+      runId: result.mastraRunId,
+      status: result.status,
+      provider: result.provider,
+      model: result.model,
+      chunks: result.chunks,
+      totalTokens: result.totalTokens,
+      sourceContentHash: result.sourceContentHash,
+    },
+  }
 }
 
 export async function runVideoEnrichment(
@@ -267,18 +361,24 @@ export async function runVideoEnrichment(
       getArtifacts?: (result: T) => JobArtifactManifest,
       getDetails?: (result: T) => JobStepDetails | undefined,
     ): Promise<{ result: T }> {
+      let stepDetails: JobStepDetails | undefined
       try {
         const result = await fn()
         const artifacts = getArtifacts?.(result) ?? {}
-        const details = getDetails?.(result)
+        stepDetails = getDetails?.(result)
         await persistMergedArtifacts(input.jobId, artifacts)
-        await markStepComplete(input.jobId, stepName, details)
+        await markStepComplete(input.jobId, stepName, stepDetails)
         return {
           result,
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error"
-        await markStepFailed(input.jobId, stepName, msg)
+        await markStepFailed(
+          input.jobId,
+          stepName,
+          msg,
+          getStepDetailsFromError(err) ?? stepDetails,
+        )
         throw err
       }
     }
@@ -373,15 +473,19 @@ export async function runVideoEnrichment(
       (result) => buildDownloadableArtifactManifest(result.artifactKeys),
     )
 
-    const embeddingsPromise = runParallelStep("embeddings", () =>
-      stepMastraTranscriptEmbeddings({
-        assetId: input.assetId,
-        muxAssetId: input.muxAssetId,
-        language: transcription.language,
-        transcript: transcription.text,
-        segments: transcription.segments,
-        provider: transcription.resolvedProvider,
-      }),
+    const embeddingsPromise = runParallelStep(
+      "embeddings",
+      () =>
+        stepMastraTranscriptEmbeddings({
+          assetId: input.assetId,
+          muxAssetId: input.muxAssetId,
+          language: transcription.language,
+          transcript: transcription.text,
+          segments: transcription.segments,
+          provider: transcription.resolvedProvider,
+        }),
+      undefined,
+      getTranscriptEmbeddingsStepDetails,
     )
 
     const [
@@ -424,7 +528,7 @@ export async function runVideoEnrichment(
         jobId: input.jobId,
         assetId: input.assetId,
         muxAssetId: input.muxAssetId,
-        translationResults: translationResult.value.result,
+        translationResults: translationResult.value.result.languages,
         previousReport: getMuxSyncReport(currentJob.artifacts),
       })
 
@@ -580,8 +684,31 @@ async function stepSubtitleTranslation(
   targetLanguages: string[],
 ) {
   "use step"
-  const { translateSubtitles } = await import("@/services/subtitleTranslation")
-  return translateSubtitles({ assetId, sourceLanguage, targetLanguages })
+  const { launchMastraSubtitleEnrichment } =
+    await import("@/services/mastra-subtitle-enrichment")
+  const result = await launchMastraSubtitleEnrichment({
+    assetId,
+    sourceLanguage,
+    targetLanguages,
+  })
+
+  if (!result.ok) {
+    throw errorWithStepDetails(
+      `Mastra subtitle enrichment failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
+      buildMastraFailureStepDetails({
+        mastraRunId: result.mastraRunId,
+        status: "failed",
+        reason: result.reason,
+        retryable: result.retryable,
+        languages: result.languages,
+      }),
+    )
+  }
+
+  return {
+    mastraRunId: result.mastraRunId,
+    languages: result.languages,
+  }
 }
 
 async function stepChapters(assetId: string, input: GenerateChaptersInput) {
@@ -624,8 +751,14 @@ async function stepMastraTranscriptEmbeddings(input: {
   })
 
   if (!result.ok) {
-    throw new Error(
+    throw errorWithStepDetails(
       `Mastra transcript embedding failed for assetId=${input.assetId}: ${result.reason}`,
+      buildMastraFailureStepDetails({
+        mastraRunId: result.mastraRunId,
+        status: "failed",
+        reason: result.reason,
+        retryable: result.retryable,
+      }),
     )
   }
 

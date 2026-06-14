@@ -318,6 +318,7 @@ export function SeriesPageClient({
       <SeriesEpisodesGrid
         episodes={episodes}
         languageSlug={currentLanguageSlug}
+        parentSlug={series.slug ?? ""}
         seriesPosterUrl={posterUrl}
       />
 

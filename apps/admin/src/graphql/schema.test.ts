@@ -58,6 +58,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "managerViewer",
         "managerLanguageGeo",
         "managerVideoCoverage",
+        "managerVideosForEnrichment",
         "managerCoverageSnapshots",
         "managerJobs",
         "managerJob",
@@ -77,6 +78,20 @@ describe("GraphQL schema — Unit 4 content types", () => {
     )
     expect(Object.keys(fieldsOf("ManagerLanguageGeo"))).toEqual(
       expect.arrayContaining(["continents", "countries", "languages"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerLanguage"))).toEqual(
+      expect.arrayContaining(["id", "coreId", "bcp47", "iso3"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerVideoForEnrichment"))).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "coreId",
+        "primaryLanguage",
+        "variants",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerEnrichmentVariant"))).toEqual(
+      expect.arrayContaining(["language", "muxVideo", "downloads"]),
     )
     expect(Object.keys(fieldsOf("ManagerVideoCoverage"))).toEqual(
       expect.arrayContaining([
@@ -398,6 +413,7 @@ describe("Video type", () => {
         "aiMetadata",
         "locales",
         "dubs",
+        "muxPlaybackId",
         "studyQuestions",
         "bibleCitations",
       ]),
@@ -431,10 +447,14 @@ describe("Video type", () => {
     const localesLanguageSlugArg = fields.locales.args.find(
       (arg) => arg.name === "languageSlug",
     )
+    const muxPlaybackLanguageSlugArg = fields.muxPlaybackId.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
     expect(studyLocaleArg?.type.toString()).toBe("String")
     expect(studyLanguageSlugArg?.type.toString()).toBe("String")
     expect(localesLocaleArg?.type.toString()).toBe("String")
     expect(localesLanguageSlugArg?.type.toString()).toBe("String")
+    expect(muxPlaybackLanguageSlugArg?.type.toString()).toBe("String")
   })
 
   it("localized content rows expose variant identity diagnostics", () => {

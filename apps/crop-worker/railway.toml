@@ -9,13 +9,11 @@
 
 [build]
 builder = "NIXPACKS"
-# Install with NODE_ENV=development so devDependencies (husky for the repo-root
-# `prepare` script, prisma for sibling postinstalls, typescript for the build)
-# are NOT skipped. The service sets NODE_ENV=production, which applies to the
-# build too — and pnpm skips devDependencies under NODE_ENV=production, which
-# breaks the monorepo install (husky/prisma "not found"). The runtime keeps
-# NODE_ENV=production via the service variable; this override is install-only.
-buildCommand = "NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @forge/crop-worker build"
+# The repo-root nixpacks.toml overrides the install phase with
+# NODE_ENV=development so devDependencies are present for monorepo lifecycle
+# scripts and this TypeScript build. Keep this command focused on compiling the
+# worker; Railway's Nixpacks install phase has already run by this point.
+buildCommand = "pnpm --filter @forge/crop-worker build"
 watchPatterns = [
   "/apps/crop-worker/**",
   "/package.json",

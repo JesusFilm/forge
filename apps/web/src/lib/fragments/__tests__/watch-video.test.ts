@@ -2,8 +2,10 @@ import { print } from "graphql"
 import { describe, expect, it } from "vitest"
 
 import {
+  getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
+  getWatchVideoRouteSnapshotBySlugOperation,
   getWatchVideoShellBySlugOperation,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -79,14 +81,38 @@ describe("WatchVideo split GraphQL operations", () => {
 })
 
 describe("WatchVideo split operation documents", () => {
-  it("declares only videoSlug for the shell lookup", () => {
+  it("declares only videoSlug for the stable shell lookup", () => {
     const printed = print(getWatchVideoShellBySlugOperation)
 
     expect(printed).toMatch(
       /query GetWatchVideoShellBySlug\(\$videoSlug:\s*String!\)/,
     )
     expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).not.toMatch(/muxPlaybackId/)
     expect(printed).toMatch(/\.\.\.WatchVideoShell\b/)
+  })
+
+  it("collapses route shell, fallback copy, and carousel Mux ids into one videoBySlug snapshot", () => {
+    const printed = print(getWatchVideoRouteSnapshotBySlugOperation)
+
+    expect(printed.match(/videoBySlug\(slug:\s*\$videoSlug\)/g)).toHaveLength(1)
+    expect(printed).toMatch(/\.\.\.WatchVideoShell\b/)
+    expect(printed).toMatch(/exactLocales\s*:\s*locales/)
+    expect(printed).toMatch(/broadLocales\s*:\s*locales/)
+    expect(printed).toMatch(/englishLocales\s*:\s*locales/)
+    expect(printed).toMatch(/exactStudyQuestions\s*:\s*studyQuestions/)
+    expect(printed).toMatch(/muxPlaybackId\(languageSlug:\s*\$languageSlug\)/)
+    expect(printed).not.toMatch(/\bdownloads\s*\{/)
+    expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
+  })
+
+  it("fetches optional carousel Mux playback ids by languageSlug", () => {
+    const printed = print(getWatchVideoCarouselMuxPlaybackIdsBySlugOperation)
+
+    expect(printed).toMatch(/\$videoSlug:\s*String!/)
+    expect(printed).toMatch(/\$languageSlug:\s*String\b/)
+    expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).toMatch(/muxPlaybackId\(languageSlug:\s*\$languageSlug\)/)
   })
 
   it("threads locale and languageSlug only into the copy lookup", () => {

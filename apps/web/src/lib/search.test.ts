@@ -1,16 +1,23 @@
 import { print, type DocumentNode } from "graphql"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import client from "@/lib/admin-client"
+import client, { semanticSearchAdminClient } from "@/lib/admin-client"
 import { searchVideos } from "./search"
+
+const defaultQueryMock = vi.hoisted(() => vi.fn())
+const semanticQueryMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/admin-client", () => ({
   default: {
-    query: vi.fn(),
+    query: defaultQueryMock,
+  },
+  semanticSearchAdminClient: {
+    query: semanticQueryMock,
   },
 }))
 
-const queryMock = vi.mocked(client.query)
+const defaultClientQueryMock = vi.mocked(client.query)
+const queryMock = vi.mocked(semanticSearchAdminClient.query)
 
 type SearchQueryCall = {
   query: DocumentNode
@@ -34,13 +41,21 @@ function mockSearchResponse(searchMode: "HYBRID" | "KEYWORD_ONLY" = "HYBRID") {
         results: [],
       },
     },
-  } as Awaited<ReturnType<typeof client.query>>)
+  } as Awaited<ReturnType<typeof semanticSearchAdminClient.query>>)
 }
 
 describe("searchVideos", () => {
   beforeEach(() => {
+    defaultClientQueryMock.mockReset()
     queryMock.mockReset()
     mockSearchResponse()
+  })
+
+  it("uses the semantic-search Admin client instead of the default Admin client", async () => {
+    await searchVideos("jesus")
+
+    expect(defaultClientQueryMock).not.toHaveBeenCalled()
+    expect(queryMock).toHaveBeenCalledOnce()
   })
 
   it("declares and forwards the keyword-first mode argument", async () => {

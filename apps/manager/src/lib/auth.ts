@@ -132,6 +132,18 @@ export async function authenticateManagerOverrideRequest(
   }
 }
 
+// Display identity for audit fields derived from the authenticated actor
+// (NEVER the request body): the session user's email when available, the
+// stable user id otherwise, and the service principal for API-key callers.
+// Extracted from the smart-crop approve route's inline pattern so the shorts
+// routes (create requestedBy, draft updatedBy, render launch log) share one
+// definition.
+export function managerActorIdentity(actor: ManagerOverrideActor): string {
+  return actor.kind === "session"
+    ? actor.user.email || actor.approvedByUserId
+    : actor.approvedByUserId
+}
+
 async function readSessionFromCookieHeader(
   cookieHeader: string | null,
 ): Promise<ManagerSessionPrincipal | null> {

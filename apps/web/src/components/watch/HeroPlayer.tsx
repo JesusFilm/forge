@@ -117,6 +117,7 @@ const HERO_HLS_CONFIG = {
 }
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
+const HERO_POSTER_TIME_SECONDS = 2
 const WATCH_NOW_LINK_CLASS =
   "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
 
@@ -124,7 +125,7 @@ function buildHeroPosterUrl(
   playbackId: string | undefined,
 ): string | undefined {
   return playbackId
-    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
+    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&time=${HERO_POSTER_TIME_SECONDS}`
     : undefined
 }
 
@@ -181,7 +182,8 @@ export function HeroPlayer({
   overlay,
   subtitleVttSrc,
   optimisticVisual,
-  forcePosterBridgeKey,
+  coverBlackoutKey,
+  coverBlackoutPhase,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -191,7 +193,8 @@ export function HeroPlayer({
   overlay?: ReactNode
   subtitleVttSrc?: string | null
   optimisticVisual?: WatchChapterOptimisticVisual | null
-  forcePosterBridgeKey?: string | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
 }) {
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
@@ -357,8 +360,12 @@ export function HeroPlayer({
   // hero — the viewport/aspect-ratio height class below pins the layout, this
   // hides the empty box behind a spinner until there's something to show.
   const [videoReady, setVideoReady] = useState(false)
+  const [playerFrameRevealed, setPlayerFrameRevealed] = useState(false)
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
+  }, [])
+  const handlePlaying = useCallback(() => {
+    setPlayerFrameRevealed(true)
   }, [])
 
   useEffect(() => {
@@ -866,6 +873,7 @@ export function HeroPlayer({
     // forever and the spinner would sit on a black box. Reveal the player
     // element so the underlying media element can render its native error UI.
     setVideoReady(true)
+    setPlayerFrameRevealed(true)
   }, [])
 
   // Reset the buffered/ready spinner when the playable identity changes
@@ -881,6 +889,7 @@ export function HeroPlayer({
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
+    setPlayerFrameRevealed(false)
     setPlayerActivated(autoplayParam === "1" || heroPosterUrl == null)
   }
   // Variant-scope the autoplay one-shot — without this, a same-component
@@ -909,36 +918,23 @@ export function HeroPlayer({
   const showPendingPosterTransition =
     showOptimisticPoster && optimisticVisual?.loading === true
   const posterIdentity = visualHeroPosterUrl ?? "none"
-  const [posterTransitionState, setPosterTransitionState] = useState({
-    identity: posterIdentity,
-    shouldBridge: false,
-  })
-  if (posterTransitionState.identity !== posterIdentity) {
-    setPosterTransitionState({
-      identity: posterIdentity,
-      shouldBridge: true,
-    })
-  }
   const coverLoading =
     showPendingPosterTransition || (playerActivated && !videoReady)
   const showPosterBlackBridge =
-    visualHeroPosterUrl != null &&
-    (showPendingPosterTransition ||
-      posterTransitionState.shouldBridge ||
-      forcePosterBridgeKey != null)
+    visualHeroPosterUrl != null && showPendingPosterTransition
   const posterLayerKey = posterIdentity
   const posterOpacityClass =
-    videoReady && !showOptimisticPoster ? "opacity-0" : "opacity-100"
+    playerFrameRevealed && !showOptimisticPoster ? "opacity-0" : "opacity-100"
   const posterTransitionClass = showOptimisticPoster
     ? ""
-    : "transition-opacity duration-300"
+    : "transition-opacity duration-[1000ms]"
   const posterImageMotionClass = showPosterBlackBridge
-    ? coverLoading
-      ? "watch-hero-cover-reveal-pulse"
-      : "watch-hero-cover-reveal"
-    : coverLoading
-      ? "watch-hero-cover-pulse"
-      : ""
+    ? "watch-hero-cover-reveal"
+    : ""
+  const coverBlackoutMotionClass =
+    coverBlackoutPhase === "revealing"
+      ? "watch-hero-cover-black-bridge"
+      : "watch-hero-cover-to-black"
 
   // Hide the language-switch globe while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
@@ -1090,6 +1086,7 @@ export function HeroPlayer({
               }
               onLoadedMetadata={handleLoadedMetadata}
               onCanPlay={handleCanPlay}
+              onPlaying={handlePlaying}
               // React's SyntheticEvent<HTMLVideoElement> is structurally
               // narrower than the native Event the handler consumes at
               // runtime; cast bridges the type-system difference.
@@ -1106,7 +1103,7 @@ export function HeroPlayer({
               data-cover-transition={
                 showPosterBlackBridge ? "black-bridge" : "none"
               }
-              className={`pointer-events-none absolute inset-0 ${posterTransitionClass} ${posterOpacityClass}`}
+              className={`pointer-events-none absolute inset-0 z-1 ${posterTransitionClass} ${posterOpacityClass}`}
             >
               <Image
                 data-testid="hero-player-poster"
@@ -1120,6 +1117,26 @@ export function HeroPlayer({
                 sizes="100vw"
                 className={`object-cover ${posterImageMotionClass}`}
               />
+              {!chromeRevealed ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="hero-player-poster-muted-backdrop"
+                  className="pointer-events-none absolute inset-0 [background:var(--watch-player-muted-backdrop)]"
+                  style={
+                    {
+                      "--watch-player-muted-backdrop":
+                        WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+                    } as CSSProperties
+                  }
+                />
+              ) : null}
+              {darkenOverlay ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="hero-player-poster-darken-overlay"
+                  className="pointer-events-none absolute inset-0 bg-black/50"
+                />
+              ) : null}
               {showPosterBlackBridge ? (
                 <div
                   data-testid="hero-player-cover-black-bridge"
@@ -1128,6 +1145,15 @@ export function HeroPlayer({
                 />
               ) : null}
             </div>
+          ) : null}
+
+          {coverBlackoutKey != null && coverBlackoutPhase != null ? (
+            <div
+              key={`${coverBlackoutKey}:${coverBlackoutPhase}`}
+              data-testid="hero-player-cover-blackout"
+              aria-hidden="true"
+              className={`${coverBlackoutMotionClass} pointer-events-none absolute inset-0 z-2 bg-black`}
+            />
           ) : null}
 
           {!chromeRevealed && overlay == null ? (

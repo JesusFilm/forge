@@ -51,11 +51,30 @@ describe("GET /api/videos in mock mode", () => {
     await expect(response.json()).resolves.toMatchObject({
       collections: [
         {
+          coreId: "collection-1",
+          slug: "hope-stories",
           title: "Hope Stories",
-          videos: [{ title: "Episode 1" }, { title: "Episode 2" }],
+          videos: [
+            {
+              coreId: "ep-1",
+              slug: "hope-stories-episode-1",
+              title: "Episode 1",
+            },
+            {
+              coreId: "ep-2",
+              slug: "hope-stories-episode-2",
+              title: "Episode 2",
+            },
+          ],
         },
       ],
-      standalone: [{ title: "A New Beginning" }],
+      standalone: [
+        {
+          coreId: "standalone-1",
+          slug: "a-new-beginning",
+          title: "A New Beginning",
+        },
+      ],
     })
   })
 
@@ -120,7 +139,7 @@ describe("GET /api/videos in mock mode", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
-      standalone: [{ title: "stable-video-slug" }],
+      standalone: [{ slug: "stable-video-slug", title: "stable-video-slug" }],
     })
   })
 })
