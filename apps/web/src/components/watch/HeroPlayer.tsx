@@ -184,7 +184,6 @@ export function HeroPlayer({
   optimisticVisual,
   coverBlackoutKey,
   coverBlackoutPhase,
-  forcePosterBridgeKey,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -196,7 +195,6 @@ export function HeroPlayer({
   optimisticVisual?: WatchChapterOptimisticVisual | null
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
-  forcePosterBridgeKey?: string | null
 }) {
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
@@ -920,23 +918,10 @@ export function HeroPlayer({
   const showPendingPosterTransition =
     showOptimisticPoster && optimisticVisual?.loading === true
   const posterIdentity = visualHeroPosterUrl ?? "none"
-  const [posterTransitionState, setPosterTransitionState] = useState({
-    identity: posterIdentity,
-    shouldBridge: false,
-  })
-  if (posterTransitionState.identity !== posterIdentity) {
-    setPosterTransitionState({
-      identity: posterIdentity,
-      shouldBridge: true,
-    })
-  }
   const coverLoading =
     showPendingPosterTransition || (playerActivated && !videoReady)
   const showPosterBlackBridge =
-    visualHeroPosterUrl != null &&
-    (showPendingPosterTransition ||
-      posterTransitionState.shouldBridge ||
-      forcePosterBridgeKey != null)
+    visualHeroPosterUrl != null && showPendingPosterTransition
   const posterLayerKey = posterIdentity
   const posterOpacityClass =
     playerFrameRevealed && !showOptimisticPoster ? "opacity-0" : "opacity-100"

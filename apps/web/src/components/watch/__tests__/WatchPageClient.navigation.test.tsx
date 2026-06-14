@@ -39,7 +39,6 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     pendingChapter,
     coverBlackoutKey,
-    routePosterBridgeKey,
     onChapterNavigateIntent,
   }: {
     pendingChapter?: {
@@ -48,7 +47,6 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       posterUrl: string | null
     } | null
     coverBlackoutKey?: string | null
-    routePosterBridgeKey?: string | null
     onChapterNavigateIntent?: (intent: {
       href: string
       languageSlug: string
@@ -67,7 +65,6 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       data-pending-title={pendingChapter?.title ?? ""}
       data-pending-poster={pendingChapter?.posterUrl ?? ""}
       data-cover-blackout-key={coverBlackoutKey ?? ""}
-      data-route-poster-bridge-key={routePosterBridgeKey ?? ""}
       onClick={() => {
         onChapterNavigateIntent?.({
           href: "/parent.html/child-2/english.html",
@@ -232,7 +229,6 @@ describe("WatchPageClient chapter navigation", () => {
 
     expect(renderer()?.getAttribute("data-pending-title")).toBe("")
     expect(renderer()?.getAttribute("data-cover-blackout-key")).toBe("")
-    expect(renderer()?.getAttribute("data-route-poster-bridge-key")).toBe("")
 
     act(() => {
       ;(renderer() as HTMLButtonElement).click()
@@ -285,9 +281,6 @@ describe("WatchPageClient chapter navigation", () => {
     expect(renderer()?.getAttribute("data-pending-target")).toBe("")
     expect(renderer()?.getAttribute("data-pending-title")).toBe("")
     expect(renderer()?.getAttribute("data-pending-poster")).toBe("")
-    expect(renderer()?.getAttribute("data-route-poster-bridge-key")).toBe(
-      "child-2:variant-1",
-    )
   })
 
   it("waits for the background route warm before pushing", async () => {
