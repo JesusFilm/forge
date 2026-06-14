@@ -50,7 +50,7 @@ const SearchModeEnum = builder.enumType("HybridSearchMode", {
 const SearchResultRef = builder.objectRef<SearchResult>("HybridSearchResult")
 SearchResultRef.implement({
   description:
-    "A single hybrid-search hit. Video results may carry scene-level snippet + timecode + playback id; experience results carry experience-level data.",
+    "A single hybrid-search hit. Video results carry video-level display metadata plus optional match timecode/playback data; experience results carry experience-level data.",
   fields: (t) => ({
     type: t.field({
       type: ContentTypeEnum,

@@ -61,11 +61,9 @@ function gradientForSlug(slug: string): string {
   return EXPERIENCE_PLACEHOLDER_GRADIENTS[index]
 }
 
-// Admin's hybrid-search response sets `imageUrl: null` until R8 wires
-// real ogImage / VideoImage; `playbackId` is reliably populated for
-// video results (INNER JOIN on dub/mux at the retriever), so the Mux
-// thumbnail endpoint gives us a frame-accurate poster — and when the
-// match is scene-level, `startSeconds` lets us land on the matched scene.
+// Admin hybrid search can return a curated `imageUrl`; when it cannot,
+// `playbackId` lets the card fall back to a Mux poster. Scene-level
+// matches can also use `startSeconds` to land near the matched moment.
 function muxSearchThumbnail(
   playbackId: string,
   startSeconds: number | null,

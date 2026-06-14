@@ -524,6 +524,74 @@ describe("HybridSearchService", () => {
   })
 
   describe("card-pill hydration", () => {
+    it("hydrates video display metadata so cards use descriptions and thumbnails instead of evidence text", async () => {
+      vi.mocked(searchVideoSemantic).mockResolvedValue([
+        {
+          resultType: "video",
+          resultId: "vid-transcript",
+          videoCoreId: "1_jf",
+          videoSlug: "who-is-jesus",
+          videoTitle: "Who Is Jesus?",
+          imageUrl: "",
+          sceneDescription:
+            "<b>Following Jesus</b> <b>Who is Jesus?</b> <b>Uh yes</b>",
+          startSeconds: 17,
+          playbackId: "",
+          similarity: 0.9,
+          embeddingText: "[]",
+        },
+      ])
+
+      mockPrisma.video.findMany.mockResolvedValueOnce([
+        {
+          id: "vid-transcript",
+          label: "EPISODE",
+          primaryLanguageId: "lang-en",
+          locales: [
+            {
+              description: "A concise public description of the video.",
+              snippet: "A shorter fallback snippet.",
+            },
+          ],
+          images: [
+            {
+              mobileCinematicHigh: "https://cdn.example/cover-high.jpg",
+              mobileCinematicLow: null,
+              videoStill: null,
+              url: null,
+              thumbnail: null,
+            },
+          ],
+          dubs: [
+            {
+              languageId: "lang-en",
+              duration: 70,
+              muxVideo: { playbackId: "mux-hydrated" },
+            },
+          ],
+          _count: { children: 0 },
+        },
+      ])
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      const result = await service.search({ query: "jesus", locale: "en" })
+
+      expect(result.results[0]).toMatchObject({
+        id: "vid-transcript",
+        snippet: "A concise public description of the video.",
+        imageUrl: "https://cdn.example/cover-high.jpg",
+        playbackId: "mux-hydrated",
+        label: "EPISODE",
+        durationSeconds: 70,
+        childCount: 0,
+      })
+    })
+
     it("populates label, durationSeconds, childCount on video rows from one batched findMany", async () => {
       vi.mocked(searchVideoSemantic).mockResolvedValue([
         {
