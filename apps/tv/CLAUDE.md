@@ -52,6 +52,13 @@ All UI follows the Crimson Gallery design system from the Stitch mockups:
 - Composite React keys: `key={\`${item.kind}-${item.id}-${index}\`}`.
 - Hardcoded English locale: `{ locale: "en" }` for all GraphQL queries.
 
+## Test builds & distribution
+
+- EAS profiles live in `apps/tv/eas.json`; every profile sets `EXPO_TV: "1"` so the
+  managed prebuild produces a TV target (native dirs are gitignored).
+- Getting stakeholder test builds onto real Apple TV / Android TV: see `DISTRIBUTION.md`
+  (Android = `--profile preview` APK link; Apple TV = TestFlight via `eas submit`).
+
 ## TV-Specific Patterns
 
 - Every interactive element must be focusable via D-pad.
