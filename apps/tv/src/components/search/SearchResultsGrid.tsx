@@ -12,11 +12,12 @@ import {
 
 import { type SearchResult } from "../../lib/queries"
 import { type SearchState } from "../../lib/search"
-import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { TVFocusGuideView } from "../TVFocusGuideView"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { ResultCard } from "./ResultCard"
 import { searchResultPath } from "./searchResultPath"
+import { SEARCH_THEME } from "./searchTheme"
 
 type Props = {
   state: SearchState
@@ -52,7 +53,7 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
   if (state === "loading") {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={WATCH_THEME.accent} />
       </View>
     )
   }
@@ -163,10 +164,10 @@ function ResultsList({
         columnWrapperStyle={styles.row}
         renderItem={({ item, index }) => (
           // Per-cell wrapper provides the breathing room the focus
-          // glow needs (shadowRadius scale(16) + 1.05x scale on the
-          // FocusableCard ≈ 21dp halo). Without this, the FlatList's
-          // contentContainer clips the glow at its outer edges. Same
-          // pattern as SearchBrowse and home's ContentRail itemWrapper.
+          // lift needs (translateY −8 + 1.06x scale on the ResultCard).
+          // Without this, the FlatList's contentContainer clips the
+          // lifted card at its outer edges. Same pattern as SearchBrowse
+          // and home's ContentRail itemWrapper.
           <View
             style={[
               styles.resultCellWrapper,
@@ -222,17 +223,19 @@ function RetryButton({
 }
 
 function EmptyState({ query }: { query: string }) {
-  // Pure presentation. The earlier auto-focus-return-to-⏎ behavior
-  // was removed because it actively fought typing — the keyboard
-  // remount it required killed focus on the currently-pressed letter
-  // every time a debounced search came back empty. Users keep typing
-  // on the keyboard; if they want to navigate away, they D-pad
-  // explicitly.
+  // Pure presentation (design: .s-empty — top-left aligned, not
+  // centered). The earlier auto-focus-return-to-⏎ behavior was removed
+  // because it actively fought typing — the keyboard remount it required
+  // killed focus on the currently-pressed letter every time a debounced
+  // search came back empty. Users keep typing on the keyboard; if they
+  // want to navigate away, they D-pad explicitly.
   return (
-    <View style={styles.centered}>
-      <Text style={styles.message}>No results for &ldquo;{query}&rdquo;</Text>
-      <Text style={styles.messageDetail}>
-        Try a different word or backspace to refine.
+    <View style={styles.empty}>
+      <Text style={styles.emptyTitle}>
+        No results for &ldquo;{query}&rdquo;
+      </Text>
+      <Text style={styles.emptyDetail}>
+        Check the spelling, or try a shorter search.
       </Text>
     </View>
   )
@@ -247,72 +250,89 @@ const styles = StyleSheet.create({
   },
   message: {
     fontFamily: "System",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(22)),
     fontWeight: "600",
-    color: COLORS.text,
+    color: SEARCH_THEME.text,
     textAlign: "center",
   },
   messageDetail: {
     fontFamily: "System",
-    fontSize: scale(16),
-    color: COLORS.muted,
+    fontSize: Math.round(scale(16)),
+    color: SEARCH_THEME.textDim(0.5),
     textAlign: "center",
+  },
+  // Design .s-empty: top-left aligned at 60px vertical / 80px horizontal.
+  empty: {
+    paddingVertical: scale(60),
+    paddingHorizontal: scale(80),
+  },
+  emptyTitle: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(32)),
+    fontWeight: "700",
+    letterSpacing: scale(-0.4),
+    color: SEARCH_THEME.text,
+  },
+  emptyDetail: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(22)),
+    color: SEARCH_THEME.textDim(0.5),
+    marginTop: scale(10),
   },
   retryButton: {
     marginTop: scale(16),
     paddingHorizontal: scale(32),
     paddingVertical: scale(14),
     borderRadius: scale(24),
-    backgroundColor: COLORS.primary,
+    backgroundColor: WATCH_THEME.accent,
   },
   retryButtonFocused: {
     transform: [{ scale: 1.05 }],
-    shadowColor: COLORS.primary,
+    shadowColor: WATCH_THEME.accent,
     shadowRadius: scale(20),
     shadowOpacity: 0.5,
     shadowOffset: { width: 0, height: 0 },
   },
   retryText: {
     fontFamily: "System",
-    fontSize: scale(18),
+    fontSize: Math.round(scale(18)),
     fontWeight: "600",
-    color: COLORS.text,
+    color: WATCH_THEME.accentText,
   },
   degradedContainer: {
     flex: 1,
     gap: scale(16),
   },
   degradedBanner: {
-    backgroundColor: COLORS.surfaceContainerHigh,
+    backgroundColor: SEARCH_THEME.keyBg,
     padding: scale(16),
     borderRadius: scale(12),
     gap: scale(8),
     alignItems: "center",
+    marginHorizontal: scale(80),
   },
   degradedText: {
     fontFamily: "System",
-    fontSize: scale(14),
-    color: COLORS.muted,
+    fontSize: Math.round(scale(14)),
+    color: SEARCH_THEME.textDim(0.6),
     textAlign: "center",
   },
   listWrapper: {
     flex: 1,
   },
   listContent: {
-    // Outer breathing room between the grid and the right-pane edges.
-    // Sized so the focus glow (shadowRadius scale(16) + 1.05x scale ≈
-    // 21dp halo) lands cleanly on dark panel surface with visible
-    // gutter on every side, not against the panel's rounded corner or
-    // outer border. Bumped twice — the original scale(16) clipped the
-    // glow on the leftmost / rightmost columns, scale(32) still let it
-    // touch the corner radius on a focused first-row card, scale(48)
-    // gives the bloom a clear margin on all four sides.
-    paddingHorizontal: scale(48),
-    paddingVertical: scale(28),
+    // Page gutter: design grid padding is 80px; the per-cell wrapper
+    // carries scale(14) of it (half the 28px inter-card gap), so the
+    // contentContainer supplies the remaining scale(66). Top padding is
+    // small — the meta line above already provides the vertical rhythm —
+    // and the bottom matches the design's 80px run-out.
+    paddingHorizontal: scale(66),
+    paddingTop: scale(12),
+    paddingBottom: scale(80),
   },
   row: {
     // No `gap` — resultCellWrapper.paddingHorizontal handles the
-    // inter-card spacing AND the focus halo headroom in one place.
+    // inter-card spacing AND the focus-lift headroom in one place.
     justifyContent: "flex-start",
   },
   resultCellWrapper: {
@@ -321,7 +341,8 @@ const styles = StyleSheet.create({
     // with equal left/right gutters. Using a percentage (rather than
     // `flex: 1`) keeps a partial last row's lone card from stretching
     // — it stays at 1/N width regardless of how many siblings exist.
-    paddingVertical: scale(14),
+    // Design gaps: 38px vertical / 28px horizontal → half on each side.
+    paddingVertical: scale(19),
     paddingHorizontal: scale(14),
   },
 })

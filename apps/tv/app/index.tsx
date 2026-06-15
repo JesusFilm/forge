@@ -1,5 +1,12 @@
 import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useEffect, useReducer, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -7,21 +14,31 @@ import {
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
 } from "react-native"
 
-import { HomeHeader } from "../src/components/HomeHeader"
+import { HomeBackdrop } from "../src/components/home/HomeBackdrop"
+import { HomeBillboard } from "../src/components/home/HomeBillboard"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import {
+  areHeroActionsGhosted,
+  isTopBarHidden,
+  resolveBrowseState,
+  resolveRowScrollTarget,
+  ROW_ANCHOR_OFFSET,
+  type HomeBrowseState,
+} from "../src/components/home/homeScrollState"
+import { HomeTopBar } from "../src/components/home/HomeTopBar"
 import { MissionSection } from "../src/components/home/MissionSection"
-import { ShowcaseCanvas } from "../src/components/home/ShowcaseCanvas"
 import {
   createShowcaseFocusDebouncer,
   INITIAL_SHOWCASE_STATE,
   showcaseReducer,
   type ShowcaseFocusDebouncer,
 } from "../src/components/home/showcaseState"
+import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { useWatchHome } from "../src/hooks/useWatchHome"
-import { COLORS } from "../src/lib/colors"
 import { scale } from "../src/lib/scale"
 import { WATCH_HOME_FEATURED_RAIL } from "../src/lib/watchHome/config"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
@@ -31,15 +48,19 @@ import {
 } from "../src/lib/watchHome/model"
 
 /**
- * Home screen.
+ * Home screen — the "Forge TV Home" redesign.
  *
  * The TV home renders the curated watch-home set — the same hero pool and
  * sections web /watch and mobile home use — from useWatchHome's lean bulk
- * fetch (R8): a non-interactive Focus-Driven Showcase up top, then the
- * Featured rail (the hero pool) and every configured section as horizontal
- * rails. Rails own 100% of focus; focusing any card swaps the showcase
- * (debounced, R10/R11). The SDUI Experience pipeline still serves
- * /experience/[slug] — only this screen left it (R9).
+ * fetch (R8). A full-screen ambient backdrop (HomeBackdrop) paints the
+ * focused card's artwork behind everything; the billboard hero
+ * (HomeBillboard) carries that card's copy plus Play / More Info actions;
+ * the top bar (HomeTopBar) holds the brandmark, Search/Home tabs, and clock.
+ * Rails drive the showcase via the debounced reducer (R10/R11), and ALSO
+ * drive the screen's browse state: row 0 = "browse" (light scrim), rows >= 1
+ * = "deep" (full scrim, top bar hidden, row anchored near the viewport top).
+ * The SDUI Experience pipeline still serves /experience/[slug] — only this
+ * screen left it (R9).
  */
 export default function HomeScreen() {
   const router = useRouter()
@@ -48,7 +69,7 @@ export default function HomeScreen() {
 
   // Back-from-/search focus restoration. tvos#852 workaround: on every
   // regain-focus after the first real mount, bump a key that tells
-  // <HomeHeader /> to apply hasTVPreferredFocus to its Search chip.
+  // <HomeTopBar /> to apply hasTVPreferredFocus to its Search tab.
   // Skip the first mount so the rails' own initial focus wins on cold
   // home render.
   //
@@ -56,7 +77,7 @@ export default function HomeScreen() {
   // double-invoke of effects in dev: with a counter we wait for the
   // *third* run-through (Strict Mode mount-unmount-mount + first
   // navigation back) before bumping.
-  const [searchChipFocusKey, setSearchChipFocusKey] = useState(0)
+  const [searchTabFocusKey, setSearchTabFocusKey] = useState(0)
   const focusEffectRunCountRef = useRef(0)
   useFocusEffect(
     useCallback(() => {
@@ -68,7 +89,7 @@ export default function HomeScreen() {
       // everything before #2 so dev matches prod first-render behavior.
       const STRICT_MODE_DEV_RUNS = 1
       if (focusEffectRunCountRef.current <= STRICT_MODE_DEV_RUNS + 1) return
-      setSearchChipFocusKey((k) => k + 1)
+      setSearchTabFocusKey((k) => k + 1)
     }, []),
   )
 
@@ -88,9 +109,11 @@ export default function HomeScreen() {
   // ── Showcase state ──
   // First model seeds the showcase (modelResolved); later models — background
   // refetches — re-reconcile (modelRefreshed keeps the current pick when its
-  // id survives). Only CARDS dispatch focus events: the search chip and Retry
-  // never do, so the showcase retains across non-card focus automatically
-  // (AE4) and across stack push/pop (state lives up here, not in the rails).
+  // id survives). Only CARDS dispatch focus events: the top bar tabs, hero
+  // actions, and Retry never do, so the showcase retains across non-card
+  // focus automatically (AE4) and across stack push/pop (state lives up
+  // here, not in the rails). The committed card now drives BOTH the
+  // billboard copy and the full-screen backdrop.
   const [showcase, dispatchShowcase] = useReducer(
     showcaseReducer,
     INITIAL_SHOWCASE_STATE,
@@ -117,27 +140,108 @@ export default function HomeScreen() {
   }
   useEffect(() => () => focusDebouncerRef.current?.cancel(), [])
 
+  // Also cancel a pending commit whenever the screen loses focus (navigating
+  // to /search, a card detail, etc.) — not just on unmount. Otherwise a
+  // debounce armed by the last focus move before navigation fires ~150ms
+  // later into the now-backgrounded Home, committing a stale showcase card.
+  useFocusEffect(
+    useCallback(() => () => focusDebouncerRef.current?.cancel(), []),
+  )
+
   const handleCardFocus = useCallback((card: WatchHomeCard) => {
     focusDebouncerRef.current?.focus(card)
   }, [])
 
-  // Featured-rail focus also scrolls the feed back to the top. The showcase
-  // is non-focusable, so the tvOS focus engine never auto-scrolls it back
-  // into view: after browsing lower rails, D-pad up stops scrolling once the
-  // Featured rail is visible and the hero stays stranded above the viewport.
-  // The scroll is immediate (not debounced) — it must track the return trip,
-  // not the settled card.
+  // ── Browse state + row-anchored scrolling ──
+  // Focused row index → "top" | "browse" | "deep" (homeScrollState.ts) drives
+  // the backdrop's deep scrim, the top bar's hide, and the hero actions'
+  // ghosting. Scrolling is row-anchored, not free: each shelf reports its
+  // content y via onLayout; focusing a card in row r >= 1 pins that shelf
+  // near the viewport top, while row 0 / hero actions / tabs pin the feed to
+  // 0 (the old featured-rail scroll-to-top behavior folds in here). The
+  // scroll is immediate (not debounced) — it must track the traversal, not
+  // the settled card.
+  const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
   const scrollRef = useRef<ScrollView | null>(null)
-  const handleFeaturedCardFocus = useCallback(
-    (card: WatchHomeCard) => {
-      scrollRef.current?.scrollTo({ y: 0, animated: true })
-      handleCardFocus(card)
+  const rowYsRef = useRef<number[]>([])
+  // When a row is focused before its onLayout has measured its y (cold first
+  // paint, or the window a background refetch reopens by remounting rows),
+  // resolveRowScrollTarget returns null. With native focus-scroll disabled
+  // that would strand the focused card off-screen, so we stash the row and
+  // fire the scroll the moment its onLayout lands (recordRowY below).
+  const pendingScrollRowRef = useRef<number | null>(null)
+
+  const scrollToRow = useCallback((rowIndex: number): boolean => {
+    const target = resolveRowScrollTarget({
+      rowIndex,
+      rowLayoutYs: rowYsRef.current,
+      anchorOffset: scale(ROW_ANCHOR_OFFSET),
+    })
+    if (target == null) return false
+    scrollRef.current?.scrollTo({ y: target, animated: true })
+    return true
+  }, [])
+
+  const handleRowFocus = useCallback(
+    (rowIndex: number) => {
+      setBrowseState(resolveBrowseState(rowIndex))
+      // Defer if the row's y isn't measured yet; recordRowY flushes it.
+      pendingScrollRowRef.current = scrollToRow(rowIndex) ? null : rowIndex
     },
-    [handleCardFocus],
+    [scrollToRow],
   )
+
+  const recordRowY = useCallback(
+    (rowIndex: number, y: number) => {
+      rowYsRef.current[rowIndex] = y
+      if (pendingScrollRowRef.current === rowIndex && scrollToRow(rowIndex)) {
+        pendingScrollRowRef.current = null
+      }
+    },
+    [scrollToRow],
+  )
+
+  // Tab bar / hero actions focus: pin to the top state.
+  const handleChromeFocus = useCallback(() => {
+    setBrowseState(resolveBrowseState(null))
+    scrollRef.current?.scrollTo({ y: 0, animated: true })
+  }, [])
+
+  // Mission-tail QR focus: with the native focus-scroll disabled, the tail
+  // needs its own scroll hook — pin to the end in the deep state.
+  const handleMissionFocus = useCallback(() => {
+    setBrowseState("deep")
+    scrollRef.current?.scrollToEnd({ animated: true })
+  }, [])
+
+  // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
+  // memoized rails' wrappers don't churn on every screen re-render.
+  const rowCount = (model?.sections.length ?? 0) + 1
+  const rowLayoutHandlers = useMemo(
+    () =>
+      Array.from(
+        { length: rowCount },
+        (_, rowIndex) => (event: LayoutChangeEvent) => {
+          recordRowY(rowIndex, event.nativeEvent.layout.y)
+        },
+      ),
+    [rowCount, recordRowY],
+  )
+
+  // Drop stale row measurements when the model's section set changes (a
+  // background refetch can reorder/resize rows). Otherwise a focus landing
+  // before the new rows re-measure would anchor to a previous section's y.
+  // The cleared entries re-populate via onLayout; the null window is handled
+  // by the deferred-scroll path above.
+  const sections = model?.sections
+  useEffect(() => {
+    rowYsRef.current = []
+    pendingScrollRowRef.current = null
+  }, [sections])
 
   // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
   // seeded for instant first paint. Null path (no slug) is a no-op press.
+  // The billboard's Play and More Info actions route the same way.
   const handleCardPress = useCallback(
     (card: WatchHomeCard) => {
       const path = resolveHomeCardPath(card)
@@ -146,13 +250,21 @@ export default function HomeScreen() {
     [router],
   )
 
-  // The nav header (Search chip). Rendered in every state — including loading,
-  // error and empty — so Search stays reachable while the home model resolves;
-  // in the content state it is the sticky first child of the ScrollView.
-  const homeHeader = (
-    <HomeHeader
-      key={`home-header-${searchChipFocusKey}`}
-      searchChipPreferredFocus={searchChipFocusKey > 0}
+  const handleSearchPress = useCallback(() => {
+    router.push("/search")
+  }, [router])
+
+  // The top bar (brandmark · Search/Home tabs · clock). Rendered in every
+  // state — including loading, error and empty — so Search stays reachable
+  // while the home model resolves; in the content state it is the sticky
+  // first child of the ScrollView.
+  const topBar = (
+    <HomeTopBar
+      key={`home-top-bar-${searchTabFocusKey}`}
+      hidden={isTopBarHidden(browseState)}
+      searchTabPreferredFocus={searchTabFocusKey > 0}
+      onSearchPress={handleSearchPress}
+      onChromeFocus={handleChromeFocus}
     />
   )
 
@@ -162,9 +274,9 @@ export default function HomeScreen() {
   if (screenState === "loading") {
     return (
       <View style={styles.screen}>
-        {homeHeader}
+        {topBar}
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={WATCH_THEME.accent} />
         </View>
       </View>
     )
@@ -175,7 +287,7 @@ export default function HomeScreen() {
   if (screenState === "error") {
     return (
       <View style={styles.screen}>
-        {homeHeader}
+        {topBar}
         <View style={styles.centered}>
           <Text style={styles.errorText}>Something went wrong</Text>
           <Text style={styles.errorDetail}>{error}</Text>
@@ -203,7 +315,7 @@ export default function HomeScreen() {
   if (screenState === "empty" || model == null) {
     return (
       <View style={styles.screen}>
-        {homeHeader}
+        {topBar}
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No content available</Text>
         </View>
@@ -212,67 +324,92 @@ export default function HomeScreen() {
   }
 
   // ── Content ──
-  // ONE ScrollView with the header as its sticky first child: the tvOS focus
-  // engine cannot traverse a parent-View boundary, so chip↔rail D-pad
-  // traversal (R14/AE6) relies on header + rails being siblings in the same
-  // scroll container — the structure the Experience-driven home shipped with.
-  // The non-focusable showcase between them is invisible to the focus engine
-  // (same as PR #803's non-interactive hero). If traversal ever proves
-  // unreliable, the documented fallback is TVFocusGuideView destinations in
-  // both directions (tv-focus-driven-hero-patterns-20260420.md §3).
+  // The non-focusable backdrop sits absolutely behind ONE full-screen
+  // ScrollView whose sticky first child is the top bar: the tvOS focus
+  // engine cannot traverse a parent-View boundary, so tab↔hero↔rail D-pad
+  // traversal relies on the top bar, billboard actions, and rails being
+  // siblings in the same scroll container — the structure the previous home
+  // shipped with (R14/AE6). If traversal ever proves unreliable, the
+  // documented fallback is TVFocusGuideView destinations in both directions
+  // (tv-focus-driven-hero-patterns-20260420.md §3).
   return (
-    <ScrollView
-      ref={scrollRef}
-      style={styles.list}
-      contentContainerStyle={styles.listContent}
-      stickyHeaderIndices={[0]}
-    >
-      <View>{homeHeader}</View>
+    <View style={styles.screen}>
+      <HomeBackdrop card={showcase.current} browseState={browseState} />
 
-      <ShowcaseCanvas card={showcase.current} />
+      {/* scrollEnabled={false}: ALL scrolling on this screen is
+          row-anchored and programmatic (scrollTo/scrollToEnd below). The
+          native tvOS focus-scroll must stay off — row-0 card labels sit at
+          the viewport's bottom edge, so UIKit's scroll-into-view nudges the
+          feed down on every horizontal focus move within the first rail,
+          landing after (and overriding) this screen's scrollTo(0). */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        stickyHeaderIndices={[0]}
+        scrollEnabled={false}
+      >
+        <View>{topBar}</View>
 
-      <HomeRail
-        eyebrow={WATCH_HOME_FEATURED_RAIL.eyebrow}
-        title={featuredTitle}
-        cards={model.featured}
-        onCardFocus={handleFeaturedCardFocus}
-        onCardPress={handleCardPress}
-      />
-
-      {model.sections.map((section) => (
-        <HomeRail
-          key={section.id}
-          eyebrow={section.eyebrow}
-          title={section.title}
-          cards={section.cards}
-          onCardFocus={handleCardFocus}
+        <HomeBillboard
+          card={showcase.current}
+          actionsGhosted={areHeroActionsGhosted(browseState)}
+          onChromeFocus={handleChromeFocus}
           onCardPress={handleCardPress}
         />
-      ))}
 
-      {/* Mission tail (R15): storytelling cards + beta-signup QR close the
-          feed. Its QR wrapper is focusable but non-actioning, and never
-          dispatches card-focus — the showcase retains the last card (R10). */}
-      <MissionSection />
-    </ScrollView>
+        <View onLayout={rowLayoutHandlers[0]}>
+          <HomeRail
+            rowIndex={0}
+            eyebrow={WATCH_HOME_FEATURED_RAIL.eyebrow}
+            title={featuredTitle}
+            cards={model.featured}
+            onCardFocus={handleCardFocus}
+            onRowFocus={handleRowFocus}
+            onCardPress={handleCardPress}
+          />
+        </View>
+
+        {model.sections.map((section, sectionIndex) => (
+          <View key={section.id} onLayout={rowLayoutHandlers[sectionIndex + 1]}>
+            <HomeRail
+              rowIndex={sectionIndex + 1}
+              eyebrow={section.eyebrow}
+              title={section.title}
+              cards={section.cards}
+              onCardFocus={handleCardFocus}
+              onRowFocus={handleRowFocus}
+              onCardPress={handleCardPress}
+            />
+          </View>
+        ))}
+
+        {/* Mission tail (R15): storytelling cards + beta-signup QR close the
+            feed. Its QR wrapper is focusable but non-actioning, and never
+            dispatches card-focus — the showcase retains the last card (R10)
+            and the browse state stays "deep" while the tail is explored. */}
+        <MissionSection onQrFocus={handleMissionFocus} />
+      </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    // The redesign's near-black canvas (WATCH_THEME.below) — the backdrop
+    // paints over it in the content state; loading/error/empty render the
+    // top bar straight on it.
+    backgroundColor: WATCH_THEME.below,
   },
   centered: {
     flex: 1,
-    backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
     padding: scale(80),
   },
   list: {
     flex: 1,
-    backgroundColor: COLORS.surface,
   },
   listContent: {
     // Breathing room below the mission tail.
@@ -281,15 +418,15 @@ const styles = StyleSheet.create({
   // ── Error state ──
   errorText: {
     fontFamily: "System",
-    fontSize: scale(28),
+    fontSize: Math.round(scale(28)),
     fontWeight: "bold",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     marginBottom: scale(8),
   },
   errorDetail: {
     fontFamily: "System",
-    fontSize: scale(18),
-    color: COLORS.muted,
+    fontSize: Math.round(scale(18)),
+    color: WATCH_THEME.text62,
     marginBottom: scale(32),
     textAlign: "center",
   },
@@ -297,25 +434,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(40),
     paddingVertical: scale(16),
     borderRadius: scale(28),
-    backgroundColor: COLORS.primary,
+    backgroundColor: WATCH_THEME.accent,
   },
   retryButtonFocused: {
     transform: [{ scale: 1.05 }],
-    shadowColor: COLORS.primary,
+    shadowColor: WATCH_THEME.accent,
     shadowRadius: scale(20),
     shadowOpacity: 0.5,
     shadowOffset: { width: 0, height: 0 },
   },
   retryText: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(20)),
     fontWeight: "600",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
   },
   // ── Empty state ──
   emptyText: {
     fontFamily: "System",
-    fontSize: scale(24),
-    color: COLORS.muted,
+    fontSize: Math.round(scale(24)),
+    color: WATCH_THEME.text62,
   },
 })

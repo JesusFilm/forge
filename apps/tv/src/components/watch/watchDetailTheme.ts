@@ -1,12 +1,17 @@
-// Visual tokens for the /watch/[slug] detail page, ported from the Claude Design
-// handoff ("Forge TV Video Page"). The user chose to match that mockup exactly,
-// which deliberately diverges from the app-wide Crimson Gallery system (brighter
-// red accent, frosted-glass pills, white-fill focus, near-black scrims). These
-// tokens are SCOPED to the watch-detail components so Home / Search / the rest of
-// the TV app keep their Crimson Gallery look (COLORS in lib/colors.ts).
+// Visual tokens originally ported for the /watch/[slug] detail page from the
+// Claude Design handoff ("Forge TV Video Page"), then adopted as the shared look
+// for the Home and Search screens via the "Forge TV Home" redesign. WATCH_THEME
+// now governs watch detail, Home, and Search — it deliberately diverges from the
+// app-wide Crimson Gallery system (brighter red accent, frosted-glass pills,
+// white-fill focus, near-black scrims). The SDUI experience renderer, series, and
+// the remaining legacy surfaces keep their Crimson Gallery look (COLORS in
+// lib/colors.ts).
 //
 // No expo-blur dependency on TV, so the "frosted glass" pills are approximated
 // with a translucent white fill over the dark scrim — no actual backdrop blur.
+
+/** Near-black surface/ink shared by WATCH_THEME (focusInk) and SEARCH_THEME. */
+export const NEAR_BLACK = "#0a0a0b"
 
 export const WATCH_THEME = {
   /** Bright red CTA accent from the mockup (vs Crimson Gallery #CB333B). */
@@ -18,7 +23,7 @@ export const WATCH_THEME = {
 
   /** Focused secondary pill: inverts to a white fill with dark text (tvOS HIG). */
   focusFill: "#ffffff",
-  focusInk: "#0a0a0b",
+  focusInk: NEAR_BLACK,
 
   /** Backdrop scrim base — near-black with a faint cool tint (rgba(7,7,8,a)). */
   scrim: (a: number) => `rgba(7,7,8,${a})`,

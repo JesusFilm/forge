@@ -28,7 +28,13 @@ import { QrPanel } from "./QrPanel"
 // Focusable but deliberately non-actioning (R15) — Select does nothing.
 const NO_ACTION = () => {}
 
-export function MissionSection() {
+type MissionSectionProps = {
+  /** Fires when the QR tile gains focus — the home screen scrolls the tail
+      into view itself now that the ScrollView's native focus-scroll is off. */
+  onQrFocus?: () => void
+}
+
+export function MissionSection({ onQrFocus }: MissionSectionProps) {
   const [qrFocused, setQrFocused] = useState(false)
   // State (not a ref) so the guide re-renders with its destination once the
   // QR node mounts — a plain ref leaves destinations empty on first render.
@@ -74,7 +80,10 @@ export function MissionSection() {
           <Pressable
             ref={setQrNode}
             onPress={NO_ACTION}
-            onFocus={() => setQrFocused(true)}
+            onFocus={() => {
+              setQrFocused(true)
+              onQrFocus?.()
+            }}
             onBlur={() => setQrFocused(false)}
             accessibilityRole="button"
             accessibilityLabel="Beta signup QR code"

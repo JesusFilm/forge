@@ -1,12 +1,17 @@
-// One Home rail card: a 16:9 thumbnail with a bottom title overlay and an
-// optional metaLabel badge ("3 episodes" / duration). Fixed dims — exported
-// for HomeRail's getItemLayout — so the list virtualizes without a measuring
+// One Home rail card, restyled per the Forge TV Home design: a 16:9 thumb
+// (radius 16, hairline white border) with the metaLabel chip top-right, and
+// the labels BELOW the art — title line + kind line (the card's display
+// label, e.g. "Feature film" / "Series"). Fixed width — exported for
+// HomeRail's getItemLayout — so the list virtualizes without a measuring
 // pass.
 //
-// Focus follows the Crimson Gallery spec: 1.05x lift + crimson glow, eased by
-// useFocusAnimation (no "blink"), with the glow on the OUTER wrapper and the
-// image clip on the INNER view — a shadow on an overflow:hidden view is
-// clipped away on iOS (same split as FocusableCard / EpisodeRail).
+// Focus: translateY(-8) + scale(1.06) eased by useFocusAnimation, with a
+// 5px WHITE ring + deep dark shadow replacing the app-wide crimson glow ON
+// HOME CARDS ONLY (FocusableCard and other screens keep theirs). The ring is
+// an absolute DECORATIVE overlay (pointerEvents "none" — fine; only
+// focusables must avoid absolute positioning) so it never shifts layout, and
+// the shadow lives on a separate overflow-visible wrapper because iOS clips
+// shadows on overflow:hidden views.
 //
 // `onFocus`/`onPress` re-emit the `card` PROP the component closed over —
 // never re-indexed from the rail's data array, which can shrink between a
@@ -14,30 +19,20 @@
 
 import { memo, useMemo } from "react"
 import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 
-import { COLORS, hexToRgba } from "../../lib/colors"
 import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
-export const HOME_CARD_HEIGHT = scale(225) // 16:9 of the width
+export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
 
-// Bottom scrim so the overlaid title reads over artwork. Module-scope (the
-// inputs are module constants) so the gradient props keep one identity across
-// renders.
-const TITLE_SCRIM_COLORS = [
-  hexToRgba(COLORS.surface, 0.92),
-  hexToRgba(COLORS.surface, 0.35),
-  hexToRgba(COLORS.surface, 0),
-] as const
-const TITLE_SCRIM_LOCATIONS = [0, 0.5, 1] as const
-const TITLE_SCRIM_START = { x: 0.5, y: 1 }
-const TITLE_SCRIM_END = { x: 0.5, y: 0 }
+/** How far the white focus ring sits outside the thumb edge. */
+const RING_WIDTH = scale(5)
 
 type HomeCardProps = {
   card: WatchHomeCard
@@ -52,7 +47,7 @@ export const HomeCard = memo(function HomeCard({
   onPress,
   index,
 }: HomeCardProps) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { focused, setFocused, progress } = useFocusAnimation()
   // CMS-sourced URL is untrusted — sanitize before it reaches expo-image.
   const imageUrl = useMemo(
     () => (card.imageUrl != null ? resolveImageUrl(card.imageUrl) : null),
@@ -69,19 +64,20 @@ export const HomeCard = memo(function HomeCard({
   // rather than on every focus/blur re-render.
   const liftStyle = useMemo(
     () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.05 }),
+      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
     }),
     [progress],
   )
-  const glowStyle = useMemo(
+  const shadowStyle = useMemo(
     () => ({
       shadowOpacity: progress.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 0.7],
+        outputRange: [0, 0.8],
       }),
     }),
     [progress],
   )
+  const ringStyle = useMemo(() => ({ opacity: progress }), [progress])
 
   return (
     <Pressable
@@ -99,44 +95,53 @@ export const HomeCard = memo(function HomeCard({
       testID={`home-card-${card.id}-${index}`}
     >
       <Animated.View style={[styles.card, liftStyle]}>
-        <Animated.View style={[styles.glowWrap, glowStyle]}>
-          <View style={styles.thumb}>
-            {imageUrl != null ? (
-              <Image
-                source={{ uri: imageUrl }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                recyclingKey={`home-card-${card.id}`}
-              />
-            ) : (
-              <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
-            )}
+        <View style={styles.thumbBox}>
+          {/* Deep dark drop shadow, revealed by the animated opacity. Kept
+              on its own overflow-visible wrapper so iOS doesn't clip it. */}
+          <Animated.View style={[styles.shadowWrap, shadowStyle]}>
+            <View style={styles.thumb}>
+              {imageUrl != null ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  recyclingKey={`home-card-${card.id}`}
+                />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
+              )}
 
-            <LinearGradient
-              colors={TITLE_SCRIM_COLORS}
-              locations={TITLE_SCRIM_LOCATIONS}
-              start={TITLE_SCRIM_START}
-              end={TITLE_SCRIM_END}
-              style={styles.titleScrim}
-              pointerEvents="none"
-              collapsable={false}
-            />
+              {/* Hairline edge over the artwork (design: 1px white .07). */}
+              <View style={styles.thumbEdge} pointerEvents="none" />
 
-            {card.metaLabel != null ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText} numberOfLines={1}>
-                  {card.metaLabel}
-                </Text>
-              </View>
-            ) : null}
-
-            <View style={styles.titleBlock} pointerEvents="none">
-              <Text style={styles.title} numberOfLines={2}>
-                {card.title}
-              </Text>
+              {card.metaLabel != null ? (
+                <View style={styles.chip} pointerEvents="none">
+                  <Text style={styles.chipText} numberOfLines={1}>
+                    {card.metaLabel}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+
+          {/* White focus ring just outside the thumb (decorative overlay). */}
+          <Animated.View
+            style={[styles.focusRing, ringStyle]}
+            pointerEvents="none"
+          />
+        </View>
+
+        <View style={styles.meta} pointerEvents="none">
+          <Text
+            style={[styles.title, focused && styles.titleFocused]}
+            numberOfLines={1}
+          >
+            {card.title}
+          </Text>
+          <Text style={styles.kind} numberOfLines={1}>
+            {card.label}
+          </Text>
+        </View>
       </Animated.View>
     </Pressable>
   )
@@ -145,60 +150,80 @@ export const HomeCard = memo(function HomeCard({
 const styles = StyleSheet.create({
   card: {
     width: HOME_CARD_WIDTH,
-    height: HOME_CARD_HEIGHT,
   },
-  // Crimson focus glow; shadowOpacity is animated (0 at rest). Outer wrapper
-  // stays overflow-visible so iOS doesn't clip the shadow.
-  glowWrap: {
+  thumbBox: {
+    width: HOME_CARD_WIDTH,
+    height: HOME_CARD_THUMB_HEIGHT,
+  },
+  shadowWrap: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: scale(16),
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(16),
-    shadowOffset: { width: 0, height: 0 },
+    shadowColor: "#000000",
+    shadowRadius: scale(25),
+    shadowOffset: { width: 0, height: scale(16) },
   },
   thumb: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: scale(16),
     overflow: "hidden",
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: WATCH_THEME.scrim(1),
   },
   thumbFallback: {
-    backgroundColor: COLORS.surfaceContainerHigh,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
-  titleScrim: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "55%",
+  thumbEdge: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: scale(16),
+    borderWidth: scale(1),
+    borderColor: "rgba(255,255,255,0.07)",
   },
-  titleBlock: {
+  focusRing: {
     position: "absolute",
-    left: scale(20),
-    right: scale(20),
-    bottom: scale(16),
+    top: -RING_WIDTH,
+    bottom: -RING_WIDTH,
+    left: -RING_WIDTH,
+    right: -RING_WIDTH,
+    borderRadius: scale(16) + RING_WIDTH,
+    borderWidth: RING_WIDTH,
+    borderColor: "rgba(255,255,255,0.88)",
+  },
+  chip: {
+    position: "absolute",
+    top: scale(12),
+    right: scale(12),
+    maxWidth: HOME_CARD_WIDTH - scale(24),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  chipText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(16)),
+    fontWeight: "600",
+    color: WATCH_THEME.text,
+  },
+
+  // ── Labels below the art ──
+  meta: {
+    paddingTop: scale(12),
+    paddingHorizontal: scale(4),
   },
   title: {
     fontFamily: "System",
     fontSize: Math.round(scale(24)),
     fontWeight: "600",
     letterSpacing: -scale(0.2),
-    color: COLORS.text,
+    color: "rgba(255,255,255,0.85)",
   },
-  badge: {
-    position: "absolute",
-    top: scale(14),
-    right: scale(14),
-    maxWidth: HOME_CARD_WIDTH - scale(28),
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(6),
-    borderRadius: scale(16),
-    backgroundColor: hexToRgba(COLORS.surface, 0.78),
+  titleFocused: {
+    color: WATCH_THEME.text,
   },
-  badgeText: {
+  kind: {
     fontFamily: "System",
     fontSize: Math.round(scale(17)),
-    fontWeight: "600",
-    color: COLORS.text,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.45)",
+    marginTop: scale(3),
   },
 })
