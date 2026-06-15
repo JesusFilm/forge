@@ -93,6 +93,7 @@ const styles = StyleSheet.create({
     height: scale(56),
     borderRadius: scale(2),
     backgroundColor: WATCH_THEME.accent,
-    marginLeft: scale(12),
+    // Sits just after the last glyph — a hairline gap, not a full space.
+    marginLeft: scale(3),
   },
 })
