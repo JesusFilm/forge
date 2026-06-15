@@ -46,6 +46,7 @@ test-results/
 .claude/telemetry/
 .claude/worktrees/
 .claude/secrets.local.md
+.claude/**/*.dev.md
 
 # Compound engineering working files
 .context/
