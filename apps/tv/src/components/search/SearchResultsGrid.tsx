@@ -24,6 +24,12 @@ type Props = {
   results: SearchResult[]
   query: string
   /**
+   * Fixed column count override. The two-pane layout (keyboard left,
+   * results right) uses fewer columns than the full-width default since
+   * the results pane is narrower than the whole screen.
+   */
+  columns?: number
+  /**
    * Called when the user presses the Retry button in the error state.
    * Parent wires this to useSemanticSearch.retry().
    */
@@ -41,7 +47,13 @@ type Props = {
  */
 const SIX_COLUMN_THRESHOLD_DP = 2880
 
-export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
+export function SearchResultsGrid({
+  state,
+  results,
+  query,
+  columns,
+  onRetry,
+}: Props) {
   const router = useRouter()
   const openResult = useCallback(
     (result: SearchResult) => {
@@ -82,7 +94,9 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
   }
 
   if (state === "ready") {
-    return <ResultsList results={results} onPress={openResult} />
+    return (
+      <ResultsList results={results} onPress={openResult} columns={columns} />
+    )
   }
 
   // Compile-time exhaustiveness — a future SearchState variant
@@ -94,16 +108,19 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
 function ResultsList({
   results,
   onPress,
+  columns,
 }: {
   results: SearchResult[]
   onPress: (result: SearchResult) => void
+  columns?: number
 }) {
-  // 6 columns on wide panels (4K-class hardware reporting >SIX_COLUMN
-  // _THRESHOLD_DP logical pixels), 4 elsewhere. FlatList's numColumns
-  // prop is a static layout hint — switching it forces a remount, so
-  // we read the value once per render and let React handle it.
+  // Explicit `columns` wins (the two-pane layout passes a fixed count for
+  // the narrower results pane). Otherwise fall back to the width heuristic:
+  // 6 columns on wide panels (4K-class hardware), 4 elsewhere. numColumns
+  // is a static FlatList layout hint — switching it forces a remount, so we
+  // read the value once per render and let React handle it.
   const { width } = useWindowDimensions()
-  const numColumns = width >= SIX_COLUMN_THRESHOLD_DP ? 6 : 4
+  const numColumns = columns ?? (width >= SIX_COLUMN_THRESHOLD_DP ? 6 : 4)
 
   // First-cell focus claim: only on the FIRST render that exposes a
   // given results set, not on every subsequent re-render. Without
@@ -272,12 +289,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    // Page gutter: design grid padding is 80px; the per-cell wrapper
-    // carries scale(14) of it (half the 28px inter-card gap), so the
-    // contentContainer supplies the remaining scale(66). Top padding is
-    // small — the meta line above already provides the vertical rhythm —
-    // and the bottom matches the design's 80px run-out.
-    paddingHorizontal: scale(66),
+    // The grid lives in the right pane of the two-pane layout, so the page
+    // gutter comes from the screen padding + the body gap between keyboard
+    // and pane. Here we only need a small inset so the leftmost/rightmost
+    // cards' focus-lift rings aren't clipped at the pane edges (the per-cell
+    // wrapper carries scale(14) more). Top is small — the meta line above
+    // sets the vertical rhythm — and the bottom is the run-out.
+    paddingHorizontal: scale(14),
     paddingTop: scale(12),
     paddingBottom: scale(80),
   },

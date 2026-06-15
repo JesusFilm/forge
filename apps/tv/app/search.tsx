@@ -85,73 +85,91 @@ export default function SearchScreen() {
       <View style={styles.queryLine}>
         <QueryDisplay value={query} />
       </View>
-      {/* SearchKeyboard intentionally does not get a dynamic key:
-          unmounting it on a state change kills focus on the
-          currently-pressed letter, and the tvOS focus engine then
-          visibly hops through a fallback before any new
-          preferred-focus claim lands. The earlier "remount on empty
-          state to refocus the ⏎ key" mechanism actively fought
-          typing — it fired on every debounced keystroke that came
-          back empty. Keep the keyboard mounted; let the user type
-          without the rug being pulled. */}
-      <View style={styles.stripLine}>
-        <SearchKeyboard
-          value={query}
-          onChange={setSanitizedQuery}
-          onSubmit={submit}
-        />
-      </View>
-      {/* Fixed-height meta line (design .s-meta) so flipping between
-          BROWSE / silence / N RESULTS never shifts the grid below. */}
-      <View style={styles.metaLine}>
-        <Text style={styles.metaText}>{meta}</Text>
-      </View>
-      {/* No focus traps on the results region: D-pad-up from the grid's
-          first row (or the browse rails) must reach the letter strip so
-          the user can refine the query without re-entering the screen.
-          The strip sits directly above, so the focus engine handles the
-          vertical hop naturally. */}
-      <TVFocusGuideView style={styles.resultsRegion}>
-        {showResultsGrid ? (
-          <SearchResultsGrid
-            state={state}
-            results={results}
-            query={query}
-            onRetry={retry}
+      {/* Two-pane body: keyboard on the left, results/browse filling the
+          space to its right (rather than stacked below it, which left the
+          right ~60% of the screen blank). */}
+      <View style={styles.body}>
+        {/* SearchKeyboard intentionally does not get a dynamic key:
+            unmounting it on a state change kills focus on the
+            currently-pressed letter, and the tvOS focus engine then
+            visibly hops through a fallback before any new preferred-focus
+            claim lands. Keep the keyboard mounted; let the user type
+            without the rug being pulled. */}
+        <View style={styles.keyboardPane}>
+          <SearchKeyboard
+            value={query}
+            onChange={setSanitizedQuery}
+            onSubmit={submit}
           />
-        ) : (
-          <SearchBrowse
-            recents={recents}
-            onRunQuery={runQueryImmediate}
-            onClearHistory={clearAll}
-          />
-        )}
-      </TVFocusGuideView>
+        </View>
+        {/* Right pane: meta line + results. D-pad-left from the grid's
+            leftmost column reaches the keyboard (to its left) by geometry;
+            no focus traps needed. */}
+        <View style={styles.resultsPane}>
+          {/* Fixed-height meta line (design .s-meta) so flipping between
+              BROWSE / silence / N RESULTS never shifts the grid below. */}
+          <View style={styles.metaLine}>
+            <Text style={styles.metaText}>{meta}</Text>
+          </View>
+          <TVFocusGuideView style={styles.resultsRegion}>
+            {showResultsGrid ? (
+              <SearchResultsGrid
+                state={state}
+                results={results}
+                query={query}
+                columns={RESULTS_COLUMNS}
+                onRetry={retry}
+              />
+            ) : (
+              <SearchBrowse
+                recents={recents}
+                onRunQuery={runQueryImmediate}
+                onClearHistory={clearAll}
+              />
+            )}
+          </TVFocusGuideView>
+        </View>
+      </View>
     </View>
   )
 }
 
+// The results pane is narrower than the full screen (the keyboard takes the
+// left third), so 3 columns keeps result cards a comfortable 10-foot size
+// rather than the 4 a full-width grid would pack in.
+const RESULTS_COLUMNS = 3
+
 const styles = StyleSheet.create({
   // Full-bleed near-black surface — solid stand-in for the design's
-  // blur-over-home search layer.
+  // blur-over-home search layer. One horizontal pad for the whole screen;
+  // panes below align to it.
   screen: {
     flex: 1,
     backgroundColor: SEARCH_THEME.bg,
+    paddingHorizontal: scale(80),
   },
-  // Design .s-query: padding 78px 80px 0.
+  // Design .s-query: padding 78px 0 (horizontal comes from screen).
   queryLine: {
     paddingTop: scale(78),
-    paddingHorizontal: scale(80),
   },
-  // Design .s-keys: padding 14px 80px 0.
-  stripLine: {
+  // Keyboard (left) + results (right) fill the remaining height side by side.
+  body: {
+    flex: 1,
+    flexDirection: "row",
+    gap: scale(56),
     paddingTop: scale(14),
-    paddingHorizontal: scale(80),
   },
-  // Design .s-meta: padding 38px 80px 0, min-height 24.
+  // Left column sized to the keyboard's intrinsic width (it is
+  // alignItems:flex-start internally).
+  keyboardPane: {
+    alignSelf: "flex-start",
+  },
+  // Right column takes the rest of the width.
+  resultsPane: {
+    flex: 1,
+  },
+  // Design .s-meta: min-height 24 + headroom; horizontal from the pane.
   metaLine: {
-    paddingTop: scale(38),
-    paddingHorizontal: scale(80),
     minHeight: scale(38) + scale(24),
   },
   metaText: {
@@ -161,7 +179,7 @@ const styles = StyleSheet.create({
     letterSpacing: scale(2.9),
     color: SEARCH_THEME.textDim(0.45),
   },
-  // Design .s-gridwrap: fills the remainder, 14px of headroom.
+  // Fills the remainder of the right pane, 14px of headroom.
   resultsRegion: {
     flex: 1,
     paddingTop: scale(14),

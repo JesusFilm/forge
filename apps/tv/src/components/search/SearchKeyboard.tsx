@@ -60,16 +60,14 @@ export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
     if (next != null) onChange(next)
   }
 
-  // trapFocusLeft / trapFocusRight keep horizontal D-pad travel inside the
-  // grid (a past-the-edge press stays put rather than escaping to offscreen
-  // chrome). trapFocusDown stays open so D-pad-down from the bottom row exits
-  // to the results region below; mid-grid down moves to the next row by
-  // geometry. Up has nothing focusable above it (the query line is static).
+  // trapFocusLeft keeps a leftmost-column press from escaping to offscreen
+  // chrome. Right is intentionally NOT trapped: the results pane sits to the
+  // right in the two-pane layout, so D-pad-right from the rightmost column
+  // must reach the results grid. Down/up move between grid rows by geometry.
   return (
     <TVFocusGuideView
       style={styles.keyboard}
       trapFocusLeft
-      trapFocusRight
       trapFocusDown={false}
     >
       {letterRows.map((row, rowIdx) => (
