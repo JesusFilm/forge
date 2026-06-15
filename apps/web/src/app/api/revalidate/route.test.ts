@@ -2,16 +2,22 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const {
   clearWatchRouteManifestCacheMock,
+  clearWatchSeoManifestCacheMock,
   revalidatePathMock,
   revalidateTagMock,
 } = vi.hoisted(() => ({
   clearWatchRouteManifestCacheMock: vi.fn(),
+  clearWatchSeoManifestCacheMock: vi.fn(),
   revalidatePathMock: vi.fn(),
   revalidateTagMock: vi.fn(),
 }))
 
 vi.mock("@/lib/watch-route-manifest", () => ({
   clearWatchRouteManifestCache: clearWatchRouteManifestCacheMock,
+}))
+
+vi.mock("@/lib/watch-seo-manifest", () => ({
+  clearWatchSeoManifestCache: clearWatchSeoManifestCacheMock,
 }))
 
 vi.mock("next/cache", () => ({
@@ -22,6 +28,7 @@ vi.mock("next/cache", () => ({
 describe("POST /api/revalidate", () => {
   afterEach(() => {
     clearWatchRouteManifestCacheMock.mockReset()
+    clearWatchSeoManifestCacheMock.mockReset()
     revalidatePathMock.mockReset()
     revalidateTagMock.mockReset()
     vi.doUnmock("@/i18n/generated-ui-locales")
@@ -453,6 +460,40 @@ describe("POST /api/revalidate", () => {
     )
     expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout")
     expect(revalidateTagMock).toHaveBeenCalledWith("watch:route-manifest", {
+      expire: 0,
+    })
+  })
+
+  it("clears the cached watch seo manifest and revalidates sitemap routes", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "watch-seo-manifest",
+          entry: {},
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      revalidated: true,
+      seoManifestCacheCleared: true,
+      paths: ["/sitemap.xml", "/sitemap/[id] (page)", "/sitemap (layout)"],
+      tags: ["watch:seo-manifest"],
+    })
+    expect(clearWatchSeoManifestCacheMock).toHaveBeenCalledTimes(1)
+    expect(clearWatchRouteManifestCacheMock).not.toHaveBeenCalled()
+    expect(revalidatePathMock).toHaveBeenCalledWith("/sitemap.xml")
+    expect(revalidatePathMock).toHaveBeenCalledWith("/sitemap/[id]", "page")
+    expect(revalidatePathMock).toHaveBeenCalledWith("/sitemap", "layout")
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:seo-manifest", {
       expire: 0,
     })
   })

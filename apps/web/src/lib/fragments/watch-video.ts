@@ -19,10 +19,10 @@ import { adminGraphql } from "@forge/admin-graphql"
  *     panel both read `q.value`.
  *
  * Locale-varying fields (`title`, `description`, `snippet`, `imageAlt`)
- * live on `VideoLocale` in admin, not on the parent `Video`. They are
- * fetched separately by `getWatchVideoLocalizedCopyBySlugOperation` so
- * non-English fallback can retry text-only payloads instead of repeating
- * the heavy slug-level shell and Dub detail projections.
+ * live on `VideoLocale` in admin, not on the parent `Video`. Watch routes
+ * fetch the shell plus exact/broad/English copy aliases in
+ * `getWatchVideoRouteSnapshotBySlugOperation`, while the split localized-copy
+ * operation remains as a small document-level contract test fixture.
  *
  * `VideoRelation` is admin's join shape for `parents` / `children`. The
  * fragment projects the related Video through `parent { ... }` /
@@ -232,6 +232,165 @@ export const getWatchVideoShellBySlugOperation = adminGraphql(
   `,
   [watchVideoShellFragment],
 )
+
+export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
+  `
+    query GetWatchVideoRouteSnapshotBySlug(
+      $locale: String!
+      $languageSlug: String
+      $videoSlug: String!
+    ) {
+      videoBySlug(slug: $videoSlug) {
+        ...WatchVideoShell
+        exactLocales: locales(locale: $locale, languageSlug: $languageSlug) {
+          documentId: id
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        broadLocales: locales(locale: $locale) {
+          documentId: id
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        englishLocales: locales(locale: "en") {
+          documentId: id
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        parents {
+          parent {
+            documentId: id
+            exactLocales: locales(
+              locale: $locale
+              languageSlug: $languageSlug
+            ) {
+              documentId: id
+              languageSlug
+              title
+            }
+            broadLocales: locales(locale: $locale) {
+              documentId: id
+              languageSlug
+              title
+            }
+            englishLocales: locales(locale: "en") {
+              documentId: id
+              languageSlug
+              title
+            }
+            children {
+              child {
+                documentId: id
+                muxPlaybackId(languageSlug: $languageSlug)
+                exactLocales: locales(
+                  locale: $locale
+                  languageSlug: $languageSlug
+                ) {
+                  documentId: id
+                  languageSlug
+                  title
+                }
+                broadLocales: locales(locale: $locale) {
+                  documentId: id
+                  languageSlug
+                  title
+                }
+                englishLocales: locales(locale: "en") {
+                  documentId: id
+                  languageSlug
+                  title
+                }
+              }
+            }
+          }
+        }
+        children {
+          child {
+            documentId: id
+            muxPlaybackId(languageSlug: $languageSlug)
+            exactLocales: locales(
+              locale: $locale
+              languageSlug: $languageSlug
+            ) {
+              documentId: id
+              languageSlug
+              title
+            }
+            broadLocales: locales(locale: $locale) {
+              documentId: id
+              languageSlug
+              title
+            }
+            englishLocales: locales(locale: "en") {
+              documentId: id
+              languageSlug
+              title
+            }
+          }
+        }
+        exactStudyQuestions: studyQuestions(
+          locale: $locale
+          languageSlug: $languageSlug
+        ) {
+          documentId: id
+          languageSlug
+          value: text
+          order
+        }
+        broadStudyQuestions: studyQuestions(locale: $locale) {
+          documentId: id
+          languageSlug
+          value: text
+          order
+        }
+        englishStudyQuestions: studyQuestions(locale: "en") {
+          documentId: id
+          languageSlug
+          value: text
+          order
+        }
+      }
+    }
+  `,
+  [watchVideoShellFragment],
+)
+
+export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
+  query GetWatchVideoCarouselMuxPlaybackIds(
+    $languageSlug: String
+    $videoSlug: String!
+  ) {
+    videoBySlug(slug: $videoSlug) {
+      documentId: id
+      parents {
+        parent {
+          documentId: id
+          children {
+            child {
+              documentId: id
+              muxPlaybackId(languageSlug: $languageSlug)
+            }
+          }
+        }
+      }
+      children {
+        child {
+          documentId: id
+          muxPlaybackId(languageSlug: $languageSlug)
+        }
+      }
+    }
+  }
+`)
 
 export const getWatchVideoLocalizedCopyBySlugOperation = adminGraphql(
   `

@@ -46,7 +46,8 @@ export function resolveTargetLanguageCodes(
 
   for (const targetLanguageId of targetLanguageIds) {
     const code = resolveCmsLanguageCode(
-      languagesById.get(targetLanguageId) ?? targetLanguageId,
+      languagesById.get(targetLanguageId) ??
+        (isRawLanguageTag(targetLanguageId) ? targetLanguageId : null),
     )
 
     if (!code) {
@@ -63,6 +64,10 @@ export function resolveTargetLanguageCodes(
   }
 
   return { codes, unresolvedIds }
+}
+
+function isRawLanguageTag(value: string): boolean {
+  return /^[a-z]{2,3}(?:[-_][a-z0-9]{2,8})?$/i.test(value.trim())
 }
 
 export function deriveEnrichLanguagePlan(

@@ -28,6 +28,7 @@ export type MockLanguageGeo = {
   countries: Array<{ id: string; name: string; continentId: string }>
   languages: Array<{
     id: string
+    coreId?: string | null
     englishLabel: string
     nativeLabel: string
     bcp47?: string | null

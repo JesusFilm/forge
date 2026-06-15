@@ -10,15 +10,13 @@ import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import {
-  isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
   type MergedWatchBlock,
-  resolveSeriesBySlug,
   resolveSeriesEpisodeBySlug,
+  resolveWatchRouteBySlug,
   resolveWatchExperiencePage,
   resolveWatchPage,
-  resolveWatchVideoBySlug,
   type WatchVariant,
   type WatchVideoRecord,
 } from "@/lib/content"
@@ -27,6 +25,7 @@ import {
   generateSeriesMetadata,
   generateWatchVideoMetadata,
   getWatchPageMetadata,
+  getWatchRouteFallbackMetadata,
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
 import {
@@ -54,6 +53,7 @@ import {
   stripHtmlSuffix,
 } from "@/lib/url-shape"
 import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
+import { logWatchServerEvent } from "@/lib/watch-observability"
 import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
@@ -260,30 +260,31 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
-      const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
-      if (watchVideo && isSeriesRecord(watchVideo.video)) {
+      const routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+      if (routeModel.kind === "series") {
         return generateSeriesMetadata(locale, {
-          series: watchVideo.video,
+          series: routeModel.video,
           pathLocale: rawLocale,
         })
       }
-      if (watchVideo) {
+      if (routeModel.kind === "video") {
         return generateWatchVideoMetadata(locale, {
-          video: watchVideo.video,
-          selectedVariant: watchVideo.selectedVariant,
+          video: routeModel.video,
+          selectedVariant: routeModel.selectedVariant,
           routeSlug: slug,
           pathLocale: rawLocale,
         })
       }
-      const series = await resolveSeriesBySlug(slug, rawLocale)
-      if (series) {
-        return generateSeriesMetadata(locale, {
-          series: series.video,
-          pathLocale: rawLocale,
-        })
-      }
-    } catch {
-      // Fall through to getWatchPageMetadata.
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.video.fallback", {
+        slug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
+      return getWatchRouteFallbackMetadata(locale, {
+        slug,
+        pathLocale: rawLocale,
+      })
     }
     return getWatchPageMetadata(locale, {
       slug,
@@ -310,8 +311,17 @@ export async function generateMetadata({
           seriesSlug,
         })
       }
-    } catch {
-      // Fall through to the safe template metadata path.
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.episode.fallback", {
+        seriesSlug,
+        episodeSlug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
+      return getWatchRouteFallbackMetadata(locale, {
+        slug: episodeSlug,
+        pathLocale: rawLocale,
+      })
     }
     return getWatchPageMetadata(locale, {
       slug: episodeSlug,
@@ -498,7 +508,7 @@ async function renderEpisode(shape: {
         <link
           rel="preload"
           as="image"
-          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
           fetchPriority="high"
         />
       ) : null}
@@ -508,6 +518,7 @@ async function renderEpisode(shape: {
         variant={resolved.selectedVariant}
         video={clientVideo}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
+        collectionSlug={seriesSlug}
         locale={locale}
         hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
@@ -531,8 +542,9 @@ async function renderVideo(shape: {
   // variant.language.bcp47 — slug-form URLs like /the-call/korean need to
   // land in the resolver as "korean", not "en". A same-slug Experience is
   // only a fallback after video and series routes fail to render.
-  const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
-  if (watchVideo) {
+  const routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+  if (routeModel.kind === "video") {
+    const watchVideo = routeModel
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
     if (actualSlug && rawLocale !== actualSlug) {
       const contentSlug = tryAsContentSlug(slug)
@@ -544,15 +556,6 @@ async function renderVideo(shape: {
           }),
         )
       }
-    }
-    if (isSeriesRecord(watchVideo.video)) {
-      return (
-        <SeriesPageClient
-          series={watchVideo.video}
-          selectedVariant={watchVideo.selectedVariant}
-          locale={rawLocale}
-        />
-      )
     }
     const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
       await Promise.all([
@@ -576,7 +579,7 @@ async function renderVideo(shape: {
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
-      canonicalParent: watchVideo.canonicalParent,
+      canonicalParent: null,
       youVersionPassages,
     })
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
@@ -602,7 +605,7 @@ async function renderVideo(shape: {
           <link
             rel="preload"
             as="image"
-            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
             fetchPriority="high"
           />
         ) : null}
@@ -621,8 +624,8 @@ async function renderVideo(shape: {
     )
   }
 
-  const series = await resolveSeriesBySlug(slug, rawLocale)
-  if (series) {
+  if (routeModel.kind === "series") {
+    const series = routeModel
     const actualSlug = series.selectedVariant?.language?.slug ?? null
     if (actualSlug && rawLocale !== actualSlug) {
       const contentSlug = tryAsContentSlug(slug)

@@ -52,6 +52,9 @@ describe("ManagerReadModelService", () => {
             speakers: 100,
             language: {
               id: "lang-1",
+              coreId: "529",
+              bcp47: "en",
+              iso3: "eng",
               name: { en: "English", native: "English" },
               locales: [{ locale: "en", value: "English" }],
             },
@@ -62,6 +65,9 @@ describe("ManagerReadModelService", () => {
     prisma.language.findMany.mockResolvedValueOnce([
       {
         id: "lang-1",
+        coreId: "529",
+        bcp47: "en",
+        iso3: "eng",
         name: { en: "English", native: "English" },
         locales: [{ locale: "en", value: "English" }],
       },
@@ -77,6 +83,9 @@ describe("ManagerReadModelService", () => {
       languages: [
         {
           id: "lang-1",
+          coreId: "529",
+          bcp47: "en",
+          iso3: "eng",
           englishLabel: "English",
           nativeLabel: "English",
           countryIds: ["country-1"],
@@ -175,6 +184,184 @@ describe("ManagerReadModelService", () => {
       },
       _count: { _all: true },
     })
+  })
+
+  it("normalizes coverage image URLs for Manager browser thumbnails", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-cloudflare-bare",
+        coreId: "core-cloudflare-bare",
+        slug: "cloudflare-bare",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [
+          {
+            url: "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/0ec667e3-7f67-4158-f2cb-054e665e4800",
+          },
+        ],
+        parents: [],
+      },
+      {
+        id: "video-cloudflare-variant",
+        coreId: "core-cloudflare-variant",
+        slug: "cloudflare-variant",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [
+          {
+            url: "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/poster.videoStill.jpg/public",
+          },
+        ],
+        parents: [],
+      },
+      {
+        id: "video-other-host",
+        coreId: "core-other-host",
+        slug: "other-host",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [{ url: " https://images.example.com/neon.jpg " }],
+        parents: [],
+      },
+      {
+        id: "video-blank",
+        coreId: "core-blank",
+        slug: "blank",
+        label: "EPISODE",
+        aiMetadata: false,
+        locales: [],
+        images: [{ url: "   " }],
+        parents: [],
+      },
+    ])
+    prisma.videoSubtitle.groupBy.mockResolvedValueOnce([])
+    prisma.videoDub.groupBy.mockResolvedValueOnce([])
+
+    const result = await service.getVideoCoverage({
+      user: MANAGER_BACKEND_PRINCIPAL,
+    })
+
+    const imageUrlsById = new Map(
+      result.map((video) => [video.documentId, video.imageUrl]),
+    )
+    expect(imageUrlsById.get("video-cloudflare-bare")).toBe(
+      "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/0ec667e3-7f67-4158-f2cb-054e665e4800/public",
+    )
+    expect(imageUrlsById.get("video-cloudflare-variant")).toBe(
+      "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/poster.videoStill.jpg/public",
+    )
+    expect(imageUrlsById.get("video-other-host")).toBe(
+      "https://images.example.com/neon.jpg",
+    )
+    expect(imageUrlsById.get("video-blank")).toBeNull()
+  })
+
+  it("builds enrichment video metadata from selected Admin or Core IDs", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-doc-1",
+        coreId: "video-core-1",
+        primaryLanguage: {
+          coreId: "529",
+          bcp47: "en",
+          iso3: "eng",
+        },
+        dubs: [
+          {
+            language: {
+              coreId: "529",
+              bcp47: "en",
+              iso3: "eng",
+            },
+            muxVideo: {
+              assetId: "mux-asset-1",
+              playbackId: "mux-playback-1",
+            },
+            downloads: [
+              { url: "https://stream.mux.com/source/720p.mp4" },
+              { url: null },
+            ],
+          },
+        ],
+      },
+    ])
+
+    const result = await service.getVideosForEnrichment({
+      user: MANAGER_BACKEND_PRINCIPAL,
+      ids: ["video-doc-1", "video-core-1", "video-doc-1"],
+    })
+
+    expect(result).toEqual([
+      {
+        documentId: "video-doc-1",
+        coreId: "video-core-1",
+        primaryLanguage: {
+          coreId: "529",
+          bcp47: "en",
+          iso3: "eng",
+        },
+        variants: [
+          {
+            language: {
+              coreId: "529",
+              bcp47: "en",
+              iso3: "eng",
+            },
+            muxVideo: {
+              assetId: "mux-asset-1",
+              playbackId: "mux-playback-1",
+            },
+            downloads: [
+              { url: "https://stream.mux.com/source/720p.mp4" },
+              { url: null },
+            ],
+          },
+        ],
+      },
+    ])
+    expect(prisma.video.findMany).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+        OR: [
+          { id: { in: ["video-doc-1", "video-core-1"] } },
+          { coreId: { in: ["video-doc-1", "video-core-1"] } },
+        ],
+      },
+      include: expect.objectContaining({
+        primaryLanguage: {
+          select: { coreId: true, bcp47: true, iso3: true },
+        },
+        dubs: expect.objectContaining({
+          where: { deletedAt: null },
+          include: expect.objectContaining({
+            language: {
+              select: { coreId: true, bcp47: true, iso3: true },
+            },
+            muxVideo: {
+              select: { assetId: true, playbackId: true },
+            },
+            downloads: expect.objectContaining({
+              where: { deletedAt: null },
+              select: { url: true },
+            }),
+          }),
+        }),
+      }),
+    })
+  })
+
+  it("caps enrichment video lookup requests at 100 IDs", async () => {
+    await expect(
+      service.getVideosForEnrichment({
+        user: MANAGER_BACKEND_PRINCIPAL,
+        ids: Array.from({ length: 101 }, (_, index) => `video-${index}`),
+      }),
+    ).rejects.toThrow("ids.length=101 exceeds max 100")
+
+    expect(prisma.video.findMany).not.toHaveBeenCalled()
   })
 
   it("prefers English video titles over newer non-English locales", async () => {

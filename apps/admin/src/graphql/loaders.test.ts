@@ -39,6 +39,7 @@ describe("createLoaders", () => {
       "experienceLocaleById",
       "languageById",
       "videoById",
+      "videoMuxPlaybackIdByIdAndLanguageSlug",
       "videoPrimaryDubDurationById",
     ])
   })
@@ -207,5 +208,209 @@ describe("videoPrimaryDubDurationById", () => {
     ])
     expect(calls).toBe(1)
     expect(result).toEqual([120, null, null])
+  })
+})
+
+describe("videoMuxPlaybackIdByIdAndLanguageSlug", () => {
+  type ExactDubStub = {
+    videoId: string
+    language: { slug: string | null } | null
+    muxVideo: { playbackId: string | null } | null
+  }
+  type VideoStub = {
+    id: string
+    primaryLanguageId: string | null
+    dubs: Array<{
+      languageId: string | null
+      muxVideo: { playbackId: string | null } | null
+    }>
+  }
+
+  function makePlaybackPrisma({
+    exactDubs,
+    fallbackVideos,
+    onExactFindMany,
+    onVideoFindMany,
+  }: {
+    exactDubs?: ExactDubStub[]
+    fallbackVideos?: VideoStub[]
+    onExactFindMany?: (args: unknown) => void
+    onVideoFindMany?: (args: unknown) => void
+  }) {
+    return {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      videoDub: {
+        findMany: async (args: unknown) => {
+          onExactFindMany?.(args)
+          return exactDubs ?? []
+        },
+      },
+      video: {
+        findMany: async (args: { where: { id: { in: string[] } } }) => {
+          onVideoFindMany?.(args)
+          const wanted = new Set(args.where.id.in)
+          return (fallbackVideos ?? []).filter((row) => wanted.has(row.id))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+  }
+
+  it("prefers the requested language playback id over the fallback dub", async () => {
+    const loaders = createLoaders(
+      makePlaybackPrisma({
+        exactDubs: [
+          {
+            videoId: "v1",
+            language: { slug: "english" },
+            muxVideo: { playbackId: "mux-english" },
+          },
+        ],
+        fallbackVideos: [
+          {
+            id: "v1",
+            primaryLanguageId: "lang-primary",
+            dubs: [
+              {
+                languageId: "lang-primary",
+                muxVideo: { playbackId: "mux-primary" },
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    await expect(
+      loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
+        videoId: "v1",
+        languageSlug: "english",
+      }),
+    ).resolves.toBe("mux-english")
+  })
+
+  it("falls back to the primary playable Mux dub when requested language has no match", async () => {
+    const loaders = createLoaders(
+      makePlaybackPrisma({
+        exactDubs: [],
+        fallbackVideos: [
+          {
+            id: "v1",
+            primaryLanguageId: "lang-en",
+            dubs: [
+              { languageId: "lang-es", muxVideo: { playbackId: "mux-es" } },
+              { languageId: "lang-en", muxVideo: { playbackId: "mux-en" } },
+            ],
+          },
+        ],
+      }),
+    )
+
+    await expect(
+      loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
+        videoId: "v1",
+        languageSlug: "missing-language",
+      }),
+    ).resolves.toBe("mux-en")
+  })
+
+  it("batches ids and preserves input order for thumbnail playback lookups", async () => {
+    let exactCalls = 0
+    let fallbackCalls = 0
+    const loaders = createLoaders(
+      makePlaybackPrisma({
+        exactDubs: [
+          {
+            videoId: "v2",
+            language: { slug: "english" },
+            muxVideo: { playbackId: "mux-v2-en" },
+          },
+        ],
+        fallbackVideos: [
+          {
+            id: "v1",
+            primaryLanguageId: null,
+            dubs: [{ languageId: null, muxVideo: { playbackId: "mux-v1" } }],
+          },
+        ],
+        onExactFindMany: () => {
+          exactCalls++
+        },
+        onVideoFindMany: () => {
+          fallbackCalls++
+        },
+      }),
+    )
+
+    const result = await loaders.videoMuxPlaybackIdByIdAndLanguageSlug.loadMany(
+      [
+        { videoId: "v1", languageSlug: null },
+        { videoId: "v2", languageSlug: "english" },
+        { videoId: "missing", languageSlug: "english" },
+      ],
+    )
+
+    expect(exactCalls).toBe(1)
+    expect(fallbackCalls).toBe(1)
+    expect(result).toEqual(["mux-v1", "mux-v2-en", null])
+  })
+
+  it("queries only playable dubs that have Mux playback ids", async () => {
+    let exactArgs: unknown
+    let fallbackArgs: unknown
+    const loaders = createLoaders(
+      makePlaybackPrisma({
+        exactDubs: [],
+        fallbackVideos: [],
+        onExactFindMany: (args) => {
+          exactArgs = args
+        },
+        onVideoFindMany: (args) => {
+          fallbackArgs = args
+        },
+      }),
+    )
+
+    await loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
+      videoId: "v1",
+      languageSlug: "english",
+    })
+
+    expect(exactArgs).toMatchObject({
+      where: {
+        videoId: { in: ["v1"] },
+        deletedAt: null,
+        published: true,
+        hls: { not: null },
+        language: { slug: { in: ["english"] }, deletedAt: null },
+        muxVideo: { playbackId: { not: null }, deletedAt: null },
+      },
+      select: {
+        videoId: true,
+        language: { select: { slug: true } },
+        muxVideo: { select: { playbackId: true } },
+      },
+    })
+    expect(fallbackArgs).toMatchObject({
+      where: { id: { in: ["v1"] }, deletedAt: null },
+      select: {
+        id: true,
+        primaryLanguageId: true,
+        dubs: {
+          where: {
+            published: true,
+            hls: { not: null },
+            deletedAt: null,
+            muxVideo: { playbackId: { not: null }, deletedAt: null },
+          },
+          take: 5,
+          select: {
+            languageId: true,
+            muxVideo: { select: { playbackId: true } },
+          },
+        },
+      },
+    })
   })
 })

@@ -338,6 +338,36 @@ export async function getMuxAsset(assetId: string): Promise<MuxAssetInfo> {
   }
 }
 
+// Shorts Studio needs the playback POLICY, which getMuxAsset discards (it
+// returns the first playback id regardless of policy). Shorts sources must
+// be PUBLIC: the shorts-worker fetches the stream.mux.com HLS URL
+// unauthenticated, so a signed/drm-only asset is ineligible (plan
+// 2026-06-11-002 SpecFlow I6 — the routes surface `playback_not_public`).
+export type MuxAssetPlaybackInfo = {
+  assetId: string
+  status: string
+  duration: number | null
+  /** First playback id with policy "public" — null when the asset only has
+   * signed/drm playback policies (or none at all). */
+  publicPlaybackId: string | null
+}
+
+export async function getMuxAssetPlayback(
+  assetId: string,
+): Promise<MuxAssetPlaybackInfo> {
+  const asset = await getMux().video.assets.retrieve(assetId)
+  const publicPlayback = (asset.playback_ids ?? []).find(
+    (playback) => playback.policy === "public" && Boolean(playback.id),
+  )
+
+  return {
+    assetId: asset.id,
+    status: asset.status ?? "unknown",
+    duration: asset.duration ?? null,
+    publicPlaybackId: publicPlayback?.id ?? null,
+  }
+}
+
 export function getPlaybackUrl(playbackId: string): string {
   return `https://stream.mux.com/${playbackId}.m3u8`
 }

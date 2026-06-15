@@ -100,10 +100,19 @@ export function videoStudyQuestionsFilter(args: {
   }
 }
 
-export function videoParentsFilter(
-  user: Principal | null,
-): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
-  if (isEditorOrAdmin(user)) return {}
+const videoRelationOrderBy = [
+  { order: { sort: "asc" as const, nulls: "last" as const } },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+] satisfies Prisma.VideoRelationOrderByWithRelationInput[]
+
+type VideoRelationQuery = {
+  where?: Prisma.VideoRelationWhereInput
+  orderBy: Prisma.VideoRelationOrderByWithRelationInput[]
+}
+
+export function videoParentsFilter(user: Principal | null): VideoRelationQuery {
+  if (isEditorOrAdmin(user)) return { orderBy: videoRelationOrderBy }
   return {
     where: {
       parent: {
@@ -111,13 +120,14 @@ export function videoParentsFilter(
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
+    orderBy: videoRelationOrderBy,
   }
 }
 
 export function videoChildrenFilter(
   user: Principal | null,
-): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
-  if (isEditorOrAdmin(user)) return {}
+): VideoRelationQuery {
+  if (isEditorOrAdmin(user)) return { orderBy: videoRelationOrderBy }
   return {
     where: {
       child: {
@@ -125,6 +135,7 @@ export function videoChildrenFilter(
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
+    orderBy: videoRelationOrderBy,
   }
 }
 
@@ -432,6 +443,19 @@ builder.prismaObject("Video", {
         "Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Mirrors HybridSearchResult.durationSeconds — picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.",
       resolve: (video, _args, ctx) =>
         ctx.loaders.videoPrimaryDubDurationById.load(video.id),
+    }),
+    muxPlaybackId: t.string({
+      nullable: true,
+      description:
+        "Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
     }),
     childDubLanguages: t.field({
       type: [ChildDubLanguageRef],

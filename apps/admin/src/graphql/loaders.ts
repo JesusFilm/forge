@@ -103,6 +103,99 @@ export function createLoaders(prisma: PrismaClient) {
         return ids.map((id) => byId.get(id) ?? null)
       },
     ),
+
+    /**
+     * Best Mux playback id per Video id for Watch thumbnails. Prefer the
+     * requested language slug when supplied, then fall back to the same
+     * primary/longest playable-dub heuristic as Video.durationSeconds.
+     *
+     * This keeps watch carousels on a scalar field instead of projecting
+     * every child VideoDub row.
+     */
+    videoMuxPlaybackIdByIdAndLanguageSlug: new DataLoader<
+      VideoMuxPlaybackKey,
+      string | null,
+      string
+    >(
+      async (keys) => {
+        const normalizedKeys = keys.map(normalizeVideoMuxPlaybackKey)
+        const videoIds = unique(normalizedKeys.map((key) => key.videoId))
+        const languageSlugs = unique(
+          normalizedKeys
+            .map((key) => key.languageSlug)
+            .filter((slug): slug is string => slug != null),
+        )
+
+        const exactByKey = new Map<string, string>()
+        if (languageSlugs.length > 0) {
+          const exactDubs = await prisma.videoDub.findMany({
+            where: {
+              videoId: { in: videoIds },
+              deletedAt: null,
+              published: true,
+              hls: { not: null },
+              language: { slug: { in: languageSlugs }, deletedAt: null },
+              muxVideo: { playbackId: { not: null }, deletedAt: null },
+            },
+            orderBy: [{ duration: "desc" }, { id: "asc" }],
+            select: {
+              videoId: true,
+              language: { select: { slug: true } },
+              muxVideo: { select: { playbackId: true } },
+            },
+          })
+
+          for (const dub of exactDubs) {
+            const slug = dub.language?.slug ?? null
+            const playbackId = dub.muxVideo?.playbackId ?? null
+            if (!slug || !playbackId) continue
+            const key = serializeVideoMuxPlaybackKey({
+              videoId: dub.videoId,
+              languageSlug: slug,
+            })
+            if (!exactByKey.has(key)) exactByKey.set(key, playbackId)
+          }
+        }
+
+        const fallbackRows = await prisma.video.findMany({
+          where: { id: { in: videoIds }, deletedAt: null },
+          select: {
+            id: true,
+            primaryLanguageId: true,
+            dubs: {
+              where: {
+                published: true,
+                hls: { not: null },
+                deletedAt: null,
+                muxVideo: { playbackId: { not: null }, deletedAt: null },
+              },
+              orderBy: [{ duration: "desc" }, { id: "asc" }],
+              take: PRIMARY_DUB_PLAYBACK_SCAN_LIMIT,
+              select: {
+                languageId: true,
+                muxVideo: { select: { playbackId: true } },
+              },
+            },
+          },
+        })
+        const fallbackByVideoId = new Map<string, string | null>()
+        for (const row of fallbackRows) {
+          const primaryDub = row.primaryLanguageId
+            ? row.dubs.find((dub) => dub.languageId === row.primaryLanguageId)
+            : undefined
+          const dub = primaryDub ?? row.dubs[0] ?? null
+          fallbackByVideoId.set(row.id, dub?.muxVideo?.playbackId ?? null)
+        }
+
+        return normalizedKeys.map(
+          (key) =>
+            exactByKey.get(serializeVideoMuxPlaybackKey(key)) ??
+            fallbackByVideoId.get(key.videoId) ??
+            null,
+        )
+      },
+      { cacheKeyFn: serializeVideoMuxPlaybackKey },
+    ),
   }
 }
 
@@ -112,6 +205,31 @@ export function createLoaders(prisma: PrismaClient) {
 // heavily-dubbed video the primary may rank below N by duration — accept
 // the longest-dub fallback rather than widen the scan.
 const PRIMARY_DUB_DURATION_SCAN_LIMIT = 5
+const PRIMARY_DUB_PLAYBACK_SCAN_LIMIT = 5
+
+export type VideoMuxPlaybackKey = {
+  videoId: string
+  languageSlug: string | null
+}
+
+function normalizeVideoMuxPlaybackKey(
+  key: VideoMuxPlaybackKey,
+): VideoMuxPlaybackKey {
+  const languageSlug =
+    typeof key.languageSlug === "string" && key.languageSlug.length > 0
+      ? key.languageSlug
+      : null
+  return { videoId: key.videoId, languageSlug }
+}
+
+function serializeVideoMuxPlaybackKey(key: VideoMuxPlaybackKey): string {
+  const normalized = normalizeVideoMuxPlaybackKey(key)
+  return `${normalized.videoId}:${normalized.languageSlug ?? ""}`
+}
+
+function unique<T>(values: readonly T[]): T[] {
+  return Array.from(new Set(values))
+}
 
 // Inferring per-row shapes from prisma without importing each model
 // type lets us avoid a hand-maintained type per loader. PrismaClient's

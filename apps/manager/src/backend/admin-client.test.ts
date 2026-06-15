@@ -80,6 +80,81 @@ describe("AdminGraphqlClient", () => {
     await expect(client.getLanguageGeo()).rejects.toThrow("access denied")
   })
 
+  it("reads Manager enrichment video metadata from Admin", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            managerVideosForEnrichment: [
+              {
+                documentId: "video-doc-1",
+                coreId: "core-1",
+                primaryLanguage: {
+                  coreId: "529",
+                  bcp47: "en",
+                  iso3: "eng",
+                },
+                variants: [
+                  {
+                    language: {
+                      coreId: "529",
+                      bcp47: "en",
+                      iso3: "eng",
+                    },
+                    muxVideo: {
+                      assetId: "mux-asset-1",
+                      playbackId: "mux-playback-1",
+                    },
+                    downloads: [
+                      { url: "https://stream.mux.com/source/720p.mp4" },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      ),
+    )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      apiKey: "manager-service-key",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(
+      client.getVideosForEnrichment(["video-doc-1"]),
+    ).resolves.toEqual([
+      {
+        documentId: "video-doc-1",
+        coreId: "core-1",
+        primaryLanguage: {
+          coreId: "529",
+          bcp47: "en",
+          iso3: "eng",
+        },
+        variants: [
+          {
+            language: {
+              coreId: "529",
+              bcp47: "en",
+              iso3: "eng",
+            },
+            muxVideo: {
+              assetId: "mux-asset-1",
+              playbackId: "mux-playback-1",
+            },
+            downloads: [{ url: "https://stream.mux.com/source/720p.mp4" }],
+          },
+        ],
+      },
+    ])
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      variables: { ids: ["video-doc-1"] },
+    })
+  })
+
   it("creates Manager jobs through the Admin job contract", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(

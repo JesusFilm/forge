@@ -322,7 +322,7 @@ type HybridSearchResponse {
 }
 
 """
-A single hybrid-search hit. Video results may carry scene-level snippet + timecode + playback id; experience results carry experience-level data.
+A single hybrid-search hit. Video results carry video-level display metadata plus optional match timecode/playback data; experience results carry experience-level data.
 """
 type HybridSearchResult {
   """
@@ -484,6 +484,27 @@ type ManagerCoverageSnapshot {
   videosWithHumanMetadata: Int
 }
 
+type ManagerEnrichmentDownload {
+  url: String
+}
+
+type ManagerEnrichmentLanguage {
+  bcp47: String
+  coreId: String
+  iso3: String
+}
+
+type ManagerEnrichmentMuxVideo {
+  assetId: String
+  playbackId: String
+}
+
+type ManagerEnrichmentVariant {
+  downloads: [ManagerEnrichmentDownload!]
+  language: ManagerEnrichmentLanguage
+  muxVideo: ManagerEnrichmentMuxVideo
+}
+
 type ManagerJob {
   artifacts: JSON
   completedAt: String
@@ -547,11 +568,14 @@ enum ManagerJobStepStatus {
 }
 
 type ManagerLanguage {
+  bcp47: String
   continentIds: [String!]
+  coreId: String
   countryIds: [String!]
   countrySpeakers: JSON
   englishLabel: String
   id: ID
+  iso3: String
   nativeLabel: String
 }
 
@@ -580,6 +604,13 @@ type ManagerVideoCoverage {
 type ManagerVideoCoverageBreakdown {
   audio: ManagerCoverageCounts
   subtitles: ManagerCoverageCounts
+}
+
+type ManagerVideoForEnrichment {
+  coreId: String
+  documentId: ID
+  primaryLanguage: ManagerEnrichmentLanguage
+  variants: [ManagerEnrichmentVariant!]
 }
 
 """
@@ -958,6 +989,7 @@ type Query {
   managerJobsTotal: Int
   managerLanguageGeo: ManagerLanguageGeo
   managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
+  managerVideosForEnrichment(ids: [String!]!): [ManagerVideoForEnrichment!]
   """
   Current Admin session projected into the narrow Manager access contract.
   """
@@ -1180,6 +1212,10 @@ type Video {
   """
   locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
+  """
+  Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.
+  """
+  muxPlaybackId(languageSlug: String): String
   noIndex: Boolean
   origin: VideoOrigin
   """

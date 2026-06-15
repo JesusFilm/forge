@@ -43,6 +43,8 @@ export function WatchSectionRenderer({
   subtitleVttSrc,
   hideBibleQuotes = false,
   pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
   onChapterNavigateIntent,
 }: {
   blocks: MergedWatchBlock[]
@@ -58,6 +60,8 @@ export function WatchSectionRenderer({
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -98,6 +102,8 @@ export function WatchSectionRenderer({
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
           pendingChapter={pendingChapter}
+          coverBlackoutKey={coverBlackoutKey}
+          coverBlackoutPhase={coverBlackoutPhase}
           onChapterNavigateIntent={onChapterNavigateIntent}
         />
       ))}
@@ -138,6 +144,8 @@ export function WatchSectionRenderer({
                   shareHref={shareHref}
                   hideBibleQuotes={hideBibleQuotes}
                   pendingChapter={pendingChapter}
+                  coverBlackoutKey={coverBlackoutKey}
+                  coverBlackoutPhase={coverBlackoutPhase}
                   onChapterNavigateIntent={onChapterNavigateIntent}
                 />
               ))}
@@ -165,6 +173,8 @@ function WatchBlockEntry({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
   onChapterNavigateIntent,
 }: {
   block: MergedWatchBlock
@@ -182,6 +192,8 @@ function WatchBlockEntry({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   if (isWatchBlock(block)) {
@@ -201,6 +213,8 @@ function WatchBlockEntry({
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
         pendingChapter={pendingChapter}
+        coverBlackoutKey={coverBlackoutKey}
+        coverBlackoutPhase={coverBlackoutPhase}
         onChapterNavigateIntent={onChapterNavigateIntent}
       />
     )
@@ -223,6 +237,8 @@ function SyntheticBlock({
   subtitleVttSrc,
   hideBibleQuotes,
   pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
   onChapterNavigateIntent,
 }: {
   block: WatchBlock
@@ -239,6 +255,8 @@ function SyntheticBlock({
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
   pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   const optimisticVisual =
@@ -247,6 +265,8 @@ function SyntheticBlock({
           title: pendingChapter.title,
           label: pendingChapter.label,
           posterUrl: pendingChapter.posterUrl,
+          loading: true,
+          transitionKey: pendingChapter.targetVideoDocumentId,
         }
       : null
 
@@ -263,6 +283,8 @@ function SyntheticBlock({
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
+          coverBlackoutKey={coverBlackoutKey}
+          coverBlackoutPhase={coverBlackoutPhase}
         />
       )
     }
