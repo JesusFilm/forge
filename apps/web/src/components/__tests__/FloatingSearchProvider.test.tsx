@@ -720,9 +720,9 @@ describe("FloatingSearchProvider — search mode", () => {
     expect(skeleton?.textContent).toBe("true")
   })
 
-  it("syncs the URL when the submitted search query changes", async () => {
+  it("syncs the URL with browser history when the submitted search query changes", async () => {
     mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
-    window.history.replaceState(null, "", "/?utm=campaign")
+    window.history.replaceState({ next: "initial" }, "", "/watch?utm=campaign")
 
     act(() => {
       root.render(
@@ -732,7 +732,8 @@ describe("FloatingSearchProvider — search mode", () => {
       )
     })
 
-    window.history.replaceState(null, "", "/?q=bible&utm=campaign")
+    const historyState = { next: "preserve" }
+    window.history.replaceState(historyState, "", "/watch?q=bible&utm=campaign")
 
     const searchButton = document.querySelector(
       '[data-testid="search-mode-harness-button"]',
@@ -743,13 +744,14 @@ describe("FloatingSearchProvider — search mode", () => {
       await Promise.resolve()
     })
 
-    expect(navigationMocks.replace).toHaveBeenCalledWith(
-      "/?q=jesus&utm=campaign",
-    )
+    expect(window.location.pathname).toBe("/watch")
+    expect(window.location.search).toBe("?q=jesus&utm=campaign")
+    expect(window.history.state).toEqual(historyState)
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
   it("removes the query param from the URL when search is cleared", async () => {
-    window.history.replaceState(null, "", "/?utm=campaign")
+    window.history.replaceState({ next: "initial" }, "", "/watch?utm=campaign")
 
     act(() => {
       root.render(
@@ -759,7 +761,8 @@ describe("FloatingSearchProvider — search mode", () => {
       )
     })
 
-    window.history.replaceState(null, "", "/?q=jesus&utm=campaign")
+    const historyState = { next: "preserve" }
+    window.history.replaceState(historyState, "", "/watch?q=jesus&utm=campaign")
 
     const clearButton = document.querySelector(
       '[data-testid="search-mode-harness-clear-button"]',
@@ -770,7 +773,10 @@ describe("FloatingSearchProvider — search mode", () => {
       await Promise.resolve()
     })
 
-    expect(navigationMocks.replace).toHaveBeenCalledWith("/?utm=campaign")
+    expect(window.location.pathname).toBe("/watch")
+    expect(window.location.search).toBe("?utm=campaign")
+    expect(window.history.state).toEqual(historyState)
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
     expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 })
@@ -1256,6 +1262,65 @@ describe("FloatingSearchProvider — search pagination", () => {
       }),
     )
     expect(document.body.textContent).toContain("The Bible Project Result")
+  })
+
+  it("keeps the final edited query search after an intermediate debounce syncs the URL", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockImplementation(({ query }) => {
+      if (query === "jesus") {
+        return Promise.resolve(
+          makeSearchResponse(
+            [makeSearchResult("jesus", "Jesus Result")],
+            false,
+          ),
+        )
+      }
+      if (query === "the bible project") {
+        return Promise.resolve(
+          makeSearchResponse(
+            [makeSearchResult("bible-project", "Bible Project Result")],
+            false,
+          ),
+        )
+      }
+      return new Promise(() => {})
+    })
+
+    try {
+      const input = await openSearchOverlay()
+      await submitDebouncedSearch(input, "jesus")
+      expect(document.body.textContent).toContain("Jesus Result")
+
+      act(() => {
+        setInputValue(input, "the bible proj")
+        vi.advanceTimersByTime(360)
+      })
+
+      expect(window.location.search).toBe("?q=the+bible+proj")
+
+      await act(async () => {
+        setInputValue(input, "the bible project")
+        vi.advanceTimersByTime(300)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(250)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(mockedRunSearch).toHaveBeenCalledWith(
+        expect.objectContaining({ query: "the bible project" }),
+      )
+      expect(window.location.search).toBe("?q=the+bible+project")
+      expect(navigationMocks.replace).not.toHaveBeenCalled()
+      expect(document.body.textContent).toContain("Bible Project Result")
+      expect(document.querySelector(".animate-pulse")).toBeNull()
+    } finally {
+      mockedRunSearch.mockReset()
+    }
   })
 
   it("loads the next Watch search page with limit 10, current offset, and appends results", async () => {
