@@ -1,7 +1,7 @@
 ---
 title: "Expo TV Platform Setup in an SDUI Monorepo"
 date: "2026-04-10"
-last_updated: "2026-04-20"
+last_updated: "2026-06-15"
 category: best-practices
 module: tv-app
 problem_type: best_practice
@@ -30,7 +30,7 @@ tags:
 
 ## Context
 
-A monorepo has a working mobile Expo app (SDK 54, React Native 0.81.5) and a web Next.js app, both consuming a Server-Driven UI pipeline: Strapi CMS -> GraphQL -> gql.tada -> normalizer -> dispatcher -> renderers. The team wanted to add Apple TV and Android TV support without duplicating SDUI logic or diverging from the existing content model.
+A monorepo has a working mobile Expo app (SDK 54, React Native 0.81.5) and a web Next.js app, both consuming a Server-Driven UI pipeline: admin GraphQL -> gql.tada -> normalizer -> dispatcher -> renderers. The team wanted to add Apple TV and Android TV support without duplicating SDUI logic or diverging from the existing content model.
 
 The key challenge was uncertainty about whether Expo SDK 54 supported TV targets at all, combined with the architectural question of how to share the SDUI pipeline across a fundamentally different interaction model (D-pad focus vs touch).
 
@@ -164,13 +164,13 @@ Create `apps/tv/` as a new Expo app -- do NOT add TV as a platform target inside
 
 ```
 apps/
-  mobile-v2/    # touch app -- do not modify for TV
+  mobile/       # touch app -- do not modify for TV
   tv/           # new Expo app for Apple TV + Android TV
 packages/
-  graphql/      # shared typed GraphQL client (already exists)
+  admin-graphql/  # shared gql.tada admin GraphQL client (@forge/admin-graphql)
 ```
 
-Import normalizer and queries from mobile-v2 via pnpm workspace paths. Avoids copy-and-drift -- a CMS schema change propagates automatically after codegen. Renderers are rewritten from scratch for TV.
+Import normalizer and queries from mobile via pnpm workspace paths (or copy with a sync comment). Avoids copy-and-drift -- an admin GraphQL schema change propagates after codegen. Renderers are rewritten from scratch for TV.
 
 ### 3. Home Screen Data Model
 
@@ -319,7 +319,7 @@ This is silent — TypeScript doesn't catch it because `NormalizedBlock` uses `[
 **Correct monorepo structure:**
 
 ```
-apps/mobile-v2/   # untouched
+apps/mobile/      # untouched
 apps/tv/          # new app -- shares logic, rewrites renderers
   app/
     _layout.tsx
@@ -333,7 +333,7 @@ apps/tv/          # new app -- shares logic, rewrites renderers
 **Incorrect approach -- do not add TV target to mobile app:**
 
 ```jsonc
-// apps/mobile-v2/app.json -- DO NOT DO THIS
+// apps/mobile/app.json -- DO NOT DO THIS
 {
   "expo": {
     "platforms": ["ios", "android", "tvos"],
@@ -365,6 +365,7 @@ const rail = experiences.map((e) => ({
 - `docs/solutions/mobile/experience-selection-provider-library-tab-pattern-2026-04-08.md` -- `isHomepage` resolution pattern used for TV home screen hero
 - `docs/solutions/best-practices/playlist-video-player-sdui-mobile-20260409.md` -- `useVideoPlayer` stability patterns; TV adds remote control event mapping
 - `docs/solutions/platform/adding-new-apps.md` -- monorepo scaffold checklist; TV uses EAS Build instead of Railway
+- `docs/solutions/build-errors/eas-managed-react-native-tvos-build-gotchas-20260615.md` -- the EAS **cloud-build** + TestFlight + app-icon layer this doc leaves open. This doc covers local prebuild / dev-client; that one covers the managed-workflow provisioning-profile-resolves-to-iOS failure, the Android `ic_launcher` duplicate-resource collision, and `appleTVImages` asset constraints
 - `docs/solutions/mobile/expo-router-slash-in-dynamic-route-params.md` -- `encodeURIComponent` for `experience/[slug]` route params
 - `docs/brainstorms/2026-04-10-tv-app-prototype-requirements.md` -- full requirements document for the TV prototype
 - Roadmap: feat-072 through feat-076 -- implementation tickets
