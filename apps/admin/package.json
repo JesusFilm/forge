@@ -26,6 +26,7 @@
     "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",
     "partner-keys": "tsx src/scripts/partner-keys.ts",
     "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
+    "cleanup:legacy-openai-embeddings": "tsx src/scripts/cleanup-legacy-openai-embeddings.ts",
     "run-embeds": "tsx src/scripts/run-embeds.ts",
     "run-sync": "tsx src/scripts/run-sync.ts",
     "schema:print": "tsx src/scripts/print-schema.ts",

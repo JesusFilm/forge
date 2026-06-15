@@ -106,6 +106,22 @@ An evaluation or backfill approval artifact that binds quality evidence to a spe
 
 The content fragment that explains why a search result matched a query, such as a scene description or transcript chunk. Semantic Evidence belongs to retrieval, ranking, debug context, and optional timecodes; consumer card surfaces should render display metadata unless they are intentionally showing match context.
 
+### Manager Artifact
+
+A source-side output from Manager's media-processing pipelines that Admin can consume to build or rebuild search indexes.
+
+Manager artifacts are repair inputs, not the same thing as Admin's searchable vector rows.
+
+### Transcript Chunk
+
+A searchable segment of a video transcript stored separately from the transcript parent so retrieval and embedding workflows can operate at segment granularity.
+
+Deleting transcript chunks removes Admin's transcript search index for those segments but does not delete the transcript identity or Manager's source artifacts.
+
+### Embedding Backfill
+
+A controlled batch process that generates or regenerates vectors for existing content without changing the underlying source content.
+
 ## Known-caller auth
 
 ### Search Passport
