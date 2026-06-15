@@ -168,9 +168,12 @@ const styles = StyleSheet.create({
   resultsPane: {
     flex: 1,
   },
-  // Design .s-meta: min-height 24 + headroom; horizontal from the pane.
+  // Holds the one-line meta text at a stable height so the grid below
+  // doesn't shift as the label changes (BROWSE / N RESULTS / empty).
+  // Just tall enough for the 18px line — no extra reserved space, which
+  // had opened a visible gap above the results.
   metaLine: {
-    minHeight: scale(38) + scale(24),
+    minHeight: scale(30),
   },
   metaText: {
     fontFamily: "System",
@@ -179,9 +182,11 @@ const styles = StyleSheet.create({
     letterSpacing: scale(2.9),
     color: SEARCH_THEME.textDim(0.45),
   },
-  // Fills the remainder of the right pane, 14px of headroom.
+  // Fills the remainder of the right pane. Minimal headroom — the grid's
+  // top row carries its own focus-lift padding, so a large inset here just
+  // widens the gap below the meta line.
   resultsRegion: {
     flex: 1,
-    paddingTop: scale(14),
+    paddingTop: scale(2),
   },
 })
