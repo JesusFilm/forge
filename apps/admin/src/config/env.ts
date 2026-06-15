@@ -49,6 +49,41 @@ export const searchTraceRawRetentionDaysEnvSchema = z.coerce
   .optional()
   .default(29)
 
+/**
+ * AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED — enum-of-strings (not a
+ * boolean) so a stray non-empty value can't silently flip the gate.
+ * Absent → `"false"`; only the literal `"true"` marks the active chat
+ * provider's schema-constrained decoding as trusted. Exported as a
+ * standalone fragment so `env.test.ts` can assert the default without
+ * round-tripping the CI-skipped `createEnv` boot.
+ */
+export const constrainedDecodingTrustedEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
+/**
+ * EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS (U5) — the cap on the bounded
+ * validate→repair-with-error-feedback loop in `runGenerateDraftAction`.
+ * A COUNT, so it follows the repo's numeric-env convention
+ * (`searchTraceRawRetentionDaysEnvSchema` uses `z.coerce.number()`):
+ * coerced from string, integer, `0..5`, `.optional().default(2)`.
+ *
+ * Absent → 2 (the documented default). `0` disables repair entirely
+ * (a schema_violation then fails closed on the first normalize miss).
+ * `.optional().default(...)` so an unprovisioned Railway environment
+ * still boots — opt-in scaffolding env vars must never be
+ * required-without-default (cf.
+ * docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md).
+ */
+export const experienceAiMaxRepairAttemptsEnvSchema = z.coerce
+  .number()
+  .int()
+  .min(0)
+  .max(5)
+  .optional()
+  .default(2)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -293,6 +328,19 @@ export const env = createEnv({
     AI_GATEWAY_CHAT_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_CHAT_MODEL: z.string().min(1).optional(),
     AI_GATEWAY_CHAT_ENABLED: z.string().optional(),
+    // Marks the active chat provider's schema-constrained decoding
+    // (`structuredOutput` / vLLM guided_json) as TRUSTED — only flipped
+    // to "true" after the U6 BlocksSchema smoke gate is green for that
+    // provider. When unset/"false", every phase takes the free-text +
+    // coercion + repair + validator path (R5: the final guarantee never
+    // depends on constrained decoding). `.optional().default("false")`
+    // so an unprovisioned Railway environment still boots (R: opt-in
+    // scaffolding env vars must never be required-without-default).
+    AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED:
+      constrainedDecodingTrustedEnvSchema,
+    // Cap on the U5 validate→repair loop (default 2). See
+    // experienceAiMaxRepairAttemptsEnvSchema above.
+    EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: experienceAiMaxRepairAttemptsEnvSchema,
     AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
     AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
@@ -492,6 +540,12 @@ export const env = createEnv({
     AI_GATEWAY_CHAT_MODEL: emptyToUndefined(process.env.AI_GATEWAY_CHAT_MODEL),
     AI_GATEWAY_CHAT_ENABLED: emptyToUndefined(
       process.env.AI_GATEWAY_CHAT_ENABLED,
+    ),
+    AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED: emptyToUndefined(
+      process.env.AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED,
+    ),
+    EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: emptyToUndefined(
+      process.env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS,
     ),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: emptyToUndefined(
       process.env.AI_GATEWAY_EMBEDDINGS_BASE_URL,

@@ -28,13 +28,27 @@ describe("budgets (U11)", () => {
       expect(TOKEN_CAPS.multiStepDraftRevise).toBe(4_000)
     })
 
-    it("keeps the sum of multi-step caps ≤ 12_000 (drift guard)", () => {
-      const sum =
+    it("exposes the U3 two-phase per-step caps (skeleton + per-node fill)", () => {
+      // Skeleton is a tiny structure-only emission; fill is a small
+      // per-block cap (one call per fillable node).
+      expect(TOKEN_CAPS.multiStepDraftSkeleton).toBe(1_500)
+      expect(TOKEN_CAPS.multiStepDraftFill).toBe(1_500)
+      // Skeleton is no larger than the (retained-but-unchained) draft cap.
+      expect(TOKEN_CAPS.multiStepDraftSkeleton).toBeLessThan(
+        TOKEN_CAPS.multiStepDraftDraft,
+      )
+    })
+
+    it("keeps the non-fill two-phase chain sum at 8_500 (drift guard)", () => {
+      // plan + skeleton + critique + revise (the fill step's cost is N ×
+      // multiStepDraftFill where N is the skeleton's fillable-node count,
+      // accounted separately because it scales with structure).
+      const nonFillSum =
         TOKEN_CAPS.multiStepDraftPlan +
-        TOKEN_CAPS.multiStepDraftDraft +
+        TOKEN_CAPS.multiStepDraftSkeleton +
         TOKEN_CAPS.multiStepDraftCritique +
         TOKEN_CAPS.multiStepDraftRevise
-      expect(sum).toBeLessThanOrEqual(12_000)
+      expect(nonFillSum).toBe(8_500)
     })
   })
 
@@ -43,8 +57,9 @@ describe("budgets (U11)", () => {
       expect(STEP_CAPS.toolCallingTurn).toBe(8)
     })
 
-    it("aligns multiStepDraft cap with the workflow's chain length (4)", () => {
-      expect(STEP_CAPS.multiStepDraft).toBe(4)
+    it("aligns multiStepDraft cap with the workflow's chain length (5 after U3)", () => {
+      // plan → skeleton → fill → critique → revise.
+      expect(STEP_CAPS.multiStepDraft).toBe(5)
     })
   })
 
