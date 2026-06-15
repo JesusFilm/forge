@@ -1,14 +1,16 @@
 ---
-title: "Watch search URL hydration can strand the overlay in loading"
+title: "Watch search URL sync can strand the overlay in loading"
 date: "2026-06-15"
+last_updated: "2026-06-15"
 category: "ui-bugs"
 module: "apps/web watch search"
 problem_type: "ui_bug"
 component: "frontend_stimulus"
 symptoms:
   - "Opening `/watch?q=jesus` can show the search overlay and skeleton cards indefinitely."
+  - "Editing a successful search into a second query can leave the URL behind the input and keep skeleton cards visible."
   - "Production `/watch` server-action POSTs can return 200 while the UI never renders result cards."
-  - "Typed searches from the already-open overlay can recover, proving the backend search path is not the only failure point."
+  - "The browser can post language metadata for the partial query without ever posting the final `runSearch` payload."
 root_cause: "async_timing"
 resolution_type: "code_fix"
 severity: "high"
@@ -23,22 +25,26 @@ tags:
   - "search"
   - "url-hydration"
   - "router-replace"
+  - "history-replace-state"
   - "loading-state"
   - "skeleton"
   - "app-router"
 ---
 
-# Watch search URL hydration can strand the overlay in loading
+# Watch search URL sync can strand the overlay in loading
 
 ## Problem
 
-The Watch search page could open directly at a query URL, such as `/watch?q=jesus`, display the modal with skeleton result cards, and never show results. The backend was not simply timing out: browser-level production tracing showed the page-level client flow could call language metadata, dispatch an App Router navigation for an already-synced URL, and fail to reach the real `runSearch` action for the hydrated query.
+The Watch search page could open directly at a query URL, such as `/watch?q=jesus`, display the modal with skeleton result cards, and never show results. A second production path showed the same class of failure after a successful search: search `jesus`, edit the active input to `the bible proj`, pause past debounce, then type `ect`. The input showed `the bible project`, the URL stayed at `?q=the+bible+proj`, skeleton cards remained, and no final results rendered.
+
+The backend was not simply timing out. Browser-level production tracing showed page-level client flow could post language metadata and return HTTP 200 while failing to reach the real `runSearch` action for the user-visible final query.
 
 ## Symptoms
 
 - The page showed the search overlay, focused input, and pulsing skeleton cards for many minutes.
 - Server-action POSTs returned HTTP 200, but the initial direct URL path only called `getSearchLanguageOptions`.
 - Typing a new query in the overlay later issued `runSearch` and rendered result cards.
+- After a successful first search, an intermediate edited query could update the URL and start skeletons while the final input value never reached `runSearch`.
 - Clearing or superseding a pending search could leave `loading` and `showSkeleton` latched if the stale request was invalidated before its cleanup ran.
 
 ## What Didn't Work
@@ -47,10 +53,11 @@ The Watch search page could open directly at a query URL, such as `/watch?q=jesu
 - **Waiting longer.** The observed failure could sit for 10 minutes because the UI was stuck in client state, not waiting for a normal request timeout.
 - **Blaming search ranking or Algolia fallback.** Later typed searches returned results, so ranking and backend result rendering were not the primary blocker.
 - **Checking only HTTP status.** The relevant question was not whether a server-action POST returned 200, but whether the page-level hydration flow reached `runSearch` and cleared the active skeleton state.
+- **Testing only direct `?q=` hydration.** That proved the first URL-open path, but missed the post-success edit path where a changed-query navigation could remount the overlay and clear a newer debounce timer.
 
 ## Solution
 
-Keep URL synchronization in the search controller, but skip `router.replace()` when the target URL is identical to the current browser URL. Compare the canonical search URL built by the shared helper with the current app-relative URL:
+Keep URL synchronization in the search controller, but do not use Next App Router navigation for modal-owned `?q=` edits. The search modal uses `?q=` as client UI state, so update the visible URL with `window.history.replaceState()` while preserving Next's existing history state:
 
 ```ts
 function buildCurrentSearchUrl(
@@ -63,9 +70,15 @@ function buildCurrentSearchUrl(
     : pathname
 }
 
-const nextUrl = buildSearchUrl(pathname, currentParams, trimmed)
-if (nextUrl !== buildCurrentSearchUrl(pathname, currentParams)) {
-  router.replace(nextUrl as Route)
+function replaceBrowserSearchUrl(nextUrl: string): void {
+  window.history.replaceState(window.history.state, "", nextUrl)
+}
+
+const browserPathname =
+  typeof window !== "undefined" ? window.location.pathname : pathname
+const nextUrl = buildSearchUrl(browserPathname, currentParams, trimmed)
+if (nextUrl !== buildCurrentSearchUrl(browserPathname, currentParams)) {
+  replaceBrowserSearchUrl(nextUrl)
 }
 ```
 
@@ -98,25 +111,27 @@ try {
 Lock the behavior with provider/controller tests:
 
 - Direct `?q=jesus` hydration calls `runSearch` and does not call `router.replace` for the same URL.
-- Changed queries still call `router.replace` and preserve unrelated params.
+- Changed queries update `window.location.search`, preserve unrelated params, and do not call `router.replace`.
 - Clearing search removes `q` without calling `runSearch`.
+- Editing from a completed `jesus` search through an intermediate debounced query to `the bible project` still calls `runSearch` for the final query.
 - Resetting an in-flight search clears `loading` and `showSkeleton`.
 - A stale search resolving after a newer search starts does not clear the active loading state.
 
 ## Why This Works
 
-In a Next.js App Router page, `router.replace()` is not a harmless assignment. Even a same-URL replacement can start client navigation and RSC work around the same time the lazily mounted search controller is hydrating from `?q=`.
+In a Next.js App Router page, `router.replace()` is not a harmless assignment. It can start client navigation and RSC work around the same time the search overlay is hydrating, exiting previous result cards, or holding a pending debounce for the user's next keystrokes.
 
-The direct query URL already contains the intended search state, so replacing it with itself gives the router a chance to interrupt the flow without adding any user value. Guarding the no-op replacement lets the hydration search continue to `runSearch`.
+The direct query URL already contains the intended search state, so replacing it with itself gives the router a chance to interrupt the flow without adding any user value. For changed queries, the URL update is still useful, but it does not need a server navigation because the modal's input and results are controlled client-side. Native `replaceState()` keeps the address bar shareable without remounting the overlay or clearing pending debounce timers.
 
 The loading fix follows the controller's existing request-id model. Every search increments `requestIdRef`; only the currently winning request can clear `loading`, `showSkeleton`, and the skeleton timer. Empty-query reset is also a valid winning request, so it must run the same cleanup instead of invalidating the older request and returning with skeletons still visible.
 
 ## Prevention
 
 - Reproduce search bugs through the web page, not just one-off server-action probes. For App Router UI bugs, network success can coexist with broken client state.
-- Treat `router.replace()` as a navigation side effect. Before calling it from a hydrated overlay or modal, prove the target URL differs from the current URL.
+- Treat `router.replace()` as a navigation side effect. Before calling it from a hydrated overlay or modal, prove that a server navigation is actually needed.
+- For modal-owned URL state, prefer `window.history.replaceState(window.history.state, "", nextUrl)` so Next history metadata is preserved without dispatching RSC navigation.
 - Keep delayed skeleton timers paired with request-id cleanup. A reset path that increments the request id must also clear the active timer and loading flags.
-- Test both sides of URL sync guards: no-op URLs must not navigate, changed URLs still must navigate.
+- Test both sides of URL sync: no-op URLs must not navigate, changed modal query URLs must update browser history without App Router navigation.
 - Isolate URL-sync tests from mount hydration by mounting without `q`, then changing `window.history` immediately before the user action being tested.
 
 ## Related Issues
