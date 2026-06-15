@@ -24,8 +24,8 @@ type Props = {
   results: SearchResult[]
   query: string
   /**
-   * Called when the user presses the Retry button in the error or
-   * degraded states. Parent wires this to useSemanticSearch.retry().
+   * Called when the user presses the Retry button in the error state.
+   * Parent wires this to useSemanticSearch.retry().
    */
   onRetry?: () => void
 }
@@ -66,31 +66,6 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
           onPress={() => onRetry?.()}
           accessibilityHint="Re-runs your last search"
         />
-      </View>
-    )
-  }
-
-  if (state === "degraded") {
-    // Distinct UX from "empty" — the backend degraded signal (searchMode
-    // === "keyword-only") means the embedding service is unavailable
-    // and results may be incomplete. We still render what came back so
-    // the user has something, but we label it clearly.
-    return (
-      <View style={styles.degradedContainer}>
-        <View style={styles.degradedBanner}>
-          <Text style={styles.degradedText}>
-            Search is running in limited mode: results may be incomplete.
-          </Text>
-          <RetryButton
-            onPress={() => onRetry?.()}
-            accessibilityHint="Re-runs your last search; may recover full results if the embedding service is back"
-          />
-        </View>
-        {results.length > 0 ? (
-          <ResultsList results={results} onPress={openResult} />
-        ) : (
-          <Text style={styles.messageDetail}>No results available.</Text>
-        )}
       </View>
     )
   }
@@ -192,7 +167,7 @@ function ResultsList({
 }
 
 /**
- * Retry button shared by the error and degraded states. Uses the
+ * Retry button for the error state. Uses the
  * onFocus / onBlur + state pattern (matching the home screen's retry
  * button) rather than the `({ focused }) => [...]` style callback —
  * `focused` is exposed at runtime by react-native-tvos but not by
@@ -255,12 +230,6 @@ const styles = StyleSheet.create({
     color: SEARCH_THEME.text,
     textAlign: "center",
   },
-  messageDetail: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(16)),
-    color: SEARCH_THEME.textDim(0.5),
-    textAlign: "center",
-  },
   // Design .s-empty: top-left aligned at 60px vertical / 80px horizontal.
   empty: {
     paddingVertical: scale(60),
@@ -298,24 +267,6 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(18)),
     fontWeight: "600",
     color: WATCH_THEME.accentText,
-  },
-  degradedContainer: {
-    flex: 1,
-    gap: scale(16),
-  },
-  degradedBanner: {
-    backgroundColor: SEARCH_THEME.keyBg,
-    padding: scale(16),
-    borderRadius: scale(12),
-    gap: scale(8),
-    alignItems: "center",
-    marginHorizontal: scale(80),
-  },
-  degradedText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(14)),
-    color: SEARCH_THEME.textDim(0.6),
-    textAlign: "center",
   },
   listWrapper: {
     flex: 1,

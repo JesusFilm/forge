@@ -22,14 +22,7 @@ describe("resolveSearchMeta", () => {
   })
 
   it("stays quiet for ready with zero results", () => {
-    // Branch discipline: pin the ready+zero path independently from the
-    // degraded+zero path below so deleting either branch fails a test.
     expect(resolveSearchMeta("ready", 0, true)).toBe("")
-  })
-
-  it("counts degraded results too, but stays quiet at zero", () => {
-    expect(resolveSearchMeta("degraded", 3, true)).toBe("3 RESULTS")
-    expect(resolveSearchMeta("degraded", 0, true)).toBe("")
   })
 
   it("stays quiet while loading, on empty, and on error", () => {

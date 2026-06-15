@@ -30,9 +30,6 @@ export function resolveSearchMeta(
       // Non-empty query → debounce is pending; stay quiet (no BROWSE flash).
       return hasQuery ? "" : "BROWSE"
     case "ready":
-    case "degraded":
-      // Degraded still renders whatever results came back, so the count
-      // stays meaningful; the in-region banner explains the limitation.
       if (resultCount === 0) return ""
       return resultCount === 1 ? "1 RESULT" : `${resultCount} RESULTS`
     case "loading":
