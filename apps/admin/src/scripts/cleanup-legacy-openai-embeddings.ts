@@ -31,6 +31,11 @@ export const QWEN_COLUMN_TABLES = [
   "video_transcript_chunk",
 ] as const
 
+export const EXECUTE_TRANSACTION_OPTIONS = {
+  maxWait: 30000,
+  timeout: 600000,
+} as const
+
 export type TargetEnvironment = "development" | "staging" | "production"
 
 export type CleanupArgs = {
@@ -122,7 +127,10 @@ export type CleanupDb = {
   $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>
   $executeRawUnsafe(query: string, ...values: unknown[]): Promise<number>
   $disconnect?: () => Promise<void>
-  $transaction?: <T>(fn: (tx: CleanupDb) => Promise<T>) => Promise<T>
+  $transaction?: <T>(
+    fn: (tx: CleanupDb) => Promise<T>,
+    options?: typeof EXECUTE_TRANSACTION_OPTIONS,
+  ) => Promise<T>
 }
 
 type ContentAuditRow = {
@@ -529,7 +537,9 @@ async function executeContentMutations(
       transcriptChunksDeleted,
     }
   }
-  return db.$transaction ? db.$transaction(run) : run(db)
+  return db.$transaction
+    ? db.$transaction(run, EXECUTE_TRANSACTION_OPTIONS)
+    : run(db)
 }
 
 async function dropQwenArtifacts(
