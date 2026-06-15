@@ -13,6 +13,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import type { View as ViewType } from "react-native"
 
 import { scale } from "../../lib/scale"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
@@ -47,6 +48,13 @@ type HomeTopBarProps = {
   onSearchPress: () => void
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
+  /**
+   * Receives the Search tab's native node so the featured rail can wire it as
+   * its cards' `nextFocusUp` target — the centered tab bar has no horizontal
+   * overlap with the rail's edge cards, so D-pad up from them needs an
+   * explicit destination (the focus engine finds nothing directly above).
+   */
+  onSearchTabNode?: (node: ViewType | null) => void
 }
 
 export const HomeTopBar = memo(function HomeTopBar({
@@ -54,6 +62,7 @@ export const HomeTopBar = memo(function HomeTopBar({
   searchTabPreferredFocus,
   onSearchPress,
   onChromeFocus,
+  onSearchTabNode,
 }: HomeTopBarProps) {
   // ── Hide animation ──
   const hideProgress = useRef(new Animated.Value(hidden ? 1 : 0)).current
@@ -114,6 +123,7 @@ export const HomeTopBar = memo(function HomeTopBar({
           onChromeFocus={onChromeFocus}
           focusable={!hidden}
           hasTVPreferredFocus={searchTabPreferredFocus}
+          nodeRef={onSearchTabNode}
         />
         <TopBarTab
           testID="home-topbar-home-tab"
@@ -157,6 +167,8 @@ type TopBarTabProps = {
   onChromeFocus: () => void
   focusable: boolean
   hasTVPreferredFocus?: boolean
+  /** Lifts this tab's native node up so a rail can target it via nextFocusUp. */
+  nodeRef?: (node: ViewType | null) => void
 }
 
 function TopBarTab({
@@ -170,6 +182,7 @@ function TopBarTab({
   onChromeFocus,
   focusable,
   hasTVPreferredFocus,
+  nodeRef,
 }: TopBarTabProps) {
   const { setFocused, progress } = useFocusAnimation()
 
@@ -213,6 +226,7 @@ function TopBarTab({
 
   return (
     <Pressable
+      ref={nodeRef}
       onPress={onPress}
       onFocus={() => {
         setFocused(true)

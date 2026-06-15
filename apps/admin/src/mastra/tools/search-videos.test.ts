@@ -27,7 +27,7 @@ describe("searchVideosTool", () => {
     vi.resetModules()
   })
 
-  it("calls HybridSearchService.search with the input query+locale+limit and returns trimmed videos", async () => {
+  it("calls HybridSearchService.search with the input query+locale+limit and returns trimmed playable videos, dropping playbackId-null rows", async () => {
     searchMock.mockResolvedValue({
       results: [
         {
@@ -83,14 +83,9 @@ describe("searchVideosTool", () => {
       limit: 5,
       contentTypes: ["video"],
     })
+    // vid-1 has playbackId null (no playable dub in the locale) — agents
+    // write returned videoIds into blocks verbatim, so it must be dropped.
     expect(result.videos).toEqual([
-      {
-        videoId: "vid-1",
-        title: "Jesus",
-        snippet: "About Jesus.",
-        slug: "jesus",
-        imageUrl: "https://cdn/img.png",
-      },
       {
         videoId: "vid-2",
         title: "Easter",

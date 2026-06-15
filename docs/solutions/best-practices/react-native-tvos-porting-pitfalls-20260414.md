@@ -131,6 +131,7 @@ Key constraints:
 - `setNativeProps` is the react-native-tvos imperative API for moving focus. The ref target must be a mounted `Pressable`.
 - Anchors need `accessible={false}` to be invisible to screen readers.
 - Anchor height must be >= 48px for the focus engine to recognize it.
+- This anchor is focused by an **explicit** `setNativeProps({ hasTVPreferredFocus })` claim, not by geometric D-pad discovery — which is why `opacity: 0` works here. The opposite case — a cell that must be caught by a _directional_ D-pad move (e.g. an over-hang catcher inside a rail) — cannot use `opacity: 0`: alpha-0 views are skipped by the geometric focus engine, so it must be transparent at alpha 1. See [`../design-patterns/tv-rail-overhang-pad-bounce-focus-20260616.md`](../design-patterns/tv-rail-overhang-pad-bounce-focus-20260616.md).
 
 Scope: this anchor technique is for `ScrollView`. A virtualized `FlatList`
 scrolls programmatically with `scrollToIndex` + `getItemLayout` instead (no

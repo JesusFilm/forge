@@ -12,32 +12,35 @@ export type StepStatus =
   | "failed"
   | "skipped"
 
-export type WorkflowStepName =
-  | "download_video"
-  | "transcription"
-  | "structured_transcript"
-  | "subtitle_post_process"
-  | "chapters"
-  | "metadata"
-  | "embeddings"
-  | "translation"
-  | "audio_cleanup"
-  | "voiceover"
-  | "artifact_upload"
-  | "mux_upload"
-  | "theology_validation_bible_quotes"
-  | "seo_improvements"
-  | "cms_notify"
-  | "smart_crop_fingerprint"
-  | "smart_crop_plan"
-  | "smart_crop_align"
-  | "smart_crop_preview_render"
-  | "smart_crop_qa"
-  | "smart_crop_render"
-  | "smart_crop_mux_output"
-  | "shorts_prepare"
-  | "shorts_render"
-  | "shorts_mux_output"
+export const WORKFLOW_STEP_NAMES = [
+  "download_video",
+  "transcription",
+  "structured_transcript",
+  "subtitle_post_process",
+  "chapters",
+  "metadata",
+  "embeddings",
+  "translation",
+  "audio_cleanup",
+  "voiceover",
+  "artifact_upload",
+  "mux_upload",
+  "theology_validation_bible_quotes",
+  "seo_improvements",
+  "cms_notify",
+  "smart_crop_fingerprint",
+  "smart_crop_plan",
+  "smart_crop_align",
+  "smart_crop_preview_render",
+  "smart_crop_qa",
+  "smart_crop_render",
+  "smart_crop_mux_output",
+  "shorts_prepare",
+  "shorts_render",
+  "shorts_mux_output",
+] as const
+
+export type WorkflowStepName = (typeof WORKFLOW_STEP_NAMES)[number]
 
 export type SmartCropKind = "canonical" | "localized"
 
