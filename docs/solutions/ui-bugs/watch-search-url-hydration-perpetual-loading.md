@@ -58,7 +58,9 @@ function buildCurrentSearchUrl(
   currentParams: URLSearchParams,
 ): string {
   const serializedParams = currentParams.toString()
-  return serializedParams.length > 0 ? `${pathname}?${serializedParams}` : pathname
+  return serializedParams.length > 0
+    ? `${pathname}?${serializedParams}`
+    : pathname
 }
 
 const nextUrl = buildSearchUrl(pathname, currentParams, trimmed)
