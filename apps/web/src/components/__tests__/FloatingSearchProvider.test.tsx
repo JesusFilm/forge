@@ -722,7 +722,7 @@ describe("FloatingSearchProvider — search mode", () => {
 
   it("syncs the URL with browser history when the submitted search query changes", async () => {
     mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
-    window.history.replaceState(null, "", "/?utm=campaign")
+    window.history.replaceState({ next: "initial" }, "", "/watch?utm=campaign")
 
     act(() => {
       root.render(
@@ -732,7 +732,8 @@ describe("FloatingSearchProvider — search mode", () => {
       )
     })
 
-    window.history.replaceState(null, "", "/?q=bible&utm=campaign")
+    const historyState = { next: "preserve" }
+    window.history.replaceState(historyState, "", "/watch?q=bible&utm=campaign")
 
     const searchButton = document.querySelector(
       '[data-testid="search-mode-harness-button"]',
@@ -743,13 +744,14 @@ describe("FloatingSearchProvider — search mode", () => {
       await Promise.resolve()
     })
 
-    expect(window.location.pathname).toBe("/")
+    expect(window.location.pathname).toBe("/watch")
     expect(window.location.search).toBe("?q=jesus&utm=campaign")
+    expect(window.history.state).toEqual(historyState)
     expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
   it("removes the query param from the URL when search is cleared", async () => {
-    window.history.replaceState(null, "", "/?utm=campaign")
+    window.history.replaceState({ next: "initial" }, "", "/watch?utm=campaign")
 
     act(() => {
       root.render(
@@ -759,7 +761,8 @@ describe("FloatingSearchProvider — search mode", () => {
       )
     })
 
-    window.history.replaceState(null, "", "/?q=jesus&utm=campaign")
+    const historyState = { next: "preserve" }
+    window.history.replaceState(historyState, "", "/watch?q=jesus&utm=campaign")
 
     const clearButton = document.querySelector(
       '[data-testid="search-mode-harness-clear-button"]',
@@ -770,8 +773,9 @@ describe("FloatingSearchProvider — search mode", () => {
       await Promise.resolve()
     })
 
-    expect(window.location.pathname).toBe("/")
+    expect(window.location.pathname).toBe("/watch")
     expect(window.location.search).toBe("?utm=campaign")
+    expect(window.history.state).toEqual(historyState)
     expect(navigationMocks.replace).not.toHaveBeenCalled()
     expect(mockedRunSearch).not.toHaveBeenCalled()
   })
@@ -1313,6 +1317,7 @@ describe("FloatingSearchProvider — search pagination", () => {
       expect(window.location.search).toBe("?q=the+bible+project")
       expect(navigationMocks.replace).not.toHaveBeenCalled()
       expect(document.body.textContent).toContain("Bible Project Result")
+      expect(document.querySelector(".animate-pulse")).toBeNull()
     } finally {
       mockedRunSearch.mockReset()
     }

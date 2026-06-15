@@ -23,12 +23,11 @@ tags:
   - "web"
   - "watch"
   - "search"
-  - "url-hydration"
+  - "url-sync"
+  - "app-router"
   - "router-replace"
   - "history-replace-state"
   - "loading-state"
-  - "skeleton"
-  - "app-router"
 ---
 
 # Watch search URL sync can strand the overlay in loading
@@ -57,7 +56,7 @@ The backend was not simply timing out. Browser-level production tracing showed p
 
 ## Solution
 
-Keep URL synchronization in the search controller, but do not use Next App Router navigation for modal-owned `?q=` edits. The search modal uses `?q=` as client UI state, so update the visible URL with `window.history.replaceState()` while preserving Next's existing history state:
+Keep URL synchronization in the search controller, but do not use Next App Router navigation for modal-owned `?q=` edits. The search modal uses `?q=` as client UI state, so update the visible URL with `window.history.replaceState()` while passing through `window.history.state`. That preserves Next's existing App Router history metadata instead of replacing it with `null`.
 
 ```ts
 function buildCurrentSearchUrl(
@@ -70,17 +69,15 @@ function buildCurrentSearchUrl(
     : pathname
 }
 
-function replaceBrowserSearchUrl(nextUrl: string): void {
-  window.history.replaceState(window.history.state, "", nextUrl)
-}
-
 const browserPathname =
   typeof window !== "undefined" ? window.location.pathname : pathname
 const nextUrl = buildSearchUrl(browserPathname, currentParams, trimmed)
 if (nextUrl !== buildCurrentSearchUrl(browserPathname, currentParams)) {
-  replaceBrowserSearchUrl(nextUrl)
+  window.history.replaceState(window.history.state, "", nextUrl)
 }
 ```
+
+Use `window.location.pathname` for the browser-visible path so non-root public routes such as `/watch` stay intact when the query string changes.
 
 Then make loading cleanup request-id-scoped and reusable so both normal completion and empty-query resets clear the active spinner without letting stale requests affect newer searches:
 
@@ -111,9 +108,9 @@ try {
 Lock the behavior with provider/controller tests:
 
 - Direct `?q=jesus` hydration calls `runSearch` and does not call `router.replace` for the same URL.
-- Changed queries update `window.location.search`, preserve unrelated params, and do not call `router.replace`.
+- Changed queries sync `/watch?utm=campaign` to `/watch?q=jesus&utm=campaign`, preserve unrelated params, preserve a non-null `window.history.state`, and do not call `router.replace`.
 - Clearing search removes `q` without calling `runSearch`.
-- Editing from a completed `jesus` search through an intermediate debounced query to `the bible project` still calls `runSearch` for the final query.
+- Editing from a completed `jesus` search through an intermediate debounced query to `the bible project` still calls `runSearch` for the final query and clears the pulsing skeleton cards.
 - Resetting an in-flight search clears `loading` and `showSkeleton`.
 - A stale search resolving after a newer search starts does not clear the active loading state.
 
@@ -131,8 +128,9 @@ The loading fix follows the controller's existing request-id model. Every search
 - Treat `router.replace()` as a navigation side effect. Before calling it from a hydrated overlay or modal, prove that a server navigation is actually needed.
 - For modal-owned URL state, prefer `window.history.replaceState(window.history.state, "", nextUrl)` so Next history metadata is preserved without dispatching RSC navigation.
 - Keep delayed skeleton timers paired with request-id cleanup. A reset path that increments the request id must also clear the active timer and loading flags.
-- Test both sides of URL sync: no-op URLs must not navigate, changed modal query URLs must update browser history without App Router navigation.
+- Test both sides of URL sync: no-op URLs must not navigate, changed modal query URLs must update browser history without App Router navigation, and edited-query regressions must prove skeletons are gone after final results render.
 - Isolate URL-sync tests from mount hydration by mounting without `q`, then changing `window.history` immediately before the user action being tested.
+- Keep URL helper comments transport-neutral. A helper used by native history updates should describe browser search URL sync, not `router.replace()` calls.
 
 ## Related Issues
 

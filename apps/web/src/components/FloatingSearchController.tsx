@@ -53,10 +53,6 @@ function buildCurrentSearchUrl(
     : pathname
 }
 
-function replaceBrowserSearchUrl(nextUrl: string): void {
-  window.history.replaceState(window.history.state, "", nextUrl)
-}
-
 export type FloatingSearchControllerProps = {
   open: boolean
   closing: boolean
@@ -280,7 +276,7 @@ export function FloatingSearchController({
         // router.replace() here dispatches an App Router/RSC navigation, which
         // can remount the overlay and clear a newer debounced search while the
         // viewer is still typing.
-        replaceBrowserSearchUrl(nextUrl)
+        window.history.replaceState(window.history.state, "", nextUrl)
       }
 
       if (!trimmed) {
