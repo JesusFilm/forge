@@ -354,6 +354,55 @@ Firecrawl MCP as the production path unless a later plan proves a real
 multi-tool MCP server need; MCP can be useful for local operator convenience but
 is not the deterministic product contract here.
 
+## Seeker agent
+
+`seekerAgent` (feat-170) is the first conversational agent of the planned
+"Jesus Film AI Chat" system, as a **Studio-only skeleton** proving the
+chat -> tool-call -> remembered-context shape: placeholder instructions with a
+mandatory safety line, the stub `retrieveAnswer` tool, and per-agent in-memory
+`Memory`. Model is `openrouter/google/gemma-4-31b-it:free` (OpenRouter —
+auto-reads `OPENROUTER_API_KEY`); the other agents stay on `openai/...`, so both
+keys are needed. Memory lives in `src/mastra/memory.ts`, owns its own `InMemoryStore`
+(never persists), and is mirrored — never imported — from admin (see that
+file's header for the why).
+
+### Local run
+
+```bash
+MASTRA_STORAGE_BACKEND=memory OPENROUTER_API_KEY=<key> pnpm --filter @forge/mastra dev
+```
+
+Open `/studio/agents/seekerAgent`: ask a factual question (watch `retrieveAnswer`
+fire — it's a stub, fixed answer + empty `sources`), then a follow-up to see
+thread recall. Use a **distinct `threadId` per tester** — memory is
+process-lifetime in-memory and leaks across testers on a shared thread.
+
+### Containment (read before exposing this anywhere)
+
+The agent is reachable on Mastra's built-in, code-unauthenticated `/api/agents/*`
+surface to anyone who can reach the Mastra endpoint. "Studio-only" is the
+`apps/mastra-gateway` + Railway **network** boundary, **NOT** the
+`seeker-route-isolation.test.ts` guard (which only proves no custom `/forge-*`
+route wires it up). The safety line bounds leaked-output blast radius; the
+`redactPromptBodies` processor blanks span `input`/`output` in traces. Do not
+expose to a public surface before the deferred guardrail gate AND a gateway
+access decision.
+
+### Not wired yet (deferred)
+
+- **Real RAG / retrieval backend.** `retrieveAnswer`'s I/O shape is provisional,
+  not a contract; real retrieval will likely return passage-shaped `sources`.
+- **Full persona + safety guardrails** (a release gate) — fabrication/honesty,
+  AI-disclosure, doctrinal-uncertainty, and **crisis handling** (suicidal-
+  ideation / self-harm / acute distress -> route to human/helpline, never
+  improvise). `seeker-agent.ts` carries a single commented guardrail
+  attach-point breadcrumb marking where these hook.
+- **Public-facing web surface** — `apps/mastra` is internal/service-bearer-only.
+- **Postgres-persisted memory** — admin already proves that path; the skeleton
+  stays in-memory.
+- **Agent evals** — faithfulness/groundedness once RAG lands; safety scoring
+  tied to the guardrail gate.
+
 ## Search eval baseline portability
 
 The service route `POST /forge-search-eval-baseline-portability` is protected
