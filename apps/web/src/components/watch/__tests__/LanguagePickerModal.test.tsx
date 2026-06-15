@@ -727,38 +727,59 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(triggers[1]?.textContent).toContain("English")
   })
 
-  it("makes unavailable captions explicit instead of listing other-language subtitles", () => {
+  it("makes unavailable captions explicit while allowing translated subtitle selection", () => {
+    const onSubtitleChange = vi.fn()
     renderModal({
       open: true,
       variants: baseVariants,
       currentLanguageSlug: "english",
-      subtitles: [
-        makeSubtitle(
-          "sub-ar",
-          "arabic-modern-standard",
-          "Arabic, Modern Standard",
-        ),
-      ],
+      subtitles: [makeSubtitle("sub-es", "spanish", "Spanish")],
       currentSubtitleEnabled: false,
       currentSubtitleSlug: null,
+      onSubtitleChange,
     })
 
     expect(
       $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
-    ).toBe("0 languages")
+    ).toBe("1 language")
     const unavailable = $(
       '[data-testid="watch-language-picker-subtitles-unavailable"]',
     )
-    expect(unavailable?.textContent).toBe("No subtitles")
-    expect(document.body.textContent).not.toContain("Arabic, Modern Standard")
-
+    expect(unavailable?.textContent).toBe("No subtitles (English)")
     const toggle = $(
       '[data-testid="watch-language-picker-subtitles-toggle"]',
     ) as HTMLButtonElement
-    expect(toggle.disabled).toBe(true)
+    expect(toggle.disabled).toBe(false)
     expect(toggle.getAttribute("aria-checked")).toBe("false")
     expect(toggle.getAttribute("data-state")).toBe("off")
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
+
+    act(() => {
+      toggle.click()
+    })
+
+    expect(toggle.getAttribute("aria-checked")).toBe("true")
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(2)
+    const apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.disabled).toBe(true)
+
+    act(() => {
+      $$('[data-testid="language-combobox-trigger"]')[1]?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+
+    expect(apply.disabled).toBe(false)
+    act(() => {
+      apply.click()
+    })
+    expect(onSubtitleChange).toHaveBeenCalledWith(true, "spanish")
   })
 
   it("shows a dummy AI translation request button when subtitles are unavailable", () => {

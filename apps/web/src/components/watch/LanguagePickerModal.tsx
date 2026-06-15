@@ -401,19 +401,38 @@ export function LanguagePickerModal({
     }
   }, [setOpenComboboxState])
 
-  const subtitleOptions = useMemo(
+  const allSubtitleOptions = useMemo(
     () =>
       subtitles
-        .filter((s) =>
-          currentLanguageSlug ? s.language.slug === currentLanguageSlug : true,
-        )
         .map((s) => ({
           ...deriveLanguageDisplay(s.language.slug, s.language.name),
           nativeName: s.language.nativeName ?? null,
           bcp47: s.language.bcp47 ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [currentLanguageSlug, subtitles],
+    [subtitles],
+  )
+  const sameLanguageSubtitleOptions = useMemo(
+    () =>
+      allSubtitleOptions.filter((option) =>
+        currentLanguageSlug ? option.slug === currentLanguageSlug : true,
+      ),
+    [allSubtitleOptions, currentLanguageSlug],
+  )
+  const translatedSubtitleOptions = useMemo(
+    () =>
+      allSubtitleOptions.filter(
+        (option) => !currentLanguageSlug || option.slug !== currentLanguageSlug,
+      ),
+    [allSubtitleOptions, currentLanguageSlug],
+  )
+  const subtitleOptions = useMemo(
+    () => [...sameLanguageSubtitleOptions, ...translatedSubtitleOptions],
+    [sameLanguageSubtitleOptions, translatedSubtitleOptions],
+  )
+  const currentLanguageDisplay = useMemo(
+    () => deriveLanguageDisplay(currentLanguageSlug, null),
+    [currentLanguageSlug],
   )
 
   // Track which slug we've dispatched a navigation toward. `navigating`
@@ -465,6 +484,11 @@ export function LanguagePickerModal({
     draftSubtitleEnabled !== currentSubtitleEnabled ||
     draftSubtitleSlug !== currentSubtitleSlug
   const isDirty = languageDirty || subtitleDirty
+  const subtitleSelectionRequired =
+    draftSubtitleEnabled && subtitleOptions.length > 0 && !draftSubtitleSlug
+  const subtitleUnavailableLabel = currentLanguageDisplay.name
+    ? `${t("noSubtitles")} (${currentLanguageDisplay.name})`
+    : t("noSubtitles")
   // Derived: navigating iff we dispatched and the URL hasn't caught up.
   // When currentLanguageSlug matches pendingNavTo, navigating flips to
   // false automatically on the next render — no setter call needed.
@@ -524,6 +548,7 @@ export function LanguagePickerModal({
 
   const handleApply = useCallback(() => {
     if (!isDirty) return
+    if (subtitleSelectionRequired) return
     if (navigatingRef.current.inFlight) return
     if (!videoSlug) return
 
@@ -563,6 +588,7 @@ export function LanguagePickerModal({
     onClose,
     onSubtitleChange,
     router,
+    subtitleSelectionRequired,
     subtitleDirty,
     videoSlug,
   ])
@@ -749,7 +775,7 @@ export function LanguagePickerModal({
                 </div>
               </MultilingualTooltip>
               <div className="flex items-center gap-4">
-                {subtitleOptions.length === 0 ? (
+                {sameLanguageSubtitleOptions.length === 0 ? (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}
                     testId="watch-language-picker-tooltip-request-subtitles"
@@ -845,12 +871,12 @@ export function LanguagePickerModal({
                 )}
               />
             ) : null}
-            {subtitleOptions.length === 0 ? (
+            {sameLanguageSubtitleOptions.length === 0 ? (
               <p
                 data-testid="watch-language-picker-subtitles-unavailable"
                 className="text-sm leading-6 text-stone-400"
               >
-                {t("noSubtitles")}
+                {subtitleUnavailableLabel}
               </p>
             ) : null}
           </div>
@@ -885,7 +911,7 @@ export function LanguagePickerModal({
               <Button
                 variant="pill"
                 data-testid="watch-language-picker-apply"
-                disabled={!isDirty || navigating}
+                disabled={!isDirty || navigating || subtitleSelectionRequired}
                 onClick={handleApply}
                 className="inline-flex min-w-28 items-center justify-center gap-1.5 bg-stone-300 px-5 py-3 text-xs text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
               >

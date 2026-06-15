@@ -3,8 +3,9 @@
 ## Scope
 
 Fix the Watch subtitle overlay UX so captions never default to a different
-language than the current audio/page language. The motivating production route
-is `https://watch.jesusfilm.org/watch/jesus-is-brought-to-pilate.html/english.html`.
+language than the current audio/page language while still allowing users to
+intentionally choose translated subtitles. The motivating production route is
+`https://watch.jesusfilm.org/watch/jesus-is-brought-to-pilate.html/english.html`.
 
 ## Evidence
 
@@ -22,20 +23,24 @@ is `https://watch.jesusfilm.org/watch/jesus-is-brought-to-pilate.html/english.ht
 ## Implementation
 
 1. Add a small helper in `WatchPageClient.tsx` that filters subtitles to the
-   current audio language slug and use it for overlay selection.
+   current audio language slug and use it for safe default overlay selection.
 2. Initialize subtitle enabled state only when the user preference is enabled
-   and a same-language track exists.
-3. When the audio language changes or the subtitle list changes, clear a stale
+   and either a same-language track exists or a translated subtitle was stored
+   as an explicit v2 preference.
+3. When the audio language changes or the subtitle list changes, clear a legacy
    selected subtitle slug if it no longer matches the current audio language.
-4. Pass only same-language subtitle options into `LanguagePickerModal`.
+4. Pass all subtitle options into `LanguagePickerModal` so translated subtitles
+   remain user-selectable.
 5. In `LanguagePickerModal.tsx`, render an explicit unavailable message under
    the subtitles heading when no same-language options exist; keep the toggle
-   disabled and the selector hidden.
+   enabled only when translated subtitle options exist and require an explicit
+   subtitle language selection before Apply.
 6. Add focused tests for the mismatch case:
-   - Watch page opens the language modal with subtitles disabled and no
-     mismatched language passed to the modal.
-   - Language modal shows the unavailable state when subtitles are absent for
-     the current audio language.
+   - Watch page opens the language modal with legacy translated subtitle
+     preferences disabled.
+   - Watch page restores explicit v2 translated subtitle preferences.
+   - Language modal shows the unavailable same-language caption state while
+     allowing translated subtitle selection.
 
 ## Verification
 
@@ -43,4 +48,4 @@ is `https://watch.jesusfilm.org/watch/jesus-is-brought-to-pilate.html/english.ht
   - `pnpm --filter @forge/web test -- src/components/watch/__tests__/LanguagePickerModal.test.tsx src/components/watch/__tests__/WatchPageClient.download.test.tsx`
 - Run `pnpm --filter @forge/web typecheck`.
 - Smoke a local Watch route with Helium and capture a screenshot of the
-  language modal unavailable state.
+  language modal unavailable state with translated subtitle options preserved.

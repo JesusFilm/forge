@@ -23,7 +23,8 @@ not match the current audio/page language. On
 `/watch/jesus-is-brought-to-pilate.html/english.html`, the live payload has
 subtitle tracks but no English track, so enabling subtitles can fall through to
 the first available track, Arabic, instead of making the English caption gap
-explicit.
+explicit. At the same time, users may intentionally watch English audio with
+translated subtitles, so translated subtitle tracks must remain selectable.
 
 ## Entry Points - Read These First
 
@@ -47,15 +48,19 @@ explicit.
 
 ## What To Build
 
-1. Restrict overlay subtitle selection to caption tracks whose language slug
-   matches the current audio language slug.
+1. Restrict automatic/default overlay subtitle selection to caption tracks whose
+   language slug matches the current audio language slug.
 2. When the current audio language has no matching subtitle track, keep
-   subtitles disabled and show an explicit unavailable state in the language
-   modal instead of listing unrelated subtitle languages.
-3. Preserve the existing preference cookie, but do not let a stale preference
-   for another language select mismatched captions on a new audio language.
-4. Add focused regression coverage for English/Spanish audio with only Arabic
-   subtitle data.
+   subtitles disabled by default and show an explicit unavailable state in the
+   language modal instead of silently selecting unrelated subtitle languages.
+3. Preserve intentional translated subtitle selection by allowing users to pick
+   other subtitle languages and storing those choices as explicit v2
+   preferences.
+4. Preserve the existing preference cookie, but do not let a legacy stale
+   preference for another language select mismatched captions on a new audio
+   language.
+5. Add focused regression coverage for English/Spanish audio with only
+   translated subtitle data.
 
 ## Constraints
 
@@ -72,4 +77,4 @@ explicit.
 - `pnpm --filter @forge/web lint`
 - Browser smoke a local Watch route with Helium and verify the language modal
   presents an explicit unavailable subtitle state when no same-language track
-  exists.
+  exists while still allowing translated subtitle selection.

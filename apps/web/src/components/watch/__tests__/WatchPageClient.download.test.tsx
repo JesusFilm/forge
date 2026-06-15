@@ -131,6 +131,11 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  window.history.pushState(
+    {},
+    "",
+    "/watch/jesus-is-brought-to-pilate.html/english.html",
+  )
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -314,7 +319,7 @@ describe("WatchPageClient download boundary", () => {
     )
   })
 
-  it("passes only current-audio subtitle options to the language modal", async () => {
+  it("keeps legacy translated subtitle preferences from auto-enabling", async () => {
     document.cookie =
       "forge_watch_subs=arabic-modern-standard; path=/watch; max-age=31536000"
     loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
@@ -349,9 +354,50 @@ describe("WatchPageClient download boundary", () => {
       currentSubtitleEnabled: boolean
       currentSubtitleSlug: string | null
     }
-    expect(latestProps.subtitles).toEqual([])
+    expect(latestProps.subtitles).toHaveLength(1)
     expect(latestProps.currentSubtitleEnabled).toBe(false)
     expect(latestProps.currentSubtitleSlug).toBeNull()
+  })
+
+  it("restores explicit translated subtitle preferences", async () => {
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
+    renderWatchPage({
+      languageSlug: "english",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    const latestProps = languageModalProps.at(-1) as {
+      subtitles: unknown[]
+      currentSubtitleEnabled: boolean
+      currentSubtitleSlug: string | null
+    }
+    expect(latestProps.subtitles).toHaveLength(1)
+    expect(latestProps.currentSubtitleEnabled).toBe(true)
+    expect(latestProps.currentSubtitleSlug).toBe("spanish")
   })
 
   it("shows an inline error when the first session check cannot complete", async () => {
