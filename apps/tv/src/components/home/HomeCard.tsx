@@ -20,6 +20,7 @@
 import { memo, useMemo } from "react"
 import { Image } from "expo-image"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import type { View as ViewType } from "react-native"
 
 import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -39,6 +40,19 @@ type HomeCardProps = {
   onFocus: (card: WatchHomeCard) => void
   onPress: (card: WatchHomeCard) => void
   index: number
+  /**
+   * Forced D-pad-up destination (the featured rail wires the Search tab here
+   * so edge cards reach the centered top bar, which has no horizontal overlap
+   * above them). Pressable forwards this to its host View via
+   * tagForComponentOrHandle, so a node instance works directly.
+   */
+  nextFocusUp?: ViewType | null
+  /**
+   * Exposes this card's native node. The rail captures its LAST real card's
+   * node so the invisible over-hang pad cards can bounce focus to it via
+   * requestTVFocus(). Ref-as-state in the rail, like MissionSection.
+   */
+  nodeRef?: (node: ViewType | null) => void
 }
 
 export const HomeCard = memo(function HomeCard({
@@ -46,6 +60,8 @@ export const HomeCard = memo(function HomeCard({
   onFocus,
   onPress,
   index,
+  nextFocusUp,
+  nodeRef,
 }: HomeCardProps) {
   const { focused, setFocused, progress } = useFocusAnimation()
   // CMS-sourced URL is untrusted — sanitize before it reaches expo-image.
@@ -81,12 +97,14 @@ export const HomeCard = memo(function HomeCard({
 
   return (
     <Pressable
+      ref={nodeRef}
       onPress={() => onPress(card)}
       onFocus={() => {
         setFocused(true)
         onFocus(card)
       }}
       onBlur={() => setFocused(false)}
+      nextFocusUp={nextFocusUp}
       accessibilityRole="button"
       accessibilityLabel={card.title}
       accessibilityHint={
