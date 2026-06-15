@@ -139,6 +139,84 @@ describe("multiStepDraftWorkflow (U4 — real step bodies)", () => {
     })
   })
 
+  describe("exemplar injection (U4)", () => {
+    const EXEMPLAR =
+      '{"title":"Easter","blocks":[{"t":"videoHero","heading":"He is risen"}]}'
+
+    it("includes the structure-and-voice reference in the plan prompt when an exemplar is supplied", async () => {
+      const { mastra, callLog } = makeMockMastra({
+        "experience-planner": { text: "plan" },
+      })
+
+      await executePlanStep({
+        inputData: {
+          prompt: "grief",
+          locale: "en",
+          candidates: [],
+          exemplar: EXEMPLAR,
+        },
+        mastra: mastra as never,
+        abortSignal: undefined,
+      })
+
+      const prompt = callLog["experience-planner"][0].prompt
+      expect(prompt).toContain("Structure & voice reference")
+      expect(prompt).toContain(EXEMPLAR)
+    })
+
+    it("includes the reference in the draft prompt when an exemplar is supplied (covers quick-draft + multi-step via the shared builder)", async () => {
+      const { mastra, callLog } = makeMockMastra({
+        "draft-experience": { text: JSON.stringify(VALID_DRAFT) },
+      })
+
+      await executeDraftStep({
+        inputData: {
+          prompt: "grief",
+          locale: "en",
+          candidates: [],
+          plan: "outline",
+          exemplar: EXEMPLAR,
+        },
+        mastra: mastra as never,
+        abortSignal: undefined,
+      })
+
+      const prompt = callLog["draft-experience"][0].prompt
+      expect(prompt).toContain("Structure & voice reference")
+      expect(prompt).toContain(EXEMPLAR)
+    })
+
+    it("omits the reference (default path unchanged) when no exemplar is supplied", async () => {
+      const { mastra, callLog } = makeMockMastra({
+        "experience-planner": { text: "plan" },
+        "draft-experience": { text: JSON.stringify(VALID_DRAFT) },
+      })
+
+      await executePlanStep({
+        inputData: { prompt: "grief", locale: "en", candidates: [] },
+        mastra: mastra as never,
+        abortSignal: undefined,
+      })
+      await executeDraftStep({
+        inputData: {
+          prompt: "grief",
+          locale: "en",
+          candidates: [],
+          plan: "outline",
+        },
+        mastra: mastra as never,
+        abortSignal: undefined,
+      })
+
+      expect(callLog["experience-planner"][0].prompt).not.toContain(
+        "Structure & voice reference",
+      )
+      expect(callLog["draft-experience"][0].prompt).not.toContain(
+        "Structure & voice reference",
+      )
+    })
+  })
+
   describe("executeDraftStep", () => {
     it("parses a valid JSON envelope and returns DraftExperience-shaped data", async () => {
       const { mastra, callLog, agentLookups } = makeMockMastra({

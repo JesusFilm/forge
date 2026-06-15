@@ -13,6 +13,8 @@ const {
   getMastraMock,
   loadCandidatesMock,
   normalizeMock,
+  selectExemplarMock,
+  buildOutlineMock,
 } = vi.hoisted(() => ({
   workflowStartMock: vi.fn(),
   workflowCreateRunMock: vi.fn(),
@@ -20,6 +22,8 @@ const {
   getMastraMock: vi.fn(),
   loadCandidatesMock: vi.fn(),
   normalizeMock: vi.fn(),
+  selectExemplarMock: vi.fn(),
+  buildOutlineMock: vi.fn(),
 }))
 
 vi.mock("@/mastra", () => ({
@@ -29,6 +33,14 @@ vi.mock("@/mastra", () => ({
 vi.mock("@/services/experience-ai/experience-ai.service", () => ({
   loadExperienceAiVideoCandidates: loadCandidatesMock,
   normalizeExperienceDraft: normalizeMock,
+}))
+
+vi.mock("@/services/experience-ai/experience-ai-exemplar.service", () => ({
+  selectExperienceExemplar: selectExemplarMock,
+}))
+
+vi.mock("@/services/experience-ai/experience-ai-exemplar-outline", () => ({
+  buildExemplarOutline: buildOutlineMock,
 }))
 
 // Import AFTER mocks are registered.
@@ -180,6 +192,9 @@ function primeHappyPath() {
   workflowCreateRunMock.mockResolvedValue({ start: workflowStartMock })
   getWorkflowByIdMock.mockReturnValue({ createRun: workflowCreateRunMock })
   getMastraMock.mockReturnValue({ getWorkflowById: getWorkflowByIdMock })
+  // Default: no exemplar (keeps non-exemplar tests on the pre-feature path).
+  selectExemplarMock.mockResolvedValue(null)
+  buildOutlineMock.mockReturnValue(null)
 }
 
 describe("runGenerateDraftAction (U5 — workflow-backed)", () => {
@@ -287,6 +302,79 @@ describe("runGenerateDraftAction (U5 — workflow-backed)", () => {
       VALID_DRAFT,
       expect.arrayContaining([expect.objectContaining({ videoId: "v1" })]),
     )
+  })
+
+  describe("exemplar wiring (U5)", () => {
+    it("passes the built exemplar outline into the workflow inputData when a match is selected", async () => {
+      selectExemplarMock.mockResolvedValueOnce({
+        source: "matched",
+        distance: 0.1,
+        row: {
+          id: "ex-1",
+          locale: "en",
+          title: "Easter",
+          metaDescription: null,
+          blocks: [],
+        },
+      })
+      buildOutlineMock.mockReturnValueOnce("OUTLINE_STRING")
+
+      const deps = mockDeps()
+      await runGenerateDraftAction(deps, {
+        localeId: "locale-1",
+        locale: "en",
+        prompt: "a page about grief",
+      })
+
+      // Relevance match is driven by the raw theme prompt, and excludes the
+      // experience being edited.
+      expect(selectExemplarMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          prompt: "a page about grief",
+          locale: "en",
+          excludeExperienceId: "exp-1",
+        }),
+      )
+      const startArgs = workflowStartMock.mock.calls[0][0] as {
+        inputData: { exemplar?: string }
+      }
+      expect(startArgs.inputData.exemplar).toBe("OUTLINE_STRING")
+    })
+
+    it("passes exemplar=undefined when no exemplar is selected", async () => {
+      selectExemplarMock.mockResolvedValueOnce(null)
+
+      const deps = mockDeps()
+      await runGenerateDraftAction(deps, {
+        localeId: "locale-1",
+        locale: "en",
+        prompt: "hope",
+      })
+
+      const startArgs = workflowStartMock.mock.calls[0][0] as {
+        inputData: { exemplar?: string }
+      }
+      expect(startArgs.inputData.exemplar).toBeUndefined()
+      expect(buildOutlineMock).not.toHaveBeenCalled()
+    })
+
+    it("never fails generation when exemplar selection throws (non-fatal)", async () => {
+      selectExemplarMock.mockRejectedValueOnce(new Error("boom"))
+
+      const deps = mockDeps()
+      const result = await runGenerateDraftAction(deps, {
+        localeId: "locale-1",
+        locale: "en",
+        prompt: "hope",
+      })
+
+      expect(result.ok).toBe(true)
+      const startArgs = workflowStartMock.mock.calls[0][0] as {
+        inputData: { exemplar?: string }
+      }
+      expect(startArgs.inputData.exemplar).toBeUndefined()
+    })
   })
 
   it("maps WorkflowStepError(schema_mismatch) to SCHEMA_MISMATCH", async () => {

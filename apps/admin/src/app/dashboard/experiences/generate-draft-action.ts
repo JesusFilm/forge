@@ -4,6 +4,8 @@ import type { Principal } from "@/auth/principal"
 import { getMastra } from "@/mastra"
 import { TIME_BUDGET_MS } from "@/mastra/budgets"
 import { WorkflowStepError } from "@/mastra/workflows/multi-step-draft-workflow"
+import { buildExemplarOutline } from "@/services/experience-ai/experience-ai-exemplar-outline"
+import { selectExperienceExemplar } from "@/services/experience-ai/experience-ai-exemplar.service"
 import type { DraftExperience } from "@/services/experience-ai/experience-ai.schemas"
 import {
   loadExperienceAiVideoCandidates,
@@ -275,6 +277,32 @@ export async function runGenerateDraftAction(
     return fail("NO_CANDIDATES")
   }
 
+  // Pick a real published experience as a structure-and-voice reference
+  // for the drafter (relevance-matched, Easter fallback). Best-effort and
+  // NON-FATAL: candidates are required, an exemplar is not. Any failure
+  // degrades to no exemplar (pre-feature behaviour) so generation never
+  // breaks because the reference was unavailable. The user's theme prompt
+  // (not the title/desc-augmented buildPrompt) drives relevance matching.
+  let exemplar: string | undefined
+  try {
+    const selection = await selectExperienceExemplar(
+      { prisma: deps.prisma as PrismaClient },
+      {
+        prompt,
+        locale: input.locale,
+        excludeExperienceId: locale.experienceId,
+      },
+    )
+    if (selection) {
+      exemplar = buildExemplarOutline(selection.row) ?? undefined
+    }
+  } catch (error) {
+    console.warn(
+      "[runGenerateDraftAction] event=exemplar_selection_failed error=" +
+        (error instanceof Error ? error.message : String(error)),
+    )
+  }
+
   // Captured outside the try so the timeout/error path can best-effort
   // cancel the run handle (see the catch block). Mastra's Run exposes
   // `cancel(): Promise<void>` (@mastra/core 1.33.1) which aborts the
@@ -296,6 +324,7 @@ export async function runGenerateDraftAction(
           prompt: buildPrompt(input),
           locale: input.locale,
           candidates,
+          exemplar,
         },
       }),
       ACTION_BUDGET_MS,

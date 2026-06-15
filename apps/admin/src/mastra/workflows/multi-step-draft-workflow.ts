@@ -87,6 +87,11 @@ const inputSchema = z.object({
   prompt: z.string().min(1),
   locale: z.string().default("en"),
   candidates: z.array(candidateSchema).default([]),
+  // Optional structure-and-voice reference (a real published page,
+  // video ids already stripped — see experience-ai-exemplar-outline.ts).
+  // Threaded into the planner + drafter prompts. Both quick-draft and
+  // multi-step-draft consume the same builders, so this covers both modes.
+  exemplar: z.string().optional(),
 })
 type WorkflowInput = z.infer<typeof inputSchema>
 
@@ -343,6 +348,22 @@ async function parseDraftEnvelope(
   return result.data
 }
 
+/**
+ * Frame the optional structure-and-voice exemplar. The reference teaches
+ * layout rhythm and copy tone only — the editor prompt stays
+ * authoritative for content, and videos come exclusively from the
+ * candidate list (the exemplar has its video ids stripped upstream).
+ * Returns null when no exemplar was supplied so the default-path prompt
+ * is byte-identical to the pre-feature behaviour.
+ */
+function exemplarSection(exemplar: string | undefined): string | null {
+  if (!exemplar || exemplar.trim().length === 0) return null
+  return [
+    "Structure & voice reference (borrow the layout rhythm and copy tone; write your OWN copy and use ONLY the provided video candidates — do NOT reuse this reference's videos or copy verbatim):",
+    exemplar,
+  ].join("\n")
+}
+
 function buildPlanPrompt(input: WorkflowInput): string {
   const candidateHint =
     input.candidates.length > 0
@@ -352,21 +373,26 @@ function buildPlanPrompt(input: WorkflowInput): string {
           .slice(0, 12)
           .join("; ")}`
       : "No specific video candidates provided."
-  return [
-    `Editor prompt: ${input.prompt}`,
-    `Locale: ${input.locale}`,
-    candidateHint,
-  ].join("\n\n")
+  const parts = [`Editor prompt: ${input.prompt}`, `Locale: ${input.locale}`]
+  const reference = exemplarSection(input.exemplar)
+  if (reference) parts.push(reference)
+  parts.push(candidateHint)
+  return parts.join("\n\n")
 }
 
 function buildDraftPrompt(input: PlanStepOutput): string {
-  return [
+  const parts = [
     "Planning outline (use as narrative-arc context):",
     input.plan || "(no outline provided)",
     "",
     `Editor prompt: ${input.prompt}`,
     `Locale: ${input.locale}`,
-  ].join("\n")
+  ]
+  const reference = exemplarSection(input.exemplar)
+  if (reference) {
+    parts.push("", reference)
+  }
+  return parts.join("\n")
 }
 
 function buildCritiquePrompt(input: DraftStepOutput): string {

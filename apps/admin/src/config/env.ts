@@ -105,6 +105,16 @@ export const env = createEnv({
     OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
+    // AI experience-exemplar selection. Cosine-distance ceiling for
+    // treating a relevance-matched published experience as "good enough"
+    // to use as a draft-generation exemplar; above it, the Easter
+    // fallback applies. Both `.optional()` with runtime defaults so a
+    // default-mode deploy needs no new env var (a required var with no
+    // default would brick Railway deploys — see
+    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md).
+    EXPERIENCE_EXEMPLAR_MAX_DISTANCE: z.coerce.number().min(0).optional(),
+    // Slug of the fallback exemplar experience (the Easter page).
+    EXPERIENCE_EXEMPLAR_FALLBACK_SLUG: z.string().min(1).optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
     // Narrow receiver-side CSV for yt-video-mapper -> Admin catalog sync.
     // The mapper service reads ADMIN_SERVICE_BEARER_TOKEN; production Admin
@@ -372,6 +382,12 @@ export const env = createEnv({
     ),
     MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
+    EXPERIENCE_EXEMPLAR_MAX_DISTANCE: emptyToUndefined(
+      process.env.EXPERIENCE_EXEMPLAR_MAX_DISTANCE,
+    ),
+    EXPERIENCE_EXEMPLAR_FALLBACK_SLUG: emptyToUndefined(
+      process.env.EXPERIENCE_EXEMPLAR_FALLBACK_SLUG,
     ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
