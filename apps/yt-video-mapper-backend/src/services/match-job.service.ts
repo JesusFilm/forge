@@ -77,12 +77,6 @@ export class SafeMatchJobError extends Error {
   }
 }
 
-export class NoopMatcher implements Matcher {
-  async match(): Promise<PublicMatchCandidate[]> {
-    return []
-  }
-}
-
 export class MatchJobService {
   constructor(
     private readonly repository: MatchJobRepository,
@@ -154,6 +148,7 @@ export class MatchJobService {
       await cleanupStoredUpload(this.storage, job.uploadStorageKey)
       await this.repository.update(job.id, {
         status: "complete",
+        inputDurationMilliseconds: signals.durationMilliseconds,
         completedAt: this.now(),
       })
     } catch (error) {

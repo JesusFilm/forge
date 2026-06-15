@@ -1,10 +1,7 @@
 /**
- * Build a URL string for router.replace() calls that sync the current search
- * query to the ?q= param. Preserves any other search params already on the URL
- * (e.g., utm_*, locale flags) rather than wiping them.
- *
- * Returns a plain string. The caller is responsible for the `as Route` cast
- * required by next.config.mjs's `experimental.typedRoutes: true` setting.
+ * Build a URL string that syncs the current search query to the ?q= param.
+ * Preserves any other search params already on the URL (e.g., utm_*, locale
+ * flags) rather than wiping them.
  */
 export function buildSearchUrl(
   pathname: string,

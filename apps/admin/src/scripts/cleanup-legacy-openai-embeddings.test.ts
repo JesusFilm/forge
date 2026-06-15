@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import {
   type CleanupAudit,
   type CleanupDb,
+  EXECUTE_TRANSACTION_OPTIONS,
   LegacyEmbeddingCleanupError,
   buildCleanupAudit,
   executeLegacyCleanup,
@@ -22,6 +23,7 @@ class FakeCleanupDb implements CleanupDb {
   executes: string[] = []
   executeResults: number[] = []
   transactionCalls = 0
+  transactionOptions: unknown[] = []
 
   constructor(
     private readonly queryResponder: (query: string) => unknown[] = () => [],
@@ -37,8 +39,12 @@ class FakeCleanupDb implements CleanupDb {
     return this.executeResults.shift() ?? 0
   }
 
-  async $transaction<T>(fn: (tx: CleanupDb) => Promise<T>): Promise<T> {
+  async $transaction<T>(
+    fn: (tx: CleanupDb) => Promise<T>,
+    options?: unknown,
+  ): Promise<T> {
     this.transactionCalls += 1
+    this.transactionOptions.push(options)
     return fn(this)
   }
 
@@ -361,6 +367,7 @@ describe("executeLegacyCleanup", () => {
       qwenColumnsDropped: 2,
     })
     expect(db.transactionCalls).toBe(1)
+    expect(db.transactionOptions).toEqual([EXECUTE_TRANSACTION_OPTIONS])
     const transcriptDelete = db.executes.find((query) =>
       query.includes("DELETE FROM video_transcript_chunk"),
     )
