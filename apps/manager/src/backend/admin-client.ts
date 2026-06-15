@@ -3,12 +3,13 @@ import type {
   MockLanguageGeo,
   MockVideoCoverage,
 } from "@/cms/mock-seed"
-import type {
-  JobRecord,
-  JobStatus,
-  JobStepDetails,
-  StepStatus,
-  WorkflowStepName,
+import {
+  WORKFLOW_STEP_NAMES,
+  type JobRecord,
+  type JobStatus,
+  type JobStepDetails,
+  type StepStatus,
+  type WorkflowStepName,
 } from "@/types/job"
 import { z } from "zod"
 
@@ -205,30 +206,7 @@ const stepStatusSchema = z.enum([
   "failed",
   "skipped",
 ])
-const workflowStepSchema = z.enum([
-  "download_video",
-  "transcription",
-  "structured_transcript",
-  "subtitle_post_process",
-  "chapters",
-  "metadata",
-  "embeddings",
-  "translation",
-  "audio_cleanup",
-  "voiceover",
-  "artifact_upload",
-  "mux_upload",
-  "theology_validation_bible_quotes",
-  "seo_improvements",
-  "cms_notify",
-  "smart_crop_fingerprint",
-  "smart_crop_plan",
-  "smart_crop_align",
-  "smart_crop_preview_render",
-  "smart_crop_qa",
-  "smart_crop_render",
-  "smart_crop_mux_output",
-])
+const workflowStepSchema = z.enum(WORKFLOW_STEP_NAMES)
 
 const optionalStringFromNullable = z
   .string()
