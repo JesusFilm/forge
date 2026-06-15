@@ -337,14 +337,12 @@ export async function searchVideoSemantic(
           v.core_id                         AS video_core_id,
           v.slug                            AS video_slug,
           vl.title                          AS video_title,
-          COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+          vs.video_edition_id               AS video_edition_id,
           vsl.id                            AS evidence_id,
           'scene'                           AS evidence_source,
           vsl.description                   AS scene_description,
           vs.start_seconds                  AS start_seconds,
-          dub_mux.playback_id               AS playback_id,
-          1 - (vsl.embedding <=> ${queryEmbedding}::vector) AS source_score,
-          vsl.embedding::text               AS embedding_text
+          1 - (vsl.embedding <=> ${queryEmbedding}::vector) AS source_score
         FROM video_scene_locale vsl
         JOIN video_scene vs ON vs.id = vsl.video_scene_id
         JOIN video v ON v.id = vs.video_id
@@ -354,26 +352,6 @@ export async function searchVideoSemantic(
           AND vl.locale = ${locale}
           AND vl.status = 'published'
           AND vl.deleted_at IS NULL
-        LEFT JOIN LATERAL (
-          SELECT mv.playback_id
-          FROM video_dub vd
-          JOIN language lg ON lg.id = vd.language_id
-            AND lg.bcp47 = ${locale}
-
-          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
-          WHERE vd.video_edition_id = vs.video_edition_id
-            AND vd.deleted_at IS NULL
-          ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
-          LIMIT 1
-        ) dub_mux ON true
-        LEFT JOIN LATERAL (
-          SELECT vi2.mobile_cinematic_high, vi2.url
-          FROM video_image vi2
-          WHERE vi2.video_id = v.id
-            AND vi2.deleted_at IS NULL
-          ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
-          LIMIT 1
-        ) vi ON true
         WHERE vsl.embedding IS NOT NULL
           ${sceneProvenanceFilter}
           AND vsl.locale = ${locale}
@@ -393,16 +371,15 @@ export async function searchVideoSemantic(
           v.core_id                         AS video_core_id,
           v.slug                            AS video_slug,
           vl.title                          AS video_title,
-          COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+          vt.video_edition_id               AS video_edition_id,
           vtc.id                            AS evidence_id,
           'transcript'                      AS evidence_source,
           vtc.text                          AS scene_description,
           vtc.start_seconds                 AS start_seconds,
-          dub_mux.playback_id               AS playback_id,
-          1 - (vtc.embedding <=> ${queryEmbedding}::vector) AS source_score,
-          vtc.embedding::text               AS embedding_text
+          1 - (vtc.embedding <=> ${queryEmbedding}::vector) AS source_score
         FROM video_transcript_chunk vtc
         JOIN video_transcript vt ON vt.id = vtc.transcript_id
+          AND vt.language = ${locale}
         JOIN video v ON v.id = vt.video_id
           AND v.deleted_at IS NULL
         JOIN video_locale vl
@@ -410,30 +387,9 @@ export async function searchVideoSemantic(
           AND vl.locale = ${locale}
           AND vl.status = 'published'
           AND vl.deleted_at IS NULL
-        LEFT JOIN LATERAL (
-          SELECT mv.playback_id
-          FROM video_dub vd
-          JOIN language lg ON lg.id = vd.language_id
-            AND lg.bcp47 = ${locale}
-
-          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
-          WHERE vd.video_edition_id = vt.video_edition_id
-            AND vd.deleted_at IS NULL
-          ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
-          LIMIT 1
-        ) dub_mux ON true
-        LEFT JOIN LATERAL (
-          SELECT vi2.mobile_cinematic_high, vi2.url
-          FROM video_image vi2
-          WHERE vi2.video_id = v.id
-            AND vi2.deleted_at IS NULL
-          ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
-          LIMIT 1
-        ) vi ON true
         WHERE vtc.embedding IS NOT NULL
           ${transcriptProvenanceFilter}
           AND vtc.language = ${locale}
-          AND vt.language = ${locale}
         ORDER BY
           vt.video_id,
           vtc.embedding <=> ${queryEmbedding}::vector,
@@ -442,10 +398,58 @@ export async function searchVideoSemantic(
       ) best_transcript_per_video
       ORDER BY source_score DESC, start_seconds ASC NULLS LAST, evidence_id ASC
       LIMIT ${candidateLimit}
+    ),
+    semantic_evidence AS (
+      SELECT * FROM scene_source
+      UNION ALL
+      SELECT * FROM transcript_source
+    ),
+    requested_language AS MATERIALIZED (
+      SELECT id
+      FROM language
+      WHERE bcp47 = ${locale}
     )
-    SELECT * FROM scene_source
-    UNION ALL
-    SELECT * FROM transcript_source
+    SELECT
+      se.video_id                      AS video_id,
+      se.video_core_id                 AS video_core_id,
+      se.video_slug                    AS video_slug,
+      se.video_title                   AS video_title,
+      COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+      se.evidence_id                   AS evidence_id,
+      se.evidence_source               AS evidence_source,
+      se.scene_description             AS scene_description,
+      se.start_seconds                 AS start_seconds,
+      dub_mux.playback_id              AS playback_id,
+      se.source_score                  AS source_score,
+      CASE
+        WHEN se.evidence_source = 'scene' THEN vsl_final.embedding::text
+        ELSE vtc_final.embedding::text
+      END                              AS embedding_text
+    FROM semantic_evidence se
+    LEFT JOIN video_scene_locale vsl_final
+      ON se.evidence_source = 'scene'
+      AND vsl_final.id = se.evidence_id
+    LEFT JOIN video_transcript_chunk vtc_final
+      ON se.evidence_source = 'transcript'
+      AND vtc_final.id = se.evidence_id
+    LEFT JOIN LATERAL (
+      SELECT mv.playback_id
+      FROM video_dub vd
+      LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
+      WHERE vd.video_edition_id = se.video_edition_id
+        AND vd.deleted_at IS NULL
+        AND vd.language_id IN (SELECT id FROM requested_language)
+      ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
+      LIMIT 1
+    ) dub_mux ON true
+    LEFT JOIN LATERAL (
+      SELECT vi2.mobile_cinematic_high, vi2.url
+      FROM video_image vi2
+      WHERE vi2.video_id = se.video_id
+        AND vi2.deleted_at IS NULL
+      ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
+      LIMIT 1
+    ) vi ON true
   `
 
   return mixVideoSemanticEvidenceRows(evidenceRows)

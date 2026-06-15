@@ -30,6 +30,7 @@ export type RevalidateModel =
   | "experience"
   | "video"
   | "watch-route-manifest"
+  | "watch-seo-manifest"
   | "watch-setting"
 
 export type RevalidateWebhookInput = {

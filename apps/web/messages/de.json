@@ -100,7 +100,7 @@
     "fallbackBody": "Führen Sie ein privates Gespräch mit jemandem, der bereit ist zuzuhören.",
     "questionsShort": "Fragen",
     "questions": "Verwandte Fragen",
-    "askYours": "Stellen Sie Ihre Frage",
+    "askYours": "Ihre Frage",
     "chatWithPerson": "Mit jemandem sprechen",
     "askBibleQuestion": "Eine Bibelfrage stellen"
   },
@@ -183,19 +183,19 @@
     "categoryStudy": "Studium",
     "categoryFamily": "Familie",
     "categoryChristmas": "Weihnachten",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "searchLanguageLabel": "Suchsprache",
+    "allLanguages": "Alle Sprachen",
+    "searchSuggestions": "Suchvorschläge",
+    "languages": "Sprachen",
+    "recommendedLanguage": "Empfohlene Sprache",
+    "searchSuggestion": "{suggestion} suchen",
+    "searchSuggestionWithLanguage": "{suggestion} auf {language} suchen",
+    "inLanguage": "auf {language}",
+    "browseByRegion": "Nach Region stöbern",
+    "clearLanguages": "Zurücksetzen"
   },
   "HeroPlayer": {
-    "playWithSound": "Mit Ton abspielen",
+    "playWithSound": "Jetzt ansehen",
     "tapToUnmute": "Ton einschalten"
   },
   "ExperienceSkeleton": {
@@ -225,7 +225,7 @@
     "nextChapter": "Nächstes Kapitel"
   },
   "SearchResultCard": {
-    "experience": "Experience",
+    "experience": "Erlebnis",
     "episodeCount": "{count, plural, one {# Folge} other {# Folgen}}",
     "thumbnailAlt": "Video-Miniaturbild"
   }

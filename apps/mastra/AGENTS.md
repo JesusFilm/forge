@@ -23,6 +23,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns Firecrawl web data access for agents and operator workflows through
   bounded search/scrape tools, a dedicated web research agent, and the
   `/forge-firecrawl-web-data` service route.
+- Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
+  reads Manager transcript artifacts, translates and retimes subtitles, and
+  writes Manager-compatible subtitle/translation artifacts to shared storage.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
@@ -65,6 +68,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Firecrawl access belongs in this runtime. Do not add Firecrawl SDK/API calls
   to Admin or Manager; expose typed Mastra tools/workflows and HTTP contracts
   from here when other apps need web data.
+- Subtitle translation and retiming belongs in this runtime. Manager may call
+  the service route and handle job state/Mux sync, but should not reintroduce
+  provider-heavy subtitle execution.
 - Firecrawl MCP is not the product runtime path. Revisit MCP only for local
   operator/coding-agent convenience or after a clear multi-tool server need.
 - Studio-facing workflows need structured Zod object input schemas on both the

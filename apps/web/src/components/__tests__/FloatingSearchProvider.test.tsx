@@ -1,10 +1,11 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, useEffect } from "react"
+import { act, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { FloatingSearchController } from "@/components/FloatingSearchController"
 import {
   FloatingSearchProvider,
   useFloatingSearch,
@@ -26,10 +27,14 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 
+const navigationMocks = vi.hoisted(() => ({
+  replace: vi.fn(),
+}))
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
   useRouter: () => ({
-    replace: vi.fn(),
+    replace: navigationMocks.replace,
   }),
 }))
 
@@ -54,6 +59,7 @@ let root: Root
 
 beforeEach(() => {
   vi.clearAllMocks()
+  window.history.replaceState(null, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -189,9 +195,13 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
   const searchButton = document.querySelector(
     '[aria-label="Search videos"]',
   ) as HTMLButtonElement
-  act(() => {
+  await act(async () => {
     searchButton.click()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
   })
+  await flushSearchControllerMount()
 
   const input = document.querySelector(
     'input[aria-label="Search videos by keyword"]',
@@ -200,6 +210,14 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
     throw new Error("Expected search overlay input to render")
   }
   return input
+}
+
+async function flushSearchControllerMount() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
 }
 
 async function submitDebouncedSearch(input: HTMLInputElement, query: string) {
@@ -238,8 +256,10 @@ function SearchModeHarness() {
     displayResults,
     error,
     loadMore,
+    loading,
     search,
     setOpen,
+    showSkeleton,
   } = useFloatingSearch()
 
   return (
@@ -249,6 +269,8 @@ function SearchModeHarness() {
       </span>
       <span data-testid="search-result-count">{displayResults.length}</span>
       <span data-testid="search-error">{error ?? ""}</span>
+      <span data-testid="search-loading">{String(loading)}</span>
+      <span data-testid="search-skeleton">{String(showSkeleton)}</span>
       <button
         type="button"
         data-testid="search-mode-harness-open-button"
@@ -265,12 +287,44 @@ function SearchModeHarness() {
       </button>
       <button
         type="button"
+        data-testid="search-mode-harness-clear-button"
+        onClick={() => void search("")}
+      >
+        Clear
+      </button>
+      <button
+        type="button"
         data-testid="search-mode-harness-load-more-button"
         onClick={() => void loadMore()}
       >
         Load more
       </button>
     </div>
+  )
+}
+
+function SearchControllerTestShell({
+  children,
+  initialOpen = false,
+  initialQuery = "",
+}: {
+  children?: ReactNode
+  initialOpen?: boolean
+  initialQuery?: string
+}) {
+  const [open, setOpen] = useState(initialOpen)
+  const [query, setQuery] = useState(initialQuery)
+
+  return (
+    <FloatingSearchController
+      open={open}
+      closing={false}
+      query={query}
+      setOpen={setOpen}
+      setQuery={setQuery}
+    >
+      {children}
+    </FloatingSearchController>
   )
 }
 
@@ -412,9 +466,9 @@ describe("FloatingSearchProvider — search mode", () => {
 
     act(() => {
       root.render(
-        <FloatingSearchProvider>
+        <SearchControllerTestShell>
           <SearchModeHarness />
-        </FloatingSearchProvider>,
+        </SearchControllerTestShell>,
       )
     })
 
@@ -485,9 +539,9 @@ describe("FloatingSearchProvider — search mode", () => {
 
     act(() => {
       root.render(
-        <FloatingSearchProvider>
+        <SearchControllerTestShell>
           <SearchModeHarness />
-        </FloatingSearchProvider>,
+        </SearchControllerTestShell>,
       )
     })
 
@@ -533,9 +587,9 @@ describe("FloatingSearchProvider — search mode", () => {
 
     act(() => {
       root.render(
-        <FloatingSearchProvider>
+        <SearchControllerTestShell>
           <SearchModeHarness />
-        </FloatingSearchProvider>,
+        </SearchControllerTestShell>,
       )
     })
 
@@ -570,6 +624,160 @@ describe("FloatingSearchProvider — search mode", () => {
       }),
     )
     expect(error?.textContent).toBe("Failed to load more results.")
+  })
+
+  it("clears loading state when an in-flight search is reset before it resolves", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockReturnValueOnce(new Promise(() => {}))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="search-mode-harness-button"]',
+    ) as HTMLButtonElement
+    const clearButton = document.querySelector(
+      '[data-testid="search-mode-harness-clear-button"]',
+    ) as HTMLButtonElement
+    const loading = document.querySelector('[data-testid="search-loading"]')
+    const skeleton = document.querySelector('[data-testid="search-skeleton"]')
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+
+    expect(loading?.textContent).toBe("true")
+    expect(skeleton?.textContent).toBe("true")
+
+    await act(async () => {
+      clearButton.click()
+      await Promise.resolve()
+    })
+
+    expect(loading?.textContent).toBe("false")
+    expect(skeleton?.textContent).toBe("false")
+  })
+
+  it("keeps the active loading state when a stale search resolves", async () => {
+    vi.useFakeTimers()
+    let resolveFirstSearch: (value: SearchActionResult) => void = () => {}
+    const firstSearch = new Promise<SearchActionResult>((resolve) => {
+      resolveFirstSearch = resolve
+    })
+    mockedRunSearch
+      .mockReturnValueOnce(firstSearch)
+      .mockReturnValueOnce(new Promise(() => {}))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="search-mode-harness-button"]',
+    ) as HTMLButtonElement
+    const loading = document.querySelector('[data-testid="search-loading"]')
+    const skeleton = document.querySelector('[data-testid="search-skeleton"]')
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(2)
+    expect(loading?.textContent).toBe("true")
+    expect(skeleton?.textContent).toBe("true")
+
+    await act(async () => {
+      resolveFirstSearch(searchResult("semantic"))
+      await firstSearch
+      await Promise.resolve()
+    })
+
+    expect(loading?.textContent).toBe("true")
+    expect(skeleton?.textContent).toBe("true")
+  })
+
+  it("syncs the URL with browser history when the submitted search query changes", async () => {
+    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
+    window.history.replaceState({ next: "initial" }, "", "/watch?utm=campaign")
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const historyState = { next: "preserve" }
+    window.history.replaceState(historyState, "", "/watch?q=bible&utm=campaign")
+
+    const searchButton = document.querySelector(
+      '[data-testid="search-mode-harness-button"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    expect(window.location.pathname).toBe("/watch")
+    expect(window.location.search).toBe("?q=jesus&utm=campaign")
+    expect(window.history.state).toEqual(historyState)
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+  })
+
+  it("removes the query param from the URL when search is cleared", async () => {
+    window.history.replaceState({ next: "initial" }, "", "/watch?utm=campaign")
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const historyState = { next: "preserve" }
+    window.history.replaceState(historyState, "", "/watch?q=jesus&utm=campaign")
+
+    const clearButton = document.querySelector(
+      '[data-testid="search-mode-harness-clear-button"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      clearButton.click()
+      await Promise.resolve()
+    })
+
+    expect(window.location.pathname).toBe("/watch")
+    expect(window.location.search).toBe("?utm=campaign")
+    expect(window.history.state).toEqual(historyState)
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+    expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 })
 
@@ -830,6 +1038,40 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps the language globe after the pathname chrome reset frame", () => {
+    vi.useFakeTimers()
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: onLanguageClick })
+    })
+
+    expect(
+      document.querySelector('[data-testid="floating-header-language-button"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(20)
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement | null
+    expect(languageButton).not.toBeNull()
+
+    act(() => {
+      languageButton?.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+
   it("hides the floating language globe with the rest of the header chrome", () => {
     act(() => {
       root.render(
@@ -879,6 +1121,43 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it("does not mount the full search overlay on initial render without query intent", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).toBeNull()
+    expect(getSearchLanguageOptions).not.toHaveBeenCalled()
+  })
+
+  it("loads the search controller immediately for direct query URLs", async () => {
+    vi.mocked(runSearch).mockResolvedValueOnce(searchResult("semantic"))
+    window.history.replaceState(null, "", "/?q=jesus")
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await flushSearchControllerMount()
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).not.toBeNull()
+    expect(runSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "jesus" }),
+    )
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+  })
+
   it("aligns the search overlay close button with the watch modal close control", async () => {
     act(() => {
       root.render(
@@ -894,9 +1173,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const searchButton = document.querySelector(
       '[aria-label="Search videos"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
     })
+    await flushSearchControllerMount()
 
     const close = document.querySelector(
       '[data-testid="search-overlay-close"]',
@@ -979,6 +1262,65 @@ describe("FloatingSearchProvider — search pagination", () => {
       }),
     )
     expect(document.body.textContent).toContain("The Bible Project Result")
+  })
+
+  it("keeps the final edited query search after an intermediate debounce syncs the URL", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockImplementation(({ query }) => {
+      if (query === "jesus") {
+        return Promise.resolve(
+          makeSearchResponse(
+            [makeSearchResult("jesus", "Jesus Result")],
+            false,
+          ),
+        )
+      }
+      if (query === "the bible project") {
+        return Promise.resolve(
+          makeSearchResponse(
+            [makeSearchResult("bible-project", "Bible Project Result")],
+            false,
+          ),
+        )
+      }
+      return new Promise(() => {})
+    })
+
+    try {
+      const input = await openSearchOverlay()
+      await submitDebouncedSearch(input, "jesus")
+      expect(document.body.textContent).toContain("Jesus Result")
+
+      act(() => {
+        setInputValue(input, "the bible proj")
+        vi.advanceTimersByTime(360)
+      })
+
+      expect(window.location.search).toBe("?q=the+bible+proj")
+
+      await act(async () => {
+        setInputValue(input, "the bible project")
+        vi.advanceTimersByTime(300)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(250)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(mockedRunSearch).toHaveBeenCalledWith(
+        expect.objectContaining({ query: "the bible project" }),
+      )
+      expect(window.location.search).toBe("?q=the+bible+project")
+      expect(navigationMocks.replace).not.toHaveBeenCalled()
+      expect(document.body.textContent).toContain("Bible Project Result")
+      expect(document.querySelector(".animate-pulse")).toBeNull()
+    } finally {
+      mockedRunSearch.mockReset()
+    }
   })
 
   it("loads the next Watch search page with limit 10, current offset, and appends results", async () => {

@@ -10,14 +10,18 @@ const {
   checkDownloadSessionMock,
   downloadModalProps,
   languageModalProps,
+  loadWatchInteractionMock,
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
+  scheduleWatchInteractionWarmupMock,
 } = vi.hoisted(() => ({
   checkDownloadSessionMock: vi.fn(),
   downloadModalProps: [] as unknown[],
   languageModalProps: [] as unknown[],
+  loadWatchInteractionMock: vi.fn(async () => undefined),
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
+  scheduleWatchInteractionWarmupMock: vi.fn(() => vi.fn()),
 }))
 
 vi.mock("next/dynamic", () => {
@@ -51,6 +55,10 @@ vi.mock("next-intl", () => ({
         : key,
 }))
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 vi.mock("@/components/FloatingSearchProvider", () => ({
   useFloatingSearchPinned: () => ({ searchOpen: false }),
 }))
@@ -62,18 +70,24 @@ vi.mock("@/components/watch/SubtitleTranscript", () => ({
 vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     downloadError,
+    downloadHref,
     downloadPending,
     languageSlug,
     modalCallbacks,
+    shareHref,
   }: {
     downloadError?: string | null
+    downloadHref?: string
     downloadPending?: boolean
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
+    shareHref?: string
   }) => (
     <div
       data-testid="watch-section-renderer"
+      data-download-href={downloadHref ?? ""}
       data-language-slug={languageSlug ?? ""}
+      data-share-href={shareHref ?? ""}
     >
       <button
         data-testid="watch-download-button"
@@ -104,8 +118,11 @@ vi.mock("@/components/watch/download-session-client", () => ({
   redirectToAuth: redirectToAuthMock,
 }))
 
-vi.mock("@/lib/watch-language-actions", () => ({
-  loadWatchLanguageOptions: loadWatchLanguageOptionsMock,
+vi.mock("@/lib/watch-interaction-loader", () => ({
+  getCachedWatchLanguageOptions: () => null,
+  loadWatchInteraction: loadWatchInteractionMock,
+  loadWatchLanguageOptionsForVideo: loadWatchLanguageOptionsMock,
+  scheduleWatchInteractionWarmup: scheduleWatchInteractionWarmupMock,
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
@@ -120,8 +137,10 @@ beforeEach(() => {
   downloadModalProps.length = 0
   languageModalProps.length = 0
   checkDownloadSessionMock.mockReset()
+  loadWatchInteractionMock.mockClear()
   loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
+  scheduleWatchInteractionWarmupMock.mockClear()
 })
 
 afterEach(() => {
@@ -134,11 +153,11 @@ afterEach(() => {
 
 function renderWatchPage() {
   const variant = {
-    documentId: "variant-1",
+    documentId: "5fc705b9-1b3b-4a58-abef-755b98457de6",
     duration: 7674,
     downloads: [
       {
-        documentId: "download-1",
+        documentId: "47420a5c-0ae1-465e-bcc9-98056566d087",
         quality: "fhd",
         size: "1048576",
         url: "https://stream.mux.com/raw-client-leak.mp4",
@@ -149,8 +168,8 @@ function renderWatchPage() {
   }
   const video = {
     documentId: "video-1",
-    slug: "jesus",
-    title: "JESUS",
+    slug: "jesus-is-brought-to-pilate",
+    title: "Jesus Is Brought to Pilate",
     snippet: null,
     description: null,
     images: [],
@@ -170,19 +189,64 @@ function renderWatchPage() {
 }
 
 describe("WatchPageClient download boundary", () => {
-  it("passes opaque download ids to DownloadModal without raw CDN URLs", () => {
+  it("does not mount modal chunks before the user asks for them", () => {
     renderWatchPage()
+
+    expect(downloadModalProps).toHaveLength(0)
+    expect(languageModalProps).toHaveLength(0)
+    expect(scheduleWatchInteractionWarmupMock).toHaveBeenCalledWith({
+      videoSlug: "jesus-is-brought-to-pilate",
+    })
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "/watch/api/download?",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "downloadId=47420a5c-0ae1-465e-bcc9-98056566d087",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "variantId=5fc705b9-1b3b-4a58-abef-755b98457de6",
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      "videoSlug=jesus-is-brought-to-pilate",
+    )
+    expect(renderer?.getAttribute("data-download-href")).not.toContain(
+      "stream.mux.com",
+    )
+    expect(renderer?.getAttribute("data-share-href")).toContain(
+      "https://www.facebook.com/sharer/sharer.php",
+    )
+    expect(renderer?.getAttribute("data-share-href")).toContain("jesus")
+  })
+
+  it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      authenticated: false,
+      gateEnabled: false,
+    })
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
 
     const latestProps = downloadModalProps.at(-1) as {
       downloads: Array<Record<string, unknown>>
       variantId: string
       videoSlug: string
     }
-    expect(latestProps.variantId).toBe("variant-1")
-    expect(latestProps.videoSlug).toBe("jesus")
+    expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
+    expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
     expect(latestProps.downloads).toEqual([
       {
-        documentId: "download-1",
+        documentId: "47420a5c-0ae1-465e-bcc9-98056566d087",
         quality: "fhd",
         size: 1048576,
       },
@@ -193,6 +257,7 @@ describe("WatchPageClient download boundary", () => {
         .querySelector('[data-testid="watch-section-renderer"]')
         ?.getAttribute("data-language-slug"),
     ).toBe("english")
+    expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
   })
 
   it("loads language picker rows only when the language modal opens", async () => {
@@ -223,9 +288,10 @@ describe("WatchPageClient download boundary", () => {
         ?.click()
     })
 
-    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith({
-      videoSlug: "jesus",
-    })
+    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith(
+      "jesus-is-brought-to-pilate",
+    )
+    expect(loadWatchInteractionMock).toHaveBeenCalledWith("language")
     expect(languageModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: true,

@@ -381,11 +381,10 @@ export const GET_WATCH_SETTING = graphql(`
 
 // ── Semantic search query ─────────────────────────────────────────
 //
-// Mirrors apps/mobile/src/lib/queries.ts SEMANTIC_SEARCH with one
-// addition: we select `searchMode` so the TV search hook can
-// distinguish "hybrid" (healthy) from "keyword-only" (degraded
-// backend — e.g., OPENROUTER key missing) and render distinct UX.
-// Mobile does not consume the degraded signal today; TV does.
+// Mirrors apps/mobile/src/lib/queries.ts SEMANTIC_SEARCH. The backend
+// may serve keyword-only results when semantic retrieval is unavailable;
+// TV renders those the same as any other results (no degraded-mode UX),
+// so we don't select `searchMode`.
 //
 // $locale is String! because admin's search resolver accepts a plain
 // locale string rather than a schema-specific locale enum.
@@ -405,7 +404,6 @@ export const SEMANTIC_SEARCH = graphql(`
     ) {
       query
       hasMore
-      searchMode
       results {
         type
         id
@@ -416,6 +414,8 @@ export const SEMANTIC_SEARCH = graphql(`
         startSeconds
         playbackId
         score
+        label
+        childCount
       }
     }
   }

@@ -178,6 +178,7 @@ Do **not** keep the heavy fields in the bulk consumer's selection "just in case"
 
 ## Related
 
+- [asyncstorage-swr-snapshot-slow-admin-resolver](./asyncstorage-swr-snapshot-slow-admin-resolver.md) — phase two of the same optimization arc on the watch-home query: the lean payload this pattern produces is small enough (~460KB) to persist on device and paint instantly at launch while the live fetch revalidates.
 - [mobile-video-detail-page-patterns](../best-practices/mobile-video-detail-page-patterns-20260527.md) — the screen this refines; that doc documents the full-`WatchVideo`-fragment fetch, this is the lean-bulk + lazy-per-item follow-up.
 - [mobile-admin-data-layer-cutover-pattern](../architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md) — the mobile Apollo + admin-graphql data layer this builds on; the lazy `videoDub(id)` fetch is the same additive-fetch move applied to dubs.
 - [pothos-public-widening-multi-layer-coordination](../graphql/pothos-public-widening-multi-layer-coordination-20260511.md) — governs the additive PUBLIC resolver half.

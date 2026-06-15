@@ -137,6 +137,14 @@ scrolls programmatically with `scrollToIndex` + `getItemLayout` instead (no
 anchors needed), and its preferred-focus handling has its own pitfalls — see
 `docs/solutions/best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md`.
 
+Alternative approach for a `ScrollView`: instead of anchoring focus to the
+scroll, set `scrollEnabled={false}` (disabling the native focus-scroll pass)
+and drive the viewport yourself from focus handlers. Prefer that when focus
+maps naturally to rows and you want a fixed anchor (hero pinned, rails anchored
+beneath); prefer the anchor-teleport here when you need to jump focus to an
+arbitrary off-screen target. See
+`docs/solutions/design-patterns/tv-home-row-anchored-scroll-native-focus-scroll-disabled-20260615.md`.
+
 ### 5. pointerEvents="none" wrapper on overlay VideoView blocks AVPlayerLayer on tvOS
 
 Wrapping a `VideoView` in `<View pointerEvents="none">` is the documented fix for D-pad focus stealing on inline video (see Pitfall 3's related doc on VideoView focus). However, in an **overlay** context (e.g., fullscreen `VideoPlayer` with `TVFocusGuideView trapFocusUp/Down/Left/Right`), this wrapper prevents AVPlayerLayer from compositing -- the video area is black while controls remain functional.

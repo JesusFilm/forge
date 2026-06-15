@@ -4,10 +4,12 @@
  *
  *   - All browser-storage persistence on web (monthly played ids, per-pool
  *     exhaustion counters, per-session mux selections, saved sessions) is
- *     replaced by caller-held in-memory state: a played `Set<string>` passed
- *     into the queue builders plus a `sessionSeed` string that keeps mux
- *     playback selection stable within an app session. Storage globals throw
- *     on Hermes and must never be referenced here.
+ *     replaced by caller-held state: a played `Set<string>` and a
+ *     `startPoolIndex` passed into the queue builders plus a `sessionSeed`
+ *     string that keeps mux playback selection stable within an app session.
+ *     The Home screen hydrates/persists that state via AsyncStorage in
+ *     useWatchHomeCarouselMemory (storage schema in ../watchHomePersistence).
+ *     Storage globals throw on Hermes and must never be referenced here.
  *   - Video slides have no `src` at build time (lean bulk fetch, KTD-2);
  *     eligibility is a poster image + slug (KTD-4). Streams resolve lazily.
  *   - `overlayForInsert` takes `now` and is intended to be re-evaluated at

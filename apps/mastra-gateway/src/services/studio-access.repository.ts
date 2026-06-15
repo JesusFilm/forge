@@ -81,6 +81,16 @@ export const studioAccessRepository: StudioAccessRepository = {
     return toRecord(row)
   },
 
+  async listByEmails({ emails }) {
+    if (emails.length === 0) return []
+
+    const rows = await prisma.studioAccess.findMany({
+      where: { email: { in: [...emails] } },
+      orderBy: { email: "asc" },
+    })
+    return rows.map(toRecord)
+  },
+
   async list() {
     const rows = await prisma.studioAccess.findMany({
       orderBy: [{ status: "asc" }, { email: "asc" }],
@@ -102,9 +112,51 @@ export const studioAccessRepository: StudioAccessRepository = {
     return toRecord(row)
   },
 
+  async approveByEmail({ email, name, role, approvedBy }) {
+    const now = new Date()
+    const nameData = name === undefined ? {} : { name }
+    const row = await prisma.studioAccess.upsert({
+      where: { email },
+      update: {
+        ...nameData,
+        status: "APPROVED",
+        role: toPrismaRole(role),
+        approvedBy,
+        approvedAt: now,
+        revokedAt: null,
+      },
+      create: {
+        email,
+        ...nameData,
+        status: "APPROVED",
+        role: toPrismaRole(role),
+        approvedBy,
+        approvedAt: now,
+      },
+    })
+    return toRecord(row)
+  },
+
   async revoke({ id }) {
     const row = await prisma.studioAccess.update({
       where: { id },
+      data: {
+        status: "REVOKED",
+        revokedAt: new Date(),
+      },
+    })
+    return toRecord(row)
+  },
+
+  async revokeByEmail({ email }) {
+    const existing = await prisma.studioAccess.findUnique({
+      where: { email },
+      select: { id: true },
+    })
+    if (!existing) return null
+
+    const row = await prisma.studioAccess.update({
+      where: { email },
       data: {
         status: "REVOKED",
         revokedAt: new Date(),

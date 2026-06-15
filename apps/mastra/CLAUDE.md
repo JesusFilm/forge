@@ -55,6 +55,11 @@ Origin documents:
   tools, `webResearchAgent`, the `firecrawl-web-data` workflow, and the
   `/forge-firecrawl-web-data` service route. Keep direct Firecrawl credentials
   and API calls out of Admin and Manager.
+- Subtitle enrichment execution is Mastra-owned through the
+  `/forge-subtitle-enrichment` service route. Mastra reads Manager transcript
+  artifacts, translates and retimes subtitles, writes
+  `{assetId}/subtitles-{lang}.vtt` and `{assetId}/translation-{lang}.json` to
+  shared artifact storage, and returns per-language results to Manager.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
   contracts are HTTP payloads plus local Zod schemas.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
@@ -102,6 +107,14 @@ pnpm --filter @forge/mastra lint
 | `EXPERIENCE_EMBEDDING_MODEL`              | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
 | `EXPERIENCE_EMBEDDING_PROVIDER`           | Provider stamp for experience embeddings. Defaults to `openai`.                                                            |
 | `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.            |
+| `SUBTITLE_ENRICHMENT_MODEL`               | OpenRouter chat model stamp for subtitle translation/retiming. Defaults to `google/gemini-2.5-flash`.                      |
+| `SUBTITLE_ENRICHMENT_TIMEOUT_MS`          | Per-provider-call timeout for subtitle enrichment. Defaults to `120000`, max `300000`.                                     |
+| `SUBTITLE_ENRICHMENT_CONCURRENCY`         | Max concurrent target languages per subtitle enrichment run. Defaults to `10`, max `25`.                                   |
+| `RAILWAY_S3_ENDPOINT`                     | Railway Object Storage endpoint used for Manager-compatible subtitle artifacts when `RAILWAY_S3_BUCKET` is set.            |
+| `RAILWAY_S3_REGION`                       | Railway Object Storage region. Defaults to `auto`.                                                                         |
+| `RAILWAY_S3_BUCKET`                       | Shared artifact bucket. Required with access keys for production subtitle enrichment.                                      |
+| `RAILWAY_S3_ACCESS_KEY_ID`                | Shared artifact bucket access key for subtitle enrichment writes.                                                          |
+| `RAILWAY_S3_SECRET_ACCESS_KEY`            | Shared artifact bucket secret key for subtitle enrichment writes.                                                          |
 | `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                 |
 | `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                     |
 | `ADMIN_SCENE_INGEST_URL`                  | Admin internal scene ingest endpoint. Required in production runtime.                                                      |

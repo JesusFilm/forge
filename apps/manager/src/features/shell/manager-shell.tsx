@@ -24,6 +24,7 @@ import {
   Captions,
   ChevronDown,
   ChevronRight,
+  Clapperboard,
   Crop,
   ExternalLink,
   FileAudio2,
@@ -119,6 +120,12 @@ const navItems: Array<{
     icon: Crop,
   },
   {
+    key: "shorts",
+    href: "/dashboard/shorts",
+    label: "Shorts",
+    icon: Clapperboard,
+  },
+  {
     key: "agents",
     href: "/dashboard/agents",
     label: "Agents",
@@ -176,6 +183,18 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/smart-crop")) {
     return ["Studio", "Smart Crop"]
+  }
+
+  if (pathname.startsWith("/dashboard/shorts/new")) {
+    return ["Studio", "Shorts", "New short"]
+  }
+
+  if (pathname.startsWith("/dashboard/shorts/")) {
+    return ["Studio", "Shorts", "Short detail"]
+  }
+
+  if (pathname.startsWith("/dashboard/shorts")) {
+    return ["Studio", "Shorts"]
   }
 
   return ["Studio", "Coverage"]

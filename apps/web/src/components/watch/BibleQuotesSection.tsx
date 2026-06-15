@@ -13,12 +13,18 @@
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+} from "react"
 import type { UseEmblaCarouselType } from "embla-carousel-react"
 
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { formatCitation } from "@/lib/citation-format"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Carousel,
   CarouselContent,
@@ -31,12 +37,14 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import { cn } from "@/lib/utils"
 
 type WatchBibleCitation = WatchBibleQuotesBlock["bibleCitations"][number]
 type CarouselApi = UseEmblaCarouselType[1]
 
 type BibleQuotesSectionProps = {
   bibleCitations: WatchBibleQuotesBlock["bibleCitations"]
+  href?: string
   onShareClick: () => void
   /**
    * BCP-47-ish locale used to pick the Bible translation for the inline
@@ -149,6 +157,7 @@ const CAROUSEL_OPTS = {
 
 export function BibleQuotesSection({
   bibleCitations,
+  href,
   onShareClick,
   locale = "en",
   youVersionPassages = [],
@@ -195,6 +204,14 @@ export function BibleQuotesSection({
     }
   }, [carouselApi])
 
+  const handleShareLinkClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault()
+      onShareClick()
+    },
+    [onShareClick],
+  )
+
   // The carousel always renders, even when the video has no Bible citations —
   // the trailing "Join Our Bible Study" promo card is the always-on CTA, and
   // every video page should surface it.
@@ -209,16 +226,37 @@ export function BibleQuotesSection({
         className="mb-6 flex flex-wrap items-center justify-between gap-3 pb-2"
       >
         <h2 className={WATCH_SECTION_EYEBROW_CLASS}>{t("title")}</h2>
-        <Button
-          variant="pill"
-          className={WATCH_PILL_BUTTON_CLASS}
-          onClick={onShareClick}
-          aria-label={t("share")}
-          data-testid="watch-share-button"
-        >
-          <ExternalLink size={16} />
-          <span>{t("share")}</span>
-        </Button>
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-slot="button"
+            className={cn(
+              buttonVariants({
+                variant: "pill",
+                className: WATCH_PILL_BUTTON_CLASS,
+              }),
+            )}
+            onClick={handleShareLinkClick}
+            aria-label={t("share")}
+            data-testid="watch-share-button"
+          >
+            <ExternalLink size={16} />
+            <span>{t("share")}</span>
+          </a>
+        ) : (
+          <Button
+            variant="pill"
+            className={WATCH_PILL_BUTTON_CLASS}
+            onClick={onShareClick}
+            aria-label={t("share")}
+            data-testid="watch-share-button"
+          >
+            <ExternalLink size={16} />
+            <span>{t("share")}</span>
+          </Button>
+        )}
       </div>
 
       <div
@@ -288,17 +326,23 @@ export function BibleQuotesSection({
                   sizes={BIBLE_QUOTE_IMAGE_SIZES}
                 />
                 <div className="z-1 p-8 pt-0 md:p-10 md:pt-0">
-                  <span className="mb-3 block text-sm font-bold tracking-normal text-white/80 uppercase">
+                  <span
+                    data-testid="watch-bible-quotes-promo-eyebrow"
+                    className="mb-3 block text-sm font-medium tracking-[0.18em] text-white/80 uppercase"
+                  >
                     {t("freeResources")}
                   </span>
-                  <h3 className="mb-6 max-w-[19ch] text-3xl leading-tight font-black text-balance text-white md:text-4xl">
+                  <h3
+                    data-testid="watch-bible-quotes-promo-heading"
+                    className="mb-6 max-w-[19ch] text-2xl leading-tight font-semibold text-balance text-white md:text-3xl"
+                  >
                     {t("promoHeading")}
                   </h3>
                   <Button
                     variant="pill"
                     nativeButton={false}
                     data-testid="watch-bible-quotes-promo-cta"
-                    className={`${WATCH_PILL_BUTTON_CLASS} self-start`}
+                    className={`${WATCH_PILL_BUTTON_CLASS} max-w-full self-start whitespace-normal text-center leading-tight break-words`}
                     render={
                       <a
                         href={JOIN_BIBLE_STUDY_URL}
@@ -579,7 +623,7 @@ function BibleCitationCard({
         {scripture != null && (
           <p
             data-testid="watch-bible-quotes-verse"
-            className="relative max-w-[20ch] text-2xl leading-[1.22] font-semibold text-balance text-white/95 drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] md:text-3xl"
+            className="relative max-w-[20ch] text-xl leading-[1.22] font-semibold text-balance text-white/95 drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] md:text-2xl"
           >
             {formatScripture(scripture.text)}
           </p>

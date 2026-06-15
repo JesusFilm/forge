@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 
+import { reportDatadogRumError } from "@/components/DatadogRum"
 import { ExperienceError } from "@/components/ExperienceError"
 
 // Segment-level fallback for unexpected root/home/videos render errors.
@@ -14,6 +15,7 @@ export default function WatchLocaleError({
   reset: () => void
 }) {
   useEffect(() => {
+    reportDatadogRumError(error, { boundary: "watch-locale" })
     if (process.env.NODE_ENV !== "production") {
       console.error("[watch-locale] error boundary caught:", error)
     }

@@ -20,13 +20,20 @@ import { cn } from "@/lib/utils"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { redirectToAuth } from "@/components/watch/download-session-client"
+import {
+  buildDownloadFilename,
+  buildDownloadProxyUrl,
+  type DownloadProxyParams,
+} from "@/components/watch/download-link"
+import {
+  bucketDownloads,
+  formatDownloadSize,
+  type DownloadTier as Tier,
+  type WatchDownloadOption,
+} from "@/components/watch/download-options"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
-export type DownloadModalDownload = {
-  documentId: string
-  quality: string
-  size: number | null
-}
+export type DownloadModalDownload = WatchDownloadOption
 
 export type DownloadModalProps = {
   open: boolean
@@ -39,98 +46,6 @@ export type DownloadModalProps = {
   variantId: string
   videoSlug: string
   onClose: () => void
-}
-
-// Same-origin streaming proxy. Hardcoded against `next.config.mjs`'s
-// `basePath: "/watch"`; if the basePath ever moves, this string moves
-// with it.
-const DOWNLOAD_PROXY_PATH = "/watch/api/download"
-
-// Quality keys the CMS emits, ordered highest-fidelity first. Used to sort
-// the downloads before bucketing into UI tiers. Kept as `as const` so
-// `pickFirst`-style typo-guards stay intact; if Strapi codegen evolves
-// the enum, a literal-type comparison would catch new keys at the call
-// site rather than silently sorting them to the tail.
-const QUALITY_PRIORITY = [
-  "uhd",
-  "qhd",
-  "fhd",
-  "highest",
-  "high",
-  "distroHigh",
-  "sd",
-  "distroSd",
-  "low",
-  "distroLow",
-] as const
-
-type Tier = "highest" | "high" | "low"
-
-type TierOption = {
-  tier: Tier
-  label: string
-  download: DownloadModalDownload
-}
-
-// Sort primarily by size (largest first) so the "Highest" tier always
-// surfaces the largest file even when admin's `quality` enum is wrong
-// for the underlying asset. Observed in the wild: the Albanian dub of
-// `1-jesus-our-loving-pursuer` reports a 606 KB `fhd` entry pointing
-// at a 1080p Mux URL, which the old quality-enum-only sort promoted
-// to the "Highest" slot ahead of the real 21 MB `highest` row. Tied or
-// unknown sizes fall back to the original QUALITY_PRIORITY order so
-// the historical behavior holds for clean data.
-function sortByQuality(
-  downloads: DownloadModalDownload[],
-): DownloadModalDownload[] {
-  const priority = new Map<string, number>(
-    QUALITY_PRIORITY.map((q, i) => [q, i]),
-  )
-  const tail = QUALITY_PRIORITY.length
-  return [...downloads].sort((a, b) => {
-    const aSize = a.size != null && a.size > 0 ? a.size : 0
-    const bSize = b.size != null && b.size > 0 ? b.size : 0
-    if (aSize > 0 && bSize > 0 && aSize !== bSize) return bSize - aSize
-    const ai = priority.get(a.quality) ?? tail
-    const bi = priority.get(b.quality) ?? tail
-    return ai - bi
-  })
-}
-
-// Surface as many tier options as there are distinct downloads, up to three.
-//   1 download  → [Highest]
-//   2 downloads → [Highest, Low]
-//   3+ downloads → [Highest, High, Low] picked at evenly-spaced positions in
-//                  the priority-sorted list, so we always include the best
-//                  and worst options plus a middle representative.
-function bucketDownloads(downloads: DownloadModalDownload[]): TierOption[] {
-  const sorted = sortByQuality(downloads)
-  if (sorted.length === 0) return []
-  const head = sorted[0] as DownloadModalDownload
-  if (sorted.length === 1) {
-    return [{ tier: "highest", label: "Highest", download: head }]
-  }
-  const tail = sorted[sorted.length - 1] as DownloadModalDownload
-  if (sorted.length === 2) {
-    return [
-      { tier: "highest", label: "Highest", download: head },
-      { tier: "low", label: "Low", download: tail },
-    ]
-  }
-  const middle = sorted[Math.floor(sorted.length / 2)] as DownloadModalDownload
-  return [
-    { tier: "highest", label: "Highest", download: head },
-    { tier: "high", label: "High", download: middle },
-    { tier: "low", label: "Low", download: tail },
-  ]
-}
-
-function formatSize(bytes: number | null | undefined): string {
-  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ""
-  const mb = bytes / 1024 / 1024
-  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
-  if (mb >= 100) return `${mb.toFixed(0)} MB`
-  return `${mb.toFixed(2)} MB`
 }
 
 // Probe the same-origin download proxy for a `Content-Length` when the
@@ -155,28 +70,6 @@ async function fetchSizeFromProxy(
   }
 }
 
-type DownloadProxyParams = {
-  downloadId: string
-  filename?: string
-  variantId: string
-  videoSlug: string
-}
-
-function buildDownloadProxyUrl({
-  downloadId,
-  filename,
-  variantId,
-  videoSlug,
-}: DownloadProxyParams): string {
-  const params = new URLSearchParams({
-    downloadId,
-    variantId,
-    videoSlug,
-  })
-  if (filename) params.set("filename", filename)
-  return `${DOWNLOAD_PROXY_PATH}?${params.toString()}`
-}
-
 // Renders `({formatted})` when the size is known, nothing otherwise.
 // Used by both the dropdown trigger and each option row so the hide-when-
 // unknown behavior is defined once.
@@ -187,7 +80,7 @@ function SizeLabel({
   bytes: number | null | undefined
   className?: string
 }) {
-  const label = formatSize(bytes)
+  const label = formatDownloadSize(bytes)
   if (!label) return null
   return <span className={className}>({label})</span>
 }
@@ -217,6 +110,7 @@ export function DownloadModal({
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
   const fileSizeLabel = t("fileSizeLabel")
+  const tWatchModal = useTranslations("WatchModal")
   // Localized label for a quality tier. `bucketDownloads` carries an English
   // `label` for back-compat, but the rendered text is resolved here so it
   // translates.
@@ -388,14 +282,6 @@ export function DownloadModal({
     }
   }, [dropdownOpen])
 
-  function buildFilename(tier: Tier): string {
-    const slug = (videoTitle ?? "video")
-      .replace(/[^a-z0-9]+/gi, "-")
-      .replace(/^-|-$/g, "")
-      .toLowerCase()
-    return `${slug || "video"}-${tier}.mp4`
-  }
-
   async function handleDownload() {
     if (!selected) return
     if (downloadInFlight.current) return
@@ -421,7 +307,7 @@ export function DownloadModal({
     }
     setAuthChecking(false)
 
-    const filename = buildFilename(selected.tier)
+    const filename = buildDownloadFilename(videoTitle, selected.tier)
 
     // Route through our same-origin streaming proxy so the browser honors
     // the `download` attribute and `Content-Disposition: attachment`. A
@@ -453,6 +339,7 @@ export function DownloadModal({
         open={open}
         onClose={() => handleOpenChange(false)}
         testId="watch-download-modal-close"
+        className="hidden sm:flex"
       />
       <DialogContent
         data-testid="watch-download-modal"
@@ -463,54 +350,68 @@ export function DownloadModal({
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
         <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
-          {/* Header: thumbnail + metadata */}
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-6">
-            <div
-              data-testid="watch-download-modal-poster"
-              className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56"
-            >
-              {posterUrl ? (
-                <Image
-                  src={posterUrl}
-                  alt={videoTitle ?? t("posterAlt")}
-                  fill
-                  sizes="(min-width: 640px) 224px, 100vw"
-                  className="object-cover"
-                />
-              ) : null}
-              {durationLabel ? (
-                <div
-                  data-testid="watch-download-modal-duration"
-                  className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-xs font-semibold text-stone-100"
-                >
-                  <Play size={12} fill="currentColor" />
-                  <span>{durationLabel}</span>
-                </div>
-              ) : null}
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-end sm:hidden">
+              <button
+                type="button"
+                aria-label={tWatchModal("close")}
+                data-testid="watch-download-modal-mobile-close"
+                onClick={() => handleOpenChange(false)}
+                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-transparent text-stone-300 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none sm:hidden"
+              >
+                <XIcon aria-hidden className="h-6 w-6" />
+              </button>
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
-              <span
-                data-testid="watch-download-modal-eyebrow"
-                className={WATCH_SECTION_EYEBROW_CLASS}
+            {/* Header: thumbnail + metadata */}
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-6">
+              <div
+                data-testid="watch-download-modal-poster"
+                className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56"
               >
-                {t("eyebrow")}
-              </span>
-              <h2
-                data-testid="watch-download-modal-title"
-                className="text-2xl leading-tight font-semibold text-stone-50 sm:text-3xl"
-              >
-                {videoTitle ?? ""}
-              </h2>
-              {languageName ? (
+                {posterUrl ? (
+                  <Image
+                    src={posterUrl}
+                    alt={videoTitle ?? t("posterAlt")}
+                    fill
+                    sizes="(min-width: 640px) 224px, 100vw"
+                    className="object-cover"
+                  />
+                ) : null}
+                {durationLabel ? (
+                  <div
+                    data-testid="watch-download-modal-duration"
+                    className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-xs font-semibold text-stone-100"
+                  >
+                    <Play size={12} fill="currentColor" />
+                    <span>{durationLabel}</span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
                 <span
-                  data-testid="watch-download-modal-language"
-                  className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-stone-100"
+                  data-testid="watch-download-modal-eyebrow"
+                  className={WATCH_SECTION_EYEBROW_CLASS}
                 >
-                  <Globe2 size={14} />
-                  <span>{languageName}</span>
+                  {t("eyebrow")}
                 </span>
-              ) : null}
+                <h2
+                  data-testid="watch-download-modal-title"
+                  className="text-2xl leading-tight font-semibold text-stone-50 sm:text-3xl"
+                >
+                  {videoTitle ?? ""}
+                </h2>
+                {languageName ? (
+                  <span
+                    data-testid="watch-download-modal-language"
+                    className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-stone-100"
+                  >
+                    <Globe2 size={14} />
+                    <span>{languageName}</span>
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
 

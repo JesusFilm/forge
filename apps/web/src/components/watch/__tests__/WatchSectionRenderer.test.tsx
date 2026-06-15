@@ -40,6 +40,7 @@ const {
   heroPlayerMock: vi.fn(
     ({
       block,
+      optimisticVisual,
     }: {
       block: {
         variant: {
@@ -48,6 +49,13 @@ const {
         }
         video: { documentId: string }
       }
+      optimisticVisual?: {
+        title: string | null
+        label: string | null
+        posterUrl: string | null
+        loading?: boolean
+        transitionKey?: string | null
+      } | null
     }) => {
       // Mirror the original placeholder's data attributes so the renderer
       // contract assertions below (data-block-type + data-content JSON
@@ -56,6 +64,7 @@ const {
         videoDocumentId: block.video.documentId,
         playbackId: block.variant.muxVideo?.playbackId ?? null,
         hls: block.variant.hls ?? null,
+        optimisticVisual: optimisticVisual ?? null,
       })
       return (
         <div data-block-type="HeroPlayer" data-content={content}>
@@ -72,6 +81,7 @@ const {
     ({
       block,
       languageSlug,
+      pendingNavigation,
     }: {
       block: {
         canonicalParent: {
@@ -81,12 +91,15 @@ const {
         currentVideoDocumentId: string
       }
       languageSlug?: string
+      pendingNavigation?: { targetVideoDocumentId: string } | null
     }) => {
       const content = JSON.stringify({
         parentSlug: block.canonicalParent.slug,
         currentVideoDocumentId: block.currentVideoDocumentId,
         childCount: (block.canonicalParent.children ?? []).length,
         languageSlug: languageSlug ?? null,
+        pendingTargetVideoDocumentId:
+          pendingNavigation?.targetVideoDocumentId ?? null,
       })
       return (
         <div data-block-type="SiblingCarousel" data-content={content}>
@@ -104,13 +117,16 @@ const {
     ({
       block,
       studyQuestions,
+      optimisticTitle,
     }: {
       block: { video: { documentId: string; title?: string | null } }
       studyQuestions: { studyQuestions: Array<unknown> } | null
+      optimisticTitle?: string | null
     }) => {
       const content = JSON.stringify({
         videoDocumentId: block.video.documentId,
         title: block.video.title ?? null,
+        optimisticTitle: optimisticTitle ?? null,
         studyQuestionCount: studyQuestions?.studyQuestions.length ?? 0,
       })
       return (
@@ -390,6 +406,65 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(content.playbackId).toBe("playback-id-123")
     expect(content.hls).toBe("https://cdn.example/jesus.m3u8")
     expect(content.videoDocumentId).toBe("video-1")
+  })
+
+  it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const parent = makeParent(3)
+    const blocks: MergedWatchBlock[] = [
+      buildHeroBlock(video, variant),
+      buildSiblingCarouselBlock(parent, video)!,
+      buildWatchBodyBlock(video, variant),
+    ]
+    const pendingChapter = {
+      href: "/child-2.html/english.html",
+      languageSlug: "english",
+      sourceVideoDocumentId: "video-1",
+      targetVideoDocumentId: "child-2",
+      title: "Clicked Child",
+      slug: "child-2",
+      label: "SEGMENT",
+      posterUrl: "https://cdn.test/clicked.jpg",
+    }
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          languageSlug="english"
+          pendingChapter={pendingChapter}
+          onChapterNavigateIntent={vi.fn()}
+        />,
+      )
+    })
+
+    const heroContent = JSON.parse(
+      container
+        .querySelector('[data-block-type="HeroPlayer"]')
+        ?.getAttribute("data-content") ?? "{}",
+    )
+    const carouselContent = JSON.parse(
+      container
+        .querySelector('[data-block-type="SiblingCarousel"]')
+        ?.getAttribute("data-content") ?? "{}",
+    )
+    const bodyContent = JSON.parse(
+      container
+        .querySelector('[data-block-type="WatchBody"]')
+        ?.getAttribute("data-content") ?? "{}",
+    )
+
+    expect(heroContent.optimisticVisual).toEqual({
+      title: "Clicked Child",
+      label: "SEGMENT",
+      posterUrl: "https://cdn.test/clicked.jpg",
+      loading: true,
+      transitionKey: "child-2",
+    })
+    expect(carouselContent.pendingTargetVideoDocumentId).toBe("child-2")
+    expect(bodyContent.optimisticTitle).toBe("Clicked Child")
+    expect(bodyContent.title).toBe("Jesus")
   })
 
   it("skips the synthetic BibleQuotes section when the watch hide flag is active", () => {

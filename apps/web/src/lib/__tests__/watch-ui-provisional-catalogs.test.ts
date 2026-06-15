@@ -81,8 +81,20 @@ describe("watch UI provisional official-language catalogs", () => {
 
   it("does not mark existing authored catalogs as provisional", () => {
     expect(manifest.authoredInventoryLocales).toEqual(
-      expect.arrayContaining(["ar", "bn", "de", "en", "es", "fr"]),
+      expect.arrayContaining([
+        "ar",
+        "bn",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it",
+        "nl",
+        "pl",
+        "ro",
+      ]),
     )
     expect(manifest.provisionalLocales).not.toContain("bn")
+    expect(manifest.provisionalLocales).not.toContain("ro")
   })
 })

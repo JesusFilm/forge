@@ -100,7 +100,7 @@
     "fallbackBody": "Tenha uma conversa privada com alguém disposto a ouvir.",
     "questionsShort": "Perguntas",
     "questions": "Perguntas relacionadas",
-    "askYours": "Faça sua pergunta",
+    "askYours": "Sua pergunta",
     "chatWithPerson": "Fale com alguém",
     "askBibleQuestion": "Fazer uma pergunta bíblica"
   },
@@ -183,19 +183,19 @@
     "categoryStudy": "Estudo",
     "categoryFamily": "Família",
     "categoryChristmas": "Natal",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "searchLanguageLabel": "Idioma da busca",
+    "allLanguages": "Todos os idiomas",
+    "searchSuggestions": "Sugestões de busca",
+    "languages": "Idiomas",
+    "recommendedLanguage": "Idioma recomendado",
+    "searchSuggestion": "Buscar {suggestion}",
+    "searchSuggestionWithLanguage": "Buscar {suggestion} em {language}",
+    "inLanguage": "em {language}",
+    "browseByRegion": "Explorar por região",
+    "clearLanguages": "Limpar"
   },
   "HeroPlayer": {
-    "playWithSound": "Reproduzir com som",
+    "playWithSound": "Assistir agora",
     "tapToUnmute": "Ativar som"
   },
   "ExperienceSkeleton": {

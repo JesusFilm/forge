@@ -12,6 +12,7 @@ type Episode = NonNullable<Episodes[number]>
 type SeriesEpisodesGridProps = {
   episodes: Episodes
   languageSlug: string
+  parentSlug: string
   // Backdrop image painted behind the grid when no card is hovered.
   // Typically the series record's own poster.
   seriesPosterUrl?: string | null
@@ -79,6 +80,7 @@ function backdropReducer(
 export function SeriesEpisodesGrid({
   episodes,
   languageSlug,
+  parentSlug,
   seriesPosterUrl = null,
 }: SeriesEpisodesGridProps) {
   const [state, dispatch] = useReducer(backdropReducer, {
@@ -313,6 +315,7 @@ export function SeriesEpisodesGrid({
             episode={episode}
             index={index}
             languageSlug={languageSlug}
+            parentSlug={parentSlug}
             backdropUrl={resolveEpisodeImageUrl(episode)}
           />
         ))}

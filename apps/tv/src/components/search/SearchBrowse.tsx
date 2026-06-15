@@ -1,10 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
 import { CATEGORIES, type SearchCategory } from "./categories"
+import { SEARCH_THEME } from "./searchTheme"
 
 type Props = {
   recents: string[]
@@ -165,28 +166,33 @@ const styles = StyleSheet.create({
   railTitle: {
     fontFamily: "System",
     fontSize: scale(18),
-    color: COLORS.muted,
+    color: SEARCH_THEME.textDim(0.45),
     letterSpacing: 0.5,
     marginBottom: scale(10),
+    // The browse region is full-bleed on the redesigned layout; align
+    // the rail headers with the page's 80px gutter (the rows below add
+    // their own start padding inside their ScrollViews).
+    marginLeft: scale(80),
   },
   chipRowContent: {
     // Start/end gutter so the leftmost / rightmost chip has room for
     // its focus glow inside the ScrollView's clip region. Inter-chip
     // spacing comes from chipCellWrapper.paddingHorizontal — see
-    // categoryCellWrapper for the same pattern's rationale.
-    paddingHorizontal: scale(24),
+    // categoryCellWrapper for the same pattern's rationale. Sized so
+    // the first chip's edge lands at the 80px page gutter (68 + 12).
+    paddingHorizontal: scale(68),
   },
   chipCellWrapper: {
     paddingVertical: scale(28),
     paddingHorizontal: scale(12),
   },
   chip: {
-    backgroundColor: COLORS.surfaceContainerHigh,
+    backgroundColor: SEARCH_THEME.keyBg,
     paddingHorizontal: scale(16),
     paddingVertical: scale(10),
   },
   clearChip: {
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: SEARCH_THEME.textDim(0.04),
     paddingHorizontal: scale(16),
     paddingVertical: scale(10),
   },
@@ -198,22 +204,23 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(14),
     fontWeight: "500",
-    color: COLORS.text,
+    color: SEARCH_THEME.keyText,
     maxWidth: scale(160),
   },
   clearText: {
     fontFamily: "System",
     fontSize: scale(14),
     fontWeight: "500",
-    color: COLORS.muted,
+    color: SEARCH_THEME.textDim(0.45),
   },
   categoryRowContent: {
     // Start/end gutter so the leftmost / rightmost card's focus glow
     // is not clipped against the ScrollView's contentContainer edge.
     // Inter-card spacing comes from categoryCellWrapper.paddingHorizontal
     // (so each card carries its own focus halo padding instead of
-    // relying on `gap`, which doesn't reserve glow room).
-    paddingHorizontal: scale(24),
+    // relying on `gap`, which doesn't reserve glow room). Sized so the
+    // first card's edge lands at the 80px page gutter (64 + 16).
+    paddingHorizontal: scale(64),
   },
   categoryCellWrapper: {
     // Vertical: shadowRadius (scale(16)) + 1.05x scale expansion (~5dp)
@@ -240,15 +247,10 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(20),
     fontWeight: "700",
-    // Use the tinted near-white from the palette rather than pure
-    // #FFFFFF — Crimson Gallery's text token already reads as white
-    // on saturated category gradients while staying consistent with
-    // the rest of the app's typography.
-    color: COLORS.text,
-    // Same logic for the shadow: the warm-stone surface tone tints
-    // the drop shadow toward the rest of the design system instead
-    // of dropping a literal #000.
-    textShadowColor: hexToRgba(COLORS.surface, 0.45),
+    color: SEARCH_THEME.text,
+    // Neutral near-black shadow — matches the redesigned search layer's
+    // #0a0a0b family (the warm-stone Crimson Gallery tint clashed here).
+    textShadowColor: "rgba(10,10,11,0.45)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },

@@ -1,31 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { StyleSheet, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 
 import { QueryDisplay } from "../src/components/search/QueryDisplay"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
+import { resolveSearchMeta } from "../src/components/search/searchDisplay"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
+import { SEARCH_THEME } from "../src/components/search/searchTheme"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
-import { COLORS } from "../src/lib/colors"
 import { scale } from "../src/lib/scale"
 import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
- * /search route — TV search surface.
+ * /search route — TV search surface, redesigned to the "Forge TV Home"
+ * search-layer mockup.
  *
- * Two-pane layout:
- *   Left pane: QueryDisplay above SearchKeyboard.
- *   Right pane: placeholder today — U6 fills with SearchResultsGrid
- *   when the query is non-empty, U7 fills with SearchBrowse (Recent +
- *   Categories + Popular) when the query is empty.
+ * Vertical stack on a near-black full-bleed surface:
+ *   Query line (big type + blinking caret)
+ *   → horizontal letter strip (A–Z + space + delete + ⏎)
+ *   → meta line (BROWSE / N RESULTS)
+ *   → results region (SearchResultsGrid when the query is non-empty,
+ *     SearchBrowse — Recent + Categories — when it's empty).
  *
  * Owns `query` state and routes all writes through sanitizeQuery so
  * the backend never sees control chars, RTL overrides, or anything
  * beyond 256 chars. useSemanticSearch handles debounce, stale-guard,
  * and the state machine.
  *
- * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5.
+ * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5 for
+ * the data flow; the layout follows the Claude Design handoff.
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -73,68 +77,121 @@ export default function SearchScreen() {
     [runQuery],
   )
 
-  const showResultsGrid = query.length > 0
+  // Trim so a whitespace-only query falls back to SearchBrowse rather than an
+  // empty results pane — matching useSemanticSearch, which gates its fetch on
+  // the trimmed length. (Not reachable via the on-screen keyboard today, but
+  // defensive for future input sources and keeps the two gates in lockstep.)
+  const hasQuery = query.trim().length > 0
+  const showResultsGrid = hasQuery
+  const meta = resolveSearchMeta(state, results.length, hasQuery)
 
   return (
     <View style={styles.screen}>
-      <View style={styles.leftPane}>
+      <View style={styles.queryLine}>
         <QueryDisplay value={query} />
+      </View>
+      {/* Two-pane body: keyboard on the left, results/browse filling the
+          space to its right (rather than stacked below it, which left the
+          right ~60% of the screen blank). */}
+      <View style={styles.body}>
         {/* SearchKeyboard intentionally does not get a dynamic key:
             unmounting it on a state change kills focus on the
             currently-pressed letter, and the tvOS focus engine then
-            visibly hops through a fallback before any new
-            preferred-focus claim lands. The earlier "remount on empty
-            state to refocus the ⏎ key" mechanism actively fought
-            typing — it fired on every debounced keystroke that came
-            back empty. Keep the keyboard mounted; let the user type
+            visibly hops through a fallback before any new preferred-focus
+            claim lands. Keep the keyboard mounted; let the user type
             without the rug being pulled. */}
-        <SearchKeyboard
-          value={query}
-          onChange={setSanitizedQuery}
-          onSubmit={submit}
-        />
+        <View style={styles.keyboardPane}>
+          <SearchKeyboard
+            value={query}
+            onChange={setSanitizedQuery}
+            onSubmit={submit}
+          />
+        </View>
+        {/* Right pane: meta line + results. D-pad-left from the grid's
+            leftmost column reaches the keyboard (to its left) by geometry;
+            no focus traps needed. */}
+        <View style={styles.resultsPane}>
+          {/* Fixed-height meta line (design .s-meta) so flipping between
+              BROWSE / silence / N RESULTS never shifts the grid below. */}
+          <View style={styles.metaLine}>
+            <Text style={styles.metaText}>{meta}</Text>
+          </View>
+          <TVFocusGuideView style={styles.resultsRegion}>
+            {showResultsGrid ? (
+              <SearchResultsGrid
+                state={state}
+                results={results}
+                query={query}
+                columns={RESULTS_COLUMNS}
+                onRetry={retry}
+              />
+            ) : (
+              <SearchBrowse
+                recents={recents}
+                onRunQuery={runQueryImmediate}
+                onClearHistory={clearAll}
+              />
+            )}
+          </TVFocusGuideView>
+        </View>
       </View>
-      {/* No trapFocusLeft: D-pad-left from the leftmost cell of any
-          right-pane rail must be able to return to the keyboard. The
-          tvOS focus engine handles this naturally as long as no focus
-          guide intercepts the leftward press. */}
-      <TVFocusGuideView style={styles.rightPane}>
-        {showResultsGrid ? (
-          <SearchResultsGrid
-            state={state}
-            results={results}
-            query={query}
-            onRetry={retry}
-          />
-        ) : (
-          <SearchBrowse
-            recents={recents}
-            onRunQuery={runQueryImmediate}
-            onClearHistory={clearAll}
-          />
-        )}
-      </TVFocusGuideView>
     </View>
   )
 }
 
+// The results pane is narrower than the full screen (the keyboard takes the
+// left third), so 3 columns keeps result cards a comfortable 10-foot size
+// rather than the 4 a full-width grid would pack in.
+const RESULTS_COLUMNS = 3
+
 const styles = StyleSheet.create({
+  // Full-bleed near-black surface — solid stand-in for the design's
+  // blur-over-home search layer. One horizontal pad for the whole screen;
+  // panes below align to it.
   screen: {
     flex: 1,
-    flexDirection: "row",
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: scale(48),
-    paddingVertical: scale(48),
-    gap: scale(32),
+    backgroundColor: SEARCH_THEME.bg,
+    paddingHorizontal: scale(80),
   },
-  leftPane: {
-    flexDirection: "column",
+  // Design .s-query: padding 78px 0 (horizontal comes from screen).
+  queryLine: {
+    paddingTop: scale(78),
   },
-  rightPane: {
+  // Keyboard (left) + results (right) fill the remaining height side by side.
+  body: {
     flex: 1,
-    backgroundColor: COLORS.surfaceContainer,
-    borderRadius: scale(16),
-    padding: scale(32),
-    justifyContent: "center",
+    flexDirection: "row",
+    gap: scale(56),
+    paddingTop: scale(14),
+  },
+  // Left column sized to the keyboard's intrinsic width (it is
+  // alignItems:flex-start internally).
+  keyboardPane: {
+    alignSelf: "flex-start",
+  },
+  // Right column takes the rest of the width.
+  resultsPane: {
+    flex: 1,
+  },
+  // Holds the one-line meta text at a stable height so the grid below
+  // doesn't shift as the label changes (BROWSE / N RESULTS / empty).
+  // Just tall enough for the 18px line — no extra reserved space, which
+  // had opened a visible gap above the results.
+  metaLine: {
+    minHeight: scale(30),
+  },
+  metaText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(18)),
+    fontWeight: "700",
+    letterSpacing: scale(2.9),
+    color: SEARCH_THEME.textDim(0.45),
+  },
+  // Fills the remainder of the right pane. Minimal headroom — the grid's
+  // top row carries its own focus-lift padding, so a large inset here just
+  // widens the gap below the meta line.
+  resultsRegion: {
+    flex: 1,
+    paddingTop: scale(2),
   },
 })

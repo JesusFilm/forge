@@ -76,6 +76,24 @@ An asynchronous attribution request that owns an uploaded media input until the 
 
 A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
 
+### Source Anchor Evidence
+
+Match evidence that supports which source Video an uploaded media input came
+from, before deciding which Dub or language-specific variant is most likely.
+
+Visual or structural media evidence usually acts as Source Anchor Evidence
+because re-upload metadata, audio language, and transcript text can drift while
+the underlying source footage stays recognizable.
+
+### Variant-Ranking Evidence
+
+Match evidence that helps choose the likely `videoVariantId` after Source
+Anchor Evidence has narrowed the source Video.
+
+Audio, text, language, and subtitle signals are usually Variant-Ranking
+Evidence: they can distinguish Dubs under the same source, but should not create
+a high-strength source attribution on their own.
+
 ## Search & embeddings
 
 ### Search Pipeline Mode
@@ -102,6 +120,46 @@ The metadata that says which provider contract produced a stored Content Embeddi
 
 An evaluation or backfill approval artifact that binds quality evidence to a specific embedding provider contract before high-churn content vectors are rewritten. A Provider-Bound Gate needs both configuration provenance and corpus provenance: it must show what the system is configured to generate and what stored rows the evaluation actually searched.
 
+### Semantic Evidence
+
+The content fragment that explains why a search result matched a query, such as a scene description or transcript chunk. Semantic Evidence belongs to retrieval, ranking, debug context, and optional timecodes; consumer card surfaces should render display metadata unless they are intentionally showing match context.
+
+### Manager Artifact
+
+A source-side output from Manager's media-processing pipelines that Admin can consume to build or rebuild search indexes.
+
+Manager artifacts are repair inputs, not the same thing as Admin's searchable vector rows.
+
+### Transcript Chunk
+
+A searchable segment of a video transcript stored separately from the transcript parent so retrieval and embedding workflows can operate at segment granularity.
+
+Deleting transcript chunks removes Admin's transcript search index for those segments but does not delete the transcript identity or Manager's source artifacts.
+
+### Embedding Backfill
+
+A controlled batch process that generates or regenerates vectors for existing content without changing the underlying source content.
+
+## Known-caller auth
+
+### Search Passport
+
+The request-level check on the public search surface that asks "are you a known caller?" rather than "what may you do?". Any key from any known-caller class satisfies it, and it grants no data permissions — a passport identifies the caller class, nothing more. Distinct from editor/session auth.
+
+### Consumer Bearer
+
+A known-caller key issued to a consumer-facing app surface (web, mobile, TV) that satisfies the Search Passport while carrying no permissions beyond public access. Each surface holds its own dedicated key so revocation and rotation stay per-surface.
+
+A Consumer Bearer doubles as the request's Rate-Limit Identity: every request presenting the same key spends one shared budget. That is correct for a single-egress server and hazardous for a Fleet Client — on a fleet, the key must ride only on the operations the server actually gates.
+
+### Rate-Limit Identity
+
+The identity a request's rate budget is counted under: an authenticated user's own identity, else the presented Consumer Bearer's key, else the caller's network address. Which identity a request lands on determines whose budget it spends — a shared key pools many callers into one budget, while anonymous callers each spend their own.
+
+### Fleet Client
+
+A client app distributed as many installed copies (mobile, TV) that share one baked-in credential and one release cycle. Contrast with a single-egress server client: a fleet cannot rotate its credential without a release and field adoption lag, each device has its own network address, and any globally attached shared credential pools the whole fleet onto one Rate-Limit Identity.
+
 ## Admin schema operations
 
 ### Forward-Only Migration
@@ -120,7 +178,15 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: it is empty on prod admin, and consumer clients' homes render the Home Curation instead — pointing all platforms back at a real Homepage Experience is a possible future consolidation, not the current state.
+
+### Home Curation
+
+The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Curation lives in code, not the CMS — changing the home's rows is a code release, not an admin edit. Each client (web, mobile, TV) carries the same set, so per-app copies must stay in sync.
+
+### Series-Shaped
+
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
 
 ## Home hero UI
 
@@ -132,8 +198,32 @@ Touches go to the topmost layer and are never re-offered downward, so anything i
 
 ### Hero Insert
 
-An editorial slide in the watch-home hero rotation sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
+An editorial slide in the watch-home Hero Queue sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
 _Avoid:_ Mux insert.
+
+### Hero Queue
+
+The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
+
+A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+
+### Carousel Pool
+
+One curated group of collections whose videos are candidates for the Hero Queue. Pools are drawn from in a fixed round-robin order, with the day's date-seeded pick choosing which candidate each pool contributes.
+
+### Played Set
+
+The per-user memory of which videos the watch-home rotation has already shown, used to exclude them from Hero Queue rebuilds so returning users lead with unseen content. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+
+### Home Snapshot
+
+The last successful watch-home content response a client keeps on device and paints immediately at the next launch while a live fetch revalidates in the background. It exists to mask a slow content resolver; it is only ever the first paint.
+
+An expired, shape-drifted, or empty Home Snapshot never paints — launch falls back to the loading state. When the live response matches the painted snapshot, the client keeps the painted view rather than rebuilding the Hero Queue; an empty live response never replaces a painted snapshot.
+
+### Focus-Driven Showcase
+
+The TV home's top-of-screen canvas that reflects whatever card currently holds D-pad focus — artwork, title, and description swap as focus moves through the rails. It defaults to the first featured item on load and retains the last focused card when focus leaves the rows. The inversion of an autoplay hero: the user's focus drives the canvas, and no background video player is mounted.
 
 ## Watch player UI
 
