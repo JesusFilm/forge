@@ -8,7 +8,8 @@ start_date: "2026-06-09"
 duration: 3
 depends_on:
   - "feat-129"
-blocks: []
+blocks:
+  - "feat-174"
 tags:
   - "ai-chat"
   - "agent"
