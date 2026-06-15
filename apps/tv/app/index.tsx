@@ -15,6 +15,7 @@ import {
   Text,
   View,
   type LayoutChangeEvent,
+  type View as ViewType,
 } from "react-native"
 
 import { HomeBackdrop } from "../src/components/home/HomeBackdrop"
@@ -22,7 +23,6 @@ import { HomeBillboard } from "../src/components/home/HomeBillboard"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
 import {
-  areHeroActionsGhosted,
   isTopBarHidden,
   resolveBrowseState,
   resolveRowScrollTarget,
@@ -54,7 +54,7 @@ import {
  * sections web /watch and mobile home use — from useWatchHome's lean bulk
  * fetch (R8). A full-screen ambient backdrop (HomeBackdrop) paints the
  * focused card's artwork behind everything; the billboard hero
- * (HomeBillboard) carries that card's copy plus Play / More Info actions;
+ * (HomeBillboard) carries that card's copy (non-interactive);
  * the top bar (HomeTopBar) holds the brandmark, Search/Home tabs, and clock.
  * Rails drive the showcase via the debounced reducer (R10/R11), and ALSO
  * drive the screen's browse state: row 0 = "browse" (light scrim), rows >= 1
@@ -109,11 +109,11 @@ export default function HomeScreen() {
   // ── Showcase state ──
   // First model seeds the showcase (modelResolved); later models — background
   // refetches — re-reconcile (modelRefreshed keeps the current pick when its
-  // id survives). Only CARDS dispatch focus events: the top bar tabs, hero
-  // actions, and Retry never do, so the showcase retains across non-card
-  // focus automatically (AE4) and across stack push/pop (state lives up
-  // here, not in the rails). The committed card now drives BOTH the
-  // billboard copy and the full-screen backdrop.
+  // id survives). Only CARDS dispatch focus events: the top bar tabs and
+  // Retry never do, so the showcase retains across non-card focus
+  // automatically (AE4) and across stack push/pop (state lives up here, not
+  // in the rails). The committed card now drives BOTH the billboard copy and
+  // the full-screen backdrop.
   const [showcase, dispatchShowcase] = useReducer(
     showcaseReducer,
     INITIAL_SHOWCASE_STATE,
@@ -154,13 +154,12 @@ export default function HomeScreen() {
 
   // ── Browse state + row-anchored scrolling ──
   // Focused row index → "top" | "browse" | "deep" (homeScrollState.ts) drives
-  // the backdrop's deep scrim, the top bar's hide, and the hero actions'
-  // ghosting. Scrolling is row-anchored, not free: each shelf reports its
-  // content y via onLayout; focusing a card in row r >= 1 pins that shelf
-  // near the viewport top, while row 0 / hero actions / tabs pin the feed to
-  // 0 (the old featured-rail scroll-to-top behavior folds in here). The
-  // scroll is immediate (not debounced) — it must track the traversal, not
-  // the settled card.
+  // the backdrop's deep scrim and the top bar's hide. Scrolling is
+  // row-anchored, not free: each shelf reports its content y via onLayout;
+  // focusing a card in row r >= 1 pins that shelf near the viewport top, while
+  // row 0 / the top bar tabs pin the feed to 0 (the old featured-rail
+  // scroll-to-top behavior folds in here). The scroll is immediate (not
+  // debounced) — it must track the traversal, not the settled card.
   const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
   const scrollRef = useRef<ScrollView | null>(null)
   const rowYsRef = useRef<number[]>([])
@@ -201,7 +200,7 @@ export default function HomeScreen() {
     [scrollToRow],
   )
 
-  // Tab bar / hero actions focus: pin to the top state.
+  // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
     setBrowseState(resolveBrowseState(null))
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -241,7 +240,6 @@ export default function HomeScreen() {
 
   // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
   // seeded for instant first paint. Null path (no slug) is a no-op press.
-  // The billboard's Play and More Info actions route the same way.
   const handleCardPress = useCallback(
     (card: WatchHomeCard) => {
       const path = resolveHomeCardPath(card)
@@ -254,6 +252,14 @@ export default function HomeScreen() {
     router.push("/search")
   }, [router])
 
+  // The Search tab's native node, lifted from HomeTopBar so the featured rail
+  // can target it via nextFocusUp: the tab bar is centered, so the rail's
+  // left/right-most cards have no focusable directly above them and D-pad up
+  // dead-ends there (the focus engine finds nothing in the up projection).
+  // State (not a ref) so the rail re-renders once the node mounts — the same
+  // ref-as-state contract MissionSection uses for its QR destination.
+  const [searchTabNode, setSearchTabNode] = useState<ViewType | null>(null)
+
   // The top bar (brandmark · Search/Home tabs · clock). Rendered in every
   // state — including loading, error and empty — so Search stays reachable
   // while the home model resolves; in the content state it is the sticky
@@ -265,6 +271,7 @@ export default function HomeScreen() {
       searchTabPreferredFocus={searchTabFocusKey > 0}
       onSearchPress={handleSearchPress}
       onChromeFocus={handleChromeFocus}
+      onSearchTabNode={setSearchTabNode}
     />
   )
 
@@ -329,10 +336,10 @@ export default function HomeScreen() {
   // ── Content ──
   // The non-focusable backdrop sits absolutely behind ONE full-screen
   // ScrollView whose sticky first child is the top bar: the tvOS focus
-  // engine cannot traverse a parent-View boundary, so tab↔hero↔rail D-pad
-  // traversal relies on the top bar, billboard actions, and rails being
-  // siblings in the same scroll container — the structure the previous home
-  // shipped with (R14/AE6). If traversal ever proves unreliable, the
+  // engine cannot traverse a parent-View boundary, so tab↔rail D-pad
+  // traversal relies on the top bar and rails being siblings in the same
+  // scroll container — the structure the previous home shipped with
+  // (R14/AE6). If traversal ever proves unreliable, the
   // documented fallback is TVFocusGuideView destinations in both directions
   // (tv-focus-driven-hero-patterns-20260420.md §3).
   return (
@@ -354,12 +361,7 @@ export default function HomeScreen() {
       >
         <View>{topBar}</View>
 
-        <HomeBillboard
-          card={showcase.current}
-          actionsGhosted={areHeroActionsGhosted(browseState)}
-          onChromeFocus={handleChromeFocus}
-          onCardPress={handleCardPress}
-        />
+        <HomeBillboard card={showcase.current} />
 
         <View onLayout={rowLayoutHandlers[0]}>
           <HomeRail
@@ -370,6 +372,9 @@ export default function HomeScreen() {
             onCardFocus={handleCardFocus}
             onRowFocus={handleRowFocus}
             onCardPress={handleCardPress}
+            // Only the featured rail sits under the top bar; section rails
+            // (rows >= 1) reach the full-width rail above them natively.
+            upFocusTarget={searchTabNode}
           />
         </View>
 

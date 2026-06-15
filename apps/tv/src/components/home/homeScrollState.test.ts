@@ -1,5 +1,4 @@
 import {
-  areHeroActionsGhosted,
   deepScrimOpacity,
   isTopBarHidden,
   resolveBrowseState,
@@ -94,13 +93,5 @@ describe("isTopBarHidden", () => {
     expect(isTopBarHidden("top")).toBe(false)
     expect(isTopBarHidden("browse")).toBe(false)
     expect(isTopBarHidden("deep")).toBe(true)
-  })
-})
-
-describe("areHeroActionsGhosted", () => {
-  it("ghosts whenever focus is in a row", () => {
-    expect(areHeroActionsGhosted("top")).toBe(false)
-    expect(areHeroActionsGhosted("browse")).toBe(true)
-    expect(areHeroActionsGhosted("deep")).toBe(true)
   })
 })
