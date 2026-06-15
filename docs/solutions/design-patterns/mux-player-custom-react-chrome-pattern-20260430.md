@@ -527,6 +527,11 @@ useEffect(() => {
 
 iPhone Safari does **not** allow fullscreen on arbitrary elements like the wrapper `div` — only the inner `<video>` element via `videoEl.webkitEnterFullscreen()`. The webkit-prefixed fallbacks above cover desktop Safari and iPad, but iPhone-specific full-fullscreen still needs to delegate to the `<video>` element directly. **Verify on real device hardware** before claiming iPhone fullscreen works.
 
+When adding that video-element fallback, branch on wrapper method availability
+rather than the wrapper method's return value. Older WebKit fullscreen methods
+can return `void`; a handler that falls through on an `undefined` return may
+call both `wrapper.webkitRequestFullscreen()` and `video.webkitEnterFullscreen()`.
+
 ### Volume slider with pointer capture + lost-capture safety
 
 ```tsx

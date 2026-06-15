@@ -38,6 +38,37 @@ const CHROME_INITIAL_POINTER_LOCK_MS = 5000
 
 type ChromeVisibility = "dim" | "hidden" | "bright"
 
+type WebKitFullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null
+  webkitExitFullscreen?: () => Promise<void> | void
+}
+
+type WebKitFullscreenWrapper = HTMLDivElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void
+}
+
+type WebKitFullscreenVideo = HTMLVideoElement & {
+  webkitDisplayingFullscreen?: boolean
+  webkitEnterFullscreen?: () => void
+  webkitExitFullscreen?: () => void
+}
+
+function getWebKitFullscreenVideo(
+  player: MuxPlayerRef | null,
+): WebKitFullscreenVideo | null {
+  if (!player) return null
+
+  if (player instanceof HTMLVideoElement) {
+    return player as WebKitFullscreenVideo
+  }
+
+  const host = player as unknown as { shadowRoot?: ShadowRoot | null }
+  const video = host.shadowRoot?.querySelector("video")
+  return video instanceof HTMLVideoElement
+    ? (video as WebKitFullscreenVideo)
+    : null
+}
+
 export function HeroPlayerControls({
   player,
   playerRef,
@@ -523,12 +554,12 @@ export function HeroPlayerControls({
   const toggleFullscreen = useCallback(() => {
     const wrapper = wrapperRef.current
     if (!wrapper) return
-    const doc = document as Document & {
-      webkitFullscreenElement?: Element | null
-      webkitExitFullscreen?: () => Promise<void> | undefined
-    }
-    const wrapperEl = wrapper as HTMLDivElement & {
-      webkitRequestFullscreen?: () => Promise<void> | undefined
+    const doc = document as WebKitFullscreenDocument
+    const wrapperEl = wrapper as WebKitFullscreenWrapper
+    const videoEl = getWebKitFullscreenVideo(playerRef.current)
+    if (videoEl?.webkitDisplayingFullscreen) {
+      videoEl.webkitExitFullscreen?.()
+      return
     }
     const isFs = !!(document.fullscreenElement ?? doc.webkitFullscreenElement)
     if (isFs) {
@@ -539,15 +570,20 @@ export function HeroPlayerControls({
         })
       }
     } else {
-      const req =
-        wrapperEl.requestFullscreen?.() ?? wrapperEl.webkitRequestFullscreen?.()
-      if (req && typeof req.then === "function") {
-        req.catch((err: unknown) => {
-          console.warn("[HeroPlayer] requestFullscreen rejected", err)
-        })
+      const requestFullscreen =
+        wrapperEl.requestFullscreen ?? wrapperEl.webkitRequestFullscreen
+      if (requestFullscreen) {
+        const req = requestFullscreen.call(wrapperEl)
+        if (req && typeof req.then === "function") {
+          req.catch((err: unknown) => {
+            console.warn("[HeroPlayer] requestFullscreen rejected", err)
+          })
+        }
+        return
       }
+      videoEl?.webkitEnterFullscreen?.()
     }
-  }, [wrapperRef])
+  }, [playerRef, wrapperRef])
 
   // Compute the 0..1 scrub fraction for a clientX within the timeline rect.
   // Clamped at the edges so dragging past the bar's bounds still produces a

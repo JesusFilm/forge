@@ -1002,7 +1002,7 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
     expect(routerPushMock).toHaveBeenCalledWith("/the-call.html/spanish.html")
   })
 
-  it("releases the navigation guard after the safety timeout (~5s)", () => {
+  it("keeps the switching state after the old safety timeout window", () => {
     vi.useFakeTimers()
     try {
       renderModal({ open: true, variants: baseVariants })
@@ -1024,18 +1024,24 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
         '[data-testid="watch-language-picker-apply"]',
       ) as HTMLButtonElement
       expect(apply.disabled).toBe(true)
+      expect(apply.textContent).toContain("Switching...")
 
-      // Advance past the 5s safety timeout. With currentLanguageSlug
-      // never updating (no parent rerender simulates the cookie/redirect
-      // stuck-navigating scenario), the guard otherwise stays set.
+      // Advance past the old 5s safety-timeout window. The UI must not
+      // claim the switch is idle while the App Router transition can still
+      // commit and close the modal later.
       act(() => {
         vi.advanceTimersByTime(5001)
       })
       apply = $(
         '[data-testid="watch-language-picker-apply"]',
       ) as HTMLButtonElement
-      expect(apply.disabled).toBe(false)
-      expect(apply.textContent).toContain("Apply")
+      expect(apply.disabled).toBe(true)
+      expect(apply.textContent).toContain("Switching...")
+
+      act(() => {
+        apply.click()
+      })
+      expect(routerPushMock).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
     }

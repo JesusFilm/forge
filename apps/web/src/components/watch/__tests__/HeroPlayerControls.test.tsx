@@ -285,6 +285,137 @@ describe("HeroPlayerControls — portal target swap on fullscreen", () => {
   })
 })
 
+describe("HeroPlayerControls — fullscreen button behavior", () => {
+  function renderFullscreenFixture(player: MuxPlayerRef = makePlayer()) {
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: player,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayerControls
+          player={playerRef.current}
+          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+          overlayAnchor={overlayAnchor}
+        />,
+      )
+    })
+
+    const fullscreenButton = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-fullscreen"]',
+    ) as HTMLButtonElement
+
+    return { fullscreenButton, overlayAnchor, wrapperEl }
+  }
+
+  it("requests fullscreen on the wrapper when the standard API is available", async () => {
+    const requestFullscreen = vi.fn(() => Promise.resolve())
+    const { fullscreenButton, wrapperEl } = renderFullscreenFixture()
+    Object.defineProperty(wrapperEl, "requestFullscreen", {
+      configurable: true,
+      value: requestFullscreen,
+    })
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not fall through to video fullscreen when a wrapper API returns void", async () => {
+    const videoEl = document.createElement("video") as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void
+    }
+    const webkitRequestFullscreen = vi.fn(() => undefined)
+    const webkitEnterFullscreen = vi.fn()
+    Object.defineProperty(videoEl, "webkitEnterFullscreen", {
+      configurable: true,
+      value: webkitEnterFullscreen,
+    })
+    const { fullscreenButton, wrapperEl } = renderFullscreenFixture(
+      videoEl as unknown as MuxPlayerRef,
+    )
+    Object.defineProperty(wrapperEl, "webkitRequestFullscreen", {
+      configurable: true,
+      value: webkitRequestFullscreen,
+    })
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(webkitRequestFullscreen).toHaveBeenCalledTimes(1)
+    expect(webkitEnterFullscreen).not.toHaveBeenCalled()
+  })
+
+  it("falls back to native WebKit video fullscreen when wrapper fullscreen is unavailable", async () => {
+    const videoEl = document.createElement("video") as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void
+    }
+    const webkitEnterFullscreen = vi.fn()
+    Object.defineProperty(videoEl, "webkitEnterFullscreen", {
+      configurable: true,
+      value: webkitEnterFullscreen,
+    })
+    const { fullscreenButton } = renderFullscreenFixture(
+      videoEl as unknown as MuxPlayerRef,
+    )
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(webkitEnterFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it("exits native WebKit video fullscreen when the video is already fullscreen", async () => {
+    const videoEl = document.createElement("video") as HTMLVideoElement & {
+      webkitDisplayingFullscreen?: boolean
+      webkitEnterFullscreen?: () => void
+      webkitExitFullscreen?: () => void
+    }
+    const webkitEnterFullscreen = vi.fn()
+    const webkitExitFullscreen = vi.fn()
+    Object.defineProperties(videoEl, {
+      webkitDisplayingFullscreen: {
+        configurable: true,
+        value: true,
+      },
+      webkitEnterFullscreen: {
+        configurable: true,
+        value: webkitEnterFullscreen,
+      },
+      webkitExitFullscreen: {
+        configurable: true,
+        value: webkitExitFullscreen,
+      },
+    })
+    const { fullscreenButton } = renderFullscreenFixture(
+      videoEl as unknown as MuxPlayerRef,
+    )
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(webkitExitFullscreen).toHaveBeenCalledTimes(1)
+    expect(webkitEnterFullscreen).not.toHaveBeenCalled()
+  })
+})
+
 describe("HeroPlayerControls — chrome layout", () => {
   it("lets the custom chrome span the full portal width", () => {
     const wrapperEl = document.createElement("div")

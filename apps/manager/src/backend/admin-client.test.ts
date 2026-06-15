@@ -3,6 +3,24 @@ import { AdminGraphqlClient } from "./admin-client"
 
 const fetchMock = vi.fn()
 
+function managerJobPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "admin-job-test",
+    muxAssetId: "asset-test",
+    muxPlaybackId: "playback-test",
+    languages: [],
+    options: {},
+    status: "completed",
+    retries: 0,
+    createdAt: "2026-05-06T00:00:00.000Z",
+    updatedAt: "2026-05-06T00:00:00.000Z",
+    artifacts: {},
+    steps: [],
+    errors: [],
+    ...overrides,
+  }
+}
+
 describe("AdminGraphqlClient", () => {
   beforeEach(() => {
     fetchMock.mockReset()
@@ -293,25 +311,68 @@ describe("AdminGraphqlClient", () => {
     })
   })
 
-  it("rejects invalid Manager job payloads at the Admin boundary", async () => {
+  it("accepts Shorts Studio workflow steps in Manager job lists", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           data: {
-            managerJob: {
-              id: "admin-job-bad",
-              muxAssetId: "asset-bad",
-              muxPlaybackId: "playback-bad",
-              languages: [],
-              options: {},
-              status: "queued",
-              retries: 0,
-              createdAt: "2026-05-06T00:00:00.000Z",
-              updatedAt: "2026-05-06T00:00:00.000Z",
-              artifacts: {},
-              steps: [],
-              errors: [],
-            },
+            managerJobs: [
+              managerJobPayload({
+                id: "shorts-prepare-job",
+                status: "running",
+                currentStep: "shorts_prepare",
+                options: { shorts: { assetId: "asset-short" } },
+                steps: [
+                  {
+                    name: "shorts_prepare",
+                    status: "running",
+                    retries: 0,
+                    startedAt: "2026-06-12T00:00:00.000Z",
+                  },
+                ],
+              }),
+              managerJobPayload({
+                id: "shorts-render-job",
+                status: "running",
+                currentStep: "shorts_render",
+                options: { shorts: { assetId: "asset-short" } },
+                steps: [
+                  {
+                    name: "shorts_prepare",
+                    status: "completed",
+                    retries: 0,
+                  },
+                  {
+                    name: "shorts_render",
+                    status: "running",
+                    retries: 0,
+                  },
+                  {
+                    name: "shorts_mux_output",
+                    status: "pending",
+                    retries: 0,
+                  },
+                ],
+              }),
+              managerJobPayload({
+                id: "shorts-mux-job",
+                status: "running",
+                currentStep: "shorts_mux_output",
+                options: { shorts: { assetId: "asset-short" } },
+                steps: [
+                  {
+                    name: "shorts_render",
+                    status: "completed",
+                    retries: 0,
+                  },
+                  {
+                    name: "shorts_mux_output",
+                    status: "running",
+                    retries: 0,
+                  },
+                ],
+              }),
+            ],
           },
         }),
       ),
@@ -322,6 +383,198 @@ describe("AdminGraphqlClient", () => {
       fetchImpl: fetchMock,
     })
 
+    await expect(client.listJobs()).resolves.toEqual([
+      expect.objectContaining({
+        id: "shorts-prepare-job",
+        currentStep: "shorts_prepare",
+        steps: [expect.objectContaining({ name: "shorts_prepare" })],
+      }),
+      expect.objectContaining({
+        id: "shorts-render-job",
+        currentStep: "shorts_render",
+        steps: expect.arrayContaining([
+          expect.objectContaining({ name: "shorts_render" }),
+          expect.objectContaining({ name: "shorts_mux_output" }),
+        ]),
+      }),
+      expect.objectContaining({
+        id: "shorts-mux-job",
+        currentStep: "shorts_mux_output",
+        steps: expect.arrayContaining([
+          expect.objectContaining({ name: "shorts_mux_output" }),
+        ]),
+      }),
+    ])
+  })
+
+  it("rejects unknown Manager job current steps in list and detail payloads", async () => {
+    const invalidCurrentStepPayload = managerJobPayload({
+      currentStep: "future_unknown_step",
+      steps: [
+        {
+          name: "shorts_prepare",
+          status: "running",
+          retries: 0,
+        },
+      ],
+    })
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJobs: [invalidCurrentStepPayload],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJob: invalidCurrentStepPayload,
+            },
+          }),
+        ),
+      )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(client.listJobs()).rejects.toThrow(
+      "invalid Manager job list payload",
+    )
+    await expect(client.getJob("admin-job-test")).rejects.toThrow(
+      "invalid Manager job payload",
+    )
+  })
+
+  it("rejects unknown Manager job step entries in list and detail payloads", async () => {
+    const invalidStepNamePayload = managerJobPayload({
+      currentStep: "shorts_prepare",
+      steps: [
+        {
+          name: "future_unknown_step",
+          status: "running",
+          retries: 0,
+        },
+      ],
+    })
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJobs: [invalidStepNamePayload],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJob: invalidStepNamePayload,
+            },
+          }),
+        ),
+      )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(client.listJobs()).rejects.toThrow(
+      "invalid Manager job list payload",
+    )
+    await expect(client.getJob("admin-job-test")).rejects.toThrow(
+      "invalid Manager job payload",
+    )
+  })
+
+  it("rejects invalid Manager job step statuses in list and detail payloads", async () => {
+    const invalidStepStatusPayload = managerJobPayload({
+      steps: [
+        {
+          name: "shorts_prepare",
+          status: "blocked",
+          retries: 0,
+        },
+      ],
+    })
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJobs: [invalidStepStatusPayload],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJob: invalidStepStatusPayload,
+            },
+          }),
+        ),
+      )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(client.listJobs()).rejects.toThrow(
+      "invalid Manager job list payload",
+    )
+    await expect(client.getJob("admin-job-test")).rejects.toThrow(
+      "invalid Manager job payload",
+    )
+  })
+
+  it("rejects invalid Manager job statuses in list and detail payloads", async () => {
+    const invalidJobStatusPayload = managerJobPayload({
+      id: "admin-job-bad",
+      status: "queued",
+    })
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJobs: [invalidJobStatusPayload],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJob: invalidJobStatusPayload,
+            },
+          }),
+        ),
+      )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(client.listJobs()).rejects.toThrow(
+      "invalid Manager job list payload",
+    )
     await expect(client.getJob("admin-job-bad")).rejects.toThrow(
       "invalid Manager job payload",
     )
