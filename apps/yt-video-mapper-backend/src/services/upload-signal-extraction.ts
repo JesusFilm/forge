@@ -190,13 +190,42 @@ function normalizeSubtitleText(value: string): string {
     .filter((line) => line.length > 0)
     .filter((line) => !/^WEBVTT(?:\s|$)/i.test(line))
     .filter((line) => !/^\d+$/.test(line))
-    .filter((line) => !/-->/.test(line))
+    .filter((line) => !isCueTimingLine(line))
     .filter((line) => !/^NOTE(?:\s|$)/i.test(line))
-    .map((line) => line.replace(/<[^>]*>/g, ""))
+    .map(removeSubtitleMarkup)
     .join(" ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 4_000)
+}
+
+function isCueTimingLine(line: string): boolean {
+  return line.includes("-->") || line.includes("--!>")
+}
+
+function removeSubtitleMarkup(line: string): string {
+  let plainText = ""
+  let insideMarkup = false
+
+  for (const character of line) {
+    if (character === "<") {
+      insideMarkup = true
+      plainText += " "
+      continue
+    }
+
+    if (insideMarkup) {
+      if (character === ">") {
+        insideMarkup = false
+        plainText += " "
+      }
+      continue
+    }
+
+    plainText += character
+  }
+
+  return plainText
 }
 
 function isMp4ContentType(contentType: string): boolean {

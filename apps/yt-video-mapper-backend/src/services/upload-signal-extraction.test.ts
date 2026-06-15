@@ -94,6 +94,21 @@ Amen`),
     expect(signals.transcriptText).toBe("Peace be with you Amen")
     expect(binarySignals.transcriptText).toBeUndefined()
   })
+
+  it("normalizes subtitle markup without preserving tag delimiters", async () => {
+    const signals = await new DeterministicUploadSignalExtractor().extract({
+      bytes: Buffer.from(`WEBVTT
+
+00:00:01.000 --!> 00:00:03.000
+<v Speaker> Peace <script>alert(1)</script> be with you
+<unclosed Amen`),
+      contentType: "text/vtt",
+    })
+
+    expect(signals.transcriptText).toBe("Peace alert(1) be with you")
+    expect(signals.transcriptText).not.toContain("<")
+    expect(signals.transcriptText).not.toContain(">")
+  })
 })
 
 function mp4WithMvhd({
