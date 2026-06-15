@@ -77,8 +77,13 @@ export default function SearchScreen() {
     [runQuery],
   )
 
-  const showResultsGrid = query.length > 0
-  const meta = resolveSearchMeta(state, results.length, query.length > 0)
+  // Trim so a whitespace-only query falls back to SearchBrowse rather than an
+  // empty results pane — matching useSemanticSearch, which gates its fetch on
+  // the trimmed length. (Not reachable via the on-screen keyboard today, but
+  // defensive for future input sources and keeps the two gates in lockstep.)
+  const hasQuery = query.trim().length > 0
+  const showResultsGrid = hasQuery
+  const meta = resolveSearchMeta(state, results.length, hasQuery)
 
   return (
     <View style={styles.screen}>

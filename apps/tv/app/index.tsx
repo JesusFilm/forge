@@ -292,6 +292,9 @@ export default function HomeScreen() {
           <Text style={styles.errorText}>Something went wrong</Text>
           <Text style={styles.errorDetail}>{error}</Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            accessibilityHint="Reloads the home feed"
             onFocus={() => setRetryFocused(true)}
             onBlur={() => setRetryFocused(false)}
             style={[

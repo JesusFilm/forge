@@ -3,6 +3,7 @@ import { resolveHomeScreenState } from "./homeScreenState"
 const CARD = { id: "card-1" }
 const MODEL = { featured: [CARD], sections: [] }
 const ZERO_CARD_MODEL = { featured: [], sections: [] }
+const SECTIONS_ONLY_MODEL = { featured: [], sections: [{ cards: [CARD] }] }
 
 describe("resolveHomeScreenState", () => {
   it("is loading while the initial fetch is in flight with no model", () => {
@@ -40,6 +41,19 @@ describe("resolveHomeScreenState", () => {
         model: MODEL,
         loading: false,
         error: "Couldn't load videos. Please try again.",
+      }),
+    ).toBe("content")
+  })
+
+  // The empty gate is featured.length === 0 AND sections.length === 0, so a
+  // sections-only model (hero pool unresolved, but a section resolved cards)
+  // is content. Pins the AND — flipping it to OR would wrongly blank the home.
+  it("is content for a model with sections but no featured cards", () => {
+    expect(
+      resolveHomeScreenState({
+        model: SECTIONS_ONLY_MODEL,
+        loading: false,
+        error: null,
       }),
     ).toBe("content")
   })

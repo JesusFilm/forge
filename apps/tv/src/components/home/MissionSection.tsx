@@ -85,7 +85,11 @@ export function MissionSection({ onQrFocus }: MissionSectionProps) {
               onQrFocus?.()
             }}
             onBlur={() => setQrFocused(false)}
-            accessibilityRole="button"
+            // role "image", not "button": the tile is focusable only so D-pad
+            // traversal can scroll the tail into view — Select does nothing
+            // (NO_ACTION). "button" would tell a screen reader it is
+            // actionable; "image" honestly names it (a QR you scan).
+            accessibilityRole="image"
             accessibilityLabel="Beta signup QR code"
             accessibilityHint={QR_SCAN_HINT}
             style={[styles.qrFocusable, qrFocused && styles.qrFocused]}

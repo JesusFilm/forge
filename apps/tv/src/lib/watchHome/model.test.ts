@@ -159,6 +159,33 @@ describe("buildWatchHomeModelFromVideos — sections", () => {
 
     expect(advent?.cards.map((card) => card.coreId)).toEqual(["11_Advent_ep1"])
   })
+
+  // cardEntriesForSource has two branches: limitChildren > 0 slices the
+  // source's children into cards (parent set), limitChildren 0 takes the
+  // parent record itself. collectionShowcaseSources (limitChildren 0) cover
+  // the parent branch above; collectionLumo (limitChildren 1, the
+  // home-collection-showcase-grid-vertical section) is the only slice-branch
+  // user and was untested — a 3-child source must yield exactly its first
+  // child as the card, never the parent collection.
+  it("slices a limitChildren source to its first child, not the parent", () => {
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        video("LUMOCollection", {
+          children: [
+            childRel("LUMO_ep1"),
+            childRel("LUMO_ep2"),
+            childRel("LUMO_ep3"),
+          ],
+        }),
+      ],
+    })
+    const lumoVertical = model.sections.find(
+      (s) => s.id === "home-collection-showcase-grid-vertical",
+    )
+
+    expect(lumoVertical?.cards.map((card) => card.coreId)).toEqual(["LUMO_ep1"])
+    expect(lumoVertical?.cards[0]?.parentCoreId).toBe("LUMOCollection")
+  })
 })
 
 describe("buildWatchHomeModelFromVideos — metaLabel", () => {

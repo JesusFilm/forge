@@ -107,6 +107,21 @@ describe("pickDefaultTrailer", () => {
     ).toBeNull()
     expect(pickDefaultTrailer(null)).toBeNull()
   })
+
+  // Chain order is device locale -> video primary -> English -> first. With no
+  // English dub (and a non-de/-fr test device locale), the video's primary
+  // language is the decider — the branch every other case skipped because they
+  // passed primaryLanguageBcp47: null and let the English/first arm win.
+  it("falls back to the video's primary language when the chain has no English", () => {
+    const german = langDub("d1", "german-standard", "de")
+    const french = langDub("d2", "french", "fr")
+    expect(
+      pickDefaultTrailer({
+        variants: [german, french],
+        primaryLanguageBcp47: "de",
+      }),
+    ).toBe(german)
+  })
 })
 
 describe("resolveLeafBounce", () => {
