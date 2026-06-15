@@ -1918,6 +1918,44 @@ The new solutions doc
 captures the architectural pattern (local-fallback storage trick,
 direct-invoke shape, prod-mapping-pull rationale).
 
+### Legacy OpenAI embedding cleanup
+
+Use this only after confirming the target database and backup posture. The CLI
+dry-runs by default and writes a JSON report under
+`.tmp/legacy-openai-embedding-cleanup/` unless `--report-out` is provided.
+
+```bash
+DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+pnpm --filter @forge/admin cleanup:legacy-openai-embeddings -- \
+  --target-env=development
+```
+
+The cleanup targets only known legacy OpenAI embeddings:
+`openai/text-embedding-3-small`, `text-embedding-3-small`, or OpenAI provider
+provenance where this schema stores it. It clears legacy scene and experience
+vectors in place, deletes transcript chunks whose parent transcript uses the
+legacy OpenAI model, and verifies or drops reverted `embedding_qwen`
+columns/indexes if a target database still has them. It does not use
+`chunking_version` as a selector and does not delete transcript parent rows,
+Manager artifacts, S3 objects, source media, or source transcript artifacts.
+
+Production execution is intentionally noisy and requires both an explicit
+production unlock and backup evidence:
+
+```bash
+DATABASE_URL='<production-admin-db-url>' \
+pnpm --filter @forge/admin cleanup:legacy-openai-embeddings -- \
+  --target-env=production \
+  --execute \
+  --allow-production-target \
+  --backup-evidence='<backup key or recovery point id>' \
+  --report-out=.tmp/legacy-openai-embedding-cleanup/prod-cleanup.json
+```
+
+Run a production dry-run first, inspect the report for ambiguous rows or
+blocked Qwen migration state, and only then execute. Re-embedding is a
+separate `run-embeds` operation after cleanup.
+
 ## Triggering embeds from manager
 
 Manager exposes thin REST proxies that forward to admin's existing

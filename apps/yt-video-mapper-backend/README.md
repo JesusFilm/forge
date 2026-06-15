@@ -54,6 +54,30 @@ Optional runtime settings:
 - `MEDIA_INDEX_RESUME_AFTER_VARIANT_ID` resumes after a stored
   `CatalogVariant.id` cursor
 
+## Matching
+
+`/match-jobs` uses local mapper state only. The default server extracts
+deterministic uploaded-video signals, retrieves against `MediaSignature` rows
+for the configured `MEDIA_SIGNATURE_ALGORITHM_VERSION`, joins active
+`CatalogVariant` metadata, and returns public candidates with:
+
+- `coreId`
+- `videoVariantId`
+- `confidence`
+- `matchStrength`
+
+The first matcher uses deterministic structural byte-sample evidence as the
+source-video anchor, plus duration and optional text/audio evidence when real
+source data exists. It does not synthesize audio fingerprints.
+
+Before production smoke tests can return non-empty candidates, run:
+
+```sh
+pnpm --filter @forge/yt-video-mapper-backend db:migrate:deploy
+pnpm --filter @forge/yt-video-mapper-backend sync:catalog
+pnpm --filter @forge/yt-video-mapper-backend index:media
+```
+
 ## Current Artifacts
 
 - `docs/brainstorms/video-source-mapper-requirements.md`

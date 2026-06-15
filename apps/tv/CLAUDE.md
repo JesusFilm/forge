@@ -27,9 +27,15 @@ Admin GraphQL → gql.tada typed query → normalizer (adds `kind`) → dispatch
 - **Dispatcher**: TV version with subset of block kinds
 - **Renderers**: All new, designed for 10-foot UI with D-pad focus
 
-## Design System: The Crimson Gallery
+## Design Systems
 
-All UI follows the Crimson Gallery design system from the Stitch mockups:
+The TV app runs two coexisting design systems. Which one applies depends on the
+surface.
+
+### Crimson Gallery (`COLORS` in `src/lib/colors.ts`)
+
+Governs the SDUI experience renderer, series, and the remaining legacy surfaces.
+From the Stitch mockups:
 
 - Background: `#161311` (warm stone, never pure black)
 - Surface container: `#221F1D`
@@ -42,6 +48,21 @@ All UI follows the Crimson Gallery design system from the Stitch mockups:
 - 16px border radius on cards
 - Focus state: 1.05x scale + crimson glow
 
+### WATCH_THEME (`src/components/watch/watchDetailTheme.ts`)
+
+Governs the watch detail, Home, and Search screens. Ported from the Claude
+Design handoff and adopted across those surfaces — a deliberate product decision:
+
+- Primary accent: `#E1241E` (brighter red than Crimson Gallery)
+- Near-black surfaces/scrims (`NEAR_BLACK` = `#0a0a0b`); never warm stone
+- Focus state: white-fill focus with near-black ink (white ring, not crimson glow)
+- Frosted-glass pills approximated with translucent white fill (no backdrop blur on TV)
+
+`SEARCH_THEME` (`src/components/search/searchTheme.ts`) extends WATCH_THEME with
+search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
+
+- Font: System (SF Pro on tvOS, Roboto on Android TV)
+
 ## Conventions
 
 - Build with `EXPO_TV=1 npx expo prebuild --clean` before running.
@@ -52,10 +73,17 @@ All UI follows the Crimson Gallery design system from the Stitch mockups:
 - Composite React keys: `key={\`${item.kind}-${item.id}-${index}\`}`.
 - Hardcoded English locale: `{ locale: "en" }` for all GraphQL queries.
 
+## Test builds & distribution
+
+- EAS profiles live in `apps/tv/eas.json`; every profile sets `EXPO_TV: "1"` so the
+  managed prebuild produces a TV target (native dirs are gitignored).
+- Getting stakeholder test builds onto real Apple TV / Android TV: see `DISTRIBUTION.md`
+  (Android = `--profile preview` APK link; Apple TV = TestFlight via `eas submit`).
+
 ## TV-Specific Patterns
 
 - Every interactive element must be focusable via D-pad.
-- Visible focus ring (crimson glow) on focused elements.
+- Visible focus ring on focused elements: crimson glow on Crimson Gallery surfaces, white ring on WATCH_THEME surfaces (watch detail, Home, Search).
 - `TVFocusGuideView` to constrain focus within horizontal rails.
 - `hasTVPreferredFocus` for initial focus control and back-navigation focus restore.
 - Stack navigation only: Home → Experience Detail → Video Playback.

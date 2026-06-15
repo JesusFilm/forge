@@ -7,6 +7,12 @@ import {
   MatchJobService,
   type Matcher,
 } from "../services/match-job.service.js"
+import {
+  InMemoryMediaSignatureMatchRepository,
+  MediaSignatureMatcher,
+  type MatchableMediaSignature,
+} from "../services/media-signature-matcher.js"
+import { DeterministicUploadSignalExtractor } from "../services/upload-signal-extraction.js"
 import type {
   UploadSignalExtractor,
   UploadSignals,
@@ -111,6 +117,35 @@ describe("match jobs route", () => {
     })
   })
 
+  it("processes a queued job through real extraction and matching", async () => {
+    const { request } = createHarness({
+      service: createRealMatcherService(),
+    })
+    const created = await request(
+      "POST",
+      "/match-jobs",
+      Buffer.from([1, 2, 3, 4]),
+    )
+    const jobId = String(created.body.jobId)
+
+    const response = await request("POST", `/match-jobs/${jobId}/process`)
+
+    expect(response).toEqual({
+      statusCode: 200,
+      body: {
+        candidates: [
+          {
+            coreId: "core-jesus-film",
+            videoVariantId: "variant-en",
+            confidence: 1,
+            matchStrength: "high",
+          },
+        ],
+      },
+    })
+    expect(JSON.stringify(response.body)).not.toContain("evidence")
+  })
+
   it("rejects oversized uploads safely", async () => {
     const { request } = createHarness({ maxUploadBytes: 3 })
 
@@ -164,29 +199,33 @@ describe("match jobs route", () => {
 function createHarness({
   maxUploadBytes = 1_000,
   apiToken,
+  service,
 }: {
   maxUploadBytes?: number
   apiToken?: string
+  service?: MatchJobService
 } = {}) {
-  const service = new MatchJobService(
-    new InMemoryMatchJobRepository(),
-    new InMemoryUploadStorage(),
-    new StubExtractor({
-      visualHashes: ["frame-a"],
-      audioFingerprints: ["audio-a"],
-    }),
-    new StubMatcher([candidate]),
-    () => new Date("2026-06-08T00:00:00.000Z"),
-  )
+  const matchJobService =
+    service ??
+    new MatchJobService(
+      new InMemoryMatchJobRepository(),
+      new InMemoryUploadStorage(),
+      new StubExtractor({
+        visualHashes: ["frame-a"],
+        audioFingerprints: ["audio-a"],
+      }),
+      new StubMatcher([candidate]),
+      () => new Date("2026-06-08T00:00:00.000Z"),
+    )
   const handleRequest = createHandleRequest({
-    matchJobService: service,
+    matchJobService,
     autoProcessMatchJobs: false,
     maxUploadBytes,
     apiToken,
   })
 
   return {
-    service,
+    service: matchJobService,
     async request(
       method: string,
       url: string,
@@ -211,6 +250,25 @@ function createHarness({
   }
 }
 
+function createRealMatcherService(): MatchJobService {
+  return new MatchJobService(
+    new InMemoryMatchJobRepository(),
+    new InMemoryUploadStorage(),
+    new DeterministicUploadSignalExtractor(4),
+    new MediaSignatureMatcher(
+      new InMemoryMediaSignatureMatchRepository([
+        structuralSignature({
+          coreId: "core-jesus-film",
+          videoVariantId: "variant-en",
+          sha256:
+            "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a",
+        }),
+      ]),
+    ),
+    () => new Date("2026-06-08T00:00:00.000Z"),
+  )
+}
+
 class StubExtractor implements UploadSignalExtractor {
   constructor(private readonly signals: UploadSignals) {}
 
@@ -224,5 +282,39 @@ class StubMatcher implements Matcher {
 
   async match(): Promise<PublicMatchCandidate[]> {
     return this.candidates
+  }
+}
+
+function structuralSignature({
+  coreId,
+  videoVariantId,
+  sha256,
+}: {
+  coreId: string
+  videoVariantId: string
+  sha256: string
+}): MatchableMediaSignature {
+  return {
+    coreId,
+    videoVariantId,
+    signatureType: "STRUCTURAL_HINT",
+    offsetMilliseconds: 0,
+    durationMilliseconds: 120_000,
+    signature: {
+      kind: "structural_hint_v1",
+      byteSample: {
+        sha256,
+        byteLength: 4,
+        rangeStart: 0,
+        rangeEnd: 3,
+        complete: true,
+      },
+    },
+    catalogVariant: {
+      durationSeconds: 120,
+      lengthInMilliseconds: null,
+      languageSlug: "english",
+      locale: "en",
+    },
   }
 }

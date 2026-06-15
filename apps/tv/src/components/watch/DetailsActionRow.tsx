@@ -152,6 +152,7 @@ export function DetailsActionRow({
 // Focus eases in via useFocusAnimation's 0→1 `progress` (no "blink"): the pill
 // lifts + magnifies, and its highlight (Play's white ring; the secondary pills'
 // glass→white fill, drop shadow, and icon/text colour) cross-fades over ~180ms.
+// SecondaryPill is exported for reuse (SeriesActionRow's Language pill).
 
 const ICON_SIZE = Math.round(scale(30))
 
@@ -192,16 +193,18 @@ function PlayPill({
   )
 }
 
-function SecondaryPill({
+export function SecondaryPill({
   icon,
   label,
   sub,
   onPress,
+  hasTVPreferredFocus,
 }: {
   icon: IconName
   label: string
   sub?: string | null
   onPress: () => void
+  hasTVPreferredFocus?: boolean
 }) {
   const { setFocused, progress } = useFocusAnimation()
   // Memoized: progress is a stable ref, so the interpolations are built once
@@ -241,6 +244,7 @@ function SecondaryPill({
       onPress={onPress}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       // Fold the visible sub-value (current language / "On"/"Off") into the
       // label so VoiceOver and automated D-pad drivers can read the state

@@ -9,8 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
-import type { Route } from "next"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 
 import { runSearch } from "@/lib/search-actions"
@@ -44,6 +43,16 @@ type ActiveSearchSignature = {
   nextOffset: number
 }
 
+function buildCurrentSearchUrl(
+  pathname: string,
+  currentParams: URLSearchParams,
+): string {
+  const serializedParams = currentParams.toString()
+  return serializedParams.length > 0
+    ? `${pathname}?${serializedParams}`
+    : pathname
+}
+
 export type FloatingSearchControllerProps = {
   open: boolean
   closing: boolean
@@ -64,12 +73,10 @@ export function FloatingSearchController({
   children,
 }: FloatingSearchControllerProps) {
   const tSearchOverlay = useTranslations("SearchOverlay")
-  const router = useRouter()
-  // usePathname() returns the app-relative path (no basePath prefix). The
-  // router.replace() call auto-prefixes basePath, so feeding it
-  // window.location.pathname (which includes basePath) would double-prefix
-  // on every search. usePathname() does NOT force the Full Route Cache
-  // deopt that useSearchParams() would.
+  // usePathname() does NOT force the Full Route Cache deopt that
+  // useSearchParams() would. Keep it for route-language parsing, but use the
+  // browser pathname when mutating the visible ?q= URL below so deployments
+  // with a basePath keep their public path intact.
   const pathname = usePathname()
 
   // Whether the modal was opened via URL hydration (vs user click). Gates a
@@ -227,6 +234,16 @@ export function FloatingSearchController({
     [],
   )
 
+  const clearLoadingForRequest = useCallback((requestId: number): void => {
+    if (requestIdRef.current !== requestId) return
+    if (skeletonTimerRef.current) {
+      clearTimeout(skeletonTimerRef.current)
+      skeletonTimerRef.current = null
+    }
+    setShowSkeleton(false)
+    setLoading(false)
+  }, [])
+
   const search = useCallback(
     async (
       q: string,
@@ -247,15 +264,20 @@ export function FloatingSearchController({
       activeSearchSignatureRef.current = null
       setLoadingMore(false)
 
-      // URL sync — preserves any existing params (utm_*, etc.) and strips ?q=
-      // when the query is empty. Use usePathname() (app-relative) so
-      // router.replace's auto basePath prefix isn't applied twice.
       const currentParams =
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search)
           : new URLSearchParams()
-      const nextUrl = buildSearchUrl(pathname, currentParams, trimmed)
-      router.replace(nextUrl as Route)
+      const browserPathname =
+        typeof window !== "undefined" ? window.location.pathname : pathname
+      const nextUrl = buildSearchUrl(browserPathname, currentParams, trimmed)
+      if (nextUrl !== buildCurrentSearchUrl(browserPathname, currentParams)) {
+        // The search modal owns ?q= as client-side UI state. Using
+        // router.replace() here dispatches an App Router/RSC navigation, which
+        // can remount the overlay and clear a newer debounced search while the
+        // viewer is still typing.
+        window.history.replaceState(window.history.state, "", nextUrl)
+      }
 
       if (!trimmed) {
         if (displayResultsRef.current.length > 0) {
@@ -272,6 +294,7 @@ export function FloatingSearchController({
         setError(null)
         setResultSource(null)
         activeSearchSignatureRef.current = null
+        clearLoadingForRequest(thisRequest)
         return
       }
 
@@ -359,20 +382,16 @@ export function FloatingSearchController({
       } finally {
         // Only clear loading state for the winning request — otherwise a
         // stale response's finally would drop the active spinner mid-fetch.
-        if (requestIdRef.current === thisRequest) {
-          if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-          setShowSkeleton(false)
-          setLoading(false)
-        }
+        clearLoadingForRequest(thisRequest)
       }
     },
     [
+      clearLoadingForRequest,
       languageFacets,
       maybeSetLanguageFacets,
       pathname,
       refreshLanguageOptions,
       routeLanguageSlug,
-      router,
       setQuery,
       tSearchOverlay,
     ],

@@ -22,13 +22,7 @@ const SEARCH_SAFETY_TIMEOUT_MS = 12_000
 // without pulling React's ESM type declarations through babel.
 export const sanitizeQuery = sanitizeQueryImpl
 
-export type SearchState =
-  | "idle"
-  | "loading"
-  | "ready"
-  | "empty"
-  | "error"
-  | "degraded"
+export type SearchState = "idle" | "loading" | "ready" | "empty" | "error"
 
 type UseSemanticSearchResult = {
   state: SearchState
@@ -50,8 +44,8 @@ type UseSemanticSearchResult = {
    *  capture the prior `query` value because submit's useCallback hasn't
    *  re-baked with the new state yet. */
   runQuery: (q: string) => void
-  /** Re-run the last non-empty query. Used by the Retry button in
-   *  error / degraded states. */
+  /** Re-run the last non-empty query. Used by the Retry button in the
+   *  error state. */
   retry: () => void
 }
 
@@ -74,10 +68,9 @@ type UseSemanticSearchOptions = {
  *  - Empty query is a no-op: state returns to 'idle' and no network
  *    call fires.
  *
- * The 'degraded' state is entered when the CMS response's searchMode
- * is 'KEYWORD_ONLY' — signaling the OpenRouter embedding service is
- * unavailable and we should render a distinct "temporarily unavailable"
- * message instead of collapsing silently into "no results".
+ * When the backend serves keyword-only results (semantic retrieval
+ * unavailable), they flow through as a normal 'ready'/'empty' response —
+ * the TV app does not surface a separate degraded-mode message.
  */
 export function useSemanticSearch(
   query: string,
@@ -210,12 +203,10 @@ export function useSemanticSearch(
 
         // Apollo + gql.tada infer this as the SearchResponse derived
         // from SEMANTIC_SEARCH; no manual cast needed. Letting the
-        // schema flow through means a future tightening
-        // (e.g. searchMode -> string-literal union) trips tsc here
-        // instead of silently passing.
+        // schema flow through means a future field-type tightening trips
+        // tsc here instead of silently passing.
         const payload = response.data?.semanticSearch
         const items = payload?.results ?? []
-        const mode = payload?.searchMode
 
         if (__DEV__) {
           console.log("[search] response received:", {
@@ -223,7 +214,6 @@ export function useSemanticSearch(
             thisRequest,
             stale: requestIdRef.current !== thisRequest,
             mounted: mountedRef.current,
-            mode,
             count: items.length,
           })
         }
@@ -233,13 +223,9 @@ export function useSemanticSearch(
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
 
-        if (mode === "KEYWORD_ONLY") {
-          // Backend fell back to KEYWORD_ONLY retrieval (OpenRouter
-          // embedding unavailable). Render the distinct "temporarily
-          // unavailable" UX per R24.
-          setResults(items)
-          setState("degraded")
-        } else if (items.length === 0) {
+        // Keyword-only (semantic-unavailable) responses flow through as
+        // normal results — no separate degraded-mode UX.
+        if (items.length === 0) {
           setResults([])
           setState("empty")
         } else {

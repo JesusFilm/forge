@@ -6,7 +6,11 @@
 // defensively (self-filter + dedupe) so the Up Next rail is correct the moment
 // the inverted admin Video.parents/children relation is fixed — see KTD5.
 
-import type { WatchVideoData, WatchDubData } from "./videoQueries"
+import type {
+  WatchVideoData,
+  WatchDubData,
+  SeriesVideoData,
+} from "./videoQueries"
 import { pickLocalizedName } from "./pickLocalizedName"
 
 // ── Consumer types ─────────────────────────────────────────────────
@@ -59,6 +63,22 @@ export type WatchSibling = {
   posterUrl: string | null
 }
 
+// A child video of a series, rendered as a card in the episode rail — a
+// sibling-shaped card plus the locale text the 10-foot UI can surface on focus.
+export type WatchEpisode = WatchSibling & {
+  description: string | null
+  imageAlt: string | null
+}
+
+// One language the series' episodes are available in (server-aggregated union),
+// the feed for the series language panel. Identity is the unique `slug`, never
+// bcp47 — `ko` collides with `ko-kmr`.
+export type WatchChildLanguage = {
+  slug: string
+  name: string | null
+  bcp47: string | null
+}
+
 export type WatchStudyQuestion = {
   documentId: string
   value: string
@@ -92,6 +112,15 @@ export type WatchVideoRecord = {
   variants: WatchVariant[]
   studyQuestions: WatchStudyQuestion[]
   bibleCitations: WatchBibleCitation[]
+}
+
+// The series screen's record: the shared video record (trailer = the series'
+// own playable dub, exposed as streamingUrl/variants) plus the episode rail
+// and the language union. Produced only by normalizeSeries — the base record
+// stays as-is so WatchSessionProvider and the watch screen are untouched.
+export type WatchSeriesRecord = WatchVideoRecord & {
+  episodes: WatchEpisode[]
+  languages: WatchChildLanguage[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -130,6 +159,7 @@ function pickFirstLocale(
         title?: string | null
         description?: string | null
         snippet?: string | null
+        imageAlt?: string | null
       }[]
     | null
     | undefined,
@@ -137,9 +167,10 @@ function pickFirstLocale(
   title: string | null
   description: string | null
   snippet: string | null
+  imageAlt: string | null
 } {
   if (!locales || locales.length === 0)
-    return { title: null, description: null, snippet: null }
+    return { title: null, description: null, snippet: null, imageAlt: null }
   const loc = [...locales].sort((a, b) => {
     const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
     if (bySlug !== 0) return bySlug
@@ -149,6 +180,7 @@ function pickFirstLocale(
     title: loc.title ?? null,
     description: loc.description ?? null,
     snippet: loc.snippet ?? null,
+    imageAlt: loc.imageAlt ?? null,
   }
 }
 
@@ -352,4 +384,77 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
     studyQuestions,
     bibleCitations,
   }
+}
+
+// ── Series normalizer ──────────────────────────────────────────────
+
+type RawSeriesVideo = NonNullable<SeriesVideoData["videoBySlug"]>
+
+// Own-children → episode cards. Fix-tolerant per KTD5: the inverted admin
+// relation can surface self-references and duplicates today, so this
+// self-filters, dedupes, and yields [] rather than a broken rail — correct
+// the moment the relation is fixed, with no further change here.
+function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
+  const selfId = raw.documentId
+  const episodes = (raw.children ?? [])
+    .filter(
+      (rel): rel is typeof rel & { child: NonNullable<typeof rel.child> } =>
+        rel.child != null && rel.child.documentId !== selfId,
+    )
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((rel) => {
+      const locale = pickFirstLocale(rel.child.locales)
+      return {
+        documentId: rel.child.documentId ?? "",
+        slug: rel.child.slug ?? "",
+        label: rel.child.label ?? null,
+        title: locale.title,
+        description: locale.description,
+        imageAlt: locale.imageAlt,
+        posterUrl: pickPosterUrl(rel.child.images),
+      }
+    })
+  return dedupeByDocumentId(episodes)
+}
+
+// Language union, keyed on the unique slug (never bcp47 — ko/ko-kmr collide).
+function buildLanguages(raw: RawSeriesVideo): WatchChildLanguage[] {
+  const seen = new Set<string>()
+  const languages: WatchChildLanguage[] = []
+  for (const lang of raw.childDubLanguages ?? []) {
+    const slug = lang.slug
+    if (slug == null || slug === "" || seen.has(slug)) continue
+    seen.add(slug)
+    languages.push({
+      slug,
+      name: lang.name ? (pickLocalizedName(lang.name) ?? null) : null,
+      bcp47: lang.bcp47 ?? null,
+    })
+  }
+  return languages
+}
+
+// Memoize on the raw reference like normalizeVideo, so a cache-first re-entry
+// doesn't re-walk children/languages.
+const normalizeSeriesCache = new WeakMap<object, WatchSeriesRecord | null>()
+
+// Normalize a series Video: the shared video record (trailer = the series' own
+// playable dub, exposed as streamingUrl/variants) plus the series-only episode
+// rail and the language union that feeds the language panel.
+export function normalizeSeries(
+  raw: RawSeriesVideo | null | undefined,
+): WatchSeriesRecord | null {
+  if (raw == null || !raw.documentId) return null
+  const cached = normalizeSeriesCache.get(raw)
+  if (cached !== undefined) return cached
+  // RawSeriesVideo is a structural superset of RawVideo (it spreads WatchVideo),
+  // so the shared builder maps the common fields; episodes + languages attach on
+  // top.
+  const result: WatchSeriesRecord = {
+    ...buildWatchVideoRecord(raw),
+    episodes: buildEpisodes(raw),
+    languages: buildLanguages(raw),
+  }
+  normalizeSeriesCache.set(raw, result)
+  return result
 }

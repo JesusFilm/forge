@@ -76,6 +76,24 @@ An asynchronous attribution request that owns an uploaded media input until the 
 
 A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
 
+### Source Anchor Evidence
+
+Match evidence that supports which source Video an uploaded media input came
+from, before deciding which Dub or language-specific variant is most likely.
+
+Visual or structural media evidence usually acts as Source Anchor Evidence
+because re-upload metadata, audio language, and transcript text can drift while
+the underlying source footage stays recognizable.
+
+### Variant-Ranking Evidence
+
+Match evidence that helps choose the likely `videoVariantId` after Source
+Anchor Evidence has narrowed the source Video.
+
+Audio, text, language, and subtitle signals are usually Variant-Ranking
+Evidence: they can distinguish Dubs under the same source, but should not create
+a high-strength source attribution on their own.
+
 ## Search & embeddings
 
 ### Search Pipeline Mode
@@ -105,6 +123,22 @@ An evaluation or backfill approval artifact that binds quality evidence to a spe
 ### Semantic Evidence
 
 The content fragment that explains why a search result matched a query, such as a scene description or transcript chunk. Semantic Evidence belongs to retrieval, ranking, debug context, and optional timecodes; consumer card surfaces should render display metadata unless they are intentionally showing match context.
+
+### Manager Artifact
+
+A source-side output from Manager's media-processing pipelines that Admin can consume to build or rebuild search indexes.
+
+Manager artifacts are repair inputs, not the same thing as Admin's searchable vector rows.
+
+### Transcript Chunk
+
+A searchable segment of a video transcript stored separately from the transcript parent so retrieval and embedding workflows can operate at segment granularity.
+
+Deleting transcript chunks removes Admin's transcript search index for those segments but does not delete the transcript identity or Manager's source artifacts.
+
+### Embedding Backfill
+
+A controlled batch process that generates or regenerates vectors for existing content without changing the underlying source content.
 
 ## Known-caller auth
 
@@ -144,7 +178,15 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: it is empty on prod admin, and consumer clients' homes render the Home Curation instead — pointing all platforms back at a real Homepage Experience is a possible future consolidation, not the current state.
+
+### Home Curation
+
+The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Curation lives in code, not the CMS — changing the home's rows is a code release, not an admin edit. Each client (web, mobile, TV) carries the same set, so per-app copies must stay in sync.
+
+### Series-Shaped
+
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
 
 ## Home hero UI
 
@@ -178,6 +220,10 @@ The per-user memory of which videos the watch-home rotation has already shown, u
 The last successful watch-home content response a client keeps on device and paints immediately at the next launch while a live fetch revalidates in the background. It exists to mask a slow content resolver; it is only ever the first paint.
 
 An expired, shape-drifted, or empty Home Snapshot never paints — launch falls back to the loading state. When the live response matches the painted snapshot, the client keeps the painted view rather than rebuilding the Hero Queue; an empty live response never replaces a painted snapshot.
+
+### Focus-Driven Showcase
+
+The TV home's top-of-screen canvas that reflects whatever card currently holds D-pad focus — artwork, title, and description swap as focus moves through the rails. It defaults to the first featured item on load and retains the last focused card when focus leaves the rows. The inversion of an autoplay hero: the user's focus drives the canvas, and no background video player is mounted.
 
 ## Watch player UI
 

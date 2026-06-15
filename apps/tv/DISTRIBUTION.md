@@ -1,0 +1,121 @@
+# apps/tv — Test builds for external stakeholders
+
+How to get the TV app onto a stakeholder's Apple TV or Android TV / Google TV
+**without full store publishing**. Android is a sideloadable APK; Apple TV goes
+through TestFlight (tvOS cannot be casually sideloaded).
+
+All builds use EAS. The native `ios/`/`android/` dirs are gitignored, so EAS runs
+a fresh managed prebuild on its servers. `EXPO_TV=1` (set in every `eas.json`
+build profile) plus `isTV: true` in `app.json` guarantee a TV target, not a phone.
+
+## One-time setup (interactive — run these yourself)
+
+```bash
+cd apps/tv
+npx eas-cli login                 # sign in to the jesus-film-project account
+npx eas-cli init                  # creates the EAS project, writes extra.eas.projectId into app.json
+```
+
+The app reads its data URL at build time from `EXPO_PUBLIC_GRAPHQL_URL`
+(and optional `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`). These are embedded in the JS
+bundle, so a stakeholder build must point at **production admin**, not localhost.
+Set them as EAS environment variables per environment (do NOT commit them):
+
+```bash
+# point preview + production builds at prod admin GraphQL
+npx eas-cli env:create --environment preview    --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
+npx eas-cli env:create --environment production --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
+# add EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN the same way only if prod admin requires a token
+```
+
+## Android TV / Google TV — sideloadable APK (easiest, no review)
+
+```bash
+cd apps/tv
+npx eas-cli build --platform android --profile preview
+```
+
+EAS returns a public install URL for an **APK** (the `preview` profile forces
+`buildType: apk` and `distribution: internal`, so no device registration).
+Give stakeholders the link. They install it by either:
+
+- **Downloader app** (by AFTVnews, from the Play Store): open the EAS URL, install.
+- `adb connect <tv-ip>:5555 && adb install <file>.apk` over the network.
+- A Google Drive link → a file manager on the TV.
+
+First they must enable _Settings → Developer options → Install unknown apps_ for
+whichever app opens the APK.
+
+For managed invites/feedback instead of a raw link: upload the same APK to
+**Firebase App Distribution** (invite testers by email) or a **Play Console
+Internal testing** track (up to 100 testers, no public listing).
+
+## Apple TV (tvOS) — TestFlight (no full App Store review)
+
+tvOS sideloading via EAS internal distribution needs each Apple TV's UDID
+registered (ad-hoc) — painful for external people. Use TestFlight instead:
+
+### Gotcha: eas-cli creates an iOS provisioning profile for managed TV apps
+
+eas-cli (≤20.1.0) resolves the Apple platform from the native Xcode project's
+`SDKROOT`/`TARGETED_DEVICE_FAMILY`. With `ios/` gitignored (managed workflow)
+there is no Xcode project to read, so it silently defaults to **iOS** and creates
+an `IOS_APP_STORE` profile — the cloud build then fails with
+`Provisioning profile … has platforms "visionOS, watchOS, and iOS", which does
+not match the current platform "tvOS"`.
+
+One-time fix (only needed when [re]creating credentials, e.g. cert rotation):
+
+1. Temporarily comment out `ios/` in `apps/tv/.gitignore`
+2. `EXPO_TV=1 npx expo prebuild --clean -p ios --no-install`
+3. Run the interactive `eas build -p ios --profile production`; it now resolves
+   tvOS, flags the stored profile as missing from the tvOS list, and offers to
+   generate — say yes (reuse the org distribution certificate; never generate a
+   new cert, the team is capped at 2)
+4. After the build succeeds: restore `.gitignore`, `rm -rf ios/`
+
+The corrected tvOS profile persists on EAS servers; subsequent builds work in
+managed mode. Run them `--non-interactive` so eas-cli uses stored credentials
+as-is instead of re-resolving the platform (which would flip back to iOS).
+
+```bash
+cd apps/tv
+npx eas-cli build  --platform ios --profile production   # store-signed tvOS build
+npx eas-cli submit --platform ios --profile production   # uploads to App Store Connect → TestFlight
+```
+
+Requires the Apple Developer Program ($99/yr) and an App Store Connect app record
+for bundle id `org.jesusfilm.forgetv` (EAS can create the credentials interactively).
+
+- **Internal testing**: up to 100 testers who are members of your App Store
+  Connect team. No Beta App Review; builds are ready in minutes.
+- **External testing**: up to 10,000 testers via email or a public link. Requires
+  a one-time light Beta App Review per build train (much faster than full review).
+
+Testers install the **TestFlight** app on their Apple TV, sign in, and download.
+
+## Recommendation
+
+| Stakeholders | Android TV                         | Apple TV                                 |
+| ------------ | ---------------------------------- | ---------------------------------------- |
+| Inside JFP   | `--profile preview` APK link       | TestFlight internal (instant, no review) |
+| External     | `--profile preview` APK / Firebase | TestFlight external (light beta review)  |
+
+## App icons
+
+Assets live in `apps/tv/assets/` — the JFP "sign" mark (`jesusfilm-sign.svg`,
+`#EF3340`) centered on the Crimson Gallery field `#161311`. Wired in `app.json`
+via `expo.icon` (base) and the config-tv plugin's `appleTVImages` (all 7 brand
+assets) + `androidTVBanner` (the Android TV leanback tile).
+
+Two hard requirements when regenerating:
+
+- **Exact sizes, no alpha.** `@react-native-tvos/config-tv` requires ALL 7
+  `appleTVImages` to exist (`icon` 1280×768, `iconSmall` 400×240, `iconSmall2x`
+  800×480, `topShelf` 1920×720 + `2x` 3840×1440, `topShelfWide` 2320×720 + `2x`
+  4640×1440) and Apple rejects icons with an alpha channel. `sips` can't strip
+  alpha; generate with `sharp` (`.flatten().removeAlpha()`).
+- **Do NOT set the config-tv `androidTVIcon`.** It writes `ic_launcher.png` into
+  the same mipmaps where `expo.icon` writes `ic_launcher.webp`, so aapt2 fails the
+  Android build with "Duplicate resources". `expo.icon` already supplies the
+  launcher icon; the Android TV home tile uses `androidTVBanner`, not the icon.

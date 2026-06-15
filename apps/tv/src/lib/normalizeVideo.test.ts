@@ -1,4 +1,8 @@
-import { normalizeVideo, normalizeDubMedia } from "./normalizeVideo"
+import {
+  normalizeVideo,
+  normalizeSeries,
+  normalizeDubMedia,
+} from "./normalizeVideo"
 
 // ── Builders ────────────────────────────────────────────────────────
 //
@@ -394,6 +398,212 @@ describe("normalizeVideo — memoization (WeakMap on raw reference)", () => {
   it("a different raw reference produces a distinct record", () => {
     const a = normalizeVideo(makeRawVideo())
     const b = normalizeVideo(makeRawVideo())
+    expect(a).not.toBe(b)
+  })
+})
+
+// makeEpisodeRel builds one own-children[] entry ({ order, child }) for the
+// series fixture. Distinct from makeChild: the series query's child selection
+// also carries the relation order + locale description/imageAlt.
+function makeEpisodeRel(
+  documentId: string,
+  slug: string,
+  title: string,
+  order: number,
+) {
+  return {
+    order,
+    child: {
+      documentId,
+      slug,
+      label: "EPISODE",
+      locales: [
+        {
+          documentId: `${documentId}-loc`,
+          languageSlug: "english",
+          title,
+          description: `${title} description`,
+          imageAlt: `${title} art`,
+        },
+      ],
+      images: [
+        {
+          documentId: `${documentId}-img`,
+          url: null,
+          thumbnail: `https://img.example.com/${slug}.jpg`,
+          mobileCinematicHigh: null,
+          mobileCinematicLow: null,
+        },
+      ],
+    },
+  }
+}
+
+// makeRawSeries layers the series-only selections (own children +
+// childDubLanguages) over the base fixture. The series documentId stays
+// "vid-1", so a child with documentId "vid-1" is a self-reference.
+function makeRawSeries(overrides: Record<string, unknown> = {}) {
+  return {
+    ...(makeRawVideo() as object),
+    label: "SERIES",
+    children: [
+      makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2),
+      makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
+    ],
+    childDubLanguages: [
+      { slug: "english", name: { en: "English" }, bcp47: "en" },
+      { slug: "spanish", name: { en: "Spanish", es: "Español" }, bcp47: "es" },
+    ],
+    ...overrides,
+  } as Parameters<typeof normalizeSeries>[0]
+}
+
+describe("normalizeSeries — base record + trailer", () => {
+  it("returns null for null / undefined / identity-less input", () => {
+    expect(normalizeSeries(null)).toBeNull()
+    expect(normalizeSeries(undefined)).toBeNull()
+    expect(
+      normalizeSeries({ slug: "lonely" } as Parameters<
+        typeof normalizeSeries
+      >[0]),
+    ).toBeNull()
+  })
+
+  it("carries the shared video record: the series' own playable dub is the trailer", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.documentId).toBe("vid-1")
+    expect(result.label).toBe("SERIES")
+    expect(result.title).toBe("The Crucifixion")
+    expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
+    expect(result.variants).toHaveLength(2)
+  })
+})
+
+describe("normalizeSeries — episodes (own children)", () => {
+  it("sorts episodes by the relation order field, not input order", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.episodes.map((e) => e.slug)).toEqual([
+      "episode-1",
+      "episode-2",
+    ])
+  })
+
+  it("maps episode card fields including locale description/imageAlt and poster", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.episodes[0]).toEqual({
+      documentId: "ep-1",
+      slug: "episode-1",
+      label: "EPISODE",
+      title: "Episode One",
+      description: "Episode One description",
+      imageAlt: "Episode One art",
+      posterUrl: "https://img.example.com/episode-1.jpg",
+    })
+  })
+
+  // KTD5 fix-tolerance: the inverted admin relation surfaces self-references
+  // and duplicates today — both must vanish, never render.
+  it("filters a self-referencing child by documentId", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          makeEpisodeRel("vid-1", "the-crucifixion", "The Crucifixion", 1), // self
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 2),
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1"])
+  })
+
+  it("dedupes duplicate children by documentId, keeping the first by order", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
+          makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2),
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 3), // dup — collapse
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1", "ep-2"])
+  })
+
+  it("yields empty episodes for missing, null, or all-self children", () => {
+    expect(normalizeSeries(makeRawSeries({ children: [] }))!.episodes).toEqual(
+      [],
+    )
+    expect(
+      normalizeSeries(makeRawSeries({ children: null }))!.episodes,
+    ).toEqual([])
+    // Current (inverted) schema shape: only self-references → empty rail.
+    expect(
+      normalizeSeries(
+        makeRawSeries({
+          children: [
+            makeEpisodeRel("vid-1", "the-crucifixion", "The Crucifixion", 1),
+          ],
+        }),
+      )!.episodes,
+    ).toEqual([])
+  })
+
+  it("drops a relation whose child is null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          { order: 1, child: null },
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 2),
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1"])
+  })
+})
+
+describe("normalizeSeries — languages (childDubLanguages union)", () => {
+  it("maps the language union with localized names, keyed on slug", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.languages).toEqual([
+      { slug: "english", name: "English", bcp47: "en" },
+      { slug: "spanish", name: "Spanish", bcp47: "es" },
+    ])
+  })
+
+  it("dedupes on slug and skips entries with a missing/empty slug", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        childDubLanguages: [
+          { slug: "english", name: { en: "English" }, bcp47: "en" },
+          { slug: "english", name: { en: "English (dup)" }, bcp47: "en" },
+          { slug: null, name: { en: "Ghost" }, bcp47: "xx" },
+          { slug: "", name: { en: "Empty" }, bcp47: "yy" },
+        ],
+      }),
+    )!
+    expect(result.languages).toEqual([
+      { slug: "english", name: "English", bcp47: "en" },
+    ])
+  })
+
+  it("yields empty languages when childDubLanguages is missing", () => {
+    expect(
+      normalizeSeries(makeRawSeries({ childDubLanguages: null }))!.languages,
+    ).toEqual([])
+  })
+})
+
+describe("normalizeSeries — memoization (WeakMap on raw reference)", () => {
+  it("re-normalizing the same raw reference returns the memoized record", () => {
+    const raw = makeRawSeries()
+    const first = normalizeSeries(raw)
+    const second = normalizeSeries(raw)
+    expect(first).not.toBeNull()
+    expect(second).toBe(first) // referential identity proves the cache hit
+  })
+
+  it("a different raw reference produces a distinct record", () => {
+    const a = normalizeSeries(makeRawSeries())
+    const b = normalizeSeries(makeRawSeries())
     expect(a).not.toBe(b)
   })
 })
