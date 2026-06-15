@@ -63,13 +63,6 @@ export type LanguagePickerModalProps = {
   onRetryLanguageOptions?: () => void
 }
 
-// Safety cap on the in-flight navigation guard. router.push is fire-and-
-// forget; if the navigation never lands (offline, abort, cookie-driven
-// proxy redirect to a slug that doesn't match draftSlug), the modal-local
-// guard would otherwise stay set and disable Apply for the rest of the
-// session. After this timeout the guard releases so the user can retry.
-const NAVIGATING_TIMEOUT_MS = 5000
-
 const TOOLTIP_LANGUAGES = [
   { key: "english", dir: "ltr" },
   { key: "mandarin", dir: "ltr" },
@@ -416,7 +409,8 @@ export function LanguagePickerModal({
   // Track which slug we've dispatched a navigation toward. `navigating`
   // becomes false NATURALLY once the URL catches up — no setState in
   // effect required (React Compiler's anti-cascade rule is satisfied by
-  // construction). Set to null to force-release on safety timeout.
+  // construction). Keep this set while unresolved so the primary action
+  // never reverts to "Apply" before a slow route commit lands.
   const [pendingNavTo, setPendingNavTo] = useState<string | null>(null)
 
   // Synchronous double-click guard. `pendingNavTo` state alone is async
@@ -489,23 +483,10 @@ export function LanguagePickerModal({
 
   // Release the sync guard once the URL catches up. The ref-mirror effect
   // is the only path that touches `.inFlight = false` outside the open
-  // reset and timeout — fires once per slug change.
+  // reset — fires once per slug change.
   useEffect(() => {
     navigatingRef.current.inFlight = false
   }, [currentLanguageSlug])
-
-  // Safety timeout: if the navigation never lands (e.g. cookie-driven
-  // proxy redirect to a slug that doesn't match draftSlug, or router.push
-  // silently fails), release the guard and clear pendingNavTo so the user
-  // can retry. Re-armed whenever a new navigation starts.
-  useEffect(() => {
-    if (pendingNavTo === null) return
-    const timer = window.setTimeout(() => {
-      navigatingRef.current.inFlight = false
-      setPendingNavTo(null)
-    }, NAVIGATING_TIMEOUT_MS)
-    return () => window.clearTimeout(timer)
-  }, [pendingNavTo])
 
   const lastPrefetchedPathRef = useRef<string | null>(null)
   useEffect(() => {
