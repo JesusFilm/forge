@@ -1,20 +1,21 @@
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { useMemo } from "react"
-import { Animated, Pressable, StyleSheet, Text } from "react-native"
+import { useMemo, useState } from "react"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 
 import { scale } from "../../lib/scale"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import {
-  applyStripKey,
-  buildSearchStrip,
+  applyKey,
+  buildActionRow,
+  buildLetterRows,
+  type KeyAction,
+  type KeyCell,
   KEY_GAP,
-  KEY_HEIGHT,
-  KEY_WIDTH,
+  KEY_RADIUS,
+  KEY_SIZE,
   KEY_WIDTH_WIDE,
-  type StripKey,
-  type StripKeyAction,
-} from "./keyStrip"
+} from "./keyGrid"
 import { SEARCH_THEME } from "./searchTheme"
 
 type Props = {
@@ -24,71 +25,102 @@ type Props = {
 }
 
 /**
- * Single horizontal letter strip (design: .s-keys) — A–Z, then wide
- * space / delete / submit keys. Replaces the earlier multi-row QWERTY-ish
- * keyboard; digits and punctuation are gone per the design (the backend
- * search is forgiving enough that letter-only queries are the norm on TV).
+ * Grid search keyboard — a 6-column A–Z block (lowercase by default, an ABC
+ * shift toggle flips case) over an action row of shift · space · delete ·
+ * search, styled in the redesign's SEARCH_THEME (near-black keys, white-fill
+ * focus). Replaces the single-row letter strip; the grid is easier to scan
+ * and traverse on a 10-foot screen.
  *
- * Letters dispatch uppercase characters — see buildSearchStrip. All writes
- * route through onChange, which the parent sanitizes at the write site.
+ * Letter cells dispatch the character in the showing case (see keyGrid), so
+ * the typed query preserves case. All value writes route through onChange,
+ * which the parent sanitizes at the write site.
  */
 export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
-  const keys = useMemo(() => buildSearchStrip(), [])
+  // Lowercase default; persistent caps-lock-style toggle. Only future presses
+  // are affected — already-typed characters in `value` stay as they were.
+  const [isShifted, setIsShifted] = useState(false)
 
-  // Thin caller over applyStripKey (the tested pure reducer in keyStrip.ts):
-  // submit fires onSubmit; every value-mutating action forwards its non-null
-  // next-value to onChange. Guarded no-ops (space/backspace on empty) return
-  // null and fall through without touching onChange.
-  const dispatch = (action: StripKeyAction) => {
+  const letterRows = useMemo(() => buildLetterRows(isShifted), [isShifted])
+  const actionRow = useMemo(() => buildActionRow(isShifted), [isShifted])
+
+  // Thin caller over applyKey (the tested pure reducer): shift toggles the
+  // keyboard case (no value change); submit fires onSubmit; every
+  // value-mutating action forwards its non-null next value to onChange.
+  // Guarded no-ops (space/backspace on empty) return null and fall through.
+  const dispatch = (action: KeyAction) => {
+    if (action.kind === "shift") {
+      setIsShifted((prev) => !prev)
+      return
+    }
     if (action.kind === "submit") {
       onSubmit()
       return
     }
-    const next = applyStripKey(value, action)
+    const next = applyKey(value, action)
     if (next != null) onChange(next)
   }
 
-  // trapFocusLeft / trapFocusRight keep D-pad horizontal travel inside the
-  // strip (past-the-end presses stay put instead of escaping to offscreen
-  // chrome). Down exits naturally to the results region below; up has
-  // nothing above it by design.
+  // trapFocusLeft / trapFocusRight keep horizontal D-pad travel inside the
+  // grid (a past-the-edge press stays put rather than escaping to offscreen
+  // chrome). trapFocusDown stays open so D-pad-down from the bottom row exits
+  // to the results region below; mid-grid down moves to the next row by
+  // geometry. Up has nothing focusable above it (the query line is static).
   return (
-    <TVFocusGuideView style={styles.strip} trapFocusLeft trapFocusRight>
-      {keys.map((key, index) => (
-        <StripKeyButton
-          key={key.id}
-          cell={key}
-          // One-shot focus claim on entry: the "A" key. Only consulted on
-          // first mount; subsequent typing leaves focus on whichever key
-          // the user pressed last, which is what we want.
-          hasTVPreferredFocus={index === 0}
-          onPress={() => dispatch(key.action)}
-        />
+    <TVFocusGuideView
+      style={styles.keyboard}
+      trapFocusLeft
+      trapFocusRight
+      trapFocusDown={false}
+    >
+      {letterRows.map((row, rowIdx) => (
+        <View key={`letters-${rowIdx}`} style={styles.row}>
+          {row.map((cell, colIdx) => (
+            <KeyButton
+              key={cell.id}
+              cell={cell}
+              // One-shot focus claim on entry: the first letter ("a"/"A").
+              // Position-based so the case toggle doesn't move it. Only
+              // consulted on first mount; later typing leaves focus on the
+              // last-pressed key.
+              hasTVPreferredFocus={rowIdx === 0 && colIdx === 0}
+              onPress={() => dispatch(cell.action)}
+            />
+          ))}
+        </View>
       ))}
+
+      <View style={styles.row}>
+        {actionRow.map((cell) => (
+          <KeyButton
+            key={cell.id}
+            cell={cell}
+            hasTVPreferredFocus={false}
+            onPress={() => dispatch(cell.action)}
+          />
+        ))}
+      </View>
     </TVFocusGuideView>
   )
 }
 
-function StripKeyButton({
+function KeyButton({
   cell,
   hasTVPreferredFocus,
   onPress,
 }: {
-  cell: StripKey
+  cell: KeyCell
   hasTVPreferredFocus: boolean
   onPress: () => void
 }) {
-  // Focus pop driven by the shared useFocusAnimation hook (same as HomeCard
-  // / WatchOptionRow): one 0→1 `progress` feeds focusTransform, which stops
-  // the prior timing before starting the next so a rapid D-pad sweep can't
-  // orphan animations. `focused` gates the non-animated focus styles
-  // (background, ink color). The key only magnifies (no lift), so lift: 0.
+  // Focus pop via the shared useFocusAnimation hook (same as HomeCard /
+  // WatchOptionRow): one 0→1 progress feeds focusTransform, which stops the
+  // prior timing before starting the next so a rapid D-pad sweep can't orphan
+  // animations. `focused` gates the non-animated focus styles (white fill,
+  // ink color). Keys only magnify (no lift), so lift: 0.
   const { focused, setFocused, progress } = useFocusAnimation()
 
-  // Memoized: progress is a stable ref, so the interpolations are built once
-  // rather than on every focus/blur re-render.
   const keyTransform = useMemo(
-    () => focusTransform(progress, { lift: 0, magnify: 1.12 }),
+    () => focusTransform(progress, { lift: 0, magnify: 1.1 }),
     [progress],
   )
 
@@ -106,7 +138,7 @@ function StripKeyButton({
       <Animated.View
         style={[
           styles.key,
-          cell.wide && styles.keyWide,
+          cell.wide === true && styles.keyWide,
           focused && styles.keyFocused,
           { transform: keyTransform },
         ]}
@@ -114,7 +146,7 @@ function StripKeyButton({
         {cell.action.kind === "backspace" ? (
           <Ionicons
             name="backspace-outline"
-            size={scale(26)}
+            size={scale(28)}
             color={inkColor}
           />
         ) : (
@@ -128,14 +160,20 @@ function StripKeyButton({
 }
 
 const styles = StyleSheet.create({
-  strip: {
+  keyboard: {
+    flexDirection: "column",
+    gap: scale(KEY_GAP),
+    // Left-aligned block; the grid is narrower than the full content width.
+    alignItems: "flex-start",
+  },
+  row: {
     flexDirection: "row",
     gap: scale(KEY_GAP),
   },
   key: {
-    width: scale(KEY_WIDTH),
-    height: scale(KEY_HEIGHT),
-    borderRadius: scale(12),
+    width: scale(KEY_SIZE),
+    height: scale(KEY_SIZE),
+    borderRadius: scale(KEY_RADIUS),
     backgroundColor: SEARCH_THEME.keyBg,
     alignItems: "center",
     justifyContent: "center",
@@ -154,7 +192,7 @@ const styles = StyleSheet.create({
   },
   keyLabel: {
     fontFamily: "System",
-    fontSize: Math.round(scale(24)),
+    fontSize: Math.round(scale(26)),
     fontWeight: "600",
   },
 })
