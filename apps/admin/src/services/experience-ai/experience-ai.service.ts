@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, VideoLabel, type PrismaClient } from "@prisma/client"
 
 import { toPgVector } from "@/db/pgvector"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
@@ -14,6 +14,41 @@ export {
 const DEFAULT_CANDIDATE_LIMIT = 12
 const CANDIDATE_FETCH_WINDOW = 80
 const VECTOR_SEARCH_EF_SEARCH = 80
+
+// Web's videoHero plays only the HLS streamingUrl baked into the block at
+// authoring time (apps/web VideoHero hides the player when src is empty), so
+// AI candidates must carry at least one playable dub — published with a
+// non-empty HLS URL, mirroring web's isPlayableWatchVariant — and must not be
+// container entries (collections/series have nothing to play).
+const PLAYABLE_CANDIDATE_VIDEO_WHERE = {
+  deletedAt: null,
+  OR: [
+    { label: null },
+    { label: { notIn: [VideoLabel.COLLECTION, VideoLabel.SERIES] } },
+  ],
+  dubs: {
+    some: {
+      deletedAt: null,
+      published: true,
+      AND: [{ hls: { not: null } }, { NOT: { hls: "" } }],
+    },
+  },
+} satisfies Prisma.VideoWhereInput
+
+// Raw-SQL twin of PLAYABLE_CANDIDATE_VIDEO_WHERE for the semantic candidate
+// queries (alias `v` = video; enum literals are the lowercase DB values).
+// Keep both predicates in sync.
+const PLAYABLE_CANDIDATE_VIDEO_SQL = `
+          AND (v.label IS NULL OR v.label NOT IN ('collection', 'series'))
+          AND EXISTS (
+            SELECT 1
+            FROM video_dub pvd
+            WHERE pvd.video_id = v.id
+              AND pvd.deleted_at IS NULL
+              AND pvd.published = TRUE
+              AND pvd.hls IS NOT NULL
+              AND pvd.hls <> ''
+          )`
 
 type RankedCandidate = VideoCandidate & {
   score: number
@@ -115,8 +150,8 @@ export async function loadExperienceAiVideoCandidates(
   const videos = await prisma.video.findMany({
     where:
       semanticVideoIds.length > 0
-        ? { id: { in: semanticVideoIds }, deletedAt: null }
-        : { deletedAt: null },
+        ? { id: { in: semanticVideoIds }, ...PLAYABLE_CANDIDATE_VIDEO_WHERE }
+        : PLAYABLE_CANDIDATE_VIDEO_WHERE,
     select: {
       id: true,
       slug: true,
@@ -151,6 +186,7 @@ export async function loadExperienceAiVideoCandidates(
       where: { videoId: { in: videoIds }, deletedAt: null },
       select: {
         videoId: true,
+        published: true,
         hls: true,
         dash: true,
         share: true,
@@ -212,16 +248,23 @@ export async function loadExperienceAiVideoCandidates(
 
     const previewImageUrl =
       imagesByVideo.get(video.id)?.find((row) => row.url)?.url ?? null
+    const dubRows = dubsByVideo.get(video.id) ?? []
+    const localeMatches = (row: (typeof dubRows)[number]) =>
+      row.language?.bcp47 === locale ||
+      row.language?.iso3 === locale ||
+      row.language?.slug === locale
+    // Prefer a playable (published + HLS) dub in the request locale, then any
+    // locale-matched stream, then any playable dub — the last leg guarantees
+    // a non-empty streamingUrl for every candidate that passed
+    // PLAYABLE_CANDIDATE_VIDEO_WHERE, so generated videoHero blocks always
+    // bake a URL web can play.
     const preferredDub =
-      dubsByVideo
-        .get(video.id)
-        ?.find(
-          (row) =>
-            (row.hls || row.dash || row.share) &&
-            (row.language?.bcp47 === locale ||
-              row.language?.iso3 === locale ||
-              row.language?.slug === locale),
-        ) ?? null
+      dubRows.find((row) => row.published && row.hls && localeMatches(row)) ??
+      dubRows.find(
+        (row) => (row.hls || row.dash || row.share) && localeMatches(row),
+      ) ??
+      dubRows.find((row) => row.published && row.hls) ??
+      null
 
     const candidate = {
       ref: "",
@@ -319,7 +362,7 @@ async function loadSemanticVideoCandidateIds(
         JOIN video v ON v.id = vs.video_id
         WHERE vsl.embedding IS NOT NULL
           AND vsl.locale = ${locale}
-          AND v.deleted_at IS NULL
+          AND v.deleted_at IS NULL${Prisma.raw(PLAYABLE_CANDIDATE_VIDEO_SQL)}
         GROUP BY vs.video_id
       ),
       transcript_hits AS (
@@ -331,7 +374,7 @@ async function loadSemanticVideoCandidateIds(
         JOIN video v ON v.id = vt.video_id
         WHERE vtc.embedding IS NOT NULL
           AND vtc.language = ${locale}
-          AND v.deleted_at IS NULL
+          AND v.deleted_at IS NULL${Prisma.raw(PLAYABLE_CANDIDATE_VIDEO_SQL)}
         GROUP BY vt.video_id
       ),
       combined AS (
@@ -390,7 +433,7 @@ async function loadLocalOllamaVideoCandidateIds(
       JOIN video v ON v.id = vce.video_id
       WHERE vce.embedding IS NOT NULL
         AND vce.locale = ${locale}
-        AND v.deleted_at IS NULL
+        AND v.deleted_at IS NULL${Prisma.raw(PLAYABLE_CANDIDATE_VIDEO_SQL)}
       ORDER BY distance ASC
       LIMIT ${safeLimit}
     `
