@@ -21,7 +21,10 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { SpinnerIcon } from "@/components/ui/spinner"
-import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import {
+  LanguageCombobox,
+  type LanguageComboboxOption,
+} from "@/components/watch/LanguageCombobox"
 import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
@@ -69,6 +72,7 @@ export type LanguagePickerModalProps = {
 // guard would otherwise stay set and disable Apply for the rest of the
 // session. After this timeout the guard releases so the user can retry.
 const NAVIGATING_TIMEOUT_MS = 5000
+const SUBTITLE_UNAVAILABLE_CHIP = "Not available"
 
 const TOOLTIP_LANGUAGES = [
   { key: "english", dir: "ltr" },
@@ -426,14 +430,54 @@ export function LanguagePickerModal({
       ),
     [allSubtitleOptions, currentLanguageSlug],
   )
-  const subtitleOptions = useMemo(
-    () => [...sameLanguageSubtitleOptions, ...translatedSubtitleOptions],
-    [sameLanguageSubtitleOptions, translatedSubtitleOptions],
-  )
   const currentLanguageDisplay = useMemo(
     () => deriveLanguageDisplay(currentLanguageSlug, null),
     [currentLanguageSlug],
   )
+  const currentLanguageOption = useMemo(
+    () => options.find((option) => option.slug === currentLanguageSlug) ?? null,
+    [currentLanguageSlug, options],
+  )
+  const currentLanguageUnavailableSubtitleOption =
+    useMemo<LanguageComboboxOption | null>(() => {
+      if (!currentLanguageSlug) return null
+      if (allSubtitleOptions.length === 0) return null
+      if (sameLanguageSubtitleOptions.length > 0) return null
+
+      return {
+        slug: currentLanguageSlug,
+        name: currentLanguageDisplay.name,
+        nativeName:
+          currentLanguageOption?.nativeName ??
+          currentLanguageDisplay.nativeName ??
+          null,
+        bcp47: currentLanguageOption?.bcp47 ?? null,
+        disabled: true,
+        chipLabel: SUBTITLE_UNAVAILABLE_CHIP,
+      }
+    }, [
+      allSubtitleOptions.length,
+      currentLanguageDisplay.name,
+      currentLanguageDisplay.nativeName,
+      currentLanguageOption,
+      currentLanguageSlug,
+      sameLanguageSubtitleOptions.length,
+    ])
+  const subtitleOptions = useMemo(
+    () => [
+      ...(currentLanguageUnavailableSubtitleOption
+        ? [currentLanguageUnavailableSubtitleOption]
+        : []),
+      ...sameLanguageSubtitleOptions,
+      ...translatedSubtitleOptions,
+    ],
+    [
+      currentLanguageUnavailableSubtitleOption,
+      sameLanguageSubtitleOptions,
+      translatedSubtitleOptions,
+    ],
+  )
+  const hasSelectableSubtitleOptions = allSubtitleOptions.length > 0
 
   // Track which slug we've dispatched a navigation toward. `navigating`
   // becomes false NATURALLY once the URL catches up — no setState in
@@ -485,7 +529,7 @@ export function LanguagePickerModal({
     draftSubtitleSlug !== currentSubtitleSlug
   const isDirty = languageDirty || subtitleDirty
   const subtitleSelectionRequired =
-    draftSubtitleEnabled && subtitleOptions.length > 0 && !draftSubtitleSlug
+    draftSubtitleEnabled && hasSelectableSubtitleOptions && !draftSubtitleSlug
   const subtitleUnavailableLabel = currentLanguageDisplay.name
     ? `${t("noSubtitles")} (${currentLanguageDisplay.name})`
     : t("noSubtitles")
@@ -629,12 +673,11 @@ export function LanguagePickerModal({
           null) as HTMLElement | null)
       : null
 
-  const subtitleToggleTooltip =
-    subtitleOptions.length === 0
-      ? MULTILINGUAL_TOOLTIPS.subtitlesUnavailable
-      : draftSubtitleEnabled
-        ? MULTILINGUAL_TOOLTIPS.subtitlesOff
-        : MULTILINGUAL_TOOLTIPS.subtitlesOn
+  const subtitleToggleTooltip = !hasSelectableSubtitleOptions
+    ? MULTILINGUAL_TOOLTIPS.subtitlesUnavailable
+    : draftSubtitleEnabled
+      ? MULTILINGUAL_TOOLTIPS.subtitlesOff
+      : MULTILINGUAL_TOOLTIPS.subtitlesOn
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -770,7 +813,9 @@ export function LanguagePickerModal({
                     data-testid="watch-language-picker-subtitle-count"
                     className="text-xs font-normal text-stone-400 sm:text-sm"
                   >
-                    {t("languageCount", { count: subtitleOptions.length })}
+                    {t("languageCount", {
+                      count: allSubtitleOptions.length,
+                    })}
                   </span>
                 </div>
               </MultilingualTooltip>
@@ -818,7 +863,7 @@ export function LanguagePickerModal({
                     aria-checked={draftSubtitleEnabled}
                     data-state={draftSubtitleEnabled ? "on" : "off"}
                     data-testid="watch-language-picker-subtitles-toggle"
-                    disabled={subtitleOptions.length === 0}
+                    disabled={!hasSelectableSubtitleOptions}
                     onClick={() => setDraftSubtitleEnabled((value) => !value)}
                     className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-100 disabled:cursor-not-allowed disabled:opacity-45 ${
                       draftSubtitleEnabled
@@ -871,7 +916,7 @@ export function LanguagePickerModal({
                 )}
               />
             ) : null}
-            {sameLanguageSubtitleOptions.length === 0 ? (
+            {!hasSelectableSubtitleOptions ? (
               <p
                 data-testid="watch-language-picker-subtitles-unavailable"
                 className="text-sm leading-6 text-stone-400"

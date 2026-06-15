@@ -742,10 +742,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
     ).toBe("1 language")
-    const unavailable = $(
-      '[data-testid="watch-language-picker-subtitles-unavailable"]',
-    )
-    expect(unavailable?.textContent).toBe("No subtitles (English)")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-unavailable"]'),
+    ).toBeNull()
     const toggle = $(
       '[data-testid="watch-language-picker-subtitles-toggle"]',
     ) as HTMLButtonElement
@@ -768,9 +767,29 @@ describe("LanguagePickerModal — globe overlay", () => {
     act(() => {
       $$('[data-testid="language-combobox-trigger"]')[1]?.click()
     })
+    const englishUnavailable = $$(
+      '[data-testid="language-combobox-option"]',
+    ).find((el) => el.getAttribute("data-language-slug") === "english")!
+    expect(englishUnavailable).not.toBeNull()
+    expect(englishUnavailable.getAttribute("aria-disabled")).toBe("true")
+    expect(englishUnavailable.getAttribute("data-disabled")).toBe("true")
+    expect((englishUnavailable as HTMLButtonElement).disabled).toBe(true)
+    expect(englishUnavailable.textContent).toContain("English")
+    expect(englishUnavailable.textContent).toContain("Not available")
+
+    act(() => {
+      englishUnavailable.click()
+    })
+
+    expect(apply.disabled).toBe(true)
+    expect(onSubtitleChange).not.toHaveBeenCalled()
+    expect($('[data-testid="language-combobox-popover"]')).not.toBeNull()
+
     const spanish = $$('[data-testid="language-combobox-option"]').find(
       (el) => el.getAttribute("data-language-slug") === "spanish",
     )!
+    expect(spanish.getAttribute("data-disabled")).toBe("false")
+    expect((spanish as HTMLButtonElement).disabled).toBe(false)
     act(() => {
       spanish.click()
     })
