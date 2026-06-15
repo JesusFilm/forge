@@ -8,9 +8,13 @@ import { prisma } from "./db/client.js"
 import { PrismaMatchJobRepository } from "./db/match-job.repository.js"
 import { sendJson } from "./http.js"
 import { createMatchJobsRoute } from "./routes/match-jobs.js"
-import { MatchJobService, NoopMatcher } from "./services/match-job.service.js"
+import { MatchJobService } from "./services/match-job.service.js"
+import {
+  MediaSignatureMatcher,
+  PrismaMediaSignatureMatchRepository,
+} from "./services/media-signature-matcher.js"
 import { FileSystemUploadStorage } from "./services/upload-storage.js"
-import { PlaceholderUploadSignalExtractor } from "./services/upload-signal-extraction.js"
+import { DeterministicUploadSignalExtractor } from "./services/upload-signal-extraction.js"
 
 export type ServerDependencies = {
   matchJobService?: MatchJobService
@@ -66,12 +70,14 @@ export function startServer(port = env.PORT): void {
   })
 }
 
-function createDefaultMatchJobService(): MatchJobService {
+export function createDefaultMatchJobService(): MatchJobService {
   return new MatchJobService(
     new PrismaMatchJobRepository(prisma),
     new FileSystemUploadStorage(env.UPLOAD_STORAGE_DIR),
-    new PlaceholderUploadSignalExtractor(),
-    new NoopMatcher(),
+    new DeterministicUploadSignalExtractor(),
+    new MediaSignatureMatcher(new PrismaMediaSignatureMatchRepository(prisma), {
+      algorithmVersion: env.MEDIA_SIGNATURE_ALGORITHM_VERSION,
+    }),
   )
 }
 
