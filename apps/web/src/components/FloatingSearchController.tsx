@@ -44,6 +44,14 @@ type ActiveSearchSignature = {
   nextOffset: number
 }
 
+function buildCurrentSearchUrl(
+  pathname: string,
+  currentParams: URLSearchParams,
+): string {
+  const serializedParams = currentParams.toString()
+  return serializedParams.length > 0 ? `${pathname}?${serializedParams}` : pathname
+}
+
 export type FloatingSearchControllerProps = {
   open: boolean
   closing: boolean
@@ -227,6 +235,16 @@ export function FloatingSearchController({
     [],
   )
 
+  const clearLoadingForRequest = useCallback((requestId: number): void => {
+    if (requestIdRef.current !== requestId) return
+    if (skeletonTimerRef.current) {
+      clearTimeout(skeletonTimerRef.current)
+      skeletonTimerRef.current = null
+    }
+    setShowSkeleton(false)
+    setLoading(false)
+  }, [])
+
   const search = useCallback(
     async (
       q: string,
@@ -255,7 +273,9 @@ export function FloatingSearchController({
           ? new URLSearchParams(window.location.search)
           : new URLSearchParams()
       const nextUrl = buildSearchUrl(pathname, currentParams, trimmed)
-      router.replace(nextUrl as Route)
+      if (nextUrl !== buildCurrentSearchUrl(pathname, currentParams)) {
+        router.replace(nextUrl as Route)
+      }
 
       if (!trimmed) {
         if (displayResultsRef.current.length > 0) {
@@ -272,6 +292,7 @@ export function FloatingSearchController({
         setError(null)
         setResultSource(null)
         activeSearchSignatureRef.current = null
+        clearLoadingForRequest(thisRequest)
         return
       }
 
@@ -359,14 +380,11 @@ export function FloatingSearchController({
       } finally {
         // Only clear loading state for the winning request — otherwise a
         // stale response's finally would drop the active spinner mid-fetch.
-        if (requestIdRef.current === thisRequest) {
-          if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-          setShowSkeleton(false)
-          setLoading(false)
-        }
+        clearLoadingForRequest(thisRequest)
       }
     },
     [
+      clearLoadingForRequest,
       languageFacets,
       maybeSetLanguageFacets,
       pathname,
