@@ -671,4 +671,172 @@ describe("Mastra env", () => {
       "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
     )
   })
+
+  // --- feat-174: JESUSFILM_RAG_* optional config + production host guard ---
+
+  // Stub the full required production set so RAG-guard tests isolate the RAG
+  // var behavior (a missing unrelated required var would otherwise mask it).
+  function stubProductionBaseline() {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+  }
+
+  it("imports cleanly with all RAG vars unset (no boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { env, getJesusfilmRagConfig } = await import("./env")
+
+    // The Railway-brick regression gate: a fresh deploy with no RAG vars boots.
+    expect(env.JESUSFILM_RAG_BASE_URL).toBeUndefined()
+    expect(env.JESUSFILM_RAG_API_KEY).toBeUndefined()
+    expect(env.JESUSFILM_RAG_ALLOWED_HOSTS).toBeUndefined()
+    expect(getJesusfilmRagConfig()).toEqual({
+      baseUrl: undefined,
+      apiKey: undefined,
+      timeoutMs: 5_000,
+      userAgent: "forge-mastra-jesusfilm-rag/1.0",
+    })
+  })
+
+  it("treats an empty-string RAG base URL as unset (no url() boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "")
+    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "")
+    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "")
+
+    const { env, getJesusfilmRagConfig } = await import("./env")
+
+    expect(env.JESUSFILM_RAG_BASE_URL).toBeUndefined()
+    // Defaults apply when unset.
+    expect(getJesusfilmRagConfig().timeoutMs).toBe(5_000)
+    expect(getJesusfilmRagConfig().userAgent).toBe(
+      "forge-mastra-jesusfilm-rag/1.0",
+    )
+  })
+
+  it("projects all five RAG fields through getJesusfilmRagConfig when set", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("JESUSFILM_RAG_API_KEY", "rag-key")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "2500")
+    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "forge-test-rag/9.9")
+
+    const { getJesusfilmRagConfig } = await import("./env")
+
+    expect(getJesusfilmRagConfig()).toEqual({
+      baseUrl: "https://rag.internal",
+      apiKey: "rag-key",
+      timeoutMs: 2_500,
+      userAgent: "forge-test-rag/9.9",
+    })
+  })
+
+  it("skips the RAG host guard in production when the base URL is unset", async () => {
+    stubProductionBaseline()
+    // No JESUSFILM_RAG_* vars set at all.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http RAG base URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "http://rag.internal")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a RAG host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://other.test")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a set RAG base URL with no allowlist in production (fail-closed)", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
+    // JESUSFILM_RAG_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts an https RAG base URL whose host is allowlisted in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("does not throw on an unsafe RAG base URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "http://rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("boots in production with the RAG base URL+allowlist set but the API key absent", async () => {
+    // Confirms the allowlist throw and the key-degradation paths are
+    // independent: a valid allowlisted base URL with no key boots fine; the
+    // client returns config_missing at runtime (covered in U2).
+    stubProductionBaseline()
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    // JESUSFILM_RAG_API_KEY deliberately unset.
+
+    const { assertMastraRuntimeEnv, getJesusfilmRagConfig } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getJesusfilmRagConfig().apiKey).toBeUndefined()
+  })
+
+  it("rejects a RAG timeout above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "30001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
 })

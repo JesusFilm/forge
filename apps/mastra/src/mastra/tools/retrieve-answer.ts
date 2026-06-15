@@ -1,28 +1,63 @@
 import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
 
+import {
+  searchJesusfilmRag,
+  type JesusfilmRagClientFailure,
+  type JesusfilmRagSearchInput,
+} from "../../services/jesusfilm-rag-client"
+
 /**
- * Stub `retrieve-answer` tool for the seeker agent (feat-170, U3).
+ * `retrieveAnswer` tool for the seeker agent (feat-174).
  *
- * Follows the same-app `firecrawl.ts` shape (pure `execute` fn + `createTool`
- * wrapper, `.strict()` zod schemas). It exists so the seeker agent can
- * VISIBLY fire a tool in Studio — it performs NO real retrieval.
+ * Calls the JesusFilm RAG retrieval service through `jesusfilm-rag-client` and
+ * returns ranked, cited PASSAGES — it performs NO answer generation. The agent's
+ * own LLM synthesizes a source-attributed answer from these passages (R2/R3).
  *
- * PROVISIONAL PLACEHOLDER I/O — NOT A FINALIZED RAG CONTRACT. Real retrieval
- * will likely return passage-shaped `sources` (e.g. `{ text, ref, score? }`)
- * and a grounded `answer`; the deferred RAG work is free to change this shape.
- * Do not build consumers against it as if it were stable.
+ * Output is `{ status, sources, message? }`:
+ * - `status: "ok"`   — ≥1 passage returned; `sources` carries them, no message.
+ * - `status: "empty"` — retrieval succeeded with zero passages; `sources` is
+ *   `[]` and `message` tells the agent to say it has no grounded answer (R4).
+ * - `status: "unavailable"` — every client failure (unconfigured, auth, timeout,
+ *   service error, parse) collapses here; `sources` is `[]` and `message` tells
+ *   the agent retrieval is unavailable and to continue (R5). The full failure
+ *   reason goes to logs only — never to the LLM-visible output.
  *
- * The hard-coded `answer` stays inside the seeker safety posture: it is an
- * obvious stub marker and contains NO invented scripture, citations, or
- * doctrinal claims. `retrieve-answer.test.ts`'s safety regression guard asserts
- * the `STUB_MARKER` substring so the text cannot later be edited into
- * scripture-/doctrine-looking content without a test failing.
+ * This deliberately diverges from the firecrawl tools' `discriminatedUnion("ok",
+ * …)` shape with an exposed `reason`/`retryable`: that surface is load-bearing
+ * only because `webResearchAgent` is instructed to branch on it, and the
+ * seeker's single-attempt posture removes that consumer. Do not "harmonize" it.
+ *
+ * The `empty`/`unavailable` message strings are EXPORTED constants — the shared
+ * truth that `seeker-agent.ts`'s instruction lines cross-reference, so in-band
+ * guidance and instructions cannot drift apart.
  */
 
-const STUB_MARKER = "[stub]"
+/** Contract bounds query at 2000 code points (JSON Schema counts code points). */
+const MAX_QUERY_CODEPOINTS = 2000
 
-export const STUB_ANSWER = `${STUB_MARKER} retrieve-answer is a non-production placeholder and returns no real retrieval result yet.`
+/**
+ * Defensive per-passage cap. `RankedResult.text` carries no `maxLength` in the
+ * contract, so this bounds passage size entering the agent context, mirroring
+ * the firecrawl path's `FIRECRAWL_MAX_MARKDOWN_CHARS` posture.
+ */
+const MAX_PASSAGE_CODEPOINTS = 4000
+
+/**
+ * In-band guidance for the agent when retrieval returns zero passages (R4).
+ * Cross-referenced by `seeker-agent.ts`'s no-grounded-answer instruction line.
+ */
+export const RETRIEVE_ANSWER_EMPTY_MESSAGE =
+  "No passages were found for this question. Tell the seeker you do not have a grounded answer, and do not invent sources."
+
+/**
+ * In-band guidance when retrieval cannot run (R5). One NEUTRAL wording — it must
+ * not claim the outage is temporary (`config_missing` is permanent for the
+ * session; `timeout` is not). Cross-referenced by `seeker-agent.ts`'s
+ * retrieval-unavailable instruction line.
+ */
+export const RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE =
+  "Retrieval is unavailable. Tell the seeker you cannot provide a grounded answer, and continue the conversation."
 
 export const retrieveAnswerInputSchema = z
   .object({
@@ -31,52 +66,113 @@ export const retrieveAnswerInputSchema = z
       .trim()
       .min(1)
       .describe("The seeker's factual question to ground an answer for."),
-    locale: z
-      .string()
-      .optional()
-      .describe("Optional BCP-47 locale hint for the eventual retrieval."),
   })
   .strict()
 
-// `sources` is intentionally an always-empty array in the stub. Typed as a
-// generic record array so the eventual passage shape can land without a
-// breaking schema swap. PROVISIONAL — see file header.
+// Uniform `.strict()` output shape (distinct from the passthrough parse of the
+// RAG's wire response in the client). `title` is nullable per the contract's
+// `Citation.title`. `chunkId`/`tags`/`sourceKey`/`ord` are intentionally NOT
+// exposed.
 export const retrieveAnswerOutputSchema = z
   .object({
-    answer: z.string(),
-    sources: z.array(z.record(z.string(), z.unknown())),
+    status: z.enum(["ok", "empty", "unavailable"]),
+    sources: z.array(
+      z
+        .object({
+          text: z.string(),
+          sourceName: z.string(),
+          title: z.string().nullable(),
+          url: z.string(),
+          score: z.number(),
+        })
+        .strict(),
+    ),
+    message: z.string().optional(),
   })
   .strict()
 
 export type RetrieveAnswerInput = z.input<typeof retrieveAnswerInputSchema>
 export type RetrieveAnswerOutput = z.output<typeof retrieveAnswerOutputSchema>
 
+/** Codepoint-safe slice — a UTF-16 `.slice` can split a surrogate pair. */
+function truncateCodepoints(value: string, maxCodepoints: number): string {
+  const codepoints = Array.from(value)
+  if (codepoints.length <= maxCodepoints) return value
+  return codepoints.slice(0, maxCodepoints).join("")
+}
+
 /**
- * Pure, deterministic stub executor. Returns the fixed safe placeholder with
- * empty `sources`, ignoring the input value.
- *
- * The `.parse()` is a deliberate input guard, NOT a discarded copy of the
- * template's `const parsed = ...` line: this function is exported and called
- * directly by unit tests (and could be by future callers) OUTSIDE `createTool`,
- * which only validates `inputSchema` on the agent dispatch path. The guard
- * keeps the exported contract safe regardless of caller; its throw path is
- * covered in `retrieve-answer.test.ts`. The stub ignores the value, so there is
- * nothing to bind — unlike `firecrawl.ts`, which uses its parsed result.
+ * Plain-string `event=` log on the failure path (admin's convention; first use
+ * in apps/mastra). It also dodges Railway logsV2's JSON-stringify silencing.
+ * Carries ENUM values only — never the query, the key, the raw body, or
+ * `upstreamReason` (RAG-controlled text and a log-injection vector into the
+ * space-delimited `key=value` format).
  */
-export function executeRetrieveAnswer(
+function logRetrievalUnavailable(failure: JesusfilmRagClientFailure): void {
+  const detail = failure.detail ? ` detail=${failure.detail}` : ""
+  console.error(
+    `[seeker] event=rag_retrieval_unavailable reason=${failure.reason}${detail}`,
+  )
+}
+
+/**
+ * Pure executor. Parses input, clamps the trimmed query to the contract's code
+ * point bound, calls the RAG client through an injectable dependency, and maps
+ * the typed client union to the tool's `{ status, sources, message? }` contract.
+ *
+ * The `.parse()` is a deliberate input guard, NOT a discarded line: this
+ * function is exported and called directly by unit tests (and could be by future
+ * callers) OUTSIDE `createTool`, which only validates `inputSchema` on the agent
+ * dispatch path. `options.search` is the firecrawl-style injectable client dep,
+ * defaulted to `{}` so production binds the real client.
+ */
+export async function executeRetrieveAnswer(
   input: RetrieveAnswerInput,
-): RetrieveAnswerOutput {
-  retrieveAnswerInputSchema.parse(input)
+  options: {
+    search?: (
+      input: JesusfilmRagSearchInput,
+    ) => ReturnType<typeof searchJesusfilmRag>
+  } = {},
+): Promise<RetrieveAnswerOutput> {
+  const parsed = retrieveAnswerInputSchema.parse(input)
+  const query = truncateCodepoints(parsed.query, MAX_QUERY_CODEPOINTS)
+
+  const response = await (options.search ?? searchJesusfilmRag)({ query })
+
+  if (!response.ok) {
+    logRetrievalUnavailable(response)
+    return {
+      status: "unavailable",
+      sources: [],
+      message: RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
+    }
+  }
+
+  if (response.results.length === 0) {
+    return {
+      status: "empty",
+      sources: [],
+      message: RETRIEVE_ANSWER_EMPTY_MESSAGE,
+    }
+  }
+
+  // Sources map ONLY from what the client returned (R9 tool half).
   return {
-    answer: STUB_ANSWER,
-    sources: [],
+    status: "ok",
+    sources: response.results.map((passage) => ({
+      text: truncateCodepoints(passage.text, MAX_PASSAGE_CODEPOINTS),
+      sourceName: passage.citation.sourceName,
+      title: passage.citation.title,
+      url: passage.citation.url,
+      score: passage.score,
+    })),
   }
 }
 
 export const retrieveAnswerTool = createTool({
   id: "retrieveAnswer",
   description:
-    "Retrieve a grounded answer for a seeker's factual question. STUB: returns a fixed placeholder with no sources; real retrieval is deferred.",
+    "Retrieve ranked, cited passages from the Jesus Film retrieval corpus for a seeker's factual question. Returns passages (text, source name, title, URL, relevance score) for you to synthesize a source-attributed answer — it does NOT generate the answer itself. A status of 'empty' means no passages were found; 'unavailable' means retrieval could not run.",
   inputSchema: retrieveAnswerInputSchema,
   outputSchema: retrieveAnswerOutputSchema,
   execute: async (inputData) => executeRetrieveAnswer(inputData),
