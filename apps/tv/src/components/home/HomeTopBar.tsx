@@ -1,0 +1,362 @@
+// The redesigned Home's top chrome: brandmark left, a centered tab bar
+// (Search · Home), clock right. Replaces HomeHeader/SearchChip ON THE HOME
+// SCREEN ONLY — those files stay for other consumers.
+//
+// Rendered as the sticky first child of Home's ScrollView (normal flex flow —
+// never position:absolute on focusables; the tvOS focus engine skips
+// absolutely-positioned focusables). It hides (opacity 0, translateY -18,
+// ~400ms, tabs unfocusable) while focus is deep in the feed.
+//
+// The design also shows Collections/Saved tabs — omitted: those surfaces
+// don't exist yet. TODO: add Collections / Saved tabs when those screens
+// ship.
+
+import { memo, useEffect, useMemo, useRef, useState } from "react"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+
+import { scale } from "../../lib/scale"
+import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { useFocusAnimation } from "../watch/useFocusAnimation"
+import { formatClock } from "./clockFormat"
+
+/**
+ * In-flow height of the bar: paddingTop 40 + tab bar (8 padding ×2 + 60 tab).
+ * HomeBillboard subtracts this from the design's 700px hero region so the
+ * billboard bottom lands where the mockup puts it.
+ */
+export const TOP_BAR_HEIGHT = scale(40) + scale(8) * 2 + scale(60)
+
+const HIDE_MS = 400
+const CLOCK_TICK_MS = 15_000
+
+const TAB_INK_REST = "rgba(255,255,255,0.72)"
+const TAB_SELECTED_BG = "rgba(255,255,255,0.12)"
+// hexToRgba is for hex inputs; this literal zero-alpha white (never the
+// string "transparent") keeps the focus bg interpolation hue-stable.
+const TAB_BG_REST = "rgba(255,255,255,0)"
+
+type HomeTopBarProps = {
+  /** Deep-in-feed: fade the bar out and make its tabs unfocusable. */
+  hidden: boolean
+  /**
+   * When true, the Search tab claims focus on mount — the tvos#852
+   * back-from-/search focus restore, re-keyed from the old SearchChip.
+   */
+  searchTabPreferredFocus?: boolean
+  onSearchPress: () => void
+  /** Any tab gaining focus pins the screen to its "top" state. */
+  onChromeFocus: () => void
+}
+
+export const HomeTopBar = memo(function HomeTopBar({
+  hidden,
+  searchTabPreferredFocus,
+  onSearchPress,
+  onChromeFocus,
+}: HomeTopBarProps) {
+  // ── Hide animation ──
+  const hideProgress = useRef(new Animated.Value(hidden ? 1 : 0)).current
+  useEffect(() => {
+    const animation = Animated.timing(hideProgress, {
+      toValue: hidden ? 1 : 0,
+      duration: HIDE_MS,
+      useNativeDriver: true,
+    })
+    animation.start()
+    return () => animation.stop()
+  }, [hidden, hideProgress])
+  const hideStyle = useMemo(
+    () => ({
+      opacity: hideProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, 0],
+      }),
+      transform: [
+        {
+          translateY: hideProgress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, -scale(18)],
+          }),
+        },
+      ],
+    }),
+    [hideProgress],
+  )
+
+  // ── Clock (updates every 15s; interval cleaned up on unmount) ──
+  const [clock, setClock] = useState(() => formatClock(new Date()))
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = formatClock(new Date())
+      setClock((prev) => (prev === next ? prev : next))
+    }, CLOCK_TICK_MS)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <Animated.View
+      style={[styles.bar, hideStyle]}
+      pointerEvents={hidden ? "none" : "box-none"}
+      accessibilityElementsHidden={hidden}
+    >
+      <View style={styles.sideLeft} pointerEvents="none">
+        <Brandmark />
+      </View>
+
+      <View style={styles.tabBar}>
+        <TopBarTab
+          testID="home-topbar-search-tab"
+          iconName="search"
+          accessibilityLabel="Search"
+          accessibilityHint="Opens the search screen"
+          onPress={onSearchPress}
+          onChromeFocus={onChromeFocus}
+          focusable={!hidden}
+          hasTVPreferredFocus={searchTabPreferredFocus}
+        />
+        <TopBarTab
+          testID="home-topbar-home-tab"
+          label="Home"
+          selected
+          accessibilityLabel="Home"
+          onPress={NO_ACTION}
+          onChromeFocus={onChromeFocus}
+          focusable={!hidden}
+        />
+        {/* TODO: Collections / Saved tabs (in the design) once those
+            surfaces exist in the app. */}
+      </View>
+
+      <View style={styles.sideRight} pointerEvents="none">
+        <Text style={styles.clock} numberOfLines={1}>
+          {clock}
+        </Text>
+      </View>
+    </Animated.View>
+  )
+})
+
+// Home is the current screen — its tab is focusable for D-pad continuity but
+// pressing it does nothing.
+const NO_ACTION = () => {}
+
+const SEARCH_ICON_SIZE = Math.round(scale(24))
+
+type TopBarTabProps = {
+  /** Stable id for D-pad sim automation (mirrors HomeCard's testID pattern). */
+  testID: string
+  /** Icon-only tab (60×60) when set; label tab otherwise. */
+  iconName?: "search"
+  label?: string
+  /** The design's "sel" state — translucent white fill, white ink at rest. */
+  selected?: boolean
+  accessibilityLabel: string
+  accessibilityHint?: string
+  onPress: () => void
+  onChromeFocus: () => void
+  focusable: boolean
+  hasTVPreferredFocus?: boolean
+}
+
+function TopBarTab({
+  testID,
+  iconName,
+  label,
+  selected = false,
+  accessibilityLabel,
+  accessibilityHint,
+  onPress,
+  onChromeFocus,
+  focusable,
+  hasTVPreferredFocus,
+}: TopBarTabProps) {
+  const { setFocused, progress } = useFocusAnimation()
+
+  // Memoized: progress is a stable ref, so the interpolations are built once
+  // rather than on every focus/blur re-render.
+  const fillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [
+          selected ? TAB_SELECTED_BG : TAB_BG_REST,
+          WATCH_THEME.focusFill,
+        ],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.7],
+      }),
+      transform: [
+        {
+          scale: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 1.07],
+          }),
+        },
+      ],
+    }),
+    [progress, selected],
+  )
+  const ink = useMemo(
+    () =>
+      progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [
+          selected ? WATCH_THEME.text : TAB_INK_REST,
+          WATCH_THEME.focusInk,
+        ],
+      }),
+    [progress, selected],
+  )
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onChromeFocus()
+      }}
+      onBlur={() => setFocused(false)}
+      focusable={focusable}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      testID={testID}
+      accessibilityRole="tab"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ selected }}
+    >
+      <Animated.View
+        style={[styles.tab, iconName != null && styles.tabIconOnly, fillStyle]}
+      >
+        {iconName != null ? (
+          <AnimatedFocusIcon
+            name={iconName}
+            progress={progress}
+            size={SEARCH_ICON_SIZE}
+            restColor={TAB_INK_REST}
+            focusColor={WATCH_THEME.focusInk}
+          />
+        ) : (
+          <Animated.Text style={[styles.tabLabel, { color: ink }]}>
+            {label}
+          </Animated.Text>
+        )}
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+// The circle-dot brandmark, recreated with Views/borders (no SVG dependency):
+// a 34px ring with an off-center right-hand arc inside, plus the wordmark.
+function Brandmark() {
+  return (
+    <View style={styles.brandmark}>
+      <View style={styles.brandDot}>
+        <View style={styles.brandDotArc} />
+      </View>
+      <Text style={styles.wordmark} numberOfLines={1}>
+        FORGE
+      </Text>
+    </View>
+  )
+}
+
+const BRAND_STROKE = "rgba(255,255,255,0.85)"
+
+const styles = StyleSheet.create({
+  bar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: scale(40),
+    paddingHorizontal: scale(80),
+    height: TOP_BAR_HEIGHT,
+  },
+  sideLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  sideRight: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+
+  // ── Tab bar ──
+  // No expo-blur dependency on TV, so the design's blur(30px) glass is
+  // approximated with a slightly more opaque fill than the mockup's .4.
+  tabBar: {
+    flexDirection: "row",
+    gap: scale(8),
+    padding: scale(8),
+    borderRadius: scale(24),
+    backgroundColor: "rgba(18,18,20,0.55)",
+    borderWidth: scale(1),
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  tab: {
+    height: scale(60),
+    paddingHorizontal: scale(28),
+    borderRadius: scale(17),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(10),
+    shadowColor: "#000000",
+    shadowRadius: scale(20),
+    shadowOffset: { width: 0, height: scale(14) },
+  },
+  tabIconOnly: {
+    width: scale(60),
+    paddingHorizontal: 0,
+  },
+  tabLabel: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(23)),
+    fontWeight: "600",
+  },
+
+  // ── Brandmark ──
+  brandmark: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(14),
+    opacity: 0.9,
+  },
+  brandDot: {
+    width: scale(34),
+    height: scale(34),
+    borderRadius: scale(17),
+    borderWidth: scale(2),
+    borderColor: BRAND_STROKE,
+  },
+  // Decorative absolute layer (non-focusable) — the off-center inner arc.
+  brandDotArc: {
+    position: "absolute",
+    top: scale(5),
+    bottom: scale(5),
+    left: scale(3),
+    right: scale(7),
+    borderRightWidth: scale(2),
+    borderColor: BRAND_STROKE,
+    borderTopRightRadius: scale(10),
+    borderBottomRightRadius: scale(10),
+  },
+  wordmark: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(20)),
+    fontWeight: "600",
+    // .42em of the 20px wordmark.
+    letterSpacing: scale(8.4),
+    color: WATCH_THEME.text82,
+  },
+
+  // ── Clock ──
+  clock: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(22)),
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.6)",
+    fontVariant: ["tabular-nums"],
+  },
+})

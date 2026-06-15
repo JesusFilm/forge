@@ -6,7 +6,9 @@
 //   - holds `subtitleEnabled` as LOCAL useState,
 //   - replaces the `preferencesReady` gate with `true` (no readiness gate),
 //   - strips all persist calls from the setters,
-//   - passes `null` for the persisted-preference arg to resolveDefaultSlug,
+//   - fills resolveDefaultSlug's preferred arg with the carried series-language
+//     selection (U4) instead of mobile's persisted preference — null outside a
+//     series lineage, so the default chain is unchanged there,
 //   - drops mobile's snackbarMessage (Download is a QR handoff, no consumer).
 //
 // It is the single source of truth for the active dub + subtitle selection,
@@ -35,6 +37,7 @@ import {
 import { ensureDubMedia } from "../lib/dubMediaFetch"
 import { GET_VIDEO_DUB } from "../lib/videoQueries"
 import { getApolloClient } from "../lib/apolloClient"
+import { useCarriedLanguageSlug } from "./SeriesLanguageContext"
 import {
   resolveDefaultSubtitleSlug,
   resolveDefaultVariantIndex,
@@ -105,6 +108,12 @@ const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
 const DUB_MEDIA_FETCH_TIMEOUT_MS = 8000
 
 export function WatchSessionProvider({ children }: { children: ReactNode }) {
+  // The active series screen's language selection (U4) — null when no series
+  // screen is in the stack's lineage (or the provider isn't mounted, e.g. in
+  // isolation). Feeds resolveDefaultVariantIndex's preferred-slug arg below so
+  // an episode opened from a series starts in the language picked there.
+  const carriedLanguageSlug = useCarriedLanguageSlug()
+
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
   const [activeVariantIndex, setActiveVariantIndexState] = useState(0)
   // Subtitles on/off: LOCAL state (no persisted store on TV v1). Off by default.
@@ -245,15 +254,26 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // Default the dubbing language once per video, as soon as variants are
   // available (they may arrive after the documentId via partial data), unless
   // the user already chose. INERT when no video. No readiness gate on TV (mobile
-  // gated on preferencesReady; TV has no persisted store). Persisted preference
-  // (null on TV) → device locale → video primary → English → first.
+  // gated on preferencesReady; TV has no persisted store). Carried series
+  // selection (U4 — null outside a series lineage) → device locale → video
+  // primary → English → first; a carried slug with no matching dub falls
+  // through the chain (soft preference, see resolveDefaultSlug).
   useEffect(() => {
     if (!video || video.variants.length === 0) return
     if (userChoseVariantRef.current) return
     if (resolvedVariantForRef.current === video.documentId) return
     resolvedVariantForRef.current = video.documentId
-    setActiveVariantIndexState(resolveDefaultVariantIndex(video, null))
-  }, [video?.documentId, video?.variants.length, video?.primaryLanguageBcp47])
+    setActiveVariantIndexState(
+      resolveDefaultVariantIndex(video, carriedLanguageSlug),
+    )
+  }, [
+    video?.documentId,
+    video?.variants.length,
+    video?.primaryLanguageBcp47,
+    // Slug changes after this video resolved are no-ops (the ref guard above);
+    // listed so the resolving run always reads a fresh value.
+    carriedLanguageSlug,
+  ])
 
   // Pre-select the subtitle language for the active variant once, unless the
   // user already chose. Subtitles arrive lazily, so this runs when the active

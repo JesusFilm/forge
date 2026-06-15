@@ -3,6 +3,7 @@ import type { DocumentNode } from "graphql"
 
 import {
   GET_VIDEO_BY_SLUG,
+  GET_SERIES_BY_SLUG,
   GET_VIDEO_DUB,
   watchVideoFragment,
   watchDubMediaFragment,
@@ -16,9 +17,22 @@ function asSdl(doc: unknown): string {
 }
 
 const bulkSdl = asSdl(GET_VIDEO_BY_SLUG)
+const seriesSdl = asSdl(GET_SERIES_BY_SLUG)
 const dubSdl = asSdl(GET_VIDEO_DUB)
 const bulkFragmentSdl = asSdl(watchVideoFragment)
 const dubFragmentSdl = asSdl(watchDubMediaFragment)
+
+// The printed document is the operation followed by its fragment definitions.
+// Slicing off the fragments isolates an operation's OWN selections, so absence
+// assertions (e.g. "no dubs inside children") aren't defeated by the shared
+// WatchVideo fragment legitimately selecting `variants: dubs`.
+function operationOnly(sdl: string): string {
+  const fragmentStart = sdl.indexOf("fragment ")
+  return fragmentStart === -1 ? sdl : sdl.slice(0, fragmentStart)
+}
+
+const seriesOpSdl = operationOnly(seriesSdl)
+const bulkOpSdl = operationOnly(bulkSdl)
 
 describe("GET_VIDEO_BY_SLUG (lean bulk video + dub list)", () => {
   it("queries the videoBySlug root field", () => {
@@ -81,6 +95,66 @@ describe("GET_VIDEO_BY_SLUG (lean bulk video + dub list)", () => {
     expect(bulkSdl).not.toContain("subtitles")
     expect(bulkFragmentSdl).not.toContain("videoEdition")
     expect(bulkFragmentSdl).not.toContain("subtitles")
+  })
+})
+
+describe("GET_SERIES_BY_SLUG (series detail: own children + language union)", () => {
+  it("queries videoBySlug(slug:) and spreads the shared WatchVideo fragment", () => {
+    expect(seriesOpSdl).toMatch(/videoBySlug\(slug:\s*\$slug\)/)
+    expect(seriesOpSdl).toContain("...WatchVideo")
+  })
+
+  it("selects the series' own children with the relation `order` field", () => {
+    expect(seriesOpSdl).toMatch(/children\s*\{\s*order/)
+    expect(seriesOpSdl).toContain("child")
+  })
+
+  it("selects episode card fields on each child (slug, label, locales, images)", () => {
+    for (const field of [
+      "slug",
+      "label",
+      "languageSlug",
+      "title",
+      "description",
+      "imageAlt",
+      "mobileCinematicHigh",
+    ]) {
+      expect(seriesOpSdl).toContain(field)
+    }
+  })
+
+  it("selects childDubLanguages (slug, name, bcp47)", () => {
+    expect(seriesOpSdl).toContain("childDubLanguages")
+    expect(seriesOpSdl).toContain("bcp47")
+  })
+
+  // Payload guard: the series' own dub list comes from the WatchVideo spread
+  // (the trailer). Projecting dubs PER CHILD would multiply the 9.5MB incident
+  // by the episode count — the children selection must stay card-lean.
+  it("EXCLUDES dubs/variants from the children selection", () => {
+    expect(seriesOpSdl).not.toContain("dubs")
+    expect(seriesOpSdl).not.toContain("variants")
+  })
+
+  it("EXCLUDES per-dub media everywhere in the document", () => {
+    expect(seriesSdl).not.toContain("downloads")
+    expect(seriesSdl).not.toContain("subtitles")
+  })
+})
+
+describe("shared fragment stays lean (series-only fields never leak in)", () => {
+  // GET_SERIES_BY_SLUG's extra selections live on the operation, not on
+  // watchVideoFragment — otherwise every single-video fetch would pay for them.
+  it("watchVideoFragment selects no childDubLanguages", () => {
+    expect(bulkFragmentSdl).not.toContain("childDubLanguages")
+  })
+
+  it("GET_VIDEO_BY_SLUG is unchanged: fragment spread only, no own children selection", () => {
+    expect(bulkSdl).not.toContain("childDubLanguages")
+    // The operation body is just the spread; `children` appears only inside the
+    // fragment's parents.parent.children sibling path.
+    expect(bulkOpSdl).toContain("...WatchVideo")
+    expect(bulkOpSdl).not.toContain("children")
   })
 })
 

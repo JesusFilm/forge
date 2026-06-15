@@ -178,7 +178,15 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale — the landing screen a consumer client (web, mobile, TV) renders by default. It is resolved per-locale as one curated Experience, not by listing every Experience; consumer clients reach it by its slug like any other Experience.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: it is empty on prod admin, and consumer clients' homes render the Home Curation instead — pointing all platforms back at a real Homepage Experience is a possible future consolidation, not the current state.
+
+### Home Curation
+
+The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Curation lives in code, not the CMS — changing the home's rows is a code release, not an admin edit. Each client (web, mobile, TV) carries the same set, so per-app copies must stay in sync.
+
+### Series-Shaped
+
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
 
 ## Home hero UI
 
@@ -212,6 +220,10 @@ The per-user memory of which videos the watch-home rotation has already shown, u
 The last successful watch-home content response a client keeps on device and paints immediately at the next launch while a live fetch revalidates in the background. It exists to mask a slow content resolver; it is only ever the first paint.
 
 An expired, shape-drifted, or empty Home Snapshot never paints — launch falls back to the loading state. When the live response matches the painted snapshot, the client keeps the painted view rather than rebuilding the Hero Queue; an empty live response never replaces a painted snapshot.
+
+### Focus-Driven Showcase
+
+The TV home's top-of-screen canvas that reflects whatever card currently holds D-pad focus — artwork, title, and description swap as focus moves through the rails. It defaults to the first featured item on load and retains the last focused card when focus leaves the rows. The inversion of an autoplay hero: the user's focus drives the canvas, and no background video player is mounted.
 
 ## Watch player UI
 
