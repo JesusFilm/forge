@@ -1,8 +1,6 @@
-import { Stack, useRouter } from "expo-router"
-import { Pressable } from "react-native"
-import Ionicons from "@expo/vector-icons/Ionicons"
+import { Stack } from "expo-router"
 
-import { ACCENT, BG_COLOR } from "../../src/lib/color"
+import { BG_COLOR } from "../../src/lib/color"
 import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
 import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 
@@ -34,8 +32,6 @@ const LIST_SHEET_OPTIONS = {
 }
 
 export default function WatchLayout() {
-  const router = useRouter()
-
   return (
     <WatchSessionProvider>
       <Stack
@@ -43,27 +39,9 @@ export default function WatchLayout() {
           contentStyle: { backgroundColor: BG_COLOR },
         }}
       >
-        <Stack.Screen
-          name="[slug]"
-          options={{
-            headerShown: true,
-            headerTintColor: ACCENT,
-            headerTitle: "",
-            headerStyle: { backgroundColor: BG_COLOR },
-            headerShadowVisible: false,
-            headerTitleAlign: "center",
-            headerLeft: () => (
-              <Pressable
-                onPress={() => router.back()}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-                hitSlop={12}
-              >
-                <Ionicons name="chevron-back" size={28} color={ACCENT} />
-              </Pressable>
-            ),
-          }}
-        />
+        {/* No native header: the video sits at the top safe edge with a
+            floating back button overlaid on the player (see app/watch/[slug]). */}
+        <Stack.Screen name="[slug]" options={{ headerShown: false }} />
         <Stack.Screen name="language" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen name="subtitle" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen

@@ -1,9 +1,18 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native"
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native"
 
 import { BROWSE_TOPICS } from "../../lib/browseTopics"
 import { TEXT_SECONDARY } from "../../lib/color"
 import { useCategoryThumbnails } from "../../hooks/useCategoryThumbnails"
 import { TopicCard } from "./TopicCard"
+
+const GRID_PADDING = 16
+const GRID_GAP = 12
 
 export interface BrowseTopicsProps {
   onSelect: (searchTerm: string) => void
@@ -15,6 +24,11 @@ export interface BrowseTopicsProps {
 // onSelect (wired to the screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
   const thumbnails = useCategoryThumbnails()
+  const { width } = useWindowDimensions()
+  // Explicit two-column width: full width minus the content padding and the
+  // single inter-card gap, halved. An explicit width keeps the grid reliably
+  // 2-up — a flexGrow/flexBasis combo blows a lone wrapped card to full width.
+  const cardWidth = Math.floor((width - GRID_PADDING * 2 - GRID_GAP) / 2)
 
   return (
     <ScrollView
@@ -31,6 +45,7 @@ export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
             topic={topic}
             onSelect={onSelect}
             thumbnailUrl={thumbnails[topic.searchTerm]}
+            cardWidth={cardWidth}
           />
         ))}
       </View>
@@ -43,7 +58,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: GRID_PADDING,
     paddingTop: 12,
     paddingBottom: 24,
   },
@@ -59,6 +74,6 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: GRID_GAP,
   },
 })
