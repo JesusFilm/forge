@@ -88,14 +88,21 @@ function resolveSubtitleSlug(
   subtitles: WatchSubtitle[],
   audioSlug: string,
 ): string | null {
-  if (subtitles.length === 0) return null
-  if (preferred && subtitles.some((s) => s.language.slug === preferred))
+  const audioSubtitles = filterSubtitlesForAudio(subtitles, audioSlug)
+  if (audioSubtitles.length === 0) return null
+  if (preferred && audioSubtitles.some((s) => s.language.slug === preferred))
     return preferred
-  const audioMatch = subtitles.find((s) => s.language.slug === audioSlug)
+  const audioMatch = audioSubtitles.find((s) => s.language.slug === audioSlug)
   if (audioMatch) return audioMatch.language.slug
-  const primary = subtitles.find((s) => s.primary)
-  if (primary) return primary.language.slug
-  return subtitles[0]!.language.slug
+  return audioSubtitles[0]?.language.slug ?? null
+}
+
+function filterSubtitlesForAudio(
+  subtitles: WatchSubtitle[],
+  audioSlug: string,
+): WatchSubtitle[] {
+  if (!audioSlug) return subtitles
+  return subtitles.filter((s) => s.language.slug === audioSlug)
 }
 
 type WatchVideoRecord = ResolvedWatchVideo["video"]
@@ -355,6 +362,10 @@ export function WatchPageClient({
   const coverBlackoutPhase = chapterCoverTransition?.phase ?? null
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
+  const audioSubtitles = useMemo(
+    () => filterSubtitlesForAudio(subtitles, currentLanguageSlug),
+    [currentLanguageSlug, subtitles],
+  )
 
   const [subtitleEnabled, setSubtitleEnabled] = useState(false)
   const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
@@ -376,24 +387,37 @@ export function WatchPageClient({
     }
   }
 
+  useEffect(() => {
+    if (!subtitleInit) return
+    const pref = readSubtitlePreference()
+    const slugToUse = resolveSubtitleSlug(
+      pref.languageSlug,
+      subtitles,
+      currentLanguageSlug,
+    )
+    setSubtitleSlug(slugToUse)
+    setSubtitleEnabled(pref.enabled && slugToUse != null)
+  }, [currentLanguageSlug, subtitleInit, subtitles])
+
   const subtitleVttSrc = useMemo((): string | null | undefined => {
     if (subtitles.length === 0) return undefined
     if (!subtitleEnabled || !subtitleSlug) return null
     return (
-      subtitles.find((s) => s.language.slug === subtitleSlug)?.vttSrc ?? null
+      audioSubtitles.find((s) => s.language.slug === subtitleSlug)?.vttSrc ??
+      null
     )
-  }, [subtitleEnabled, subtitleSlug, subtitles])
+  }, [audioSubtitles, subtitleEnabled, subtitleSlug, subtitles.length])
 
   const handleSubtitleChange = useCallback(
     (enabled: boolean, slug: string | null) => {
-      if (enabled && !slug && subtitles.length > 0) {
-        slug = resolveSubtitleSlug(null, subtitles, currentLanguageSlug)
+      if (enabled && !slug && audioSubtitles.length > 0) {
+        slug = resolveSubtitleSlug(null, audioSubtitles, currentLanguageSlug)
       }
       setSubtitleEnabled(enabled)
       setSubtitleSlug(slug)
       writeSubtitlePreference(enabled, slug)
     },
-    [subtitles, currentLanguageSlug],
+    [audioSubtitles, currentLanguageSlug],
   )
 
   // Drop entries missing `quality` — unrenderable in the tier selector.
@@ -639,7 +663,7 @@ export function WatchPageClient({
           videoSlug={videoSlug}
           playerRef={playerRef}
           onClose={closeModal}
-          subtitles={subtitles}
+          subtitles={audioSubtitles}
           currentSubtitleEnabled={subtitleEnabled}
           currentSubtitleSlug={subtitleSlug}
           onSubtitleChange={handleSubtitleChange}

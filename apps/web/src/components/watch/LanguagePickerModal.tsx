@@ -404,13 +404,16 @@ export function LanguagePickerModal({
   const subtitleOptions = useMemo(
     () =>
       subtitles
+        .filter((s) =>
+          currentLanguageSlug ? s.language.slug === currentLanguageSlug : true,
+        )
         .map((s) => ({
           ...deriveLanguageDisplay(s.language.slug, s.language.name),
           nativeName: s.language.nativeName ?? null,
           bcp47: s.language.bcp47 ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [subtitles],
+    [currentLanguageSlug, subtitles],
   )
 
   // Track which slug we've dispatched a navigation toward. `navigating`
@@ -841,6 +844,14 @@ export function LanguagePickerModal({
                   </MultilingualTooltip>
                 )}
               />
+            ) : null}
+            {subtitleOptions.length === 0 ? (
+              <p
+                data-testid="watch-language-picker-subtitles-unavailable"
+                className="text-sm leading-6 text-stone-400"
+              >
+                {t("noSubtitles")}
+              </p>
             ) : null}
           </div>
 

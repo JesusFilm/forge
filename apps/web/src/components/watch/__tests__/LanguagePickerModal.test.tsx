@@ -532,20 +532,20 @@ describe("LanguagePickerModal — globe overlay", () => {
       ],
       subtitles: [
         {
-          documentId: "sub-ru",
+          documentId: "sub-en",
           language: {
-            slug: "russian",
-            name: "Russian",
+            slug: "english",
+            name: "English",
             nativeName: null,
-            bcp47: "ru",
+            bcp47: "en",
           },
-          vttSrc: "https://cdn.test/russian.vtt",
+          vttSrc: "https://cdn.test/english.vtt",
           primary: true,
           aiGenerated: false,
         },
       ],
       currentSubtitleEnabled: true,
-      currentSubtitleSlug: "russian",
+      currentSubtitleSlug: "english",
     })
 
     const overlay = $('[data-slot="dialog-overlay"]')
@@ -627,7 +627,7 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
-    expect(triggers[1]?.textContent).toContain("Russian")
+    expect(triggers[1]?.textContent).toContain("English")
     expect(triggers[1]?.className).toContain("w-full")
     expect(triggers[1]?.className).toContain("min-h-12")
     const subtitlesSelectTooltip = expectMultilingualTooltip(
@@ -675,9 +675,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     renderModal({
       open: true,
       variants: baseVariants,
-      subtitles: [makeSubtitle("sub-ru", "russian", "Russian")],
+      subtitles: [makeSubtitle("sub-en", "english", "English")],
       currentSubtitleEnabled: false,
-      currentSubtitleSlug: "russian",
+      currentSubtitleSlug: "english",
     })
 
     const toggle = $(
@@ -724,7 +724,41 @@ describe("LanguagePickerModal — globe overlay", () => {
     )
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
-    expect(triggers[1]?.textContent).toContain("Russian")
+    expect(triggers[1]?.textContent).toContain("English")
+  })
+
+  it("makes unavailable captions explicit instead of listing other-language subtitles", () => {
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      currentLanguageSlug: "english",
+      subtitles: [
+        makeSubtitle(
+          "sub-ar",
+          "arabic-modern-standard",
+          "Arabic, Modern Standard",
+        ),
+      ],
+      currentSubtitleEnabled: false,
+      currentSubtitleSlug: null,
+    })
+
+    expect(
+      $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
+    ).toBe("0 languages")
+    const unavailable = $(
+      '[data-testid="watch-language-picker-subtitles-unavailable"]',
+    )
+    expect(unavailable?.textContent).toBe("No subtitles")
+    expect(document.body.textContent).not.toContain("Arabic, Modern Standard")
+
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(true)
+    expect(toggle.getAttribute("aria-checked")).toBe("false")
+    expect(toggle.getAttribute("data-state")).toBe("off")
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
   })
 
   it("shows a dummy AI translation request button when subtitles are unavailable", () => {
