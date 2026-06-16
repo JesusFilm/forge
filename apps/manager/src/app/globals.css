@@ -6223,6 +6223,14 @@ body.jobs-standalone .jobs-step-job-id {
   outline-offset: 2px;
 }
 
+.jobs-step-expand-spacer {
+  display: inline-block;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
 .jobs-step-expand-icon-open {
   transform: rotate(180deg);
 }
@@ -11525,6 +11533,12 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .jobs-step-expand-button:active {
   background: #e2ded7;
+}
+
+.jobs-step-expand-spacer {
+  flex-basis: 24px;
+  width: 24px;
+  height: 24px;
 }
 
 .jobs-review-tabs,
