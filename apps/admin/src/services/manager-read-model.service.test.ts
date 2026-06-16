@@ -8,6 +8,7 @@ function mockPrisma() {
     country: { findMany: vi.fn() },
     language: { findMany: vi.fn() },
     video: { findMany: vi.fn() },
+    videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
     videoSubtitle: { groupBy: vi.fn() },
     videoDub: { groupBy: vi.fn() },
     managerCoverageSnapshot: { findMany: vi.fn() },
@@ -264,6 +265,8 @@ describe("ManagerReadModelService", () => {
       {
         id: "video-doc-1",
         coreId: "video-core-1",
+        primaryLanguageId: "lang-en",
+        label: "JESUS_FILM",
         primaryLanguage: {
           coreId: "529",
           bcp47: "en",
@@ -288,6 +291,20 @@ describe("ManagerReadModelService", () => {
         ],
       },
     ])
+    prisma.videoLocale.findMany.mockResolvedValueOnce([
+      {
+        videoId: "video-doc-1",
+        locale: "es",
+        languageId: "lang-es",
+        title: "Titulo Espanol",
+      },
+      {
+        videoId: "video-doc-1",
+        locale: "en",
+        languageId: "lang-en",
+        title: "Jesus Film",
+      },
+    ])
 
     const result = await service.getVideosForEnrichment({
       user: MANAGER_BACKEND_PRINCIPAL,
@@ -298,6 +315,8 @@ describe("ManagerReadModelService", () => {
       {
         documentId: "video-doc-1",
         coreId: "video-core-1",
+        title: "Jesus Film",
+        label: "JESUS_FILM",
         primaryLanguage: {
           coreId: "529",
           bcp47: "en",
@@ -351,6 +370,115 @@ describe("ManagerReadModelService", () => {
         }),
       }),
     })
+    expect(prisma.videoLocale.findMany).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+        title: { not: null },
+        videoId: { in: ["video-doc-1"] },
+        OR: [{ locale: "en" }, { languageId: { in: ["lang-en"] } }],
+      },
+      select: { videoId: true, locale: true, languageId: true, title: true },
+      orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+    })
+  })
+
+  it("returns null enrichment titles when no title locales are available", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-doc-1",
+        coreId: "video-core-1",
+        primaryLanguageId: null,
+        label: null,
+        locales: [],
+        primaryLanguage: null,
+        dubs: [],
+      },
+    ])
+    prisma.videoLocale.findMany.mockResolvedValueOnce([
+      {
+        videoId: "video-doc-1",
+        locale: "fr",
+        languageId: "lang-fr",
+        title: "Titre Francais",
+      },
+      {
+        videoId: "video-doc-1",
+        locale: "es",
+        languageId: "lang-es",
+        title: "Titulo Espanol",
+      },
+    ])
+
+    await expect(
+      service.getVideosForEnrichment({
+        user: MANAGER_BACKEND_PRINCIPAL,
+        ids: ["video-doc-1"],
+      }),
+    ).resolves.toEqual([
+      {
+        documentId: "video-doc-1",
+        coreId: "video-core-1",
+        title: null,
+        label: null,
+        primaryLanguage: null,
+        variants: [],
+      },
+    ])
+  })
+
+  it("falls back to primary-language enrichment titles when English is absent", async () => {
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-doc-1",
+        coreId: "video-core-1",
+        primaryLanguageId: "lang-es",
+        label: "SERIES",
+        locales: [
+          { locale: "fr", languageId: "lang-fr", title: "Titre Francais" },
+          { locale: "es", languageId: "lang-es", title: "Titulo Espanol" },
+        ],
+        primaryLanguage: {
+          coreId: "21028",
+          bcp47: "es",
+          iso3: "spa",
+        },
+        dubs: [],
+      },
+    ])
+    prisma.videoLocale.findMany.mockResolvedValueOnce([
+      {
+        videoId: "video-doc-1",
+        locale: "fr",
+        languageId: "lang-fr",
+        title: "Titre Francais",
+      },
+      {
+        videoId: "video-doc-1",
+        locale: "es",
+        languageId: "lang-es",
+        title: "Titulo Espanol",
+      },
+    ])
+
+    await expect(
+      service.getVideosForEnrichment({
+        user: MANAGER_BACKEND_PRINCIPAL,
+        ids: ["video-doc-1"],
+      }),
+    ).resolves.toEqual([
+      {
+        documentId: "video-doc-1",
+        coreId: "video-core-1",
+        title: "Titulo Espanol",
+        label: "SERIES",
+        primaryLanguage: {
+          coreId: "21028",
+          bcp47: "es",
+          iso3: "spa",
+        },
+        variants: [],
+      },
+    ])
   })
 
   it("caps enrichment video lookup requests at 100 IDs", async () => {

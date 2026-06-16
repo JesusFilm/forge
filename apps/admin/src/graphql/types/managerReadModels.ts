@@ -127,6 +127,8 @@ const ManagerVideoForEnrichmentRef = builder
     fields: (t) => ({
       documentId: t.exposeID("documentId"),
       coreId: t.exposeString("coreId", { nullable: true }),
+      title: t.exposeString("title", { nullable: true }),
+      label: t.exposeString("label", { nullable: true }),
       primaryLanguage: t.field({
         type: ManagerEnrichmentLanguageRef,
         nullable: true,

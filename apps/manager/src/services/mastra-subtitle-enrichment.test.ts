@@ -46,6 +46,11 @@ describe("launchMastraSubtitleEnrichment", () => {
           assetId: "asset-1",
           sourceLanguage: "ru",
           targetLanguages: ["en", "fr"],
+          translationContext: {
+            videoTitle: "Jesus Film",
+            videoLabel: "JESUS_FILM",
+            bibleReferences: ["Luke 2"],
+          },
         },
         {
           baseUrl: "https://mastra.internal",
@@ -70,6 +75,11 @@ describe("launchMastraSubtitleEnrichment", () => {
       assetId: "asset-1",
       sourceLanguage: "ru",
       targetLanguages: ["en", "fr"],
+      translationContext: {
+        videoTitle: "Jesus Film",
+        videoLabel: "JESUS_FILM",
+        bibleReferences: ["Luke 2"],
+      },
     })
     expect(JSON.stringify(body)).not.toContain("segments")
     expect(JSON.stringify(body)).not.toContain("transcript")

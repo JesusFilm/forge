@@ -99,6 +99,8 @@ function createAdminGatewayFixture({
     {
       documentId: "video-doc-1",
       coreId: "video-1",
+      title: "Jesus Film",
+      label: "JESUS_FILM",
       primaryLanguage: {
         coreId: "529",
         bcp47: "en",
@@ -368,6 +370,8 @@ describe("createEnrichmentJobs", () => {
         translateTo: ["en"],
         runAudioCleanup: true,
         videoDocumentId: "video-doc-1",
+        videoTitle: "Jesus Film",
+        videoLabel: "JESUS_FILM",
         requestedTranscriptionProvider: "automatic",
       }),
     ])
@@ -580,6 +584,8 @@ describe("POST /api/enrich", () => {
         jobId: "job-1",
         translateTo: ["en"],
         videoDocumentId: "video-doc-1",
+        videoTitle: "Jesus Film",
+        videoLabel: "JESUS_FILM",
       }),
     ])
   })

@@ -41,6 +41,8 @@ type VideoNode = {
   documentId: string
   requestedId?: string
   coreId?: string | null
+  title?: string | null
+  label?: string | null
   primaryLanguage?: LanguageNode | null
   variants?: Parameters<typeof materializeEnrichmentTargetForJob>[0]["variants"]
 }
@@ -172,6 +174,8 @@ async function readAdminEnrichmentVideos(
       documentId: video.documentId,
       requestedId,
       coreId: video.coreId,
+      title: video.title ?? null,
+      label: video.label ?? null,
       primaryLanguage: languageNodeFrom(video.primaryLanguage),
       variants: (video.variants ?? []).map((variant) => ({
         language: languageNodeFrom(variant?.language),
@@ -471,6 +475,8 @@ export async function createEnrichmentJobs(
             runAudioCleanup: isAudioCleanupConfigured(),
             initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
             videoDocumentId: video.documentId,
+            videoTitle: video.title ?? undefined,
+            videoLabel: video.label ?? undefined,
             requestedTranscriptionProvider: "automatic",
           })
         } catch (err: unknown) {

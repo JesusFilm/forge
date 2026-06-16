@@ -71,6 +71,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Subtitle translation and retiming belongs in this runtime. Manager may call
   the service route and handle job state/Mux sync, but should not reintroduce
   provider-heavy subtitle execution.
+- Gospel-aware subtitle translation prompt steering belongs in this runtime.
+  Manager may send optional title, label, and Bible-reference context, but
+  Mastra owns scripture-context detection, translation prompt guidance, and
+  sanitized subtitle artifact provenance.
 - Firecrawl MCP is not the product runtime path. Revisit MCP only for local
   operator/coding-agent convenience or after a clear multi-tool server need.
 - Studio-facing workflows need structured Zod object input schemas on both the
