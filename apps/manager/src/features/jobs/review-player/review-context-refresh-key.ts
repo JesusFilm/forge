@@ -41,6 +41,9 @@ function getRelevantArtifactKey(job: JobRecord): string {
         artifactKey === "chapters-vtt" ||
         artifactKey === "muxSync" ||
         artifactKey === "subtitles" ||
+        artifactKey === "subtitles-raw" ||
+        artifactKey === "transcript-correction-report" ||
+        artifactKey === "transcript-raw" ||
         artifactKey.startsWith("subtitle-validation-") ||
         artifactKey.startsWith("subtitles-")
       )

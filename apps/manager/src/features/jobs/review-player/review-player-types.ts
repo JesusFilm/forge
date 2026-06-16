@@ -3,6 +3,7 @@ import type {
   SceneEmbeddingSyncReport,
   SubtitleValidationStepSummary,
 } from "@/types/job"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 
 export type ReviewMode = "after" | "before"
 
@@ -102,11 +103,29 @@ export type ReviewSubtitleValidationDomain =
       reason: string
     }
 
+export type ReviewTranscriptCorrectionArtifact = {
+  key: string
+  href: string
+  kind: "report" | "raw_transcript" | "raw_subtitles"
+}
+
+export type ReviewTranscriptCorrectionDomain =
+  | {
+      status: "available"
+      summary: TranscriptScriptureCorrectionStepSummary
+      artifacts: ReviewTranscriptCorrectionArtifact[]
+    }
+  | {
+      status: "unavailable"
+      reason: string
+    }
+
 export type JobReviewSnapshot = {
   subtitles: ReviewSubtitleDomain
   metadata: ReviewMetadataDomain
   chapters: ReviewChaptersDomain
   validation?: ReviewSubtitleValidationDomain
+  transcriptCorrection?: ReviewTranscriptCorrectionDomain
 }
 
 export type JobReviewContext = {

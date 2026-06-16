@@ -105,7 +105,10 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       updatedAt: "",
       artifacts: {
         transcript: { kind: "downloadable" },
+        "transcript-raw": { kind: "downloadable" },
+        "transcript-correction-report": { kind: "downloadable" },
         subtitles: { kind: "downloadable" },
+        "subtitles-raw": { kind: "downloadable" },
         "subtitles-fr": { kind: "downloadable" },
         "translation-fr": { kind: "downloadable" },
         "subtitle-validation-fr": { kind: "downloadable" },
@@ -131,6 +134,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       },
       steps: [
         { name: "transcription", status: "completed", retries: 0 },
+        { name: "structured_transcript", status: "completed", retries: 0 },
         { name: "translation", status: "completed", retries: 0 },
         { name: "chapters", status: "completed", retries: 0 },
         { name: "metadata", status: "completed", retries: 0 },
@@ -194,6 +198,10 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
         }),
         steps: [
           expect.objectContaining({ name: "transcription", status: "pending" }),
+          expect.objectContaining({
+            name: "structured_transcript",
+            status: "pending",
+          }),
           expect.objectContaining({ name: "translation", status: "pending" }),
           expect.objectContaining({ name: "chapters", status: "pending" }),
           expect.objectContaining({ name: "metadata", status: "pending" }),
@@ -215,6 +223,9 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       [key: string]: unknown
     }
     expect(updatedArtifacts).not.toHaveProperty("chapters")
+    expect(updatedArtifacts).not.toHaveProperty("transcript-raw")
+    expect(updatedArtifacts).not.toHaveProperty("subtitles-raw")
+    expect(updatedArtifacts).not.toHaveProperty("transcript-correction-report")
     expect(updatedArtifacts).not.toHaveProperty("metadata")
     expect(updatedArtifacts).not.toHaveProperty("embeddings")
     expect(updatedArtifacts).not.toHaveProperty("muxSync")
