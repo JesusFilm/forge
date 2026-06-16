@@ -26,6 +26,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
   reads Manager transcript artifacts, translates and retimes subtitles, and
   writes Manager-compatible subtitle/translation artifacts to shared storage.
+- Owns subtitle scripture accuracy validation for Bible-story results:
+  runs model-knowledge checks by default, can optionally compare against a
+  configured target-language Bible text source, and writes sanitized
+  Manager-compatible validation artifacts.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
@@ -75,6 +79,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   Manager may send optional title, label, and Bible-reference context, but
   Mastra owns scripture-context detection, translation prompt guidance, and
   sanitized subtitle artifact provenance.
+- Subtitle scripture accuracy validation also belongs in this runtime. Missing
+  Bible-source configuration must fall back to `model_knowledge` validation,
+  not fail translation or require Manager-side scripture logic.
 - Firecrawl MCP is not the product runtime path. Revisit MCP only for local
   operator/coding-agent convenience or after a clear multi-tool server need.
 - Studio-facing workflows need structured Zod object input schemas on both the

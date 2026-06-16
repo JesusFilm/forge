@@ -27,6 +27,7 @@ import type {
   MuxSyncComparison,
   RequestedTranscriptionProvider,
   StepStatus,
+  SubtitleValidationStepSummary,
   TranscriptionRoutingReport,
   WorkflowStepName,
 } from "@/types/job"
@@ -197,6 +198,67 @@ function getMastraInlineSummary(
   return mastra.status
     ? `Mastra run ${mastra.runId} (${mastra.status}).`
     : `Mastra run ${mastra.runId}.`
+}
+
+function getSubtitleValidationInlineSummary(
+  validation: SubtitleValidationStepSummary | undefined,
+): string | null {
+  if (!validation || validation.languagesChecked === 0) {
+    return null
+  }
+
+  if (validation.needsReviewCount > 0) {
+    return `${validation.needsReviewCount} scripture validation finding${
+      validation.needsReviewCount === 1 ? "" : "s"
+    } need review.`
+  }
+
+  if (validation.warningCount > 0) {
+    return `${validation.warningCount} scripture validation warning${
+      validation.warningCount === 1 ? "" : "s"
+    }.`
+  }
+
+  if (validation.unavailableLanguages.length > 0) {
+    return `Scripture validation unavailable for ${validation.unavailableLanguages.join(", ")}.`
+  }
+
+  if (validation.modelOnlyLanguages.length > 0) {
+    return `Scripture validation passed with model knowledge for ${validation.modelOnlyLanguages.join(", ")}.`
+  }
+
+  return "Scripture validation passed."
+}
+
+function SubtitleValidationInlineDetails({
+  validation,
+}: {
+  validation: SubtitleValidationStepSummary
+}) {
+  return (
+    <>
+      <p className="jobs-step-detail-summary">Subtitle scripture validation</p>
+      <ul className="jobs-step-detail-list">
+        {validation.results.map((result) => (
+          <li
+            key={`subtitle-validation-${result.lang}`}
+            className="jobs-step-detail-item"
+          >
+            <strong>{result.lang}</strong>
+            {`: ${result.verdict} (${result.basis}, confidence ${Math.round(
+              result.confidence * 100,
+            )}%)`}
+            {result.fallbackReason
+              ? `; fallback ${result.fallbackReason}`
+              : null}
+            {result.unavailableReason
+              ? `; unavailable ${result.unavailableReason}`
+              : null}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
 }
 
 function MastraStepInlineDetails({
@@ -760,6 +822,10 @@ export function LiveJobStepsTable({
                 step.name === "translation" || step.name === "embeddings"
                   ? step.details?.mastra
                   : undefined
+              const subtitleValidation =
+                step.name === "translation"
+                  ? step.details?.subtitleValidation
+                  : undefined
               const hasMastraDetails = mastraCorrelation != null
               const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
                 sceneEmbeddingSyncReport,
@@ -769,7 +835,9 @@ export function LiveJobStepsTable({
                 (hasSceneEmbeddingDetails || hasMastraDetails)
               const hasTranslationDetails =
                 step.name === "translation" &&
-                (translationFailures.length > 0 || hasMastraDetails)
+                (translationFailures.length > 0 ||
+                  hasMastraDetails ||
+                  subtitleValidation != null)
               const hasTranscriptionDetails =
                 step.name === "transcription" &&
                 (transcriptionRoutingReport != null || rerunError != null)
@@ -780,6 +848,8 @@ export function LiveJobStepsTable({
               const translationFailureSummary =
                 getTranslationFailureSummary(translationFailures)
               const mastraSummary = getMastraInlineSummary(mastraCorrelation)
+              const subtitleValidationSummary =
+                getSubtitleValidationInlineSummary(subtitleValidation)
               const transcriptionSummary =
                 transcriptionRoutingReport != null
                   ? `Final provider: ${
@@ -826,6 +896,17 @@ export function LiveJobStepsTable({
                   <span className="jobs-step-inline-summary-note">
                     {translationFailureSummary}
                   </span>
+                ) : subtitleValidationSummary ? (
+                  <span
+                    className={
+                      subtitleValidation?.highestVerdict === "needs_review" ||
+                      subtitleValidation?.highestVerdict === "warning"
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
+                    }
+                  >
+                    {subtitleValidationSummary}
+                  </span>
                 ) : mastraSummary ? (
                   <span className="jobs-step-inline-summary-note">
                     {mastraSummary}
@@ -835,6 +916,11 @@ export function LiveJobStepsTable({
                   <>
                     {mastraCorrelation ? (
                       <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                    {subtitleValidation ? (
+                      <SubtitleValidationInlineDetails
+                        validation={subtitleValidation}
+                      />
                     ) : null}
                     {translationFailureSummary ? (
                       <>

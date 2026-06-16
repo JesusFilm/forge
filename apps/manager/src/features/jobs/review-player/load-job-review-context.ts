@@ -10,6 +10,8 @@ import type {
   ReviewChapterTrack,
   ReviewMetadataDomain,
   ReviewMetadataValue,
+  ReviewSubtitleValidationArtifact,
+  ReviewSubtitleValidationDomain,
   ReviewTextTrack,
 } from "./review-player-types"
 
@@ -193,6 +195,51 @@ function buildGeneratedChapterTrack(
   }
 }
 
+function getSubtitleValidationArtifacts(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewSubtitleValidationArtifact[] {
+  return Object.entries(job.artifacts)
+    .filter(
+      ([key, value]) =>
+        value.kind === "downloadable" && key.startsWith("subtitle-validation-"),
+    )
+    .map(([key]) => {
+      const languageCode = key
+        .slice("subtitle-validation-".length)
+        .toLowerCase()
+
+      return {
+        key,
+        href: buildArtifactHref(job.id, key),
+        languageCode,
+      }
+    })
+    .sort((left, right) => left.languageCode.localeCompare(right.languageCode))
+}
+
+function getSubtitleValidationDomain(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewSubtitleValidationDomain {
+  const summary = job.steps.find((step) => step.name === "translation")?.details
+    ?.subtitleValidation
+  const artifacts = getSubtitleValidationArtifacts(job, buildArtifactHref)
+
+  if (!summary) {
+    return {
+      status: "unavailable",
+      reason: artifacts.length > 0 ? "summary_missing" : "artifact_missing",
+    }
+  }
+
+  return {
+    status: "available",
+    summary,
+    artifacts,
+  }
+}
+
 function buildMetadataDomain(value: unknown): ReviewMetadataDomain {
   if (!isRecord(value)) {
     return {
@@ -331,6 +378,7 @@ export async function loadJobReviewContext(
   )
   const afterTracks = buildGeneratedSubtitleTracks(job, buildArtifactHref)
   const afterChapterTrack = buildGeneratedChapterTrack(job, buildArtifactHref)
+  const afterValidation = getSubtitleValidationDomain(job, buildArtifactHref)
 
   let afterMetadata: ReviewMetadataDomain
   if (job.artifacts.metadata?.kind !== "downloadable") {
@@ -447,6 +495,7 @@ export async function loadJobReviewContext(
               },
         metadata: afterMetadata,
         chapters: afterChapters,
+        validation: afterValidation,
       },
       compare: {},
     },
