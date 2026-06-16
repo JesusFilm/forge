@@ -83,7 +83,8 @@
     "toggleOn": "Açık",
     "toggleOff": "Kapalı",
     "close": "Kapat",
-    "apply": "Uygula"
+    "apply": "Uygula",
+    "noLanguageSubtitles": "{language} altyazısı yok"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# BÖLÜM} other {# BÖLÜM}}",

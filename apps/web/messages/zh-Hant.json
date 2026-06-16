@@ -83,7 +83,8 @@
     "toggleOn": "開",
     "toggleOff": "關",
     "close": "關閉",
-    "apply": "套用"
+    "apply": "套用",
+    "noLanguageSubtitles": "無{language}字幕"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# 集} other {# 集}}",

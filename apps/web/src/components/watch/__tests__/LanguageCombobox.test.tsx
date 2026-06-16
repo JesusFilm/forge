@@ -565,6 +565,73 @@ describe("LanguageCombobox", () => {
     expect($('[data-testid="language-combobox-popover"]')).toBeNull()
   })
 
+  it("renders disabled options with a chip without allowing selection", () => {
+    const onChange = vi.fn()
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[
+            {
+              slug: "english",
+              name: "English",
+              disabled: true,
+              chipLabel: "Not available",
+            },
+            { slug: "spanish", name: "Spanish" },
+          ]}
+          value=""
+          onChange={onChange}
+          icon="subtitles"
+          placeholder="No subtitles"
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const english = $$('[data-testid="language-combobox-option"]').find(
+      (option) => option.getAttribute("data-language-slug") === "english",
+    ) as HTMLButtonElement
+    expect(english).not.toBeNull()
+    expect(english.disabled).toBe(true)
+    expect(english.getAttribute("aria-disabled")).toBe("true")
+    expect(english.getAttribute("data-disabled")).toBe("true")
+    expect(english.textContent).toContain("English")
+    expect(english.textContent).toContain("Not available")
+    expect(
+      english.querySelector('[data-testid="language-combobox-option-chip"]')
+        ?.textContent,
+    ).toBe("Not available")
+
+    act(() => {
+      english.click()
+    })
+    expect(onChange).not.toHaveBeenCalled()
+    expect($('[data-testid="language-combobox-popover"]')).not.toBeNull()
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+    expect(onChange).not.toHaveBeenCalled()
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+    expect(onChange).toHaveBeenCalledWith("spanish")
+    expect($('[data-testid="language-combobox-popover"]')).toBeNull()
+  })
+
   it("Down arrow + Enter selects the highlighted option", () => {
     const onChange = vi.fn()
     act(() => {
