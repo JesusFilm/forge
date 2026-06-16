@@ -531,6 +531,44 @@ describe("streamChatTurn — Mastra integration", () => {
     expect(seenSignal!.aborted).toBe(true)
   })
 
+  it("classifies an aborted-but-resolved-empty generate() as timeout (not provider_validation_failed)", async () => {
+    // Production root cause: a from-scratch draft on the gateway model
+    // runs ~37-45s, past the chat-turn budget. When the budget signal
+    // fires, the AI SDK RESOLVES generate() with empty text rather than
+    // rejecting — so the run reaches the success path with an empty
+    // buffer. Without the abort guard this was misreported as
+    // `provider_validation_failed` ("returned text without a JSON
+    // object"; prod logs showed `stream_done buffer_length=0` +
+    // `no_json_object head="" tail=""`). The guard must classify it as a
+    // `timeout` instead. Here AbortSignal.timeout is faked to return an
+    // already-aborted signal and generate() resolves with empty text.
+    const realTimeout = AbortSignal.timeout
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation(() => {
+        const c = new AbortController()
+        c.abort(new DOMException("timed out", "TimeoutError"))
+        return c.signal
+      })
+    try {
+      mastraGenerateMock.mockResolvedValue({ text: "" })
+      const prisma = makeFakePrisma()
+
+      const events = await collect(
+        streamChatTurn(
+          { threadId: "thread-1", prompt: "draft a full page" },
+          { prisma, user: EDITOR },
+        ),
+      )
+
+      const err = events.find((e) => e.type === "error")
+      expect(err).toMatchObject({ type: "error", code: "timeout" })
+    } finally {
+      timeoutSpy.mockRestore()
+      expect(AbortSignal.timeout).toBe(realTimeout)
+    }
+  })
+
   it("emits a timeout-classified error event when the chat-turn budget fires", async () => {
     // generate() waits on its (composed) abortSignal; we inject a tiny
     // budget by faking AbortSignal.timeout to abort synchronously, then

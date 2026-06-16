@@ -110,8 +110,22 @@ export const STEP_CAPS = {
  * bridge classifies the resulting AbortError as `timeout`.
  */
 export const TIME_BUDGET_MS = {
-  /** Single-turn chat (draft / add-section / rewrite-copy). */
-  chatTurn: 30_000,
+  /**
+   * Single-turn chat (draft / add-section / rewrite-copy).
+   *
+   * A from-scratch full-Experience draft on the production gateway
+   * model ("coding"/Qwen) measures ~37-45s end to end (tool round-trips
+   * + a ~3k-token envelope emission). The previous 30s ceiling aborted
+   * generate() mid-emission; because the AI SDK RESOLVES an aborted
+   * generate() with empty text (it does not reject), the chat path then
+   * misreported the empty completion as "agent returned text without a
+   * JSON object" / DRAFT REJECTED (see the abort guard in
+   * `experience-ai-chat.service.ts`). 90s clears the observed draft
+   * time with headroom while staying under the ~100s Cloudflare 524
+   * proxy ceiling that fronts admin. Add-section / rewrite-copy turns
+   * are much faster and finish well inside this budget.
+   */
+  chatTurn: 90_000,
   /**
    * Multi-step workflow's full chain (plan → skeleton → fill →
    * critique → revise after the U3 two-phase rebuild) — wall-clock cap.
