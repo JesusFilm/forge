@@ -1,12 +1,17 @@
 import { z } from "zod"
 
 import { env } from "@/config/env"
+import {
+  SubtitleValidationSummarySchema,
+  type SubtitleValidationSummary,
+} from "@/lib/subtitle-validation"
 
 export type LanguageResult = {
   lang: string
   status: "completed" | "failed"
   error?: string
-  artifactKeys?: { vtt: string; json: string }
+  artifactKeys?: { vtt: string; json: string; validation?: string }
+  validationSummary?: SubtitleValidationSummary
 }
 
 export type MastraSubtitleTranslationContext = {
@@ -64,9 +69,11 @@ const LanguageResultSchema = z
       .object({
         vtt: z.string().min(1),
         json: z.string().min(1),
+        validation: z.string().min(1).optional(),
       })
       .strict()
       .optional(),
+    validationSummary: SubtitleValidationSummarySchema.optional(),
   })
   .strict()
 

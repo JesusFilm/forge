@@ -42,7 +42,11 @@ function pruneArtifactsForTranscriptionRerun(
   delete nextArtifacts.muxSync
 
   for (const key of Object.keys(nextArtifacts)) {
-    if (key.startsWith("subtitles-") || key.startsWith("translation-")) {
+    if (
+      key.startsWith("subtitles-") ||
+      key.startsWith("translation-") ||
+      key.startsWith("subtitle-validation-")
+    ) {
       delete nextArtifacts[key]
     }
   }

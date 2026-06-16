@@ -101,7 +101,17 @@ function subtitleSuccess(
     lang: string
     status: "completed" | "failed"
     error?: string
-    artifactKeys?: { vtt: string; json: string }
+    artifactKeys?: { vtt: string; json: string; validation?: string }
+    validationSummary?: {
+      verdict: "pass" | "warning" | "needs_review" | "unavailable"
+      basis: "model_knowledge" | "target_bible_text" | "unavailable"
+      confidence: number
+      checkedReferenceCount: number
+      warningCount: number
+      needsReviewCount: number
+      fallbackReason?: string
+      unavailableReason?: string
+    }
   }>,
 ) {
   return {
@@ -545,7 +555,24 @@ describe("runVideoEnrichment", () => {
     })
     mastraSubtitleEnrichmentMock.mockResolvedValue(
       subtitleSuccess([
-        { lang: "en", status: "completed" },
+        {
+          lang: "en",
+          status: "completed",
+          artifactKeys: {
+            vtt: "asset-1/subtitles-en.vtt",
+            json: "asset-1/translation-en.json",
+            validation: "asset-1/subtitle-validation-en.json",
+          },
+          validationSummary: {
+            verdict: "needs_review",
+            basis: "model_knowledge",
+            confidence: 0.72,
+            checkedReferenceCount: 1,
+            warningCount: 0,
+            needsReviewCount: 1,
+            fallbackReason: "provider_config_missing",
+          },
+        },
         { lang: "fr", status: "failed", error: "bad glossary" },
       ]),
     )
@@ -696,6 +723,7 @@ describe("runVideoEnrichment", () => {
             transcript: { kind: "downloadable" },
             subtitles: { kind: "downloadable" },
             "subtitles-en": { kind: "downloadable" },
+            "subtitle-validation-en": { kind: "downloadable" },
             chapters: { kind: "downloadable" },
             "chapters-vtt": { kind: "downloadable" },
             metadata: { kind: "downloadable" },
@@ -725,6 +753,7 @@ describe("runVideoEnrichment", () => {
         {
           "subtitles-en": { kind: "downloadable" },
           "translation-en": { kind: "downloadable" },
+          "subtitle-validation-en": { kind: "downloadable" },
         },
       ],
       [
@@ -752,6 +781,26 @@ describe("runVideoEnrichment", () => {
           { lang: "en", status: "completed", error: undefined },
           { lang: "fr", status: "failed", error: "bad glossary" },
         ],
+        subtitleValidation: {
+          highestVerdict: "needs_review",
+          languagesChecked: 1,
+          modelOnlyLanguages: ["en"],
+          unavailableLanguages: [],
+          warningCount: 0,
+          needsReviewCount: 1,
+          results: [
+            {
+              lang: "en",
+              verdict: "needs_review",
+              basis: "model_knowledge",
+              confidence: 0.72,
+              checkedReferenceCount: 1,
+              warningCount: 0,
+              needsReviewCount: 1,
+              fallbackReason: "provider_config_missing",
+            },
+          ],
+        },
         mastra: {
           runId: "subtitle-run-1",
           status: "completed",
@@ -781,10 +830,10 @@ describe("runVideoEnrichment", () => {
         jobId: "job-1",
         assetId: "asset-1",
         muxAssetId: "mux-1",
-        translationResults: [
-          { lang: "en", status: "completed" },
+        translationResults: expect.arrayContaining([
+          expect.objectContaining({ lang: "en", status: "completed" }),
           { lang: "fr", status: "failed", error: "bad glossary" },
-        ],
+        ]),
       }),
     )
     expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith({

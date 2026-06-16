@@ -29,6 +29,8 @@ const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
+const DEFAULT_API_BIBLE_BASE_URL = "https://api.scripture.api.bible/v1"
+const DEFAULT_API_BIBLE_ALLOWED_HOSTS = "api.scripture.api.bible"
 const AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS =
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS
 const AI_GATEWAY_TRANSFORM_VERSION = DEFAULT_EMBEDDING_TRANSFORM_VERSION
@@ -186,6 +188,14 @@ const envSchema = z.object({
     .positive()
     .max(25)
     .default(DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY),
+  SUBTITLE_VALIDATION_BIBLE_PROVIDER: z.string().min(1).optional(),
+  SUBTITLE_VALIDATION_BIBLE_MAP_JSON: z.string().min(2).optional(),
+  API_BIBLE_API_KEY: z.string().min(1).optional(),
+  API_BIBLE_BASE_URL: z.string().min(1).default(DEFAULT_API_BIBLE_BASE_URL),
+  API_BIBLE_ALLOWED_HOSTS: z
+    .string()
+    .min(1)
+    .default(DEFAULT_API_BIBLE_ALLOWED_HOSTS),
   SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: z.string().min(1).optional(),
   SMART_CROP_PLAN_MODEL: z.string().min(1).optional(),
   SMART_CROP_QA_MODEL: z.string().min(1).optional(),
@@ -333,6 +343,17 @@ export const env = envSchema.parse({
   ),
   SUBTITLE_ENRICHMENT_CONCURRENCY: emptyToUndefined(
     process.env.SUBTITLE_ENRICHMENT_CONCURRENCY,
+  ),
+  SUBTITLE_VALIDATION_BIBLE_PROVIDER: emptyToUndefined(
+    process.env.SUBTITLE_VALIDATION_BIBLE_PROVIDER,
+  ),
+  SUBTITLE_VALIDATION_BIBLE_MAP_JSON: emptyToUndefined(
+    process.env.SUBTITLE_VALIDATION_BIBLE_MAP_JSON,
+  ),
+  API_BIBLE_API_KEY: emptyToUndefined(process.env.API_BIBLE_API_KEY),
+  API_BIBLE_BASE_URL: emptyToUndefined(process.env.API_BIBLE_BASE_URL),
+  API_BIBLE_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.API_BIBLE_ALLOWED_HOSTS,
   ),
   SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.SMART_CROP_IMAGE_URL_ALLOWED_HOSTS,

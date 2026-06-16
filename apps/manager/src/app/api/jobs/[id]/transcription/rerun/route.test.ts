@@ -78,6 +78,9 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       artifacts: {
         transcript: { kind: "downloadable" },
         subtitles: { kind: "downloadable" },
+        "subtitles-fr": { kind: "downloadable" },
+        "translation-fr": { kind: "downloadable" },
+        "subtitle-validation-fr": { kind: "downloadable" },
         chapters: { kind: "downloadable" },
         metadata: { kind: "downloadable" },
         embeddings: { kind: "downloadable" },
@@ -187,6 +190,9 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
     expect(updatedArtifacts).not.toHaveProperty("metadata")
     expect(updatedArtifacts).not.toHaveProperty("embeddings")
     expect(updatedArtifacts).not.toHaveProperty("muxSync")
+    expect(updatedArtifacts).not.toHaveProperty("subtitles-fr")
+    expect(updatedArtifacts).not.toHaveProperty("translation-fr")
+    expect(updatedArtifacts).not.toHaveProperty("subtitle-validation-fr")
     expect(updatedArtifacts).not.toHaveProperty(
       "transcriptionRouting.data.finalProvider",
     )

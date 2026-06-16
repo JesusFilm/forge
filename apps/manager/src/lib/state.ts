@@ -14,6 +14,7 @@ import {
   mergeShortsReport,
   type ShortsReportPatch,
 } from "@/lib/shorts-report"
+import { normalizeSubtitleValidationStepSummary } from "@/lib/subtitle-validation"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -439,6 +440,7 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
 
   const candidate = raw as {
     languageResults?: unknown
+    subtitleValidation?: unknown
     mastra?: unknown
     progress?: unknown
     message?: unknown
@@ -453,9 +455,13 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   const message =
     typeof candidate.message === "string" ? candidate.message : undefined
   const mastra = normalizeMastraStepCorrelation(candidate.mastra)
+  const subtitleValidation = normalizeSubtitleValidationStepSummary(
+    candidate.subtitleValidation,
+  )
 
   if (
     languageResults.length === 0 &&
+    subtitleValidation === undefined &&
     mastra === undefined &&
     progress === undefined &&
     !message
@@ -465,6 +471,7 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
 
   return {
     ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation !== undefined ? { subtitleValidation } : {}),
     ...(mastra !== undefined ? { mastra } : {}),
     ...(progress !== undefined ? { progress } : {}),
     ...(message !== undefined ? { message } : {}),
