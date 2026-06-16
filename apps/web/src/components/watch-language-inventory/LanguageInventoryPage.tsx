@@ -14,10 +14,12 @@ import {
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import type {
-  WatchLanguageInventoryAvailability,
-  WatchLanguageInventoryCard,
-  WatchLanguageInventoryModel,
+import {
+  primaryLanguageNameForSeo,
+  type WatchLanguageInventoryAvailability,
+  type WatchLanguageInventoryCard,
+  type WatchLanguageInventoryModel,
+  watchLanguageSpeakingAudience,
 } from "@/lib/watch-language-inventory"
 
 type IconComponent = ComponentType<{ className?: string }>
@@ -257,6 +259,8 @@ function InventorySection({
 export function LanguageInventoryPage({
   inventory,
 }: LanguageInventoryPageProps) {
+  const primaryLanguageName = primaryLanguageNameForSeo(inventory.languageName)
+  const speakingAudience = watchLanguageSpeakingAudience(inventory.languageName)
   const heroImage =
     inventory.promoted.find((item) => item.imageUrl)?.imageUrl ??
     inventory.audioCollections.find((item) => item.imageUrl)?.imageUrl ??
@@ -291,12 +295,12 @@ export function LanguageInventoryPage({
               {inventory.languageSlug}
             </div>
             <h1 className="max-w-3xl text-5xl leading-none font-black text-white sm:text-6xl lg:text-7xl">
-              {inventory.languageName} content inventory
+              Free Gospel video library for {speakingAudience}
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-200">
-              Audio-ready collections and videos appear first. Titles with
-              translated text tracks follow so regional teams can see the full
-              ministry library in one place.
+              Browse free Gospel films, Bible stories, discipleship series, and
+              outreach videos available in {inventory.languageName}. Audio-ready
+              collections appear first, followed by subtitle-only resources.
             </p>
           </div>
 
@@ -365,7 +369,7 @@ export function LanguageInventoryPage({
                 Recently created
               </div>
               <h2 className="text-3xl font-bold text-white md:text-4xl">
-                New in {inventory.languageName}
+                New Gospel videos in {primaryLanguageName}
               </h2>
             </div>
             <div className="hidden items-center gap-2 text-sm font-semibold text-stone-400 sm:flex">
@@ -396,8 +400,8 @@ export function LanguageInventoryPage({
       <InventorySection
         id="audio-collections"
         eyebrow="With audio"
-        title="Collections and series"
-        description="Parent collections appear when at least one published child video has playable audio in this language."
+        title={`${primaryLanguageName} audio collections and series`}
+        description={`Parent collections appear when at least one published child video has playable ${primaryLanguageName} audio.`}
         icon={Library}
         items={inventory.audioCollections}
         testId="language-inventory-audio-collections"
@@ -407,8 +411,8 @@ export function LanguageInventoryPage({
       <InventorySection
         id="audio-videos"
         eyebrow="With audio"
-        title="Individual videos"
-        description="Standalone titles and collection episodes with playable audio in this language."
+        title={`${primaryLanguageName} audio Gospel videos`}
+        description={`Standalone titles and collection episodes with playable ${primaryLanguageName} audio.`}
         icon={Film}
         items={inventory.audioVideos}
         testId="language-inventory-audio-videos"
@@ -418,8 +422,8 @@ export function LanguageInventoryPage({
       <InventorySection
         id="subtitles-only"
         eyebrow="Text tracks"
-        title="Subtitles only"
-        description="These titles have translated subtitles for this language and open with the nearest playable audio track."
+        title={`${primaryLanguageName} subtitle-only Gospel videos`}
+        description={`These titles have ${primaryLanguageName} subtitles and open with the nearest playable audio track.`}
         icon={Captions}
         items={inventory.subtitleOnlyVideos}
         testId="language-inventory-subtitle-only"

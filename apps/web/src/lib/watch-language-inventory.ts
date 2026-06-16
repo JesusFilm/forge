@@ -177,6 +177,26 @@ function languageNameFromJson(name: unknown, slug: string): string {
   return labelFromSlug(slug)
 }
 
+export function primaryLanguageNameForSeo(languageName: string): string {
+  const trimmed = languageName.trim()
+  const [primary] = trimmed.split(",")
+  return primary?.trim() || trimmed || "Global"
+}
+
+export function watchLanguageSpeakingAudience(languageName: string): string {
+  return `${primaryLanguageNameForSeo(languageName)}-speaking audiences`
+}
+
+export function watchLanguageInventorySeoTitle(languageName: string): string {
+  return `Free Gospel Video Library for ${primaryLanguageNameForSeo(languageName)}-Speaking Audiences | Jesus Film Project`
+}
+
+export function watchLanguageInventorySeoDescription(
+  languageName: string,
+): string {
+  return `Watch free Gospel videos, Jesus films, Bible stories, and discipleship series for ${watchLanguageSpeakingAudience(languageName)}, with audio and subtitles in ${languageName}.`
+}
+
 function buildInventoryHref(item: WatchLanguageInventoryItemRaw): Route | null {
   const slug = tryAsContentSlug(item.slug)
   const lang = tryAsLocaleSlug(item.watchLanguageSlug)

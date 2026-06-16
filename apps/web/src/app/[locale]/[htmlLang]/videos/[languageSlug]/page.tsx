@@ -8,7 +8,11 @@ import {
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
-import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
+import {
+  resolveWatchLanguageInventory,
+  watchLanguageInventorySeoDescription,
+  watchLanguageInventorySeoTitle,
+} from "@/lib/watch-language-inventory"
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -33,12 +37,34 @@ type PageProps = {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { languageSlug } = await params
+  const { locale: rawLocale, languageSlug } = await params
+  if (!isPublicWatchHomeLanguageSlug(languageSlug)) notFound()
+
+  const { locale } = resolveWatchLocaleIdentity(rawLocale)
+  const inventory = await resolveWatchLanguageInventory(locale, languageSlug)
+  const title = watchLanguageInventorySeoTitle(inventory.languageName)
+  const description = watchLanguageInventorySeoDescription(
+    inventory.languageName,
+  )
+  const canonical = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/${languageSlug}.html/videos`
+
   return {
-    title: "Language Content Inventory",
-    description: "Browse collections and videos available in this language.",
+    title,
+    description,
     alternates: {
-      canonical: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/${languageSlug}.html/videos`,
+      canonical,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Jesus Film Project",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
     },
   }
 }

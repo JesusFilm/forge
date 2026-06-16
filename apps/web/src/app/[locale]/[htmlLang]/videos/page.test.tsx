@@ -4,12 +4,20 @@
 import { renderToString } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import VideosPage, { metadata } from "@/app/[locale]/[htmlLang]/videos/page"
+import VideosPage, {
+  generateMetadata,
+} from "@/app/[locale]/[htmlLang]/videos/page"
+import { generateMetadata as generateLanguageMetadata } from "@/app/[locale]/[htmlLang]/videos/[languageSlug]/page"
 import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
 
-vi.mock("@/lib/watch-language-inventory", () => ({
-  resolveWatchLanguageInventory: vi.fn(),
-}))
+vi.mock("@/lib/watch-language-inventory", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/watch-language-inventory")>()
+  return {
+    ...actual,
+    resolveWatchLanguageInventory: vi.fn(),
+  }
+})
 
 const resolveWatchLanguageInventoryMock = vi.mocked(
   resolveWatchLanguageInventory,
@@ -118,7 +126,11 @@ describe("/videos route", () => {
     })
     const html = renderToString(page)
     expect(html).toContain("Spanish, Latin American")
-    expect(html).toContain("content inventory")
+    expect(html).toContain("Free Gospel video library for")
+    expect(html).toContain("Spanish-speaking audiences")
+    expect(html).toContain("New Gospel videos in")
+    expect(html).toContain("Spanish audio Gospel videos")
+    expect(html).toContain("Spanish subtitle-only Gospel videos")
     expect(html).toContain("The Story of Jesus")
     expect(html).toContain("Jesus Calms the Storm")
     expect(html).toContain("Following Jesus")
@@ -162,14 +174,58 @@ describe("/videos route", () => {
     expect(html).toContain("Subtitles")
   })
 
-  it("declares canonical URL with .html-free /videos shape", () => {
-    expect(metadata.alternates?.canonical).toBe(
+  it("declares SEO metadata with .html-free /videos canonical shape", async () => {
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "spanish-latin-american",
+        htmlLang: "es-419",
+      }),
+    })
+
+    expect(pageMetadata.title).toBe(
+      "Free Gospel Video Library for Spanish-Speaking Audiences | Jesus Film Project",
+    )
+    expect(pageMetadata.description).toContain(
+      "Watch free Gospel videos, Jesus films, Bible stories, and discipleship series for Spanish-speaking audiences",
+    )
+    expect(pageMetadata.alternates?.canonical).toBe(
       "https://www.jesusfilm.org/watch/videos",
     )
+    expect(pageMetadata.openGraph).toMatchObject({
+      title:
+        "Free Gospel Video Library for Spanish-Speaking Audiences | Jesus Film Project",
+      url: "https://www.jesusfilm.org/watch/videos",
+    })
   })
 
-  it("does not include .html suffix in canonical (production contract)", () => {
-    const canonical = metadata.alternates?.canonical
+  it("does not include .html suffix in /videos canonical (production contract)", async () => {
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "spanish-latin-american",
+        htmlLang: "es-419",
+      }),
+    })
+    const canonical = pageMetadata.alternates?.canonical
     expect(String(canonical)).not.toContain(".html")
+  })
+
+  it("uses language-specific SEO metadata for public language inventory pages", async () => {
+    const pageMetadata = await generateLanguageMetadata({
+      params: Promise.resolve({
+        locale: "es",
+        htmlLang: "es-419",
+        languageSlug: "spanish-latin-american",
+      }),
+    })
+
+    expect(pageMetadata.title).toBe(
+      "Free Gospel Video Library for Spanish-Speaking Audiences | Jesus Film Project",
+    )
+    expect(pageMetadata.description).toContain(
+      "with audio and subtitles in Spanish, Latin American",
+    )
+    expect(pageMetadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/spanish-latin-american.html/videos",
+    )
   })
 })
