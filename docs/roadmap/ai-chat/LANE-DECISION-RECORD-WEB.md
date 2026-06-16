@@ -114,6 +114,7 @@ outcomes only decide the lane's **registration** and the renumber.
 | Old                                           | New (A)           | C (drop)                                  |
 | --------------------------------------------- | ----------------- | ----------------------------------------- |
 | `feat-174` (chat-app-scaffold)                | `feat-____`       | removed; refs → plan doc / PR #1198       |
+| `feat-192` (chat-app-vigil-reskin)            | `feat-____`       | removed; refs → PR #1277                  |
 | plan seq `2026-06-10-005` (chat-app-scaffold) | `2026-06-10-____` | (rename to free the collision regardless) |
 
 ---
@@ -129,7 +130,11 @@ record).
 ### IN SCOPE — roadmap ticket (rename file + frontmatter `id`/`depends_on`/`blocks`)
 
 - `docs/roadmap/ai-chat/feat-174-chat-app-scaffold.md` (moved here from
-  `platform/`; renumber the `feat-174` ID at merge time)
+  `platform/`; renumber the `feat-174` ID at merge time). `blocks: [feat-192]`.
+- `docs/roadmap/ai-chat/feat-192-chat-app-vigil-reskin.md` (Vigil re-skin +
+  conversation shell; `depends_on: [feat-174]`). No `main` collision today
+  (highest there is `feat-191`), but the ID is **provisional** — renumber both
+  ends together with `feat-174` at merge time.
 
 ### IN SCOPE — plan & brainstorm docs
 

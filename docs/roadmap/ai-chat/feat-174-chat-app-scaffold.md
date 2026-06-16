@@ -7,7 +7,8 @@ status: "in-progress"
 start_date: "2026-06-10"
 duration: 3
 depends_on: []
-blocks: []
+blocks:
+  - "feat-192"
 tags:
   - "infrastructure"
   - "chat"
