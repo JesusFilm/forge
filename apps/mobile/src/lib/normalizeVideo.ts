@@ -306,7 +306,10 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
       order: q.order ?? 0,
     }))
 
-  const bibleCitations: WatchBibleCitation[] = (raw.bibleCitations ?? [])
+  // Copy before sort: Apollo freezes cached results, and Array.sort mutates in
+  // place — sorting the raw frozen array throws "Cannot assign to read-only
+  // property". (studyQuestions/episodes are safe: .filter() returns a copy.)
+  const bibleCitations: WatchBibleCitation[] = [...(raw.bibleCitations ?? [])]
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((c) => ({
       documentId: c.documentId ?? "",

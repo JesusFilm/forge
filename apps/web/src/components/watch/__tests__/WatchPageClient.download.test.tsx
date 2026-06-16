@@ -131,9 +131,15 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  window.history.pushState(
+    {},
+    "",
+    "/watch/jesus-is-brought-to-pilate.html/english.html",
+  )
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
+  document.cookie = "forge_watch_subs=; path=/watch; max-age=0"
   downloadModalProps.length = 0
   languageModalProps.length = 0
   checkDownloadSessionMock.mockReset()
@@ -151,7 +157,13 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
-function renderWatchPage() {
+function renderWatchPage({
+  languageSlug = "english",
+  subtitles = [],
+}: {
+  languageSlug?: string
+  subtitles?: unknown[]
+} = {}) {
   const variant = {
     documentId: "5fc705b9-1b3b-4a58-abef-755b98457de6",
     duration: 7674,
@@ -163,7 +175,7 @@ function renderWatchPage() {
         url: "https://stream.mux.com/raw-client-leak.mp4",
       },
     ],
-    language: { slug: "english", name: "English" },
+    language: { slug: languageSlug, name: languageSlug },
     muxVideo: { playbackId: "playback-1" },
   }
   const video = {
@@ -174,7 +186,7 @@ function renderWatchPage() {
     description: null,
     images: [],
     variants: [variant],
-    subtitles: [],
+    subtitles,
   }
 
   act(() => {
@@ -305,6 +317,87 @@ describe("WatchPageClient download boundary", () => {
         ],
       }),
     )
+  })
+
+  it("keeps legacy translated subtitle preferences from auto-enabling", async () => {
+    document.cookie =
+      "forge_watch_subs=arabic-modern-standard; path=/watch; max-age=31536000"
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
+    renderWatchPage({
+      languageSlug: "english",
+      subtitles: [
+        {
+          documentId: "sub-ar",
+          language: {
+            slug: "arabic-modern-standard",
+            name: "Arabic, Modern Standard",
+            nativeName: "اللغة العربية",
+            bcp47: "ar",
+          },
+          vttSrc: "https://cdn.test/arabic.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    const latestProps = languageModalProps.at(-1) as {
+      subtitles: unknown[]
+      currentSubtitleEnabled: boolean
+      currentSubtitleSlug: string | null
+    }
+    expect(latestProps.subtitles).toHaveLength(1)
+    expect(latestProps.currentSubtitleEnabled).toBe(false)
+    expect(latestProps.currentSubtitleSlug).toBeNull()
+  })
+
+  it("restores explicit translated subtitle preferences", async () => {
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
+    renderWatchPage({
+      languageSlug: "english",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    const latestProps = languageModalProps.at(-1) as {
+      subtitles: unknown[]
+      currentSubtitleEnabled: boolean
+      currentSubtitleSlug: string | null
+    }
+    expect(latestProps.subtitles).toHaveLength(1)
+    expect(latestProps.currentSubtitleEnabled).toBe(true)
+    expect(latestProps.currentSubtitleSlug).toBe("spanish")
   })
 
   it("shows an inline error when the first session check cannot complete", async () => {
