@@ -73,8 +73,11 @@ describe("budgets (U11)", () => {
       )
     })
 
-    it("uses sensible defaults (30s chat / 180s workflow / 300s background)", () => {
-      expect(TIME_BUDGET_MS.chatTurn).toBe(30_000)
+    it("uses sensible defaults (90s chat / 180s workflow / 300s background)", () => {
+      // chatTurn raised 30s -> 90s: a from-scratch draft on the gateway
+      // model runs ~37-45s, past the old 30s ceiling. See the abort guard
+      // in experience-ai-chat.service.ts and TIME_BUDGET_MS.chatTurn doc.
+      expect(TIME_BUDGET_MS.chatTurn).toBe(90_000)
       expect(TIME_BUDGET_MS.multiStepWorkflow).toBe(180_000)
       expect(TIME_BUDGET_MS.backgroundAutoEnrich).toBe(300_000)
     })
@@ -86,7 +89,7 @@ describe("budgets (U11)", () => {
 
   describe("getTimeBudgetMs", () => {
     it("returns the cap for a named shape", () => {
-      expect(getTimeBudgetMs("chatTurn")).toBe(30_000)
+      expect(getTimeBudgetMs("chatTurn")).toBe(90_000)
       expect(getTimeBudgetMs("multiStepWorkflow")).toBe(180_000)
       expect(getTimeBudgetMs("backgroundAutoEnrich")).toBe(300_000)
     })

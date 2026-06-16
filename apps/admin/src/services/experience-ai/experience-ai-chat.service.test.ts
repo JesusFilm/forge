@@ -118,23 +118,29 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
     updatedAt: new Date("2026-04-15T12:00:00.000Z"),
   }
   const locale = {
-    // applyChatMutation reads the pre-image once (outside tx), then
-    // re-fetches the updated row once (inside tx after updateMany).
+    // applyChatMutation reads the pre-image once (outside tx), then writes
+    // via a plain `update` inside the locked tx (the FOR UPDATE + text
+    // guard replaced the old updateMany-on-updatedAt path).
     findUniqueOrThrow: vi
       .fn()
       .mockResolvedValueOnce(preImage)
       .mockResolvedValue(afterRow),
-    // Optimistic-concurrency guard write — matches one row by default.
     updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     update: vi.fn().mockResolvedValue(afterRow),
   }
 
   const contentRevision = { create: vi.fn() }
+  // applyChatMutation's optimistic-concurrency token: a full-precision
+  // `updated_at::text` read (baseline outside tx, then the FOR UPDATE
+  // locked read inside tx). Both resolve to the same value by default so
+  // the guard passes.
+  const $queryRaw = vi.fn().mockResolvedValue([{ u: "2026-04-15 12:00:00+00" }])
   const $transaction = vi.fn(async (fn: unknown) =>
     typeof fn === "function"
       ? (fn as (txc: unknown) => Promise<unknown>)({
           experienceLocale: locale,
           contentRevision,
+          $queryRaw,
         })
       : fn,
   )
@@ -144,6 +150,7 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
     experienceChatMessage: message,
     experienceLocale: locale,
     contentRevision,
+    $queryRaw,
     $transaction,
   } as unknown as PrismaClient & {
     experienceChatThread: typeof thread
