@@ -105,6 +105,10 @@ const VIDEO_COVERAGE_SELECTION = `
   aiMetadata
   imageUrl
   parentDocumentIds
+  parentRelations {
+    parentDocumentId
+    order
+  }
   coverage {
     subtitles { human ai }
     audio { human ai }

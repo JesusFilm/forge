@@ -107,7 +107,7 @@ describe("ManagerReadModelService", () => {
         aiMetadata: true,
         locales: [{ locale: "en", languageId: "lang-en", title: "Video One" }],
         images: [{ url: "https://example.test/image.jpg" }],
-        parents: [{ parentId: "parent-1" }],
+        parents: [{ parentId: "parent-1", order: 2 }],
       },
     ])
     prisma.videoSubtitle.groupBy.mockResolvedValueOnce([
@@ -140,6 +140,7 @@ describe("ManagerReadModelService", () => {
         aiMetadata: true,
         imageUrl: "https://example.test/image.jpg",
         parentDocumentIds: ["parent-1"],
+        parentRelations: [{ parentDocumentId: "parent-1", order: 2 }],
         coverage: {
           subtitles: { human: 1, ai: 0 },
           audio: { human: 1, ai: 0 },
@@ -155,6 +156,14 @@ describe("ManagerReadModelService", () => {
               title: { not: null },
               OR: [{ locale: "en" }, { languageId: { in: ["lang-a"] } }],
             },
+          }),
+          parents: expect.objectContaining({
+            select: { parentId: true, order: true },
+            orderBy: [
+              { order: { sort: "asc", nulls: "last" } },
+              { createdAt: "asc" },
+              { id: "asc" },
+            ],
           }),
         }),
       }),
