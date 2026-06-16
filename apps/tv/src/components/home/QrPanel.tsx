@@ -8,7 +8,6 @@ import { useMemo } from "react"
 import { StyleSheet, Text, View } from "react-native"
 import qrcode from "qrcode-generator"
 
-import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import {
   BETA_CTA_LABEL,
@@ -106,9 +105,9 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontFamily: "System",
-    fontSize: Math.round(scale(24)),
+    fontSize: Math.round(scale(26)),
     fontWeight: "700",
-    color: COLORS.text,
+    color: "#FFFFFF",
     marginBottom: scale(20),
   },
   tile: {
@@ -122,8 +121,11 @@ const styles = StyleSheet.create({
   },
   urlText: {
     fontFamily: "System",
-    fontSize: Math.round(scale(20)),
-    color: COLORS.muted,
+    fontSize: Math.round(scale(21)),
+    fontWeight: "600",
+    // Bright against the frosted wash behind the beta card (was the dim
+    // COLORS.muted grey before the colourful restyle).
+    color: "rgba(245,245,244,0.8)",
     marginTop: scale(20),
   },
 })

@@ -41,6 +41,19 @@ describe("MISSION_CARDS", () => {
     }
   })
 
+  // Guards the colourful-restyle fields: icon feeds Ionicons (a typo renders
+  // nothing) and wash feeds the gradient — a dropped/empty value would only
+  // surface visually, so pin the shape here.
+  it("every card has an icon glyph and a two-stop hex wash", () => {
+    for (const card of MISSION_CARDS) {
+      expect(card.icon.trim().length).toBeGreaterThan(0)
+      expect(card.wash).toHaveLength(2)
+      for (const stop of card.wash) {
+        expect(stop).toMatch(/^#[0-9a-fA-F]{6}$/)
+      }
+    }
+  })
+
   it("keys are unique (they become React keys)", () => {
     const keys = MISSION_CARDS.map((card) => card.key)
     expect(new Set(keys).size).toBe(keys.length)

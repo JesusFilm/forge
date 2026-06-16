@@ -49,25 +49,24 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
         <Text style={styles.railTitle} accessibilityRole="header">
           Browse topics
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryRowContent}
-        >
+        {/* 3-column grid (not a horizontal carousel that ran off-screen): the
+            categories wrap to rows of three, each card filling a third of the
+            results pane. tvOS spatial navigation handles row/column D-pad moves
+            by geometry; each cell's padding gives the focus glow + 1.05x lift
+            room so the grid never clips it. */}
+        <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
-            // Per-cell wrapper provides the breathing room the focus
-            // glow needs (shadowRadius scale(16) + 1.05x scale on the
-            // FocusableCard ≈ 21dp outward on each side). Without this,
-            // ScrollView clips the glow at the contentContainer edges.
-            // Same pattern as ContentRail's itemWrapper on home.
-            <View key={cat.searchTerm} style={styles.categoryCellWrapper}>
+            <View
+              key={`category-${cat.searchTerm}`}
+              style={styles.categoryCellWrapper}
+            >
               <CategoryCard
                 category={cat}
                 onPress={() => onRunQuery(cat.searchTerm)}
               />
             </View>
           ))}
-        </ScrollView>
+        </View>
       </View>
     </ScrollView>
   )
@@ -94,6 +93,7 @@ function RecentRow({
             onPress={() => onRunQuery(q)}
             accessibilityLabel={`Recent search: ${q}`}
             accessibilityHint="Re-runs this search"
+            focusRing="white"
             style={styles.chip}
           >
             <View style={styles.chipInner}>
@@ -109,6 +109,7 @@ function RecentRow({
           onPress={onClearHistory}
           accessibilityLabel="Clear search history"
           accessibilityHint="Removes every entry in the recent searches list"
+          focusRing="white"
           style={styles.clearChip}
         >
           <View style={styles.chipInner}>
@@ -132,6 +133,7 @@ function CategoryCard({
       onPress={onPress}
       accessibilityLabel={`${category.title} category`}
       accessibilityHint={`Searches for "${category.searchTerm}"`}
+      focusRing="white"
       style={styles.categoryCard}
     >
       <LinearGradient
@@ -148,9 +150,6 @@ function CategoryCard({
     </FocusableCard>
   )
 }
-
-const CATEGORY_W = scale(220)
-const CATEGORY_H = scale(124)
 
 const styles = StyleSheet.create({
   scroll: {
@@ -213,39 +212,38 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: SEARCH_THEME.textDim(0.45),
   },
-  categoryRowContent: {
-    // Start/end gutter so the leftmost / rightmost card's focus glow
-    // is not clipped against the ScrollView's contentContainer edge.
-    // Inter-card spacing comes from categoryCellWrapper.paddingHorizontal
-    // (so each card carries its own focus halo padding instead of
-    // relying on `gap`, which doesn't reserve glow room). Sized so the
-    // first card's edge lands at the 80px page gutter (64 + 16).
+  // 3-column grid container. The 64dp side padding lines the first column up
+  // with the rail titles' 80dp gutter (64 grid pad + 16 cell pad) — the same
+  // left edge the carousel used.
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     paddingHorizontal: scale(64),
   },
+  // One third of the grid per cell → three columns. The padding is the
+  // inter-card gap AND the focus-glow / 1.05x-lift breathing room
+  // (shadowRadius scale(16)); RN's border-box width keeps three cells at
+  // exactly 100%.
   categoryCellWrapper: {
-    // Vertical: shadowRadius (scale(16)) + 1.05x scale expansion (~5dp)
-    // ≈ 21dp at minimum; bumped to 32dp for visual breathing room
-    // beyond the bare-clipping threshold.
-    paddingVertical: scale(32),
-    // Horizontal: 16dp on each side gives 32dp between adjacent cards
-    // (more generous than the original `gap: scale(16)` look). The
-    // 16dp shadow can blend into the neighbour's halo — that's
-    // expected; only the focused card glows at any time.
-    paddingHorizontal: scale(16),
+    width: "33.333%",
+    padding: scale(16),
   },
+  // Fills its cell — roughly a third of the results pane, far larger than the
+  // old fixed 220dp carousel card. A definite height (not aspectRatio) is what
+  // sizes it: FocusableCard routes width/height to its outer layout box but
+  // aspectRatio only to the inner, which can't size the box.
   categoryCard: {
-    width: CATEGORY_W,
-    height: CATEGORY_H,
-    overflow: "hidden",
+    width: "100%",
+    height: scale(210),
   },
   categoryGradient: {
     flex: 1,
     justifyContent: "flex-end",
-    padding: scale(14),
+    padding: scale(22),
   },
   categoryTitle: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(28)),
     fontWeight: "700",
     color: SEARCH_THEME.text,
     // Neutral near-black shadow — matches the redesigned search layer's

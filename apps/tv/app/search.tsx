@@ -19,7 +19,7 @@ import { useSearchHistory } from "../src/lib/searchHistory"
  * Vertical stack on a near-black full-bleed surface:
  *   Query line (big type + blinking caret)
  *   → horizontal letter strip (A–Z + space + delete + ⏎)
- *   → meta line (BROWSE / N RESULTS)
+ *   → meta line (N RESULTS once a search returns; unlabelled while browsing)
  *   → results region (SearchResultsGrid when the query is non-empty,
  *     SearchBrowse — Recent + Categories — when it's empty).
  *
@@ -83,7 +83,7 @@ export default function SearchScreen() {
   // defensive for future input sources and keeps the two gates in lockstep.)
   const hasQuery = query.trim().length > 0
   const showResultsGrid = hasQuery
-  const meta = resolveSearchMeta(state, results.length, hasQuery)
+  const meta = resolveSearchMeta(state, results.length)
 
   return (
     <View style={styles.screen}>
@@ -112,7 +112,7 @@ export default function SearchScreen() {
             no focus traps needed. */}
         <View style={styles.resultsPane}>
           {/* Fixed-height meta line (design .s-meta) so flipping between
-              BROWSE / silence / N RESULTS never shifts the grid below. */}
+              silence (browsing) and N RESULTS never shifts the grid below. */}
           <View style={styles.metaLine}>
             <Text style={styles.metaText}>{meta}</Text>
           </View>
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Holds the one-line meta text at a stable height so the grid below
-  // doesn't shift as the label changes (BROWSE / N RESULTS / empty).
+  // doesn't shift as the label changes (N RESULTS / empty while browsing).
   // Just tall enough for the 18px line — no extra reserved space, which
   // had opened a visible gap above the results.
   metaLine: {
