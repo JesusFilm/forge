@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { buildStubReply, STUB_REPLY_DELAY_MS } from "@/lib/chat-stub"
-import { Chat } from "./chat"
+import { AppShell } from "./app-shell"
 
 // Quiet React's "not configured to support act" warnings (same flag the
 // admin experience-editor tests set).
@@ -22,7 +22,7 @@ beforeEach(() => {
   document.body.appendChild(container)
   root = createRoot(container)
   act(() => {
-    root.render(<Chat />)
+    root.render(<AppShell />)
   })
 })
 
@@ -98,36 +98,40 @@ function awaitReply() {
   })
 }
 
+// Scope message reads to the conversation log so sidebar list items (also <li>)
+// never leak into the counts.
 function messageTexts(): string[] {
-  return Array.from(container.querySelectorAll("li")).map(
+  return Array.from(getLog().querySelectorAll("li")).map(
     (li) => li.textContent ?? "",
   )
 }
 
-describe("Chat", () => {
-  it("renders the centered placeholder with stub-identifying copy when empty", () => {
-    expect(container.textContent).toContain("Ask a question")
-    expect(container.textContent).toContain(
-      "Replies come from a stub — no agent is connected yet.",
-    )
+function isPending(): boolean {
+  return getLog().querySelector("[data-pending]") !== null
+}
+
+describe("AppShell", () => {
+  it("renders the empty-state prompt and stub note when no messages exist", () => {
+    expect(container.textContent).toContain("What would you like to ask?")
+    expect(container.textContent).toContain("no agent is connected yet")
   })
 
-  it("removes the placeholder after the first send, before the reply arrives", () => {
+  it("removes the empty state after the first send, before the reply arrives", () => {
     sendMessage("hello")
-    expect(container.textContent).not.toContain("Ask a question")
+    expect(container.textContent).not.toContain("What would you like to ask?")
   })
 
   it("appends the user message, shows pending, disables controls, then replies and re-enables", () => {
     sendMessage("hello")
 
     expect(messageTexts()).toContain("hello")
-    expect(container.textContent).toContain("Stub is thinking…")
+    expect(isPending()).toBe(true)
     expect(getTextarea().disabled).toBe(true)
     expect(getSendButton().disabled).toBe(true)
 
     awaitReply()
 
-    expect(container.textContent).not.toContain("Stub is thinking…")
+    expect(isPending()).toBe(false)
     expect(getTextarea().disabled).toBe(false)
     expect(messageTexts()).toHaveLength(2)
   })
@@ -150,7 +154,7 @@ describe("Chat", () => {
     typeDraft("   ")
     submitForm()
     expect(messageTexts()).toHaveLength(0)
-    expect(container.textContent).toContain("Ask a question")
+    expect(container.textContent).toContain("What would you like to ask?")
   })
 
   it("ignores a rapid double-submit before re-render", () => {
@@ -197,7 +201,7 @@ describe("Chat", () => {
     document.body.appendChild(localContainer)
     const localRoot = createRoot(localContainer)
     act(() => {
-      localRoot.render(<Chat />)
+      localRoot.render(<AppShell />)
     })
 
     const errorSpy = vi.spyOn(console, "error")
@@ -243,15 +247,34 @@ describe("Chat", () => {
     expect(texts[1]).toBe(buildStubReply("first"))
     expect(texts[2]).toBe("second")
     expect(texts[3]).toBe(buildStubReply("second"))
-    expect(container.textContent).not.toContain("Stub is thinking…")
+    expect(isPending()).toBe(false)
   })
 
-  it("exposes the conversation as a labeled log with the pending bubble inside it", () => {
+  it("exposes the conversation as a labeled log with the pending turn inside it", () => {
     const log = getLog()
     expect(log.getAttribute("aria-label")).toBe("Conversation")
     expect(getTextarea().getAttribute("aria-label")).toBe("Message")
 
     sendMessage("a11y")
-    expect(log.textContent).toContain("Stub is thinking…")
+    expect(log.querySelector("[data-pending]")).not.toBeNull()
+  })
+
+  it("starts a fresh empty conversation from the New conversation action", () => {
+    sendMessage("keep me")
+    awaitReply()
+    expect(messageTexts()).toHaveLength(2)
+
+    act(() => {
+      const newButton = Array.from(
+        container.querySelectorAll<HTMLButtonElement>('button[type="button"]'),
+      ).find((b) => b.textContent?.includes("New conversation"))
+      if (!newButton) throw new Error("New conversation button not found")
+      newButton.click()
+    })
+
+    // New active conversation is empty again; the old one still lives in the rail.
+    expect(messageTexts()).toHaveLength(0)
+    expect(container.textContent).toContain("What would you like to ask?")
+    expect(container.textContent).toContain("keep me")
   })
 })
