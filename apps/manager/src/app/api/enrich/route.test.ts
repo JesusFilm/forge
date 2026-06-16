@@ -217,6 +217,7 @@ describe("buildMaterializationMetadata", () => {
         sourceLanguageCode: "en",
         sourceMuxAssetId: "source-asset-1",
         sourceMuxPlaybackId: "source-playback-1",
+        sourceInputUrl: "https://stream.mux.com/source-playback-1/480p.mp4",
         sourceInputType: "mux_asset",
         sourceSelectionReason: "fallback-en",
         sourceSelectionAttemptedCodes: ["ru", "en", "es", "fr"],
@@ -232,12 +233,13 @@ describe("buildMaterializationMetadata", () => {
 
     expect(metadata).toMatchObject({
       mode: "direct_mux_asset_reuse",
+      sourceInputHost: "stream.mux.com",
       sourceInputType: "mux_asset",
       targetEnvironment: "mux-production",
       reusedMuxAssetId: "source-asset-1",
       reusedMuxPlaybackId: "source-playback-1",
     })
-    expect(metadata).not.toHaveProperty("sourceInputHost")
+    expect(metadata).not.toHaveProperty("sourceInputUrl")
     expect(metadata).not.toHaveProperty("stageMuxAssetId")
   })
 })
@@ -265,6 +267,7 @@ describe("createEnrichmentJobs", () => {
       sourceLanguageCode: "en",
       sourceMuxAssetId: "mux-source-1",
       sourceMuxPlaybackId: "mux-source-playback-1",
+      sourceInputUrl: "https://stream.mux.com/mux-source-playback-1/480p.mp4",
       sourceInputType: "mux_asset",
       sourceSelectionReason: "fallback-en",
       sourceSelectionAttemptedCodes: ["fr", "en"],
@@ -272,25 +275,22 @@ describe("createEnrichmentJobs", () => {
       targetMuxPlaybackId: "mux-target-playback-1",
     })
     ensureGeneratedSubtitlesForAssetMock.mockResolvedValue(undefined)
-    createJobMock.mockResolvedValue({
-      id: "job-1",
-      muxAssetId: "mux-target-1",
-      muxPlaybackId: "mux-target-playback-1",
-      languages: ["en"],
-      options: {},
-      status: "pending",
-      retries: 0,
-      createdAt: "",
-      updatedAt: "",
-      artifacts: {
-        transcriptionRouting: {
-          kind: "metadata",
-          data: { attempts: [] },
-        },
-      },
-      steps: [],
-      errors: [],
-    })
+    createJobMock.mockImplementation(
+      async (_assetId, _playbackId, languages, options) => ({
+        id: "job-1",
+        muxAssetId: "mux-target-1",
+        muxPlaybackId: "mux-target-playback-1",
+        languages,
+        options: {},
+        status: "pending",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: options?.initialArtifacts ?? {},
+        steps: [],
+        errors: [],
+      }),
+    )
     updateJobMock.mockImplementation(async (_id, updates) => ({
       id: "job-1",
       muxAssetId: "mux-target-1",
@@ -358,6 +358,18 @@ describe("createEnrichmentJobs", () => {
       ["en"],
       expect.objectContaining({
         videoDocumentId: "video-doc-1",
+        sourceMediaTitle: "Jesus Film",
+        initialArtifacts: expect.objectContaining({
+          transcriptionRouting: expect.objectContaining({
+            kind: "metadata",
+            data: expect.objectContaining({
+              sourceInputUrl:
+                "https://stream.mux.com/mux-source-playback-1/480p.mp4",
+              sourceInputHost: "stream.mux.com",
+              attempts: [],
+            }),
+          }),
+        }),
       }),
     )
     dispatch.expectDispatched(runVideoEnrichment, [
@@ -373,6 +385,15 @@ describe("createEnrichmentJobs", () => {
         videoTitle: "Jesus Film",
         videoLabel: "JESUS_FILM",
         requestedTranscriptionProvider: "automatic",
+        initialArtifacts: expect.objectContaining({
+          transcriptionRouting: expect.objectContaining({
+            kind: "metadata",
+            data: expect.objectContaining({
+              sourceInputUrl:
+                "https://stream.mux.com/mux-source-playback-1/480p.mp4",
+            }),
+          }),
+        }),
       }),
     ])
     expect(runVideoEnrichment).not.toHaveBeenCalled()
@@ -473,6 +494,7 @@ describe("POST /api/enrich", () => {
       sourceLanguageCode: "en",
       sourceMuxAssetId: "mux-source-1",
       sourceMuxPlaybackId: "mux-source-playback-1",
+      sourceInputUrl: "https://stream.mux.com/mux-source-playback-1/480p.mp4",
       sourceInputType: "mux_asset",
       sourceSelectionReason: "fallback-en",
       sourceSelectionAttemptedCodes: ["en"],
@@ -480,25 +502,22 @@ describe("POST /api/enrich", () => {
       targetMuxPlaybackId: "mux-target-playback-1",
     })
     ensureGeneratedSubtitlesForAssetMock.mockResolvedValue(undefined)
-    createJobMock.mockResolvedValue({
-      id: "job-1",
-      muxAssetId: "mux-target-1",
-      muxPlaybackId: "mux-target-playback-1",
-      languages: ["en"],
-      options: {},
-      status: "pending",
-      retries: 0,
-      createdAt: "",
-      updatedAt: "",
-      artifacts: {
-        transcriptionRouting: {
-          kind: "metadata",
-          data: { attempts: [] },
-        },
-      },
-      steps: [],
-      errors: [],
-    })
+    createJobMock.mockImplementation(
+      async (_assetId, _playbackId, languages, options) => ({
+        id: "job-1",
+        muxAssetId: "mux-target-1",
+        muxPlaybackId: "mux-target-playback-1",
+        languages,
+        options: {},
+        status: "pending",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: options?.initialArtifacts ?? {},
+        steps: [],
+        errors: [],
+      }),
+    )
     updateJobMock.mockImplementation(async (_id, updates) => ({
       id: "job-1",
       muxAssetId: "mux-target-1",

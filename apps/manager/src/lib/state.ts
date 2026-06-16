@@ -488,6 +488,8 @@ export async function createJob(
   languages: string[] = [],
   options?: {
     videoDocumentId?: string
+    sourceCollectionTitle?: string
+    sourceMediaTitle?: string
     initialArtifacts?: JobArtifactManifest
     // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
     // custom step inventory (smart-crop jobs persist smart_crop_* steps
@@ -560,6 +562,8 @@ export async function createJob(
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
+      sourceCollectionTitle: options?.sourceCollectionTitle,
+      sourceMediaTitle: options?.sourceMediaTitle,
       options: jobOptions,
       artifacts: initialArtifacts,
       errors: [],
