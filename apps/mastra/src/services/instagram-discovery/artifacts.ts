@@ -48,6 +48,7 @@ export const DiscoveryTotalsSchema = z
     candidates: z.number().int().nonnegative(),
     instagram: z.number().int().nonnegative(),
     deduped: z.number().int().nonnegative(),
+    excludedCommentary: z.number().int().nonnegative(),
     qualified: z.number().int().nonnegative(),
   })
   .strict()
@@ -149,6 +150,28 @@ function isNodeErrorCode(cause: unknown, code: string): boolean {
   )
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value)
+}
+
+function applyLegacyReportDefaults(payload: unknown): unknown {
+  if (
+    !isRecord(payload) ||
+    !isRecord(payload.totals) ||
+    "excludedCommentary" in payload.totals
+  ) {
+    return payload
+  }
+
+  return {
+    ...payload,
+    totals: {
+      ...payload.totals,
+      excludedCommentary: 0,
+    },
+  }
+}
+
 export function createInstagramDiscoveryArtifactStore(
   rootDir = instagramDiscoveryArtifactRoot(),
 ): InstagramDiscoveryArtifactStore {
@@ -197,7 +220,9 @@ export function createInstagramDiscoveryArtifactStore(
           cause,
         )
       }
-      const parsed = DiscoveryReportSchema.safeParse(payload)
+      const parsed = DiscoveryReportSchema.safeParse(
+        applyLegacyReportDefaults(payload),
+      )
       if (!parsed.success) {
         throw new InstagramDiscoveryArtifactError(
           "invalid_artifact",

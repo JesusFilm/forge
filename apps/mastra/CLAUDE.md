@@ -407,7 +407,10 @@ markdown hydration for each search hit, slower), `maxResults` (50),
 `persistArtifact` (true). The
 workflow searches each query (tolerant to per-query failures), parses Instagram
 permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
-signal **both** AI-generation and Christian content.
+signal **both** AI-generation and Christian content **and** do not read as
+commentary/news/tutorial (a conservative `COMMENTARY_KEYWORDS` exclusion in
+`classifier.ts`, e.g. "should we", "here's my", "tutorial", "went viral"). The
+report's `totals.excludedCommentary` counts posts dropped by that filter.
 
 Results are returned in the response and, by default, written to a validated
 JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
@@ -416,8 +419,9 @@ JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
 Limitations to keep in mind:
 
 - **Keyword classification is heuristic and noisy.** It flags keyword signals,
-  not verified AI-generation or Christian intent. An optional LLM confirmation
-  step is deferred follow-up work.
+  not verified AI-generation or Christian intent. The commentary exclusion filter
+  removes obvious news/tutorial/reaction posts, but a meaning-aware LLM relevance
+  check is deferred follow-up work.
 - **`publishedAt` is best-effort.** Instagram rarely exposes a reliable
   timestamp through search snippets, so it is frequently `null` unless scrape
   metadata includes it.
