@@ -3,7 +3,16 @@ import { randomUUID } from "node:crypto"
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { getFirecrawlConfig, type FirecrawlConfig } from "../../config/env"
+import {
+  getFirecrawlConfig,
+  getInstagramSiteIngestConfig,
+  type FirecrawlConfig,
+} from "../../config/env"
+import {
+  submitPostsToSite,
+  type SiteIngestConfig,
+  type SiteIngestResult,
+} from "../../services/instagram-discovery/site-ingest-client"
 import {
   FirecrawlSearchError,
   requestFirecrawlSearch,
@@ -108,6 +117,41 @@ export type InstagramDiscoveryOptions = {
   firecrawlConfig?: FirecrawlConfig
   searchQuery?: SearchQueryFn
   artifactStore?: InstagramDiscoveryArtifactStore
+  /** Explicit site-ingest config; falls back to env when omitted. null disables. */
+  siteIngest?: SiteIngestConfig | null
+  /** Injectable submit fn for tests; defaults to a real HTTP POST. */
+  submitPosts?: (posts: InstagramPost[]) => Promise<SiteIngestResult>
+}
+
+/**
+ * Best-effort submit of qualified posts to the website review queue. Never
+ * throws into the run — a site outage must not fail discovery. Logs the outcome
+ * in the plain-string format the rest of the app uses.
+ */
+async function submitToReviewQueue(
+  posts: readonly InstagramPost[],
+  options: Pick<InstagramDiscoveryOptions, "siteIngest" | "submitPosts">,
+): Promise<void> {
+  if (posts.length === 0) return
+  const config = options.siteIngest ?? getInstagramSiteIngestConfig()
+  try {
+    const result = options.submitPosts
+      ? await options.submitPosts([...posts])
+      : config
+        ? await submitPostsToSite(posts, config)
+        : null
+    if (result) {
+      console.log(
+        `[instagram-discovery] event=site_ingest inserted=${result.inserted} skipped=${result.skipped}`,
+      )
+    }
+  } catch (error) {
+    console.error(
+      `[instagram-discovery] event=site_ingest_failed message=${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+  }
 }
 
 class InstagramDiscoveryFailureError extends Error {
@@ -378,6 +422,8 @@ export async function runInstagramDiscovery(
       artifactPath = written.path
     }
 
+    await submitToReviewQueue(posts, options)
+
     return {
       ok: true,
       mastraRunId,
@@ -509,6 +555,8 @@ const reportStep = createStep({
         await createInstagramDiscoveryArtifactStore().writeReport(report)
       artifactPath = written.path
     }
+
+    await submitToReviewQueue(inputData.posts, {})
 
     return {
       ok: true as const,

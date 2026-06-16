@@ -100,6 +100,8 @@ pnpm --filter @forge/mastra lint
 | `FIRECRAWL_API_BASE_URL`                  | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`.                                                              |
 | `FIRECRAWL_SEARCH_TIMEOUT_MS`             | Per-request timeout for Firecrawl search in ms. Defaults to `60000`.                                                          |
 | `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`        | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                         |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_URL`     | Optional website review-queue ingest endpoint. Both URL + token required to enable bot→site submission.                       |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`   | Optional bearer token for the website ingest endpoint (must match the site's `ADMIN_REVIEW_TOKEN`).                           |
 | `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.               |
 | `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                    |
 | `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                        |

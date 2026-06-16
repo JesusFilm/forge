@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest"
 import type { FirecrawlConfig } from "../../config/env"
 import { FirecrawlSearchError } from "../../services/firecrawl-search-client"
 import type { InstagramDiscoveryArtifactStore } from "../../services/instagram-discovery/artifacts"
-import type { DiscoveryReport } from "../../services/instagram-discovery/types"
+import type {
+  DiscoveryReport,
+  InstagramPost,
+} from "../../services/instagram-discovery/types"
 import {
   handleInstagramDiscoveryRouteRequest,
   runInstagramDiscovery,
@@ -83,6 +86,44 @@ describe("runInstagramDiscovery", () => {
     })
     expect(result.artifactPath).toBe("/tmp/fake/reports/run-1.json")
     expect(store.written).toHaveLength(1)
+  })
+
+  it("submits only qualified posts to the site review queue", async () => {
+    const submitPosts = vi.fn(async (_posts: InstagramPost[]) => ({
+      ok: true,
+      inserted: 1,
+      skipped: 0,
+    }))
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-submit",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit, aiOnlyHit, nonInstagramHit],
+        artifactStore: fakeStore(),
+        submitPosts,
+      },
+    )
+
+    expect(result.ok).toBe(true)
+    expect(submitPosts).toHaveBeenCalledTimes(1)
+    const submitted = submitPosts.mock.calls[0]![0]
+    expect(submitted).toHaveLength(1)
+    expect(submitted[0]!.shortcode).toBe("ABC123")
+  })
+
+  it("does not submit when the site is not configured", async () => {
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-nosubmit",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit],
+        artifactStore: fakeStore(),
+        siteIngest: null,
+      },
+    )
+    expect(result.ok).toBe(true)
   })
 
   it("excludes commentary posts and counts them", async () => {

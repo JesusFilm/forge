@@ -90,6 +90,8 @@ const envSchema = z.object({
     .max(120_000)
     .default(60_000),
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: z.string().url().optional(),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: z.string().min(1).optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -202,6 +204,12 @@ export const env = envSchema.parse({
   ),
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: emptyToUndefined(
     process.env.INSTAGRAM_DISCOVERY_ARTIFACT_DIR,
+  ),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: emptyToUndefined(
+    process.env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL,
+  ),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: emptyToUndefined(
+    process.env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN,
   ),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
@@ -365,6 +373,23 @@ export function getFirecrawlConfig(): FirecrawlConfig {
     baseUrl: env.FIRECRAWL_API_BASE_URL,
     timeoutMs: env.FIRECRAWL_SEARCH_TIMEOUT_MS,
   }
+}
+
+export type InstagramSiteIngestConfig = {
+  url: string
+  token: string
+}
+
+/**
+ * Returns the website review-queue ingest config, or null when not configured.
+ * Opt-in: the bot only submits posts to the site when BOTH the URL and token
+ * are present.
+ */
+export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null {
+  const url = env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL
+  const token = env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN
+  if (!url || !token) return null
+  return { url, token }
 }
 
 export function getMastraDatabaseUrl() {
