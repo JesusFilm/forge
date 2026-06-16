@@ -19,6 +19,12 @@ export type WatchPreferences = {
   subtitleLanguageSlug: string | null
   /** Whether subtitles are turned on app-wide. */
   subtitlesEnabled: boolean
+  /**
+   * Restrict offline downloads to wifi. Drives the download module's
+   * network-type constraint; a per-download cellular override is session state,
+   * not persisted here. Defaults off.
+   */
+  wifiOnly: boolean
 }
 
 export const WATCH_PREFERENCES_STORAGE_KEY = "watchPreferences"
@@ -27,6 +33,7 @@ export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   audioLanguageSlug: null,
   subtitleLanguageSlug: null,
   subtitlesEnabled: false,
+  wifiOnly: false,
 }
 
 function normalizeSlug(value: unknown): string | null {
@@ -58,6 +65,7 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
     audioLanguageSlug: normalizeSlug(obj.audioLanguageSlug),
     subtitleLanguageSlug: normalizeSlug(obj.subtitleLanguageSlug),
     subtitlesEnabled: obj.subtitlesEnabled === true,
+    wifiOnly: obj.wifiOnly === true,
   }
 }
 
