@@ -1,5 +1,5 @@
 import { requestOpenRouterChat, type OpenRouterUsage } from "./openrouter"
-import type { Chunk, LanguageConfig } from "./types"
+import type { Chunk, LanguageConfig, SubtitleScriptureContext } from "./types"
 
 export type TranslateChunkOptions = {
   chunk: Chunk
@@ -8,6 +8,7 @@ export type TranslateChunkOptions = {
   apiKey?: string
   timeoutMs: number
   config?: LanguageConfig
+  scriptureContext?: SubtitleScriptureContext
   fetchImpl?: typeof fetch
 }
 
@@ -23,6 +24,7 @@ export async function translateChunk({
   apiKey,
   timeoutMs,
   config,
+  scriptureContext,
   fetchImpl,
 }: TranslateChunkOptions): Promise<TranslateChunkResult> {
   const result = await requestOpenRouterChat({
@@ -31,7 +33,10 @@ export async function translateChunk({
     timeoutMs,
     fetchImpl,
     messages: [
-      { role: "system", content: buildSystemPrompt(targetLanguage, config) },
+      {
+        role: "system",
+        content: buildSystemPrompt(targetLanguage, config, scriptureContext),
+      },
       { role: "user", content: chunk.sourceText },
     ],
   })
@@ -45,13 +50,37 @@ export async function translateChunk({
 function buildSystemPrompt(
   targetLanguage: string,
   config?: LanguageConfig,
+  scriptureContext?: SubtitleScriptureContext,
 ): string {
   const parts = [
     `Translate the following text to ${targetLanguage}.`,
+    "Forge often translates Christian gospel content. Preserve biblical, theological, and worship language carefully and reverently.",
     "Translate for meaning and natural fluency.",
+    "Do not add verse references, commentary, doctrinal expansion, or details not present in the source.",
     "Do not worry about line count, timing, or subtitle formatting.",
     "Return only the translated text, nothing else.",
   ]
+
+  if (
+    scriptureContext?.contentDomain === "bible_story" &&
+    (scriptureContext.confidence >= 0.5 ||
+      scriptureContext.likelyBibleReferences.length > 0)
+  ) {
+    const references =
+      scriptureContext.likelyBibleReferences.length > 0
+        ? ` Likely Bible references: ${scriptureContext.likelyBibleReferences.join(", ")}.`
+        : ""
+    parts.push(
+      `This appears to be a Bible-story video.${references} Prefer wording close to familiar Bible phrasing in ${targetLanguage} where natural, while translating the supplied source text rather than quoting an unrelated passage wholesale.`,
+    )
+  } else if (
+    scriptureContext?.contentDomain === "gospel_teaching" ||
+    scriptureContext?.contentDomain === "christian_general"
+  ) {
+    parts.push(
+      `Use established Christian terminology in ${targetLanguage} and avoid secularizing theological terms.`,
+    )
+  }
 
   if (config?.glossary && Object.keys(config.glossary).length > 0) {
     const entries = Object.entries(config.glossary)

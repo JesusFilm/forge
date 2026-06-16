@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { chunkSegments } from "./chunker"
 import { deterministicRetime, validateRetimingOutput } from "./retimer"
 import { runSubtitleEnrichment } from "./run"
-import type { Chunk, LanguageConfig } from "./types"
+import type { Chunk, LanguageConfig, SubtitleScriptureContext } from "./types"
 
 const emptyUsage = {
   promptTokens: 0,
@@ -103,6 +103,7 @@ describe("runSubtitleEnrichment", () => {
   const translate = vi.fn()
   const retime = vi.fn()
   const loadConfig = vi.fn()
+  const detectScriptureContext = vi.fn()
   const written: Array<{ artifactType: string; body: string | Uint8Array }> = []
 
   beforeEach(() => {
@@ -111,6 +112,7 @@ describe("runSubtitleEnrichment", () => {
     translate.mockReset()
     retime.mockReset()
     loadConfig.mockReset()
+    detectScriptureContext.mockReset()
     written.length = 0
 
     readArtifact.mockResolvedValue(
@@ -130,6 +132,7 @@ describe("runSubtitleEnrichment", () => {
       },
     )
     loadConfig.mockResolvedValue(undefined)
+    detectScriptureContext.mockResolvedValue(undefined)
   })
 
   it("returns partial success when at least one target language completes", async () => {
@@ -155,7 +158,14 @@ describe("runSubtitleEnrichment", () => {
           apiKey: "openrouter-key",
           timeoutMs: 30_000,
         },
-        { readArtifact, writeArtifact, translate, retime, loadConfig },
+        {
+          readArtifact,
+          writeArtifact,
+          translate,
+          retime,
+          loadConfig,
+          detectScriptureContext,
+        },
       ),
     ).resolves.toEqual([
       {
@@ -191,7 +201,14 @@ describe("runSubtitleEnrichment", () => {
         apiKey: "openrouter-key",
         timeoutMs: 30_000,
       },
-      { readArtifact, writeArtifact, translate, retime, loadConfig },
+      {
+        readArtifact,
+        writeArtifact,
+        translate,
+        retime,
+        loadConfig,
+        detectScriptureContext,
+      },
     )
 
     expect(results).toEqual([
@@ -226,11 +243,19 @@ describe("runSubtitleEnrichment", () => {
         apiKey: undefined,
         timeoutMs: 30_000,
       },
-      { readArtifact, writeArtifact, translate, retime, loadConfig },
+      {
+        readArtifact,
+        writeArtifact,
+        translate,
+        retime,
+        loadConfig,
+        detectScriptureContext,
+      },
     )
 
     expect(translate).not.toHaveBeenCalled()
     expect(retime).not.toHaveBeenCalled()
+    expect(detectScriptureContext).not.toHaveBeenCalled()
     expect(results).toEqual([
       {
         lang: "en",
@@ -273,7 +298,14 @@ describe("runSubtitleEnrichment", () => {
         apiKey: "openrouter-key",
         timeoutMs: 30_000,
       },
-      { readArtifact, writeArtifact, translate, retime, loadConfig },
+      {
+        readArtifact,
+        writeArtifact,
+        translate,
+        retime,
+        loadConfig,
+        detectScriptureContext,
+      },
     )
 
     expect(translate).toHaveBeenCalledWith(
@@ -282,5 +314,138 @@ describe("runSubtitleEnrichment", () => {
     expect(retime).toHaveBeenCalledWith(
       expect.objectContaining({ targetLanguage: "es", config }),
     )
+  })
+
+  it("reuses detected scripture context for translation, retiming, and JSON provenance", async () => {
+    const scriptureContext: SubtitleScriptureContext = {
+      contentDomain: "bible_story",
+      likelyBibleReferences: ["Luke 2"],
+      confidence: 0.91,
+      rationale: "Birth narrative.",
+    }
+    detectScriptureContext.mockResolvedValue(scriptureContext)
+    translate.mockResolvedValue({ text: "Hello.", usage: emptyUsage })
+    retime.mockResolvedValue({
+      segments: [{ start: 0, end: 2, text: "Hello." }],
+      usage: emptyUsage,
+      fallbackUsed: false,
+    })
+
+    await runSubtitleEnrichment(
+      {
+        assetId: "qa-asset",
+        sourceLanguage: "es",
+        targetLanguages: ["en"],
+        model: "test-model",
+        apiKey: "openrouter-key",
+        timeoutMs: 30_000,
+        translationContext: {
+          videoTitle: "Birth of Jesus",
+          bibleReferences: ["Luke 2"],
+        },
+      },
+      {
+        readArtifact,
+        writeArtifact,
+        translate,
+        retime,
+        loadConfig,
+        detectScriptureContext,
+      },
+    )
+
+    expect(detectScriptureContext).toHaveBeenCalledTimes(1)
+    expect(detectScriptureContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceLanguage: "es",
+        translationContext: {
+          videoTitle: "Birth of Jesus",
+          bibleReferences: ["Luke 2"],
+        },
+      }),
+    )
+    expect(translate).toHaveBeenCalledWith(
+      expect.objectContaining({ scriptureContext }),
+    )
+    expect(retime).toHaveBeenCalledWith(
+      expect.objectContaining({ scriptureContext }),
+    )
+    const jsonWrite = written.find(
+      (write) => write.artifactType === "translation-en",
+    )
+    expect(JSON.parse(String(jsonWrite?.body))).toMatchObject({
+      translationContext: {
+        contentDomain: "bible_story",
+        likelyBibleReferences: ["Luke 2"],
+        confidence: 0.91,
+      },
+    })
+    expect(String(jsonWrite?.body)).not.toContain("Birth narrative")
+  })
+
+  it("logs detector failures and continues with sanitized fallback context", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    detectScriptureContext.mockRejectedValue(new Error("provider down"))
+    translate.mockResolvedValue({ text: "Hello.", usage: emptyUsage })
+    retime.mockResolvedValue({
+      segments: [{ start: 0, end: 2, text: "Hello." }],
+      usage: emptyUsage,
+      fallbackUsed: false,
+    })
+
+    try {
+      await expect(
+        runSubtitleEnrichment(
+          {
+            assetId: "qa-asset",
+            sourceLanguage: "es",
+            targetLanguages: ["en"],
+            model: "test-model",
+            apiKey: "openrouter-key",
+            timeoutMs: 30_000,
+            translationContext: {
+              bibleReferences: [" Luke 2 ", "not scripture"],
+            },
+          },
+          {
+            readArtifact,
+            writeArtifact,
+            translate,
+            retime,
+            loadConfig,
+            detectScriptureContext,
+          },
+        ),
+      ).resolves.toEqual([
+        {
+          lang: "en",
+          status: "completed",
+          artifactKeys: {
+            vtt: "qa-asset/subtitles-en.vtt",
+            json: "qa-asset/translation-en.json",
+          },
+        },
+      ])
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        JSON.stringify({
+          event: "subtitle_scripture_context_detection_failed",
+          assetId: "qa-asset",
+          errorName: "Error",
+        }),
+      )
+      const jsonWrite = written.find(
+        (write) => write.artifactType === "translation-en",
+      )
+      expect(JSON.parse(String(jsonWrite?.body))).toMatchObject({
+        translationContext: {
+          contentDomain: "bible_story",
+          likelyBibleReferences: ["Luke 2"],
+          confidence: 0.65,
+        },
+      })
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })

@@ -1,14 +1,28 @@
 import type { PrismaClient } from "@prisma/client"
 import { canEditExperienceLocale } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
+import { env } from "@/config/env"
 import { getMastra } from "@/mastra"
 import { TIME_BUDGET_MS } from "@/mastra/budgets"
 import { WorkflowStepError } from "@/mastra/workflows/multi-step-draft-workflow"
-import type { DraftExperience } from "@/services/experience-ai/experience-ai.schemas"
+import { buildExemplarOutline } from "@/services/experience-ai/experience-ai-exemplar-outline"
+import { selectExperienceExemplar } from "@/services/experience-ai/experience-ai-exemplar.service"
+import type {
+  DraftExperience,
+  VideoCandidate,
+} from "@/services/experience-ai/experience-ai.schemas"
 import {
+  ExperienceAiNormalizationError,
   loadExperienceAiVideoCandidates,
   normalizeExperienceDraft,
 } from "@/services/experience-ai/experience-ai.service"
+import type { NormalizedExperienceDraft } from "@/services/experience-ai/experience-ai.service"
+import {
+  classifyRepairability,
+  REPAIR_CALL_TIMEOUT_MS,
+  repairDraft,
+  RepairDraftError,
+} from "@/services/experience-ai/repair-draft"
 
 export type GenerateDraftActionInput = {
   localeId: string
@@ -52,6 +66,7 @@ export type GenerateDraftActionErrorCode =
   | "NOT_CONFIGURED"
   | "NO_CANDIDATES"
   | "SCHEMA_MISMATCH"
+  | "UNRESOLVED_REFERENCE"
   | "UPSTREAM_ERROR"
   | "UNKNOWN"
 
@@ -103,6 +118,8 @@ export const USER_MESSAGES: Record<GenerateDraftActionErrorCode, string> = {
     "No suitable in-catalog videos were found for this theme. Try broader wording.",
   SCHEMA_MISMATCH:
     "The AI response could not be turned into a valid editor draft. Try again.",
+  UNRESOLVED_REFERENCE:
+    "The AI draft referenced a video or section that does not exist. Try again.",
   UPSTREAM_ERROR:
     "The AI drafting service is unavailable right now. Try again shortly.",
   UNKNOWN: "Unable to generate a draft right now.",
@@ -169,6 +186,11 @@ function classifyWorkflowError(
 ): GenerateDraftActionErrorCode {
   if (err.reason === "schema_mismatch") return "SCHEMA_MISMATCH"
   if (err.reason === "timeout") return "UPSTREAM_ERROR"
+  // truncated (U4) — the provider hit its output-token ceiling
+  // mid-document (`finishReason === "length"`). Non-repairable, so it
+  // maps to UPSTREAM_ERROR (the editor sees "service unavailable, try
+  // again") and is NEVER routed into the repair loop (U5).
+  if (err.reason === "truncated") return "UPSTREAM_ERROR"
   // agent_error — surface NOT_CONFIGURED when the message indicates a
   // missing provider key. Anything else is UPSTREAM_ERROR. The
   // not-configured signal would be cleaner as its own typed
@@ -177,6 +199,39 @@ function classifyWorkflowError(
     return "NOT_CONFIGURED"
   }
   return "UPSTREAM_ERROR"
+}
+
+/**
+ * Classify an `ExperienceAiNormalizationError` into the action's editor-safe
+ * error-code union. Branches on `err.code` (a closed literal union) — NEVER
+ * on `err.message`. The exhaustive `switch` with a `never`-typed default makes
+ * a future normalization code a compile-time error here until it is mapped, so
+ * a new structural-failure mode can never silently fall through to `UNKNOWN`.
+ *
+ * Mapping rationale:
+ *  - `INVALID_BLOCKS` / `BELOW_MIN_BLOCKS` → `SCHEMA_MISMATCH`: the normalized
+ *    output is structurally wrong (bad shape, or below the generation
+ *    minimum) — same editor-facing class as a workflow schema mismatch.
+ *  - `UNKNOWN_VIDEO_REF` / `UNKNOWN_SECTION_REF` / `DUPLICATE_SECTION_REF` →
+ *    `UNRESOLVED_REFERENCE`: the model referenced (or duplicated) something
+ *    that cannot be resolved against the real candidate/section set.
+ */
+function classifyNormalizationError(
+  err: ExperienceAiNormalizationError,
+): GenerateDraftActionErrorCode {
+  switch (err.code) {
+    case "INVALID_BLOCKS":
+    case "BELOW_MIN_BLOCKS":
+      return "SCHEMA_MISMATCH"
+    case "UNKNOWN_VIDEO_REF":
+    case "UNKNOWN_SECTION_REF":
+    case "DUPLICATE_SECTION_REF":
+      return "UNRESOLVED_REFERENCE"
+    default: {
+      const exhaustive: never = err.code
+      return exhaustive
+    }
+  }
 }
 
 const ACTION_BUDGET_MS = TIME_BUDGET_MS.multiStepWorkflow
@@ -202,6 +257,115 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       },
     )
   })
+}
+
+/**
+ * U5 — the validate→repair-with-error-feedback boundary loop. Wraps the
+ * NORMALIZE→`BlocksSchema` boundary AFTER a successful workflow run so the
+ * action NEVER returns or persists a draft that fails `BlocksSchema`.
+ *
+ * Loop:
+ *  1. `normalizeExperienceDraft(draft, candidates)` (validates against
+ *     `BlocksSchema` + the generation minimum inside the service).
+ *  2. On success → return the normalized draft (caller proceeds to persist).
+ *  3. On `ExperienceAiNormalizationError`:
+ *       - classify via `classifyRepairability` (`instanceof` + `.code`,
+ *         never message regex).
+ *       - `schema_violation` AND attempts remain → re-prompt a SINGLE agent
+ *         (NOT a workflow re-run) with the offending draft + concrete errors
+ *         → loop with the repaired draft.
+ *       - `structurally_impossible` (UNKNOWN_*_REF / DUPLICATE_SECTION_REF;
+ *         the model can't invent a candidate that doesn't exist) OR attempts
+ *         exhausted → RE-THROW the typed error so the action's catch ladder
+ *         fails closed via `classifyNormalizationError`. Never persisted.
+ *
+ * Budget: the whole action already runs inside `withTimeout(...,
+ * ACTION_BUDGET_MS)`. Each repair call gets a per-call timeout that is the
+ * SMALLER of `REPAIR_CALL_TIMEOUT_MS` (30s) and the budget remaining until
+ * `deadline` — strictly under the outer ceiling so a repair call never
+ * out-races the action timeout (cf.
+ * docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md).
+ * If no meaningful budget remains, the loop stops re-prompting and fails
+ * closed with the last typed error rather than dispatching a doomed call.
+ *
+ * Returns the normalized draft. Throws either the original
+ * `ExperienceAiNormalizationError` (fail-closed) or a repair-output error;
+ * both fall to the action's catch ladder which never persists off-shape
+ * output.
+ */
+const REPAIR_BUDGET_FLOOR_MS = 2_000
+
+/**
+ * Runtime default for the repair-attempt cap. `env` applies the Zod
+ * `.default(2)` in normal boot, but t3-env's `skipValidation` mode (CI /
+ * build phase) returns `process.env` as-is WITHOUT applying Zod defaults, so
+ * `env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS` can be `undefined` there. The
+ * runtime `?? DEFAULT_MAX_REPAIR_ATTEMPTS` fallback keeps the cap bounded in
+ * every mode (cf.
+ * docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md).
+ */
+const DEFAULT_MAX_REPAIR_ATTEMPTS = 2
+
+async function normalizeWithRepair(args: {
+  draft: DraftExperience
+  candidates: readonly VideoCandidate[]
+  maxAttempts: number
+  deadline: number
+  abortSignal?: AbortSignal
+}): Promise<NormalizedExperienceDraft> {
+  let currentDraft = args.draft
+  // attempt 0 is the initial normalize of the workflow's draft; attempts
+  // 1..maxAttempts are repair re-prompts. The loop runs at most
+  // maxAttempts + 1 normalize passes.
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return normalizeExperienceDraft(
+        currentDraft,
+        args.candidates as VideoCandidate[],
+      )
+    } catch (error) {
+      if (!(error instanceof ExperienceAiNormalizationError)) {
+        // Non-normalization throw — let the action's catch ladder handle it
+        // (e.g. UNKNOWN). Never swallowed into the repair path.
+        throw error
+      }
+      const repairClass = classifyRepairability(error)
+      // structurally_impossible never enters the loop; attempts exhausted
+      // also fails closed.
+      if (repairClass !== "schema_violation" || attempt >= args.maxAttempts) {
+        throw error
+      }
+      const remaining = args.deadline - Date.now()
+      if (remaining <= REPAIR_BUDGET_FLOOR_MS) {
+        // No meaningful budget left for another LLM round-trip — fail closed
+        // with the typed error rather than dispatch a doomed repair call.
+        console.warn(
+          "[runGenerateDraftAction] event=repair_skipped reason=budget_exhausted attempt=" +
+            (attempt + 1),
+        )
+        throw error
+      }
+      const timeoutMs = Math.min(REPAIR_CALL_TIMEOUT_MS, remaining)
+      console.warn(
+        "[runGenerateDraftAction] event=repair_attempt attempt=" +
+          (attempt + 1) +
+          " class=" +
+          repairClass +
+          " code=" +
+          error.code,
+      )
+      currentDraft = await repairDraft({
+        draft: currentDraft,
+        candidates: args.candidates,
+        error,
+        attempt: attempt + 1,
+        mastra: getMastra(),
+        abortSignal: args.abortSignal,
+        timeoutMs,
+      })
+      // loop: re-normalize the repaired draft.
+    }
+  }
 }
 
 export async function runGenerateDraftAction(
@@ -275,6 +439,32 @@ export async function runGenerateDraftAction(
     return fail("NO_CANDIDATES")
   }
 
+  // Pick a real published experience as a structure-and-voice reference
+  // for the drafter (relevance-matched, Easter fallback). Best-effort and
+  // NON-FATAL: candidates are required, an exemplar is not. Any failure
+  // degrades to no exemplar (pre-feature behaviour) so generation never
+  // breaks because the reference was unavailable. The user's theme prompt
+  // (not the title/desc-augmented buildPrompt) drives relevance matching.
+  let exemplar: string | undefined
+  try {
+    const selection = await selectExperienceExemplar(
+      { prisma: deps.prisma as PrismaClient },
+      {
+        prompt,
+        locale: input.locale,
+        excludeExperienceId: locale.experienceId,
+      },
+    )
+    if (selection) {
+      exemplar = buildExemplarOutline(selection.row) ?? undefined
+    }
+  } catch (error) {
+    console.warn(
+      "[runGenerateDraftAction] event=exemplar_selection_failed error=" +
+        (error instanceof Error ? error.message : String(error)),
+    )
+  }
+
   // Captured outside the try so the timeout/error path can best-effort
   // cancel the run handle (see the catch block). Mastra's Run exposes
   // `cancel(): Promise<void>` (@mastra/core 1.33.1) which aborts the
@@ -283,6 +473,12 @@ export async function runGenerateDraftAction(
   // burning LLM calls in the background.
   let activeRun: { cancel?: () => Promise<void>; runId?: string } | undefined
   const producedBy = input.mode === "quick" ? "quick-draft" : "multi-step-draft"
+  // Single wall-clock deadline for the whole action — the workflow run AND
+  // the U5 repair loop must finish before it. `withTimeout` enforces it for
+  // the workflow leg; `normalizeWithRepair` sizes each repair call's
+  // per-call timeout under the budget remaining until this deadline so a
+  // repair re-prompt never out-races the action ceiling.
+  const actionDeadline = Date.now() + ACTION_BUDGET_MS
   try {
     const mastra = getMastra()
     const workflowId =
@@ -296,6 +492,7 @@ export async function runGenerateDraftAction(
           prompt: buildPrompt(input),
           locale: input.locale,
           candidates,
+          exemplar,
         },
       }),
       ACTION_BUDGET_MS,
@@ -319,7 +516,22 @@ export async function runGenerateDraftAction(
     // throws WorkflowStepError(schema_mismatch) before we get here.
     const draft = (workflowResult.result as { draft: DraftExperience }).draft
 
-    const normalized = normalizeExperienceDraft(draft, candidates)
+    // U5 — fail-closed boundary loop. Normalize + validate against
+    // BlocksSchema; on a repair-eligible (schema_violation) failure with
+    // attempts remaining, re-prompt a SINGLE agent with the offending draft
+    // + concrete errors and re-normalize. structurally_impossible and
+    // exhausted attempts re-throw the typed error to the catch ladder
+    // (classifyNormalizationError) so off-shape output is NEVER persisted or
+    // returned. Workflow-INTERNAL failures stay on the existing
+    // classifyWorkflowError path above — only a draft that was actually
+    // produced reaches here.
+    const normalized = await normalizeWithRepair({
+      draft,
+      candidates,
+      maxAttempts:
+        env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS ?? DEFAULT_MAX_REPAIR_ATTEMPTS,
+      deadline: actionDeadline,
+    })
 
     // Persist a thin assistant message linked to the active thread so
     // the workflow output is identifiable + rateable. The full draft
@@ -438,7 +650,30 @@ export async function runGenerateDraftAction(
       }
       return fail("UPSTREAM_ERROR")
     }
-    console.error("[runGenerateDraftAction] unexpected error", error)
+    // U5 — the repair agent's OWN output was unusable (un-parseable, still
+    // schema-invalid, or the repair call timed out). Fail closed: a timeout
+    // maps to UPSTREAM_ERROR (the service is slow/unavailable); an
+    // un-parseable / still-invalid repair output maps to SCHEMA_MISMATCH
+    // (same editor-facing class as a normalize schema miss). Either way the
+    // off-shape draft is NEVER persisted or returned.
+    if (error instanceof RepairDraftError) {
+      return fail(
+        error.reason === "timeout" ? "UPSTREAM_ERROR" : "SCHEMA_MISMATCH",
+      )
+    }
+    // normalizeExperienceDraft runs OUTSIDE the workflow, so its typed error
+    // would otherwise fall through to the generic UNKNOWN catch. Classify it
+    // on `.code` instead so the editor sees a structure/reference message.
+    if (error instanceof ExperienceAiNormalizationError) {
+      return fail(classifyNormalizationError(error))
+    }
+    // UNKNOWN is reserved STRICTLY for genuinely-unrecognized throws. Log in
+    // the plain-string `[label] event=name key=value` format (Railway logsV2
+    // silences JSON.stringify payloads from this runtime route path).
+    console.error(
+      "[runGenerateDraftAction] event=unknown_error error=" +
+        (error instanceof Error ? error.message : String(error)),
+    )
     return fail("UNKNOWN")
   }
 }

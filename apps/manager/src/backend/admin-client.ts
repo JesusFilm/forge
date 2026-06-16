@@ -75,6 +75,8 @@ type UpdateAdminJobInput = Partial<
 export type AdminVideoForEnrichment = {
   documentId: string
   coreId?: string | null
+  title?: string | null
+  label?: string | null
   primaryLanguage?: {
     coreId?: string | null
     bcp47?: string | null
@@ -128,6 +130,8 @@ const LANGUAGE_GEO_SELECTION = `
 const VIDEO_ENRICHMENT_SELECTION = `
   documentId
   coreId
+  title
+  label
   primaryLanguage {
     coreId
     bcp47

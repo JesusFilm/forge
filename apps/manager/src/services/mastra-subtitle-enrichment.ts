@@ -9,11 +9,18 @@ export type LanguageResult = {
   artifactKeys?: { vtt: string; json: string }
 }
 
+export type MastraSubtitleTranslationContext = {
+  videoTitle?: string
+  videoLabel?: string
+  bibleReferences?: string[]
+}
+
 export type MastraSubtitleEnrichmentInput = {
   assetId: string
   sourceLanguage: string
   targetLanguages: string[]
   model?: string
+  translationContext?: MastraSubtitleTranslationContext
 }
 
 export type MastraSubtitleEnrichmentResult =
@@ -132,6 +139,9 @@ export async function launchMastraSubtitleEnrichment(
           sourceLanguage: input.sourceLanguage,
           targetLanguages: input.targetLanguages,
           ...(input.model ? { model: input.model } : {}),
+          ...(input.translationContext
+            ? { translationContext: input.translationContext }
+            : {}),
         }),
         signal: AbortSignal.timeout(
           options.timeoutMs ??

@@ -25,7 +25,7 @@ import type { PrismaClient } from "@prisma/client"
 
 import { canEditExperienceLocale } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
-import { TIME_BUDGET_MS } from "@/mastra/budgets"
+import { STEP_CAPS, TIME_BUDGET_MS } from "@/mastra/budgets"
 import { ExperienceService } from "@/services/experience.service"
 import {
   computeDiff,
@@ -180,8 +180,55 @@ async function runMastraChat({
     // tool-call cycle. generate() returns the final text synchronously
     // which is sufficient for the demo; true token streaming requires
     // wiring the full UIMessageStream (the U3 bridge).
-    const result = await agent.generate(prompt, { abortSignal: composedSignal })
-    const buffer = typeof result.text === "string" ? result.text : ""
+    //
+    // `maxSteps` bounds tool-call recursion: `experience-default-chat`
+    // is a tool-calling agent (searchVideos / lookupBibleVerse /
+    // fetchVideoImage). `STEP_CAPS.toolCallingTurn` caps the
+    // tool→observe→respond loop so a misbehaving turn can't recurse
+    // without bound. (It is NOT what fixes the empty-buffer bug — that
+    // is the abort guard below.)
+    const result = await agent.generate(prompt, {
+      abortSignal: composedSignal,
+      maxSteps: STEP_CAPS.toolCallingTurn,
+    })
+    // Abort-resolves-empty guard. When the budget (or user-cancel)
+    // signal fires mid-generation, the AI SDK RESOLVES `generate()` with
+    // empty text rather than rejecting — so an aborted turn never enters
+    // the catch block's timeout/cancel classification, and an empty
+    // `result.text` would otherwise be misreported downstream as
+    // "agent returned text without a JSON object" / DRAFT REJECTED. A
+    // full from-scratch draft on the gateway model runs ~37-45s, so the
+    // 30s+ budget abort was the real production failure (logs:
+    // `stream_done buffer_length=0` + `no_json_object head="" tail=""`,
+    // with NO `chat_turn_timeout`). Classify the abort honestly here,
+    // before any empty-buffer handling.
+    if (budgetSignal.aborted) {
+      console.warn(
+        "[mastra-chat] event=chat_turn_timeout source=generate_resolved_empty budget_ms=" +
+          TIME_BUDGET_MS.chatTurn,
+      )
+      return {
+        kind: "error",
+        code: "timeout",
+        message: "The AI took too long to respond and the request timed out.",
+      }
+    }
+    if (abortSignal?.aborted) {
+      return {
+        kind: "error",
+        code: "cancelled",
+        message: "The request was cancelled.",
+      }
+    }
+    // Prefer `result.text`; fall back to a serialized `result.object`
+    // (mirrors the draft workflow's resolveDraft) so a structured-output
+    // turn still yields a parseable buffer instead of an empty string.
+    const buffer =
+      typeof result.text === "string" && result.text.length > 0
+        ? result.text
+        : result.object !== undefined
+          ? JSON.stringify(result.object)
+          : ""
     if (buffer.length > 0) onToken(buffer)
     console.warn(
       "[mastra-chat] event=stream_done buffer_length=" + buffer.length,

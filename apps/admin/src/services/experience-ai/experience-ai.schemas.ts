@@ -1,5 +1,22 @@
 import { z } from "zod"
 
+/**
+ * Single source of truth for the generation minimum-block-count rule.
+ *
+ * This minimum is a GENERATION-PATH contract only — an AI-generated draft
+ * must contain at least this many top-level blocks to be a usable page.
+ * It is enforced at two gates that must agree: the `DraftExperienceSchema`
+ * gate inside the workflow (below) AND the post-normalize generation check
+ * in `experience-ai-normalize.ts`. Both reference this constant so they can
+ * never silently drift apart.
+ *
+ * It is deliberately NOT applied to the persistence-layer `BlocksSchema`
+ * (`@/domain/blocks`) — that schema governs ALL persistence including
+ * legitimate manual 1-block experiences, so tightening it would reject
+ * valid hand-authored content.
+ */
+export const GENERATION_MIN_BLOCKS = 2
+
 const DraftSectionRefSchema = z
   .string()
   .trim()
@@ -370,7 +387,7 @@ export const DraftExperienceSchema = z
   .object({
     title: z.string().min(1),
     metaDescription: z.string().min(1),
-    blocks: z.array(z.lazy(() => DraftBlockSchema)).min(2),
+    blocks: z.array(z.lazy(() => DraftBlockSchema)).min(GENERATION_MIN_BLOCKS),
   })
   .strict()
 
@@ -416,4 +433,274 @@ export function buildDraftExperienceJsonSchema() {
       blocks: { type: "array", minItems: 2 },
     },
   }
+}
+
+// ---------------------------------------------------------------------------
+// Two-phase generation (U3) — skeleton schema + structural validator
+// ---------------------------------------------------------------------------
+//
+// The skeleton phase emits STRUCTURE ONLY: an ordered tree of block
+// types/nesting with no content. It is validated against the same
+// scoped-nesting/cardinality rules the Draft scope unions encode, BEFORE
+// any per-block fill runs (cheap fail-fast). The skeleton + fill schemas
+// here are GENERATION-ONLY scaffolding — never persisted, versioned, or
+// exposed as a domain contract (the persistence contract stays
+// `@/domain/blocks` `BlocksSchema`).
+
+/**
+ * Derive the canonical `t` literal set a discriminated-union accepts.
+ * Reuses the Draft scope unions as the single source of truth so a
+ * schema change there propagates into skeleton validation with zero
+ * hand-transcription.
+ */
+function discriminatorLiterals(
+  union: z.ZodDiscriminatedUnion,
+): ReadonlySet<string> {
+  const literals = new Set<string>()
+  for (const option of union.options) {
+    const shape = (option as z.ZodObject).shape as Record<string, unknown>
+    const tLiteral = shape.t as z.ZodLiteral<string>
+    literals.add(tLiteral.value)
+  }
+  return literals
+}
+
+/** Block `t` literals allowed at each nesting scope. */
+export const SKELETON_TOP_LEVEL_TYPES = discriminatorLiterals(DraftBlockSchema)
+export const SKELETON_SECTION_TYPES = discriminatorLiterals(
+  DraftSectionContentBlockSchema,
+)
+export const SKELETON_CONTAINER_TYPES = discriminatorLiterals(
+  DraftContainerContentBlockSchema,
+)
+
+/**
+ * One skeleton node — structure only. `type` is the block `t` literal;
+ * `children` is the ordered list of nested nodes (a `section`'s content
+ * blocks or a `container`'s flattened slot content). `sectionRef` mirrors
+ * the Draft `sectionRef` so the fill phase can address the node. No
+ * content fields exist here by construction.
+ */
+export type SkeletonNode = {
+  type: string
+  sectionRef?: string
+  children?: SkeletonNode[]
+}
+
+const SkeletonNodeSchema: z.ZodType<SkeletonNode> = z.lazy(() =>
+  z
+    .object({
+      type: z.string().min(1),
+      sectionRef: DraftSectionRefSchema.optional(),
+      children: z.array(SkeletonNodeSchema).optional(),
+    })
+    .strict(),
+)
+
+/**
+ * The skeleton envelope the skeleton agent emits: an ordered tree of
+ * nodes. `nodes` is the top-level block sequence. Strict — the skeleton
+ * has no scalar fields (title/metaDescription are filled later from
+ * the plan + fill phase), only structure.
+ */
+export const SkeletonSchema = z
+  .object({
+    nodes: z.array(SkeletonNodeSchema),
+  })
+  .strict()
+
+export type Skeleton = z.infer<typeof SkeletonSchema>
+
+/**
+ * Stable failure codes for `validateSkeleton`. Keyed off these, the
+ * workflow throws `WorkflowStepError(step="skeleton")` so the action
+ * classifies on the discriminator, never on a message regex.
+ */
+export type SkeletonValidationFailureCode =
+  | "malformed_skeleton"
+  | "too_few_top_level_nodes"
+  | "unknown_block_type"
+  | "illegal_nesting"
+  | "missing_children"
+
+export type SkeletonValidationResult =
+  | { ok: true; skeleton: Skeleton }
+  | {
+      ok: false
+      code: SkeletonValidationFailureCode
+      message: string
+    }
+
+/**
+ * Which scopes a `section`/`container` node legally nests its children
+ * in. `section` children live in section scope; `container` children
+ * live in container scope (slots flattened). Leaf node types accept no
+ * children.
+ */
+const NESTING_CHILD_SCOPE: Record<
+  "section" | "container",
+  ReadonlySet<string>
+> = {
+  section: SKELETON_SECTION_TYPES,
+  container: SKELETON_CONTAINER_TYPES,
+}
+
+function validateSkeletonNodes(
+  nodes: readonly SkeletonNode[],
+  allowed: ReadonlySet<string>,
+  scopeLabel: string,
+  path: string,
+):
+  | { ok: true }
+  | { ok: false; code: SkeletonValidationFailureCode; message: string } {
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]
+    const nodePath = `${path}[${i}]`
+    if (!allowed.has(node.type)) {
+      return {
+        ok: false,
+        code: "unknown_block_type",
+        message: `block type '${node.type}' is not allowed in ${scopeLabel} scope at ${nodePath}`,
+      }
+    }
+
+    if (node.type === "section" || node.type === "container") {
+      const childScope = NESTING_CHILD_SCOPE[node.type]
+      const children = node.children ?? []
+      // A nesting node with zero children produces an empty section /
+      // container — structurally pointless. Require at least one child so
+      // the fill phase has content to fill.
+      if (children.length === 0) {
+        return {
+          ok: false,
+          code: "missing_children",
+          message: `'${node.type}' node at ${nodePath} must declare at least one child`,
+        }
+      }
+      const childResult = validateSkeletonNodes(
+        children,
+        childScope,
+        node.type,
+        `${nodePath}.children`,
+      )
+      if (!childResult.ok) return childResult
+    } else if (node.children !== undefined && node.children.length > 0) {
+      // Leaf node types (text, cta, video, …) cannot nest children — only
+      // `section` / `container` are nesting types. A leaf carrying children
+      // is an illegal-nesting signal (e.g. the model put blocks under a
+      // `text`).
+      return {
+        ok: false,
+        code: "illegal_nesting",
+        message: `leaf block type '${node.type}' at ${nodePath} cannot declare children`,
+      }
+    }
+  }
+  return { ok: true }
+}
+
+/**
+ * Validate a skeleton's STRUCTURE before any content fill (R2).
+ *
+ * Enforces, against the rules the Draft scope unions encode:
+ *  - allowed block types per scope (top / section / container);
+ *  - scoped nesting (no `section` inside a `section` — `section` is not
+ *    in `SKELETON_SECTION_TYPES`; `quizButton` only in section scope;
+ *    `videoHero`/`navigationCarousel`/etc. only top-level);
+ *  - cardinality: a nesting node (`section`/`container`) must declare
+ *    at least one child; a leaf node must declare none;
+ *  - ordering: nodes are validated in declared order and the order is
+ *    preserved into the fill phase (the array IS the order);
+ *  - minimum size: `>= GENERATION_MIN_BLOCKS` top-level nodes.
+ *
+ * Returns a typed result — `{ ok: true, skeleton }` or
+ * `{ ok: false, code, message }`. Never throws.
+ */
+export function validateSkeleton(input: unknown): SkeletonValidationResult {
+  const parsed = SkeletonSchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      code: "malformed_skeleton",
+      message: `skeleton did not satisfy SkeletonSchema: ${parsed.error.message}`,
+    }
+  }
+
+  const skeleton = parsed.data
+  if (skeleton.nodes.length < GENERATION_MIN_BLOCKS) {
+    return {
+      ok: false,
+      code: "too_few_top_level_nodes",
+      message: `skeleton has ${skeleton.nodes.length} top-level nodes; minimum is ${GENERATION_MIN_BLOCKS}`,
+    }
+  }
+
+  const result = validateSkeletonNodes(
+    skeleton.nodes,
+    SKELETON_TOP_LEVEL_TYPES,
+    "top-level",
+    "nodes",
+  )
+  if (!result.ok) return result
+
+  return { ok: true, skeleton }
+}
+
+// ---------------------------------------------------------------------------
+// Per-variant FILL schemas (U3) — flat single-object content per block type
+// ---------------------------------------------------------------------------
+//
+// The fill phase constrains the model to ONE block variant at a time. Per
+// the strict-anyOf learning
+// (`docs/solutions/best-practices/openai-strict-anyof-lenient-per-section-parse-20260422.md`),
+// each fill schema is a FLAT single object with an enumerated `t`
+// discriminator + that variant's fields — NOT an `anyOf` of all variants.
+// This is the regime constrained decoders honor most reliably and the
+// easiest to coerce.
+//
+// The fill schemas are exactly the existing Draft per-variant schemas
+// re-indexed by their `t` literal. Reusing them (rather than
+// re-declaring) keeps the fill contract byte-aligned with the assembled
+// Draft contract — a fill that validates against its variant schema is a
+// block the assembled draft will accept. The `children`/nesting structure
+// comes from the skeleton; fill provides the per-node CONTENT only, so the
+// nesting-container schemas (`section`, `container`) are intentionally
+// excluded here — their children are filled as their own nodes and the
+// parent shell is assembled structurally.
+
+/**
+ * The flat fill schema for every fillable block `t` (the leaf + content
+ * variants — NOT the nesting shells `section`/`container`, whose content
+ * is filled as child nodes and whose shells are assembled structurally).
+ *
+ * Generation-only. Keyed by the `t` literal so the fill step can look up
+ * `FILL_SCHEMAS_BY_TYPE[node.type]` and constrain a single call.
+ */
+export const FILL_SCHEMAS_BY_TYPE = {
+  adventCountdown: DraftAdventCountdownBlockSchema,
+  bibleQuotesCarousel: DraftBibleQuotesCarouselBlockSchema,
+  card: DraftCardBlockSchema,
+  cta: DraftCtaBlockSchema,
+  easterDates: DraftEasterDatesBlockSchema,
+  infoBlocks: DraftInfoBlocksBlockSchema,
+  mediaCollection: DraftMediaCollectionBlockSchema,
+  navigationCarousel: DraftNavigationCarouselBlockSchema,
+  promoBanner: DraftPromoBannerBlockSchema,
+  quizButton: DraftQuizButtonBlockSchema,
+  relatedQuestions: DraftRelatedQuestionsBlockSchema,
+  text: DraftTextBlockSchema,
+  video: DraftVideoBlockSchema,
+  videoCarousel: DraftVideoCarouselBlockSchema,
+  videoHero: DraftVideoHeroBlockSchema,
+} as const
+
+export type FillableBlockType = keyof typeof FILL_SCHEMAS_BY_TYPE
+
+/**
+ * Look up the flat fill schema for a block type. Returns `undefined` for
+ * the nesting shells (`section`/`container`) and unknown types — the
+ * caller assembles those structurally rather than filling them directly.
+ */
+export function getFillSchemaForType(type: string): z.ZodType | undefined {
+  return (FILL_SCHEMAS_BY_TYPE as Record<string, z.ZodType>)[type]
 }
