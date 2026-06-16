@@ -5,7 +5,7 @@ assistant replies come from a pure client-side stub — no API routes, no
 network calls, no persistence. The app exists so the UI shell, conventions,
 and deploy path are in place before the real agent wiring lands.
 
-Roadmap ticket: `docs/roadmap/platform/feat-174-chat-app-scaffold.md`.
+Roadmap ticket: `docs/roadmap/ai-chat/feat-174-chat-app-scaffold.md`.
 Scope and guardrails: see `CLAUDE.md` and `AGENTS.md` in this directory.
 
 ## Local development

@@ -240,7 +240,7 @@ Carried from origin; deferred and documented as deferred in the app's own docs:
 
 ## Sources & Research
 
-- Origin requirements: `docs/brainstorms/2026-06-10-chat-app-scaffold-requirements.md`; ticket: `docs/roadmap/platform/feat-174-chat-app-scaffold.md`.
+- Origin requirements: `docs/brainstorms/2026-06-10-chat-app-scaffold-requirements.md`; ticket: `docs/roadmap/ai-chat/feat-174-chat-app-scaffold.md`.
 - CI mechanics: `.github/workflows/ci.yml` (affected matrix `@forge/*` filter, `--if-present` task invocation, unconditional format job).
 - Scaffold checklist: `docs/solutions/platform/adding-new-apps.md` (confirms the zero-CI-change claim; its port bullet is stale — corrected in U6 — and its `@forge/graphql` / t3-oss `env.ts` guidance predates current reality: noted, not fixed, in this PR).
 - Railway: `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md` (dead-config incident + service-creation checklist), `docs/solutions/workflow-issues/yt-video-mapper-railway-prisma-backend-deployment.md` (positive `configFile` verification, 2026-06-09), `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md` (`[deploy.env]` unreliability, corepack pin).
