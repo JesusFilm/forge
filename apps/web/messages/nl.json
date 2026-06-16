@@ -83,7 +83,8 @@
     "toggleOn": "Aan",
     "toggleOff": "Uit",
     "close": "Sluiten",
-    "apply": "Toepassen"
+    "apply": "Toepassen",
+    "noLanguageSubtitles": "Geen ondertiteling voor {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 AFLEVERING} other {# AFLEVERINGEN}}",

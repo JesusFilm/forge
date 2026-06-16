@@ -759,6 +759,9 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     expect(toggle.getAttribute("aria-checked")).toBe("true")
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(2)
+    expect(
+      $$('[data-testid="language-combobox-trigger"]')[1]?.textContent,
+    ).toContain("No English Subtitles")
     const apply = $(
       '[data-testid="watch-language-picker-apply"]',
     ) as HTMLButtonElement
@@ -817,6 +820,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-request-icon"]'),
     ).not.toBeNull()
+    expect(
+      $('[data-testid="watch-language-picker-request-sent-icon"]'),
+    ).toBeNull()
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-request-subtitles",
       [
@@ -854,6 +860,12 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     expect(button.textContent).toBe("Request sent")
     expect(button.disabled).toBe(true)
+    expect($('[data-testid="watch-language-picker-request-icon"]')).toBeNull()
+    const sentIcon = $(
+      '[data-testid="watch-language-picker-request-sent-icon"]',
+    )
+    expect(sentIcon).not.toBeNull()
+    expect(sentIcon?.className.baseVal).toContain("text-emerald-400")
     expect(routerPushMock).not.toHaveBeenCalled()
     expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
   })

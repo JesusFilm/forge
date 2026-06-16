@@ -83,7 +83,8 @@
     "toggleOn": "เปิด",
     "toggleOff": "ปิด",
     "close": "ปิด",
-    "apply": "ใช้"
+    "apply": "ใช้",
+    "noLanguageSubtitles": "ไม่มีคำบรรยายภาษา{language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# ตอน} other {# ตอน}}",

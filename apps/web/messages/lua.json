@@ -83,7 +83,8 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "Close",
-    "apply": "Apply"
+    "apply": "Apply",
+    "noLanguageSubtitles": "No {language} Subtitles"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",

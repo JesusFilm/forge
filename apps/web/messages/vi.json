@@ -83,7 +83,8 @@
     "toggleOn": "Bật",
     "toggleOff": "Tắt",
     "close": "Đóng",
-    "apply": "Áp dụng"
+    "apply": "Áp dụng",
+    "noLanguageSubtitles": "Không có phụ đề {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# TẬP} other {# TẬP}}",

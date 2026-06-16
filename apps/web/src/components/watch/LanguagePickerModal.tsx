@@ -528,6 +528,11 @@ export function LanguagePickerModal({
   const subtitleUnavailableLabel = currentLanguageDisplay.name
     ? `${t("noSubtitles")} (${currentLanguageDisplay.name})`
     : t("noSubtitles")
+  const subtitlePlaceholder = currentLanguageUnavailableSubtitleOption
+    ? t("noLanguageSubtitles", {
+        language: currentLanguageUnavailableSubtitleOption.name,
+      })
+    : t("noSubtitles")
   // Derived: navigating iff we dispatched and the URL hasn't caught up.
   // When currentLanguageSlug matches pendingNavTo, navigating flips to
   // false automatically on the next render — no setter call needed.
@@ -817,11 +822,19 @@ export function LanguagePickerModal({
                       onClick={() => setTranslationRequestSent(true)}
                       className="gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-[11px] font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100"
                     >
-                      <Sparkles
-                        aria-hidden
-                        data-testid="watch-language-picker-request-icon"
-                        className="size-3.5"
-                      />
+                      {translationRequestSent ? (
+                        <Check
+                          aria-hidden
+                          data-testid="watch-language-picker-request-sent-icon"
+                          className="size-3.5 text-emerald-400"
+                        />
+                      ) : (
+                        <Sparkles
+                          aria-hidden
+                          data-testid="watch-language-picker-request-icon"
+                          className="size-3.5"
+                        />
+                      )}
                       <span>
                         {translationRequestSent
                           ? t("requestSent")
@@ -879,7 +892,7 @@ export function LanguagePickerModal({
                 value={draftSubtitleSlug ?? ""}
                 onChange={setDraftSubtitleSlug}
                 icon="subtitles"
-                placeholder={t("noSubtitles")}
+                placeholder={subtitlePlaceholder}
                 compact
                 open={openCombobox === "subtitles"}
                 onOpenChange={(next) =>
