@@ -21,6 +21,8 @@ import type {
   JobStepDetails,
   MuxSyncReport,
   RequestedTranscriptionProvider,
+  SubtitleValidationStepSummary,
+  SubtitleValidationVerdict,
   TranscriptionRoutingReport,
   TranslationLanguageResult,
 } from "@/types/job"
@@ -77,6 +79,10 @@ function buildMastraFailureStepDetails(input: {
       status: result.status,
       error: result.error,
     }))
+    const subtitleValidation = getSubtitleValidationStepSummary(input.languages)
+    if (subtitleValidation) {
+      details.subtitleValidation = subtitleValidation
+    }
   }
 
   return details.mastra || details.languageResults ? details : undefined
@@ -289,12 +295,81 @@ function getTranslationArtifactManifest({
   languages,
 }: SubtitleTranslationStepResult): JobArtifactManifest {
   return buildDownloadableArtifactManifest(
-    languages.flatMap((result) =>
-      result.status === "completed"
-        ? [`subtitles-${result.lang}`, `translation-${result.lang}`]
-        : [],
-    ),
+    languages.flatMap((result) => {
+      if (result.status !== "completed") {
+        return []
+      }
+      return [
+        `subtitles-${result.lang}`,
+        `translation-${result.lang}`,
+        ...(result.artifactKeys?.validation
+          ? [`subtitle-validation-${result.lang}`]
+          : []),
+      ]
+    }),
   )
+}
+
+const VALIDATION_VERDICT_RANK: Record<SubtitleValidationVerdict, number> = {
+  pass: 0,
+  unavailable: 1,
+  warning: 2,
+  needs_review: 3,
+}
+
+function highestSubtitleValidationVerdict(
+  verdicts: SubtitleValidationVerdict[],
+): SubtitleValidationVerdict {
+  return verdicts.reduce<SubtitleValidationVerdict>(
+    (highest, verdict) =>
+      VALIDATION_VERDICT_RANK[verdict] > VALIDATION_VERDICT_RANK[highest]
+        ? verdict
+        : highest,
+    "pass",
+  )
+}
+
+function getSubtitleValidationStepSummary(
+  languages: LanguageResult[],
+): SubtitleValidationStepSummary | undefined {
+  const results = languages.flatMap((result) =>
+    result.validationSummary
+      ? [
+          {
+            lang: result.lang,
+            ...result.validationSummary,
+          },
+        ]
+      : [],
+  )
+  if (results.length === 0) {
+    return undefined
+  }
+
+  return {
+    highestVerdict: highestSubtitleValidationVerdict(
+      results.map((result) => result.verdict),
+    ),
+    languagesChecked: results.length,
+    modelOnlyLanguages: results
+      .filter((result) => result.basis === "model_knowledge")
+      .map((result) => result.lang),
+    unavailableLanguages: results
+      .filter(
+        (result) =>
+          result.basis === "unavailable" || result.verdict === "unavailable",
+      )
+      .map((result) => result.lang),
+    warningCount: results.reduce(
+      (total, result) => total + result.warningCount,
+      0,
+    ),
+    needsReviewCount: results.reduce(
+      (total, result) => total + result.needsReviewCount,
+      0,
+    ),
+    results,
+  }
 }
 
 function getTranslationStepDetails(
@@ -307,9 +382,11 @@ function getTranslationStepDetails(
       error: result.error,
     }),
   )
+  const subtitleValidation = getSubtitleValidationStepSummary(result.languages)
 
   return {
     ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation ? { subtitleValidation } : {}),
     mastra: {
       runId: result.mastraRunId,
       status: "completed",

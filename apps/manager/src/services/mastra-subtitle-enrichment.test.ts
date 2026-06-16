@@ -138,6 +138,51 @@ describe("launchMastraSubtitleEnrichment", () => {
     })
   })
 
+  it("parses optional subtitle validation artifacts and summaries", async () => {
+    const withValidation = {
+      ...successResult,
+      languages: [
+        {
+          lang: "es",
+          status: "completed",
+          artifactKeys: {
+            vtt: "asset-1/subtitles-es.vtt",
+            json: "asset-1/translation-es.json",
+            validation: "asset-1/subtitle-validation-es.json",
+          },
+          validationSummary: {
+            verdict: "needs_review",
+            basis: "model_knowledge",
+            confidence: 0.72,
+            checkedReferenceCount: 1,
+            warningCount: 0,
+            needsReviewCount: 1,
+            fallbackReason: "provider_config_missing",
+          },
+        },
+      ],
+    }
+    const fetchImpl = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({ result: withValidation }),
+    )
+
+    await expect(
+      launchMastraSubtitleEnrichment(
+        {
+          assetId: "asset-1",
+          sourceLanguage: "en",
+          targetLanguages: ["es"],
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          fetchImpl,
+        },
+      ),
+    ).resolves.toEqual(withValidation)
+  })
+
   it("treats unknown workflow enum values as parse errors", async () => {
     const malformedStatus = vi.fn(
       async (_input: RequestInfo | URL, _init?: RequestInit) =>

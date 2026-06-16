@@ -531,6 +531,80 @@ describe("toJobRecord", () => {
     })
   })
 
+  it("preserves subtitle validation summaries on read-back", () => {
+    const record = toJobRecord({
+      documentId: "job-validation",
+      muxAssetId: "asset-1",
+      muxPlaybackId: "playback-1",
+      languages: ["es"],
+      status: "completed",
+      currentStep: null,
+      retries: 0,
+      createdAt: "2026-06-16T00:00:00.000Z",
+      updatedAt: "2026-06-16T00:01:00.000Z",
+      startedAt: "2026-06-16T00:00:10.000Z",
+      completedAt: "2026-06-16T00:00:20.000Z",
+      artifacts: {},
+      errors: [],
+      steps: [
+        {
+          name: "translation",
+          status: "completed",
+          retries: 0,
+          startedAt: "2026-06-16T00:00:10.000Z",
+          finishedAt: "2026-06-16T00:00:20.000Z",
+          error: null,
+          details: {
+            subtitleValidation: {
+              highestVerdict: "needs_review",
+              languagesChecked: 1,
+              modelOnlyLanguages: ["es"],
+              unavailableLanguages: [],
+              warningCount: 0,
+              needsReviewCount: 1,
+              results: [
+                {
+                  lang: "es",
+                  verdict: "needs_review",
+                  basis: "model_knowledge",
+                  confidence: 0.72,
+                  checkedReferenceCount: 1,
+                  warningCount: 0,
+                  needsReviewCount: 1,
+                  fallbackReason: "provider_config_missing",
+                  unsafePassageText: "must not round-trip",
+                },
+              ],
+            },
+          },
+        },
+      ],
+    } as unknown as Parameters<typeof toJobRecord>[0])
+
+    expect(record.steps[0]?.details).toEqual({
+      subtitleValidation: {
+        highestVerdict: "needs_review",
+        languagesChecked: 1,
+        modelOnlyLanguages: ["es"],
+        unavailableLanguages: [],
+        warningCount: 0,
+        needsReviewCount: 1,
+        results: [
+          {
+            lang: "es",
+            verdict: "needs_review",
+            basis: "model_knowledge",
+            confidence: 0.72,
+            checkedReferenceCount: 1,
+            warningCount: 0,
+            needsReviewCount: 1,
+            fallbackReason: "provider_config_missing",
+          },
+        ],
+      },
+    })
+  })
+
   it("promotes the related CMS video document id when present", () => {
     expect(
       toJobRecord({

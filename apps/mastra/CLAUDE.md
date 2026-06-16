@@ -64,6 +64,12 @@ Origin documents:
   runtime. Manager may send optional title, label, and Bible-reference context,
   but Mastra owns scripture-context detection, prompt guidance for Christian
   gospel/Bible-story content, and sanitized subtitle artifact provenance.
+- Subtitle scripture accuracy validation is Mastra-owned too. For translated
+  Bible-story subtitles it should run from model knowledge by default, upgrade
+  to a configured target-language Bible text source when available, and fall
+  back to `basis=model_knowledge` when that source is missing or fails. Store
+  only sanitized validation findings and provenance, never full external Bible
+  passage text.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
   contracts are HTTP payloads plus local Zod schemas.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
@@ -114,6 +120,11 @@ pnpm --filter @forge/mastra lint
 | `SUBTITLE_ENRICHMENT_MODEL`               | OpenRouter chat model stamp for subtitle translation/retiming. Defaults to `google/gemini-2.5-flash`.                      |
 | `SUBTITLE_ENRICHMENT_TIMEOUT_MS`          | Per-provider-call timeout for subtitle enrichment. Defaults to `120000`, max `300000`.                                     |
 | `SUBTITLE_ENRICHMENT_CONCURRENCY`         | Max concurrent target languages per subtitle enrichment run. Defaults to `10`, max `25`.                                   |
+| `SUBTITLE_VALIDATION_BIBLE_PROVIDER`      | Optional subtitle validation Bible text provider. Supported value: `api_bible`; unset keeps model-knowledge validation.    |
+| `SUBTITLE_VALIDATION_BIBLE_MAP_JSON`      | Optional JSON map from target language code to provider Bible id, for example `{"en":"de4e12af7f28f599-02"}`.              |
+| `API_BIBLE_API_KEY`                       | Optional API.Bible key used only when subtitle validation is configured to fetch target-language Bible passage text.       |
+| `API_BIBLE_BASE_URL`                      | Optional API.Bible-compatible base URL. Defaults to `https://api.scripture.api.bible/v1`.                                  |
+| `API_BIBLE_ALLOWED_HOSTS`                 | Production allowlist for API.Bible credential egress. Defaults to `api.scripture.api.bible`.                               |
 | `RAILWAY_S3_ENDPOINT`                     | Railway Object Storage endpoint used for Manager-compatible subtitle artifacts when `RAILWAY_S3_BUCKET` is set.            |
 | `RAILWAY_S3_REGION`                       | Railway Object Storage region. Defaults to `auto`.                                                                         |
 | `RAILWAY_S3_BUCKET`                       | Shared artifact bucket. Required with access keys for production subtitle enrichment.                                      |

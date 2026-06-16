@@ -34,6 +34,11 @@ describe("job artifact helpers", () => {
       ext: "json",
       contentType: "application/json",
     })
+    expect(resolveJobArtifactDescriptor("subtitle-validation-ja")).toEqual({
+      artifactType: "subtitle-validation-ja",
+      ext: "json",
+      contentType: "application/json",
+    })
   })
 
   it("resolves audio review artifact descriptors", () => {
@@ -82,6 +87,7 @@ describe("job artifact helpers", () => {
       getArtifactsForStep("translation", "job-1", {
         "translation-es": { kind: "downloadable" },
         "subtitles-es": { kind: "downloadable" },
+        "subtitle-validation-es": { kind: "downloadable" },
         "translation-ar": { kind: "downloadable" },
         materialization: {
           kind: "metadata",
@@ -93,6 +99,11 @@ describe("job artifact helpers", () => {
         key: "subtitles-es",
         label: "Subtitles es",
         url: "/api/jobs/job-1/artifacts/subtitles-es",
+      },
+      {
+        key: "subtitle-validation-es",
+        label: "Subtitle validation es",
+        url: "/api/jobs/job-1/artifacts/subtitle-validation-es",
       },
       {
         key: "translation-ar",

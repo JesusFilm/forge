@@ -2,7 +2,7 @@
 
 ## What this app does
 
-AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; subtitle translation/retiming execution also belongs to Mastra. Manager supplies source artifacts and optional video context, owns job state, and keeps Mux subtitle sync. Scripture-context detection and gospel-aware subtitle prompt guidance stay in Mastra.
+AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; subtitle translation/retiming execution also belongs to Mastra. Manager supplies source artifacts and optional video context, owns job state, displays returned validation summaries, records validation artifacts in manifests, and keeps Mux subtitle sync. Scripture-context detection, gospel-aware subtitle prompt guidance, subtitle scripture accuracy validation, and optional Bible-source calls stay in Mastra.
 
 ## Source
 

@@ -162,6 +162,10 @@ function buildDynamicArtifactLabel(logicalKey: string): string {
     return `Translation ${logicalKey.slice("translation-".length)}`
   }
 
+  if (logicalKey.startsWith("subtitle-validation-")) {
+    return `Subtitle validation ${logicalKey.slice("subtitle-validation-".length)}`
+  }
+
   if (SMART_CROP_PREVIEW_FRAME_PATTERN.test(logicalKey)) {
     return `Smart Crop preview frame ${logicalKey.slice(-3)}`
   }
@@ -195,6 +199,14 @@ function buildTranslationArtifactDescriptor(
     }
   }
 
+  if (logicalKey.startsWith("subtitle-validation-")) {
+    return {
+      artifactType: logicalKey,
+      ext: "json",
+      contentType: "application/json",
+    }
+  }
+
   return null
 }
 
@@ -220,6 +232,22 @@ export function resolveJobArtifactDescriptor(
     buildTranslationArtifactDescriptor(logicalKey) ??
     buildSmartCropPreviewFrameDescriptor(logicalKey)
   )
+}
+
+function getTranslationArtifactSortRank(logicalKey: string): number {
+  if (logicalKey.startsWith("subtitles-")) {
+    return 0
+  }
+
+  if (logicalKey.startsWith("subtitle-validation-")) {
+    return 1
+  }
+
+  if (logicalKey.startsWith("translation-")) {
+    return 2
+  }
+
+  return 3
 }
 
 export function buildJobArtifactHref(
@@ -267,9 +295,16 @@ export function getArtifactsForStep(
           value.kind === "downloadable" &&
           (key.startsWith("subtitles-") ||
             key.startsWith("translation-") ||
+            key.startsWith("subtitle-validation-") ||
             key === "translations"),
       )
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => {
+        const leftRank = getTranslationArtifactSortRank(left)
+        const rightRank = getTranslationArtifactSortRank(right)
+        return leftRank === rightRank
+          ? left.localeCompare(right)
+          : leftRank - rightRank
+      })
       .map(([key]) => ({
         key,
         label: formatJobArtifactLabel(key),
