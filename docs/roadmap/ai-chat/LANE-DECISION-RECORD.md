@@ -5,8 +5,10 @@ roadmap lane is registered (or whether the seeker tickets belong in the main
 roadmap at all).
 
 This record is the **single source of truth** for that decision and for the
-ID/path migration it triggers. It governs PR **#1268** (`feature/seeker-ai-chat`
-→ `main`), which stays **draft** until this record's checklist is executed.
+ID/path migration it triggers. It governs PR **#1279** (`feature/seeker-ai-chat`
+→ `main`; supersedes the closed **#1268**, whose history was squashed into the
+clean 3-commit trunk this PR carries), which stays **draft** until this record's
+checklist is executed.
 
 Do not delete this file until the migration below is complete and verified.
 
@@ -149,7 +151,7 @@ collision).
 
 ### IN SCOPE — PR surface (not in git; update by hand)
 
-- PR **#1268** body "Integration order" section, if IDs change.
+- PR **#1279** body "Integration order" section, if IDs change.
 - This record file itself (mark the migration complete; under outcome C,
   relocate or delete it once refs are repointed).
 
@@ -162,11 +164,13 @@ collision).
 - `docs/roadmap/content-discovery/feat-174-watch-search-page-size.md`
 - `docs/plans/2026-06-10-002-fix-watch-search-page-size-plan.md`
 
-> Note: PR numbers (**#1170**, **#1199**, **#1268**), agent/file names
+> Note: the merged feature PR numbers (**#1170**, **#1199**), agent/file names
 > (`seekerAgent`, `jesusfilm-rag-client.ts`), and the `CONCEPTS.md` "Seeker
 > Agent" entry are **stable identifiers** — they never change under any
 > outcome. Prefer them when adding new cross-references so future churn stays
-> contained to the lists above.
+> contained to the lists above. The trunk PR number is **#1279** (it replaced
+> the closed **#1268** during a one-time history cleanup); treat **#1279** as
+> stable going forward.
 
 ---
 
@@ -180,7 +184,7 @@ collision).
    `apps/roadmap/` hardcoded spots) and add the lane to `docs/roadmap/README.md`.
    For outcome C: delete the roadmap tickets; repoint their inbound references to
    the plan docs / PRs.
-5. Update PR #1268's body + this record (mark complete).
+5. Update PR #1279's body + this record (mark complete).
 6. **Verify zero stale references** before merging the renumber:
 
    ```bash
