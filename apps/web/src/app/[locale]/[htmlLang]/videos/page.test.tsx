@@ -28,6 +28,21 @@ describe("/videos route", () => {
     resolveWatchLanguageInventoryMock.mockResolvedValue({
       languageSlug: "spanish-latin-american",
       languageName: "Spanish, Latin American",
+      languageNativeName: "Espanol latinoamericano",
+      switcherLanguages: [
+        {
+          slug: "spanish-latin-american",
+          languageName: "Spanish, Latin American",
+          nativeName: "Espanol latinoamericano",
+          bcp47: "es-419",
+        },
+        {
+          slug: "french",
+          languageName: "French",
+          nativeName: "Francais",
+          bcp47: "fr",
+        },
+      ],
       counts: {
         total: 3,
         audioCollections: 1,
@@ -126,6 +141,7 @@ describe("/videos route", () => {
     })
     const html = renderToString(page)
     expect(html).toContain("Spanish, Latin American")
+    expect(html).toContain("Language collection")
     expect(html).toContain("Free Gospel video library for")
     expect(html).toContain("Spanish-speaking audiences")
     expect(html).toContain("New Gospel videos in")

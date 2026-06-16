@@ -7,7 +7,6 @@ import {
   Clock,
   Film,
   Headphones,
-  Languages,
   Library,
   Play,
   Sparkles,
@@ -21,6 +20,7 @@ import {
   type WatchLanguageInventoryModel,
   watchLanguageSpeakingAudience,
 } from "@/lib/watch-language-inventory"
+import { LanguageCollectionSwitcher } from "./LanguageCollectionSwitcher"
 
 type IconComponent = ComponentType<{ className?: string }>
 
@@ -290,10 +290,13 @@ export function LanguageInventoryPage({
         />
         <div className="relative mx-auto flex min-h-[72vh] max-w-7xl flex-col justify-end px-5 pt-24 pb-10 sm:px-8">
           <div className="max-w-4xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-200/10 px-3 py-1 text-sm font-bold text-amber-100">
-              <Languages className="h-4 w-4" aria-hidden />
-              {inventory.languageSlug}
-            </div>
+            <LanguageCollectionSwitcher
+              currentLanguageName={inventory.languageName}
+              currentNativeName={inventory.languageNativeName}
+              currentSlug={inventory.languageSlug}
+              languages={inventory.switcherLanguages}
+              totalItems={inventory.counts.total}
+            />
             <h1 className="max-w-3xl text-5xl leading-none font-black text-white sm:text-6xl lg:text-7xl">
               Free Gospel video library for {speakingAudience}
             </h1>

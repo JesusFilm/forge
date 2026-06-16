@@ -14,8 +14,10 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import { getWatchRouteManifest } from "@/lib/watch-route-manifest"
 
 const WATCH_LANGUAGE_INVENTORY_LIMIT = 1_000
+const WATCH_LANGUAGE_SWITCHER_LIMIT = 5_000
 
 const watchLanguageInventoryItemFragment = adminGraphql(`
   fragment WatchLanguageInventoryItemFields on WatchLanguageInventoryItem @_unmask {
@@ -72,6 +74,16 @@ const getWatchLanguageInventoryOperation = adminGraphql(
   [watchLanguageInventoryItemFragment],
 )
 
+const getWatchLanguageInventoryLanguagesOperation = adminGraphql(`
+  query GetWatchLanguageInventoryLanguages($limit: Int) {
+    languages(limit: $limit) {
+      slug
+      bcp47
+      name
+    }
+  }
+`)
+
 type WatchLanguageInventoryRaw = NonNullable<
   AdminResultOf<
     typeof getWatchLanguageInventoryOperation
@@ -80,6 +92,10 @@ type WatchLanguageInventoryRaw = NonNullable<
 
 type WatchLanguageInventoryItemRaw =
   WatchLanguageInventoryRaw["audioVideos"][number]
+
+type WatchLanguageInventoryLanguageRaw = NonNullable<
+  AdminResultOf<typeof getWatchLanguageInventoryLanguagesOperation>["languages"]
+>[number]
 
 export type WatchLanguageInventoryAvailability =
   WatchLanguageInventoryItemRaw["availability"]
@@ -103,9 +119,18 @@ export type WatchLanguageInventoryCard = {
   updatedAt: string | null
 }
 
+export type WatchLanguageInventorySwitcherLanguage = {
+  slug: string
+  languageName: string
+  nativeName: string | null
+  bcp47: string | null
+}
+
 export type WatchLanguageInventoryModel = {
   languageSlug: string
   languageName: string
+  languageNativeName: string | null
+  switcherLanguages: WatchLanguageInventorySwitcherLanguage[]
   counts: WatchLanguageInventoryRaw["counts"]
   promoted: WatchLanguageInventoryCard[]
   audioCollections: WatchLanguageInventoryCard[]
@@ -146,12 +171,39 @@ async function queryWatchLanguageInventory(
   return result.data.watchLanguageInventory
 }
 
+async function queryWatchLanguageInventoryLanguages(): Promise<
+  WatchLanguageInventoryLanguageRaw[]
+> {
+  const result = await adminClient.query({
+    query: getWatchLanguageInventoryLanguagesOperation,
+    variables: {
+      limit: WATCH_LANGUAGE_SWITCHER_LIMIT,
+    },
+    fetchPolicy: "no-cache",
+  })
+
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) throw error
+  return result.data?.languages ?? []
+}
+
 const fetchWatchLanguageInventory = unstable_cache(
   queryWatchLanguageInventory,
   ["watch-language-inventory"],
   {
     revalidate: 60,
     tags: [WATCH_CACHE_TAGS.video, WATCH_CACHE_TAGS.series],
+  },
+)
+
+const fetchWatchLanguageInventoryLanguages = unstable_cache(
+  queryWatchLanguageInventoryLanguages,
+  ["watch-language-inventory-languages"],
+  {
+    revalidate: 3600,
+    tags: [WATCH_CACHE_TAGS.video, WATCH_CACHE_TAGS.routeManifest],
   },
 )
 
@@ -163,7 +215,7 @@ function labelFromSlug(slug: string): string {
     .join(" ")
 }
 
-function languageNameFromJson(name: unknown, slug: string): string {
+function firstLocalizedName(name: unknown): string | null {
   if (name && typeof name === "object" && !Array.isArray(name)) {
     const record = name as Record<string, unknown>
     for (const key of ["en", "name", "native", "nativeName", "value"]) {
@@ -174,7 +226,96 @@ function languageNameFromJson(name: unknown, slug: string): string {
       if (typeof value === "string" && value.trim()) return value.trim()
     }
   }
-  return labelFromSlug(slug)
+  if (typeof name === "string" && name.trim()) return name.trim()
+  return null
+}
+
+function languageNameFromJson(name: unknown, slug: string): string {
+  return firstLocalizedName(name) ?? labelFromSlug(slug)
+}
+
+function nativeLanguageNameFromJson(
+  name: unknown,
+  bcp47: string | null | undefined,
+  englishName: string,
+): string | null {
+  if (!name || typeof name !== "object" || Array.isArray(name)) return null
+  const record = name as Record<string, unknown>
+  const candidates = [
+    bcp47,
+    bcp47?.split("-")[0],
+    "native",
+    "nativeName",
+    "local",
+  ].filter((candidate): candidate is string => candidate != null)
+
+  for (const candidate of candidates) {
+    const value = record[candidate]
+    if (
+      typeof value === "string" &&
+      value.trim() &&
+      value.trim().toLowerCase() !== englishName.toLowerCase()
+    ) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
+function switcherLanguageFromRaw(
+  language: WatchLanguageInventoryLanguageRaw,
+): WatchLanguageInventorySwitcherLanguage | null {
+  const slug = language.slug
+  if (!slug || !isPublicWatchHomeLanguageSlug(slug)) return null
+  const languageName = languageNameFromJson(language.name, slug)
+  return {
+    slug,
+    languageName,
+    nativeName: nativeLanguageNameFromJson(
+      language.name,
+      language.bcp47,
+      languageName,
+    ),
+    bcp47: language.bcp47 ?? null,
+  }
+}
+
+function uniqueSwitcherLanguages(
+  languages: WatchLanguageInventorySwitcherLanguage[],
+): WatchLanguageInventorySwitcherLanguage[] {
+  const bySlug = new Map<string, WatchLanguageInventorySwitcherLanguage>()
+  for (const language of languages) {
+    if (!bySlug.has(language.slug)) bySlug.set(language.slug, language)
+  }
+  return [...bySlug.values()]
+}
+
+async function resolveSwitcherLanguages(
+  current: WatchLanguageInventorySwitcherLanguage,
+): Promise<WatchLanguageInventorySwitcherLanguage[]> {
+  const [languages, manifest] = await Promise.all([
+    fetchWatchLanguageInventoryLanguages(),
+    getWatchRouteManifest(),
+  ])
+  const manifestLanguageSlugs = new Set(manifest?.audioLanguageSlugs ?? [])
+  const options = languages
+    .flatMap((language) => {
+      const option = switcherLanguageFromRaw(language)
+      return option ? [option] : []
+    })
+    .filter(
+      (option) =>
+        manifestLanguageSlugs.size === 0 ||
+        manifestLanguageSlugs.has(option.slug) ||
+        option.slug === current.slug,
+    )
+
+  return uniqueSwitcherLanguages([current, ...options]).sort((a, b) => {
+    if (a.slug === current.slug) return -1
+    if (b.slug === current.slug) return 1
+    return a.languageName.localeCompare(b.languageName)
+  })
 }
 
 export function primaryLanguageNameForSeo(languageName: string): string {
@@ -245,10 +386,26 @@ export async function resolveWatchLanguageInventory(
     raw.language?.name,
     resolvedLanguageSlug,
   )
+  const languageNativeName = nativeLanguageNameFromJson(
+    raw.language?.name,
+    raw.language?.bcp47,
+    languageName,
+  )
+  const currentSwitcherLanguage = {
+    slug: resolvedLanguageSlug,
+    languageName,
+    nativeName: languageNativeName,
+    bcp47: raw.language?.bcp47 ?? null,
+  } satisfies WatchLanguageInventorySwitcherLanguage
+  const switcherLanguages = await resolveSwitcherLanguages(
+    currentSwitcherLanguage,
+  )
 
   return {
     languageSlug: resolvedLanguageSlug,
     languageName,
+    languageNativeName,
+    switcherLanguages,
     counts: raw.counts,
     promoted: raw.promoted.map(normalizeCard),
     audioCollections: raw.audioCollections.map(normalizeCard),
