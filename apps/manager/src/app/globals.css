@@ -13649,6 +13649,205 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   overflow-wrap: anywhere;
 }
 
+.smart-crop-plan-review-card {
+  display: grid;
+  gap: 14px;
+}
+
+.smart-crop-plan-player-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 10px;
+  color: var(--ds-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1;
+  text-transform: capitalize;
+  background: var(--ds-panel-muted);
+  border: 1px solid var(--ds-line);
+  border-radius: 999px;
+}
+
+.smart-crop-plan-player-empty {
+  display: grid;
+  gap: 6px;
+  min-height: 120px;
+  align-content: center;
+  justify-items: start;
+  color: var(--ds-muted);
+}
+
+.smart-crop-plan-player-empty strong {
+  color: var(--ds-ink);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.smart-crop-plan-player-empty p {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.smart-crop-plan-player {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 1040px);
+}
+
+.smart-crop-plan-player-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--ds-black);
+  border: 1px solid var(--ds-line-strong);
+  border-radius: var(--ds-radius);
+}
+
+.smart-crop-plan-player-video-shell,
+.smart-crop-plan-player-video-shell .video-js,
+.smart-crop-plan-player-video-shell .vjs-tech {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.smart-crop-plan-player-video-shell .vjs-tech {
+  object-fit: contain;
+}
+
+.smart-crop-plan-crop-box {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: start end;
+  min-width: 24px;
+  min-height: 24px;
+  border: 2px solid var(--ds-brand-red);
+  box-shadow:
+    0 0 0 9999px color-mix(in srgb, var(--ds-black) 42%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--ds-bg) 70%, transparent);
+  pointer-events: none;
+}
+
+.smart-crop-plan-crop-box span {
+  margin: 6px;
+  padding: 2px 6px;
+  color: var(--ds-bg);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1;
+  background: color-mix(in srgb, var(--ds-black) 74%, transparent);
+  border-radius: 999px;
+}
+
+.smart-crop-shot-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.smart-crop-shot-readout {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.smart-crop-shot-readout div {
+  min-width: 0;
+}
+
+.smart-crop-shot-readout dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--ds-ink);
+  font-size: 0.92rem;
+}
+
+.smart-crop-shot-timeline-wrap {
+  display: grid;
+  gap: 6px;
+}
+
+.smart-crop-shot-timeline {
+  position: relative;
+  height: 34px;
+  overflow: hidden;
+  background: var(--ds-panel-muted);
+  border: 1px solid var(--ds-line);
+  border-radius: calc(var(--ds-radius) - 4px);
+}
+
+.smart-crop-shot-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  padding: 0;
+  color: var(--ds-muted);
+  background: color-mix(in srgb, currentColor 34%, var(--ds-bg));
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, var(--ds-bg) 74%, transparent);
+  border-radius: 0;
+  opacity: 0.72;
+}
+
+.smart-crop-shot-segment:hover,
+.smart-crop-shot-segment:focus-visible,
+.smart-crop-shot-segment.is-active {
+  outline: none;
+  opacity: 1;
+  filter: saturate(1.18);
+}
+
+.smart-crop-shot-segment:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ds-black);
+}
+
+.smart-crop-shot-segment--speaker {
+  color: var(--accent);
+}
+
+.smart-crop-shot-segment--group {
+  color: var(--ds-success);
+}
+
+.smart-crop-shot-segment--object {
+  color: var(--warn);
+}
+
+.smart-crop-shot-segment--slide_aware {
+  color: var(--ds-muted);
+}
+
+.smart-crop-shot-segment--action {
+  color: var(--ds-brand-red);
+}
+
+.smart-crop-shot-segment--center_fallback {
+  color: var(--ds-soft);
+}
+
+.smart-crop-shot-playhead {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  z-index: 3;
+  width: 2px;
+  background: var(--ds-black);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ds-bg) 74%, transparent);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.smart-crop-shot-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ds-muted);
+  font-size: 0.78rem;
+}
+
 .smart-crop-picker-backdrop {
   position: fixed;
   inset: 0;
@@ -13909,5 +14108,15 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
     grid-column: 2;
     justify-content: flex-start;
     min-width: 0;
+  }
+
+  .smart-crop-shot-readout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .smart-crop-shot-readout {
+    grid-template-columns: 1fr;
   }
 }
