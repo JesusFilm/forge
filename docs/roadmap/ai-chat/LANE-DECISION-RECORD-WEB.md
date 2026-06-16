@@ -4,8 +4,8 @@
 about how (or whether) the `ai-chat` roadmap lane is registered.
 
 This record is the **web-app counterpart** to the seeker line's
-`docs/roadmap/ai-chat/LANE-DECISION-RECORD.md` (which governs PR **#1268**,
-`feature/seeker-ai-chat`). It governs PR **#1276**
+`docs/roadmap/ai-chat/LANE-DECISION-RECORD.md` (which governs PR **#1279**,
+`feature/seeker-ai-chat`; #1279 supersedes the closed #1268). It governs PR **#1276**
 (`feature/ai-chat-web-app` → `main`), the integration trunk for the
 `apps/chat` web app, which stays **draft** until this record's checklist is
 executed.
@@ -36,7 +36,7 @@ Three coupled problems block the web-app line from landing on `main`:
    `docs/roadmap/ai-chat/feat-174-chat-app-scaffold.md` to sit alongside the
    seeker work, matching the original intent. Like the seeker tickets, it lives
    in the (not-yet-registered) `ai-chat/` directory **without** the canonical
-   lane-registration code edits — the same gated posture as `#1268`. Its
+   lane-registration code edits — the same gated posture as `#1279`. Its
    `tags: [infrastructure, chat, scaffold]` remain provisional (the gated tag
    vocabulary doesn't yet include `chat`/`ai-chat`/`scaffold`). What stays OPEN
    is only the shared structural registration (problem 1) and the renumber
@@ -49,7 +49,7 @@ Three coupled problems block the web-app line from landing on `main`:
    | Web artifact (this trunk)                                  | Collides with                                                                     |
    | ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
    | `ai-chat/feat-174-chat-app-scaffold.md`                    | `content-discovery/feat-174-watch-search-page-size.md` (on `main`)                |
-   | `ai-chat/feat-174-chat-app-scaffold.md`                    | `ai-chat/feat-174-seeker-rag-retrieval-connection.md` (on `#1268`, **same lane**) |
+   | `ai-chat/feat-174-chat-app-scaffold.md`                    | `ai-chat/feat-174-seeker-rag-retrieval-connection.md` (on `#1279`, **same lane**) |
    | `docs/plans/2026-06-10-005-feat-chat-app-scaffold-plan.md` | `docs/plans/2026-06-10-005-feat-official-media-signature-indexing-plan.md`        |
 
    So **`feat-174` is a triple collision** and the plan **seq `2026-06-10-005`**
