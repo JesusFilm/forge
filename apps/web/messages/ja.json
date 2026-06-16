@@ -83,7 +83,8 @@
     "toggleOn": "オン",
     "toggleOff": "オフ",
     "close": "閉じる",
-    "apply": "適用"
+    "apply": "適用",
+    "noLanguageSubtitles": "{language}の字幕なし"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# エピソード} other {# エピソード}}",

@@ -539,20 +539,20 @@ describe("LanguagePickerModal — globe overlay", () => {
       ],
       subtitles: [
         {
-          documentId: "sub-ru",
+          documentId: "sub-en",
           language: {
-            slug: "russian",
-            name: "Russian",
+            slug: "english",
+            name: "English",
             nativeName: null,
-            bcp47: "ru",
+            bcp47: "en",
           },
-          vttSrc: "https://cdn.test/russian.vtt",
+          vttSrc: "https://cdn.test/english.vtt",
           primary: true,
           aiGenerated: false,
         },
       ],
       currentSubtitleEnabled: true,
-      currentSubtitleSlug: "russian",
+      currentSubtitleSlug: "english",
     })
 
     const overlay = $('[data-slot="dialog-overlay"]')
@@ -634,7 +634,7 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
-    expect(triggers[1]?.textContent).toContain("Russian")
+    expect(triggers[1]?.textContent).toContain("English")
     expect(triggers[1]?.className).toContain("w-full")
     expect(triggers[1]?.className).toContain("min-h-12")
     const subtitlesSelectTooltip = expectMultilingualTooltip(
@@ -682,9 +682,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     renderModal({
       open: true,
       variants: baseVariants,
-      subtitles: [makeSubtitle("sub-ru", "russian", "Russian")],
+      subtitles: [makeSubtitle("sub-en", "english", "English")],
       currentSubtitleEnabled: false,
-      currentSubtitleSlug: "russian",
+      currentSubtitleSlug: "english",
     })
 
     const toggle = $(
@@ -731,7 +731,84 @@ describe("LanguagePickerModal — globe overlay", () => {
     )
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
-    expect(triggers[1]?.textContent).toContain("Russian")
+    expect(triggers[1]?.textContent).toContain("English")
+  })
+
+  it("makes unavailable captions explicit while allowing translated subtitle selection", () => {
+    const onSubtitleChange = vi.fn()
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      currentLanguageSlug: "english",
+      subtitles: [makeSubtitle("sub-es", "spanish", "Spanish")],
+      currentSubtitleEnabled: false,
+      currentSubtitleSlug: null,
+      onSubtitleChange,
+    })
+
+    expect(
+      $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
+    ).toBe("1 language")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-unavailable"]'),
+    ).toBeNull()
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(false)
+    expect(toggle.getAttribute("aria-checked")).toBe("false")
+    expect(toggle.getAttribute("data-state")).toBe("off")
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
+
+    act(() => {
+      toggle.click()
+    })
+
+    expect(toggle.getAttribute("aria-checked")).toBe("true")
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(2)
+    expect(
+      $$('[data-testid="language-combobox-trigger"]')[1]?.textContent,
+    ).toContain("No English Subtitles")
+    const apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.disabled).toBe(true)
+
+    act(() => {
+      $$('[data-testid="language-combobox-trigger"]')[1]?.click()
+    })
+    const englishUnavailable = $$(
+      '[data-testid="language-combobox-option"]',
+    ).find((el) => el.getAttribute("data-language-slug") === "english")!
+    expect(englishUnavailable).not.toBeNull()
+    expect(englishUnavailable.getAttribute("aria-disabled")).toBe("true")
+    expect(englishUnavailable.getAttribute("data-disabled")).toBe("true")
+    expect((englishUnavailable as HTMLButtonElement).disabled).toBe(true)
+    expect(englishUnavailable.textContent).toContain("English")
+    expect(englishUnavailable.textContent).toContain("Not available")
+
+    act(() => {
+      englishUnavailable.click()
+    })
+
+    expect(apply.disabled).toBe(true)
+    expect(onSubtitleChange).not.toHaveBeenCalled()
+    expect($('[data-testid="language-combobox-popover"]')).not.toBeNull()
+
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    expect(spanish.getAttribute("data-disabled")).toBe("false")
+    expect((spanish as HTMLButtonElement).disabled).toBe(false)
+    act(() => {
+      spanish.click()
+    })
+
+    expect(apply.disabled).toBe(false)
+    act(() => {
+      apply.click()
+    })
+    expect(onSubtitleChange).toHaveBeenCalledWith(true, "spanish")
   })
 
   it("shows a dummy AI translation request button when subtitles are unavailable", () => {
@@ -750,6 +827,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-request-icon"]'),
     ).not.toBeNull()
+    expect(
+      $('[data-testid="watch-language-picker-request-sent-icon"]'),
+    ).toBeNull()
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-request-subtitles",
       [
@@ -787,6 +867,12 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     expect(button.textContent).toBe("Request sent")
     expect(button.disabled).toBe(true)
+    expect($('[data-testid="watch-language-picker-request-icon"]')).toBeNull()
+    const sentIcon = $(
+      '[data-testid="watch-language-picker-request-sent-icon"]',
+    )
+    expect(sentIcon).not.toBeNull()
+    expect(sentIcon?.className.baseVal).toContain("text-emerald-400")
     expect(routerPushMock).not.toHaveBeenCalled()
     expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
   })

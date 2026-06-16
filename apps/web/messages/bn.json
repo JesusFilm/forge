@@ -83,7 +83,8 @@
     "toggleOn": "চালু",
     "toggleOff": "বন্ধ",
     "close": "বন্ধ করুন",
-    "apply": "প্রয়োগ করুন"
+    "apply": "প্রয়োগ করুন",
+    "noLanguageSubtitles": "{language} এর কোনো সাবটাইটেল নেই"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# পর্ব} other {# পর্ব}}",

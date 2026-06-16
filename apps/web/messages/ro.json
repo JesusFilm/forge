@@ -83,7 +83,8 @@
     "toggleOn": "Activat",
     "toggleOff": "Dezactivat",
     "close": "Închide",
-    "apply": "Aplică"
+    "apply": "Aplică",
+    "noLanguageSubtitles": "Fără subtitrări în {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISOD} other {# EPISOADE}}",

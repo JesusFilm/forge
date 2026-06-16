@@ -83,7 +83,8 @@
     "toggleOn": "Włączone",
     "toggleOff": "Wyłączone",
     "close": "Zamknij",
-    "apply": "Zastosuj"
+    "apply": "Zastosuj",
+    "noLanguageSubtitles": "Brak napisów w języku {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 ODCINEK} other {# ODCINKÓW}}",
