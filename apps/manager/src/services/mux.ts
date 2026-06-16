@@ -28,17 +28,39 @@ export type CreateAssetOptions = {
 export type MuxAssetInfo = {
   assetId: string
   playbackId: string
+  publicPlaybackId?: string | null
   status: string
   duration: number | null
+  staticRenditions?: MuxStaticRenditionInfo[]
 }
 
 export { normalizeGeneratedSubtitleLanguage }
 
 export type MuxPlaybackPolicy = "public" | "signed" | "drm"
 
+export type MuxStaticRenditionInfo = {
+  name: string
+  status: string | null
+  width: number | null
+  height: number | null
+  type: string | null
+}
+
 type MuxPlaybackId = {
   id?: string | null
   policy?: MuxPlaybackPolicy | null
+}
+
+type MuxStaticRenditionFile = {
+  name?: string | null
+  status?: string | null
+  width?: number | null
+  height?: number | null
+  type?: string | null
+}
+
+type MuxStaticRenditionsSnapshot = {
+  files?: MuxStaticRenditionFile[] | null
 }
 
 type MuxTrackInfo = {
@@ -134,6 +156,69 @@ function choosePlaybackId(
     available.find((playbackId) => playbackId.policy === "drm") ??
     null
   )
+}
+
+function choosePublicPlaybackId(
+  playbackIds: MuxPlaybackId[] | null | undefined,
+): string | null {
+  return (
+    (playbackIds ?? []).find(
+      (playbackId) => playbackId.policy === "public" && Boolean(playbackId.id),
+    )?.id ?? null
+  )
+}
+
+function normalizeStaticRenditions(
+  staticRenditions: MuxStaticRenditionsSnapshot | null | undefined,
+): MuxStaticRenditionInfo[] {
+  return (staticRenditions?.files ?? []).flatMap((file) => {
+    const name = file.name?.trim()
+    if (!name) {
+      return []
+    }
+
+    return [
+      {
+        name,
+        status: file.status ?? null,
+        width: file.width ?? null,
+        height: file.height ?? null,
+        type: file.type ?? null,
+      },
+    ]
+  })
+}
+
+function scoreStaticRendition(file: MuxStaticRenditionInfo): number {
+  const nameHeight = file.name.match(/(\d{3,4})p\.mp4$/i)?.[1]
+  const height =
+    file.height ?? (nameHeight != null ? Number(nameHeight) : undefined)
+
+  return height ?? 0
+}
+
+export function getMuxStaticRenditionSourceUrl(
+  asset: Pick<MuxAssetInfo, "publicPlaybackId" | "staticRenditions">,
+): string | null {
+  if (!asset.publicPlaybackId) {
+    return null
+  }
+
+  const readyMp4Renditions = (asset.staticRenditions ?? [])
+    .filter(
+      (file) =>
+        file.status === "ready" && file.name.toLowerCase().endsWith(".mp4"),
+    )
+    .sort(
+      (left, right) => scoreStaticRendition(right) - scoreStaticRendition(left),
+    )
+
+  const rendition = readyMp4Renditions[0]
+  if (!rendition) {
+    return null
+  }
+
+  return `https://stream.mux.com/${asset.publicPlaybackId}/${rendition.name}`
 }
 
 export async function buildMuxTextTrackUrl(
@@ -314,12 +399,15 @@ export async function createMuxAsset(
   )
 
   const playbackId = asset.playback_ids?.[0]?.id ?? ""
+  const publicPlaybackId = choosePublicPlaybackId(asset.playback_ids)
 
   return {
     assetId: asset.id,
     playbackId,
+    publicPlaybackId,
     status: asset.status ?? "preparing",
     duration: asset.duration ?? null,
+    staticRenditions: normalizeStaticRenditions(asset.static_renditions),
   }
 }
 
@@ -333,8 +421,10 @@ export async function getMuxAsset(assetId: string): Promise<MuxAssetInfo> {
   return {
     assetId: asset.id,
     playbackId,
+    publicPlaybackId: choosePublicPlaybackId(asset.playback_ids),
     status: asset.status ?? "unknown",
     duration: asset.duration ?? null,
+    staticRenditions: normalizeStaticRenditions(asset.static_renditions),
   }
 }
 
