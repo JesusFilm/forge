@@ -31,6 +31,7 @@ import {
   type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
+import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { PlayerControls } from "./PlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
@@ -51,6 +52,10 @@ type VideoPlayerProps = {
   fullscreen?: boolean
   /** Toggle fullscreen (fired by the fullscreen control). */
   onToggleFullscreen?: () => void
+  /** Per-side horizontal inset the parent applies to the inline player, so the
+   *  16:9 height is computed from the reduced width (no letterbox). Ignored in
+   *  fullscreen. Default 0. */
+  horizontalInset?: number
 }
 
 export function VideoPlayer({
@@ -60,13 +65,16 @@ export function VideoPlayer({
   onPlayingChange,
   fullscreen = false,
   onToggleFullscreen,
+  horizontalInset = 0,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
   const [hasStarted, setHasStarted] = useState(false)
   const wasPlayingRef = useRef(false)
   const resolvedPoster = resolveImageUrl(posterUrl)
-  const playerHeight = Math.round(screenWidth * (9 / 16))
+  const playerHeight = Math.round(
+    (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
+  )
 
   // The source passed to useVideoPlayer must be FROZEN. useVideoPlayer recreates
   // (and releases) the player whenever this value changes — its dependency is

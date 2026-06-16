@@ -411,6 +411,40 @@ describe("normalizeVideo", () => {
     expect(result.bibleCitations[0].verseStart).toBe(30)
   })
 
+  it("sorts a frozen bibleCitations array without mutating it", () => {
+    // Apollo's InMemoryCache hands back frozen arrays; Array.sort mutates in
+    // place, so normalizeVideo must copy before sorting or it throws "Cannot
+    // assign to read-only property". Order is inverted so the sort MUST swap
+    // (touch the frozen array) — without the copy this whole call throws.
+    const frozenCitations = Object.freeze([
+      {
+        documentId: "bc-2",
+        chapterStart: 1,
+        verseStart: 1,
+        order: 2,
+        osisId: "John.1.1",
+        bibleBook: { documentId: "bb-2", name: { en: "John" } },
+      },
+      {
+        documentId: "bc-1",
+        chapterStart: 3,
+        verseStart: 16,
+        order: 1,
+        osisId: "John.3.16",
+        bibleBook: { documentId: "bb-1", name: { en: "John" } },
+      },
+    ])
+
+    const result = normalizeVideo(
+      makeRawVideo({ bibleCitations: frozenCitations }),
+    )!
+
+    expect(result.bibleCitations).toHaveLength(2)
+    // Ascending by order: bc-1 (order 1) before bc-2 (order 2).
+    expect(result.bibleCitations[0].documentId).toBe("bc-1")
+    expect(result.bibleCitations[1].documentId).toBe("bc-2")
+  })
+
   it("handles missing fields gracefully", () => {
     const result = normalizeVideo(
       makeRawVideo({

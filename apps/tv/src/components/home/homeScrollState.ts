@@ -1,15 +1,15 @@
 // Pure state for the redesigned Home screen's row-anchored scrolling and
-// ambient chrome (deep scrim, top bar, hero actions). React-free .ts module
+// ambient chrome (deep scrim, top bar). React-free .ts module
 // (like showcaseState.ts) so it is unit-testable under jest-expo, which
 // cannot load .tsx.
 //
 // The screen has three visual states driven by WHERE focus sits:
-//   "top"    — focus on chrome (tab bar / hero actions): feed pinned to 0,
-//              no deep scrim, top bar and hero actions fully visible.
+//   "top"    — focus on the top bar tabs: feed pinned to 0, no deep scrim,
+//              top bar fully visible.
 //   "browse" — focus on a row-0 (featured) card: feed stays at 0, deep scrim
-//              at 0.22, top bar visible, hero actions ghosted.
+//              at 0.22, top bar visible.
 //   "deep"   — focus in rows >= 1: the row anchors near the viewport top,
-//              deep scrim fully on, top bar hidden, hero actions ghosted.
+//              deep scrim fully on, top bar hidden.
 
 export type HomeBrowseState = "top" | "browse" | "deep"
 
@@ -22,7 +22,7 @@ export const ROW_ANCHOR_OFFSET = 120
 
 /**
  * Map a focused row index to the screen's visual state. `null` means focus
- * sits on chrome (tab bar / hero actions), not in any rail.
+ * sits on the top bar tabs, not in any rail.
  */
 export function resolveBrowseState(rowIndex: number | null): HomeBrowseState {
   if (rowIndex == null) return "top"
@@ -68,12 +68,4 @@ export function deepScrimOpacity(state: HomeBrowseState): number {
 /** The top bar hides only when focus is deep in the feed (rows >= 1). */
 export function isTopBarHidden(state: HomeBrowseState): boolean {
   return state === "deep"
-}
-
-/**
- * Hero actions ghost (opacity 0 but still mounted/focusable) while focus is
- * in ANY row, so D-pad up from row 0 lands on Play and fades them back in.
- */
-export function areHeroActionsGhosted(state: HomeBrowseState): boolean {
-  return state !== "top"
 }
