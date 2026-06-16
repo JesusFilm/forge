@@ -48,6 +48,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "videoBySlug",
         "videos",
         "watchHomeVideos",
+        "watchLanguageInventory",
         "videosByCoreIds",
         // Experience
         "experience",
@@ -147,6 +148,48 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(nonNull("primaryLanguageBcp47")).toBe(false)
     expect(nonNull("muxAssetId")).toBe(false)
     expect(nonNull("subtitleUrl")).toBe(false)
+  })
+
+  it("WatchLanguageInventory type exposes the localized /videos card contract", () => {
+    const inventoryFields = fieldsOf("WatchLanguageInventory")
+    expect(Object.keys(inventoryFields)).toEqual(
+      expect.arrayContaining([
+        "language",
+        "counts",
+        "promoted",
+        "audioCollections",
+        "audioVideos",
+        "subtitleOnlyVideos",
+      ]),
+    )
+
+    const itemFields = fieldsOf("WatchLanguageInventoryItem")
+    expect(Object.keys(itemFields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "slug",
+        "title",
+        "description",
+        "imageUrl",
+        "imageAlt",
+        "label",
+        "availability",
+        "watchLanguageSlug",
+        "parentSlug",
+        "parentTitle",
+        "durationSeconds",
+        "childCount",
+        "publishedAt",
+      ]),
+    )
+
+    const query = schema.getQueryType()!.getFields().watchLanguageInventory
+    expect(String(query.type)).toBe("WatchLanguageInventory!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "languageSlug",
+      "limit",
+    ])
   })
 
   it("Query root no longer exposes the Unit 3 Ping spike fields", () => {

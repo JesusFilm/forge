@@ -137,6 +137,50 @@ export type ChildDubLanguageRow = {
   bcp47: string | null
 }
 
+export type WatchLanguageInventoryAvailability = "AUDIO" | "SUBTITLE_ONLY"
+
+export type WatchLanguageInventoryLanguage = {
+  slug: string
+  name: Prisma.JsonValue | null
+  bcp47: string | null
+}
+
+export type WatchLanguageInventoryItem = {
+  id: string
+  coreId: string
+  slug: string
+  title: string
+  description: string | null
+  imageUrl: string | null
+  imageAlt: string | null
+  label: string | null
+  availability: WatchLanguageInventoryAvailability
+  watchLanguageSlug: string
+  parentSlug: string | null
+  parentTitle: string | null
+  durationSeconds: number | null
+  childCount: number
+  publishedAt: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export type WatchLanguageInventoryCounts = {
+  audioCollections: number
+  audioVideos: number
+  subtitleOnlyVideos: number
+  total: number
+}
+
+export type WatchLanguageInventory = {
+  language: WatchLanguageInventoryLanguage | null
+  counts: WatchLanguageInventoryCounts
+  promoted: WatchLanguageInventoryItem[]
+  audioCollections: WatchLanguageInventoryItem[]
+  audioVideos: WatchLanguageInventoryItem[]
+  subtitleOnlyVideos: WatchLanguageInventoryItem[]
+}
+
 /**
  * Maximum coreIds accepted in a single `getByCoreIds` call. Mirrors
  * the receiver-side cap in manager's `admin-trigger-route.ts` so the
@@ -152,6 +196,13 @@ const VIDEO_MAPPER_CATALOG_CURSOR_PREFIX = "video-dub:"
 const VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_MS = 10_000
 const VIDEO_MAPPER_CATALOG_TRANSACTION_TIMEOUT_MS = 11_000
 const VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_MS}ms'`
+export const WATCH_LANGUAGE_INVENTORY_MAX_ITEMS_PER_BUCKET = 1_000
+const WATCH_LANGUAGE_INVENTORY_DEFAULT_ITEMS_PER_BUCKET =
+  WATCH_LANGUAGE_INVENTORY_MAX_ITEMS_PER_BUCKET
+const WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT = 12
+const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS = 10_000
+const WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS = 11_000
+const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS}ms'`
 
 const VIDEO_LABEL_SEARCH_TOKENS = {
   COLLECTION: ["collection"],
@@ -835,6 +886,456 @@ export class VideoService {
     })
   }
 
+  async getWatchLanguageInventory({
+    languageSlug,
+    limit,
+  }: {
+    languageSlug: string
+    limit?: number | null
+  }): Promise<WatchLanguageInventory> {
+    const normalizedSlug = normalizeSearchValue(languageSlug)
+    if (!normalizedSlug) return emptyWatchLanguageInventory(null)
+
+    const languageRow = await this.prisma.language.findFirst({
+      where: { slug: normalizedSlug, deletedAt: null },
+      select: { slug: true, name: true, bcp47: true },
+    })
+    if (languageRow?.slug == null) return emptyWatchLanguageInventory(null)
+    const language: WatchLanguageInventoryLanguage = {
+      slug: languageRow.slug,
+      name: languageRow.name,
+      bcp47: languageRow.bcp47,
+    }
+
+    const pageSize = normalizeWatchLanguageInventoryLimit(limit)
+    const rows = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(
+          WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL,
+        )
+        return tx.$queryRaw<WatchLanguageInventoryRow[]>`
+      WITH inventory_language AS (
+        SELECT id, slug, bcp47, name
+        FROM language
+        WHERE slug = ${language.slug}
+          AND deleted_at IS NULL
+        LIMIT 1
+      ),
+      published_videos AS (
+        SELECT v.*
+        FROM video v
+        WHERE v.deleted_at IS NULL
+          AND v.no_index = FALSE
+          AND EXISTS (
+            SELECT 1
+            FROM video_locale published_locale
+            WHERE published_locale.video_id = v.id
+              AND published_locale.deleted_at IS NULL
+              AND published_locale.status = 'published'
+          )
+      ),
+      selected_locale AS (
+        SELECT DISTINCT ON (locale.video_id)
+          locale.video_id,
+          locale.title,
+          locale.description,
+          locale.snippet,
+          locale.image_alt
+        FROM video_locale locale
+        JOIN published_videos published_video
+          ON published_video.id = locale.video_id
+        LEFT JOIN inventory_language
+          ON TRUE
+        WHERE locale.deleted_at IS NULL
+          AND locale.status = 'published'
+        ORDER BY
+          locale.video_id ASC,
+          CASE
+            WHEN locale.language_id = inventory_language.id THEN 0
+            WHEN locale.language_slug = inventory_language.slug THEN 1
+            WHEN locale.language_slug = 'english' THEN 2
+            WHEN locale.locale = 'en' THEN 3
+            ELSE 4
+          END ASC,
+          locale.updated_at DESC,
+          locale.id ASC
+      ),
+      selected_image AS (
+        SELECT DISTINCT ON (image.video_id)
+          image.video_id,
+          COALESCE(
+            NULLIF(image.mobile_cinematic_high, ''),
+            NULLIF(image.video_still, ''),
+            NULLIF(image.thumbnail, ''),
+            NULLIF(image.url, '')
+          ) AS image_url
+        FROM video_image image
+        JOIN published_videos published_video
+          ON published_video.id = image.video_id
+        WHERE image.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(image.mobile_cinematic_high, ''),
+            NULLIF(image.video_still, ''),
+            NULLIF(image.thumbnail, ''),
+            NULLIF(image.url, '')
+          ) IS NOT NULL
+        ORDER BY
+          image.video_id ASC,
+          CASE
+            WHEN NULLIF(image.mobile_cinematic_high, '') IS NOT NULL THEN 0
+            WHEN NULLIF(image.video_still, '') IS NOT NULL THEN 1
+            WHEN NULLIF(image.thumbnail, '') IS NOT NULL THEN 2
+            ELSE 3
+          END ASC,
+          image.updated_at DESC,
+          image.id ASC
+      ),
+      audio_collection AS (
+        SELECT DISTINCT ON (parent.id)
+          'audio_collection' AS bucket,
+          parent.id,
+          parent.core_id AS "coreId",
+          parent.slug,
+          COALESCE(
+            NULLIF(selected_locale.title, ''),
+            NULLIF(parent.slug, ''),
+            parent.core_id,
+            parent.id
+          ) AS title,
+          COALESCE(
+            NULLIF(selected_locale.description, ''),
+            NULLIF(selected_locale.snippet, '')
+          ) AS description,
+          selected_image.image_url AS "imageUrl",
+          selected_locale.image_alt AS "imageAlt",
+          parent.label::text AS label,
+          'AUDIO' AS availability,
+          inventory_language.slug AS "watchLanguageSlug",
+          NULL::text AS "parentSlug",
+          NULL::text AS "parentTitle",
+          NULL::integer AS "durationSeconds",
+          COALESCE(child_counts.count, 0) AS "childCount",
+          parent.published_at::text AS "publishedAt",
+          parent.created_at::text AS "createdAt",
+          parent.updated_at::text AS "updatedAt",
+          COALESCE(parent.published_at, parent.updated_at, parent.created_at) AS "sortAt"
+        FROM published_videos parent
+        JOIN video_relation relation
+          ON relation.parent_id = parent.id
+        JOIN published_videos child
+          ON child.id = relation.child_id
+        JOIN video_dub dub
+          ON dub.video_id = child.id
+        JOIN inventory_language
+          ON inventory_language.id = dub.language_id
+        LEFT JOIN video_edition edition
+          ON edition.id = dub.video_edition_id
+        LEFT JOIN selected_locale
+          ON selected_locale.video_id = parent.id
+        LEFT JOIN selected_image
+          ON selected_image.video_id = parent.id
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int AS count
+          FROM video_relation child_relation
+          JOIN published_videos child_video
+            ON child_video.id = child_relation.child_id
+          WHERE child_relation.parent_id = parent.id
+        ) child_counts ON TRUE
+        WHERE dub.deleted_at IS NULL
+          AND dub.published = TRUE
+          AND NULLIF(dub.hls, '') IS NOT NULL
+          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
+        ORDER BY
+          parent.id ASC,
+          relation.order ASC NULLS LAST,
+          relation.created_at ASC
+      ),
+      audio_video AS (
+        SELECT DISTINCT ON (video.id)
+          'audio_video' AS bucket,
+          video.id,
+          video.core_id AS "coreId",
+          video.slug,
+          COALESCE(
+            NULLIF(selected_locale.title, ''),
+            NULLIF(video.slug, ''),
+            video.core_id,
+            video.id
+          ) AS title,
+          COALESCE(
+            NULLIF(selected_locale.description, ''),
+            NULLIF(selected_locale.snippet, '')
+          ) AS description,
+          selected_image.image_url AS "imageUrl",
+          selected_locale.image_alt AS "imageAlt",
+          video.label::text AS label,
+          'AUDIO' AS availability,
+          inventory_language.slug AS "watchLanguageSlug",
+          parent_ref.slug AS "parentSlug",
+          parent_ref.title AS "parentTitle",
+          dub.duration AS "durationSeconds",
+          0 AS "childCount",
+          video.published_at::text AS "publishedAt",
+          video.created_at::text AS "createdAt",
+          video.updated_at::text AS "updatedAt",
+          COALESCE(video.published_at, video.updated_at, video.created_at) AS "sortAt"
+        FROM published_videos video
+        JOIN video_dub dub
+          ON dub.video_id = video.id
+        JOIN inventory_language
+          ON inventory_language.id = dub.language_id
+        LEFT JOIN video_edition edition
+          ON edition.id = dub.video_edition_id
+        LEFT JOIN selected_locale
+          ON selected_locale.video_id = video.id
+        LEFT JOIN selected_image
+          ON selected_image.video_id = video.id
+        LEFT JOIN LATERAL (
+          SELECT
+            parent.slug,
+            COALESCE(
+              NULLIF(parent_locale.title, ''),
+              NULLIF(parent.slug, ''),
+              parent.core_id,
+              parent.id
+            ) AS title
+          FROM video_relation relation
+          JOIN published_videos parent
+            ON parent.id = relation.parent_id
+          LEFT JOIN selected_locale parent_locale
+            ON parent_locale.video_id = parent.id
+          WHERE relation.child_id = video.id
+          ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
+          LIMIT 1
+        ) parent_ref ON TRUE
+        WHERE dub.deleted_at IS NULL
+          AND dub.published = TRUE
+          AND NULLIF(dub.hls, '') IS NOT NULL
+          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM video_relation child_relation
+            WHERE child_relation.parent_id = video.id
+          )
+        ORDER BY
+          video.id ASC,
+          dub.duration DESC NULLS LAST,
+          dub.updated_at DESC,
+          dub.id ASC
+      ),
+      subtitle_video AS (
+        SELECT DISTINCT ON (video.id)
+          'subtitle_video' AS bucket,
+          video.id,
+          video.core_id AS "coreId",
+          video.slug,
+          COALESCE(
+            NULLIF(selected_locale.title, ''),
+            NULLIF(video.slug, ''),
+            video.core_id,
+            video.id
+          ) AS title,
+          COALESCE(
+            NULLIF(selected_locale.description, ''),
+            NULLIF(selected_locale.snippet, '')
+          ) AS description,
+          selected_image.image_url AS "imageUrl",
+          selected_locale.image_alt AS "imageAlt",
+          video.label::text AS label,
+          'SUBTITLE_ONLY' AS availability,
+          fallback_dub.language_slug AS "watchLanguageSlug",
+          parent_ref.slug AS "parentSlug",
+          parent_ref.title AS "parentTitle",
+          fallback_dub.duration AS "durationSeconds",
+          0 AS "childCount",
+          video.published_at::text AS "publishedAt",
+          video.created_at::text AS "createdAt",
+          video.updated_at::text AS "updatedAt",
+          COALESCE(video.published_at, video.updated_at, video.created_at) AS "sortAt"
+        FROM published_videos video
+        JOIN inventory_language
+          ON TRUE
+        JOIN video_subtitle subtitle
+          ON subtitle.deleted_at IS NULL
+         AND subtitle.language_id = inventory_language.id
+         AND (
+           subtitle.video_id = video.id
+           OR EXISTS (
+             SELECT 1
+             FROM video_dub edition_dub
+             WHERE edition_dub.video_id = video.id
+               AND edition_dub.video_edition_id = subtitle.video_edition_id
+           )
+         )
+        JOIN video_edition subtitle_edition
+          ON subtitle_edition.id = subtitle.video_edition_id
+         AND subtitle_edition.deleted_at IS NULL
+        JOIN LATERAL (
+          SELECT
+            fallback_language.slug AS language_slug,
+            fallback_dub.duration
+          FROM video_dub fallback_dub
+          JOIN language fallback_language
+            ON fallback_language.id = fallback_dub.language_id
+           AND fallback_language.deleted_at IS NULL
+           AND fallback_language.slug IS NOT NULL
+          LEFT JOIN video_edition fallback_edition
+            ON fallback_edition.id = fallback_dub.video_edition_id
+          WHERE fallback_dub.video_id = video.id
+            AND fallback_dub.deleted_at IS NULL
+            AND fallback_dub.published = TRUE
+            AND NULLIF(fallback_dub.hls, '') IS NOT NULL
+            AND (fallback_edition.id IS NULL OR fallback_edition.deleted_at IS NULL)
+          ORDER BY
+            CASE
+              WHEN video.primary_language_id = fallback_language.id THEN 0
+              WHEN fallback_language.slug = 'english' THEN 1
+              ELSE 2
+            END ASC,
+            fallback_dub.duration DESC NULLS LAST,
+            fallback_language.slug ASC,
+            fallback_dub.id ASC
+          LIMIT 1
+        ) fallback_dub ON TRUE
+        LEFT JOIN selected_locale
+          ON selected_locale.video_id = video.id
+        LEFT JOIN selected_image
+          ON selected_image.video_id = video.id
+        LEFT JOIN LATERAL (
+          SELECT
+            parent.slug,
+            COALESCE(
+              NULLIF(parent_locale.title, ''),
+              NULLIF(parent.slug, ''),
+              parent.core_id,
+              parent.id
+            ) AS title
+          FROM video_relation relation
+          JOIN published_videos parent
+            ON parent.id = relation.parent_id
+          LEFT JOIN selected_locale parent_locale
+            ON parent_locale.video_id = parent.id
+          WHERE relation.child_id = video.id
+          ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
+          LIMIT 1
+        ) parent_ref ON TRUE
+        WHERE (NULLIF(subtitle.vtt_src, '') IS NOT NULL OR NULLIF(subtitle.srt_src, '') IS NOT NULL)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM video_dub same_language_dub
+            LEFT JOIN video_edition same_language_edition
+              ON same_language_edition.id = same_language_dub.video_edition_id
+            WHERE same_language_dub.video_id = video.id
+              AND same_language_dub.language_id = inventory_language.id
+              AND same_language_dub.deleted_at IS NULL
+              AND same_language_dub.published = TRUE
+              AND NULLIF(same_language_dub.hls, '') IS NOT NULL
+              AND (
+                same_language_edition.id IS NULL
+                OR same_language_edition.deleted_at IS NULL
+              )
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM video_relation child_relation
+            WHERE child_relation.parent_id = video.id
+          )
+        ORDER BY
+          video.id ASC,
+          CASE WHEN subtitle.primary = TRUE THEN 0 ELSE 1 END ASC,
+          subtitle.updated_at DESC,
+          subtitle.id ASC
+      ),
+      inventory_rows AS (
+        SELECT * FROM audio_collection
+        UNION ALL
+        SELECT * FROM audio_video
+        UNION ALL
+        SELECT * FROM subtitle_video
+      ),
+      ranked_rows AS (
+        SELECT
+          inventory_rows.*,
+          COUNT(*) OVER (PARTITION BY bucket) AS "bucketTotal",
+          ROW_NUMBER() OVER (
+            PARTITION BY bucket
+            ORDER BY
+              "sortAt" DESC NULLS LAST,
+              title ASC,
+              id ASC
+          ) AS bucket_rank
+        FROM inventory_rows
+      )
+      SELECT
+        bucket,
+        id,
+        "coreId",
+        slug,
+        title,
+        description,
+        "imageUrl",
+        "imageAlt",
+        label,
+        availability,
+        "watchLanguageSlug",
+        "parentSlug",
+        "parentTitle",
+        "durationSeconds",
+        "childCount",
+        "publishedAt",
+        "createdAt",
+        "updatedAt",
+        "sortAt",
+        "bucketTotal"
+      FROM ranked_rows
+      WHERE bucket_rank <= ${pageSize}
+      ORDER BY
+        CASE
+          WHEN bucket = 'audio_collection' THEN 0
+          WHEN bucket = 'audio_video' THEN 1
+          ELSE 2
+        END ASC,
+        "sortAt" DESC NULLS LAST,
+        title ASC,
+        id ASC
+    `
+      },
+      { timeout: WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS },
+    )
+
+    const audioCollections = bucketItems(rows, "audio_collection")
+    const audioVideos = bucketItems(rows, "audio_video")
+    const subtitleOnlyVideos = bucketItems(rows, "subtitle_video")
+    const counts = {
+      audioCollections: bucketTotal(rows, "audio_collection"),
+      audioVideos: bucketTotal(rows, "audio_video"),
+      subtitleOnlyVideos: bucketTotal(rows, "subtitle_video"),
+      total: 0,
+    }
+    counts.total =
+      counts.audioCollections + counts.audioVideos + counts.subtitleOnlyVideos
+
+    const promoted = [
+      ...audioCollections,
+      ...audioVideos,
+      ...subtitleOnlyVideos,
+    ]
+      .sort(
+        (a, b) =>
+          recencyScore(b) - recencyScore(a) || a.title.localeCompare(b.title),
+      )
+      .slice(0, WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT)
+
+    return {
+      language,
+      counts,
+      promoted,
+      audioCollections,
+      audioVideos,
+      subtitleOnlyVideos,
+    }
+  }
+
   async getByCoreId({
     coreId,
     user,
@@ -1071,6 +1572,77 @@ export class VideoService {
       bcp47: dub.language?.bcp47 ?? null,
     }))
   }
+}
+
+type WatchLanguageInventoryBucket =
+  | "audio_collection"
+  | "audio_video"
+  | "subtitle_video"
+
+type WatchLanguageInventoryRow = WatchLanguageInventoryItem & {
+  bucket: WatchLanguageInventoryBucket
+  bucketTotal: number | bigint
+  sortAt: Date | string | null
+}
+
+function normalizeWatchLanguageInventoryLimit(
+  limit: number | null | undefined,
+) {
+  const parsed = Number.isFinite(limit ?? NaN)
+    ? Math.floor(Number(limit))
+    : WATCH_LANGUAGE_INVENTORY_DEFAULT_ITEMS_PER_BUCKET
+  if (parsed <= 0) return 1
+  return Math.min(parsed, WATCH_LANGUAGE_INVENTORY_MAX_ITEMS_PER_BUCKET)
+}
+
+function emptyWatchLanguageInventory(
+  language: WatchLanguageInventoryLanguage | null,
+): WatchLanguageInventory {
+  return {
+    language,
+    counts: {
+      audioCollections: 0,
+      audioVideos: 0,
+      subtitleOnlyVideos: 0,
+      total: 0,
+    },
+    promoted: [],
+    audioCollections: [],
+    audioVideos: [],
+    subtitleOnlyVideos: [],
+  }
+}
+
+function bucketItems(
+  rows: WatchLanguageInventoryRow[],
+  bucket: WatchLanguageInventoryBucket,
+): WatchLanguageInventoryItem[] {
+  return rows
+    .filter((row) => row.bucket === bucket)
+    .map(
+      ({
+        bucket: _bucket,
+        bucketTotal: _bucketTotal,
+        sortAt: _sortAt,
+        ...item
+      }) => item,
+    )
+}
+
+function bucketTotal(
+  rows: WatchLanguageInventoryRow[],
+  bucket: WatchLanguageInventoryBucket,
+): number {
+  const total = rows.find((row) => row.bucket === bucket)?.bucketTotal
+  if (typeof total === "bigint") return Number(total)
+  return total ?? 0
+}
+
+function recencyScore(item: WatchLanguageInventoryItem): number {
+  const value = item.publishedAt ?? item.updatedAt ?? item.createdAt
+  if (!value) return 0
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp) ? timestamp : 0
 }
 
 type VideoForEnrichmentRow = VideoForEnrichment

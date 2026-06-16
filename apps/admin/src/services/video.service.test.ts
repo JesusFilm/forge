@@ -22,6 +22,9 @@ function mockPrisma() {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    language: {
+      findFirst: vi.fn(),
+    },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
     $executeRawUnsafe: vi.fn(),
@@ -338,6 +341,134 @@ describe("VideoService", () => {
         { createdAt: "desc" },
         { updatedAt: "desc" },
       ])
+    })
+  })
+
+  describe("getWatchLanguageInventory", () => {
+    it("returns empty buckets when the requested language slug is unknown", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.getWatchLanguageInventory({ languageSlug: "not-a-language" }),
+      ).resolves.toMatchObject({
+        language: null,
+        counts: {
+          audioCollections: 0,
+          audioVideos: 0,
+          subtitleOnlyVideos: 0,
+          total: 0,
+        },
+        promoted: [],
+        audioCollections: [],
+        audioVideos: [],
+        subtitleOnlyVideos: [],
+      })
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+    })
+
+    it("groups inventory rows into audio collections, audio videos, and subtitle-only videos", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          bucket: "audio_collection",
+          bucketTotal: 1,
+          id: "collection-1",
+          coreId: "core-collection-1",
+          slug: "story-of-jesus",
+          title: "The Story of Jesus",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          label: "series",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: null,
+          childCount: 12,
+          publishedAt: "2026-06-01T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+        },
+        {
+          bucket: "audio_video",
+          bucketTotal: 1,
+          id: "video-1",
+          coreId: "core-video-1",
+          slug: "jesus-calms-the-storm",
+          title: "Jesus Calms the Storm",
+          description: "A short film.",
+          imageUrl: "https://example.com/storm.jpg",
+          imageAlt: "Jesus Calms the Storm",
+          label: "shortFilm",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 420,
+          childCount: 0,
+          publishedAt: "2026-05-20T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-05-20T00:00:00.000Z",
+        },
+        {
+          bucket: "subtitle_video",
+          bucketTotal: 1,
+          id: "video-2",
+          coreId: "core-video-2",
+          slug: "following-jesus",
+          title: "Following Jesus",
+          description: "Available with translated subtitles.",
+          imageUrl: null,
+          imageAlt: null,
+          label: "featureFilm",
+          availability: "SUBTITLE_ONLY",
+          watchLanguageSlug: "english",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 3600,
+          childCount: 0,
+          publishedAt: "2026-05-15T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-05-15T00:00:00.000Z",
+        },
+      ])
+
+      const inventory = await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+        limit: 25,
+      })
+
+      expect(inventory.language).toMatchObject({
+        slug: "spanish-latin-american",
+        bcp47: "es-419",
+      })
+      expect(inventory.counts).toEqual({
+        audioCollections: 1,
+        audioVideos: 1,
+        subtitleOnlyVideos: 1,
+        total: 3,
+      })
+      expect(inventory.audioCollections).toHaveLength(1)
+      expect(inventory.audioVideos).toHaveLength(1)
+      expect(inventory.subtitleOnlyVideos).toHaveLength(1)
+      expect(inventory.subtitleOnlyVideos[0]).toMatchObject({
+        title: "Following Jesus",
+        availability: "SUBTITLE_ONLY",
+        watchLanguageSlug: "english",
+      })
+      expect(inventory.promoted.map((item) => item.title)).toEqual([
+        "The Story of Jesus",
+        "Jesus Calms the Storm",
+        "Following Jesus",
+      ])
+      expect(prisma.tx.$executeRawUnsafe).toHaveBeenCalledWith(
+        "SET LOCAL statement_timeout = '10000ms'",
+      )
     })
   })
 

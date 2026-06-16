@@ -16,6 +16,10 @@ import {
 } from "@/services/video.service"
 import type {
   ChildDubLanguageRow,
+  WatchLanguageInventory,
+  WatchLanguageInventoryCounts,
+  WatchLanguageInventoryItem,
+  WatchLanguageInventoryLanguage,
   VideoMapperCatalogConnection,
   VideoMapperCatalogItem,
   VideoMapperCatalogPageInfo,
@@ -172,6 +176,18 @@ const VideoMapperCatalogMediaSourceTypeEnum = builder.enumType(
       HLS: { value: "HLS" },
       DASH: { value: "DASH" },
       NONE: { value: "NONE" },
+    } as const,
+  },
+)
+
+const WatchLanguageInventoryAvailabilityEnum = builder.enumType(
+  "WatchLanguageInventoryAvailability",
+  {
+    description:
+      "Whether the requested language has playable audio or subtitles only for this inventory row.",
+    values: {
+      AUDIO: { value: "AUDIO" },
+      SUBTITLE_ONLY: { value: "SUBTITLE_ONLY" },
     } as const,
   },
 )
@@ -694,6 +710,125 @@ VideoMapperCatalogConnectionRef.implement({
   }),
 })
 
+// WatchLanguageInventory* — public, flat read model for Watch's localized
+// /videos page. It intentionally returns card-ready rows rather than nested
+// Video relation graphs, keeping the payload bounded by availability bucket.
+
+const WatchLanguageInventoryLanguageRef =
+  builder.objectRef<WatchLanguageInventoryLanguage>(
+    "WatchLanguageInventoryLanguage",
+  )
+
+WatchLanguageInventoryLanguageRef.implement({
+  description: "Requested public Watch language for a localized inventory.",
+  fields: (t) => ({
+    slug: t.exposeString("slug", { nullable: false }),
+    bcp47: t.exposeString("bcp47", { nullable: true }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      resolve: (row) => row.name,
+    }),
+  }),
+})
+
+const WatchLanguageInventoryItemRef =
+  builder.objectRef<WatchLanguageInventoryItem>("WatchLanguageInventoryItem")
+
+WatchLanguageInventoryItemRef.implement({
+  description:
+    "Card-ready Watch inventory row for a single video or parent collection in one requested language.",
+  fields: (t) => ({
+    id: t.exposeID("id", { nullable: false }),
+    coreId: t.exposeString("coreId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: false }),
+    title: t.exposeString("title", { nullable: false }),
+    description: t.exposeString("description", { nullable: true }),
+    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageAlt: t.exposeString("imageAlt", { nullable: true }),
+    label: t.exposeString("label", {
+      nullable: true,
+      description:
+        "VideoLabel as the camelCase database wire-shape string ('featureFilm', 'shortFilm', etc.).",
+    }),
+    availability: t.field({
+      type: WatchLanguageInventoryAvailabilityEnum,
+      nullable: false,
+      resolve: (row) => row.availability,
+    }),
+    watchLanguageSlug: t.exposeString("watchLanguageSlug", {
+      nullable: false,
+      description:
+        "Public Watch audio-language slug to use in hrefs. Equals the requested language for audio rows; subtitle-only rows use a playable fallback audio language.",
+    }),
+    parentSlug: t.exposeString("parentSlug", { nullable: true }),
+    parentTitle: t.exposeString("parentTitle", { nullable: true }),
+    durationSeconds: t.exposeInt("durationSeconds", { nullable: true }),
+    childCount: t.exposeInt("childCount", { nullable: false }),
+    publishedAt: t.exposeString("publishedAt", { nullable: true }),
+    createdAt: t.exposeString("createdAt", { nullable: true }),
+    updatedAt: t.exposeString("updatedAt", { nullable: true }),
+  }),
+})
+
+const WatchLanguageInventoryCountsRef =
+  builder.objectRef<WatchLanguageInventoryCounts>(
+    "WatchLanguageInventoryCounts",
+  )
+
+WatchLanguageInventoryCountsRef.implement({
+  description: "Complete counts for the localized Watch inventory buckets.",
+  fields: (t) => ({
+    audioCollections: t.exposeInt("audioCollections", { nullable: false }),
+    audioVideos: t.exposeInt("audioVideos", { nullable: false }),
+    subtitleOnlyVideos: t.exposeInt("subtitleOnlyVideos", {
+      nullable: false,
+    }),
+    total: t.exposeInt("total", { nullable: false }),
+  }),
+})
+
+const WatchLanguageInventoryRef = builder.objectRef<WatchLanguageInventory>(
+  "WatchLanguageInventory",
+)
+
+WatchLanguageInventoryRef.implement({
+  description:
+    "Localized Watch inventory grouped for regional leads: audio collections, audio videos, then subtitle-only videos.",
+  fields: (t) => ({
+    language: t.field({
+      type: WatchLanguageInventoryLanguageRef,
+      nullable: true,
+      resolve: (row) => row.language,
+    }),
+    counts: t.field({
+      type: WatchLanguageInventoryCountsRef,
+      nullable: false,
+      resolve: (row) => row.counts,
+    }),
+    promoted: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.promoted,
+    }),
+    audioCollections: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.audioCollections,
+    }),
+    audioVideos: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.audioVideos,
+    }),
+    subtitleOnlyVideos: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.subtitleOnlyVideos,
+    }),
+  }),
+})
+
 // Root queries — PUBLIC since consumer-migration U2 (2026-05-11).
 builder.queryFields((t) => ({
   video: t.prismaField({
@@ -800,6 +935,30 @@ builder.queryFields((t) => ({
       ctx.services.video.getWatchHomeVideos({
         coreIds: args.coreIds,
         query,
+      }),
+  }),
+  watchLanguageInventory: t.field({
+    type: WatchLanguageInventoryRef,
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Flat localized Watch /videos inventory grouped as audio collections, audio videos, and subtitle-only videos. Returns counts plus bounded card rows for regional leads and missionaries.",
+    args: {
+      languageSlug: t.arg.string({
+        required: true,
+        description:
+          "Public Watch language slug, e.g. 'english' or 'spanish-latin-american'.",
+      }),
+      limit: t.arg.int({
+        required: false,
+        description:
+          "Maximum rows returned per bucket. Defaults to the service cap.",
+      }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getWatchLanguageInventory({
+        languageSlug: args.languageSlug,
+        limit: args.limit,
       }),
   }),
   videosByCoreIds: t.field({

@@ -178,6 +178,20 @@ function classifyRewrite(pathname: string): RewriteDecision {
 
   if (segments.length === 2) {
     const [slugSegment, localeSegment] = segments
+    if (localeSegment === "videos") {
+      if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
+      const rawLanguageSlug = stripSafeSlug(slugSegment)
+      if (!rawLanguageSlug) return { kind: "not-found" }
+      if (!isPublicWatchHomeLanguageSlug(rawLanguageSlug)) {
+        return { kind: "not-found" }
+      }
+      return {
+        kind: "rewrite",
+        ...resolveWatchLocaleIdentity(rawLanguageSlug),
+        pathname,
+        internalPathname: `/videos/${rawLanguageSlug}`,
+      }
+    }
     if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
       return { kind: "not-found" }
     }

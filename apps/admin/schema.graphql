@@ -1064,6 +1064,17 @@ type Query {
   """
   watchHomeVideos(coreIds: [String!]!): [Video!]!
   """
+  Flat localized Watch /videos inventory grouped as audio collections, audio videos, and subtitle-only videos. Returns counts plus bounded card rows for regional leads and missionaries.
+  """
+  watchLanguageInventory(
+    """
+    Public Watch language slug, e.g. 'english' or 'spanish-latin-american'.
+    """
+    languageSlug: String!
+    """Maximum rows returned per bucket. Defaults to the service cap."""
+    limit: Int
+  ): WatchLanguageInventory!
+  """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
   watchSetting(locale: String!): WatchSetting
@@ -1646,6 +1657,70 @@ type VideoTranscriptChunk {
   tokenCount: Int
   transcriptId: ID
   updatedAt: String
+}
+
+"""
+Localized Watch inventory grouped for regional leads: audio collections, audio videos, then subtitle-only videos.
+"""
+type WatchLanguageInventory {
+  audioCollections: [WatchLanguageInventoryItem!]!
+  audioVideos: [WatchLanguageInventoryItem!]!
+  counts: WatchLanguageInventoryCounts!
+  language: WatchLanguageInventoryLanguage
+  promoted: [WatchLanguageInventoryItem!]!
+  subtitleOnlyVideos: [WatchLanguageInventoryItem!]!
+}
+
+"""
+Whether the requested language has playable audio or subtitles only for this inventory row.
+"""
+enum WatchLanguageInventoryAvailability {
+  AUDIO
+  SUBTITLE_ONLY
+}
+
+"""Complete counts for the localized Watch inventory buckets."""
+type WatchLanguageInventoryCounts {
+  audioCollections: Int!
+  audioVideos: Int!
+  subtitleOnlyVideos: Int!
+  total: Int!
+}
+
+"""
+Card-ready Watch inventory row for a single video or parent collection in one requested language.
+"""
+type WatchLanguageInventoryItem {
+  availability: WatchLanguageInventoryAvailability!
+  childCount: Int!
+  coreId: String!
+  createdAt: String
+  description: String
+  durationSeconds: Int
+  id: ID!
+  imageAlt: String
+  imageUrl: String
+  """
+  VideoLabel as the camelCase database wire-shape string ('featureFilm', 'shortFilm', etc.).
+  """
+  label: String
+  parentSlug: String
+  parentTitle: String
+  publishedAt: String
+  slug: String!
+  title: String!
+  updatedAt: String
+  """
+  Public Watch audio-language slug to use in hrefs. Equals the requested language for audio rows; subtitle-only rows use a playable fallback audio language.
+  """
+  watchLanguageSlug: String!
+}
+
+"""Requested public Watch language for a localized inventory."""
+type WatchLanguageInventoryLanguage {
+  bcp47: String
+  name: JSON
+  slug: String!
 }
 
 """Per-locale homepage configuration for PUBLIC consumer apps."""
