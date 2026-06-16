@@ -100,6 +100,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "documentId",
         "coreId",
         "parentDocumentIds",
+        "parentRelations",
         "coverage",
       ]),
     )

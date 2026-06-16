@@ -61,6 +61,7 @@ export type MockVideoCoverage = {
   aiMetadata: boolean | null
   imageUrl: string | null
   parentDocumentIds: string[]
+  parentRelations?: Array<{ parentDocumentId: string; order: number | null }>
   coverage: {
     subtitles: MockCoverageCounts
     audio: MockCoverageCounts
@@ -456,6 +457,7 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: false,
         imageUrl: "https://images.jesusfilm.org/mock/hope-stories.jpg",
         parentDocumentIds: [],
+        parentRelations: [],
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 0, ai: 1 },
@@ -487,6 +489,9 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: true,
         imageUrl: "https://images.jesusfilm.org/mock/episode-1.jpg",
         parentDocumentIds: ["video-doc-collection-1"],
+        parentRelations: [
+          { parentDocumentId: "video-doc-collection-1", order: 1 },
+        ],
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 0, ai: 1 },
@@ -518,6 +523,9 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: null,
         imageUrl: "https://images.jesusfilm.org/mock/episode-2.jpg",
         parentDocumentIds: ["video-doc-collection-1"],
+        parentRelations: [
+          { parentDocumentId: "video-doc-collection-1", order: 2 },
+        ],
         coverage: {
           subtitles: { human: 1, ai: 0 },
           audio: { human: 0, ai: 0 },
@@ -549,6 +557,7 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: false,
         imageUrl: "https://images.jesusfilm.org/mock/a-new-beginning.jpg",
         parentDocumentIds: [],
+        parentRelations: [],
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 1, ai: 0 },

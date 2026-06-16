@@ -47,6 +47,11 @@ export type ManagerVideoForEnrichment = {
 
 export type ManagerCoverageCounts = { human: number; ai: number }
 
+export type ManagerVideoParentRelation = {
+  parentDocumentId: string
+  order: number | null
+}
+
 export type ManagerVideoCoverage = {
   documentId: string
   coreId: string | null
@@ -56,6 +61,7 @@ export type ManagerVideoCoverage = {
   aiMetadata: boolean | null
   imageUrl: string | null
   parentDocumentIds: string[]
+  parentRelations: ManagerVideoParentRelation[]
   coverage: {
     subtitles: ManagerCoverageCounts
     audio: ManagerCoverageCounts
@@ -452,7 +458,17 @@ export class ManagerReadModelService {
           orderBy: { updatedAt: "desc" },
           take: 1,
         },
-        parents: true,
+        parents: {
+          select: {
+            parentId: true,
+            order: true,
+          },
+          orderBy: [
+            { order: { sort: "asc", nulls: "last" } },
+            { createdAt: "asc" },
+            { id: "asc" },
+          ],
+        },
       },
       orderBy: { updatedAt: "desc" },
     })
@@ -497,6 +513,10 @@ export class ManagerReadModelService {
       aiMetadata: video.aiMetadata ?? null,
       imageUrl: normalizeManagerVideoImageUrl(video.images[0]?.url),
       parentDocumentIds: video.parents.map((parent) => parent.parentId),
+      parentRelations: video.parents.map((parent) => ({
+        parentDocumentId: parent.parentId,
+        order: parent.order ?? null,
+      })),
       coverage: {
         subtitles: countsForVideo(subtitleCountsByVideoId, video.id),
         audio: countsForVideo(dubCountsByVideoId, video.id),

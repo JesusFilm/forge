@@ -597,6 +597,7 @@ type ManagerVideoCoverage {
   imageUrl: String
   label: String
   parentDocumentIds: [String!]
+  parentRelations: [ManagerVideoCoverageParentRelation!]
   slug: String
   title: String
 }
@@ -604,6 +605,11 @@ type ManagerVideoCoverage {
 type ManagerVideoCoverageBreakdown {
   audio: ManagerCoverageCounts
   subtitles: ManagerCoverageCounts
+}
+
+type ManagerVideoCoverageParentRelation {
+  order: Int
+  parentDocumentId: String
 }
 
 type ManagerVideoForEnrichment {

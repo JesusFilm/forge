@@ -41,6 +41,9 @@ describe("AdminGraphqlClient", () => {
                 aiMetadata: false,
                 imageUrl: null,
                 parentDocumentIds: ["collection-doc-1"],
+                parentRelations: [
+                  { parentDocumentId: "collection-doc-1", order: 1 },
+                ],
                 coverage: {
                   subtitles: { human: 1, ai: 0 },
                   audio: { human: 0, ai: 1 },
@@ -79,6 +82,9 @@ describe("AdminGraphqlClient", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
       variables: { languageIds: ["529"] },
     })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).query).toContain(
+      "parentRelations",
+    )
   })
 
   it("surfaces Admin GraphQL failures as transport errors", async () => {
