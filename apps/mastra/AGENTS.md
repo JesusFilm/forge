@@ -26,6 +26,11 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
   reads Manager transcript artifacts, translates and retimes subtitles, and
   writes Manager-compatible subtitle/translation artifacts to shared storage.
+- Owns RAG retrieval for the seeker agent through the `retrieveAnswer` tool and
+  `jesusfilm-rag-client` (outbound-only bearer to the JesusFilm RAG service;
+  the tool returns cited passages, the agent generates the answer). Fully
+  optional config — unset degrades to an explicit unavailable result, never a
+  boot failure.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
