@@ -24,6 +24,8 @@ export type ManagerLanguageGeo = {
 export type ManagerVideoForEnrichment = {
   documentId: string
   coreId: string | null
+  title: string | null
+  label: string | null
   primaryLanguage: {
     coreId: string | null
     bcp47: string | null
@@ -81,6 +83,7 @@ type CoverageAggregateRow = {
 }
 
 type VideoTitleLocale = {
+  videoId?: string | null
   locale: string | null
   languageId: string | null
   title: string | null
@@ -335,9 +338,55 @@ export class ManagerReadModelService {
       },
     })
 
+    const videoIds = videos.map((video) => video.id)
+    const primaryLanguageIds = Array.from(
+      new Set(
+        videos
+          .map((video) => video.primaryLanguageId)
+          .filter(
+            (id): id is string => typeof id === "string" && id.length > 0,
+          ),
+      ),
+    )
+    const titleLocaleFilters: Prisma.VideoLocaleWhereInput[] = [
+      { locale: "en" },
+    ]
+    if (primaryLanguageIds.length > 0) {
+      titleLocaleFilters.push({ languageId: { in: primaryLanguageIds } })
+    }
+    const titleLocales =
+      videoIds.length === 0
+        ? []
+        : await this.prisma.videoLocale.findMany({
+            where: {
+              deletedAt: null,
+              title: { not: null },
+              videoId: { in: videoIds },
+              OR: titleLocaleFilters,
+            },
+            select: {
+              videoId: true,
+              locale: true,
+              languageId: true,
+              title: true,
+            },
+            orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+          })
+    const titleLocalesByVideoId = new Map<string, VideoTitleLocale[]>()
+    for (const locale of titleLocales) {
+      const locales = titleLocalesByVideoId.get(locale.videoId) ?? []
+      locales.push(locale)
+      titleLocalesByVideoId.set(locale.videoId, locales)
+    }
+
     return videos.map((video) => ({
       documentId: video.id,
       coreId: video.coreId ?? null,
+      title: titleFrom(
+        titleLocalesByVideoId.get(video.id) ?? [],
+        video.primaryLanguageId ? [video.primaryLanguageId] : [],
+      ),
+      label: video.label ?? null,
       primaryLanguage: video.primaryLanguage
         ? {
             coreId: video.primaryLanguage.coreId ?? null,

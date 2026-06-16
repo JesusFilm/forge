@@ -107,6 +107,8 @@ describe("AdminGraphqlClient", () => {
               {
                 documentId: "video-doc-1",
                 coreId: "core-1",
+                title: "Jesus Film",
+                label: "JESUS_FILM",
                 primaryLanguage: {
                   coreId: "529",
                   bcp47: "en",
@@ -147,6 +149,8 @@ describe("AdminGraphqlClient", () => {
       {
         documentId: "video-doc-1",
         coreId: "core-1",
+        title: "Jesus Film",
+        label: "JESUS_FILM",
         primaryLanguage: {
           coreId: "529",
           bcp47: "en",

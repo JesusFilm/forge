@@ -2,6 +2,12 @@ import { chunkSegments } from "./chunker"
 import { loadLanguageConfig } from "./language-config"
 import { retimeChunk, type RetimeChunkResult } from "./retimer"
 import {
+  detectSubtitleScriptureContext,
+  fallbackSubtitleScriptureContext,
+  sanitizeSubtitleScriptureContext,
+  type DetectSubtitleScriptureContextInput,
+} from "./scripture-context"
+import {
   readSubtitleArtifact,
   writeSubtitleArtifact,
   type WriteSubtitleArtifactOptions,
@@ -10,6 +16,8 @@ import {
   SubtitleProviderError,
   type Chunk,
   type LanguageConfig,
+  type SubtitleScriptureContext,
+  type SubtitleTranslationContext,
   type SubtitleLanguageResult,
   type TranscriptSegment,
 } from "./types"
@@ -26,6 +34,7 @@ export type RunSubtitleEnrichmentInput = {
   apiKey?: string
   timeoutMs: number
   concurrency?: number
+  translationContext?: SubtitleTranslationContext
 }
 
 export type RunSubtitleEnrichmentDeps = {
@@ -38,6 +47,7 @@ export type RunSubtitleEnrichmentDeps = {
     apiKey?: string
     timeoutMs: number
     config?: LanguageConfig
+    scriptureContext?: SubtitleScriptureContext
   }) => Promise<TranslateChunkResult>
   retime?: (input: {
     chunk: Chunk
@@ -47,7 +57,11 @@ export type RunSubtitleEnrichmentDeps = {
     apiKey?: string
     timeoutMs: number
     config?: LanguageConfig
+    scriptureContext?: SubtitleScriptureContext
   }) => Promise<RetimeChunkResult>
+  detectScriptureContext?: (
+    input: DetectSubtitleScriptureContextInput,
+  ) => Promise<SubtitleScriptureContext>
   loadConfig?: typeof loadLanguageConfig
 }
 
@@ -89,6 +103,13 @@ function parseTranscriptArtifact(bytes: Uint8Array): TranscriptArtifact {
   return { segments }
 }
 
+function detectorErrorDetails(error: unknown) {
+  return {
+    errorName: error instanceof Error ? error.name : typeof error,
+    ...(error instanceof SubtitleProviderError ? { reason: error.reason } : {}),
+  }
+}
+
 async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
@@ -118,12 +139,45 @@ export async function runSubtitleEnrichment(
   const writeArtifact = deps.writeArtifact ?? writeSubtitleArtifact
   const translate = deps.translate ?? translateChunk
   const retime = deps.retime ?? retimeChunk
+  const detectScriptureContext =
+    deps.detectScriptureContext ?? detectSubtitleScriptureContext
   const loadConfig = deps.loadConfig ?? loadLanguageConfig
 
   const transcript = parseTranscriptArtifact(
     await readArtifact(input.assetId, "transcript", "json"),
   )
   const chunks = chunkSegments(transcript.segments)
+  const hasProviderWork = input.targetLanguages.some(
+    (targetLanguage) => targetLanguage !== input.sourceLanguage,
+  )
+  const scriptureContext = hasProviderWork
+    ? await detectScriptureContext({
+        sourceLanguage: input.sourceLanguage,
+        transcriptSegments: transcript.segments,
+        translationContext: input.translationContext,
+        model: input.model,
+        apiKey: input.apiKey,
+        timeoutMs: input.timeoutMs,
+      })
+        .then((context) =>
+          context
+            ? sanitizeSubtitleScriptureContext(
+                context,
+                input.translationContext,
+              )
+            : undefined,
+        )
+        .catch((error) => {
+          console.warn(
+            JSON.stringify({
+              event: "subtitle_scripture_context_detection_failed",
+              assetId: input.assetId,
+              ...detectorErrorDetails(error),
+            }),
+          )
+          return fallbackSubtitleScriptureContext(input.translationContext)
+        })
+    : undefined
 
   return mapWithConcurrency(
     input.targetLanguages,
@@ -138,6 +192,7 @@ export async function runSubtitleEnrichment(
         model: input.model,
         apiKey: input.apiKey,
         timeoutMs: input.timeoutMs,
+        scriptureContext,
         translate,
         retime,
         writeArtifact,
@@ -155,6 +210,7 @@ async function translateLanguage(input: {
   model: string
   apiKey?: string
   timeoutMs: number
+  scriptureContext?: SubtitleScriptureContext
   translate: NonNullable<RunSubtitleEnrichmentDeps["translate"]>
   retime: NonNullable<RunSubtitleEnrichmentDeps["retime"]>
   writeArtifact: (options: WriteSubtitleArtifactOptions) => Promise<string>
@@ -176,6 +232,7 @@ async function translateLanguage(input: {
         apiKey: input.apiKey,
         timeoutMs: input.timeoutMs,
         config,
+        scriptureContext: input.scriptureContext,
       })
       const retimed = await input.retime({
         chunk,
@@ -185,6 +242,7 @@ async function translateLanguage(input: {
         apiKey: input.apiKey,
         timeoutMs: input.timeoutMs,
         config,
+        scriptureContext: input.scriptureContext,
       })
       allSegments.push(...retimed.segments)
     }
@@ -195,6 +253,7 @@ async function translateLanguage(input: {
       targetLanguage: input.targetLanguage,
       segments: allSegments,
       translated: true,
+      scriptureContext: input.scriptureContext,
       writeArtifact: input.writeArtifact,
     })
   } catch (error) {
@@ -233,6 +292,7 @@ async function writeCompletedTranslationArtifacts(input: {
   targetLanguage: string
   segments: TranscriptSegment[]
   translated: boolean
+  scriptureContext?: SubtitleScriptureContext
   writeArtifact: (options: WriteSubtitleArtifactOptions) => Promise<string>
 }): Promise<SubtitleLanguageResult> {
   const vttContent = segmentsToVtt(input.segments, {
@@ -252,6 +312,15 @@ async function writeCompletedTranslationArtifacts(input: {
     sourceLanguage: input.sourceLanguage,
     targetLanguage: input.targetLanguage,
     text: fullText,
+    ...(input.translated && input.scriptureContext
+      ? {
+          translationContext: {
+            contentDomain: input.scriptureContext.contentDomain,
+            likelyBibleReferences: input.scriptureContext.likelyBibleReferences,
+            confidence: input.scriptureContext.confidence,
+          },
+        }
+      : {}),
     ...(input.translated
       ? {}
       : {

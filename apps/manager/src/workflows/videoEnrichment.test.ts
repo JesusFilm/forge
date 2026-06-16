@@ -603,6 +603,15 @@ describe("runVideoEnrichment", () => {
         muxAssetId: "mux-1",
         language: "ru",
         translateTo: ["en", "fr"],
+        videoTitle: "Jesus Film",
+        videoLabel: "JESUS_FILM",
+        bibleVerses: [
+          " Luke 2 ",
+          "Luke 2",
+          ...Array.from({ length: 24 }, (_, index) => `John ${index + 1}`),
+          "not a Bible reference",
+          "John ".padEnd(120, "1"),
+        ],
         initialArtifacts: {
           materialization: {
             kind: "metadata",
@@ -621,6 +630,14 @@ describe("runVideoEnrichment", () => {
       assetId: "asset-1",
       sourceLanguage: "ru",
       targetLanguages: ["en", "fr"],
+      translationContext: {
+        videoTitle: "Jesus Film",
+        videoLabel: "JESUS_FILM",
+        bibleReferences: [
+          "Luke 2",
+          ...Array.from({ length: 19 }, (_, index) => `John ${index + 1}`),
+        ],
+      },
     })
 
     expect(updateJobMock.mock.calls).toEqual([

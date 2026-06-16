@@ -86,6 +86,8 @@ describe("GraphQL schema — Unit 4 content types", () => {
       expect.arrayContaining([
         "documentId",
         "coreId",
+        "title",
+        "label",
         "primaryLanguage",
         "variants",
       ]),

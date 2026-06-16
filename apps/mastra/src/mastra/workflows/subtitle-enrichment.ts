@@ -8,6 +8,7 @@ import { isValidServiceBearer } from "../../server/service-bearer"
 import { isSubtitleArtifactStorageProductionReady } from "../../services/subtitle-enrichment/storage"
 import {
   SubtitleLanguageResultSchema,
+  SubtitleTranslationContextSchema,
   type SubtitleLanguageResult,
 } from "../../services/subtitle-enrichment/types"
 import {
@@ -34,6 +35,9 @@ export const SubtitleEnrichmentInputSchema = z
       .min(1)
       .optional()
       .describe("Optional OpenRouter chat model override."),
+    translationContext: SubtitleTranslationContextSchema.optional().describe(
+      "Optional video metadata and Bible references for translation context.",
+    ),
   })
   .strict()
 
@@ -201,6 +205,7 @@ export async function runSubtitleEnrichmentWorkflow(
         apiKey,
         timeoutMs: env.SUBTITLE_ENRICHMENT_TIMEOUT_MS,
         concurrency: env.SUBTITLE_ENRICHMENT_CONCURRENCY,
+        translationContext: input.translationContext,
       },
       options.deps,
     )

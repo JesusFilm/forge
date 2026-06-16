@@ -19,6 +19,59 @@ export type LanguageConfig = {
   glossary?: Record<string, string>
 }
 
+export const SubtitleTranslationContextSchema = z
+  .object({
+    videoTitle: z.string().min(1).optional(),
+    videoLabel: z.string().min(1).optional(),
+    bibleReferences: z.array(z.string().min(1).max(80)).max(20).optional(),
+  })
+  .strict()
+
+export type SubtitleTranslationContext = z.infer<
+  typeof SubtitleTranslationContextSchema
+>
+
+export const SubtitleContentDomainSchema = z.enum([
+  "bible_story",
+  "gospel_teaching",
+  "christian_general",
+  "other",
+])
+
+export type SubtitleContentDomain = z.infer<typeof SubtitleContentDomainSchema>
+
+export const SubtitleScriptureContextSchema = z
+  .object({
+    contentDomain: SubtitleContentDomainSchema,
+    likelyBibleReferences: z.array(z.string().min(1).max(80)).max(10),
+    confidence: z.number().min(0).max(1),
+    rationale: z.string().max(240).optional(),
+  })
+  .strict()
+
+export type SubtitleScriptureContext = z.infer<
+  typeof SubtitleScriptureContextSchema
+>
+
+export const SubtitleScriptureContextJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    contentDomain: {
+      type: "string",
+      enum: ["bible_story", "gospel_teaching", "christian_general", "other"],
+    },
+    likelyBibleReferences: {
+      type: "array",
+      items: { type: "string", maxLength: 80 },
+      maxItems: 10,
+    },
+    confidence: { type: "number", minimum: 0, maximum: 1 },
+    rationale: { type: "string", maxLength: 240 },
+  },
+  required: ["contentDomain", "likelyBibleReferences", "confidence"],
+} as const
+
 export const RetimingOutputSchema = z
   .object({
     segments: z.array(

@@ -609,7 +609,9 @@ type ManagerVideoCoverageBreakdown {
 type ManagerVideoForEnrichment {
   coreId: String
   documentId: ID
+  label: String
   primaryLanguage: ManagerEnrichmentLanguage
+  title: String
   variants: [ManagerEnrichmentVariant!]
 }
 

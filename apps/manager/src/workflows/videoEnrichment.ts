@@ -25,7 +25,10 @@ import type {
   TranslationLanguageResult,
 } from "@/types/job"
 import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
-import type { LanguageResult } from "@/services/mastra-subtitle-enrichment"
+import type {
+  LanguageResult,
+  MastraSubtitleTranslationContext,
+} from "@/services/mastra-subtitle-enrichment"
 import type { MastraTranscriptEmbeddingResult } from "@/services/mastra-transcript-embeddings"
 import {
   stepGetJob,
@@ -42,6 +45,11 @@ type SubtitleTranslationStepResult = {
 type MastraStepDetailsError = Error & {
   stepDetails?: JobStepDetails
 }
+
+const SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCES = 20
+const SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCE_CHARS = 80
+const BIBLE_REFERENCE_PATTERN =
+  /^(?:[1-3]\s*)?[A-Za-z][A-Za-z .'-]{1,40}\s+\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?(?:\s*[-–]\s*\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?)?$/
 
 function buildMastraFailureStepDetails(input: {
   mastraRunId?: string
@@ -128,6 +136,7 @@ export type VideoEnrichmentInput = {
   translateTo?: string[]
   runSceneAnalysis?: boolean
   runAudioCleanup?: boolean
+  videoTitle?: string
   videoLabel?: string
   bibleVerses?: string[]
   initialArtifacts?: JobArtifactManifest
@@ -151,6 +160,50 @@ export type VideoEnrichmentOutput = {
   language: string
   chapters: { title: string; startSeconds: number }[]
   tags: string[]
+}
+
+function cleanOptionalString(
+  value: string | null | undefined,
+): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function cleanBibleReference(value: string): string | undefined {
+  const trimmed = value.trim().replace(/\s+/g, " ")
+  if (
+    !trimmed ||
+    trimmed.length > SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCE_CHARS ||
+    !BIBLE_REFERENCE_PATTERN.test(trimmed)
+  ) {
+    return undefined
+  }
+  return trimmed
+}
+
+function buildSubtitleTranslationContext(input: {
+  videoTitle?: string
+  videoLabel?: string
+  bibleVerses?: string[]
+}): MastraSubtitleTranslationContext | undefined {
+  const bibleReferences = Array.from(
+    new Set(
+      (input.bibleVerses ?? [])
+        .map(cleanBibleReference)
+        .filter((reference): reference is string => reference != null),
+    ),
+  ).slice(0, SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCES)
+  const context: MastraSubtitleTranslationContext = {
+    ...(cleanOptionalString(input.videoTitle)
+      ? { videoTitle: cleanOptionalString(input.videoTitle) }
+      : {}),
+    ...(cleanOptionalString(input.videoLabel)
+      ? { videoLabel: cleanOptionalString(input.videoLabel) }
+      : {}),
+    ...(bibleReferences.length > 0 ? { bibleReferences } : {}),
+  }
+
+  return Object.keys(context).length > 0 ? context : undefined
 }
 
 async function markStepRunning(jobId: string, step: WorkflowStepName) {
@@ -450,7 +503,17 @@ export async function runVideoEnrichment(
 
     const translationPromise = runParallelStep(
       "translation",
-      () => stepSubtitleTranslation(input.assetId, language, targets),
+      () =>
+        stepSubtitleTranslation(
+          input.assetId,
+          language,
+          targets,
+          buildSubtitleTranslationContext({
+            videoTitle: input.videoTitle,
+            videoLabel: input.videoLabel,
+            bibleVerses: input.bibleVerses,
+          }),
+        ),
       getTranslationArtifactManifest,
       getTranslationStepDetails,
     )
@@ -682,6 +745,7 @@ async function stepSubtitleTranslation(
   assetId: string,
   sourceLanguage: string,
   targetLanguages: string[],
+  translationContext?: MastraSubtitleTranslationContext,
 ) {
   "use step"
   const { launchMastraSubtitleEnrichment } =
@@ -690,6 +754,7 @@ async function stepSubtitleTranslation(
     assetId,
     sourceLanguage,
     targetLanguages,
+    ...(translationContext ? { translationContext } : {}),
   })
 
   if (!result.ok) {

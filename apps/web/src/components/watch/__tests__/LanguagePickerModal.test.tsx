@@ -865,7 +865,7 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-request-sent-icon"]',
     )
     expect(sentIcon).not.toBeNull()
-    expect(sentIcon?.className.baseVal).toContain("text-emerald-400")
+    expect(sentIcon?.getAttribute("class")).toContain("text-emerald-400")
     expect(routerPushMock).not.toHaveBeenCalled()
     expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
   })

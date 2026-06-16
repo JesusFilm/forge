@@ -60,6 +60,10 @@ Origin documents:
   artifacts, translates and retimes subtitles, writes
   `{assetId}/subtitles-{lang}.vtt` and `{assetId}/translation-{lang}.json` to
   shared artifact storage, and returns per-language results to Manager.
+- Gospel-aware subtitle translation prompt steering also belongs in this
+  runtime. Manager may send optional title, label, and Bible-reference context,
+  but Mastra owns scripture-context detection, prompt guidance for Christian
+  gospel/Bible-story content, and sanitized subtitle artifact provenance.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
   contracts are HTTP payloads plus local Zod schemas.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
