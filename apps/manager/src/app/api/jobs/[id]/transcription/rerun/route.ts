@@ -51,6 +51,9 @@ function pruneArtifactsForTranscriptionRerun(
   delete nextArtifacts.sceneEmbeddingSync
   delete nextArtifacts.translations
   delete nextArtifacts.muxSync
+  delete nextArtifacts["transcript-raw"]
+  delete nextArtifacts["subtitles-raw"]
+  delete nextArtifacts["transcript-correction-report"]
 
   for (const key of Object.keys(nextArtifacts)) {
     if (

@@ -31,6 +31,7 @@ import type {
   TranscriptionRoutingReport,
   WorkflowStepName,
 } from "@/types/job"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import {
   FOREGROUND_POLL_DELAY_MS,
   getNextPollDelayMs,
@@ -254,6 +255,97 @@ function SubtitleValidationInlineDetails({
             {result.unavailableReason
               ? `; unavailable ${result.unavailableReason}`
               : null}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function getTranscriptCorrectionInlineSummary(
+  correction: TranscriptScriptureCorrectionStepSummary | undefined,
+): { text: string; needsAttention: boolean } | null {
+  if (!correction) return null
+
+  if (correction.status === "unavailable") {
+    return {
+      text: `Transcript correction unavailable${
+        correction.unavailableReason ? `: ${correction.unavailableReason}` : ""
+      }.`,
+      needsAttention: true,
+    }
+  }
+
+  if (correction.appliedCount > 0) {
+    return {
+      text: `${correction.appliedCount} source correction${
+        correction.appliedCount === 1 ? "" : "s"
+      } applied${
+        correction.flaggedCount > 0
+          ? `; ${correction.flaggedCount} flagged`
+          : ""
+      }.`,
+      needsAttention: correction.flaggedCount > 0,
+    }
+  }
+
+  if (correction.flaggedCount > 0) {
+    return {
+      text: `${correction.flaggedCount} transcript correction finding${
+        correction.flaggedCount === 1 ? "" : "s"
+      } need review.`,
+      needsAttention: true,
+    }
+  }
+
+  return {
+    text:
+      correction.status === "skipped"
+        ? "No source scripture correction applied."
+        : "Transcript correction reviewed.",
+    needsAttention: false,
+  }
+}
+
+function TranscriptCorrectionInlineDetails({
+  correction,
+}: {
+  correction: TranscriptScriptureCorrectionStepSummary
+}) {
+  return (
+    <>
+      <p className="jobs-step-detail-summary">
+        Source transcript scripture correction
+      </p>
+      <ul className="jobs-step-detail-list">
+        <li className="jobs-step-detail-item">
+          <strong>Status</strong>
+          {`: ${correction.status} (${correction.basis}, confidence ${Math.round(
+            correction.confidence * 100,
+          )}%)`}
+        </li>
+        {correction.unavailableReason ? (
+          <li className="jobs-step-detail-item">
+            <strong>Unavailable</strong>: {correction.unavailableReason}
+          </li>
+        ) : null}
+        {correction.skippedReason ? (
+          <li className="jobs-step-detail-item">
+            <strong>Skipped</strong>: {correction.skippedReason}
+          </li>
+        ) : null}
+        {correction.findings.map((finding) => (
+          <li
+            key={`${finding.action}-${finding.segmentIndex}-${finding.originalText}`}
+            className="jobs-step-detail-item"
+          >
+            <strong>
+              {finding.action === "applied" ? "Applied" : "Flagged"} segment{" "}
+              {finding.segmentIndex}
+            </strong>
+            {`: ${finding.originalText}`}
+            {finding.correctedText ? ` -> ${finding.correctedText}` : ""}
+            {finding.reference ? ` (${finding.reference})` : ""}
           </li>
         ))}
       </ul>
@@ -819,12 +911,18 @@ export function LiveJobStepsTable({
                   : null)
               const translationFailures = getTranslationFailureDetails(step)
               const mastraCorrelation =
-                step.name === "translation" || step.name === "embeddings"
+                step.name === "translation" ||
+                step.name === "embeddings" ||
+                step.name === "structured_transcript"
                   ? step.details?.mastra
                   : undefined
               const subtitleValidation =
                 step.name === "translation"
                   ? step.details?.subtitleValidation
+                  : undefined
+              const transcriptCorrection =
+                step.name === "structured_transcript"
+                  ? step.details?.transcriptCorrection
                   : undefined
               const hasMastraDetails = mastraCorrelation != null
               const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
@@ -838,6 +936,9 @@ export function LiveJobStepsTable({
                 (translationFailures.length > 0 ||
                   hasMastraDetails ||
                   subtitleValidation != null)
+              const hasStructuredTranscriptDetails =
+                step.name === "structured_transcript" &&
+                (transcriptCorrection != null || hasMastraDetails)
               const hasTranscriptionDetails =
                 step.name === "transcription" &&
                 (transcriptionRoutingReport != null || rerunError != null)
@@ -850,6 +951,8 @@ export function LiveJobStepsTable({
               const mastraSummary = getMastraInlineSummary(mastraCorrelation)
               const subtitleValidationSummary =
                 getSubtitleValidationInlineSummary(subtitleValidation)
+              const transcriptCorrectionSummary =
+                getTranscriptCorrectionInlineSummary(transcriptCorrection)
               const transcriptionSummary =
                 transcriptionRoutingReport != null
                   ? `Final provider: ${
@@ -891,6 +994,34 @@ export function LiveJobStepsTable({
                   </>
                 )
                 detailRowClassName = "jobs-embedding-sync-detail-row"
+              } else if (hasStructuredTranscriptDetails) {
+                inlineSummary = transcriptCorrectionSummary ? (
+                  <span
+                    className={
+                      transcriptCorrectionSummary.needsAttention
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
+                    }
+                  >
+                    {transcriptCorrectionSummary.text}
+                  </span>
+                ) : mastraSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {mastraSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    {mastraCorrelation ? (
+                      <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                    {transcriptCorrection ? (
+                      <TranscriptCorrectionInlineDetails
+                        correction={transcriptCorrection}
+                      />
+                    ) : null}
+                  </>
+                )
               } else if (hasTranslationDetails) {
                 inlineSummary = translationFailureSummary ? (
                   <span className="jobs-step-inline-summary-note">

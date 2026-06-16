@@ -71,13 +71,41 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "transcript",
-        label: "Transcript raw",
+        label: "Transcript JSON",
         url: "/api/jobs/job-1/artifacts/transcript",
       },
       {
         key: "subtitles",
-        label: "Subtitles processed",
+        label: "Subtitles VTT",
         url: "/api/jobs/job-1/artifacts/subtitles",
+      },
+    ])
+  })
+
+  it("maps source transcript correction artifacts to the structured transcript step", () => {
+    expect(
+      getArtifactsForStep("structured_transcript", "job-1", {
+        "transcript-correction-report": { kind: "downloadable" },
+        "transcript-raw": { kind: "downloadable" },
+        "subtitles-raw": { kind: "downloadable" },
+        transcript: { kind: "downloadable" },
+        subtitles: { kind: "downloadable" },
+      }),
+    ).toEqual([
+      {
+        key: "transcript-correction-report",
+        label: "Transcript correction report",
+        url: "/api/jobs/job-1/artifacts/transcript-correction-report",
+      },
+      {
+        key: "transcript-raw",
+        label: "Transcript raw",
+        url: "/api/jobs/job-1/artifacts/transcript-raw",
+      },
+      {
+        key: "subtitles-raw",
+        label: "Subtitles raw",
+        url: "/api/jobs/job-1/artifacts/subtitles-raw",
       },
     ])
   })

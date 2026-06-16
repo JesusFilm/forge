@@ -22,8 +22,23 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
     ext: "json",
     contentType: "application/json",
   },
+  "transcript-raw": {
+    artifactType: "transcript-raw",
+    ext: "json",
+    contentType: "application/json",
+  },
+  "transcript-correction-report": {
+    artifactType: "transcript-correction-report",
+    ext: "json",
+    contentType: "application/json",
+  },
   subtitles: {
     artifactType: "subtitles",
+    ext: "vtt",
+    contentType: "text/vtt; charset=utf-8",
+  },
+  "subtitles-raw": {
+    artifactType: "subtitles-raw",
     ext: "vtt",
     contentType: "text/vtt; charset=utf-8",
   },
@@ -114,8 +129,11 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
 }
 
 const EXACT_JOB_ARTIFACT_LABELS: Record<string, string> = {
-  transcript: "Transcript raw",
-  subtitles: "Subtitles processed",
+  transcript: "Transcript JSON",
+  "transcript-raw": "Transcript raw",
+  "transcript-correction-report": "Transcript correction report",
+  subtitles: "Subtitles VTT",
+  "subtitles-raw": "Subtitles raw",
   subtitlesVtt: "Subtitles processed",
   chapters: "Chapters JSON",
   "chapters-vtt": "Chapters VTT",
@@ -138,6 +156,11 @@ const SMART_CROP_PREVIEW_FRAME_PATTERN = /^smart-crop-preview-frame-9x16-\d{3}$/
 
 const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
   transcription: ["transcript", "subtitles", "subtitlesVtt"],
+  structured_transcript: [
+    "transcript-correction-report",
+    "transcript-raw",
+    "subtitles-raw",
+  ],
   chapters: ["chapters", "chapters-vtt"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
