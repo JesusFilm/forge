@@ -83,7 +83,8 @@
     "toggleOn": "تشغيل",
     "toggleOff": "إيقاف",
     "close": "إغلاق",
-    "apply": "تطبيق"
+    "apply": "تطبيق",
+    "noLanguageSubtitles": "لا توجد ترجمات {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# حلقة} two {# حلقتان} few {# حلقات} many {# حلقة} other {# حلقة}}",

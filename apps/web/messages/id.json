@@ -83,7 +83,8 @@
     "toggleOn": "Aktif",
     "toggleOff": "Nonaktif",
     "close": "Tutup",
-    "apply": "Terapkan"
+    "apply": "Terapkan",
+    "noLanguageSubtitles": "Tanpa teks {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
