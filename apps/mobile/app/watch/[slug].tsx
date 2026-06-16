@@ -51,10 +51,18 @@ import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQ
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
 import { Snackbar } from "../../src/components/ui/Snackbar"
+import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
+import { PLAYER_HEIGHT_RATIO } from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 
-const PLAYER_HEIGHT_RATIO = 9 / 16
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
+// Inline player is inset this far on each side; the back button floats just
+// inside the player's top-left corner (the side padding + an inner margin).
+const PLAYER_SIDE_PADDING = 10
+const BACK_BUTTON_PROPS = {
+  topOffset: 10,
+  sideOffset: PLAYER_SIDE_PADDING + 8,
+}
 
 export default function WatchVideoPage() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
@@ -68,12 +76,10 @@ export default function WatchVideoPage() {
   const router = useRouter()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
-  const titleOpacity = useRef(new Animated.Value(0)).current
-  const [showNavTitle, setShowNavTitle] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const insets = useSafeAreaInsets()
-  // Honor reduce-motion for the scroll-to-top FAB and nav-title reveals, the
-  // way the player's chrome/subtitles already do — snap instead of fading.
+  // Honor reduce-motion for the scroll-to-top FAB, the way the player's
+  // chrome/subtitles already do — snap instead of fading.
   const reduceMotionRef = useRef(false)
 
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
@@ -97,8 +103,10 @@ export default function WatchVideoPage() {
     }
   }, [])
 
-  // Fullscreen side-effects: hide the native header + disable the iOS edge-swipe
-  // back (so it can't pop the route mid-fullscreen), and drive orientation.
+  // Fullscreen side-effects: disable the iOS edge-swipe back (so it can't pop
+  // the route mid-fullscreen) and drive orientation. The native header stays
+  // hidden in both states (see app/watch/_layout.tsx) — the floating back
+  // button is the inline back affordance.
   //
   // Orientation is driven TWO ways because react-native-screens (which
   // expo-router's native Stack uses) owns the view controller's
@@ -108,7 +116,6 @@ export default function WatchVideoPage() {
   // cover the global/non-screen paths.
   useEffect(() => {
     navigation.setOptions({
-      headerShown: !isFullscreen,
       gestureEnabled: !isFullscreen,
       orientation: isFullscreen ? "landscape" : "portrait",
     })
@@ -260,9 +267,11 @@ export default function WatchVideoPage() {
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
       const screenWidth = e.nativeEvent.layoutMeasurement.width
-      const playerHeight = screenWidth * PLAYER_HEIGHT_RATIO
+      // The inline player is inset PLAYER_SIDE_PADDING per side, so its real
+      // 16:9 height is shorter than the full screen width would imply.
+      const playerHeight =
+        (screenWidth - PLAYER_SIDE_PADDING * 2) * PLAYER_HEIGHT_RATIO
       setShowScrollTop(scrollY > playerHeight)
-      setShowNavTitle(scrollY > playerHeight + 60)
     },
     [],
   )
@@ -279,32 +288,6 @@ export default function WatchVideoPage() {
       useNativeDriver: true,
     }).start()
   }, [showScrollTop, scrollTopOpacity])
-
-  useEffect(() => {
-    const to = showNavTitle ? 1 : 0
-    if (reduceMotionRef.current) {
-      titleOpacity.setValue(to)
-      return
-    }
-    Animated.timing(titleOpacity, {
-      toValue: to,
-      duration: 200,
-      useNativeDriver: true,
-    }).start()
-  }, [showNavTitle, titleOpacity])
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerTitle: () => (
-        <Animated.Text
-          style={[styles.navTitle, { opacity: titleOpacity }]}
-          numberOfLines={1}
-        >
-          {displayTitle ?? ""}
-        </Animated.Text>
-      ),
-    })
-  }, [navigation, displayTitle, titleOpacity])
 
   const handleScrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
@@ -325,7 +308,14 @@ export default function WatchVideoPage() {
   if (!hasVideo && seed == null && loading) {
     return (
       <View style={layout.screenContainer}>
-        <VideoDetailSkeleton />
+        <StatusBar style="light" />
+        {/* Match the loaded player's dock (top safe edge + side inset) so the
+            player block doesn't jump when canonical data lands. */}
+        <VideoDetailSkeleton
+          playerTopInset={insets.top}
+          playerHorizontalInset={PLAYER_SIDE_PADDING}
+        />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
   }
@@ -333,18 +323,26 @@ export default function WatchVideoPage() {
   // No video, no seed, not loading → genuinely nothing to show.
   if (!hasVideo && seed == null) {
     return (
-      <View style={layout.centered}>
-        <Text style={text.errorTitle}>Video Not Found</Text>
-        <Text style={text.errorMessage}>
-          {error?.message ?? "This video could not be loaded."}
-        </Text>
-        <Text
-          style={styles.retryLink}
-          onPress={() => void refetch()}
-          accessibilityRole="button"
-        >
-          Retry
-        </Text>
+      // screenContainer (no horizontal padding) hosts the absolute back button
+      // so it aligns with the loading/loaded states; the centered error content
+      // lives in an inner view that owns the padding.
+      <View style={layout.screenContainer}>
+        <StatusBar style="light" />
+        <View style={layout.centered}>
+          <Text style={text.errorTitle}>Video Not Found</Text>
+          <Text style={text.errorMessage}>
+            {error?.message ?? "This video could not be loaded."}
+          </Text>
+          <Text
+            style={styles.retryLink}
+            onPress={() => void refetch()}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading video"
+          >
+            Retry
+          </Text>
+        </View>
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
   }
@@ -378,17 +376,34 @@ export default function WatchVideoPage() {
 
       {/* Player is pinned at the route root (outside the ScrollView) so its
           custom fullscreen can expand to an absolute-fill window overlay above
-          the page and native header, without ever being reparented (which
-          would release the expo-video player). Inline it occupies a fixed 16:9
-          box at the top; content scrolls beneath it. */}
-      <VideoPlayer
-        streamingUrl={playerSource}
-        posterUrl={displayPoster}
-        subtitleVttSrc={subtitleVttSrc}
-        onPlayingChange={undefined}
-        fullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
-      />
+          the page, without ever being reparented (which would release the
+          expo-video player). Inline it sits at the top safe edge, inset by
+          PLAYER_SIDE_PADDING per side; content scrolls beneath it. The dock
+          padding is dropped in fullscreen, where the player goes absolute. */}
+      <View
+        style={
+          isFullscreen
+            ? // zIndex lifts the whole dock subtree (incl. the absolutely-
+              // positioned fullscreen player) above the ScrollView — RN zIndex
+              // is sibling-scoped, so the player's own zIndex can't escape this
+              // wrapper to clear the later-painted ScrollView on its own.
+              styles.playerDockFullscreen
+            : {
+                paddingTop: insets.top,
+                paddingHorizontal: PLAYER_SIDE_PADDING,
+              }
+        }
+      >
+        <VideoPlayer
+          streamingUrl={playerSource}
+          posterUrl={displayPoster}
+          subtitleVttSrc={subtitleVttSrc}
+          onPlayingChange={undefined}
+          fullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          horizontalInset={PLAYER_SIDE_PADDING}
+        />
+      </View>
 
       <ScrollView
         ref={scrollViewRef}
@@ -447,6 +462,7 @@ export default function WatchVideoPage() {
                   style={styles.retryLink}
                   onPress={() => void refetch()}
                   accessibilityRole="button"
+                  accessibilityLabel="Retry loading video details"
                 >
                   Retry
                 </Text>
@@ -456,6 +472,11 @@ export default function WatchVideoPage() {
           </>
         )}
       </ScrollView>
+
+      {/* Floating back button overlaid on the player's top-right corner —
+          replaces the native header back. Hidden in fullscreen (the player owns
+          its own chrome there). */}
+      {!isFullscreen && <FloatingBackButton {...BACK_BUTTON_PROPS} />}
 
       {showScrollTop && (
         <Animated.View
@@ -488,15 +509,11 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
+  playerDockFullscreen: {
+    zIndex: 1000,
+  },
   scrollContent: {
     paddingBottom: 80,
-  },
-  navTitle: {
-    color: TEXT_PRIMARY,
-    fontSize: 17,
-    fontWeight: "600",
-    fontFamily: "System",
-    textAlign: "center",
   },
   sectionGap: {
     marginTop: 16,
