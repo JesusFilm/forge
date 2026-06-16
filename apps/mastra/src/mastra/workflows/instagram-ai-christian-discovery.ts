@@ -114,6 +114,7 @@ type DedupeCandidate = {
   post: InstagramPost
   matchedAi: string[]
   matchedChristian: string[]
+  matchedCommentary: string[]
 }
 
 // Step-boundary projection of Firecrawl results. Deliberately .strict():
@@ -372,7 +373,8 @@ export async function searchInstagramCandidates(
 /**
  * Parse Firecrawl hits into Instagram posts, drop non-Instagram results,
  * dedupe by shortcode, classify, and keep only posts that signal BOTH
- * AI-generation and Christian content (capped at `maxResults`).
+ * AI-generation and Christian content without reading as commentary
+ * (capped at `maxResults`).
  */
 export function selectQualifyingPosts(
   hits: readonly InstagramDiscoverySearchHit[],
@@ -399,34 +401,57 @@ export function selectQualifyingPosts(
               signals.matchedChristian,
               64,
             ),
+            matchedCommentary: mergeStrings(
+              existing.matchedCommentary,
+              signals.matchedCommentary,
+              64,
+            ),
           }
         : {
             post,
             matchedAi: signals.matchedAi,
             matchedChristian: signals.matchedChristian,
+            matchedCommentary: signals.matchedCommentary,
           },
     )
   }
   const deduped = [...byShortcode.values()]
 
   const qualified: InstagramPost[] = []
-  for (const { post, matchedAi, matchedChristian } of deduped) {
-    if (
-      !qualifies({
-        isAiGenerated: matchedAi.length > 0,
-        isChristian: matchedChristian.length > 0,
+  let excludedCommentary = 0
+  for (const {
+    post,
+    matchedAi,
+    matchedChristian,
+    matchedCommentary,
+  } of deduped) {
+    const signals = {
+      isAiGenerated: matchedAi.length > 0,
+      isChristian: matchedChristian.length > 0,
+      isCommentary: matchedCommentary.length > 0,
+      matchedAi,
+      matchedChristian,
+      matchedCommentary,
+    }
+
+    if (!qualifies(signals)) {
+      if (
+        signals.isAiGenerated &&
+        signals.isChristian &&
+        signals.isCommentary
+      ) {
+        excludedCommentary += 1
+      }
+      continue
+    }
+
+    if (qualified.length < input.maxResults) {
+      qualified.push({
+        ...post,
         matchedAi,
         matchedChristian,
       })
-    ) {
-      continue
     }
-    qualified.push({
-      ...post,
-      matchedAi,
-      matchedChristian,
-    })
-    if (qualified.length >= input.maxResults) break
   }
 
   return {
@@ -435,6 +460,7 @@ export function selectQualifyingPosts(
       candidates: hits.length,
       instagram: parsed.length,
       deduped: deduped.length,
+      excludedCommentary,
       qualified: qualified.length,
     },
   }

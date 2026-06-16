@@ -116,6 +116,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-062](media-generation/feat-062-shareable-custom-video-generation.md)                | Shareable Custom Video Generation                         | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                    | AI Video Inspiration Platform                             | vlad  | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)        | Instagram AI Christian discovery workflow                 | vlad  | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
+| [feat-193](media-generation/feat-193-instagram-discovery-commentary-exclusion-filter.md)  | Instagram discovery commentary exclusion filter           | vlad  | P2       | 2026-06-16 | 1    | 2026-06-16 | complete    |
 | [feat-065](media-generation/feat-065-full-content-translation.md)                         | Full Content Translation                                  | vlad  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 
 ### Platform
