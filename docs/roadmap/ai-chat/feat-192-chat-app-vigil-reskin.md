@@ -109,7 +109,7 @@ fresh empty conversation while the prior one persists in the rail.
 
 Delivered via **#1277** (squash-merged into trunk **#1276**). A follow-up pass
 with `/ce-code-review` (three rounds) hardened the shipped UI — same scope, no
-new requirements — landed in **#<follow-up PR>**:
+new requirements — landed in **#1294**:
 
 - Pending state moved from one global flag to **per-conversation** (single
   source of truth): the pulse cursor + disabled composer attach to the
