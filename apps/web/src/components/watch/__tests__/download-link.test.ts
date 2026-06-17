@@ -52,6 +52,19 @@ describe("buildDownloadFilename", () => {
     ).toBe("bp-plot-episode-5_Bangla_ben_270p.mp4")
   })
 
+  it("uses the video slug when the localized title only contributes digits", () => {
+    expect(
+      buildDownloadFilename({
+        videoTitle: "Плот (серия 5)",
+        videoSlug: "bp-plot-episode-5",
+        languageName: "Russian",
+        languageCode: "rus",
+        renditionHeight: 270,
+        tier: "low",
+      }),
+    ).toBe("bp-plot-episode-5_Russian_rus_270p.mp4")
+  })
+
   it("distinguishes same-name languages by code", () => {
     const common = {
       videoTitle: "Jesus Film",

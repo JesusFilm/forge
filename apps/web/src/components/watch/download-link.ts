@@ -58,13 +58,23 @@ function textSegment(
   return asciiWords(fallback).join("-") || "Unknown"
 }
 
+function hasAsciiLetter(words: string[]): boolean {
+  return words.some((word) => /[A-Za-z]/.test(word))
+}
+
 function textSegmentFrom(
   candidates: (string | null | undefined)[],
   fallback: string,
+  options: { requireAsciiLetter?: boolean } = {},
 ): string {
   for (const candidate of candidates) {
     const words = asciiWords(candidate)
-    if (words.length > 0) return words.join("-")
+    if (
+      words.length > 0 &&
+      (!options.requireAsciiLetter || hasAsciiLetter(words))
+    ) {
+      return words.join("-")
+    }
   }
   return asciiWords(fallback).join("-") || "Unknown"
 }
@@ -97,7 +107,9 @@ export function buildDownloadFilename({
   videoTitle,
 }: BuildDownloadFilenameParams): string {
   const segments = [
-    textSegmentFrom([videoTitle, videoSlug], "Video"),
+    textSegmentFrom([videoTitle, videoSlug], "Video", {
+      requireAsciiLetter: true,
+    }),
     textSegment(languageName, "Language"),
     codeSegment(languageCode, languageSlug, languageName),
     renditionSegment(renditionHeight, tier),
