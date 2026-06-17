@@ -45,6 +45,20 @@ const CropKeyframeSchema = z
   })
   .strict()
 
+const NormalizedPointSchema = z
+  .object({
+    cx: z.number().min(0).max(1),
+    cy: z.number().min(0).max(1),
+  })
+  .strict()
+
+const FaceCenterSchema = z
+  .object({
+    start: NormalizedPointSchema,
+    end: NormalizedPointSchema,
+  })
+  .strict()
+
 const PlanSegmentSchema = z
   .object({
     shotId: z.string().min(1),
@@ -55,6 +69,8 @@ const PlanSegmentSchema = z
     secondarySubjects: z.array(z.string()),
     avoidCutting: z.array(z.string()),
     confidence: z.number().min(0).max(1),
+    faceVisible: z.boolean().optional(),
+    faceCenter: FaceCenterSchema.nullable().optional(),
     cropKeyframes: z.array(CropKeyframeSchema).length(2),
   })
   .strict()
@@ -281,7 +297,7 @@ function segmentFromIntent(
     source,
   )
 
-  return {
+  const segment: SmartCropRepairSegment = {
     shotId: shot.shotId,
     canonicalStart: previousSegment.canonicalStart,
     canonicalEnd: previousSegment.canonicalEnd,
@@ -290,8 +306,13 @@ function segmentFromIntent(
     secondarySubjects: intent.secondarySubjects,
     avoidCutting: intent.avoidCutting,
     confidence: intent.confidence,
+    faceVisible: intent.faceVisible,
     cropKeyframes: planned.cropKeyframes,
   }
+  if (intent.faceCenter !== undefined) {
+    segment.faceCenter = intent.faceCenter
+  }
+  return segment
 }
 
 export async function runSmartCropRepairWorkflow(

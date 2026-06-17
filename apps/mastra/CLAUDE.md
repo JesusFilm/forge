@@ -331,7 +331,10 @@ Three bounded synchronous workflows, each with a service route protected by
   `src/services/smart-crop/planner.ts`) converts intents into 9:16 crop
   keyframes (full source height, even crop width, 8% dead zone, 240 px/s max
   pan scaled by source width, center fallback below confidence 0.5,
-  slide_aware stays static centered in MVP).
+  slide_aware stays static centered in MVP). When a primary human face/head is
+  visible, plan/repair intents carry `faceVisible: true` plus `faceCenter`; the
+  planner anchors horizontally on that face center before falling back to the
+  broader `subjectCenter`.
 - `smart-crop-align` / `POST /forge-smart-crop-align` — pure deterministic
   alignment (`src/services/smart-crop/alignment.ts`) between canonical and
   localized `smart-crop-fingerprint` artifacts: tier-1 identical-duration or

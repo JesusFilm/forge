@@ -19,6 +19,11 @@ const planSegment = {
   secondarySubjects: ["disciples"],
   avoidCutting: ["faces"],
   confidence: 0.94,
+  faceVisible: true,
+  faceCenter: {
+    start: { cx: 0.72, cy: 0.24 },
+    end: { cx: 0.73, cy: 0.24 },
+  },
   cropKeyframes: [
     { progress: 0, x: 520, y: 0, width: 606, height: 1080 },
     { progress: 1, x: 560, y: 0, width: 606, height: 1080 },

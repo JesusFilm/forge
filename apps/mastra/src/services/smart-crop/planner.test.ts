@@ -107,6 +107,49 @@ describe("smart crop planner", () => {
       expect(planned.cropKeyframes[1].x).toBe(656)
     })
 
+    it("prefers a visible face center over the broader subject center", () => {
+      const planned = intentToKeyframes(
+        intent({
+          subjectCenter: {
+            start: { cx: 0.45, cy: 0.5 },
+            end: { cx: 0.45, cy: 0.5 },
+          },
+          faceVisible: true,
+          faceCenter: {
+            start: { cx: 0.75, cy: 0.22 },
+            end: { cx: 0.76, cy: 0.22 },
+          },
+        }),
+        { start: 0, end: 10 },
+        HD_SOURCE,
+      )
+
+      // Face x0=1136, raw x1=1156, then dead zone collapses to static face x.
+      expect(planned.cropKeyframes[0].x).toBe(1136)
+      expect(planned.cropKeyframes[1].x).toBe(1136)
+    })
+
+    it("falls back to the subject center when no visible face anchor is present", () => {
+      const planned = intentToKeyframes(
+        intent({
+          subjectCenter: {
+            start: { cx: 0.5, cy: 0.5 },
+            end: { cx: 0.5, cy: 0.5 },
+          },
+          faceVisible: false,
+          faceCenter: {
+            start: { cx: 0.75, cy: 0.22 },
+            end: { cx: 0.75, cy: 0.22 },
+          },
+        }),
+        { start: 0, end: 10 },
+        HD_SOURCE,
+      )
+
+      expect(planned.cropKeyframes[0].x).toBe(656)
+      expect(planned.cropKeyframes[1].x).toBe(656)
+    })
+
     it("treats an explicit center_fallback intent as static centered", () => {
       const planned = intentToKeyframes(
         intent({

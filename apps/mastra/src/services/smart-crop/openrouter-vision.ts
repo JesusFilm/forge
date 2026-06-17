@@ -10,7 +10,11 @@
 
 import { z } from "zod"
 
-import { SMART_CROP_MODES, type SmartCropMode } from "./planner"
+import {
+  SMART_CROP_MODES,
+  type SmartCropMode,
+  type SmartCropSubjectCenter,
+} from "./planner"
 
 const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions"
@@ -83,10 +87,9 @@ export type SmartCropShotIntent = {
   secondarySubjects: string[]
   avoidCutting: string[]
   confidence: number
-  subjectCenter: {
-    start: { cx: number; cy: number }
-    end: { cx: number; cy: number }
-  }
+  subjectCenter: SmartCropSubjectCenter
+  faceVisible: boolean
+  faceCenter?: SmartCropSubjectCenter | null
 }
 
 export type RequestShotCropIntentsOptions = {
@@ -123,6 +126,13 @@ const NormalizedPointSchema = z
   })
   .strict()
 
+const SubjectCenterSchema = z
+  .object({
+    start: NormalizedPointSchema,
+    end: NormalizedPointSchema,
+  })
+  .strict()
+
 const ShotIntentSchema = z
   .object({
     shotId: z.string().min(1),
@@ -131,14 +141,20 @@ const ShotIntentSchema = z
     secondarySubjects: z.array(z.string()),
     avoidCutting: z.array(z.string()),
     confidence: z.number().min(0).max(1),
-    subjectCenter: z
-      .object({
-        start: NormalizedPointSchema,
-        end: NormalizedPointSchema,
-      })
-      .strict(),
+    subjectCenter: SubjectCenterSchema,
+    faceVisible: z.boolean(),
+    faceCenter: SubjectCenterSchema.nullable().optional(),
   })
   .strict()
+  .superRefine((intent, ctx) => {
+    if (intent.faceVisible && intent.faceCenter == null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "faceCenter is required when faceVisible is true",
+        path: ["faceCenter"],
+      })
+    }
+  })
 
 const ShotIntentsResponseSchema = z
   .object({
@@ -211,6 +227,16 @@ const NORMALIZED_POINT_JSON_SCHEMA = {
   required: ["cx", "cy"],
 } as const
 
+const SUBJECT_CENTER_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    start: NORMALIZED_POINT_JSON_SCHEMA,
+    end: NORMALIZED_POINT_JSON_SCHEMA,
+  },
+  required: ["start", "end"],
+} as const
+
 const SHOT_INTENTS_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -227,8 +253,10 @@ const SHOT_INTENTS_JSON_SCHEMA = {
           secondarySubjects: { type: "array", items: { type: "string" } },
           avoidCutting: { type: "array", items: { type: "string" } },
           confidence: { type: "number", minimum: 0, maximum: 1 },
-          subjectCenter: {
-            type: "object",
+          subjectCenter: SUBJECT_CENTER_JSON_SCHEMA,
+          faceVisible: { type: "boolean" },
+          faceCenter: {
+            type: ["object", "null"],
             additionalProperties: false,
             properties: {
               start: NORMALIZED_POINT_JSON_SCHEMA,
@@ -245,6 +273,8 @@ const SHOT_INTENTS_JSON_SCHEMA = {
           "avoidCutting",
           "confidence",
           "subjectCenter",
+          "faceVisible",
+          "faceCenter",
         ],
       },
     },
@@ -430,7 +460,9 @@ function buildPlanInstruction(cropMode: string): string {
     "- secondarySubjects: array of short strings for other notable subjects.",
     "- avoidCutting: array of elements the crop must not cut (faces, on-screen text, ...).",
     "- confidence: 0..1 for how certain you are about the subject placement.",
-    "- subjectCenter: start and end position of the primary subject as NORMALIZED cx, cy in [0,1] (cx from left, cy from top). Only horizontal panning matters for the crop, but cy is still required.",
+    "- subjectCenter: start and end position of the primary subject/body as NORMALIZED cx, cy in [0,1] (cx from left, cy from top). Only horizontal panning matters for the crop, but cy is still required.",
+    "- faceVisible: true when the primary human subject's face/head is visible in the shot frames; otherwise false.",
+    "- faceCenter: start and end NORMALIZED cx, cy of the visible face/head when faceVisible is true; otherwise null. Do not use the torso/body center as faceCenter.",
     "Use the shot's frames in order (start to end). Return JSON only.",
   ].join("\n")
 }
@@ -446,7 +478,9 @@ function buildRepairInstruction(): string {
     "- secondarySubjects: array of short strings for other notable subjects.",
     "- avoidCutting: array of elements the crop must not cut (faces, on-screen text, ...).",
     "- confidence: 0..1 for how certain you are about the repaired subject placement.",
-    "- subjectCenter: repaired start/end position of the primary subject as NORMALIZED cx, cy in [0,1] (cx from left, cy from top).",
+    "- subjectCenter: repaired start/end position of the primary subject/body as NORMALIZED cx, cy in [0,1] (cx from left, cy from top).",
+    "- faceVisible: true when the primary human subject's face/head is visible in the shot frames; otherwise false.",
+    "- faceCenter: repaired start/end NORMALIZED cx, cy of the visible face/head when faceVisible is true; otherwise null. Do not use the torso/body center as faceCenter.",
     "Return JSON only.",
   ].join("\n")
 }
