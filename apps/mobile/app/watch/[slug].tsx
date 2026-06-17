@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
+  Alert,
   Animated,
   AppState,
   BackHandler,
@@ -54,6 +55,7 @@ import { Snackbar } from "../../src/components/ui/Snackbar"
 import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
 import { PLAYER_HEIGHT_RATIO } from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 // Inline player is inset this far on each side; the back button floats just
@@ -74,6 +76,7 @@ export default function WatchVideoPage() {
 
   const navigation = useNavigation()
   const router = useRouter()
+  const { getRecord, deleteDownload } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -422,7 +425,32 @@ export default function WatchVideoPage() {
         {hasVideo ? (
           <>
             <ActionButtonRow
-              onDownload={() => router.push("/watch/download")}
+              downloadState={getRecord(video.slug)?.state ?? null}
+              onDownload={() => {
+                const state = getRecord(video.slug)?.state
+                if (state && state !== "canceled") {
+                  // A copy/queue entry exists (one per video). Offer to remove
+                  // it; changing quality/language is the swap follow-up.
+                  Alert.alert(
+                    "Offline download",
+                    state === "downloaded"
+                      ? "This video is saved for offline viewing."
+                      : "This video is downloading.",
+                    [
+                      {
+                        text: "Remove download",
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
+                      },
+                      { text: "Keep", style: "cancel" },
+                    ],
+                  )
+                } else {
+                  router.push("/watch/download")
+                }
+              }}
               onLanguage={() => router.push("/watch/language")}
               onSubtitles={() => router.push("/watch/subtitle")}
               onShare={handleShare}

@@ -1,21 +1,74 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { TEXT_SECONDARY } from "../../lib/color"
+import { ACCENT, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
+import type { OfflineDownloadState } from "../../lib/offlineManifest"
+
+// Green for a completed offline copy (the "downloaded" tick).
+const DOWNLOADED_COLOR = "#34d399"
+const FAILED_COLOR = "#fb7185"
 
 export interface ActionButtonRowProps {
   onDownload: () => void
   onLanguage: () => void
   onSubtitles: () => void
   onShare: () => void
+  /** Per-video offline state; drives the Download button's icon/label/color. */
+  downloadState?: OfflineDownloadState | null
 }
 
 type ActionItem = {
   icon: React.ComponentProps<typeof Ionicons>["name"]
   label: string
+  color: string
   onPress: () => void
+}
+
+function downloadAction(
+  state: OfflineDownloadState | null | undefined,
+  onPress: () => void,
+): ActionItem {
+  switch (state) {
+    case "downloaded":
+      return {
+        icon: "checkmark-circle",
+        label: "Downloaded",
+        color: DOWNLOADED_COLOR,
+        onPress,
+      }
+    case "downloading":
+      return {
+        icon: "arrow-down-circle",
+        label: "Downloading",
+        color: ACCENT,
+        onPress,
+      }
+    case "queued":
+      return { icon: "time-outline", label: "Queued", color: ACCENT, onPress }
+    case "paused":
+      return {
+        icon: "pause-circle-outline",
+        label: "Paused",
+        color: ACCENT,
+        onPress,
+      }
+    case "failed":
+      return {
+        icon: "alert-circle-outline",
+        label: "Retry",
+        color: FAILED_COLOR,
+        onPress,
+      }
+    default:
+      return {
+        icon: "arrow-down-circle-outline",
+        label: "Download",
+        color: TEXT_SECONDARY,
+        onPress,
+      }
+  }
 }
 
 export function ActionButtonRow({
@@ -23,18 +76,30 @@ export function ActionButtonRow({
   onLanguage,
   onSubtitles,
   onShare,
+  downloadState,
 }: ActionButtonRowProps) {
   const typography = useTypography()
 
   const actions: ActionItem[] = [
+    downloadAction(downloadState, onDownload),
     {
-      icon: "arrow-down-circle-outline",
-      label: "Download",
-      onPress: onDownload,
+      icon: "globe-outline",
+      label: "Language",
+      color: TEXT_SECONDARY,
+      onPress: onLanguage,
     },
-    { icon: "globe-outline", label: "Language", onPress: onLanguage },
-    { icon: "text-outline", label: "Subtitles", onPress: onSubtitles },
-    { icon: "share-outline", label: "Share", onPress: onShare },
+    {
+      icon: "text-outline",
+      label: "Subtitles",
+      color: TEXT_SECONDARY,
+      onPress: onSubtitles,
+    },
+    {
+      icon: "share-outline",
+      label: "Share",
+      color: TEXT_SECONDARY,
+      onPress: onShare,
+    },
   ]
 
   return (
@@ -50,8 +115,14 @@ export function ActionButtonRow({
           accessibilityRole="button"
           accessibilityLabel={action.label}
         >
-          <Ionicons name={action.icon} size={24} color={TEXT_SECONDARY} />
-          <Text style={[styles.actionLabel, typography.caption]}>
+          <Ionicons name={action.icon} size={24} color={action.color} />
+          <Text
+            style={[
+              styles.actionLabel,
+              typography.caption,
+              { color: action.color },
+            ]}
+          >
             {action.label}
           </Text>
         </Pressable>
@@ -78,7 +149,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   actionLabel: {
-    color: TEXT_SECONDARY,
     fontFamily: "System",
     marginTop: 4,
   },
