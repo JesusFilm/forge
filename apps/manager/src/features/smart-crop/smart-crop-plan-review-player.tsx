@@ -9,18 +9,23 @@ import React, {
   type CSSProperties,
 } from "react"
 import { useVideoPlayerCore } from "@forge/video-player"
+import { CircleAlert, Info, TriangleAlert, type LucideIcon } from "lucide-react"
 import type Player from "video.js/dist/types/player"
 import { apiFetch } from "@/lib/api-fetch"
 import { buildJobArtifactHref } from "@/lib/job-artifacts"
 import type { JobRecord } from "@/types/job"
 import {
+  buildSmartCropQaMarkers,
   buildSmartCropBoxPercent,
   clampSmartCropBoxPercent,
   findActiveSmartCropSegment,
   formatSmartCropTime,
   interpolateSmartCropKeyframe,
   isSmartCropAttemptSelectableForReview,
+  parseSmartCropQaIssuesForPlayer,
   parseSmartCropPlanForPlayer,
+  type SmartCropQaIssueForPlayer,
+  type SmartCropQaMarkerForPlayer,
   type SmartCropPlanForPlayer,
   type SmartCropPlanSegment,
 } from "./smart-crop-plan-player"
@@ -36,12 +41,7 @@ export type SmartCropAttemptSelection = {
   manifestDigest: string
 }
 
-type SmartCropAttemptIssue = {
-  severity: "info" | "warning" | "critical"
-  description: string
-  atSeconds?: number
-  shotId?: string
-}
+type SmartCropAttemptIssue = SmartCropQaIssueForPlayer
 
 type SmartCropAttemptForReview = {
   attemptIndex: number
@@ -70,12 +70,20 @@ type AttemptsLoadState =
     }
   | { status: "failed"; message: string }
 
+type QaIssuesLoadState = {
+  status: "ready" | "loading" | "failed"
+  logicalKey: string
+  issues: readonly SmartCropAttemptIssue[]
+}
+
 type SmartCropPlanReviewPlayerProps = {
   job: JobRecord
   onSelectedAttemptChange?: (
     selection: SmartCropAttemptSelection | null,
   ) => void
 }
+
+const EMPTY_QA_ISSUES: readonly SmartCropAttemptIssue[] = []
 
 function buildMuxPlaybackUrl(playbackId: string): string {
   return `https://stream.mux.com/${playbackId}.m3u8`
@@ -225,7 +233,58 @@ function formatAttemptTitle(attempt: SmartCropAttemptForReview): string {
   return `${label} · ${attempt.status.replace(/_/g, " ")}`
 }
 
-function SmartCropPlanVideo({ plan }: { plan: SmartCropPlanForPlayer }) {
+function formatQaSeverityLabel(
+  severity: SmartCropAttemptIssue["severity"],
+): string {
+  switch (severity) {
+    case "critical":
+      return "Fail"
+    case "warning":
+      return "Warning"
+    case "info":
+      return "Message"
+  }
+}
+
+function getQaSeverityIcon(
+  severity: SmartCropAttemptIssue["severity"],
+): LucideIcon {
+  switch (severity) {
+    case "critical":
+      return CircleAlert
+    case "warning":
+      return TriangleAlert
+    case "info":
+      return Info
+  }
+}
+
+function formatQaIssueMeta(issue: SmartCropAttemptIssue): string {
+  return [
+    issue.shotId,
+    issue.atSeconds != null ? formatSmartCropTime(issue.atSeconds) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
+function formatQaMarkerLabel(marker: SmartCropQaMarkerForPlayer): string {
+  return [
+    `${formatQaSeverityLabel(marker.severity)}: ${marker.description}`,
+    marker.shotId ?? marker.segment?.shotId,
+    formatSmartCropTime(marker.seconds),
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
+function SmartCropPlanVideo({
+  plan,
+  qaIssues = EMPTY_QA_ISSUES,
+}: {
+  plan: SmartCropPlanForPlayer
+  qaIssues?: readonly SmartCropAttemptIssue[]
+}) {
   const playerRef = useRef<Player | null>(null)
   const [player, setPlayer] = useState<Player | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
@@ -288,6 +347,10 @@ function SmartCropPlanVideo({ plan }: { plan: SmartCropPlanForPlayer }) {
     : undefined
   const timelineDuration = plan.source.durationSeconds
   const playheadPercent = clampPercent((currentTime / timelineDuration) * 100)
+  const qaMarkers = useMemo(
+    () => buildSmartCropQaMarkers(plan.segments, qaIssues, timelineDuration),
+    [plan.segments, qaIssues, timelineDuration],
+  )
 
   const seekTo = useCallback((seconds: number) => {
     const currentPlayer = playerRef.current
@@ -377,6 +440,30 @@ function SmartCropPlanVideo({ plan }: { plan: SmartCropPlanForPlayer }) {
                 />
               )
             })}
+            {qaMarkers.map((marker) => {
+              const Icon = getQaSeverityIcon(marker.severity)
+              const label = formatQaMarkerLabel(marker)
+
+              return (
+                <button
+                  key={marker.markerId}
+                  type="button"
+                  className={`smart-crop-shot-qa-marker smart-crop-shot-qa-marker--${marker.severity}`}
+                  style={{ left: `${clampPercent(marker.percent)}%` }}
+                  title={label}
+                  aria-label={label}
+                  onClick={() => seekTo(marker.seconds)}
+                >
+                  <Icon size={13} aria-hidden="true" />
+                  <span
+                    className="smart-crop-shot-qa-marker-tooltip"
+                    role="tooltip"
+                  >
+                    {label}
+                  </span>
+                </button>
+              )
+            })}
             <span
               className="smart-crop-shot-playhead"
               style={{ left: `${playheadPercent}%` }}
@@ -413,6 +500,11 @@ export function SmartCropPlanReviewPlayer({
           message: "Crop plan artifact unavailable.",
         },
   )
+  const [qaIssuesState, setQaIssuesState] = useState<QaIssuesLoadState>({
+    status: "ready",
+    logicalKey: "smart-crop-qa",
+    issues: EMPTY_QA_ISSUES,
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -479,10 +571,18 @@ export function SmartCropPlanReviewPlayer({
   const selectedPlanKey = selectedAttempt?.planLogicalKey ?? "smart-crop-plan"
   const selectedPreviewKey =
     selectedAttempt?.previewLogicalKey ?? "smart-crop-preview"
+  const selectedQaKey = selectedAttempt?.qaLogicalKey ?? "smart-crop-qa"
+  const fallbackQaIssues = selectedAttempt?.triggerIssues ?? EMPTY_QA_ISSUES
   const hasSelectedPlanArtifact =
     job.artifacts[selectedPlanKey]?.kind === "downloadable"
   const hasSelectedPreviewArtifact =
     job.artifacts[selectedPreviewKey]?.kind === "downloadable"
+  const hasSelectedQaArtifact =
+    job.artifacts[selectedQaKey]?.kind === "downloadable"
+  const qaIssuesForReview =
+    qaIssuesState.logicalKey === selectedQaKey
+      ? qaIssuesState.issues
+      : fallbackQaIssues
 
   useEffect(() => {
     if (
@@ -498,6 +598,78 @@ export function SmartCropPlanReviewPlayer({
     }
     onSelectedAttemptChange?.(null)
   }, [attemptsState, onSelectedAttemptChange, selectedAttempt])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadQaIssues() {
+      if (hasAttemptManifest && attemptsState.status === "loading") {
+        return
+      }
+
+      if (!hasSelectedQaArtifact) {
+        setQaIssuesState({
+          status: "ready",
+          logicalKey: selectedQaKey,
+          issues: fallbackQaIssues,
+        })
+        return
+      }
+
+      setQaIssuesState({
+        status: "loading",
+        logicalKey: selectedQaKey,
+        issues: fallbackQaIssues,
+      })
+
+      try {
+        const response = await apiFetch(
+          buildJobArtifactHref(job.id, selectedQaKey),
+          { cache: "no-store" },
+        )
+        if (!response.ok) {
+          if (!cancelled) {
+            setQaIssuesState({
+              status: "failed",
+              logicalKey: selectedQaKey,
+              issues: fallbackQaIssues,
+            })
+          }
+          return
+        }
+
+        const issues = parseSmartCropQaIssuesForPlayer(await response.json())
+        if (!cancelled) {
+          setQaIssuesState({
+            status: "ready",
+            logicalKey: selectedQaKey,
+            issues,
+          })
+        }
+      } catch {
+        if (!cancelled) {
+          setQaIssuesState({
+            status: "failed",
+            logicalKey: selectedQaKey,
+            issues: fallbackQaIssues,
+          })
+        }
+      }
+    }
+
+    void loadQaIssues()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    attemptsState.status,
+    fallbackQaIssues,
+    hasAttemptManifest,
+    hasSelectedQaArtifact,
+    job.id,
+    selectedQaKey,
+  ])
 
   useEffect(() => {
     let cancelled = false
@@ -607,7 +779,10 @@ export function SmartCropPlanReviewPlayer({
 
       {planState.status === "ready" ? (
         <>
-          <SmartCropPlanVideo plan={planState.plan} />
+          <SmartCropPlanVideo
+            plan={planState.plan}
+            qaIssues={qaIssuesForReview}
+          />
           <div className="smart-crop-attempt-review-grid">
             {hasSelectedPreviewArtifact ? (
               <div className="smart-crop-attempt-preview">
@@ -636,27 +811,18 @@ export function SmartCropPlanReviewPlayer({
                     <dd>{selectedAttempt.qa?.repairTriggerCount ?? 0}</dd>
                   </div>
                 </dl>
-                {selectedAttempt.triggerIssues.length > 0 ? (
+                {qaIssuesForReview.length > 0 ? (
                   <ul>
-                    {selectedAttempt.triggerIssues.map((issue, index) => (
+                    {qaIssuesForReview.map((issue, index) => (
                       <li key={`${issue.description}-${index}`}>
-                        <strong>{issue.severity}</strong>
+                        <strong>{formatQaSeverityLabel(issue.severity)}</strong>
                         <span>{issue.description}</span>
-                        <small>
-                          {[
-                            issue.shotId,
-                            issue.atSeconds != null
-                              ? formatSmartCropTime(issue.atSeconds)
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </small>
+                        <small>{formatQaIssueMeta(issue)}</small>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p>No repair-triggering QA issues for this attempt.</p>
+                  <p>No QA issues for this attempt.</p>
                 )}
               </div>
             ) : null}

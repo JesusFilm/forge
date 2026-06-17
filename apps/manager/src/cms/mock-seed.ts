@@ -226,6 +226,8 @@ const DEFAULT_MOCK_JOBS: JobRecord[] = [
       "smart-crop-attempts": { kind: "downloadable" },
       "smart-crop-plan-attempt-000": { kind: "downloadable" },
       "smart-crop-plan-attempt-001": { kind: "downloadable" },
+      "smart-crop-qa-attempt-000": { kind: "downloadable" },
+      "smart-crop-qa-attempt-001": { kind: "downloadable" },
     },
     steps: [
       {
@@ -995,6 +997,56 @@ export const DEFAULT_MOCK_ARTIFACT_FILES: MockArtifactFile[] = [
         ],
         updatedAt: "2026-04-22T16:11:30.000Z",
         manifestDigest: "fnv1a:13015fa1",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-qa-9x16-attempt-000-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-qa-report",
+        assetId: "mock_smart_crop_asset",
+        renderMode: "preview",
+        verdict: "needs_repair",
+        issues: [
+          {
+            severity: "warning",
+            description:
+              "Subject drifts near the right edge during the group shot.",
+            atSeconds: 30,
+            shotId: "shot_00002",
+          },
+        ],
+        frameCount: 2,
+        model: "mock-model",
+        usage: { inputTokens: 90, outputTokens: 24 },
+        generatedAt: "2026-04-22T16:10:00.000Z",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-qa-9x16-attempt-001-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-qa-report",
+        assetId: "mock_smart_crop_asset",
+        renderMode: "preview",
+        verdict: "pass",
+        issues: [],
+        frameCount: 2,
+        model: "mock-model",
+        usage: { inputTokens: 76, outputTokens: 14 },
+        generatedAt: "2026-04-22T16:11:30.000Z",
       },
       null,
       2,
