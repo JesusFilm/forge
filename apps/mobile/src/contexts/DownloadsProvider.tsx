@@ -78,6 +78,8 @@ type DownloadsContextValue = {
   committedFor: (videoSlug: string) => string | null
   /** Slugs with a usable (downloaded) offline copy. */
   downloadedSlugs: string[]
+  /** All offline records (downloaded + in-progress) for the library. */
+  offlineRecords: OfflineDownloadRecord[]
   /** Enqueue an offline download (one copy per video). */
   startDownload: (request: StartDownloadRequest) => Promise<void>
   /** Remove an offline copy: its files and its manifest entry. */
@@ -375,6 +377,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       downloadedSlugs: Object.values(records)
         .filter((record) => record.state === "downloaded")
         .map((record) => record.videoSlug),
+      offlineRecords: Object.values(records).filter(
+        (record) => record.state !== "canceled",
+      ),
       startDownload,
       deleteDownload,
     }),
