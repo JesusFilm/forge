@@ -1706,6 +1706,10 @@ type WatchLanguageInventoryItem {
   VideoLabel as the camelCase database wire-shape string ('featureFilm', 'shortFilm', etc.).
   """
   label: String
+  """
+  Zero-based order of this video inside the selected parent collection. Null for standalone videos and parent collection rows.
+  """
+  parentOrder: Int
   parentSlug: String
   parentTitle: String
   publishedAt: String

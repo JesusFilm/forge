@@ -763,6 +763,11 @@ WatchLanguageInventoryItemRef.implement({
     }),
     parentSlug: t.exposeString("parentSlug", { nullable: true }),
     parentTitle: t.exposeString("parentTitle", { nullable: true }),
+    parentOrder: t.exposeInt("parentOrder", {
+      nullable: true,
+      description:
+        "Zero-based order of this video inside the selected parent collection. Null for standalone videos and parent collection rows.",
+    }),
     durationSeconds: t.exposeInt("durationSeconds", { nullable: true }),
     childCount: t.exposeInt("childCount", { nullable: false }),
     publishedAt: t.exposeString("publishedAt", { nullable: true }),

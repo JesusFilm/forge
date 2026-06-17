@@ -158,6 +158,7 @@ export type WatchLanguageInventoryItem = {
   watchLanguageSlug: string
   parentSlug: string | null
   parentTitle: string | null
+  parentOrder?: number | null
   durationSeconds: number | null
   childCount: number
   publishedAt: string | null
@@ -1013,12 +1014,18 @@ export class VideoService {
           inventory_language.slug AS "watchLanguageSlug",
           NULL::text AS "parentSlug",
           NULL::text AS "parentTitle",
+          NULL::integer AS "parentOrder",
           NULL::integer AS "durationSeconds",
           COALESCE(child_counts.count, 0) AS "childCount",
           parent.published_at::text AS "publishedAt",
           parent.created_at::text AS "createdAt",
           parent.updated_at::text AS "updatedAt",
-          COALESCE(parent.published_at, parent.updated_at, parent.created_at) AS "sortAt"
+          GREATEST(
+            COALESCE(parent.published_at, parent.created_at),
+            COALESCE(parent.updated_at, parent.created_at),
+            parent.created_at,
+            child_recency.latest_child_at
+          ) AS "sortAt"
         FROM published_videos parent
         JOIN video_relation relation
           ON relation.parent_id = parent.id
@@ -1041,6 +1048,31 @@ export class VideoService {
             ON child_video.id = child_relation.child_id
           WHERE child_relation.parent_id = parent.id
         ) child_counts ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT MAX(
+            GREATEST(
+              COALESCE(child_video.published_at, child_video.created_at),
+              COALESCE(child_video.updated_at, child_video.created_at),
+              child_video.created_at
+            )
+          ) AS latest_child_at
+          FROM video_relation child_relation
+          JOIN published_videos child_video
+            ON child_video.id = child_relation.child_id
+          JOIN video_dub child_dub
+            ON child_dub.video_id = child_video.id
+          LEFT JOIN video_edition child_edition
+            ON child_edition.id = child_dub.video_edition_id
+          WHERE child_relation.parent_id = parent.id
+            AND child_dub.language_id = inventory_language.id
+            AND child_dub.deleted_at IS NULL
+            AND child_dub.published = TRUE
+            AND NULLIF(child_dub.hls, '') IS NOT NULL
+            AND (
+              child_edition.id IS NULL
+              OR child_edition.deleted_at IS NULL
+            )
+        ) child_recency ON TRUE
         WHERE dub.deleted_at IS NULL
           AND dub.published = TRUE
           AND NULLIF(dub.hls, '') IS NOT NULL
@@ -1073,12 +1105,17 @@ export class VideoService {
           inventory_language.slug AS "watchLanguageSlug",
           parent_ref.slug AS "parentSlug",
           parent_ref.title AS "parentTitle",
+          parent_ref."parentOrder" AS "parentOrder",
           dub.duration AS "durationSeconds",
           0 AS "childCount",
           video.published_at::text AS "publishedAt",
           video.created_at::text AS "createdAt",
           video.updated_at::text AS "updatedAt",
-          COALESCE(video.published_at, video.updated_at, video.created_at) AS "sortAt"
+          GREATEST(
+            COALESCE(video.published_at, video.created_at),
+            COALESCE(video.updated_at, video.created_at),
+            video.created_at
+          ) AS "sortAt"
         FROM published_videos video
         JOIN video_dub dub
           ON dub.video_id = video.id
@@ -1093,6 +1130,7 @@ export class VideoService {
         LEFT JOIN LATERAL (
           SELECT
             parent.slug,
+            relation.order AS "parentOrder",
             COALESCE(
               NULLIF(parent_locale.title, ''),
               NULLIF(parent.slug, ''),
@@ -1146,12 +1184,17 @@ export class VideoService {
           fallback_dub.language_slug AS "watchLanguageSlug",
           parent_ref.slug AS "parentSlug",
           parent_ref.title AS "parentTitle",
+          parent_ref."parentOrder" AS "parentOrder",
           fallback_dub.duration AS "durationSeconds",
           0 AS "childCount",
           video.published_at::text AS "publishedAt",
           video.created_at::text AS "createdAt",
           video.updated_at::text AS "updatedAt",
-          COALESCE(video.published_at, video.updated_at, video.created_at) AS "sortAt"
+          GREATEST(
+            COALESCE(video.published_at, video.created_at),
+            COALESCE(video.updated_at, video.created_at),
+            video.created_at
+          ) AS "sortAt"
         FROM published_videos video
         JOIN inventory_language
           ON TRUE
@@ -1204,6 +1247,7 @@ export class VideoService {
         LEFT JOIN LATERAL (
           SELECT
             parent.slug,
+            relation.order AS "parentOrder",
             COALESCE(
               NULLIF(parent_locale.title, ''),
               NULLIF(parent.slug, ''),
@@ -1280,6 +1324,7 @@ export class VideoService {
         "watchLanguageSlug",
         "parentSlug",
         "parentTitle",
+        "parentOrder",
         "durationSeconds",
         "childCount",
         "publishedAt",
@@ -1315,16 +1360,15 @@ export class VideoService {
     counts.total =
       counts.audioCollections + counts.audioVideos + counts.subtitleOnlyVideos
 
-    const promoted = [
-      ...audioCollections,
-      ...audioVideos,
-      ...subtitleOnlyVideos,
-    ]
+    const promoted = rows
+      .slice()
       .sort(
         (a, b) =>
-          recencyScore(b) - recencyScore(a) || a.title.localeCompare(b.title),
+          rowRecencyScore(b) - rowRecencyScore(a) ||
+          a.title.localeCompare(b.title),
       )
       .slice(0, WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT)
+      .map(toWatchLanguageInventoryItem)
 
     return {
       language,
@@ -1619,14 +1663,7 @@ function bucketItems(
 ): WatchLanguageInventoryItem[] {
   return rows
     .filter((row) => row.bucket === bucket)
-    .map(
-      ({
-        bucket: _bucket,
-        bucketTotal: _bucketTotal,
-        sortAt: _sortAt,
-        ...item
-      }) => item,
-    )
+    .map(toWatchLanguageInventoryItem)
 }
 
 function bucketTotal(
@@ -1638,11 +1675,31 @@ function bucketTotal(
   return total ?? 0
 }
 
-function recencyScore(item: WatchLanguageInventoryItem): number {
-  const value = item.publishedAt ?? item.updatedAt ?? item.createdAt
+function toWatchLanguageInventoryItem({
+  bucket: _bucket,
+  bucketTotal: _bucketTotal,
+  sortAt: _sortAt,
+  ...item
+}: WatchLanguageInventoryRow): WatchLanguageInventoryItem {
+  return item
+}
+
+function timestampScore(value: Date | string | null | undefined): number {
   if (!value) return 0
-  const timestamp = Date.parse(value)
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(value)
   return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+function recencyScore(item: WatchLanguageInventoryItem): number {
+  return Math.max(
+    timestampScore(item.publishedAt),
+    timestampScore(item.updatedAt),
+    timestampScore(item.createdAt),
+  )
+}
+
+function rowRecencyScore(row: WatchLanguageInventoryRow): number {
+  return timestampScore(row.sortAt) || recencyScore(row)
 }
 
 type VideoForEnrichmentRow = VideoForEnrichment

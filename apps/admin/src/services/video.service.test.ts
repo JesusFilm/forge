@@ -470,6 +470,94 @@ describe("VideoService", () => {
         "SET LOCAL statement_timeout = '10000ms'",
       )
     })
+
+    it("sorts promoted rows by the SQL recency timestamp", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          bucket: "audio_collection",
+          bucketTotal: 1,
+          id: "collection-1",
+          coreId: "core-collection-1",
+          slug: "story-of-jesus",
+          title: "The Story of Jesus",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          label: "series",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: null,
+          childCount: 12,
+          publishedAt: "2026-01-01T00:00:00.000Z",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          sortAt: "2026-06-10T00:00:00.000Z",
+        },
+        {
+          bucket: "audio_video",
+          bucketTotal: 1,
+          id: "video-1",
+          coreId: "core-video-1",
+          slug: "jesus-calms-the-storm",
+          title: "Jesus Calms the Storm",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          label: "shortFilm",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 420,
+          childCount: 0,
+          publishedAt: "2026-06-01T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+          sortAt: "2026-06-01T00:00:00.000Z",
+        },
+      ])
+
+      const inventory = await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+      })
+
+      expect(inventory.promoted.map((item) => item.title)).toEqual([
+        "The Story of Jesus",
+        "Jesus Calms the Storm",
+      ])
+      expect(inventory.promoted[0]).not.toHaveProperty("sortAt")
+    })
+
+    it("computes collection sort order from parent and playable child publish/update dates", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("child_recency.latest_child_at")
+      expect(sql).toContain("MAX(")
+      expect(sql).toContain("child_dub.language_id = inventory_language.id")
+      expect(sql).toContain("child_dub.published = TRUE")
+      expect(sql).toContain("NULLIF(child_dub.hls, '') IS NOT NULL")
+      expect(sql).toContain("ORDER BY")
+      expect(sql).toContain('"sortAt" DESC NULLS LAST')
+      expect(sql).toContain('relation.order AS "parentOrder"')
+      expect(sql).toContain('parent_ref."parentOrder" AS "parentOrder"')
+    })
   })
 
   describe("countActive", () => {
