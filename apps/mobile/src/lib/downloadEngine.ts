@@ -2,7 +2,6 @@ import {
   cleanup,
   completeHandler,
   createDownloadTask,
-  directories,
   getExistingDownloadTasks,
   setConfig,
 } from "@kesha-antonov/react-native-background-downloader"
@@ -26,9 +25,6 @@ import {
  */
 
 export type EngineTask = ReturnType<typeof createDownloadTask>
-
-/** Offline-download root under the module's documents directory. */
-export const OFFLINE_DOWNLOAD_ROOT = `${directories.documents}/offline-downloads`
 
 /**
  * Apply global engine config. iOS wifi-only is global (NSURLSession
