@@ -32,27 +32,13 @@ import {
   parseClipTime,
   validateClipSelection,
 } from "./shorts-presenter"
+import {
+  flattenPickerVideos,
+  type PickerVideo,
+  type VideosApiResponse,
+} from "./shorts-picker"
 
 const PICKER_RESULT_LIMIT = 60
-
-type PickerVideo = {
-  id: string
-  title: string
-  imageUrl: string | null
-  label: string
-}
-
-type VideosApiItem = {
-  id: string
-  title: string
-  imageUrl: string | null
-  label: string
-}
-
-type VideosApiResponse = {
-  collections: Array<VideosApiItem & { videos: VideosApiItem[] }>
-  standalone: VideosApiItem[]
-}
 
 export type ShortsCreatePrefill = {
   coreId?: string
@@ -100,34 +86,6 @@ function describeCreateFailure(payload: {
     default:
       return payload.error ?? "Failed to create the short."
   }
-}
-
-function flattenPickerVideos(payload: VideosApiResponse): PickerVideo[] {
-  const byId = new Map<string, PickerVideo>()
-  const add = (item: VideosApiItem) => {
-    if (!byId.has(item.id)) {
-      byId.set(item.id, {
-        id: item.id,
-        title: item.title,
-        imageUrl: item.imageUrl,
-        label: item.label,
-      })
-    }
-  }
-
-  for (const collection of payload.collections ?? []) {
-    add(collection)
-    for (const video of collection.videos ?? []) {
-      add(video)
-    }
-  }
-  for (const video of payload.standalone ?? []) {
-    add(video)
-  }
-
-  return [...byId.values()].sort((left, right) =>
-    left.title.localeCompare(right.title),
-  )
 }
 
 function ClipScrubber({
