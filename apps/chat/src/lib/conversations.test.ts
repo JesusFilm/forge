@@ -39,6 +39,12 @@ describe("deriveTitle", () => {
     expect(result).toHaveLength(40)
   })
 
+  it("truncates a very long unbroken string to the 40-char ceiling", () => {
+    const result = deriveTitle("x".repeat(200))
+    expect(result).toBe(`${"x".repeat(39)}…`)
+    expect(result).toHaveLength(40)
+  })
+
   it("does not leave a trailing space before the ellipsis", () => {
     // Index 38 (the char the 39-char slice ends on) is a space, so trimEnd
     // must drop it before the ellipsis is appended.

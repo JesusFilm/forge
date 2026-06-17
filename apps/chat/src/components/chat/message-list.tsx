@@ -1,6 +1,4 @@
-"use client"
-
-import { type Message } from "@/lib/chat-stub"
+import { type Message } from "@/lib/conversations"
 
 type MessageListProps = {
   messages: Message[]
