@@ -24,7 +24,21 @@ const DEFAULT_MAX_CHUNK_TOKENS = 500
 const DEFAULT_OVERLAP_TOKENS = 100
 const DEFAULT_MAX_BATCH_CHUNKS = 8
 const DEFAULT_MAX_BATCH_TOKENS = 20_000
-const CHUNKING_VERSION = "manager-transcript-v1"
+const CHUNKING_VERSION = "enriched-transcript-v2"
+
+type CanonicalFeltNeed =
+  | "Acceptance"
+  | "Anxiety"
+  | "Depression"
+  | "Fear/Power"
+  | "Forgiveness"
+  | "Guilt/Righteousness"
+  | "Honor/Shame"
+  | "Hope"
+  | "Loneliness"
+  | "Love"
+  | "Security"
+  | "Significance"
 
 const GenerationModeSchema = z
   .enum(["idempotent", "repair", "force", "model-upgrade"])
@@ -104,6 +118,12 @@ export const TranscriptEmbeddingWorkflowInputSchema = z
         text: z.string().optional(),
         segments: z.array(TranscriptSegmentSchema).optional(),
         artifactKey: z.string().min(1).optional(),
+        kind: z.enum(["subtitle", "manager-transcript"]).optional(),
+        languageId: z.string().min(1).optional(),
+        languageSlug: z.string().min(1).optional(),
+        subtitleId: z.string().min(1).optional(),
+        format: z.enum(["vtt", "srt"]).optional(),
+        url: z.string().min(1).optional(),
         provider: z.string().min(1).optional(),
         generatedAt: z.string().min(1).optional(),
       })
@@ -124,6 +144,11 @@ const PlannedRunSummarySchema = z
         textLength: z.number().int().nonnegative(),
         segmentCount: z.number().int().nonnegative(),
         artifactKey: z.string().min(1).optional(),
+        kind: z.enum(["subtitle", "manager-transcript"]).optional(),
+        languageId: z.string().min(1).optional(),
+        languageSlug: z.string().min(1).optional(),
+        subtitleId: z.string().min(1).optional(),
+        format: z.enum(["vtt", "srt"]).optional(),
         provider: z.string().min(1).optional(),
         generatedAt: z.string().min(1).optional(),
         contentHash: z.string().min(1),
@@ -228,6 +253,15 @@ type PlannedChunk = {
   chunkIndex: number
   chunkId: string
   text: string
+  rawSourceText?: string
+  embeddingInputText?: string
+  feltNeeds?: CanonicalFeltNeed[]
+  bibleVerses?: string[]
+  contentSummary?: string
+  tone?: string
+  demographics?: string[]
+  spiritualContext?: string[]
+  extractionMetadata?: Record<string, unknown>
   tokenCount: number
   startSeconds?: number
   endSeconds?: number
@@ -240,6 +274,12 @@ type PlannedRun = {
     text: string
     segments?: TranscriptSegment[]
     artifactKey?: string
+    kind?: "subtitle" | "manager-transcript"
+    languageId?: string
+    languageSlug?: string
+    subtitleId?: string
+    format?: "vtt" | "srt"
+    url?: string
     provider?: string
     generatedAt?: string
     contentHash: string
@@ -375,6 +415,100 @@ function estimateTokenCount(text: string): number {
   const trimmed = text.trim()
   if (!trimmed) return 0
   return Math.ceil(trimmed.split(/\s+/).length / 0.75)
+}
+
+function formatTimeRange(seconds: number | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds)) return "unknown"
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.floor(seconds % 60)
+  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+}
+
+function summarizeChunkText(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (normalized.length <= 180) return normalized
+  return `${normalized.slice(0, 177).trim()}...`
+}
+
+function extractBibleVerses(text: string): string[] {
+  const matches = text.match(
+    /\b(?:[1-3]\s*)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s+\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g,
+  )
+  return Array.from(new Set(matches ?? []))
+}
+
+function inferFeltNeeds(text: string): CanonicalFeltNeed[] {
+  const lower = text.toLowerCase()
+  const needs: CanonicalFeltNeed[] = []
+  const add = (need: CanonicalFeltNeed) => {
+    if (!needs.includes(need)) needs.push(need)
+  }
+
+  if (/\b(accept|accepted|belong|welcome|included)\b/.test(lower)) {
+    add("Acceptance")
+  }
+  if (/\b(anxious|anxiety|worry|worried)\b/.test(lower)) add("Anxiety")
+  if (/\b(depress|sad|sorrow|despair)\b/.test(lower)) add("Depression")
+  if (/\b(fear|afraid|power|deliver|oppress)\b/.test(lower)) add("Fear/Power")
+  if (/\b(forgive|forgiven|forgiveness|mercy)\b/.test(lower)) {
+    add("Forgiveness")
+  }
+  if (/\b(guilt|guilty|righteous|righteousness|sin)\b/.test(lower)) {
+    add("Guilt/Righteousness")
+  }
+  if (/\b(shame|honor|disgrace)\b/.test(lower)) add("Honor/Shame")
+  if (/\b(hope|promise|future|restore)\b/.test(lower)) add("Hope")
+  if (/\b(alone|lonely|forsaken)\b/.test(lower)) add("Loneliness")
+  if (/\b(love|beloved|compassion)\b/.test(lower)) add("Love")
+  if (/\b(safe|secure|security|protect|shelter)\b/.test(lower)) {
+    add("Security")
+  }
+  if (/\b(worth|value|significant|purpose|called)\b/.test(lower)) {
+    add("Significance")
+  }
+
+  return needs
+}
+
+function enrichChunk(chunk: PlannedChunk): PlannedChunk {
+  const rawSourceText = chunk.rawSourceText ?? chunk.text
+  const feltNeeds = inferFeltNeeds(rawSourceText)
+  const bibleVerses = extractBibleVerses(rawSourceText)
+  const contentSummary = summarizeChunkText(rawSourceText)
+  const timeRange = `${formatTimeRange(chunk.startSeconds)}-${formatTimeRange(chunk.endSeconds)}`
+  const tone = "reflective"
+  const demographics: string[] = []
+  const spiritualContext = bibleVerses.length > 0 ? ["Bible reference"] : []
+  const embeddingInputText = [
+    `Time range: ${timeRange}`,
+    `Felt needs: ${feltNeeds.length > 0 ? feltNeeds.join(", ") : "None"}`,
+    `Bible verses: ${bibleVerses.length > 0 ? bibleVerses.join(", ") : "None"}`,
+    `Summary: ${contentSummary}`,
+    `Tone: ${tone}`,
+    `Demographics: ${demographics.length > 0 ? demographics.join(", ") : "None"}`,
+    `Spiritual context: ${
+      spiritualContext.length > 0 ? spiritualContext.join(", ") : "None"
+    }`,
+    `Transcript: ${rawSourceText}`,
+  ].join("\n")
+
+  return {
+    ...chunk,
+    text: rawSourceText,
+    rawSourceText,
+    embeddingInputText,
+    feltNeeds,
+    bibleVerses,
+    contentSummary,
+    tone,
+    demographics,
+    spiritualContext,
+    extractionMetadata: {
+      strategy: "deterministic-transcript-grounded-v1",
+      source: "transcript",
+    },
+    tokenCount: estimateTokenCount(embeddingInputText),
+  }
 }
 
 function chunkText(
@@ -580,21 +714,83 @@ function sha256Json(value: unknown): string {
 function sourceContentHash({
   text,
   segments,
+  source,
   chunks,
 }: {
   text: string
   segments?: TranscriptSegment[]
+  source?: {
+    kind?: "subtitle" | "manager-transcript"
+    artifactKey?: string
+    languageId?: string
+    languageSlug?: string
+    subtitleId?: string
+    format?: "vtt" | "srt"
+    url?: string
+    provider?: string
+    generatedAt?: string
+  }
   chunks: PlannedChunk[]
 }): string {
+  const hasV2SourceMetadata =
+    source?.kind != null ||
+    source?.languageId != null ||
+    source?.languageSlug != null ||
+    source?.subtitleId != null ||
+    source?.format != null ||
+    source?.url != null
+
   return sha256Json({
     text,
     segments: segments ?? null,
-    chunks: chunks.map((chunk) => ({
-      index: chunk.chunkIndex,
-      text: chunk.text,
-      startSeconds: chunk.startSeconds ?? null,
-      endSeconds: chunk.endSeconds ?? null,
-    })),
+    ...(hasV2SourceMetadata
+      ? {
+          source: {
+            kind: source?.kind ?? null,
+            artifactKey: source?.artifactKey ?? null,
+            languageId: source?.languageId ?? null,
+            languageSlug: source?.languageSlug ?? null,
+            subtitleId: source?.subtitleId ?? null,
+            format: source?.format ?? null,
+            url: source?.url ?? null,
+            provider: source?.provider ?? null,
+            generatedAt: source?.generatedAt ?? null,
+          },
+        }
+      : {}),
+    chunks: chunks.map((chunk) => {
+      const base = {
+        index: chunk.chunkIndex,
+        text: chunk.text,
+        startSeconds: chunk.startSeconds ?? null,
+        endSeconds: chunk.endSeconds ?? null,
+      }
+      const hasEnrichedFields =
+        chunk.rawSourceText != null ||
+        chunk.embeddingInputText != null ||
+        (chunk.feltNeeds?.length ?? 0) > 0 ||
+        (chunk.bibleVerses?.length ?? 0) > 0 ||
+        chunk.contentSummary != null ||
+        chunk.tone != null ||
+        (chunk.demographics?.length ?? 0) > 0 ||
+        (chunk.spiritualContext?.length ?? 0) > 0 ||
+        chunk.extractionMetadata != null
+
+      return hasEnrichedFields
+        ? {
+            ...base,
+            rawSourceText: chunk.rawSourceText ?? null,
+            embeddingInputText: chunk.embeddingInputText ?? null,
+            feltNeeds: chunk.feltNeeds ?? [],
+            bibleVerses: chunk.bibleVerses ?? [],
+            contentSummary: chunk.contentSummary ?? null,
+            tone: chunk.tone ?? null,
+            demographics: chunk.demographics ?? [],
+            spiritualContext: chunk.spiritualContext ?? [],
+            extractionMetadata: chunk.extractionMetadata ?? null,
+          }
+        : base
+    }),
   })
 }
 
@@ -772,12 +968,25 @@ export function planTranscriptEmbeddingRun(
     input.chunking?.maxBatchTokens ?? DEFAULT_MAX_BATCH_TOKENS
 
   const usesSegments = segments != null && segments.length > 0
-  const chunks = usesSegments
+  const baseChunks = usesSegments
     ? planSegmentChunks(segments, { maxChunkTokens, overlapTokens })
     : planPlainTextChunks(sourceText, { maxChunkTokens, overlapTokens })
+  const chunks = baseChunks.map(enrichChunk)
 
   if (chunks.length === 0) {
     throw new Error("transcript embedding workflow requires at least one chunk")
+  }
+
+  const sourceMetadata = {
+    kind: input.transcript.kind,
+    artifactKey: input.transcript.artifactKey,
+    languageId: input.transcript.languageId,
+    languageSlug: input.transcript.languageSlug,
+    subtitleId: input.transcript.subtitleId,
+    format: input.transcript.format,
+    url: input.transcript.url,
+    provider: input.transcript.provider,
+    generatedAt: input.transcript.generatedAt,
   }
 
   return {
@@ -788,9 +997,20 @@ export function planTranscriptEmbeddingRun(
       text: sourceText,
       segments,
       artifactKey: input.transcript.artifactKey,
+      kind: input.transcript.kind,
+      languageId: input.transcript.languageId,
+      languageSlug: input.transcript.languageSlug,
+      subtitleId: input.transcript.subtitleId,
+      format: input.transcript.format,
+      url: input.transcript.url,
       provider: input.transcript.provider,
       generatedAt: input.transcript.generatedAt,
-      contentHash: sourceContentHash({ text: sourceText, segments, chunks }),
+      contentHash: sourceContentHash({
+        text: sourceText,
+        segments,
+        source: sourceMetadata,
+        chunks,
+      }),
     },
     model: {
       name: input.model?.name ?? providerConfig.model,
@@ -828,7 +1048,9 @@ export async function embedPlannedTranscript(
   for (let index = 0; index < batches.length; index += 1) {
     const batch = batches[index]!
     const providerConfig = getTranscriptEmbeddingProviderConfig()
-    const batchInput = batch.map((chunk) => chunk.text)
+    const batchInput = batch.map(
+      (chunk) => chunk.embeddingInputText ?? chunk.text,
+    )
     const requestContext = `Transcript embedding batch ${index + 1}/${batches.length}`
     const rawResult = options.embeddingRequester
       ? await options.embeddingRequester(batchInput, {

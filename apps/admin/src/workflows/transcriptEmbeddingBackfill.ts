@@ -60,12 +60,17 @@ import {
   type MastraTranscriptEmbeddingLaunchResult,
   type MastraTranscriptEmbeddingMode,
 } from "@/services/mastra-transcript-embedding-client"
+import type {
+  ResolvedTranscriptEmbeddingSource,
+  TranscriptSourceGap,
+} from "@/services/transcript-source-resolver.service"
 // The artifact-load step lives in a separate module on purpose — the
 // useworkflow build plugin treats functions imported into a workflow
 // file as workflow scope, so importing `readTranscriptSourceArtifact` here
 // would trip the Node-module reachability check even though the actual
 // call is inside `"use step"`. See `_steps/load-manager-artifact.ts`.
 import { stepLoadTranscriptSourceArtifact } from "./_steps/load-manager-artifact"
+import { stepResolveSubtitleTranscriptSource } from "./_steps/resolve-transcript-source"
 
 /**
  * Default per-group concurrency for the Mastra transcript-embedding
@@ -111,6 +116,12 @@ export type BackfillTarget = {
    * for an edition, the edition simply produces no targets.
    */
   language: string
+  /** Admin language row identity. BCP-47 is not unique enough for source selection. */
+  languageId: string
+  languageSlug: string | null
+  hasSubtitle: boolean
+  hasDub: boolean
+  isPrimaryLanguage: boolean
 }
 
 /**
@@ -122,8 +133,29 @@ export type BackfillTarget = {
  * `targets` order is preserved from enumeration; the launcher fans out
  * sequentially across that order inside the group worker.
  */
-export type BackfillGroup = Omit<BackfillTarget, "language"> & {
+export type BackfillGroup = Pick<
+  BackfillTarget,
+  "videoId" | "videoEditionId" | "coreId" | "cmsVideoId"
+> & {
   targets: readonly BackfillTarget[]
+}
+
+export type TranscriptEmbeddingSourceGap = {
+  readonly assetId: number
+  readonly coreId: string
+  readonly videoId: string
+  readonly videoEditionId: string
+  readonly language: string
+  readonly languageId: string
+  readonly languageSlug: string | null
+  readonly reason:
+    | TranscriptSourceGap["reason"]
+    | "artifact_missing"
+    | "dub_without_timed_text"
+  readonly subtitleReason?: TranscriptSourceGap["reason"]
+  readonly subtitleId?: string
+  readonly subtitleFormat?: "vtt" | "srt"
+  readonly sourceKind: "transcript"
 }
 
 export type BackfillOutcome =
@@ -131,6 +163,7 @@ export type BackfillOutcome =
       status: "succeeded"
       target: BackfillTarget
       language: string
+      sourceKind: ResolvedTranscriptEmbeddingSource["sourceKind"]
       chunksIndexed: number
       embeddingsWritten: number
       chunksPruned: number
@@ -141,6 +174,7 @@ export type BackfillOutcome =
       target: BackfillTarget
       language: string
       reason: string
+      sourceGap?: TranscriptEmbeddingSourceGap
       durationMs: number
     }
   | {
@@ -186,6 +220,7 @@ export type TranscriptEmbeddingBackfillReport = {
    * had its transcript source artifact present. See `MissingArtifact`.
    */
   missingArtifacts: ReadonlyArray<MissingArtifact>
+  sourceGaps: ReadonlyArray<TranscriptEmbeddingSourceGap>
 }
 
 export async function runTranscriptEmbeddingBackfill(
@@ -329,15 +364,25 @@ async function stepEnumerateTargets(
       video_id: string
       video_edition_id: string
       core_id: string
+      language_id: string
       bcp47: string
+      slug: string | null
+      has_subtitle: boolean
+      has_dub: boolean
+      is_primary_language: boolean
     }>
   >`
-    WITH edition_languages AS (
-      SELECT DISTINCT
+    WITH target_language_sources AS (
+      SELECT
         v.id AS video_id,
         e.id AS video_edition_id,
         v.core_id AS core_id,
-        l.bcp47 AS bcp47
+        l.id AS language_id,
+        l.bcp47 AS bcp47,
+        l.slug AS slug,
+        false AS has_subtitle,
+        false AS has_dub,
+        true AS is_primary_language
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
@@ -345,13 +390,18 @@ async function stepEnumerateTargets(
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
 
-      UNION
+      UNION ALL
 
-      SELECT DISTINCT
+      SELECT
         v.id,
         e.id,
         v.core_id,
-        l.bcp47
+        l.id,
+        l.bcp47,
+        l.slug,
+        true AS has_subtitle,
+        false AS has_dub,
+        false AS is_primary_language
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
@@ -360,13 +410,18 @@ async function stepEnumerateTargets(
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
 
-      UNION
+      UNION ALL
 
-      SELECT DISTINCT
+      SELECT
         v.id,
         e.id,
         v.core_id,
-        l.bcp47
+        l.id,
+        l.bcp47,
+        l.slug,
+        false AS has_subtitle,
+        true AS has_dub,
+        false AS is_primary_language
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
@@ -374,9 +429,19 @@ async function stepEnumerateTargets(
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
     )
-    SELECT video_id, video_edition_id, core_id, bcp47
-    FROM edition_languages
-    ORDER BY core_id, bcp47
+    SELECT
+      video_id,
+      video_edition_id,
+      core_id,
+      language_id,
+      bcp47,
+      slug,
+      bool_or(has_subtitle) AS has_subtitle,
+      bool_or(has_dub) AS has_dub,
+      bool_or(is_primary_language) AS is_primary_language
+    FROM target_language_sources
+    GROUP BY video_id, video_edition_id, core_id, language_id, bcp47, slug
+    ORDER BY core_id, bcp47, slug
   `
 
   const targets: BackfillTarget[] = []
@@ -390,6 +455,11 @@ async function stepEnumerateTargets(
       coreId: row.core_id,
       cmsVideoId,
       language: row.bcp47,
+      languageId: row.language_id,
+      languageSlug: row.slug,
+      hasSubtitle: row.has_subtitle,
+      hasDub: row.has_dub,
+      isPrimaryLanguage: row.is_primary_language,
     })
   }
 
@@ -439,16 +509,66 @@ function groupTargetsByVideoEdition(
   return Array.from(groupMap.values(), (e) => e.group)
 }
 
+type ManagerSourceLoadState =
+  | { status: "not-attempted" }
+  | { status: "resolved"; artifact: TranscriptSourceArtifact }
+  | { status: "failed"; reason: string; missing: boolean }
+
+function managerTranscriptSourceFromArtifact(
+  target: BackfillTarget,
+  artifact: TranscriptSourceArtifact,
+): ResolvedTranscriptEmbeddingSource {
+  const sourceKey = `${target.cmsVideoId}/transcript.json`
+  return {
+    sourceKind: "manager-transcript",
+    transcript: {
+      text: artifact.text,
+      segments: artifact.segments,
+      artifactKey: sourceKey,
+      kind: "manager-transcript",
+      languageId: target.languageId,
+      languageSlug: target.languageSlug,
+      provider: artifact.resolvedProvider,
+    },
+    provenance: {
+      sourceKind: "manager-transcript",
+      sourceKey,
+      language: artifact.language || target.language,
+      languageId: target.languageId,
+      languageSlug: target.languageSlug,
+    },
+  }
+}
+
+function sourceGapForMissingManager(
+  target: BackfillTarget,
+  subtitleGap?: TranscriptSourceGap,
+): TranscriptEmbeddingSourceGap {
+  const reason =
+    target.hasDub && !target.hasSubtitle && !target.isPrimaryLanguage
+      ? "dub_without_timed_text"
+      : (subtitleGap?.reason ?? "artifact_missing")
+
+  return {
+    assetId: target.cmsVideoId,
+    coreId: target.coreId,
+    videoId: target.videoId,
+    videoEditionId: target.videoEditionId,
+    language: target.language,
+    languageId: target.languageId,
+    languageSlug: target.languageSlug,
+    reason,
+    subtitleReason: subtitleGap?.reason,
+    subtitleId: subtitleGap?.subtitleId,
+    subtitleFormat: subtitleGap?.format,
+    sourceKind: "transcript",
+  }
+}
+
 /**
- * Per-group worker. Loads the transcript source artifact ONCE, then fans out
- * per-language sequentially with the source in scope.
- *
- * Group-level artifact-load failure is cascaded to per-language
- * outcomes with the same classification the per-language path would
- * have produced (`artifact_missing` → skipped, anything else →
- * failed). This preserves Stage 1's per-target outcome shape so the
- * report's succeeded/skipped/failed triple stays meaningful even when
- * the load fault is shared.
+ * Per-group worker. Resolves subtitle timed text per language first, then
+ * lazily loads the Manager transcript source artifact ONCE if any target in
+ * the group needs fallback.
  */
 async function processGroup(
   group: BackfillGroup,
@@ -468,47 +588,79 @@ async function processGroup(
   // backfill — operators monitoring useworkflow journal size should be
   // aware.
 
-  let transcriptSource: TranscriptSourceArtifact
-  try {
-    transcriptSource = await stepLoadTranscriptSourceArtifact(group.cmsVideoId)
-  } catch (error) {
-    const durationMs = Date.now() - groupStartedAt
-    const isMissing =
-      error instanceof ManagerArtifactError && error.code === "artifact_missing"
-    const reason = isMissing
-      ? "artifact_missing"
-      : error instanceof Error
-        ? error.message
-        : String(error)
-    return group.targets.map((target) => {
-      const outcome: BackfillOutcome = isMissing
-        ? {
-            status: "skipped",
-            target,
-            language: target.language,
-            reason,
-            durationMs,
-          }
-        : {
-            status: "failed",
-            target,
-            language: target.language,
-            reason,
-            durationMs,
-          }
-      logOutcome(outcome)
-      return outcome
-    })
-  }
+  let managerSourceState: ManagerSourceLoadState = { status: "not-attempted" }
 
-  // Per-language fan-out with the loaded artifact in scope. Sequential
-  // inside the group so the artifact stays bounded to one stack frame
-  // and the per-target step's timing measurement is honest.
   const outcomes: BackfillOutcome[] = []
   for (const target of group.targets) {
+    const subtitleResolution = await stepResolveSubtitleTranscriptSource(target)
+    let source: ResolvedTranscriptEmbeddingSource | null =
+      subtitleResolution.status === "resolved"
+        ? subtitleResolution.source
+        : null
+
+    if (!source) {
+      if (managerSourceState.status === "not-attempted") {
+        try {
+          managerSourceState = {
+            status: "resolved",
+            artifact: await stepLoadTranscriptSourceArtifact(group.cmsVideoId),
+          }
+        } catch (error) {
+          const missing =
+            error instanceof ManagerArtifactError &&
+            error.code === "artifact_missing"
+          managerSourceState = {
+            status: "failed",
+            missing,
+            reason: missing
+              ? "artifact_missing"
+              : error instanceof Error
+                ? error.message
+                : String(error),
+          }
+        }
+      }
+
+      if (managerSourceState.status === "resolved") {
+        source = managerTranscriptSourceFromArtifact(
+          target,
+          managerSourceState.artifact,
+        )
+      } else if (managerSourceState.status === "failed") {
+        const durationMs = Date.now() - groupStartedAt
+        const sourceGap = sourceGapForMissingManager(
+          target,
+          subtitleResolution.status === "gap"
+            ? subtitleResolution.gap
+            : undefined,
+        )
+        const outcome: BackfillOutcome = managerSourceState.missing
+          ? {
+              status: "skipped",
+              target,
+              language: target.language,
+              reason: sourceGap.reason,
+              sourceGap,
+              durationMs,
+            }
+          : {
+              status: "failed",
+              target,
+              language: target.language,
+              reason: managerSourceState.reason,
+              durationMs,
+            }
+        logOutcome(outcome)
+        outcomes.push(outcome)
+        continue
+      } else {
+        throw new Error("internal transcript source resolver state was unset")
+      }
+    }
+
     const outcome = await _internals.stepLaunchMastraTranscriptEmbedding(
       target,
-      transcriptSource,
+      source,
       mode,
     )
     logOutcome(outcome)
@@ -519,7 +671,7 @@ async function processGroup(
 
 async function stepLaunchMastraTranscriptEmbedding(
   target: BackfillTarget,
-  transcriptSource: TranscriptSourceArtifact,
+  transcriptSource: ResolvedTranscriptEmbeddingSource,
   mode: MastraTranscriptEmbeddingMode,
 ): Promise<BackfillOutcome> {
   "use step"
@@ -535,7 +687,7 @@ async function stepLaunchMastraTranscriptEmbedding(
       },
       language: target.language,
       cmsVideoId: target.cmsVideoId,
-      transcript: transcriptSource,
+      transcript: transcriptSource.transcript,
       mode,
     })
     if (!result.ok) {
@@ -547,7 +699,12 @@ async function stepLaunchMastraTranscriptEmbedding(
         durationMs: Date.now() - startedAt,
       }
     }
-    return toSucceeded(target, result, Date.now() - startedAt)
+    return toSucceeded(
+      target,
+      transcriptSource.sourceKind,
+      result,
+      Date.now() - startedAt,
+    )
   } catch (error) {
     const durationMs = Date.now() - startedAt
     // Branch on the typed error class, not error-message regex. Only a
@@ -595,7 +752,7 @@ function deriveMissingArtifacts(
   const byAssetId = new Map<number, MissingArtifact>()
   for (const outcome of outcomes) {
     if (outcome.status !== "skipped") continue
-    if (outcome.reason !== "artifact_missing") continue
+    if (outcome.reason !== "artifact_missing" && !outcome.sourceGap) continue
     if (byAssetId.has(outcome.target.cmsVideoId)) continue
     byAssetId.set(outcome.target.cmsVideoId, {
       assetId: outcome.target.cmsVideoId,
@@ -604,6 +761,26 @@ function deriveMissingArtifacts(
     })
   }
   return Array.from(byAssetId.values()).sort((a, b) => a.assetId - b.assetId)
+}
+
+function deriveSourceGaps(
+  outcomes: readonly BackfillOutcome[],
+): TranscriptEmbeddingSourceGap[] {
+  const byKey = new Map<string, TranscriptEmbeddingSourceGap>()
+  for (const outcome of outcomes) {
+    if (outcome.status !== "skipped" || !outcome.sourceGap) continue
+    const key = [
+      outcome.sourceGap.assetId,
+      outcome.sourceGap.videoEditionId,
+      outcome.sourceGap.languageId,
+      outcome.sourceGap.reason,
+    ].join("::")
+    if (!byKey.has(key)) byKey.set(key, outcome.sourceGap)
+  }
+  return Array.from(byKey.values()).sort((a, b) => {
+    if (a.assetId !== b.assetId) return a.assetId - b.assetId
+    return a.language.localeCompare(b.language)
+  })
 }
 
 function stepReport(args: {
@@ -646,11 +823,13 @@ function stepReport(args: {
     skipped,
     failed,
     missingArtifacts: deriveMissingArtifacts(args.outcomes),
+    sourceGaps: deriveSourceGaps(args.outcomes),
   }
 }
 
 function toSucceeded(
   target: BackfillTarget,
+  sourceKind: ResolvedTranscriptEmbeddingSource["sourceKind"],
   result: Extract<MastraTranscriptEmbeddingLaunchResult, { ok: true }>,
   durationMs: number,
 ): BackfillOutcome {
@@ -658,6 +837,7 @@ function toSucceeded(
     status: "succeeded",
     target,
     language: target.language,
+    sourceKind,
     chunksIndexed: result.chunks,
     embeddingsWritten: result.status === "unchanged" ? 0 : result.chunks,
     chunksPruned: 0,

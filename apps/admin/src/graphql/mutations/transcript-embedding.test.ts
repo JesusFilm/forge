@@ -33,6 +33,7 @@ const BASE_REPORT: TranscriptEmbeddingBackfillReport = {
   skipped: 0,
   failed: 0,
   missingArtifacts: [],
+  sourceGaps: [],
 }
 
 describe("dispatchTranscriptEmbeddingBackfill", () => {

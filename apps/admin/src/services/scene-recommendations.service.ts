@@ -1,21 +1,22 @@
 /**
- * Scene-recommendations orchestrator (R5).
+ * Transcript-backed recommendations orchestrator for the legacy
+ * `sceneRecommendations` API shape.
  *
  * Shared service called by both the REST handler at
  * `/api/scene-embedding/recommendations` and the public Pothos query
- * `sceneRecommendations`. Port of cms's
- * `apps/cms/src/api/scene-embedding/services/recommender.ts#getRecommendations`.
+ * `sceneRecommendations`. The API name remains for cms/client parity, but
+ * feat-192 routes the backing signal through enriched transcript chunks.
  *
  * Two modes:
- *   - **Per-scene** (sceneIndex provided OR seed video has a single
- *     scene): run ONE similarity query against the seed embedding,
+ *   - **Per-chunk** (sceneIndex provided OR seed video has a single
+ *     transcript chunk): run ONE similarity query against the seed embedding,
  *     overfetch × `OVERFETCH_FACTOR`, dedup, slice to `limit`.
- *   - **Per-video** (sceneIndex omitted, seed video has ≥2 scenes):
- *     run one similarity query per scene, accumulate
+ *   - **Per-video** (sceneIndex omitted, seed video has ≥2 transcript chunks):
+ *     run one similarity query per chunk, accumulate
  *     best-similarity-per-candidate into a Map, sort, dedup, slice.
  *
  * `VideoNotFoundError` is thrown when the seed video cannot be resolved
- * or has no embedded scenes in the requested locale. REST maps this to
+ * or has no embedded transcript chunks in the requested locale. REST maps this to
  * 404. GraphQL soft-swallows to `[]` (matches cms's resolver).
  */
 
