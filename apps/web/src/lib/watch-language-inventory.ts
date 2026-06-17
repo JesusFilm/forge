@@ -18,6 +18,7 @@ import { getWatchRouteManifest } from "@/lib/watch-route-manifest"
 
 const WATCH_LANGUAGE_INVENTORY_LIMIT = 1_000
 const WATCH_LANGUAGE_SWITCHER_LIMIT = 5_000
+const WATCH_LANGUAGE_SWITCHER_PAGE_SIZE = 500
 
 const watchLanguageInventoryItemFragment = adminGraphql(`
   fragment WatchLanguageInventoryItemFields on WatchLanguageInventoryItem @_unmask {
@@ -33,6 +34,7 @@ const watchLanguageInventoryItemFragment = adminGraphql(`
     watchLanguageSlug
     parentSlug
     parentTitle
+    parentOrder
     durationSeconds
     childCount
     publishedAt
@@ -75,8 +77,8 @@ const getWatchLanguageInventoryOperation = adminGraphql(
 )
 
 const getWatchLanguageInventoryLanguagesOperation = adminGraphql(`
-  query GetWatchLanguageInventoryLanguages($limit: Int) {
-    languages(limit: $limit) {
+  query GetWatchLanguageInventoryLanguages($limit: Int, $offset: Int) {
+    languages(limit: $limit, offset: $offset) {
       slug
       bcp47
       name
@@ -103,6 +105,7 @@ export type WatchLanguageInventoryAvailability =
 export type WatchLanguageInventoryCard = {
   id: string
   coreId: string
+  slug: string
   title: string
   description: string | null
   imageUrl: string | null
@@ -111,7 +114,9 @@ export type WatchLanguageInventoryCard = {
   availability: WatchLanguageInventoryAvailability
   href: Route | null
   watchLanguageSlug: string
+  parentSlug: string | null
   parentTitle: string | null
+  parentOrder?: number | null
   durationSeconds: number | null
   childCount: number
   publishedAt: string | null
@@ -174,19 +179,34 @@ async function queryWatchLanguageInventory(
 async function queryWatchLanguageInventoryLanguages(): Promise<
   WatchLanguageInventoryLanguageRaw[]
 > {
-  const result = await adminClient.query({
-    query: getWatchLanguageInventoryLanguagesOperation,
-    variables: {
-      limit: WATCH_LANGUAGE_SWITCHER_LIMIT,
-    },
-    fetchPolicy: "no-cache",
-  })
+  const languages: WatchLanguageInventoryLanguageRaw[] = []
 
-  const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
-  )
-  if (error) throw error
-  return result.data?.languages ?? []
+  for (
+    let offset = 0;
+    offset < WATCH_LANGUAGE_SWITCHER_LIMIT;
+    offset += WATCH_LANGUAGE_SWITCHER_PAGE_SIZE
+  ) {
+    const result = await adminClient.query({
+      query: getWatchLanguageInventoryLanguagesOperation,
+      variables: {
+        limit: WATCH_LANGUAGE_SWITCHER_PAGE_SIZE,
+        offset,
+      },
+      fetchPolicy: "no-cache",
+    })
+
+    const error = graphqlError(
+      result as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
+
+    const page = result.data?.languages ?? []
+    languages.push(...page)
+
+    if (page.length < WATCH_LANGUAGE_SWITCHER_PAGE_SIZE) break
+  }
+
+  return languages
 }
 
 const fetchWatchLanguageInventory = unstable_cache(
@@ -200,7 +220,7 @@ const fetchWatchLanguageInventory = unstable_cache(
 
 const fetchWatchLanguageInventoryLanguages = unstable_cache(
   queryWatchLanguageInventoryLanguages,
-  ["watch-language-inventory-languages"],
+  ["watch-language-inventory-languages", "paginated"],
   {
     revalidate: 3600,
     tags: [WATCH_CACHE_TAGS.video, WATCH_CACHE_TAGS.routeManifest],
@@ -329,13 +349,13 @@ export function watchLanguageSpeakingAudience(languageName: string): string {
 }
 
 export function watchLanguageInventorySeoTitle(languageName: string): string {
-  return `Free Gospel Video Library for ${primaryLanguageNameForSeo(languageName)}-Speaking Audiences | Jesus Film Project`
+  return `Free Christian Video Library for ${primaryLanguageNameForSeo(languageName)}-Speaking Audiences | Jesus Film Project`
 }
 
 export function watchLanguageInventorySeoDescription(
   languageName: string,
 ): string {
-  return `Watch free Gospel videos, Jesus films, Bible stories, and discipleship series for ${watchLanguageSpeakingAudience(languageName)}, with audio and subtitles in ${languageName}.`
+  return `Watch free Christian videos, Jesus films, Bible stories, and discipleship series for ${watchLanguageSpeakingAudience(languageName)}, with fully dubbed videos and subtitles in ${languageName}.`
 }
 
 function buildInventoryHref(item: WatchLanguageInventoryItemRaw): Route | null {
@@ -355,6 +375,7 @@ function normalizeCard(item: WatchLanguageInventoryItemRaw) {
   return {
     id: item.id,
     coreId: item.coreId,
+    slug: item.slug,
     title: item.title,
     description: item.description ?? null,
     imageUrl: item.imageUrl ?? null,
@@ -363,7 +384,9 @@ function normalizeCard(item: WatchLanguageInventoryItemRaw) {
     availability: item.availability,
     href: buildInventoryHref(item),
     watchLanguageSlug: item.watchLanguageSlug,
+    parentSlug: item.parentSlug ?? null,
     parentTitle: item.parentTitle ?? null,
+    parentOrder: item.parentOrder ?? null,
     durationSeconds: item.durationSeconds ?? null,
     childCount: item.childCount,
     publishedAt: item.publishedAt ?? null,

@@ -9,6 +9,7 @@ import {
   watchLanguageInventorySeoDescription,
   watchLanguageInventorySeoTitle,
 } from "@/lib/watch-language-inventory"
+import { resolveLanguageHomeSections } from "@/lib/watch-language-home-sections"
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -63,5 +64,12 @@ export default async function VideosPage({ params }: PageProps) {
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
   const inventory = await resolveWatchLanguageInventory(locale, rawLocale)
-  return <LanguageInventoryPage inventory={inventory} />
+  const homeSections = await resolveLanguageHomeSections(
+    locale,
+    inventory.languageSlug,
+  )
+
+  return (
+    <LanguageInventoryPage inventory={inventory} homeSections={homeSections} />
+  )
 }
