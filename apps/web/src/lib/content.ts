@@ -170,6 +170,7 @@ export type WatchParent = {
 export type WatchVariantLanguage = {
   coreId: string | null
   bcp47: string | null
+  iso3?: string | null
   slug: string | null
   name: string | null
   nativeName: string | null
@@ -177,6 +178,7 @@ export type WatchVariantLanguage = {
 
 export type WatchVariantDownload = {
   documentId: string
+  height?: number | null
   quality: string | null
   size: string | null
 }
@@ -435,6 +437,7 @@ type AdminImageRaw = {
 type AdminLanguageRaw = {
   coreId?: string | null
   bcp47?: string | null
+  iso3?: string | null
   slug?: string | null
   name?: unknown
 }
@@ -458,6 +461,7 @@ type AdminVideoVariantRaw = {
   downloads?:
     | {
         documentId: string | null
+        height?: number | null
         quality?: string | null
         size?: string | null
       }[]
@@ -735,6 +739,7 @@ function normalizeVariant(
       ? {
           coreId: v.language.coreId ?? null,
           bcp47: v.language.bcp47 ?? null,
+          iso3: v.language.iso3 ?? null,
           slug: v.language.slug ?? null,
           name: pickLocalizedName(v.language.name),
           nativeName: pickNativeName(v.language.name),
@@ -745,6 +750,7 @@ function normalizeVariant(
         if (!d.documentId) return null
         return {
           documentId: d.documentId,
+          height: d.height ?? null,
           quality: d.quality ?? null,
           size: d.size ?? null,
         }
@@ -763,6 +769,7 @@ function normalizeVariant(
               ? {
                   coreId: subtitle.language.coreId ?? null,
                   bcp47: subtitle.language.bcp47 ?? null,
+                  iso3: subtitle.language.iso3 ?? null,
                   slug: subtitle.language.slug ?? null,
                   name: pickLocalizedName(subtitle.language.name),
                   nativeName: pickNativeName(subtitle.language.name),

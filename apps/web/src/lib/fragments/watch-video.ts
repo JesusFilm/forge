@@ -189,11 +189,13 @@ export const watchVideoDubDetailFragment = adminGraphql(`
     language {
       coreId
       bcp47
+      iso3
       slug
       name
     }
     downloads {
       documentId: id
+      height
       quality
       size
     }
