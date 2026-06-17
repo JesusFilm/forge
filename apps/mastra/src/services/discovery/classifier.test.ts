@@ -1,0 +1,76 @@
+import { describe, expect, it } from "vitest"
+
+import {
+  classifyContent,
+  qualifies,
+  type ClassifiableContent,
+} from "./classifier"
+
+function content(
+  caption: string,
+  hashtags: string[] = [],
+): ClassifiableContent {
+  return { caption, hashtags }
+}
+
+describe("classifyContent", () => {
+  it("accepts a plain { caption, hashtags } object (platform-agnostic)", () => {
+    const signals = classifyContent(
+      content("AI-generated film of Jesus walking", ["#aiart", "#faith"]),
+    )
+    expect(signals.isAiGenerated).toBe(true)
+    expect(signals.isChristian).toBe(true)
+    expect(qualifies(signals)).toBe(true)
+    expect(signals.matchedChristian).toContain("jesus")
+  })
+
+  it("does not qualify an AI-only caption", () => {
+    const signals = classifyContent(
+      content("Made with Midjourney, cyberpunk city"),
+    )
+    expect(signals.isAiGenerated).toBe(true)
+    expect(signals.isChristian).toBe(false)
+    expect(qualifies(signals)).toBe(false)
+  })
+
+  it("does not qualify a Christian-only caption", () => {
+    const signals = classifyContent(content("Sunday worship at our church"))
+    expect(signals.isChristian).toBe(true)
+    expect(signals.isAiGenerated).toBe(false)
+    expect(qualifies(signals)).toBe(false)
+  })
+
+  it("uses word boundaries to avoid false positives", () => {
+    const signals = classifyContent(
+      content("he said the goddess prayed quietly"),
+    )
+    expect(signals.matchedAi).not.toContain("ai")
+    expect(signals.matchedChristian).not.toContain("god")
+    expect(signals.isAiGenerated).toBe(false)
+  })
+
+  it("classifies from hashtags alone when the caption is empty", () => {
+    const signals = classifyContent(content("", ["#midjourney", "#jesus"]))
+    expect(qualifies(signals)).toBe(true)
+  })
+
+  it("excludes commentary even when AI + Christian words are present", () => {
+    const signals = classifyContent(
+      content("Should we be listening to AI generated Christian music?"),
+    )
+    expect(signals.isAiGenerated).toBe(true)
+    expect(signals.isChristian).toBe(true)
+    expect(signals.isCommentary).toBe(true)
+    expect(qualifies(signals)).toBe(false)
+  })
+
+  it("keeps a genuine creation that has no commentary words", () => {
+    const signals = classifyContent(
+      content(
+        "I recreated the story of Jesus' crucifixion using cinematic AI storytelling",
+      ),
+    )
+    expect(signals.isCommentary).toBe(false)
+    expect(qualifies(signals)).toBe(true)
+  })
+})

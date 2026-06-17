@@ -141,6 +141,17 @@ const envSchema = z.object({
     .min(1)
     .default("openai/text-embedding-3-small"),
   TRANSCRIPT_EMBEDDING_PROVIDER: z.string().min(1).default("openai"),
+  YOUTUBE_API_KEY: z.string().min(1).optional(),
+  YOUTUBE_API_BASE_URL: z
+    .string()
+    .url()
+    .default("https://www.googleapis.com/youtube/v3"),
+  YOUTUBE_SEARCH_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(120_000)
+    .default(30_000),
 })
 
 export const env = envSchema.parse({
@@ -263,6 +274,11 @@ export const env = envSchema.parse({
   TRANSCRIPT_EMBEDDING_PROVIDER: emptyToUndefined(
     process.env.TRANSCRIPT_EMBEDDING_PROVIDER,
   ),
+  YOUTUBE_API_KEY: emptyToUndefined(process.env.YOUTUBE_API_KEY),
+  YOUTUBE_API_BASE_URL: emptyToUndefined(process.env.YOUTUBE_API_BASE_URL),
+  YOUTUBE_SEARCH_TIMEOUT_MS: emptyToUndefined(
+    process.env.YOUTUBE_SEARCH_TIMEOUT_MS,
+  ),
 })
 
 function csvSet(value: string): ReadonlySet<string> {
@@ -375,6 +391,20 @@ export function getFirecrawlConfig(): FirecrawlConfig {
   }
 }
 
+export type YouTubeConfig = {
+  apiKey?: string
+  baseUrl: string
+  timeoutMs: number
+}
+
+export function getYouTubeConfig(): YouTubeConfig {
+  return {
+    apiKey: env.YOUTUBE_API_KEY,
+    baseUrl: env.YOUTUBE_API_BASE_URL,
+    timeoutMs: env.YOUTUBE_SEARCH_TIMEOUT_MS,
+  }
+}
+
 export type InstagramSiteIngestConfig = {
   url: string
   token: string
@@ -390,6 +420,15 @@ export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null
   const token = env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN
   if (!url || !token) return null
   return { url, token }
+}
+
+/**
+ * Site review-queue ingest config for all discovery platforms. The same website
+ * endpoint and token serve Instagram, YouTube, and Pinterest submissions, so the
+ * existing INSTAGRAM_DISCOVERY_SITE_INGEST_* vars are reused as the shared source.
+ */
+export function getDiscoverySiteIngestConfig(): InstagramSiteIngestConfig | null {
+  return getInstagramSiteIngestConfig()
 }
 
 export function getMastraDatabaseUrl() {

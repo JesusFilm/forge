@@ -63,6 +63,10 @@ import {
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
 import {
+  handleYouTubeDiscoveryRouteRequest,
+  youtubeAiChristianDiscoveryWorkflow,
+} from "./workflows/youtube-ai-christian-discovery"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -111,6 +115,7 @@ export const mastra = new Mastra({
     searchEvalOrchestratorWorkflow,
     searchEvalBaselinePortabilityWorkflow,
     instagramAiChristianDiscoveryWorkflow,
+    youtubeAiChristianDiscoveryWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -310,6 +315,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleInstagramDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-youtube-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleYouTubeDiscoveryRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

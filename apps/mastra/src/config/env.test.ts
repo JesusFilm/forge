@@ -156,6 +156,30 @@ describe("Mastra env", () => {
     expect(getFirecrawlConfig().apiKey).toBeUndefined()
   })
 
+  it("defaults YouTube config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "yt-test-key")
+    vi.stubEnv("YOUTUBE_API_BASE_URL", "")
+    vi.stubEnv("YOUTUBE_SEARCH_TIMEOUT_MS", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig()).toEqual({
+      apiKey: "yt-test-key",
+      baseUrl: "https://www.googleapis.com/youtube/v3",
+      timeoutMs: 30_000,
+    })
+  })
+
+  it("leaves the YouTube API key undefined when unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig().apiKey).toBeUndefined()
+  })
+
   it("defaults storage to the local gateway database in development", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("DATABASE_URL", "")

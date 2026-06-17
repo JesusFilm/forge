@@ -1,17 +1,10 @@
 import type { FirecrawlSearchErrorCode } from "../firecrawl-search-client"
 
-export type InstagramMediaType = "post" | "reel" | "tv"
+// Signals type now lives with the shared classifier; re-exported for callers
+// that still import it from the Instagram types module.
+export type { MatchSignals } from "../discovery/classifier"
 
-/** Signals from the keyword classifier for a single post. */
-export type MatchSignals = {
-  isAiGenerated: boolean
-  isChristian: boolean
-  /** True when the caption reads as commentary/news/tutorial about AI content. */
-  isCommentary: boolean
-  matchedAi: string[]
-  matchedChristian: string[]
-  matchedCommentary: string[]
-}
+export type InstagramMediaType = "post" | "reel" | "tv"
 
 /** A normalized Instagram post discovered via Firecrawl search. */
 export type InstagramPost = {

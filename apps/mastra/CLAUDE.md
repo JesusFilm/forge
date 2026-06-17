@@ -72,53 +72,56 @@ pnpm --filter @forge/mastra lint
 
 ## Environment
 
-| Variable                                  | Purpose                                                                                                                       |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                            | Postgres connection string for Mastra runtime storage. Required in production runtime.                                        |
-| `MASTRA_SERVICE_API_KEYS`                 | CSV allowlist for service bearer calls. Required in production runtime.                                                       |
-| `MASTRA_NATIVE_EVAL_ENVIRONMENT`          | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                           |
-| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.            |
-| `AI_GATEWAY_EMBEDDINGS_API_KEY`           | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.                 |
-| `AI_GATEWAY_EMBEDDINGS_BASE_URL`          | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                          |
-| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`     | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                   |
-| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`        | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.                  |
-| `AI_GATEWAY_EMBEDDINGS_MODEL`             | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                   |
-| `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                            |
-| `MASTRA_STORAGE_DIR`                      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway.    |
-| `MASTRA_STORAGE_BACKEND`                  | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.              |
-| `OPENROUTER_API_KEY`                      | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.               |
-| `OPENROUTER_EMBEDDINGS_BASE_URL`          | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                               |
-| `OPENAI_API_KEY`                          | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.      |
-| `OPENAI_EMBEDDINGS_BASE_URL`              | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                                  |
-| `TRANSCRIPT_EMBEDDING_MODEL`              | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                           |
-| `TRANSCRIPT_EMBEDDING_PROVIDER`           | Provider stamp for transcript embeddings. Defaults to `openai`.                                                               |
-| `SCENE_EMBEDDING_MODEL`                   | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                                |
-| `SCENE_EMBEDDING_PROVIDER`                | Provider stamp for scene embeddings. Defaults to `openai`.                                                                    |
-| `EXPERIENCE_EMBEDDING_MODEL`              | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                           |
-| `EXPERIENCE_EMBEDDING_PROVIDER`           | Provider stamp for experience embeddings. Defaults to `openai`.                                                               |
-| `FIRECRAWL_API_KEY`                       | Firecrawl key for the Instagram AI/Christian discovery workflow. Optional; the workflow returns `config_missing` when absent. |
-| `FIRECRAWL_API_BASE_URL`                  | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`.                                                              |
-| `FIRECRAWL_SEARCH_TIMEOUT_MS`             | Per-request timeout for Firecrawl search in ms. Defaults to `60000`.                                                          |
-| `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`        | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                         |
-| `INSTAGRAM_DISCOVERY_SITE_INGEST_URL`     | Optional website review-queue ingest endpoint. Both URL + token required to enable bot→site submission.                       |
-| `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`   | Optional bearer token for the website ingest endpoint (must match the site's `ADMIN_REVIEW_TOKEN`).                           |
-| `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.               |
-| `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                    |
-| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                        |
-| `ADMIN_SCENE_INGEST_URL`                  | Admin internal scene ingest endpoint. Required in production runtime.                                                         |
-| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`       | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                             |
-| `ADMIN_EXPERIENCE_INGEST_URL`             | Admin internal experience ingest endpoint. Required in production runtime.                                                    |
-| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`  | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                        |
-| `ADMIN_SEARCH_TRACE_SAMPLE_URL`           | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                     |
-| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`   | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.          |
-| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`        | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.      |
-| `ADMIN_SEARCH_EVAL_SEARCH_URL`            | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.        |
-| `ADMIN_SEARCH_EVAL_API_KEY`               | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.             |
-| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage.    |
-| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.          |
-| `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                        |
-| `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                             |
-| `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                             |
+| Variable                                  | Purpose                                                                                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                            | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                |
+| `MASTRA_SERVICE_API_KEYS`                 | CSV allowlist for service bearer calls. Required in production runtime.                                                               |
+| `MASTRA_NATIVE_EVAL_ENVIRONMENT`          | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                   |
+| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.                    |
+| `AI_GATEWAY_EMBEDDINGS_API_KEY`           | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.                         |
+| `AI_GATEWAY_EMBEDDINGS_BASE_URL`          | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                                  |
+| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`     | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                           |
+| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`        | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.                          |
+| `AI_GATEWAY_EMBEDDINGS_MODEL`             | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                           |
+| `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                                    |
+| `MASTRA_STORAGE_DIR`                      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway.            |
+| `MASTRA_STORAGE_BACKEND`                  | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.                      |
+| `OPENROUTER_API_KEY`                      | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.                       |
+| `OPENROUTER_EMBEDDINGS_BASE_URL`          | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                                       |
+| `OPENAI_API_KEY`                          | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.              |
+| `OPENAI_EMBEDDINGS_BASE_URL`              | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                                          |
+| `TRANSCRIPT_EMBEDDING_MODEL`              | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                                   |
+| `TRANSCRIPT_EMBEDDING_PROVIDER`           | Provider stamp for transcript embeddings. Defaults to `openai`.                                                                       |
+| `SCENE_EMBEDDING_MODEL`                   | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                                        |
+| `SCENE_EMBEDDING_PROVIDER`                | Provider stamp for scene embeddings. Defaults to `openai`.                                                                            |
+| `EXPERIENCE_EMBEDDING_MODEL`              | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                                   |
+| `EXPERIENCE_EMBEDDING_PROVIDER`           | Provider stamp for experience embeddings. Defaults to `openai`.                                                                       |
+| `FIRECRAWL_API_KEY`                       | Firecrawl key for the Instagram AI/Christian discovery workflow. Optional; the workflow returns `config_missing` when absent.         |
+| `FIRECRAWL_API_BASE_URL`                  | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`.                                                                      |
+| `FIRECRAWL_SEARCH_TIMEOUT_MS`             | Per-request timeout for Firecrawl search in ms. Defaults to `60000`.                                                                  |
+| `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`        | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                                 |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_URL`     | Optional website review-queue ingest endpoint. Both URL + token required to enable bot→site submission.                               |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`   | Optional bearer token for the website ingest endpoint (must match the site's `ADMIN_REVIEW_TOKEN`).                                   |
+| `YOUTUBE_API_KEY`                         | YouTube Data API v3 key for the YouTube AI/Christian discovery workflow. Optional; the workflow returns `config_missing` when absent. |
+| `YOUTUBE_API_BASE_URL`                    | YouTube Data API base URL. Defaults to `https://www.googleapis.com/youtube/v3`.                                                       |
+| `YOUTUBE_SEARCH_TIMEOUT_MS`               | Per-request timeout for YouTube API calls in ms. Defaults to `30000`.                                                                 |
+| `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.                       |
+| `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                            |
+| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                                |
+| `ADMIN_SCENE_INGEST_URL`                  | Admin internal scene ingest endpoint. Required in production runtime.                                                                 |
+| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`       | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                                     |
+| `ADMIN_EXPERIENCE_INGEST_URL`             | Admin internal experience ingest endpoint. Required in production runtime.                                                            |
+| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`  | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                                |
+| `ADMIN_SEARCH_TRACE_SAMPLE_URL`           | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                             |
+| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`   | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.                  |
+| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`        | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.              |
+| `ADMIN_SEARCH_EVAL_SEARCH_URL`            | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.                |
+| `ADMIN_SEARCH_EVAL_API_KEY`               | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.                     |
+| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage.            |
+| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.                  |
+| `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                                |
+| `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                     |
+| `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                     |
 
 ## Eval query generation
 
@@ -318,6 +321,38 @@ Failure reasons: `invalid_input` (400), `config_missing` (503, when
 `FIRECRAWL_API_KEY` is unset), `all_queries_failed` (502, only when every query
 errors). Firecrawl is an opt-in tool — its env vars are optional and are not
 part of `assertMastraRuntimeEnv()`.
+
+## YouTube AI/Christian discovery
+
+The service route `POST /forge-youtube-discovery` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `youtube-ai-christian-discovery`
+workflow. It discovers AI-generated Christian videos on YouTube using the
+**official YouTube Data API v3** (key in `YOUTUBE_API_KEY`), in **two modes**:
+
+- **Trusted channels** — `channels` accepts channel ids (`UC…`), `@handles`, or
+  youtube.com URLs; each is resolved to its uploads playlist and the recent
+  uploads are pulled (`limitPerChannel`, default 10).
+- **Keyword discovery** — `queries` (defaults to two AI/Christian queries) are
+  run through `search.list` (`limitPerQuery`, default 10).
+
+Both sources feed one pipeline: parse items (handling both `search.list` and
+`playlistItems.list` shapes), dedupe by `videoId`, and keep only videos whose
+title+description signal **both** AI-generation and Christian content **and** do
+not read as commentary — reusing the shared classifier in
+`services/discovery/classifier.ts` (same keyword + commentary lists as Instagram).
+`totals.excludedCommentary` counts videos dropped by the commentary filter.
+
+Qualified videos are written to a validated JSON artifact under
+`<storage>/youtube-discovery/reports/<runId>.json` and, when the site ingest env
+vars are set, submitted to the website review queue (best-effort, never fails the
+run) tagged with `platform: "youtube"` and a clickable channel author link. The
+site dedups by `(platform, externalId)`, so re-runs never duplicate.
+
+Failure reasons: `invalid_input` (400), `config_missing` (503, when
+`YOUTUBE_API_KEY` is unset), `all_sources_failed` (502, only when every channel
+and query errors). The YouTube key is opt-in — optional and not part of
+`assertMastraRuntimeEnv()`. The same `INSTAGRAM_DISCOVERY_SITE_INGEST_*` vars are
+reused as the shared website-ingest config for all discovery platforms.
 
 ## Railway Storage
 
