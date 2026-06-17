@@ -41,6 +41,11 @@ const SEGMENT: SmartCropPlanSegment = {
   secondarySubjects: ["disciples"],
   avoidCutting: ["faces"],
   confidence: 0.94,
+  faceVisible: true,
+  faceCenter: {
+    start: { cx: 0.72, cy: 0.24 },
+    end: { cx: 0.73, cy: 0.24 },
+  },
   cropKeyframes: [
     { progress: 0, x: 520, y: 0, width: 606, height: 1080 },
     { progress: 1, x: 560, y: 0, width: 606, height: 1080 },
@@ -428,6 +433,9 @@ describe("artifact readers", () => {
   })
 
   it("parses plan artifacts and rejects malformed qa blocks", () => {
+    const legacySegment = { ...SEGMENT }
+    delete legacySegment.faceCenter
+    delete legacySegment.faceVisible
     const plan = assemblePlanArtifact({
       assetId: "asset123",
       muxAssetId: "mux_abc",
@@ -442,6 +450,15 @@ describe("artifact readers", () => {
     expect(parsePlanArtifact(JSON.parse(JSON.stringify(plan)))).toMatchObject({
       kind: "smart-crop-canonical-plan",
       qa: { status: "draft" },
+    })
+    const legacyPlan = {
+      ...plan,
+      segments: [legacySegment],
+    }
+    expect(
+      parsePlanArtifact(JSON.parse(JSON.stringify(legacyPlan))),
+    ).toMatchObject({
+      segments: [legacySegment],
     })
     expect(parsePlanArtifact({ ...plan, qa: { status: "maybe" } })).toBeNull()
   })

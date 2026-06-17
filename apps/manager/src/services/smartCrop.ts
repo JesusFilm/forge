@@ -535,6 +535,31 @@ function parseStringArray(value: unknown): string[] | undefined {
   return strings.length === value.length ? strings : undefined
 }
 
+function parseNormalizedPoint(
+  value: unknown,
+): { cx: number; cy: number } | null {
+  const point = asRecord(value)
+  if (!point || typeof point.cx !== "number" || typeof point.cy !== "number") {
+    return null
+  }
+  return { cx: point.cx, cy: point.cy }
+}
+
+function parseFaceCenter(
+  value: unknown,
+): SmartCropPlanSegment["faceCenter"] | null {
+  const center = asRecord(value)
+  if (!center) {
+    return null
+  }
+  const start = parseNormalizedPoint(center.start)
+  const end = parseNormalizedPoint(center.end)
+  if (!start || !end) {
+    return null
+  }
+  return { start, end }
+}
+
 // Validates a plan-segment array (used by both the final plan artifact and
 // the plan-progress checkpoint). Returns null when any entry is malformed.
 export function parsePlanSegments(
@@ -583,7 +608,23 @@ export function parsePlanSegments(
       })
     }
 
-    segments.push({
+    if (
+      segment.faceVisible !== undefined &&
+      typeof segment.faceVisible !== "boolean"
+    ) {
+      return null
+    }
+    let faceCenter: SmartCropPlanSegment["faceCenter"] | undefined
+    if (segment.faceCenter === null) {
+      faceCenter = null
+    } else if (segment.faceCenter !== undefined) {
+      faceCenter = parseFaceCenter(segment.faceCenter) ?? undefined
+      if (!faceCenter) {
+        return null
+      }
+    }
+
+    const parsed: SmartCropPlanSegment = {
       shotId: segment.shotId,
       canonicalStart: segment.canonicalStart,
       canonicalEnd: segment.canonicalEnd,
@@ -596,7 +637,14 @@ export function parsePlanSegments(
       avoidCutting: parseStringArray(segment.avoidCutting),
       confidence: segment.confidence,
       cropKeyframes,
-    })
+    }
+    if (typeof segment.faceVisible === "boolean") {
+      parsed.faceVisible = segment.faceVisible
+    }
+    if (segment.faceCenter !== undefined) {
+      parsed.faceCenter = faceCenter
+    }
+    segments.push(parsed)
   }
 
   return segments

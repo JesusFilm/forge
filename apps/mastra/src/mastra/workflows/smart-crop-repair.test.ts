@@ -95,6 +95,7 @@ const cannedRepairResponse = {
                 start: { cx: 0.52, cy: 0.5 },
                 end: { cx: 0.52, cy: 0.5 },
               },
+              faceVisible: false,
             },
             {
               shotId: "shot_00421",
@@ -106,6 +107,11 @@ const cannedRepairResponse = {
               subjectCenter: {
                 start: { cx: 0.45, cy: 0.45 },
                 end: { cx: 0.4, cy: 0.45 },
+              },
+              faceVisible: true,
+              faceCenter: {
+                start: { cx: 0.7, cy: 0.24 },
+                end: { cx: 0.8, cy: 0.24 },
               },
             },
           ],
@@ -135,6 +141,11 @@ function intent(shotId: string) {
       start: { cx: 0.5, cy: 0.5 },
       end: { cx: 0.5, cy: 0.5 },
     },
+    faceVisible: true,
+    faceCenter: {
+      start: { cx: 0.5, cy: 0.25 },
+      end: { cx: 0.5, cy: 0.25 },
+    },
   }
 }
 
@@ -160,9 +171,14 @@ describe("smart crop repair workflow", () => {
           secondarySubjects: ["disciples"],
           avoidCutting: ["faces", "hands"],
           confidence: 0.92,
+          faceVisible: true,
+          faceCenter: {
+            start: { cx: 0.7, cy: 0.24 },
+            end: { cx: 0.8, cy: 0.24 },
+          },
           cropKeyframes: [
-            { progress: 0, x: 560, y: 0, width: 606, height: 1080 },
-            { progress: 1, x: 464, y: 0, width: 606, height: 1080 },
+            { progress: 0, x: 1040, y: 0, width: 606, height: 1080 },
+            { progress: 1, x: 1232, y: 0, width: 606, height: 1080 },
           ],
         },
         {
@@ -174,6 +190,7 @@ describe("smart crop repair workflow", () => {
           secondarySubjects: ["Jesus"],
           avoidCutting: ["faces"],
           confidence: 0.45,
+          faceVisible: false,
           cropKeyframes: [
             { progress: 0, x: 656, y: 0, width: 606, height: 1080 },
             { progress: 1, x: 656, y: 0, width: 606, height: 1080 },
@@ -211,6 +228,7 @@ describe("smart crop repair workflow", () => {
       .map((part) => String(part.text))
       .join("\n")
     expect(text).toContain("Return one replacement crop intent")
+    expect(text).toContain("faceCenter")
     expect(text).toContain("Subject drifts too far left")
     expect(text).toContain("previousSegment:")
     const imageParts = body.messages[0]!.content.filter(

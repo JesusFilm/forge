@@ -259,6 +259,10 @@ job-loss).
   `{assetId}/smart-crop-plan-progress-v1.json` (keyed to the fingerprint's
   `generatedAt`); retries resume from the first incomplete vision batch
   instead of re-paying completed LLM calls. `force` ignores the checkpoint.
+- **Face-first anchoring:** Mastra plan/repair responses may include optional
+  `faceVisible` and `faceCenter` segment metadata. Manager preserves those
+  fields for artifacts/debugging but does not calculate crop x positions; the
+  deterministic Mastra planner already emitted the final keyframes.
 - **QA is advisory:** mastra config-shaped QA failures
   (`frame_host_not_allowed`, `provider_config_missing`, `config_missing`,
   `auth_failed`, `provider_auth_failed`) degrade the QA step to `skipped` with

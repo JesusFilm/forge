@@ -69,6 +69,16 @@ export type SmartCropCropKeyframe = {
   height: number
 }
 
+export type SmartCropNormalizedPoint = {
+  cx: number
+  cy: number
+}
+
+export type SmartCropFaceCenter = {
+  start: SmartCropNormalizedPoint
+  end: SmartCropNormalizedPoint
+}
+
 export type SmartCropPlanSegment = {
   shotId: string
   canonicalStart: number
@@ -78,6 +88,8 @@ export type SmartCropPlanSegment = {
   secondarySubjects?: string[]
   avoidCutting?: string[]
   confidence: number
+  faceVisible?: boolean
+  faceCenter?: SmartCropFaceCenter | null
   cropKeyframes: SmartCropCropKeyframe[]
 }
 
@@ -264,6 +276,27 @@ function parseOptionalStringArray(value: unknown): string[] | undefined {
   return strings.length === value.length ? strings : undefined
 }
 
+function parseNormalizedPoint(value: unknown): SmartCropNormalizedPoint | null {
+  const point = asRecord(value)
+  if (!point || typeof point.cx !== "number" || typeof point.cy !== "number") {
+    return null
+  }
+  return { cx: point.cx, cy: point.cy }
+}
+
+function parseFaceCenter(value: unknown): SmartCropFaceCenter | null {
+  const center = asRecord(value)
+  if (!center) {
+    return null
+  }
+  const start = parseNormalizedPoint(center.start)
+  const end = parseNormalizedPoint(center.end)
+  if (!start || !end) {
+    return null
+  }
+  return { start, end }
+}
+
 function parsePlanSegment(value: unknown): SmartCropPlanSegment | null {
   const segment = asRecord(value)
   if (
@@ -301,7 +334,23 @@ function parsePlanSegment(value: unknown): SmartCropPlanSegment | null {
     })
   }
 
-  return {
+  if (
+    segment.faceVisible !== undefined &&
+    typeof segment.faceVisible !== "boolean"
+  ) {
+    return null
+  }
+  let faceCenter: SmartCropFaceCenter | null | undefined
+  if (segment.faceCenter === null) {
+    faceCenter = null
+  } else if (segment.faceCenter !== undefined) {
+    faceCenter = parseFaceCenter(segment.faceCenter) ?? undefined
+    if (!faceCenter) {
+      return null
+    }
+  }
+
+  const parsed: SmartCropPlanSegment = {
     shotId: segment.shotId,
     canonicalStart: segment.canonicalStart,
     canonicalEnd: segment.canonicalEnd,
@@ -315,6 +364,13 @@ function parsePlanSegment(value: unknown): SmartCropPlanSegment | null {
     confidence: segment.confidence,
     cropKeyframes,
   }
+  if (typeof segment.faceVisible === "boolean") {
+    parsed.faceVisible = segment.faceVisible
+  }
+  if (segment.faceCenter !== undefined) {
+    parsed.faceCenter = faceCenter
+  }
+  return parsed
 }
 
 function parsePlanResult(value: unknown): SmartCropPlanLaunchResult | null {
