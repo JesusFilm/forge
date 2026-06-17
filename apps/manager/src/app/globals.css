@@ -13829,7 +13829,7 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .smart-crop-shot-timeline {
   position: relative;
   height: 34px;
-  overflow: hidden;
+  overflow: visible;
   background: var(--ds-panel-muted);
   border: 1px solid var(--ds-line);
   border-radius: calc(var(--ds-radius) - 4px);
@@ -13883,6 +13883,71 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .smart-crop-shot-segment--center_fallback {
   color: var(--ds-soft);
+}
+
+.smart-crop-shot-qa-marker {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--accent);
+  background: var(--ds-bg);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ds-black) 18%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.smart-crop-shot-qa-marker:hover,
+.smart-crop-shot-qa-marker:focus-visible {
+  z-index: 6;
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--ds-bg),
+    0 0 0 4px currentColor;
+}
+
+.smart-crop-shot-qa-marker--warning {
+  color: var(--warn);
+}
+
+.smart-crop-shot-qa-marker--critical {
+  color: var(--ds-brand-red);
+}
+
+.smart-crop-shot-qa-marker-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 7;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 48px));
+  padding: 7px 9px;
+  color: var(--ds-bg);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  background: var(--ds-black);
+  border-radius: calc(var(--ds-radius) - 6px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ds-black) 22%, transparent);
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  pointer-events: none;
+}
+
+.smart-crop-shot-qa-marker:hover .smart-crop-shot-qa-marker-tooltip,
+.smart-crop-shot-qa-marker:focus-visible .smart-crop-shot-qa-marker-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .smart-crop-shot-playhead {
