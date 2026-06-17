@@ -1,9 +1,11 @@
 import {
   deleteAsync,
   documentDirectory,
+  downloadAsync,
   getFreeDiskStorageAsync,
   getInfoAsync,
   makeDirectoryAsync,
+  moveAsync,
 } from "expo-file-system/legacy"
 
 import { sanitizeSegment } from "./offlineFiles"
@@ -60,4 +62,18 @@ export async function freeDiskBytes(): Promise<number> {
   } catch {
     return 0
   }
+}
+
+/** Move a file (e.g. a verified pending download → its committed path). */
+export async function moveFile(from: string, to: string): Promise<void> {
+  await moveAsync({ from, to })
+}
+
+/**
+ * Download a small sidecar (subtitle VTT, poster) to a local file. Used for
+ * foreground sidecar transfers; the large media file goes through the native
+ * background engine, not here.
+ */
+export async function downloadToFile(url: string, dest: string): Promise<void> {
+  await downloadAsync(url, dest)
 }

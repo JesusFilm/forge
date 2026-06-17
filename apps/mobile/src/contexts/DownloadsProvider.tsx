@@ -13,17 +13,35 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import {
   configureDownloadEngine,
   listExistingDownloadTasks,
+  startMediaDownload,
 } from "../lib/downloadEngine"
+import { resolveBundle } from "../lib/downloadOutcome"
+import { reconcile } from "../lib/downloadReconciliation"
+import {
+  buildCommittedPath,
+  buildPendingPath,
+  buildPosterPath,
+  buildSubtitlePath,
+} from "../lib/offlineFiles"
+import {
+  OFFLINE_ROOT,
+  downloadToFile,
+  ensureVideoDir,
+  fileExists,
+  moveFile,
+  removeVideoDir,
+} from "../lib/offlineFileSystem"
 import {
   OFFLINE_INDEX_STORAGE_KEY,
+  OFFLINE_MANIFEST_VERSION,
   offlineRecordKey,
   parseOfflineIndex,
   parseOfflineRecord,
   serializeOfflineIndex,
+  serializeOfflineRecord,
   type OfflineDownloadRecord,
 } from "../lib/offlineManifest"
-import { fileExists, removeVideoDir } from "../lib/offlineFileSystem"
-import { reconcile } from "../lib/downloadReconciliation"
+import type { WatchDownload } from "../lib/normalizeVideo"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -31,13 +49,26 @@ import { useWatchPreferences } from "./WatchPreferencesProvider"
  * route) so the green-tick badge on detail pages and the My Downloads surface —
  * both outside the watch route group — can read it.
  *
- * This is the state + lifecycle backbone: it hydrates the sharded manifest,
- * exposes the read surface the badge/library need, configures the native engine,
- * and runs a defensive launch reattach. The add-download pipeline (queue, sidecar
- * transfers, atomic commit) is wired with the download sheet and verified on a
- * device. Hydration is bulletproof (tolerant parse, try/catch) so a corrupt blob
- * can never wedge app boot.
+ * Hydrates the sharded manifest (bulletproof tolerant parse), exposes the read
+ * surface (committedFor/getRecord) plus startDownload/deleteDownload, configures
+ * the native engine, and runs a defensive launch reattach. The actual transfer +
+ * background behavior is verified on a device; this code wires the flow.
  */
+export type StartDownloadRequest = {
+  videoSlug: string
+  dubDocumentId: string
+  /** The chosen rendition (documentId/quality/size/url) to download. */
+  rendition: WatchDownload
+  /** Chosen subtitle language slug, or null for "No subtitles". */
+  subtitleLanguageSlug: string | null
+  /** Fresh subtitle VTT URL when a subtitle was chosen, else null. */
+  subtitleUrl: string | null
+  /** Poster URL to cache for the offline library, if available. */
+  posterUrl: string | null
+  /** Per-download cellular override. */
+  allowCellular: boolean
+}
+
 type DownloadsContextValue = {
   /** False until the persisted manifest has been read. */
   isReady: boolean
@@ -47,6 +78,8 @@ type DownloadsContextValue = {
   committedFor: (videoSlug: string) => string | null
   /** Slugs with a usable (downloaded) offline copy. */
   downloadedSlugs: string[]
+  /** Enqueue an offline download (one copy per video). */
+  startDownload: (request: StartDownloadRequest) => Promise<void>
   /** Remove an offline copy: its files and its manifest entry. */
   deleteDownload: (videoSlug: string) => Promise<void>
 }
@@ -59,8 +92,6 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   const [records, setRecords] = useState<RecordMap>({})
   const [isReady, setIsReady] = useState(false)
 
-  // Latest snapshot so stable setters can mutate without taking `records` as a
-  // dependency (which would re-create them every change).
   const recordsRef = useRef(records)
   recordsRef.current = records
 
@@ -97,6 +128,24 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const writeRecord = useCallback(async (record: OfflineDownloadRecord) => {
+    const next = { ...recordsRef.current, [record.videoSlug]: record }
+    recordsRef.current = next
+    setRecords(next)
+    try {
+      await AsyncStorage.setItem(
+        offlineRecordKey(record.videoSlug),
+        serializeOfflineRecord(record),
+      )
+      await AsyncStorage.setItem(
+        OFFLINE_INDEX_STORAGE_KEY,
+        serializeOfflineIndex(Object.keys(next)),
+      )
+    } catch {
+      // Best-effort; the in-memory record still applies this session.
+    }
+  }, [])
+
   const removeRecord = useCallback(async (videoSlug: string) => {
     const next = { ...recordsRef.current }
     delete next[videoSlug]
@@ -119,15 +168,22 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     try {
       configureDownloadEngine({ wifiOnly })
     } catch {
-      // Engine unavailable (e.g. a build without the native module) — the read
-      // surface still works; downloads are inert until a proper dev build.
+      // Engine unavailable (build without the native module) — read surface
+      // still works; downloads are inert until a proper dev build.
     }
   }, [isReady, wifiOnly])
 
+  const deleteDownload = useCallback(
+    async (videoSlug: string) => {
+      await removeVideoDir(videoSlug)
+      await removeRecord(videoSlug)
+    },
+    [removeRecord],
+  )
+
   // Defensive launch reattach: reconcile records against live native tasks and
-  // on-disk files, and apply the safe manifest-only actions now. Restarting
-  // interrupted transfers (rebind/requeue/repair) belongs to the download
-  // pipeline and lands with the download sheet.
+  // on-disk files, applying the manifest-safe action now. Restarting interrupted
+  // transfers (rebind/requeue/repair) is a follow-up on the queue.
   useEffect(() => {
     if (!isReady) return
     let cancelled = false
@@ -160,11 +216,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         })
         for (const action of actions) {
           if (cancelled) return
-          // Only the manifest-safe action runs in the backbone; the rest need
-          // the (device-verified) download pipeline.
-          if (action.action === "dropRecord") {
+          if (action.action === "dropRecord")
             await removeRecord(action.videoSlug)
-          }
         }
       } catch {
         // Reattach is best-effort and must never break boot.
@@ -175,12 +228,138 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     }
   }, [isReady, removeRecord])
 
-  const deleteDownload = useCallback(
-    async (videoSlug: string) => {
-      await removeVideoDir(videoSlug)
-      await removeRecord(videoSlug)
+  const startDownload = useCallback(
+    async (request: StartDownloadRequest) => {
+      const { videoSlug, rendition } = request
+      const existing = recordsRef.current[videoSlug]
+      // One copy per video: ignore if a live copy/queue entry already exists.
+      if (
+        existing &&
+        existing.state !== "failed" &&
+        existing.state !== "canceled"
+      ) {
+        return
+      }
+
+      try {
+        configureDownloadEngine({ wifiOnly })
+        await ensureVideoDir(videoSlug)
+      } catch {
+        return
+      }
+
+      const nonce = `${Date.now().toString(36)}-${Math.floor(
+        Math.random() * 1e9,
+      ).toString(36)}`
+      const pendingPath = buildPendingPath(OFFLINE_ROOT, videoSlug, nonce)
+      const committedPath = buildCommittedPath(
+        OFFLINE_ROOT,
+        videoSlug,
+        rendition.documentId,
+      )
+
+      await writeRecord({
+        version: OFFLINE_MANIFEST_VERSION,
+        videoSlug,
+        dubDocumentId: request.dubDocumentId,
+        renditionDocumentId: rendition.documentId,
+        qualityLabel: rendition.quality,
+        subtitleLanguageSlug: request.subtitleLanguageSlug,
+        state: "downloading",
+        committedPath: null,
+        pendingPath,
+        posterPath: null,
+        bytesWritten: 0,
+        totalBytes: Number(rendition.size) || 0,
+      })
+
+      const patch = (fields: Partial<OfflineDownloadRecord>) => {
+        const current = recordsRef.current[videoSlug]
+        if (!current) return
+        void writeRecord({ ...current, ...fields })
+      }
+
+      const finalize = async (location: string) => {
+        try {
+          await moveFile(location, committedPath)
+          let subtitleVerified = false
+          let subtitleTerminallyFailed = false
+          if (request.subtitleLanguageSlug && request.subtitleUrl) {
+            try {
+              await downloadToFile(
+                request.subtitleUrl,
+                buildSubtitlePath(
+                  OFFLINE_ROOT,
+                  videoSlug,
+                  request.subtitleLanguageSlug,
+                ),
+              )
+              subtitleVerified = true
+            } catch {
+              subtitleTerminallyFailed = true
+            }
+          }
+          let posterPath: string | null = null
+          if (request.posterUrl) {
+            const target = buildPosterPath(OFFLINE_ROOT, videoSlug)
+            try {
+              await downloadToFile(request.posterUrl, target)
+              posterPath = target
+            } catch {
+              posterPath = null
+            }
+          }
+          const bundle = resolveBundle({
+            mediaVerified: true,
+            subtitleRequested: request.subtitleLanguageSlug != null,
+            subtitleVerified,
+            subtitleTerminallyFailed,
+          })
+          if (bundle.kind === "downloaded") {
+            patch({
+              state: "downloaded",
+              committedPath,
+              pendingPath: null,
+              posterPath,
+              subtitleLanguageSlug: bundle.subtitleDegraded
+                ? null
+                : request.subtitleLanguageSlug,
+            })
+          } else {
+            patch({ state: "failed" })
+          }
+        } catch {
+          patch({ state: "failed" })
+        }
+      }
+
+      startMediaDownload(
+        {
+          id: videoSlug,
+          url: rendition.url,
+          destination: pendingPath,
+          allowCellular: request.allowCellular,
+        },
+        {
+          onProgress: ({ bytesDownloaded, bytesTotal }) =>
+            patch({
+              bytesWritten: bytesDownloaded,
+              totalBytes: bytesTotal || Number(rendition.size) || 0,
+            }),
+          onDone: ({ location }) => {
+            void finalize(location)
+          },
+          onInterruption: (classification) => {
+            if (classification.state === "canceled") {
+              void deleteDownload(videoSlug)
+            } else {
+              patch({ state: classification.state })
+            }
+          },
+        },
+      )
     },
-    [removeRecord],
+    [wifiOnly, writeRecord, deleteDownload],
   )
 
   const value = useMemo<DownloadsContextValue>(
@@ -196,9 +375,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       downloadedSlugs: Object.values(records)
         .filter((record) => record.state === "downloaded")
         .map((record) => record.videoSlug),
+      startDownload,
       deleteDownload,
     }),
-    [records, isReady, deleteDownload],
+    [records, isReady, startDownload, deleteDownload],
   )
 
   return (

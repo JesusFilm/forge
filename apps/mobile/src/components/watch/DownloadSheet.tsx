@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
-  ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Platform,
@@ -14,8 +12,6 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { cacheDirectory, downloadAsync } from "expo-file-system/src/legacy"
-import * as Sharing from "expo-sharing"
 
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -159,7 +155,12 @@ export type DownloadSheetProps = {
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
-  onDownloadComplete?: () => void
+  /**
+   * Enqueue the chosen rendition for offline download. The parent builds the
+   * full request (identity + fresh URLs) and dismisses the sheet; the download
+   * runs in the background via DownloadsProvider.
+   */
+  onStartDownload: (rendition: WatchDownload) => void
 }
 
 export function DownloadSheetContent({
@@ -167,64 +168,24 @@ export function DownloadSheetContent({
   duration,
   languageName,
   downloads,
-  onDownloadComplete,
+  onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
-  const downloadInFlight = useRef(false)
-  // The download outlives the sheet if the user swipes it closed mid-flight.
-  // Guard post-await side effects so we don't setState, Alert, or navigate on
-  // an unmounted route (which would pop the watch screen underneath).
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
 
-  const [downloading, setDownloading] = useState(false)
-
-  const handleDownload = useCallback(async () => {
-    if (downloadInFlight.current) return
+  const handleDownload = useCallback(() => {
     if (!touAccepted || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
-    downloadInFlight.current = true
-    setDownloading(true)
-
-    try {
-      if (!cacheDirectory) throw new Error("Cache directory unavailable")
-      const rawName =
-        selected.url.split("/").pop()?.split("?")[0] ?? "video.mp4"
-      const filename = `${selected.documentId}-${rawName}`
-      const localUri = `${cacheDirectory}${filename}`
-      const { uri } = await downloadAsync(selected.url, localUri)
-      try {
-        await Sharing.shareAsync(uri, {
-          mimeType: "video/mp4",
-          UTI: "public.mpeg-4",
-        })
-      } catch {
-        // User dismissed the share sheet — not an error
-      }
-      if (mountedRef.current) onDownloadComplete?.()
-    } catch {
-      if (mountedRef.current) {
-        Alert.alert(
-          "Download failed",
-          "Could not download the video. Please try again.",
-        )
-      }
-    } finally {
-      downloadInFlight.current = false
-      if (mountedRef.current) setDownloading(false)
-    }
-  }, [touAccepted, tiered, selectedIndex, onDownloadComplete])
+    // Enqueue and hand off to the background engine; the parent dismisses the
+    // sheet. One copy per video is enforced by DownloadsProvider.
+    onStartDownload(selected)
+  }, [touAccepted, tiered, selectedIndex, onStartDownload])
 
   const renderQualityRow = useCallback(
     ({ item, index }: { item: TieredDownload; index: number }) => {
@@ -374,24 +335,18 @@ export function DownloadSheetContent({
         <Pressable
           style={({ pressed }) => [
             styles.downloadButton,
-            (!touAccepted || downloading) && styles.downloadButtonDisabled,
-            pressed && touAccepted && !downloading && feedback.pressed,
+            !touAccepted && styles.downloadButtonDisabled,
+            pressed && touAccepted && feedback.pressed,
           ]}
           onPress={handleDownload}
-          disabled={!touAccepted || downloading}
+          disabled={!touAccepted}
           accessibilityRole="button"
-          accessibilityLabel={
-            downloading ? "Downloading video" : "Download video"
-          }
-          accessibilityState={{ disabled: !touAccepted || downloading }}
+          accessibilityLabel="Download video"
+          accessibilityState={{ disabled: !touAccepted }}
         >
-          {downloading ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Ionicons name="download-outline" size={20} color="#ffffff" />
-          )}
+          <Ionicons name="download-outline" size={20} color="#ffffff" />
           <Text style={[styles.downloadButtonText, typography.body]}>
-            {downloading ? "Downloading..." : "Download"}
+            Download
           </Text>
         </Pressable>
       </ScrollView>
