@@ -12,6 +12,9 @@ import { useEvent } from "expo"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
+import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
+import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
+import { readAsStringAsync } from "expo-file-system/legacy"
 
 type SubtitleOverlayProps = {
   player: ExpoVideoPlayer
@@ -111,13 +114,43 @@ export function SubtitleOverlay({
   })
 
   useEffect(() => {
-    // Validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
-    if (!vttSrc || !validateActionUrl(vttSrc)) {
+    if (!vttSrc) {
       setCues([])
       setActiveText("")
       return
     }
     let cancelled = false
+
+    // Offline: a locally-saved VTT is read from disk (validated against the
+    // download root). fetch / validateActionUrl reject the file: scheme.
+    if (vttSrc.startsWith("file:")) {
+      if (!validateLocalMediaUrl(vttSrc, OFFLINE_ROOT)) {
+        setCues([])
+        setActiveText("")
+        return
+      }
+      readAsStringAsync(vttSrc)
+        .then((text) => {
+          if (!cancelled) {
+            setCues([...parseVtt(text)].sort((a, b) => a.start - b.start))
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setCues([])
+        })
+      return () => {
+        cancelled = true
+        setCues([])
+        setActiveText("")
+      }
+    }
+
+    // Remote: validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
+    if (!validateActionUrl(vttSrc)) {
+      setCues([])
+      setActiveText("")
+      return
+    }
     // AbortController so switching language (or unmounting) actually cancels
     // the in-flight request instead of leaking it; the timer is the hard cap
     // so a stalled CDN can't hold the request open indefinitely.
