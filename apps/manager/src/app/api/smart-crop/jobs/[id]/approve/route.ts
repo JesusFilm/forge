@@ -115,10 +115,16 @@ export async function POST(
         { status: 409 },
       )
     }
-    if (
-      parsed.data.attemptIndex != null &&
-      parsed.data.manifestDigest !== attemptsArtifact.manifestDigest
-    ) {
+    if (parsed.data.attemptIndex == null || !parsed.data.manifestDigest) {
+      return NextResponse.json(
+        {
+          error:
+            "Smart Crop attempt selection is required; refresh and try again",
+        },
+        { status: 409 },
+      )
+    }
+    if (parsed.data.manifestDigest !== attemptsArtifact.manifestDigest) {
       return NextResponse.json(
         { error: "Smart Crop attempt manifest changed; refresh and try again" },
         { status: 409 },
@@ -127,14 +133,13 @@ export async function POST(
     const selectedAttempt = attemptsArtifact.attempts.find(
       (attempt) => attempt.attemptIndex === selectedAttemptIndex,
     )
-    if (parsed.data.attemptIndex != null && !selectedAttempt) {
+    if (!selectedAttempt) {
       return NextResponse.json(
         { error: "Selected Smart Crop attempt was not found" },
         { status: 409 },
       )
     }
     if (
-      parsed.data.attemptIndex != null &&
       selectedAttempt &&
       !SELECTABLE_ATTEMPT_STATUSES.has(selectedAttempt.status)
     ) {

@@ -898,6 +898,12 @@ describe("runSmartCropCanonical — plan checkpointing", () => {
 
     await runSmartCropCanonical(CANONICAL_INPUT)
 
+    expect(
+      readSeededArtifact("asset123", "smart-crop-plan-9x16-attempt-000-v1"),
+    ).toMatchObject({
+      kind: "smart-crop-canonical-plan",
+      segments: expect.any(Array),
+    })
     expect(launchSmartCropRepairMock).toHaveBeenCalledTimes(1)
     expect(
       readSeededArtifact("asset123", SMART_CROP_ATTEMPTS_ARTIFACT_TYPE),
@@ -905,6 +911,7 @@ describe("runSmartCropCanonical — plan checkpointing", () => {
       attempts: [
         expect.objectContaining({
           attemptIndex: 0,
+          planArtifactType: "smart-crop-plan-9x16-attempt-000-v1",
           qa: expect.objectContaining({ repairTriggerCount: 1 }),
         }),
         expect.objectContaining({ attemptIndex: 1, status: "complete" }),
@@ -995,11 +1002,15 @@ describe("force retry", () => {
       buildFingerprint("asset123", CANONICAL_FP_AT),
     )
     seedArtifact("asset123", "smart-crop-plan-9x16-v1", buildApprovedPlan())
-    seedArtifact("asset123", "smart-crop-render-report-9x16-preview", {
-      ...PREVIEW_RENDER_REPORT,
-      assetId: "asset123",
-    })
-    seedArtifact("asset123", "smart-crop-qa-9x16-v1", {
+    seedArtifact(
+      "asset123",
+      "smart-crop-render-report-9x16-preview-attempt-000",
+      {
+        ...PREVIEW_RENDER_REPORT,
+        assetId: "asset123",
+      },
+    )
+    seedArtifact("asset123", "smart-crop-qa-9x16-attempt-000-v1", {
       verdict: "fail",
       issues: [{ severity: "critical", description: "old failure" }],
     })
@@ -1016,7 +1027,7 @@ describe("force retry", () => {
     ])
     const qaArtifact = readSeededArtifact(
       "asset123",
-      "smart-crop-qa-9x16-v1",
+      "smart-crop-qa-9x16-attempt-000-v1",
     ) as { verdict: string }
     expect(qaArtifact.verdict).toBe("pass")
     expect(updateJobMock).toHaveBeenCalledWith(
@@ -1035,11 +1046,15 @@ describe("force retry", () => {
       buildFingerprint("asset123", CANONICAL_FP_AT),
     )
     seedArtifact("asset123", "smart-crop-plan-9x16-v1", buildApprovedPlan())
-    seedArtifact("asset123", "smart-crop-render-report-9x16-preview", {
-      ...PREVIEW_RENDER_REPORT,
-      assetId: "asset123",
-    })
-    seedArtifact("asset123", "smart-crop-qa-9x16-v1", {
+    seedArtifact(
+      "asset123",
+      "smart-crop-render-report-9x16-preview-attempt-000",
+      {
+        ...PREVIEW_RENDER_REPORT,
+        assetId: "asset123",
+      },
+    )
+    seedArtifact("asset123", "smart-crop-qa-9x16-attempt-000-v1", {
       verdict: "fail",
       issues: [{ severity: "critical", description: "old failure" }],
     })

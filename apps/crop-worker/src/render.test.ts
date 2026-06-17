@@ -126,7 +126,7 @@ describe("buildCropFilter", () => {
 
   it("quotes the animated x expression so min(...)'s comma survives the filter parser", () => {
     expect(buildCropFilter(baseSegment)).toBe(
-      "crop=606:1080:'520+40*min(t/6,1)':0,scale=1080:1920:flags=lanczos,setsar=1",
+      "crop=606:1080:'520+40*min(t/6,1)':0,scale=1080:1920:flags=lanczos,setsar=1,setpts=PTS-STARTPTS",
     )
   })
 
@@ -139,7 +139,9 @@ describe("buildCropFilter", () => {
           { progress: 1, x: 100, y: 0, width: 606, height: 1080 },
         ],
       }),
-    ).toBe("crop=606:1080:'100':0,scale=1080:1920:flags=lanczos,setsar=1")
+    ).toBe(
+      "crop=606:1080:'100':0,scale=1080:1920:flags=lanczos,setsar=1,setpts=PTS-STARTPTS",
+    )
   })
 
   it("throws for a segment without keyframes", () => {
@@ -254,9 +256,11 @@ describe("runRender", () => {
       "-i",
       sourceUrl,
       "-vf",
-      "crop=606:1080:'520+40*min(t/10,1)':0,scale=1080:1920:flags=lanczos,setsar=1",
+      "crop=606:1080:'520+40*min(t/10,1)':0,scale=1080:1920:flags=lanczos,setsar=1,setpts=PTS-STARTPTS",
     ])
     expect(firstSegmentArgs.slice(11, -1)).toEqual([
+      "-af",
+      "asetpts=PTS-STARTPTS",
       "-c:v",
       "libx264",
       "-preset",

@@ -217,21 +217,6 @@ export function buildSmartCropAttemptArtifactKeys(
   attemptIndex: number,
 ): SmartCropAttemptArtifactKeys {
   const suffix = formatSmartCropAttemptSuffix(attemptIndex)
-  if (attemptIndex === 0) {
-    return {
-      attemptIndex,
-      suffix: null,
-      planLogicalKey: "smart-crop-plan",
-      planArtifactType: "smart-crop-plan-9x16-v1",
-      previewLogicalKey: "smart-crop-preview",
-      previewArtifactType: "smart-crop-preview-9x16",
-      renderReportLogicalKey: "smart-crop-render-report-preview",
-      renderReportArtifactType: "smart-crop-render-report-9x16-preview",
-      qaLogicalKey: "smart-crop-qa",
-      qaArtifactType: "smart-crop-qa-9x16-v1",
-      previewFrameLogicalKeyPattern: "smart-crop-preview-frame-9x16-{NNN}",
-    }
-  }
 
   return {
     attemptIndex,

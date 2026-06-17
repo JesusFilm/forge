@@ -97,7 +97,7 @@ export function buildCropFilter(segment: RenderSegment): string {
 
   const xExpression = buildXExpression(sorted, segment.durationSeconds)
 
-  return `crop=${first.width}:${first.height}:'${xExpression}':${first.y},scale=${TARGET_WIDTH}:${TARGET_HEIGHT}:flags=lanczos,setsar=1`
+  return `crop=${first.width}:${first.height}:'${xExpression}':${first.y},scale=${TARGET_WIDTH}:${TARGET_HEIGHT}:flags=lanczos,setsar=1,setpts=PTS-STARTPTS`
 }
 
 export type RenderProgress = (progress: number, message: string) => void
@@ -278,6 +278,8 @@ export async function runRender({
             sourceUrl,
             "-vf",
             filter,
+            "-af",
+            "asetpts=PTS-STARTPTS",
             "-c:v",
             "libx264",
             "-preset",

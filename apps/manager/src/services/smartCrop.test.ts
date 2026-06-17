@@ -195,10 +195,11 @@ describe("buildQaArtifact", () => {
 describe("smart crop repair attempts", () => {
   it("builds stable legacy and repair attempt keys", () => {
     expect(buildSmartCropAttemptArtifactKeys(0)).toMatchObject({
-      planLogicalKey: "smart-crop-plan",
-      planArtifactType: "smart-crop-plan-9x16-v1",
-      previewLogicalKey: "smart-crop-preview",
-      qaLogicalKey: "smart-crop-qa",
+      suffix: "attempt-000",
+      planLogicalKey: "smart-crop-plan-attempt-000",
+      planArtifactType: "smart-crop-plan-9x16-attempt-000-v1",
+      previewLogicalKey: "smart-crop-preview-attempt-000",
+      qaLogicalKey: "smart-crop-qa-attempt-000",
     })
     expect(buildSmartCropAttemptArtifactKeys(1)).toMatchObject({
       planLogicalKey: "smart-crop-plan-attempt-001",

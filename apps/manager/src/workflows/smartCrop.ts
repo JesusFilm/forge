@@ -526,7 +526,10 @@ async function runPlanPhase(
     await persistReport(input.jobId, report)
     await persistMergedArtifacts(
       input.jobId,
-      buildDownloadableArtifactManifest(["smart-crop-plan"]),
+      buildDownloadableArtifactManifest([
+        "smart-crop-plan",
+        buildSmartCropAttemptArtifactKeys(0).planLogicalKey,
+      ]),
     )
     if (result.skipped) {
       await markStepSkipped(input.jobId, "smart_crop_plan")
@@ -991,6 +994,7 @@ async function stepSmartCropPlan(args: {
   "use step"
   const { artifactExists, writeArtifact } = await import("@/services/storage")
   const smartCrop = await import("@/services/smartCrop")
+  const initialAttemptKeys = smartCrop.buildSmartCropAttemptArtifactKeys(0)
 
   const exists = await artifactExists(
     args.assetId,
@@ -1002,6 +1006,20 @@ async function stepSmartCropPlan(args: {
       await readJsonArtifact(args.assetId, "smart-crop-plan-9x16-v1"),
     )
     if (existing) {
+      const initialAttemptExists = await artifactExists(
+        args.assetId,
+        initialAttemptKeys.planArtifactType,
+        "json",
+      )
+      if (!initialAttemptExists) {
+        await writeArtifact({
+          assetId: args.assetId,
+          artifactType: initialAttemptKeys.planArtifactType,
+          ext: "json",
+          body: JSON.stringify(existing, null, 2),
+          contentType: "application/json",
+        })
+      }
       return {
         skipped: true,
         segmentCount: existing.segments.length,
@@ -1131,6 +1149,13 @@ async function stepSmartCropPlan(args: {
   await writeArtifact({
     assetId: args.assetId,
     artifactType: "smart-crop-plan-9x16-v1",
+    ext: "json",
+    body: JSON.stringify(plan, null, 2),
+    contentType: "application/json",
+  })
+  await writeArtifact({
+    assetId: args.assetId,
+    artifactType: initialAttemptKeys.planArtifactType,
     ext: "json",
     body: JSON.stringify(plan, null, 2),
     contentType: "application/json",

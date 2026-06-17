@@ -300,6 +300,22 @@ describe("POST /api/smart-crop/jobs/[id]/approve", () => {
     )
   })
 
+  it("requires an explicit selected attempt when an attempt manifest exists", async () => {
+    const attempts = buildAttemptsArtifact()
+    artifactExistsMock.mockResolvedValue(true)
+    readArtifactMock.mockResolvedValueOnce(
+      new TextEncoder().encode(JSON.stringify(attempts)),
+    )
+
+    const response = await POST(postRequest({ action: "approve" }), routeParams)
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Smart Crop attempt selection is required; refresh and try again",
+    })
+    expect(writeArtifactMock).not.toHaveBeenCalled()
+  })
+
   it("rejects selected attempts that are not ready for review", async () => {
     const attempts = buildAttemptsArtifact("planned")
     artifactExistsMock.mockResolvedValue(true)
