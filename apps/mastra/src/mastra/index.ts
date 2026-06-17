@@ -85,6 +85,10 @@ import {
   subtitleEnrichmentWorkflow,
 } from "./workflows/subtitle-enrichment"
 import {
+  handleTranscriptScriptureCorrectionRouteRequest,
+  transcriptScriptureCorrectionWorkflow,
+} from "./workflows/transcript-scripture-correction"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -138,6 +142,7 @@ export const mastra = new Mastra({
     smartCropQaWorkflow,
     instagramAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
+    transcriptScriptureCorrectionWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -416,6 +421,23 @@ export const mastra = new Mastra({
             serviceKeys,
             readJson: () => c.req.json(),
           })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-transcript-scripture-correction", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleTranscriptScriptureCorrectionRouteRequest(
+            {
+              authHeader: c.req.header("authorization"),
+              serviceKeys,
+              readJson: () => c.req.json(),
+            },
+          )
 
           return new Response(JSON.stringify(outcome.body), {
             status: outcome.status,

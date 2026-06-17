@@ -31,6 +31,14 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   the tool returns cited passages, the agent generates the answer). Fully
   optional config — unset degrades to an explicit unavailable result, never a
   boot failure.
+- Owns subtitle scripture accuracy validation for Bible-story results:
+  runs model-knowledge checks by default, can optionally compare against a
+  configured target-language Bible text source, and writes sanitized
+  Manager-compatible validation artifacts.
+- Owns source transcript scripture correction judgment through
+  `/forge-transcript-scripture-correction`: detects likely Bible-story source
+  transcripts and returns bounded correction candidates/flag-only findings.
+  Manager applies deterministic exact-match corrections and writes artifacts.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
@@ -76,6 +84,16 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Subtitle translation and retiming belongs in this runtime. Manager may call
   the service route and handle job state/Mux sync, but should not reintroduce
   provider-heavy subtitle execution.
+- Gospel-aware subtitle translation prompt steering belongs in this runtime.
+  Manager may send optional title, label, and Bible-reference context, but
+  Mastra owns scripture-context detection, translation prompt guidance, and
+  sanitized subtitle artifact provenance.
+- Subtitle scripture accuracy validation also belongs in this runtime. Missing
+  Bible-source configuration must fall back to `model_knowledge` validation,
+  not fail translation or require Manager-side scripture logic.
+- Source transcript scripture correction judgment also belongs in this runtime.
+  Return candidates and sanitized rationale only; do not mutate Manager source
+  artifacts or log raw prompts/full Bible passage text.
 - Firecrawl MCP is not the product runtime path. Revisit MCP only for local
   operator/coding-agent convenience or after a clear multi-tool server need.
 - Studio-facing workflows need structured Zod object input schemas on both the

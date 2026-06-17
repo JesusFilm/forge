@@ -45,6 +45,14 @@ type FocusableCardProps = {
   onBlur?: () => void
   hasTVPreferredFocus?: boolean
   focusScale?: number
+  /**
+   * Focus highlight style. "crimson" (default) is the app-wide Crimson Gallery
+   * glow — keep it on SDUI / series / legacy surfaces. "white" draws the
+   * WATCH_THEME white ring (a white border + neutral shadow) used by Home, the
+   * watch detail page, and Search; pass it on those surfaces so the focus
+   * treatment stays consistent. Matches ResultCard / HomeCard's white ring.
+   */
+  focusRing?: "crimson" | "white"
   accessibilityLabel?: string
   /** VoiceOver / TalkBack reads this after the label, on a short pause,
    *  to describe what activating the card does (e.g., "Opens this
@@ -61,6 +69,7 @@ export function FocusableCard({
   onBlur,
   hasTVPreferredFocus,
   focusScale,
+  focusRing = "crimson",
   accessibilityLabel,
   accessibilityHint,
   style,
@@ -69,6 +78,7 @@ export function FocusableCard({
   const [isFocused, setIsFocused] = useState(false)
   const scale = useRef(new Animated.Value(1)).current
   const targetScale = focusScale ?? 1.05
+  const whiteRing = focusRing === "white"
 
   const { layoutStyle, visualStyle } = useMemo(() => {
     if (style == null) return { layoutStyle: undefined, visualStyle: undefined }
@@ -129,7 +139,8 @@ export function FocusableCard({
         style={[
           styles.outer,
           layoutStyle,
-          isFocused && styles.focusGlow,
+          isFocused &&
+            (whiteRing ? styles.focusShadowNeutral : styles.focusGlow),
           { transform: [{ scale }] },
         ]}
       >
@@ -139,6 +150,13 @@ export function FocusableCard({
         >
           {children}
         </View>
+        {/* White focus ring — an inset border overlay on the non-clipping
+            outer (matches ResultCard / HomeCard). Mounted only while focused;
+            its constant geometry means toggling it never reflows the content
+            underneath. */}
+        {whiteRing && isFocused ? (
+          <View style={styles.whiteRing} pointerEvents="none" />
+        ) : null}
       </Animated.View>
     </Pressable>
   )
@@ -158,5 +176,30 @@ const styles = StyleSheet.create({
     shadowRadius: scaleSize(16),
     shadowOpacity: 0.6,
     shadowOffset: { width: 0, height: 0 },
+  },
+  // White-ring variant: a neutral dark drop shadow (no crimson) for depth,
+  // paired with the white border overlay below — the WATCH_THEME focus look.
+  focusShadowNeutral: {
+    shadowColor: "#000000",
+    shadowRadius: scaleSize(20),
+    shadowOpacity: 0.6,
+    shadowOffset: { width: 0, height: scaleSize(12) },
+    // Android TV renders shadows via elevation, not the iOS shadow* props
+    // (matches ResultCard's focused thumb).
+    elevation: 8,
+  },
+  // Inset white border hugging the card edge (design: 0 0 0 5px rgba white;
+  // SEARCH_THEME.ring / ResultCard use 0.88 — matched here at 0.9). borderRadius
+  // tracks styles.inner so the ring follows the rounded corners.
+  whiteRing: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: scaleSize(16),
+    // Match the established white ring width (ResultCard / HomeCard use 5).
+    borderWidth: scaleSize(5),
+    borderColor: "rgba(255,255,255,0.9)",
   },
 })

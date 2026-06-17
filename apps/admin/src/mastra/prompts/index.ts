@@ -28,6 +28,8 @@ export { AUTO_ENRICH_PROMPT } from "./auto-enrich-prompt"
 export { PLAN_EXPERIENCE_PROMPT } from "./plan-experience-prompt"
 export { CRITIQUE_EXPERIENCE_PROMPT } from "./critique-experience-prompt"
 export { REVISE_EXPERIENCE_PROMPT } from "./revise-experience-prompt"
+export { SKELETON_EXPERIENCE_PROMPT } from "./skeleton-prompt"
+export { FILL_EXPERIENCE_PROMPT } from "./fill-prompt"
 
 export type PromptId =
   | "draft-experience"
@@ -37,3 +39,5 @@ export type PromptId =
   | "plan-experience"
   | "critique-experience"
   | "revise-experience"
+  | "skeleton-experience"
+  | "fill-experience"

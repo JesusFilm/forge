@@ -83,7 +83,8 @@
     "toggleOn": "Naka-on",
     "toggleOff": "Naka-off",
     "close": "Isara",
-    "apply": "Ilapat"
+    "apply": "Ilapat",
+    "noLanguageSubtitles": "Walang subtitle sa {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",

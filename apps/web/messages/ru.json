@@ -83,7 +83,8 @@
     "toggleOn": "Вкл.",
     "toggleOff": "Выкл.",
     "close": "Закрыть",
-    "apply": "Применить"
+    "apply": "Применить",
+    "noLanguageSubtitles": "Нет субтитров на {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# СЕРИЯ} few {# СЕРИИ} many {# СЕРИЙ} other {# СЕРИИ}}",

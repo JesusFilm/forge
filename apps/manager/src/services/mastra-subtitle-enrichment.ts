@@ -1,12 +1,23 @@
 import { z } from "zod"
 
 import { env } from "@/config/env"
+import {
+  SubtitleValidationSummarySchema,
+  type SubtitleValidationSummary,
+} from "@/lib/subtitle-validation"
 
 export type LanguageResult = {
   lang: string
   status: "completed" | "failed"
   error?: string
-  artifactKeys?: { vtt: string; json: string }
+  artifactKeys?: { vtt: string; json: string; validation?: string }
+  validationSummary?: SubtitleValidationSummary
+}
+
+export type MastraSubtitleTranslationContext = {
+  videoTitle?: string
+  videoLabel?: string
+  bibleReferences?: string[]
 }
 
 export type MastraSubtitleEnrichmentInput = {
@@ -14,6 +25,7 @@ export type MastraSubtitleEnrichmentInput = {
   sourceLanguage: string
   targetLanguages: string[]
   model?: string
+  translationContext?: MastraSubtitleTranslationContext
 }
 
 export type MastraSubtitleEnrichmentResult =
@@ -57,9 +69,11 @@ const LanguageResultSchema = z
       .object({
         vtt: z.string().min(1),
         json: z.string().min(1),
+        validation: z.string().min(1).optional(),
       })
       .strict()
       .optional(),
+    validationSummary: SubtitleValidationSummarySchema.optional(),
   })
   .strict()
 
@@ -132,6 +146,9 @@ export async function launchMastraSubtitleEnrichment(
           sourceLanguage: input.sourceLanguage,
           targetLanguages: input.targetLanguages,
           ...(input.model ? { model: input.model } : {}),
+          ...(input.translationContext
+            ? { translationContext: input.translationContext }
+            : {}),
         }),
         signal: AbortSignal.timeout(
           options.timeoutMs ??

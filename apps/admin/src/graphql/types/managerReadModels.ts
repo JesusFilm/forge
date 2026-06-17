@@ -127,6 +127,8 @@ const ManagerVideoForEnrichmentRef = builder
     fields: (t) => ({
       documentId: t.exposeID("documentId"),
       coreId: t.exposeString("coreId", { nullable: true }),
+      title: t.exposeString("title", { nullable: true }),
+      label: t.exposeString("label", { nullable: true }),
       primaryLanguage: t.field({
         type: ManagerEnrichmentLanguageRef,
         nullable: true,
@@ -182,6 +184,17 @@ const ManagerVideoCoverageBreakdownRef = builder
     }),
   })
 
+const ManagerVideoCoverageParentRelationRef = builder
+  .objectRef<
+    ManagerVideoCoverage["parentRelations"][number]
+  >("ManagerVideoCoverageParentRelation")
+  .implement({
+    fields: (t) => ({
+      parentDocumentId: t.exposeString("parentDocumentId"),
+      order: t.exposeInt("order", { nullable: true }),
+    }),
+  })
+
 const ManagerVideoCoverageRef = builder
   .objectRef<ManagerVideoCoverage>("ManagerVideoCoverage")
   .implement({
@@ -196,6 +209,10 @@ const ManagerVideoCoverageRef = builder
       parentDocumentIds: t.field({
         type: ["String"],
         resolve: (row) => row.parentDocumentIds,
+      }),
+      parentRelations: t.field({
+        type: [ManagerVideoCoverageParentRelationRef],
+        resolve: (row) => row.parentRelations,
       }),
       coverage: t.field({
         type: ManagerVideoCoverageBreakdownRef,

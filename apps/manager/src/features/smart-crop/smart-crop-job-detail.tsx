@@ -19,6 +19,7 @@ import {
   hasSmartCropPreviewVideo,
   listSmartCropArtifactLinks,
 } from "./smart-crop-presenter"
+import { SmartCropPlanReviewPlayer } from "./smart-crop-plan-review-player"
 
 const SMART_CROP_POLL_INTERVAL_MS = 5_000
 
@@ -283,6 +284,8 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
           </div>
         </dl>
       </section>
+
+      <SmartCropPlanReviewPlayer job={job} />
 
       <section className="collection-card jobs-card">
         <div className="jobs-card-header">
