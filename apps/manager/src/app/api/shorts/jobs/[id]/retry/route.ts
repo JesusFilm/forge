@@ -25,6 +25,7 @@ import {
   releaseShortsLaunchSlot,
 } from "@/lib/shorts-claim"
 import { requireShortsWorkerConfig } from "@/lib/shorts-config"
+import { getShortsActiveStall } from "@/lib/shorts-stale"
 import { readShortsReport } from "@/lib/shorts-report"
 import { resetShortsStepsForLaunch } from "@/lib/workflow-steps"
 import { getJob, updateJob } from "@/lib/state"
@@ -135,6 +136,8 @@ export async function POST(
 
   const report = readShortsReport(job)
   const phase = report?.phase ?? "queued"
+  const activeStall =
+    job.status === "failed" ? null : getShortsActiveStall(job, report)
 
   // Resolve the dispatch per the lifecycle contract.
   let kind: "prepare" | "render"
@@ -147,6 +150,8 @@ export async function POST(
     forcePrepare = true
   } else if (RETRY_PREPARE_PHASES.has(phase)) {
     kind = "prepare"
+  } else if (activeStall) {
+    kind = activeStall.retryKind
   } else if (phase === "queued" && job.status === "failed") {
     // The create route's workflow launch failed before any phase transition
     // (todo 010): no workflow ever ran, so a prepare from scratch is the
