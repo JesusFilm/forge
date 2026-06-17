@@ -317,6 +317,7 @@ export function DownloadModal({
       languageSlug,
       renditionHeight: selected.download.height,
       tier: selected.tier,
+      videoSlug,
       videoTitle,
     })
 
