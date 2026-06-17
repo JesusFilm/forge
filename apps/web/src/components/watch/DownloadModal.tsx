@@ -42,7 +42,9 @@ export type DownloadModalProps = {
   posterUrl?: string | null
   /** Variant duration in seconds (used for the runtime overlay on the thumbnail). */
   durationSeconds?: number | null
+  languageCode?: string | null
   languageName?: string | null
+  languageSlug?: string | null
   variantId: string
   videoSlug: string
   onClose: () => void
@@ -103,7 +105,9 @@ export function DownloadModal({
   videoTitle,
   posterUrl,
   durationSeconds,
+  languageCode,
   languageName,
+  languageSlug,
   variantId,
   videoSlug,
   onClose,
@@ -307,7 +311,14 @@ export function DownloadModal({
     }
     setAuthChecking(false)
 
-    const filename = buildDownloadFilename(videoTitle, selected.tier)
+    const filename = buildDownloadFilename({
+      languageCode,
+      languageName,
+      languageSlug,
+      renditionHeight: selected.download.height,
+      tier: selected.tier,
+      videoTitle,
+    })
 
     // Route through our same-origin streaming proxy so the browser honors
     // the `download` attribute and `Content-Disposition: attachment`. A

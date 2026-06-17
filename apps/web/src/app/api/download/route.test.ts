@@ -190,13 +190,15 @@ describe("GET /watch/api/download — upstream success path", () => {
     const res = await GET(
       makeRequest({
         url: "https://stream.mux.com/abc.mp4",
-        filename: "jesus-highest.mp4",
+        filename: "Jesus-Film_English_eng_360p.mp4",
       }),
     )
     expect(res.status).toBe(200)
     const cd = res.headers.get("content-disposition") ?? ""
-    expect(cd).toContain('attachment; filename="jesus-highest.mp4"')
-    expect(cd).toContain("filename*=UTF-8''jesus-highest.mp4")
+    expect(cd).toContain(
+      'attachment; filename="Jesus-Film_English_eng_360p.mp4"',
+    )
+    expect(cd).toContain("filename*=UTF-8''Jesus-Film_English_eng_360p.mp4")
     expect(res.headers.get("content-type")).toBe("video/mp4")
     expect(res.headers.get("content-length")).toBe("11")
     expect(res.headers.get("cache-control")).toContain("no-store")
@@ -355,6 +357,21 @@ describe("GET /watch/api/download — filename sanitization", () => {
     )
     const cd = res.headers.get("content-disposition") ?? ""
     expect(cd).toMatch(/filename="Adobe-Update\.mp4"/)
+  })
+
+  it("preserves an allowed extension when clamping long filenames", async () => {
+    mockUpstream(new Response("ok", { status: 200 }))
+    const res = await GET(
+      makeRequest({
+        url: "https://stream.mux.com/abc.mp4",
+        filename: `${"Jesus-Film-".repeat(30)}_English_eng_360p.mp4`,
+      }),
+    )
+    const cd = res.headers.get("content-disposition") ?? ""
+    const match = cd.match(/filename="([^"]+)"/)
+    const filename = match?.[1] ?? ""
+    expect(filename).toMatch(/\.mp4$/)
+    expect(filename.length).toBeLessThanOrEqual(200)
   })
 
   it("falls back to a `download` literal when the sanitized filename collapses to empty", async () => {

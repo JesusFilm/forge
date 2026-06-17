@@ -585,7 +585,23 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       })
       .mockResolvedValueOnce({
         data: {
-          videoDub: makeRussianDub(),
+          videoDub: makeRussianDub({
+            language: {
+              coreId: "3934",
+              bcp47: "ru",
+              iso3: "rus",
+              slug: "russian",
+              name: "Russian",
+            },
+            downloads: [
+              {
+                documentId: "download-ru-low",
+                height: 360,
+                quality: "low",
+                size: "1048576",
+              },
+            ],
+          }),
         },
       })
 
@@ -608,6 +624,15 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     })
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.selectedVariant.language?.slug).toBe("russian")
+    expect(result?.selectedVariant.language?.iso3).toBe("rus")
+    expect(result?.selectedVariant.downloads).toEqual([
+      {
+        documentId: "download-ru-low",
+        height: 360,
+        quality: "low",
+        size: "1048576",
+      },
+    ])
   })
 
   it("uses broad BCP-47 content before English when exact languageSlug content is missing", async () => {
