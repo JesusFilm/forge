@@ -47,6 +47,35 @@ export type SmartCropPlanShot = {
   frameUrls: readonly string[]
 }
 
+export type SmartCropPreviousSegment = {
+  shotId: string
+  canonicalStart: number
+  canonicalEnd: number
+  mode: SmartCropMode
+  primarySubject: string
+  secondarySubjects: string[]
+  avoidCutting: string[]
+  confidence: number
+  cropKeyframes: Array<{
+    progress: number
+    x: number
+    y: number
+    width: number
+    height: number
+  }>
+}
+
+export type SmartCropRepairIssue = {
+  severity: SmartCropQaIssueSeverity
+  description: string
+  atSeconds?: number
+  shotId?: string
+}
+
+export type SmartCropRepairShot = SmartCropPlanShot & {
+  previousSegment: SmartCropPreviousSegment
+}
+
 export type SmartCropShotIntent = {
   shotId: string
   mode: SmartCropMode
@@ -64,6 +93,18 @@ export type RequestShotCropIntentsOptions = {
   shots: readonly SmartCropPlanShot[]
   source: { width: number; height: number }
   cropMode: string
+  model: string
+  apiKey?: string
+  fetchImpl?: typeof fetch
+  timeoutMs?: number
+}
+
+export type RequestShotRepairIntentsOptions = {
+  shots: readonly SmartCropRepairShot[]
+  issues: readonly SmartCropRepairIssue[]
+  source: { width: number; height: number }
+  target: { aspectRatio: "9:16"; width: number; height: number }
+  attempt: { index: number; previousPlanGeneratedAt: string }
   model: string
   apiKey?: string
   fetchImpl?: typeof fetch
@@ -394,6 +435,62 @@ function buildPlanInstruction(cropMode: string): string {
   ].join("\n")
 }
 
+function buildRepairInstruction(): string {
+  return [
+    "You repair 9:16 vertical crop decisions for ONLY the selected video shots.",
+    "Use each shot's previousSegment as the baseline and address the bounded QA issues.",
+    "Return one replacement crop intent for every requested shotId and no other shotIds.",
+    "Do not change shot timing. Do not mention credentials, URLs, or implementation details.",
+    `For each shot, return mode as one of ${SMART_CROP_MODES.join(" | ")}.`,
+    "- primarySubject: short string naming the main subject to keep in frame.",
+    "- secondarySubjects: array of short strings for other notable subjects.",
+    "- avoidCutting: array of elements the crop must not cut (faces, on-screen text, ...).",
+    "- confidence: 0..1 for how certain you are about the repaired subject placement.",
+    "- subjectCenter: repaired start/end position of the primary subject as NORMALIZED cx, cy in [0,1] (cx from left, cy from top).",
+    "Return JSON only.",
+  ].join("\n")
+}
+
+function validateShotIntents(
+  intents: readonly SmartCropShotIntent[],
+  expectedShotIds: readonly string[],
+  context: string,
+): SmartCropShotIntent[] {
+  const intentsByShotId = new Map<string, SmartCropShotIntent>()
+  for (const intent of intents) {
+    if (intentsByShotId.has(intent.shotId)) {
+      throw new SmartCropProviderError(
+        "provider_invalid_output",
+        false,
+        `${context} response repeated shotId ${intent.shotId}`,
+      )
+    }
+    intentsByShotId.set(intent.shotId, intent)
+  }
+
+  const expected = new Set(expectedShotIds)
+  for (const shotId of expectedShotIds) {
+    if (!intentsByShotId.has(shotId)) {
+      throw new SmartCropProviderError(
+        "provider_invalid_output",
+        false,
+        `${context} response is missing shotId ${shotId}`,
+      )
+    }
+  }
+  for (const shotId of intentsByShotId.keys()) {
+    if (!expected.has(shotId)) {
+      throw new SmartCropProviderError(
+        "provider_invalid_output",
+        false,
+        `${context} response includes unknown shotId ${shotId}`,
+      )
+    }
+  }
+
+  return expectedShotIds.map((shotId) => intentsByShotId.get(shotId)!)
+}
+
 /**
  * One chat completion covering ALL provided shots (callers batch <= 8 shots,
  * <= 3 frame URLs each). Every input shotId must appear exactly once in the
@@ -451,39 +548,91 @@ export async function requestShotCropIntents({
     "smart crop plan",
   )
 
-  const intentsByShotId = new Map<string, SmartCropShotIntent>()
-  for (const intent of parsed.shots) {
-    if (intentsByShotId.has(intent.shotId)) {
-      throw new SmartCropProviderError(
-        "provider_invalid_output",
-        false,
-        `smart crop plan response repeated shotId ${intent.shotId}`,
-      )
-    }
-    intentsByShotId.set(intent.shotId, intent)
+  return {
+    intents: validateShotIntents(
+      parsed.shots,
+      shots.map((shot) => shot.shotId),
+      "smart crop plan",
+    ),
+    usage,
   }
-  const expectedShotIds = new Set(shots.map((shot) => shot.shotId))
+}
+
+/**
+ * One chat completion repairing only selected shots. The model sees selected
+ * frames, bounded QA issues, and previous segment metadata; output remains
+ * untrusted until exact shot-id validation and deterministic planning.
+ */
+export async function requestShotRepairIntents({
+  shots,
+  issues,
+  source,
+  target,
+  attempt,
+  model,
+  apiKey,
+  fetchImpl,
+  timeoutMs,
+}: RequestShotRepairIntentsOptions): Promise<ShotCropIntentsResult> {
+  const content: UserContentPart[] = [
+    {
+      type: "text",
+      text: [
+        buildRepairInstruction(),
+        `Source video is ${source.width}x${source.height} pixels.`,
+        `Target crop is ${target.aspectRatio} at ${target.width}x${target.height}.`,
+        `Repair attempt index: ${attempt.index}. Previous plan generated at: ${attempt.previousPlanGeneratedAt}.`,
+        `QA issues: ${JSON.stringify(issues)}`,
+      ].join("\n"),
+    },
+  ]
+
   for (const shot of shots) {
-    if (!intentsByShotId.has(shot.shotId)) {
-      throw new SmartCropProviderError(
-        "provider_invalid_output",
-        false,
-        `smart crop plan response is missing shotId ${shot.shotId}`,
-      )
-    }
-  }
-  for (const shotId of intentsByShotId.keys()) {
-    if (!expectedShotIds.has(shotId)) {
-      throw new SmartCropProviderError(
-        "provider_invalid_output",
-        false,
-        `smart crop plan response includes unknown shotId ${shotId}`,
-      )
+    content.push({
+      type: "text",
+      text: [
+        `shotId ${shot.shotId} (${shot.start}s-${shot.end}s):`,
+        `previousSegment: ${JSON.stringify(shot.previousSegment)}`,
+      ].join("\n"),
+    })
+    for (const frameUrl of shot.frameUrls) {
+      content.push({ type: "image_url", image_url: { url: frameUrl } })
     }
   }
 
+  const { content: responseText, usage } = await postChatCompletion({
+    apiKey,
+    title: "Forge Mastra Smart Crop Repair",
+    fetchImpl,
+    timeoutMs,
+    body: {
+      model,
+      messages: [{ role: "user", content }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "smart_crop_repair_intents",
+          strict: true,
+          schema: SHOT_INTENTS_JSON_SCHEMA,
+        },
+      },
+      max_tokens: 4000,
+      temperature: 0,
+    },
+  })
+
+  const parsed = parseStructuredContent(
+    responseText,
+    ShotIntentsResponseSchema,
+    "smart crop repair",
+  )
+
   return {
-    intents: shots.map((shot) => intentsByShotId.get(shot.shotId)!),
+    intents: validateShotIntents(
+      parsed.shots,
+      shots.map((shot) => shot.shotId),
+      "smart crop repair",
+    ),
     usage,
   }
 }
@@ -557,6 +706,7 @@ export async function requestRenderQaReview({
 
 export const _internals = {
   buildPlanInstruction,
+  buildRepairInstruction,
   extractUsage,
   extractMessageContent,
   SHOT_INTENTS_JSON_SCHEMA,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildDownloadableArtifactManifest,
   buildJobArtifactHref,
+  formatJobArtifactLabel,
   getArtifactsForStep,
   getJobArtifactStorageAssetId,
   resolveJobArtifactDescriptor,
@@ -258,6 +259,28 @@ describe("job artifact helpers", () => {
     expect(
       resolveJobArtifactDescriptor("smart-crop-preview-frame-9x16-1"),
     ).toBeNull()
+  })
+
+  it("resolves smart-crop attempt artifacts dynamically", () => {
+    expect(resolveJobArtifactDescriptor("smart-crop-plan-attempt-001")).toEqual(
+      {
+        artifactType: "smart-crop-plan-9x16-attempt-001-v1",
+        ext: "json",
+        contentType: "application/json",
+      },
+    )
+    expect(
+      resolveJobArtifactDescriptor(
+        "smart-crop-preview-frame-9x16-001-attempt-001",
+      ),
+    ).toEqual({
+      artifactType: "smart-crop-preview-frame-9x16-001-attempt-001",
+      ext: "jpg",
+      contentType: "image/jpeg",
+    })
+    expect(formatJobArtifactLabel("smart-crop-qa-attempt-001")).toBe(
+      "Smart Crop QA report (attempt 001)",
+    )
   })
 
   it("maps smart-crop artifacts to their steps", () => {

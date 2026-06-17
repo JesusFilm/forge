@@ -126,6 +126,7 @@ export type SmartCropQaIssue = {
   severity: "info" | "warning" | "critical"
   description: string
   atSeconds?: number
+  shotId?: string
 }
 
 export type SmartCropQaLaunchResult =
@@ -164,9 +165,37 @@ export type SmartCropQaLaunchInput = {
   asset: { assetId: string }
   renderMode: "preview" | "full"
   planSummary: { segmentCount: number; modes: Record<string, number> }
-  frames: Array<{ atSeconds: number; url: string }>
+  frames: Array<{ atSeconds: number; url: string; shotId?: string }>
   model?: string
 }
+
+export type SmartCropRepairLaunchInput = {
+  asset: { assetId: string; playbackId?: string }
+  source: { width: number; height: number; durationSeconds: number }
+  target: { aspectRatio: "9:16"; width: number; height: number }
+  attempt: {
+    index: number
+    previousPlanGeneratedAt: string
+  }
+  issues: SmartCropQaIssue[]
+  shots: Array<{
+    shotId: string
+    start: number
+    end: number
+    previousSegment: SmartCropPlanSegment
+    frameUrls: string[]
+  }>
+  model?: string
+}
+
+export type SmartCropRepairLaunchResult =
+  | {
+      ok: true
+      segments: SmartCropPlanSegment[]
+      usage: SmartCropUsage
+      model: string
+    }
+  | MastraSmartCropFailure
 
 export type LaunchMastraSmartCropOptions = {
   baseUrl?: string
@@ -449,6 +478,7 @@ function parseQaResult(value: unknown): SmartCropQaLaunchResult | null {
       description: issue.description,
       atSeconds:
         typeof issue.atSeconds === "number" ? issue.atSeconds : undefined,
+      shotId: typeof issue.shotId === "string" ? issue.shotId : undefined,
     })
   }
 
@@ -459,6 +489,35 @@ function parseQaResult(value: unknown): SmartCropQaLaunchResult | null {
     usage,
     model: result.model,
   }
+}
+
+function parseRepairResult(value: unknown): SmartCropRepairLaunchResult | null {
+  const record = asRecord(value)
+  const result = asRecord(record?.result)
+  if (!result || typeof result.ok !== "boolean") return null
+
+  if (result.ok === false) {
+    return parseFailure(result)
+  }
+
+  if (!Array.isArray(result.segments) || typeof result.model !== "string") {
+    return null
+  }
+  const usage = parseUsage(result.usage)
+  if (!usage) {
+    return null
+  }
+
+  const segments: SmartCropPlanSegment[] = []
+  for (const entry of result.segments) {
+    const segment = parsePlanSegment(entry)
+    if (!segment) {
+      return null
+    }
+    segments.push(segment)
+  }
+
+  return { ok: true, segments, usage, model: result.model }
 }
 
 type PostToMastraOutcome =
@@ -564,8 +623,17 @@ export async function launchSmartCropQa(
   return finalizeResult(outcome, parseQaResult)
 }
 
+export async function launchSmartCropRepair(
+  input: SmartCropRepairLaunchInput,
+  options: LaunchMastraSmartCropOptions = {},
+): Promise<SmartCropRepairLaunchResult> {
+  const outcome = await postToMastra("/forge-smart-crop-repair", input, options)
+  return finalizeResult(outcome, parseRepairResult)
+}
+
 export const _internals = {
   parsePlanResult,
   parseAlignResult,
   parseQaResult,
+  parseRepairResult,
 }
