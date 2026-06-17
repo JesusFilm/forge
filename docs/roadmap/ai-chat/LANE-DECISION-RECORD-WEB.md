@@ -119,6 +119,65 @@ outcomes only decide the lane's **registration** and the renumber.
 
 ---
 
+## Frontmatter vocabulary additions (apply with outcome A)
+
+Code review of #1277 (feat-192) flagged frontmatter values outside the
+vocabularies declared in root `CLAUDE.md` → "Feature File Format". Where a value
+is an **intended addition**, the ticket keeps it (tracked deviation, same gated
+posture as the provisional tags noted in problem 2) and root `CLAUDE.md` is
+extended **when the lane decision lands** (outcome A), in the same atomic pass as
+the renumber. Where a value is **wrong** (borrowed from another app, or a one-off
+descriptor), the renumber pass corrects the ticket instead of extending the
+vocabulary.
+
+### Add to the allowed vocabulary
+
+1. **Owner `jianwei`.** Not in the allowed owner set
+   (`tataihono, vlad, ekkasit, nisal, urim`). `jianwei` owns the chat web-app
+   line and will own more tickets on this trunk — **add `jianwei` to the allowed
+   owner set** in root `CLAUDE.md` "Feature File Format" rather than reassigning
+   the ticket. (Owner is a one-line change under any outcome; doing it at
+   decision time avoids a churny pre-merge edit on a gated trunk.)
+
+2. **Tag `ai-chat` (only).** Not in the allowed tag vocabulary
+   (`cms, manager, web, mobile, tv, graphql, ai-pipeline, search, pgvector, infrastructure, i18n`).
+   **Add exactly one tag — `ai-chat`** — as part of registering the lane. It is
+   the lane's domain/capability tag (sibling to `ai-pipeline`), and it is the
+   umbrella that spans BOTH this `apps/chat` web line AND the Mastra/seeker
+   backend work — one concept, one name, mirroring the lane directory.
+
+### Do NOT add (correct the tickets instead, at the renumber pass)
+
+- **`chat` tag — rejected.** Too generic, and it collides semantically with the
+  unrelated admin AI-chat work (experience-editor chat panel, four-channel
+  providers, thumb-rating scorer — see `docs/brainstorms/2026-05-*`). A flat
+  searchable vocabulary should not carry both `chat` and `ai-chat`; `ai-chat` is
+  the specific, non-colliding name. Tickets currently carrying `chat` drop it for
+  `ai-chat`.
+- **`web` tag — wrong app; remove.** In this repo `web` is the **`apps/web`**
+  app tag (the watch/search/experience consumer app), parallel to `mobile` / `tv`
+  / `manager` / `cms`. `apps/chat` is a separate deployable that does not touch
+  `apps/web`, so `web` on a chat ticket mis-files it. Remove `web` from the chat
+  tickets (do not treat it as an addition).
+- **`scaffold` tag — rejected.** A one-off activity descriptor, not a durable
+  searchable facet. `infrastructure` already covers standing up a new app's
+  skeleton + deploy config. Drop `scaffold`; keep `infrastructure`.
+
+### Resulting ticket tags (apply at the renumber pass)
+
+- **feat-192** (Vigil re-skin): `["web", "chat", "ai-chat"]` → **`["ai-chat"]`**.
+- **feat-174** (scaffold): `["infrastructure", "chat", "scaffold"]` →
+  **`["infrastructure", "ai-chat"]`**.
+
+> No app-scoped tag is minted for `apps/chat` (the obvious name `chat` is the one
+> rejected above, and the `ai-chat/` lane directory already provides the app
+> grouping). Introduce one later only if a concrete need appears.
+
+Under outcome **C** (drop the tickets), no vocabulary addition is needed — the
+tickets are deleted and the vocabularies stay as-is.
+
+---
+
 ## Reference inventory — files to update on renumber/relocate
 
 Generated from `git grep -lE 'feat-174'` + `chat-app-scaffold` on
@@ -183,9 +242,12 @@ record).
 4. Apply the change across every IN-SCOPE file (rename the roadmap ticket file,
    update frontmatter `id`/`depends_on`/`blocks`, update all ID + path + plan-seq
    strings).
-5. For outcome A: apply the canonical lane edits (per the seeker record) and add
-   the lane to `docs/roadmap/README.md`. For outcome C: delete the chat roadmap
-   ticket and repoint inbound references to the plan docs / PRs.
+5. For outcome A: apply the canonical lane edits (per the seeker record), add
+   the lane to `docs/roadmap/README.md`, apply the **Frontmatter vocabulary
+   additions** above (owner `jianwei`; the single tag `ai-chat`) to root
+   `CLAUDE.md` "Feature File Format", AND correct the ticket tags per "Resulting
+   ticket tags" above (drop `web` / `chat` / `scaffold`). For outcome C: delete
+   the chat roadmap ticket and repoint inbound references to the plan docs / PRs.
 6. Update PR #1276's body + this record (mark complete).
 7. **Verify zero stale references** before merging the renumber:
 

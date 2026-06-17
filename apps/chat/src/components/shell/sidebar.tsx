@@ -6,6 +6,7 @@ import { type Conversation } from "@/lib/conversations"
 type SidebarProps = {
   conversations: Conversation[]
   activeId: string
+  pendingIds: ReadonlySet<string>
   onNew: () => void
   onSelect: (id: string) => void
 }
@@ -17,6 +18,7 @@ type SidebarProps = {
 export function Sidebar({
   conversations,
   activeId,
+  pendingIds,
   onNew,
   onSelect,
 }: SidebarProps) {
@@ -49,20 +51,33 @@ export function Sidebar({
         <ul className="flex flex-col gap-0.5">
           {conversations.map((conversation) => {
             const active = conversation.id === activeId
+            const replying = pendingIds.has(conversation.id)
             return (
               <li key={conversation.id}>
                 <button
                   type="button"
                   aria-current={active ? "true" : undefined}
                   onClick={() => onSelect(conversation.id)}
-                  className={`w-full truncate rounded-lg px-3.5 py-2.5 text-left text-sm transition-colors duration-300 ${
+                  className={`flex w-full items-center gap-2 rounded-lg px-3.5 py-2.5 text-left text-sm transition-colors duration-300 ${
                     active
                       ? "bg-linen/[0.06] text-linen"
                       : "text-ash hover:bg-linen/[0.03] hover:text-linen"
                   }`}
                   title={conversation.title}
                 >
-                  {conversation.title}
+                  <span className="min-w-0 flex-1 truncate">
+                    {conversation.title}
+                  </span>
+                  {replying ? (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        data-replying="true"
+                        className="size-1.5 shrink-0 rounded-full bg-lamplight [animation:vigil-pulse_2s_var(--ease-vigil)_infinite]"
+                      />
+                      <span className="sr-only">Replying</span>
+                    </>
+                  ) : null}
                 </button>
               </li>
             )

@@ -15,6 +15,7 @@ export function AppShell() {
     activeConversation,
     draft,
     pending,
+    pendingIds,
     setDraft,
     send,
     newConversation,
@@ -26,6 +27,7 @@ export function AppShell() {
       <Sidebar
         conversations={conversations}
         activeId={activeId}
+        pendingIds={pendingIds}
         onNew={newConversation}
         onSelect={selectConversation}
       />

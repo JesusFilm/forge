@@ -104,3 +104,22 @@ In-browser smoke (headless Chromium via chrome-devtools MCP): empty state shows
 the Newsreader prompt + starters; clicking a starter sends → Embersoot user
 bubble + stub reply; sidebar item auto-retitles; "+ New conversation" opens a
 fresh empty conversation while the prior one persists in the rail.
+
+## What was shipped
+
+Delivered via **#1277** (squash-merged into trunk **#1276**). A follow-up pass
+with `/ce-code-review` (three rounds) hardened the shipped UI — same scope, no
+new requirements — landed in **#<follow-up PR>**:
+
+- Pending state moved from one global flag to **per-conversation** (single
+  source of truth): the pulse cursor + disabled composer attach to the
+  conversation actually awaiting a reply, and one slow reply no longer locks the
+  others.
+- Reply-slot release wrapped in `try/finally` (fire-and-forget slot-leak guard),
+  ahead of the eventual Mastra async swap.
+- `Message` type moved to `conversations.ts` so it survives the stub seam's
+  deletion.
+- Behavioral tests added for mid-reply switching, parallel sends, and the
+  slot-leak guard.
+
+Recorded here in lieu of a separate ticket.

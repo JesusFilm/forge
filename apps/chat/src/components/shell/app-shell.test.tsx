@@ -4,7 +4,9 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import * as chatStub from "@/lib/chat-stub"
 import { buildStubReply, STUB_REPLY_DELAY_MS } from "@/lib/chat-stub"
+import { deriveTitle } from "@/lib/conversations"
 import { AppShell } from "./app-shell"
 
 // Quiet React's "not configured to support act" warnings (same flag the
@@ -108,6 +110,41 @@ function messageTexts(): string[] {
 
 function isPending(): boolean {
   return getLog().querySelector("[data-pending]") !== null
+}
+
+function getConversationNav(): HTMLElement {
+  const el = container.querySelector<HTMLElement>(
+    'nav[aria-label="Conversations"]',
+  )
+  if (!el) throw new Error("conversation nav not found")
+  return el
+}
+
+function clickNewConversation() {
+  act(() => {
+    const newButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('button[type="button"]'),
+    ).find((b) => b.textContent?.includes("New conversation"))
+    if (!newButton) throw new Error("New conversation button not found")
+    newButton.click()
+  })
+}
+
+// Click a conversation in the sidebar rail by its visible title. Scoped to the
+// nav so the "New conversation" action is never matched.
+function selectSidebarConversation(title: string) {
+  act(() => {
+    const btn = Array.from(
+      getConversationNav().querySelectorAll<HTMLButtonElement>("button"),
+    ).find((b) => b.textContent?.includes(title))
+    if (!btn) throw new Error(`sidebar conversation "${title}" not found`)
+    btn.click()
+  })
+}
+
+// How many sidebar rows show the per-conversation "replying" pulse.
+function sidebarReplyingCount(): number {
+  return getConversationNav().querySelectorAll("[data-replying]").length
 }
 
 describe("AppShell", () => {
@@ -276,5 +313,118 @@ describe("AppShell", () => {
     expect(messageTexts()).toHaveLength(0)
     expect(container.textContent).toContain("What would you like to ask?")
     expect(container.textContent).toContain("keep me")
+  })
+
+  it("auto-titles the prior conversation in the rail from its first message", () => {
+    sendMessage("keep me titled")
+    awaitReply()
+
+    const titles = Array.from(
+      getConversationNav().querySelectorAll<HTMLButtonElement>("button"),
+    ).map((b) => b.textContent ?? "")
+    // Explicit: the rail row shows the derived title, not the default
+    // "New conversation" placeholder (the message-list text is excluded
+    // because we only read the sidebar nav).
+    expect(titles).toContain(deriveTitle("keep me titled"))
+    expect(titles).not.toContain("New conversation")
+  })
+
+  it("keeps a reply routed to its originating conversation when the user switches mid-reply", () => {
+    sendMessage("question in A")
+    // Switch to a fresh conversation before A's stub reply fires.
+    clickNewConversation()
+
+    // The new conversation is genuinely idle: empty, not pending, composer live.
+    expect(messageTexts()).toHaveLength(0)
+    expect(isPending()).toBe(false)
+    expect(getTextarea().disabled).toBe(false)
+
+    awaitReply()
+
+    // The reply landed in A, not the conversation that was active when it fired.
+    selectSidebarConversation(deriveTitle("question in A"))
+    const texts = messageTexts()
+    expect(texts).toHaveLength(2)
+    expect(texts[0]).toBe("question in A")
+    expect(texts[1]).toBe(buildStubReply("question in A"))
+  })
+
+  it("attaches the pending pulse to the awaiting conversation, not whichever is active", () => {
+    sendMessage("first")
+    expect(sidebarReplyingCount()).toBe(1)
+
+    clickNewConversation()
+    // Active pane (the new, empty conversation) shows no pending cursor...
+    expect(isPending()).toBe(false)
+    expect(getTextarea().disabled).toBe(false)
+    // ...but the rail still marks the original conversation as replying.
+    expect(sidebarReplyingCount()).toBe(1)
+
+    awaitReply()
+    expect(sidebarReplyingCount()).toBe(0)
+  })
+
+  it("allows sending in a second conversation while the first is still pending", () => {
+    sendMessage("alpha")
+    clickNewConversation()
+    // This send must NOT be swallowed by a cross-conversation lock.
+    sendMessage("beta")
+
+    expect(messageTexts()).toContain("beta")
+    expect(sidebarReplyingCount()).toBe(2)
+
+    awaitReply()
+    expect(sidebarReplyingCount()).toBe(0)
+
+    // Each reply landed in its own conversation.
+    expect(messageTexts()).toEqual(["beta", buildStubReply("beta")])
+    selectSidebarConversation(deriveTitle("alpha"))
+    expect(messageTexts()).toEqual(["alpha", buildStubReply("alpha")])
+  })
+
+  it("restores a prior conversation's messages when reselected from the rail", () => {
+    sendMessage("conv one")
+    awaitReply()
+    clickNewConversation()
+    sendMessage("conv two")
+    awaitReply()
+
+    selectSidebarConversation(deriveTitle("conv one"))
+    expect(messageTexts()).toEqual(["conv one", buildStubReply("conv one")])
+  })
+
+  it("releases the pending slot when reply generation throws, so the conversation can send again", () => {
+    // Latent with the pure stub, but this is the slot-leak guard that matters
+    // once the real (rejectable) Mastra call replaces buildStubReply: the
+    // finally must clear the timer/pending slot even on a throw.
+    const spy = vi
+      .spyOn(chatStub, "buildStubReply")
+      .mockImplementationOnce(() => {
+        throw new Error("reply boom")
+      })
+
+    sendMessage("trigger throw")
+    expect(isPending()).toBe(true)
+
+    // The thrown reply propagates out of the timer, but the finally already
+    // ran clearTimer, freeing the per-conversation slot.
+    expect(() => awaitReply()).toThrow("reply boom")
+
+    // Proof the slot was released: a fresh send is accepted (not swallowed by
+    // the double-send guard) and resolves cleanly, leaving the pane idle.
+    spy.mockRestore()
+    sendMessage("after throw")
+    expect(messageTexts()).toContain("after throw")
+    awaitReply()
+    expect(isPending()).toBe(false)
+    expect(getTextarea().disabled).toBe(false)
+  })
+
+  it("treats reselecting the active conversation as a no-op and keeps the draft", () => {
+    // The sole conversation starts active with the default title. Reselecting
+    // it must hit the early-return guard (no draft reset).
+    typeDraft("draft in progress")
+    selectSidebarConversation("New conversation")
+    expect(getTextarea().value).toBe("draft in progress")
   })
 })

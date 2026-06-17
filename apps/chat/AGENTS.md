@@ -21,7 +21,9 @@ Scope: `apps/chat`.
 - Do not wire real agents, auth, or a database without a roadmap ticket —
   this app is stub-only by design (feat-174).
 - Do not add API routes, server actions, or streaming.
-- Do not add a conversation sidebar or persistence.
+- Do not add conversation persistence (a database, or storage that survives a
+  refresh) without a roadmap ticket. The multi-conversation sidebar (feat-192)
+  is intentionally client-only and resets on refresh.
 - Do not import internals from other apps; no app may import from
   `apps/chat`.
 - Do not assign a `jesusfilm.org` DNS entry to the deployed service.

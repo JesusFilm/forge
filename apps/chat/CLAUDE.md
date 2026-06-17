@@ -29,9 +29,9 @@ src/
     brand/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
   lib/
-    chat-stub.ts         Reply-generation seam (Message type) — the Mastra wiring replaces THIS file
-    conversations.ts     Conversation type + createConversation / deriveTitle helpers
-    use-conversations.ts Client hook: send + reply timer + pending double-send guard + new/select conversation
+    chat-stub.ts         Reply-generation seam — the Mastra wiring replaces THIS file
+    conversations.ts     Message + Conversation types + createConversation / deriveTitle helpers
+    use-conversations.ts Client hook: send + per-conversation reply timers + per-conversation pending + double-send guard + new/select conversation
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
     jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx)
@@ -43,9 +43,11 @@ public/                  Static assets served by URL (Next.js convention, matche
   — `chat.tsx` does not own state. Data flows one way:
   `useConversations` → `AppShell` → `Sidebar` / `Chat` → leaf components.
 - **The stub seam:** reply generation is isolated in `lib/chat-stub.ts`. The
-  hook only orchestrates timing, the pending guard, and which conversation a
-  reply lands in. The `Message` shape (`id`/`role`/`content`) is AI-SDK-aligned
-  so the eventual swap renames nothing.
+  hook only orchestrates timing, the per-conversation pending/double-send guard,
+  and which conversation a reply lands in. The `Message` type lives in
+  `lib/conversations.ts` (NOT in the stub seam) so it survives the seam's
+  deletion; its `id`/`role`/`content` shape is AI-SDK-aligned so the eventual
+  swap renames nothing.
 - **Sidebar is our own addition**, not from the design system — the Vigil
   system as handed to us is single-surface (it lists no conversation sidebar),
   so the rail was built from its tokens rather than copied from it. This too may
@@ -80,8 +82,9 @@ admin's `MASTRA_BASE_URL` pattern) vs through the existing
 see `docs/solutions/platform/mastra-studio-gateway-auth-railway-pattern-20260522.md`).
 Do not wire either without a roadmap ticket that settles the path.
 
-`src/lib/chat-stub.ts` is the seam the real wiring replaces: the `Message`
-shape (`id`/`role`/`content`) is AI-SDK-aligned so the swap renames nothing.
+`src/lib/chat-stub.ts` is the seam the real wiring replaces. The `Message` type
+lives in `src/lib/conversations.ts` (so it outlives the seam); its
+`id`/`role`/`content` shape is AI-SDK-aligned so the swap renames nothing.
 
 ## Intentionally Absent
 
@@ -95,8 +98,11 @@ shape (`id`/`role`/`content`) is AI-SDK-aligned so the swap renames nothing.
 ## Key Conventions
 
 - Server Components by default. Client components are the interactive ones:
-  `shell/app-shell.tsx`, `shell/sidebar.tsx`, and `chat/*`. `brand/*` and the
-  `app/` entry files stay server.
+  `shell/app-shell.tsx`, `shell/sidebar.tsx`, `chat/chat.tsx`,
+  `chat/composer.tsx`, and `chat/empty-state.tsx`. `chat/message-list.tsx` is a
+  pure presentational render (no hooks/handlers) so it carries no `'use client'`
+  and inherits its parent's client context. `brand/*` and the `app/` entry files
+  stay server.
 - Strict TypeScript, `src/` layout, `@/*` path alias — config mirrors
   `apps/web` (the CI-proven template).
 - Tailwind v4, CSS-first (`@import "tailwindcss"` in `src/app/globals.css`;
