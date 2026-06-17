@@ -76,6 +76,10 @@ import {
   smartCropQaWorkflow,
 } from "./workflows/smart-crop-qa"
 import {
+  handleSmartCropRepairRouteRequest,
+  smartCropRepairWorkflow,
+} from "./workflows/smart-crop-repair"
+import {
   handleInstagramDiscoveryRouteRequest,
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
@@ -139,6 +143,7 @@ export const mastra = new Mastra({
     smartCropPlanWorkflow,
     smartCropAlignWorkflow,
     smartCropQaWorkflow,
+    smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
@@ -369,6 +374,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleSmartCropQaRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-smart-crop-repair", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSmartCropRepairRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

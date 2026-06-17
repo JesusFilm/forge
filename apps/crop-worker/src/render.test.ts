@@ -320,9 +320,28 @@ describe("runRender", () => {
       kind: "smart-crop-render-report",
       assetId: "asset123",
       mode: "preview",
+      cropPlanArtifactType: "smart-crop-plan-9x16-v1",
       target: { aspectRatio: "9:16", width: 1080, height: 1920 },
       segmentsRendered: 2,
       segmentsPlanned: 2,
+      renderedSegments: [
+        {
+          shotId: "shot_00001",
+          sourceStartSeconds: 0,
+          sourceEndSeconds: 10,
+          outputStartSeconds: 0,
+          outputEndSeconds: 10,
+          durationSeconds: 10,
+        },
+        {
+          shotId: "shot_00002",
+          sourceStartSeconds: 10,
+          sourceEndSeconds: 25,
+          outputStartSeconds: 10,
+          outputEndSeconds: 25,
+          durationSeconds: 15,
+        },
+      ],
       outputDurationSeconds: 25,
       previewFrameArtifactTypes: [
         "smart-crop-preview-frame-9x16-001",
@@ -362,6 +381,83 @@ describe("runRender", () => {
     expect(progress).toEqual([
       [0.45, "Rendering segment 1 of 2"],
       [0.9, "Rendering segment 2 of 2"],
+    ])
+  })
+
+  it("renders an attempt preview with suffixed preview, frame, and report artifacts", async () => {
+    await storage.writeArtifact({
+      assetId: "asset123",
+      artifactType: "smart-crop-plan-9x16-attempt-001-v1",
+      ext: "json",
+      body: JSON.stringify(plan),
+      contentType: "application/json",
+    })
+
+    const result = await runRender({
+      assetId: "asset123",
+      sourceUrl,
+      mode: "preview",
+      cropPlanAssetId: "asset123",
+      cropPlanArtifactType: "smart-crop-plan-9x16-attempt-001-v1",
+      artifactSuffix: "attempt-001",
+      previewFrameCount: 2,
+      deps: {
+        runCommand,
+        storage,
+        protocolWhitelist: whitelist,
+        previewMaxSegments: 6,
+        previewMaxSeconds: 90,
+      },
+    })
+
+    await expect(
+      storage.artifactExists(
+        "asset123",
+        "smart-crop-preview-9x16-attempt-001",
+        "mp4",
+      ),
+    ).resolves.toBe(true)
+    await expect(
+      storage.artifactExists(
+        "asset123",
+        "smart-crop-preview-frame-9x16-001-attempt-001",
+        "jpg",
+      ),
+    ).resolves.toBe(true)
+    await expect(
+      storage.artifactExists(
+        "asset123",
+        "smart-crop-render-report-9x16-preview-attempt-001",
+        "json",
+      ),
+    ).resolves.toBe(true)
+
+    expect(result.report).toMatchObject({
+      cropPlanArtifactType: "smart-crop-plan-9x16-attempt-001-v1",
+      artifactSuffix: "attempt-001",
+      previewFrameArtifactTypes: [
+        "smart-crop-preview-frame-9x16-001-attempt-001",
+        "smart-crop-preview-frame-9x16-002-attempt-001",
+      ],
+      renderedSegments: [
+        {
+          shotId: "shot_00001",
+          outputStartSeconds: 0,
+          outputEndSeconds: 10,
+        },
+        {
+          shotId: "shot_00002",
+          outputStartSeconds: 10,
+          outputEndSeconds: 25,
+        },
+      ],
+    })
+
+    expect(result.artifacts.map((artifact) => artifact.artifactType)).toEqual([
+      "smart-crop-preview-9x16-attempt-001",
+      "smart-crop-preview-frame-9x16-001-attempt-001",
+      "smart-crop-preview-frame-9x16-002-attempt-001",
+      "smart-crop-render-report-9x16-preview-attempt-001",
     ])
   })
 

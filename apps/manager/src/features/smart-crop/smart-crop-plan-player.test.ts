@@ -6,6 +6,7 @@ import {
   findActiveSmartCropSegment,
   formatSmartCropTime,
   interpolateSmartCropKeyframe,
+  isSmartCropAttemptSelectableForReview,
   parseSmartCropPlanForPlayer,
   type SmartCropPlanForPlayer,
 } from "./smart-crop-plan-player"
@@ -161,5 +162,14 @@ describe("smart crop plan player helpers", () => {
 
   it("formats timeline labels without leaking decimals", () => {
     expect(formatSmartCropTime(65.8)).toBe("1:05")
+  })
+
+  it("only treats review-ready attempts as selectable for approval", () => {
+    expect(isSmartCropAttemptSelectableForReview("complete")).toBe(true)
+    expect(isSmartCropAttemptSelectableForReview("qa_unavailable")).toBe(true)
+    expect(isSmartCropAttemptSelectableForReview("approved")).toBe(true)
+    expect(isSmartCropAttemptSelectableForReview("planned")).toBe(false)
+    expect(isSmartCropAttemptSelectableForReview("previewed")).toBe(false)
+    expect(isSmartCropAttemptSelectableForReview("failed")).toBe(false)
   })
 })

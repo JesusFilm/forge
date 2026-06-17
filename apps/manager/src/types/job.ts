@@ -140,6 +140,14 @@ export type SmartCropUsageSummary = {
   outputTokens: number
 }
 
+export type SmartCropAttemptsSummary = {
+  latestAttemptIndex: number
+  selectedAttemptIndex?: number
+  maxRepairAttempts: number
+  repairCount: number
+  manifestDigest?: string
+}
+
 // `qa` carries either a real verdict or the reason the QA step was skipped
 // as advisory (mastra config gap such as frame_host_not_allowed — a config
 // problem, not a content verdict).
@@ -155,6 +163,7 @@ export type SmartCropJobReport = {
   alignment?: SmartCropAlignmentSummary
   qa?: SmartCropQaSummary
   plan?: SmartCropPlanSummary
+  attempts?: SmartCropAttemptsSummary
   output?: SmartCropOutputSummary
   usage?: SmartCropUsageSummary
 }
