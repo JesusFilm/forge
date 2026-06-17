@@ -1013,7 +1013,7 @@ type Query {
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
   """
-  Per-scene cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
+  Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: ID): [SceneRecommendation!]!
   """
@@ -1127,7 +1127,7 @@ enum SceneBackfillMode {
 }
 
 """
-A single scene-similarity recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
+A single transcript-backed recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
 """
 type SceneRecommendation {
   demographics: [String!]!

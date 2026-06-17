@@ -24,9 +24,9 @@
  *
  *   # Filters (all optional, repeatable):
  *   --pipeline=scene|transcript|experience|both|all     # required
- *                                                       # `both` = scene + transcript
- *                                                       # (back-compat)
- *                                                       # `all` = scene + transcript + experience
+ *                                                       # `scene` = explicit legacy scene backfill
+ *                                                       # `both` = transcript (legacy alias)
+ *                                                       # `all` = transcript + experience
  *   --mapping-key=admin-migrations/core-id-mapping.json # scene/transcript default
  *   --core-id=<id>                                      # scene/transcript filter (repeatable)
  *   --locale=<bcp47>                                    # scene + experience pipeline filter (repeatable)
@@ -56,17 +56,17 @@
  *
  *   stdout:
  *     - `run-embeds.start` — one line at startup with resolved config
- *     - `run-embeds.scene.preflight`       (pipeline=scene|both|all)
- *     - `run-embeds.scene.start`           (pipeline=scene|both|all)
- *     - `run-embeds.scene.complete`        (pipeline=scene|both|all)
- *     - `run-embeds.scene.error`           (pipeline=scene|both|all, on error)
+ *     - `run-embeds.scene.preflight`       (pipeline=scene only)
+ *     - `run-embeds.scene.start`           (pipeline=scene only)
+ *     - `run-embeds.scene.complete`        (pipeline=scene only)
+ *     - `run-embeds.scene.error`           (pipeline=scene only, on error)
  *     - `run-embeds.transcript.start`      (pipeline=transcript|both|all)
  *     - `run-embeds.transcript.complete`   (pipeline=transcript|both|all)
  *     - `run-embeds.transcript.error`      (pipeline=transcript|both|all, on error)
  *     - `run-embeds.experience.start`      (pipeline=experience|all)
  *     - `run-embeds.experience.complete`   (pipeline=experience|all)
  *     - `run-embeds.experience.error`      (pipeline=experience|all, on error)
- *     - `run-embeds.experience.skipped`    (pipeline=both — both = scene+transcript only;
+ *     - `run-embeds.experience.skipped`    (pipeline=both — legacy transcript-only alias;
  *                                           experience is explicitly omitted)
  *     - `run-embeds.complete` — final aggregated report (pretty-printed JSON)
  *     - `run-embeds.report_out_written` — when --report-out succeeded
@@ -1192,11 +1192,7 @@ async function main(): Promise<void> {
   const errorDetails: Record<string, PipelineErrorDetails> = {}
 
   try {
-    if (
-      pipelineArg === "scene" ||
-      pipelineArg === "both" ||
-      pipelineArg === "all"
-    ) {
+    if (pipelineArg === "scene") {
       const sceneResult = await runSceneBranch({
         mappingS3Key,
         coreIds,

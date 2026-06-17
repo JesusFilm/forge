@@ -26,6 +26,12 @@ export type AdminTranscriptEmbeddingIngestPayload = {
     text?: string
     segments?: Array<{ start: number; end: number; text: string }>
     artifactKey?: string
+    kind?: "subtitle" | "manager-transcript"
+    languageId?: string
+    languageSlug?: string
+    subtitleId?: string
+    format?: "vtt" | "srt"
+    url?: string
     provider?: string
     generatedAt?: string
     contentHash: string
@@ -55,6 +61,15 @@ export type AdminTranscriptEmbeddingIngestPayload = {
     tokenCount: number
     startSeconds?: number
     endSeconds?: number
+    rawSourceText?: string
+    embeddingInputText?: string
+    feltNeeds?: string[]
+    bibleVerses?: string[]
+    contentSummary?: string
+    tone?: string
+    demographics?: string[]
+    spiritualContext?: string[]
+    extractionMetadata?: Record<string, unknown>
     embedding: number[]
   }>
 }
