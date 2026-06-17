@@ -39,6 +39,19 @@ describe("buildDownloadFilename", () => {
     ).toBe("Jesus-Film_English_eng_low.mp4")
   })
 
+  it("uses the video slug when the localized title has no ASCII-safe words", () => {
+    expect(
+      buildDownloadFilename({
+        videoTitle: "প্লট (পর্ব ৫)",
+        videoSlug: "bp-plot-episode-5",
+        languageName: "Bangla",
+        languageCode: "ben",
+        renditionHeight: 270,
+        tier: "low",
+      }),
+    ).toBe("bp-plot-episode-5_Bangla_ben_270p.mp4")
+  })
+
   it("distinguishes same-name languages by code", () => {
     const common = {
       videoTitle: "Jesus Film",

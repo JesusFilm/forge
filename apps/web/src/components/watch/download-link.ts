@@ -33,6 +33,7 @@ export type BuildDownloadFilenameParams = {
   languageSlug?: string | null
   renditionHeight?: number | null
   tier?: DownloadTier | null
+  videoSlug?: string | null
   videoTitle?: string | null
 }
 
@@ -54,6 +55,17 @@ function textSegment(
 ): string {
   const words = asciiWords(value)
   if (words.length > 0) return words.join("-")
+  return asciiWords(fallback).join("-") || "Unknown"
+}
+
+function textSegmentFrom(
+  candidates: (string | null | undefined)[],
+  fallback: string,
+): string {
+  for (const candidate of candidates) {
+    const words = asciiWords(candidate)
+    if (words.length > 0) return words.join("-")
+  }
   return asciiWords(fallback).join("-") || "Unknown"
 }
 
@@ -81,10 +93,11 @@ export function buildDownloadFilename({
   languageSlug,
   renditionHeight,
   tier,
+  videoSlug,
   videoTitle,
 }: BuildDownloadFilenameParams): string {
   const segments = [
-    textSegment(videoTitle, "Video"),
+    textSegmentFrom([videoTitle, videoSlug], "Video"),
     textSegment(languageName, "Language"),
     codeSegment(languageCode, languageSlug, languageName),
     renditionSegment(renditionHeight, tier),

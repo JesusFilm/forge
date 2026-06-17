@@ -475,6 +475,7 @@ export function WatchPageClient({
         languageSlug: variant.language?.slug ?? null,
         renditionHeight: fallbackTier.download.height,
         tier: fallbackTier.tier,
+        videoSlug,
         videoTitle: video.title,
       }),
       variantId: variant.documentId,
