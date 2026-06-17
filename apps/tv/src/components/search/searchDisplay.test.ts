@@ -5,30 +5,28 @@ import {
 } from "./searchDisplay"
 
 describe("resolveSearchMeta", () => {
-  it("shows BROWSE for the empty-query idle state", () => {
-    expect(resolveSearchMeta("idle", 0, false)).toBe("BROWSE")
-  })
-
-  it("stays quiet for idle with a non-empty query (no BROWSE flash)", () => {
-    // After the first keystroke the state is idle (debounce pending) with a
-    // non-empty query — labelling it BROWSE flashed the browse label across
-    // the results region. Only the genuinely-empty browse state shows BROWSE.
-    expect(resolveSearchMeta("idle", 0, true)).toBe("")
+  it("stays quiet (unlabelled) for the idle/browse state", () => {
+    // The browse panel below is self-evident, so the meta line carries no
+    // "BROWSE" eyebrow — empty query and mid-type debounce both stay quiet.
+    expect(resolveSearchMeta("idle", 0)).toBe("")
+    // resultCount is irrelevant while idle (the old hasQuery split is gone) —
+    // a non-zero count must not resurrect a label.
+    expect(resolveSearchMeta("idle", 5)).toBe("")
   })
 
   it("pluralizes the ready-state result count", () => {
-    expect(resolveSearchMeta("ready", 1, true)).toBe("1 RESULT")
-    expect(resolveSearchMeta("ready", 12, true)).toBe("12 RESULTS")
+    expect(resolveSearchMeta("ready", 1)).toBe("1 RESULT")
+    expect(resolveSearchMeta("ready", 12)).toBe("12 RESULTS")
   })
 
   it("stays quiet for ready with zero results", () => {
-    expect(resolveSearchMeta("ready", 0, true)).toBe("")
+    expect(resolveSearchMeta("ready", 0)).toBe("")
   })
 
   it("stays quiet while loading, on empty, and on error", () => {
-    expect(resolveSearchMeta("loading", 0, true)).toBe("")
-    expect(resolveSearchMeta("empty", 0, true)).toBe("")
-    expect(resolveSearchMeta("error", 0, true)).toBe("")
+    expect(resolveSearchMeta("loading", 0)).toBe("")
+    expect(resolveSearchMeta("empty", 0)).toBe("")
+    expect(resolveSearchMeta("error", 0)).toBe("")
   })
 })
 

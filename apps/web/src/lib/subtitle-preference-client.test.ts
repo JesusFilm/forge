@@ -48,7 +48,9 @@ describe("writeSubtitlePreference", () => {
   it("writes the language slug when enabled", () => {
     writeSubtitlePreference(true, "spanish")
     const written = setSpy.mock.calls[0]![0]
-    expect(written).toContain("forge_watch_subs=spanish")
+    expect(written).toContain(
+      `forge_watch_subs=${encodeURIComponent("v2:spanish")}`,
+    )
     expect(written).toContain("path=/watch")
     expect(written).toContain("max-age=31536000")
     expect(written.toLowerCase()).toContain("samesite=lax")
@@ -67,7 +69,7 @@ describe("writeSubtitlePreference", () => {
   it("URL-encodes special characters in the slug", () => {
     writeSubtitlePreference(true, "zh hant")
     expect(setSpy.mock.calls[0]![0]).toContain(
-      `forge_watch_subs=${encodeURIComponent("zh hant")}`,
+      `forge_watch_subs=${encodeURIComponent("v2:zh hant")}`,
     )
   })
 
@@ -115,6 +117,7 @@ describe("readSubtitlePreference", () => {
     expect(readSubtitlePreference()).toEqual({
       enabled: false,
       languageSlug: null,
+      explicit: false,
     })
   })
 
@@ -126,10 +129,11 @@ describe("readSubtitlePreference", () => {
     expect(readSubtitlePreference()).toEqual({
       enabled: false,
       languageSlug: null,
+      explicit: false,
     })
   })
 
-  it("returns enabled true with the language slug", () => {
+  it("returns enabled true with a legacy language slug", () => {
     Object.defineProperty(document, "cookie", {
       configurable: true,
       get: () => "forge_watch_subs=spanish",
@@ -137,17 +141,43 @@ describe("readSubtitlePreference", () => {
     expect(readSubtitlePreference()).toEqual({
       enabled: true,
       languageSlug: "spanish",
+      explicit: false,
+    })
+  })
+
+  it("returns enabled true with an explicit language slug", () => {
+    Object.defineProperty(document, "cookie", {
+      configurable: true,
+      get: () => `forge_watch_subs=${encodeURIComponent("v2:spanish")}`,
+    })
+    expect(readSubtitlePreference()).toEqual({
+      enabled: true,
+      languageSlug: "spanish",
+      explicit: true,
     })
   })
 
   it("decodes URL-encoded slugs", () => {
     Object.defineProperty(document, "cookie", {
       configurable: true,
-      get: () => `forge_watch_subs=${encodeURIComponent("zh hant")}`,
+      get: () => `forge_watch_subs=${encodeURIComponent("v2:zh hant")}`,
     })
     expect(readSubtitlePreference()).toEqual({
       enabled: true,
       languageSlug: "zh hant",
+      explicit: true,
+    })
+  })
+
+  it("returns enabled false for an empty explicit slug", () => {
+    Object.defineProperty(document, "cookie", {
+      configurable: true,
+      get: () => `forge_watch_subs=${encodeURIComponent("v2:")}`,
+    })
+    expect(readSubtitlePreference()).toEqual({
+      enabled: false,
+      languageSlug: null,
+      explicit: false,
     })
   })
 
@@ -159,6 +189,7 @@ describe("readSubtitlePreference", () => {
     expect(readSubtitlePreference()).toEqual({
       enabled: true,
       languageSlug: "french",
+      explicit: false,
     })
   })
 
@@ -179,6 +210,7 @@ describe("readSubtitlePreference", () => {
     expect(readSubtitlePreference()).toEqual({
       enabled: true,
       languageSlug: "french",
+      explicit: true,
     })
   })
 })

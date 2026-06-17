@@ -10,6 +10,10 @@ import type {
   ReviewChapterTrack,
   ReviewMetadataDomain,
   ReviewMetadataValue,
+  ReviewSubtitleValidationArtifact,
+  ReviewSubtitleValidationDomain,
+  ReviewTranscriptCorrectionArtifact,
+  ReviewTranscriptCorrectionDomain,
   ReviewTextTrack,
 } from "./review-player-types"
 
@@ -193,6 +197,96 @@ function buildGeneratedChapterTrack(
   }
 }
 
+function getSubtitleValidationArtifacts(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewSubtitleValidationArtifact[] {
+  return Object.entries(job.artifacts)
+    .filter(
+      ([key, value]) =>
+        value.kind === "downloadable" && key.startsWith("subtitle-validation-"),
+    )
+    .map(([key]) => {
+      const languageCode = key
+        .slice("subtitle-validation-".length)
+        .toLowerCase()
+
+      return {
+        key,
+        href: buildArtifactHref(job.id, key),
+        languageCode,
+      }
+    })
+    .sort((left, right) => left.languageCode.localeCompare(right.languageCode))
+}
+
+function getSubtitleValidationDomain(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewSubtitleValidationDomain {
+  const summary = job.steps.find((step) => step.name === "translation")?.details
+    ?.subtitleValidation
+  const artifacts = getSubtitleValidationArtifacts(job, buildArtifactHref)
+
+  if (!summary) {
+    return {
+      status: "unavailable",
+      reason: artifacts.length > 0 ? "summary_missing" : "artifact_missing",
+    }
+  }
+
+  return {
+    status: "available",
+    summary,
+    artifacts,
+  }
+}
+
+function getTranscriptCorrectionArtifacts(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewTranscriptCorrectionArtifact[] {
+  const artifactKinds: Record<
+    string,
+    ReviewTranscriptCorrectionArtifact["kind"]
+  > = {
+    "transcript-correction-report": "report",
+    "transcript-raw": "raw_transcript",
+    "subtitles-raw": "raw_subtitles",
+  }
+
+  return Object.entries(artifactKinds)
+    .filter(([key]) => job.artifacts[key]?.kind === "downloadable")
+    .map(([key, kind]) => ({
+      key,
+      href: buildArtifactHref(job.id, key),
+      kind,
+    }))
+}
+
+function getTranscriptCorrectionDomain(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewTranscriptCorrectionDomain {
+  const summary = job.steps.find(
+    (step) => step.name === "structured_transcript",
+  )?.details?.transcriptCorrection
+  const artifacts = getTranscriptCorrectionArtifacts(job, buildArtifactHref)
+
+  if (!summary) {
+    return {
+      status: "unavailable",
+      reason: artifacts.length > 0 ? "summary_missing" : "artifact_missing",
+    }
+  }
+
+  return {
+    status: "available",
+    summary,
+    artifacts,
+  }
+}
+
 function buildMetadataDomain(value: unknown): ReviewMetadataDomain {
   if (!isRecord(value)) {
     return {
@@ -331,6 +425,11 @@ export async function loadJobReviewContext(
   )
   const afterTracks = buildGeneratedSubtitleTracks(job, buildArtifactHref)
   const afterChapterTrack = buildGeneratedChapterTrack(job, buildArtifactHref)
+  const afterValidation = getSubtitleValidationDomain(job, buildArtifactHref)
+  const afterTranscriptCorrection = getTranscriptCorrectionDomain(
+    job,
+    buildArtifactHref,
+  )
 
   let afterMetadata: ReviewMetadataDomain
   if (job.artifacts.metadata?.kind !== "downloadable") {
@@ -447,6 +546,8 @@ export async function loadJobReviewContext(
               },
         metadata: afterMetadata,
         chapters: afterChapters,
+        validation: afterValidation,
+        transcriptCorrection: afterTranscriptCorrection,
       },
       compare: {},
     },

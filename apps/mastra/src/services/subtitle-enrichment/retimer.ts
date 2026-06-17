@@ -4,6 +4,7 @@ import {
   RetimingOutputSchema,
   type Chunk,
   type LanguageConfig,
+  type SubtitleScriptureContext,
   type TranscriptSegment,
 } from "./types"
 import { formatVttTime } from "./vtt"
@@ -19,6 +20,7 @@ export type RetimeChunkOptions = {
   apiKey?: string
   timeoutMs: number
   config?: LanguageConfig
+  scriptureContext?: SubtitleScriptureContext
   fetchImpl?: typeof fetch
 }
 
@@ -36,6 +38,7 @@ export async function retimeChunk({
   apiKey,
   timeoutMs,
   config,
+  scriptureContext,
   fetchImpl,
 }: RetimeChunkOptions): Promise<RetimeChunkResult> {
   let lastErrors: string[] = []
@@ -54,8 +57,15 @@ export async function retimeChunk({
             targetLanguage,
             lastErrors,
             config,
+            scriptureContext,
           )
-        : buildRetimingPrompt(chunk, translatedText, targetLanguage, config)
+        : buildRetimingPrompt(
+            chunk,
+            translatedText,
+            targetLanguage,
+            config,
+            scriptureContext,
+          )
 
     try {
       const result = await requestOpenRouterChat({
@@ -116,6 +126,7 @@ function buildRetimingPrompt(
   translatedText: string,
   targetLanguage: string,
   config?: LanguageConfig,
+  scriptureContext?: SubtitleScriptureContext,
 ): { system: string; user: string } {
   const sourceSegments = chunk.segments
     .map(
@@ -134,6 +145,7 @@ function buildRetimingPrompt(
     "- Break at natural phrase boundaries in the target language.",
     "- Segments must cover the full time window without gaps during speech.",
     "- All translated text must be included. Do not drop content.",
+    "- Use the translated text exactly as supplied; do not retranslate, paraphrase, harmonize with scripture, or add/remove words.",
     "- If the translation is shorter than the source, merge into fewer segments.",
     "- If the translation is longer, split across more segments.",
     "",
@@ -142,6 +154,13 @@ function buildRetimingPrompt(
 
   if (config?.customPrompt) {
     systemParts.push("", config.customPrompt)
+  }
+
+  if (scriptureContext?.contentDomain === "bible_story") {
+    systemParts.push(
+      "",
+      "Scripture-sensitive wording has already been handled during translation. Retiming must preserve that wording.",
+    )
   }
 
   return {
@@ -156,12 +175,14 @@ function buildCorrectionPrompt(
   targetLanguage: string,
   errors: string[],
   config?: LanguageConfig,
+  scriptureContext?: SubtitleScriptureContext,
 ): { system: string; user: string } {
   const base = buildRetimingPrompt(
     chunk,
     translatedText,
     targetLanguage,
     config,
+    scriptureContext,
   )
   const errorFeedback = errors.map((error) => `- ${error}`).join("\n")
 

@@ -391,6 +391,8 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
         .map((video) => ({
           documentId: video.documentId,
           coreId: video.coreId,
+          title: video.title ?? null,
+          label: video.label ?? null,
           primaryLanguage: {
             coreId: "529",
             bcp47: "en",

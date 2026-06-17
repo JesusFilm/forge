@@ -24,6 +24,10 @@ export type LanguageComboboxOption = {
   bcp47?: string | null
   /** Explicit display flag. Falls back to bcp47/slug-derived region or initials. */
   flagEmoji?: string | null
+  /** Render as visible context in the list without allowing selection. */
+  disabled?: boolean
+  /** Small status label rendered at the end of the option row. */
+  chipLabel?: string | null
 }
 
 export type LanguageComboboxProps = {
@@ -648,11 +652,13 @@ export function LanguageCombobox({
 
   const handleSelect = useCallback(
     (slug: string) => {
+      const option = options.find((candidate) => candidate.slug === slug)
+      if (option?.disabled) return
       onChange(slug)
       setComboboxOpen(false)
       triggerRef.current?.focus()
     },
-    [onChange, setComboboxOpen],
+    [onChange, options, setComboboxOpen],
   )
 
   const handleSearchKeyDown = useCallback(
@@ -889,7 +895,9 @@ export function LanguageCombobox({
                     ? visibleRange.start + visibleIndex
                     : visibleIndex
                   const active = index === activeIndex
-                  const selectedOption = option.slug === value
+                  const optionDisabled = option.disabled === true
+                  const selectedOption =
+                    !optionDisabled && option.slug === value
                   const nativeName = nativeNameForOption(option)
                   return (
                     <li key={option.slug}>
@@ -898,6 +906,8 @@ export function LanguageCombobox({
                         id={`lcb-opt-${option.slug}`}
                         role="option"
                         aria-selected={selectedOption}
+                        aria-disabled={optionDisabled ? "true" : undefined}
+                        disabled={optionDisabled}
                         aria-posinset={shouldVirtualize ? index + 1 : undefined}
                         aria-setsize={
                           shouldVirtualize ? filtered.length : undefined
@@ -905,30 +915,55 @@ export function LanguageCombobox({
                         data-testid="language-combobox-option"
                         data-language-slug={option.slug}
                         data-active={active ? "true" : "false"}
+                        data-disabled={optionDisabled ? "true" : "false"}
                         onMouseEnter={() => setActiveIndex(index)}
                         onClick={() => handleSelect(option.slug)}
-                        className={`flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left text-stone-100 transition ${
-                          selectedOption
-                            ? "bg-white/[0.08] text-white hover:bg-white/[0.12]"
-                            : active
-                              ? "bg-white/10"
-                              : "hover:bg-white/10"
+                        className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-100 ${
+                          optionDisabled
+                            ? active
+                              ? "bg-white/[0.06] text-stone-500"
+                              : "text-stone-500"
+                            : selectedOption
+                              ? "cursor-pointer bg-white/[0.08] text-white hover:bg-white/[0.12]"
+                              : active
+                                ? "cursor-pointer bg-white/10 text-stone-100"
+                                : "cursor-pointer text-stone-100 hover:bg-white/10"
                         }`}
                       >
-                        <LanguageFlag option={option} />
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold">
-                            {option.name}
-                          </span>
-                          {nativeName ? (
-                            <span
-                              data-testid="language-combobox-option-native"
-                              className="block truncate text-xs text-stone-400"
-                            >
-                              {nativeName}
+                        <span className="flex min-w-0 items-center gap-4">
+                          <LanguageFlag option={option} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold">
+                              {option.name}
                             </span>
-                          ) : null}
+                            {nativeName ? (
+                              <span
+                                data-testid="language-combobox-option-native"
+                                className="block truncate text-xs text-stone-400"
+                              >
+                                {nativeName}
+                              </span>
+                            ) : null}
+                          </span>
                         </span>
+                        {option.chipLabel ? (
+                          <span
+                            data-testid="language-combobox-option-chip"
+                            className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
+                              optionDisabled
+                                ? "border-stone-500/40 text-stone-400"
+                                : "border-stone-400/50 text-stone-300"
+                            }`}
+                          >
+                            {option.chipLabel}
+                          </span>
+                        ) : null}
+                        {optionDisabled && !option.chipLabel ? (
+                          <span className="sr-only">
+                            {" "}
+                            {option.chipLabel ?? "Not available"}
+                          </span>
+                        ) : null}
                       </button>
                     </li>
                   )

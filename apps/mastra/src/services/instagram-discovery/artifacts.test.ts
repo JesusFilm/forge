@@ -21,7 +21,13 @@ function sampleReport(
     startedAt: "2026-06-08T00:00:00.000Z",
     finishedAt: "2026-06-08T00:00:05.000Z",
     queries: ["AI generated Jesus reel site:instagram.com"],
-    totals: { candidates: 3, instagram: 2, deduped: 2, qualified: 1 },
+    totals: {
+      candidates: 3,
+      instagram: 2,
+      deduped: 2,
+      excludedCommentary: 0,
+      qualified: 1,
+    },
     queryFailures: [],
     posts: [
       {
@@ -62,6 +68,31 @@ describe("instagram discovery artifact store", () => {
 
     const read = await store.readReport("run-123")
     expect(read).toEqual(report)
+  })
+
+  it("defaults excludedCommentary when reading legacy reports", async () => {
+    const store = createInstagramDiscoveryArtifactStore(rootDir)
+    const report = sampleReport()
+    const legacyReport = {
+      ...report,
+      totals: {
+        candidates: report.totals.candidates,
+        instagram: report.totals.instagram,
+        deduped: report.totals.deduped,
+        qualified: report.totals.qualified,
+      },
+    }
+
+    await mkdir(path.join(rootDir, "reports"), { recursive: true })
+    await writeFile(
+      path.join(rootDir, "reports", "legacy.json"),
+      JSON.stringify(legacyReport),
+      "utf8",
+    )
+
+    await expect(store.readReport("legacy")).resolves.toMatchObject({
+      totals: { excludedCommentary: 0 },
+    })
   })
 
   it("rejects unsafe report names", async () => {

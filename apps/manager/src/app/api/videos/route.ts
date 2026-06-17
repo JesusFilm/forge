@@ -8,6 +8,11 @@ import {
 } from "./cache"
 
 type CoverageCounts = { human: number; ai: number; none: number }
+type CollectionChild = {
+  video: CmsVideoCoverage
+  order: number | null
+  inputIndex: number
+}
 
 const LABEL_DISPLAY: Record<string, string> = {
   collection: "Collection",
@@ -72,17 +77,47 @@ export async function GET(request: Request) {
       }
     }
 
+    function parentRelationsFor(video: CmsVideoCoverage) {
+      if (video.parentRelations != null && video.parentRelations.length > 0) {
+        return video.parentRelations
+      }
+
+      return video.parentDocumentIds.map((parentDocumentId) => ({
+        parentDocumentId,
+        order: null,
+      }))
+    }
+
+    function compareCollectionChildren(
+      left: CollectionChild,
+      right: CollectionChild,
+    ) {
+      if (left.order != null || right.order != null) {
+        if (left.order == null) return 1
+        if (right.order == null) return -1
+        if (left.order !== right.order) return left.order - right.order
+      }
+
+      const leftTitle = left.video.title ?? left.video.slug ?? ""
+      const rightTitle = right.video.title ?? right.video.slug ?? ""
+      const titleCompare = leftTitle.localeCompare(rightTitle)
+      if (titleCompare !== 0) return titleCompare
+
+      return left.inputIndex - right.inputIndex
+    }
+
     const videoMap = new Map(videos.map((video) => [video.documentId, video]))
 
-    const parentChildrenMap = new Map<string, CmsVideoCoverage[]>()
-    for (const video of videos) {
-      for (const parentDocId of video.parentDocumentIds) {
+    const parentChildrenMap = new Map<string, CollectionChild[]>()
+    for (const [inputIndex, video] of videos.entries()) {
+      for (const relation of parentRelationsFor(video)) {
+        const parentDocId = relation.parentDocumentId
         let children = parentChildrenMap.get(parentDocId)
         if (!children) {
           children = []
           parentChildrenMap.set(parentDocId, children)
         }
-        children.push(video)
+        children.push({ video, order: relation.order, inputIndex })
       }
     }
 
@@ -107,6 +142,7 @@ export async function GET(request: Request) {
       if (!parent) continue
 
       const parentItem = toVideoItem(parent)
+      const sortedChildren = [...children].sort(compareCollectionChildren)
 
       collections.push({
         id: parentItem.id,
@@ -118,7 +154,7 @@ export async function GET(request: Request) {
         labelDisplay:
           LABEL_DISPLAY[parent.label ?? "unknown"] ?? parent.label ?? "unknown",
         coverage: parentItem.coverage,
-        videos: children.map(toVideoItem),
+        videos: sortedChildren.map((child) => toVideoItem(child.video)),
       })
     }
 
@@ -127,7 +163,7 @@ export async function GET(request: Request) {
     const standalone = videos
       .filter(
         (video) =>
-          video.parentDocumentIds.length === 0 &&
+          parentRelationsFor(video).length === 0 &&
           !parentChildrenMap.has(video.documentId),
       )
       .map(toVideoItem)

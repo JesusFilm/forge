@@ -8,6 +8,7 @@ import type { VideoCandidate } from "./experience-ai.schemas"
 export {
   normalizeExperienceDraft,
   ExperienceAiNormalizationError,
+  type ExperienceAiNormalizationErrorCode,
   type NormalizedExperienceDraft,
 } from "./experience-ai-normalize"
 

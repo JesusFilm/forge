@@ -9,26 +9,20 @@ import { type SearchState } from "../../lib/search"
 
 /**
  * The uppercase meta line between the letter strip and the results region
- * (design: .s-meta). Empty query browses ("BROWSE" — the design says
- * "Browse all"; ours introduces the browse panel), results show a count,
- * and transient states (loading / error / empty) stay quiet — their region
+ * (design: .s-meta). Only the ready state with results speaks ("N RESULTS");
+ * the browse state is unlabelled (the browse panel below is self-evident), and
+ * transient states (idle / loading / error / empty) stay quiet — their region
  * below carries the message.
- *
- * `hasQuery` distinguishes the genuinely-empty browse state from the brief
- * idle window AFTER the first keystroke (debounce pending, no results yet):
- * showing "BROWSE" over a non-empty query flashed the browse label across
- * the results region. Idle + non-empty stays quiet until the search fires.
  */
 export function resolveSearchMeta(
   state: SearchState,
   resultCount: number,
-  hasQuery: boolean,
 ): string {
   switch (state) {
     case "idle":
-      // Empty query → the browse panel is showing below, so label it.
-      // Non-empty query → debounce is pending; stay quiet (no BROWSE flash).
-      return hasQuery ? "" : "BROWSE"
+      // Browse panel (empty query) or debounce-pending (mid-type) — both
+      // unlabelled. The panel below is self-evident; no "BROWSE" eyebrow.
+      return ""
     case "ready":
       if (resultCount === 0) return ""
       return resultCount === 1 ? "1 RESULT" : `${resultCount} RESULTS`

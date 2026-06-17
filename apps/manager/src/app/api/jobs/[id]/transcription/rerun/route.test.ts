@@ -4,6 +4,8 @@ const {
   authenticateRequestMock,
   afterMock,
   getJobMock,
+  getMuxAssetMock,
+  getMuxStaticRenditionSourceUrlMock,
   runVideoEnrichmentMock,
   startMock,
   updateJobMock,
@@ -11,6 +13,8 @@ const {
   authenticateRequestMock: vi.fn(),
   afterMock: vi.fn(),
   getJobMock: vi.fn(),
+  getMuxAssetMock: vi.fn(),
+  getMuxStaticRenditionSourceUrlMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
   updateJobMock: vi.fn(),
@@ -39,6 +43,11 @@ vi.mock("@/lib/state", () => ({
   updateJob: updateJobMock,
 }))
 
+vi.mock("@/services/mux", () => ({
+  getMuxAsset: getMuxAssetMock,
+  getMuxStaticRenditionSourceUrl: getMuxStaticRenditionSourceUrlMock,
+}))
+
 vi.mock("@/workflows/videoEnrichment", () => ({
   runVideoEnrichment: runVideoEnrichmentMock,
 }))
@@ -58,6 +67,25 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       await callback()
     })
     runVideoEnrichmentMock.mockResolvedValue(undefined)
+    getMuxAssetMock.mockResolvedValue({
+      assetId: "mux-source-1",
+      playbackId: "play-source-1",
+      publicPlaybackId: "play-source-1",
+      status: "ready",
+      duration: 123,
+      staticRenditions: [
+        {
+          name: "480p.mp4",
+          status: "ready",
+          width: 854,
+          height: 480,
+          type: "advanced",
+        },
+      ],
+    })
+    getMuxStaticRenditionSourceUrlMock.mockReturnValue(
+      "https://stream.mux.com/play-source-1/480p.mp4",
+    )
     dispatch.mockReturnValue({
       assetId: "mux-1",
       transcript: "Transcript",
@@ -77,7 +105,13 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       updatedAt: "",
       artifacts: {
         transcript: { kind: "downloadable" },
+        "transcript-raw": { kind: "downloadable" },
+        "transcript-correction-report": { kind: "downloadable" },
         subtitles: { kind: "downloadable" },
+        "subtitles-raw": { kind: "downloadable" },
+        "subtitles-fr": { kind: "downloadable" },
+        "translation-fr": { kind: "downloadable" },
+        "subtitle-validation-fr": { kind: "downloadable" },
         chapters: { kind: "downloadable" },
         metadata: { kind: "downloadable" },
         embeddings: { kind: "downloadable" },
@@ -100,6 +134,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       },
       steps: [
         { name: "transcription", status: "completed", retries: 0 },
+        { name: "structured_transcript", status: "completed", retries: 0 },
         { name: "translation", status: "completed", retries: 0 },
         { name: "chapters", status: "completed", retries: 0 },
         { name: "metadata", status: "completed", retries: 0 },
@@ -163,6 +198,10 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
         }),
         steps: [
           expect.objectContaining({ name: "transcription", status: "pending" }),
+          expect.objectContaining({
+            name: "structured_transcript",
+            status: "pending",
+          }),
           expect.objectContaining({ name: "translation", status: "pending" }),
           expect.objectContaining({ name: "chapters", status: "pending" }),
           expect.objectContaining({ name: "metadata", status: "pending" }),
@@ -184,9 +223,15 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       [key: string]: unknown
     }
     expect(updatedArtifacts).not.toHaveProperty("chapters")
+    expect(updatedArtifacts).not.toHaveProperty("transcript-raw")
+    expect(updatedArtifacts).not.toHaveProperty("subtitles-raw")
+    expect(updatedArtifacts).not.toHaveProperty("transcript-correction-report")
     expect(updatedArtifacts).not.toHaveProperty("metadata")
     expect(updatedArtifacts).not.toHaveProperty("embeddings")
     expect(updatedArtifacts).not.toHaveProperty("muxSync")
+    expect(updatedArtifacts).not.toHaveProperty("subtitles-fr")
+    expect(updatedArtifacts).not.toHaveProperty("translation-fr")
+    expect(updatedArtifacts).not.toHaveProperty("subtitle-validation-fr")
     expect(updatedArtifacts).not.toHaveProperty(
       "transcriptionRouting.data.finalProvider",
     )
@@ -348,6 +393,87 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(409)
     dispatch.expectNotDispatched()
+  })
+
+  it("recovers a direct Mux static MP4 source for older ElevenLabs reruns", async () => {
+    getJobMock.mockResolvedValueOnce({
+      id: "job-1",
+      muxAssetId: "mux-1",
+      muxPlaybackId: "play-1",
+      languages: ["fr"],
+      options: {},
+      status: "completed",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      sourceLanguageCode: "en",
+      artifacts: {
+        transcript: { kind: "downloadable" },
+        subtitles: { kind: "downloadable" },
+        transcriptionRouting: {
+          kind: "metadata",
+          data: {
+            attempts: [],
+          },
+        },
+        materialization: {
+          kind: "metadata",
+          data: {
+            mode: "direct_mux_asset_reuse",
+            sourceInputType: "mux_asset",
+            sourceMuxAssetId: "mux-source-1",
+            reusedMuxAssetId: "mux-1",
+          },
+        },
+      },
+      steps: [],
+      errors: [],
+    })
+
+    const response = await POST(
+      new Request("https://manager.test/api/jobs/job-1/transcription/rerun", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "elevenlabs" }),
+      }),
+      { params: Promise.resolve({ id: "job-1" }) },
+    )
+
+    expect(response.status).toBe(202)
+    expect(getMuxAssetMock).toHaveBeenCalledWith("mux-source-1")
+    expect(getMuxStaticRenditionSourceUrlMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetId: "mux-source-1",
+        publicPlaybackId: "play-source-1",
+      }),
+    )
+    expect(updateJobMock).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({
+        artifacts: expect.objectContaining({
+          transcriptionRouting: {
+            kind: "metadata",
+            data: expect.objectContaining({
+              sourceInputUrl: "https://stream.mux.com/play-source-1/480p.mp4",
+              sourceInputHost: "stream.mux.com",
+              currentAttemptId: expect.any(String),
+            }),
+          },
+        }),
+      }),
+    )
+    dispatch.expectDispatched(runVideoEnrichment, [
+      expect.objectContaining({
+        requestedTranscriptionProvider: "elevenlabs",
+        initialArtifacts: expect.objectContaining({
+          transcriptionRouting: expect.objectContaining({
+            data: expect.objectContaining({
+              sourceInputUrl: "https://stream.mux.com/play-source-1/480p.mp4",
+            }),
+          }),
+        }),
+      }),
+    ])
   })
 
   it("rejects forced ElevenLabs reruns when the source language is unresolved", async () => {

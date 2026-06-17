@@ -22,8 +22,23 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
     ext: "json",
     contentType: "application/json",
   },
+  "transcript-raw": {
+    artifactType: "transcript-raw",
+    ext: "json",
+    contentType: "application/json",
+  },
+  "transcript-correction-report": {
+    artifactType: "transcript-correction-report",
+    ext: "json",
+    contentType: "application/json",
+  },
   subtitles: {
     artifactType: "subtitles",
+    ext: "vtt",
+    contentType: "text/vtt; charset=utf-8",
+  },
+  "subtitles-raw": {
+    artifactType: "subtitles-raw",
     ext: "vtt",
     contentType: "text/vtt; charset=utf-8",
   },
@@ -114,8 +129,11 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
 }
 
 const EXACT_JOB_ARTIFACT_LABELS: Record<string, string> = {
-  transcript: "Transcript raw",
-  subtitles: "Subtitles processed",
+  transcript: "Transcript JSON",
+  "transcript-raw": "Transcript raw",
+  "transcript-correction-report": "Transcript correction report",
+  subtitles: "Subtitles VTT",
+  "subtitles-raw": "Subtitles raw",
   subtitlesVtt: "Subtitles processed",
   chapters: "Chapters JSON",
   "chapters-vtt": "Chapters VTT",
@@ -138,6 +156,11 @@ const SMART_CROP_PREVIEW_FRAME_PATTERN = /^smart-crop-preview-frame-9x16-\d{3}$/
 
 const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
   transcription: ["transcript", "subtitles", "subtitlesVtt"],
+  structured_transcript: [
+    "transcript-correction-report",
+    "transcript-raw",
+    "subtitles-raw",
+  ],
   chapters: ["chapters", "chapters-vtt"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
@@ -160,6 +183,10 @@ function buildDynamicArtifactLabel(logicalKey: string): string {
 
   if (logicalKey.startsWith("translation-")) {
     return `Translation ${logicalKey.slice("translation-".length)}`
+  }
+
+  if (logicalKey.startsWith("subtitle-validation-")) {
+    return `Subtitle validation ${logicalKey.slice("subtitle-validation-".length)}`
   }
 
   if (SMART_CROP_PREVIEW_FRAME_PATTERN.test(logicalKey)) {
@@ -195,6 +222,14 @@ function buildTranslationArtifactDescriptor(
     }
   }
 
+  if (logicalKey.startsWith("subtitle-validation-")) {
+    return {
+      artifactType: logicalKey,
+      ext: "json",
+      contentType: "application/json",
+    }
+  }
+
   return null
 }
 
@@ -220,6 +255,22 @@ export function resolveJobArtifactDescriptor(
     buildTranslationArtifactDescriptor(logicalKey) ??
     buildSmartCropPreviewFrameDescriptor(logicalKey)
   )
+}
+
+function getTranslationArtifactSortRank(logicalKey: string): number {
+  if (logicalKey.startsWith("subtitles-")) {
+    return 0
+  }
+
+  if (logicalKey.startsWith("subtitle-validation-")) {
+    return 1
+  }
+
+  if (logicalKey.startsWith("translation-")) {
+    return 2
+  }
+
+  return 3
 }
 
 export function buildJobArtifactHref(
@@ -267,9 +318,16 @@ export function getArtifactsForStep(
           value.kind === "downloadable" &&
           (key.startsWith("subtitles-") ||
             key.startsWith("translation-") ||
+            key.startsWith("subtitle-validation-") ||
             key === "translations"),
       )
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => {
+        const leftRank = getTranslationArtifactSortRank(left)
+        const rightRank = getTranslationArtifactSortRank(right)
+        return leftRank === rightRank
+          ? left.localeCompare(right)
+          : leftRank - rightRank
+      })
       .map(([key]) => ({
         key,
         label: formatJobArtifactLabel(key),

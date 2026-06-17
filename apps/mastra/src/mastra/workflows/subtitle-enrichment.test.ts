@@ -98,6 +98,47 @@ describe("subtitle enrichment workflow", () => {
     })
   })
 
+  it("passes optional translation context into subtitle enrichment execution", async () => {
+    const run = vi.fn(async () => [
+      {
+        lang: "en",
+        status: "completed" as const,
+        artifactKeys: {
+          vtt: "asset-1/subtitles-en.vtt",
+          json: "asset-1/translation-en.json",
+        },
+      },
+    ])
+
+    await expect(
+      runSubtitleEnrichmentWorkflow(
+        {
+          ...input,
+          translationContext: {
+            videoTitle: "Birth of Jesus",
+            videoLabel: "JESUS_FILM",
+            bibleReferences: ["Luke 2"],
+          },
+        },
+        { runId: "run-context", apiKey: "openrouter-key", run },
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      mastraRunId: "run-context",
+    })
+
+    expect(run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        translationContext: {
+          videoTitle: "Birth of Jesus",
+          videoLabel: "JESUS_FILM",
+          bibleReferences: ["Luke 2"],
+        },
+      }),
+      undefined,
+    )
+  })
+
   it("keeps route auth scoped and returns typed results", async () => {
     const readJson = vi.fn(async () => input)
 

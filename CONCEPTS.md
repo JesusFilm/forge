@@ -136,6 +136,14 @@ A searchable segment of a video transcript stored separately from the transcript
 
 Deleting transcript chunks removes Admin's transcript search index for those segments but does not delete the transcript identity or Manager's source artifacts.
 
+### Source Transcript Scripture Correction
+
+A Manager enrichment quality pass that runs after transcription and before
+downstream transcript consumers. Mastra identifies high-confidence Bible-story
+ASR drift, Manager applies only deterministic exact-match corrections to the
+canonical source transcript/subtitle artifacts, raw artifacts are preserved,
+and a correction report highlights applied and flagged findings for review.
+
 ### Embedding Backfill
 
 A controlled batch process that generates or regenerates vectors for existing content without changing the underlying source content.

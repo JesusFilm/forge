@@ -14,6 +14,8 @@ import {
   mergeShortsReport,
   type ShortsReportPatch,
 } from "@/lib/shorts-report"
+import { normalizeSubtitleValidationStepSummary } from "@/lib/subtitle-validation"
+import { normalizeTranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -439,6 +441,8 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
 
   const candidate = raw as {
     languageResults?: unknown
+    subtitleValidation?: unknown
+    transcriptCorrection?: unknown
     mastra?: unknown
     progress?: unknown
     message?: unknown
@@ -453,9 +457,18 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   const message =
     typeof candidate.message === "string" ? candidate.message : undefined
   const mastra = normalizeMastraStepCorrelation(candidate.mastra)
+  const subtitleValidation = normalizeSubtitleValidationStepSummary(
+    candidate.subtitleValidation,
+  )
+  const transcriptCorrection =
+    normalizeTranscriptScriptureCorrectionStepSummary(
+      candidate.transcriptCorrection,
+    )
 
   if (
     languageResults.length === 0 &&
+    subtitleValidation === undefined &&
+    transcriptCorrection === undefined &&
     mastra === undefined &&
     progress === undefined &&
     !message
@@ -465,6 +478,8 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
 
   return {
     ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation !== undefined ? { subtitleValidation } : {}),
+    ...(transcriptCorrection !== undefined ? { transcriptCorrection } : {}),
     ...(mastra !== undefined ? { mastra } : {}),
     ...(progress !== undefined ? { progress } : {}),
     ...(message !== undefined ? { message } : {}),
@@ -481,6 +496,8 @@ export async function createJob(
   languages: string[] = [],
   options?: {
     videoDocumentId?: string
+    sourceCollectionTitle?: string
+    sourceMediaTitle?: string
     initialArtifacts?: JobArtifactManifest
     // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
     // custom step inventory (smart-crop jobs persist smart_crop_* steps
@@ -553,6 +570,8 @@ export async function createJob(
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
+      sourceCollectionTitle: options?.sourceCollectionTitle,
+      sourceMediaTitle: options?.sourceMediaTitle,
       options: jobOptions,
       artifacts: initialArtifacts,
       errors: [],

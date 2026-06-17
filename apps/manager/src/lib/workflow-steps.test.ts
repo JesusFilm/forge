@@ -13,6 +13,7 @@ describe("buildInitialSteps", () => {
   it("uses the canonical persisted Forge workflow step inventory", () => {
     expect(FORGE_WORKFLOW_STEPS).toEqual([
       "transcription",
+      "structured_transcript",
       "translation",
       "chapters",
       "metadata",

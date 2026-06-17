@@ -83,7 +83,8 @@
     "toggleOn": "Hidup",
     "toggleOff": "Mati",
     "close": "Tutup",
-    "apply": "Guna"
+    "apply": "Guna",
+    "noLanguageSubtitles": "Tiada sari kata {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISOD} other {# EPISOD}}",

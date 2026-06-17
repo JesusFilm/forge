@@ -21,12 +21,19 @@ import type {
   JobStepDetails,
   MuxSyncReport,
   RequestedTranscriptionProvider,
+  SubtitleValidationStepSummary,
+  SubtitleValidationVerdict,
   TranscriptionRoutingReport,
   TranslationLanguageResult,
 } from "@/types/job"
 import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
-import type { LanguageResult } from "@/services/mastra-subtitle-enrichment"
+import type {
+  LanguageResult,
+  MastraSubtitleTranslationContext,
+} from "@/services/mastra-subtitle-enrichment"
 import type { MastraTranscriptEmbeddingResult } from "@/services/mastra-transcript-embeddings"
+import type { TranscriptionResult } from "@/services/transcription"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import {
   stepGetJob,
   stepMergeJobArtifacts,
@@ -39,9 +46,24 @@ type SubtitleTranslationStepResult = {
   languages: LanguageResult[]
 }
 
+type TranscriptScriptureCorrectionStepResult = {
+  transcription: TranscriptionResult
+  artifactKeys: string[]
+  summary: TranscriptScriptureCorrectionStepSummary
+  mastraRunId?: string
+  mastraStatus?: string
+  mastraReason?: string
+  retryable?: boolean
+}
+
 type MastraStepDetailsError = Error & {
   stepDetails?: JobStepDetails
 }
+
+const SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCES = 20
+const SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCE_CHARS = 80
+const BIBLE_REFERENCE_PATTERN =
+  /^(?:[1-3]\s*)?[A-Za-z][A-Za-z .'-]{1,40}\s+\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?(?:\s*[-–]\s*\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?)?$/
 
 function buildMastraFailureStepDetails(input: {
   mastraRunId?: string
@@ -69,6 +91,10 @@ function buildMastraFailureStepDetails(input: {
       status: result.status,
       error: result.error,
     }))
+    const subtitleValidation = getSubtitleValidationStepSummary(input.languages)
+    if (subtitleValidation) {
+      details.subtitleValidation = subtitleValidation
+    }
   }
 
   return details.mastra || details.languageResults ? details : undefined
@@ -128,6 +154,7 @@ export type VideoEnrichmentInput = {
   translateTo?: string[]
   runSceneAnalysis?: boolean
   runAudioCleanup?: boolean
+  videoTitle?: string
   videoLabel?: string
   bibleVerses?: string[]
   initialArtifacts?: JobArtifactManifest
@@ -151,6 +178,50 @@ export type VideoEnrichmentOutput = {
   language: string
   chapters: { title: string; startSeconds: number }[]
   tags: string[]
+}
+
+function cleanOptionalString(
+  value: string | null | undefined,
+): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function cleanBibleReference(value: string): string | undefined {
+  const trimmed = value.trim().replace(/\s+/g, " ")
+  if (
+    !trimmed ||
+    trimmed.length > SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCE_CHARS ||
+    !BIBLE_REFERENCE_PATTERN.test(trimmed)
+  ) {
+    return undefined
+  }
+  return trimmed
+}
+
+function buildSubtitleTranslationContext(input: {
+  videoTitle?: string
+  videoLabel?: string
+  bibleVerses?: string[]
+}): MastraSubtitleTranslationContext | undefined {
+  const bibleReferences = Array.from(
+    new Set(
+      (input.bibleVerses ?? [])
+        .map(cleanBibleReference)
+        .filter((reference): reference is string => reference != null),
+    ),
+  ).slice(0, SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCES)
+  const context: MastraSubtitleTranslationContext = {
+    ...(cleanOptionalString(input.videoTitle)
+      ? { videoTitle: cleanOptionalString(input.videoTitle) }
+      : {}),
+    ...(cleanOptionalString(input.videoLabel)
+      ? { videoLabel: cleanOptionalString(input.videoLabel) }
+      : {}),
+    ...(bibleReferences.length > 0 ? { bibleReferences } : {}),
+  }
+
+  return Object.keys(context).length > 0 ? context : undefined
 }
 
 async function markStepRunning(jobId: string, step: WorkflowStepName) {
@@ -236,12 +307,81 @@ function getTranslationArtifactManifest({
   languages,
 }: SubtitleTranslationStepResult): JobArtifactManifest {
   return buildDownloadableArtifactManifest(
-    languages.flatMap((result) =>
-      result.status === "completed"
-        ? [`subtitles-${result.lang}`, `translation-${result.lang}`]
-        : [],
-    ),
+    languages.flatMap((result) => {
+      if (result.status !== "completed") {
+        return []
+      }
+      return [
+        `subtitles-${result.lang}`,
+        `translation-${result.lang}`,
+        ...(result.artifactKeys?.validation
+          ? [`subtitle-validation-${result.lang}`]
+          : []),
+      ]
+    }),
   )
+}
+
+const VALIDATION_VERDICT_RANK: Record<SubtitleValidationVerdict, number> = {
+  pass: 0,
+  unavailable: 1,
+  warning: 2,
+  needs_review: 3,
+}
+
+function highestSubtitleValidationVerdict(
+  verdicts: SubtitleValidationVerdict[],
+): SubtitleValidationVerdict {
+  return verdicts.reduce<SubtitleValidationVerdict>(
+    (highest, verdict) =>
+      VALIDATION_VERDICT_RANK[verdict] > VALIDATION_VERDICT_RANK[highest]
+        ? verdict
+        : highest,
+    "pass",
+  )
+}
+
+function getSubtitleValidationStepSummary(
+  languages: LanguageResult[],
+): SubtitleValidationStepSummary | undefined {
+  const results = languages.flatMap((result) =>
+    result.validationSummary
+      ? [
+          {
+            lang: result.lang,
+            ...result.validationSummary,
+          },
+        ]
+      : [],
+  )
+  if (results.length === 0) {
+    return undefined
+  }
+
+  return {
+    highestVerdict: highestSubtitleValidationVerdict(
+      results.map((result) => result.verdict),
+    ),
+    languagesChecked: results.length,
+    modelOnlyLanguages: results
+      .filter((result) => result.basis === "model_knowledge")
+      .map((result) => result.lang),
+    unavailableLanguages: results
+      .filter(
+        (result) =>
+          result.basis === "unavailable" || result.verdict === "unavailable",
+      )
+      .map((result) => result.lang),
+    warningCount: results.reduce(
+      (total, result) => total + result.warningCount,
+      0,
+    ),
+    needsReviewCount: results.reduce(
+      (total, result) => total + result.needsReviewCount,
+      0,
+    ),
+    results,
+  }
 }
 
 function getTranslationStepDetails(
@@ -254,9 +394,11 @@ function getTranslationStepDetails(
       error: result.error,
     }),
   )
+  const subtitleValidation = getSubtitleValidationStepSummary(result.languages)
 
   return {
     ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation ? { subtitleValidation } : {}),
     mastra: {
       runId: result.mastraRunId,
       status: "completed",
@@ -278,6 +420,24 @@ function getTranscriptEmbeddingsStepDetails(
       totalTokens: result.totalTokens,
       sourceContentHash: result.sourceContentHash,
     },
+  }
+}
+
+function getTranscriptCorrectionStepDetails(
+  result: TranscriptScriptureCorrectionStepResult,
+): JobStepDetails {
+  return {
+    transcriptCorrection: result.summary,
+    ...(result.mastraRunId || result.mastraReason
+      ? {
+          mastra: {
+            runId: result.mastraRunId ?? "unavailable",
+            status: result.mastraStatus,
+            reason: result.mastraReason,
+            retryable: result.retryable,
+          },
+        }
+      : {}),
   }
 }
 
@@ -337,6 +497,40 @@ export async function runVideoEnrichment(
         await persistArtifacts(input.jobId, artifactManifest)
       }
       await markStepFailed(input.jobId, "transcription", msg)
+      throw err
+    }
+
+    let transcriptCorrectionResult: TranscriptScriptureCorrectionStepResult
+    await markStepRunning(input.jobId, "structured_transcript")
+    try {
+      transcriptCorrectionResult = await stepTranscriptScriptureCorrection({
+        assetId: input.assetId,
+        sourceLanguage: transcription.language,
+        transcription,
+        translationContext: buildSubtitleTranslationContext({
+          videoTitle: input.videoTitle,
+          videoLabel: input.videoLabel,
+          bibleVerses: input.bibleVerses,
+        }),
+      })
+      transcription = transcriptCorrectionResult.transcription
+      if (transcriptCorrectionResult.artifactKeys.length > 0) {
+        artifactManifest = mergeArtifactEntries(
+          artifactManifest,
+          buildDownloadableArtifactManifest(
+            transcriptCorrectionResult.artifactKeys,
+          ),
+        )
+        await persistArtifacts(input.jobId, artifactManifest)
+      }
+      await markStepComplete(
+        input.jobId,
+        "structured_transcript",
+        getTranscriptCorrectionStepDetails(transcriptCorrectionResult),
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error"
+      await markStepFailed(input.jobId, "structured_transcript", msg)
       throw err
     }
 
@@ -450,7 +644,17 @@ export async function runVideoEnrichment(
 
     const translationPromise = runParallelStep(
       "translation",
-      () => stepSubtitleTranslation(input.assetId, language, targets),
+      () =>
+        stepSubtitleTranslation(
+          input.assetId,
+          language,
+          targets,
+          buildSubtitleTranslationContext({
+            videoTitle: input.videoTitle,
+            videoLabel: input.videoLabel,
+            bibleVerses: input.bibleVerses,
+          }),
+        ),
       getTranslationArtifactManifest,
       getTranslationStepDetails,
     )
@@ -682,6 +886,7 @@ async function stepSubtitleTranslation(
   assetId: string,
   sourceLanguage: string,
   targetLanguages: string[],
+  translationContext?: MastraSubtitleTranslationContext,
 ) {
   "use step"
   const { launchMastraSubtitleEnrichment } =
@@ -690,6 +895,7 @@ async function stepSubtitleTranslation(
     assetId,
     sourceLanguage,
     targetLanguages,
+    ...(translationContext ? { translationContext } : {}),
   })
 
   if (!result.ok) {
@@ -708,6 +914,149 @@ async function stepSubtitleTranslation(
   return {
     mastraRunId: result.mastraRunId,
     languages: result.languages,
+  }
+}
+
+async function stepTranscriptScriptureCorrection(input: {
+  assetId: string
+  sourceLanguage: string
+  transcription: TranscriptionResult
+  translationContext?: MastraSubtitleTranslationContext
+}): Promise<TranscriptScriptureCorrectionStepResult> {
+  "use step"
+  const { writeArtifact } = await import("@/services/storage")
+  const { segmentsToVTT } = await import("@/lib/vtt")
+  const { launchMastraTranscriptScriptureCorrection } =
+    await import("@/services/mastra-transcript-scripture-correction")
+  const {
+    applyTranscriptScriptureCorrections,
+    buildTranscriptCorrectionReport,
+  } = await import("@/services/transcript-scripture-correction")
+
+  const mastraResult = await launchMastraTranscriptScriptureCorrection({
+    assetId: input.assetId,
+    sourceLanguage: input.sourceLanguage,
+    segments: input.transcription.segments,
+    ...(input.translationContext
+      ? { translationContext: input.translationContext }
+      : {}),
+    provider: { name: input.transcription.resolvedProvider },
+  })
+  const correction = mastraResult.ok
+    ? mastraResult.correction
+    : {
+        status: "unavailable" as const,
+        basis: "unavailable" as const,
+        contentDomain: "christian_general" as const,
+        confidence: 0,
+        checkedReferenceCount: 0,
+        candidateCount: 0,
+        flaggedCount: 0,
+        unavailableReason: mastraResult.reason,
+        likelyBibleReferences: [],
+        findings: [],
+      }
+  const application = applyTranscriptScriptureCorrections({
+    text: input.transcription.text,
+    segments: input.transcription.segments,
+    correction,
+  })
+  const artifactKeys = ["transcript-correction-report"]
+
+  if (application.changed) {
+    await writeArtifact({
+      assetId: input.assetId,
+      artifactType: "transcript-raw",
+      ext: "json",
+      body: JSON.stringify(
+        {
+          text: input.transcription.text,
+          segments: input.transcription.segments,
+          language: input.transcription.language,
+          resolvedProvider: input.transcription.resolvedProvider,
+          routingReport: input.transcription.routingReport,
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    })
+    artifactKeys.push("transcript-raw")
+
+    if (input.transcription.segments.length > 0) {
+      await writeArtifact({
+        assetId: input.assetId,
+        artifactType: "subtitles-raw",
+        ext: "vtt",
+        body: segmentsToVTT(input.transcription.segments),
+        contentType: "text/vtt",
+      })
+      artifactKeys.push("subtitles-raw")
+    }
+
+    await writeArtifact({
+      assetId: input.assetId,
+      artifactType: "transcript",
+      ext: "json",
+      body: JSON.stringify(
+        {
+          text: application.text,
+          segments: application.segments,
+          language: input.transcription.language,
+          resolvedProvider: input.transcription.resolvedProvider,
+          routingReport: input.transcription.routingReport,
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    })
+    artifactKeys.push("transcript")
+
+    if (application.segments.length > 0) {
+      await writeArtifact({
+        assetId: input.assetId,
+        artifactType: "subtitles",
+        ext: "vtt",
+        body: segmentsToVTT(application.segments),
+        contentType: "text/vtt",
+      })
+      artifactKeys.push("subtitles")
+    }
+  }
+
+  await writeArtifact({
+    assetId: input.assetId,
+    artifactType: "transcript-correction-report",
+    ext: "json",
+    body: JSON.stringify(
+      buildTranscriptCorrectionReport(application.summary),
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  })
+
+  return {
+    transcription: {
+      ...input.transcription,
+      text: application.text,
+      segments: application.segments,
+      artifactKeys: Array.from(
+        new Set([...input.transcription.artifactKeys, ...artifactKeys]),
+      ),
+    },
+    artifactKeys,
+    summary: application.summary,
+    ...(mastraResult.ok
+      ? {
+          mastraRunId: mastraResult.mastraRunId,
+          mastraStatus: mastraResult.correction.status,
+        }
+      : {
+          mastraReason: mastraResult.reason,
+          retryable: mastraResult.retryable,
+        }),
   }
 }
 

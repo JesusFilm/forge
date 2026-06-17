@@ -4,6 +4,7 @@ import type { JobStepState, WorkflowStepName } from "@/types/job"
 // Manager job read/write contracts.
 export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
   "transcription",
+  "structured_transcript",
   "translation",
   "chapters",
   "metadata",
