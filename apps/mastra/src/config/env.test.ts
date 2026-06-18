@@ -671,4 +671,66 @@ describe("Mastra env", () => {
       "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
     )
   })
+
+  it("exposes configured devotional site-ingest, partners, and video search", async () => {
+    vi.stubEnv(
+      "DEVOTIONAL_SITE_INGEST_URL",
+      "https://watch.example.org/api/devotional-ingest",
+    )
+    vi.stubEnv("DEVOTIONAL_SITE_INGEST_API_KEY", "devotional-ingest-key")
+    vi.stubEnv("DEVOTIONAL_PARTNER_DOMAINS", "Partner.org, gotquestions.org ,")
+    vi.stubEnv("DEVOTIONAL_DEFAULT_VIDEO_ID", "video-fallback-1")
+    vi.stubEnv("DEVOTIONAL_MODEL", "anthropic/claude-sonnet-4-6")
+    vi.stubEnv("DEVOTIONAL_SAFETY_MODEL", "anthropic/claude-opus-4-8")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SEARCH_URL",
+      "https://admin.internal/api/internal/search-eval/search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "search-eval-key")
+
+    const {
+      getDevotionalSiteIngestConfig,
+      getDevotionalPartnerDomains,
+      getDevotionalVideoSearchConfig,
+      getDevotionalModel,
+      getDevotionalSafetyModel,
+    } = await import("./env")
+
+    expect(getDevotionalSiteIngestConfig()).toEqual({
+      url: "https://watch.example.org/api/devotional-ingest",
+      apiKey: "devotional-ingest-key",
+    })
+    // CSV is trimmed, lower-cased, and empty entries dropped.
+    expect(getDevotionalPartnerDomains()).toEqual([
+      "partner.org",
+      "gotquestions.org",
+    ])
+    expect(getDevotionalVideoSearchConfig()).toEqual({
+      url: "https://admin.internal/api/internal/search-eval/search",
+      bearer: "search-eval-key",
+      defaultVideoId: "video-fallback-1",
+    })
+    expect(getDevotionalModel()).toBe("anthropic/claude-sonnet-4-6")
+    expect(getDevotionalSafetyModel()).toBe("anthropic/claude-opus-4-8")
+  })
+
+  it("defaults devotional config when optional vars are unset", async () => {
+    const {
+      getDevotionalSiteIngestConfig,
+      getDevotionalPartnerDomains,
+      getDevotionalVideoSearchConfig,
+      getDevotionalModel,
+      getDevotionalSafetyModel,
+    } = await import("./env")
+
+    expect(getDevotionalSiteIngestConfig()).toEqual({
+      url: undefined,
+      apiKey: undefined,
+    })
+    expect(getDevotionalPartnerDomains()).toEqual([])
+    expect(getDevotionalVideoSearchConfig().defaultVideoId).toBeUndefined()
+    // Both model getters fall back to the same default.
+    expect(getDevotionalModel()).toBe("anthropic/claude-haiku-4-5")
+    expect(getDevotionalSafetyModel()).toBe("anthropic/claude-haiku-4-5")
+  })
 })

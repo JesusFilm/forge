@@ -26,6 +26,7 @@ const DEFAULT_FIRECRAWL_USER_AGENT = "forge-mastra-firecrawl/1.0"
 const DEFAULT_FIRECRAWL_TIMEOUT_MS = 60_000
 const DEFAULT_FIRECRAWL_MAX_SEARCH_RESULTS = 5
 const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
+const DEFAULT_DEVOTIONAL_MODEL = "anthropic/claude-haiku-4-5"
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
@@ -141,6 +142,13 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
+  DEVOTIONAL_SITE_INGEST_URL: z.string().url().optional(),
+  DEVOTIONAL_SITE_INGEST_API_KEY: z.string().min(1).optional(),
+  DEVOTIONAL_PARTNER_DOMAINS: z.string().min(1).optional(),
+  DEVOTIONAL_DEFAULT_VIDEO_ID: z.string().min(1).optional(),
+  DEVOTIONAL_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
+  DEVOTIONAL_SAFETY_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
+  DEVOTIONAL_ARTIFACT_DIR: z.string().min(1).optional(),
   FIRECRAWL_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -320,6 +328,25 @@ export const env = envSchema.parse({
   ),
   EVAL_QUERY_GENERATION_MODEL: emptyToUndefined(
     process.env.EVAL_QUERY_GENERATION_MODEL,
+  ),
+  DEVOTIONAL_SITE_INGEST_URL: emptyToUndefined(
+    process.env.DEVOTIONAL_SITE_INGEST_URL,
+  ),
+  DEVOTIONAL_SITE_INGEST_API_KEY: emptyToUndefined(
+    process.env.DEVOTIONAL_SITE_INGEST_API_KEY,
+  ),
+  DEVOTIONAL_PARTNER_DOMAINS: emptyToUndefined(
+    process.env.DEVOTIONAL_PARTNER_DOMAINS,
+  ),
+  DEVOTIONAL_DEFAULT_VIDEO_ID: emptyToUndefined(
+    process.env.DEVOTIONAL_DEFAULT_VIDEO_ID,
+  ),
+  DEVOTIONAL_MODEL: emptyToUndefined(process.env.DEVOTIONAL_MODEL),
+  DEVOTIONAL_SAFETY_MODEL: emptyToUndefined(
+    process.env.DEVOTIONAL_SAFETY_MODEL,
+  ),
+  DEVOTIONAL_ARTIFACT_DIR: emptyToUndefined(
+    process.env.DEVOTIONAL_ARTIFACT_DIR,
   ),
   FIRECRAWL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.FIRECRAWL_ALLOWED_HOSTS,
@@ -525,6 +552,53 @@ export function getFirecrawlConfig(): FirecrawlConfig {
     maxSearchResults: env.FIRECRAWL_MAX_SEARCH_RESULTS,
     maxMarkdownCharacters: env.FIRECRAWL_MAX_MARKDOWN_CHARS,
   }
+}
+
+export type DevotionalSiteIngestConfig = {
+  url?: string
+  apiKey?: string
+}
+
+/** Watch-site "Today's Devotional" ingest target. Both absent => publish skipped. */
+export function getDevotionalSiteIngestConfig(): DevotionalSiteIngestConfig {
+  return {
+    url: env.DEVOTIONAL_SITE_INGEST_URL,
+    apiKey: env.DEVOTIONAL_SITE_INGEST_API_KEY,
+  }
+}
+
+/** Trimmed, lower-cased partner-domain allowlist for grounding. Empty when unset. */
+export function getDevotionalPartnerDomains(): string[] {
+  return (env.DEVOTIONAL_PARTNER_DOMAINS ?? "")
+    .split(",")
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+export type DevotionalVideoSearchConfig = {
+  url?: string
+  bearer?: string
+  defaultVideoId?: string
+}
+
+/**
+ * Video matching reuses the Admin search-eval HTTP contract (A2). The optional
+ * default clip id backs the always-a-clip fallback (A8).
+ */
+export function getDevotionalVideoSearchConfig(): DevotionalVideoSearchConfig {
+  return {
+    url: env.ADMIN_SEARCH_EVAL_SEARCH_URL,
+    bearer: env.ADMIN_SEARCH_EVAL_API_KEY,
+    defaultVideoId: env.DEVOTIONAL_DEFAULT_VIDEO_ID,
+  }
+}
+
+export function getDevotionalModel(): string {
+  return env.DEVOTIONAL_MODEL
+}
+
+export function getDevotionalSafetyModel(): string {
+  return env.DEVOTIONAL_SAFETY_MODEL
 }
 
 function getLegacyEmbeddingProviderConfig(
