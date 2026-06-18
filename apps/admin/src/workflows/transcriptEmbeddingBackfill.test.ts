@@ -61,6 +61,7 @@ vi.mock("@/services/mastra-transcript-embedding-client", () => ({
 }))
 
 const { prisma } = await import("@/db/client")
+const { env } = await import("@/config/env")
 const { ManagerArtifactError, readTranscriptSourceArtifact } =
   await import("@/services/manager-artifacts.service")
 const { launchMastraTranscriptEmbedding } =
@@ -119,6 +120,9 @@ function target(
 
 describe("runTranscriptEmbeddingBackfill", () => {
   beforeEach(() => {
+    ;(
+      env as unknown as { TRANSCRIPT_EMBEDDING_CONCURRENCY: unknown }
+    ).TRANSCRIPT_EMBEDDING_CONCURRENCY = 2
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
     ;(
       prisma as unknown as {
@@ -463,6 +467,43 @@ Subtitle transcript text.
     })
 
     expect(observedMaxInFlight).toBe(2)
+  })
+
+  it("accepts raw string concurrency from the workflow runtime env", async () => {
+    ;(
+      env as unknown as { TRANSCRIPT_EMBEDDING_CONCURRENCY: unknown }
+    ).TRANSCRIPT_EMBEDDING_CONCURRENCY = "1"
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-c", "en"),
+    ])
+
+    let inFlight = 0
+    let observedMaxInFlight = 0
+    vi.mocked(launchMastraTranscriptEmbedding).mockImplementation(async () => {
+      inFlight += 1
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      inFlight -= 1
+      return {
+        ok: true,
+        status: "created",
+        chunks: 1,
+        totalTokens: 4,
+        model: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+        mastraRunId: "run-1",
+        sourceContentHash: "sha256:test",
+      }
+    })
+
+    await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(observedMaxInFlight).toBe(1)
   })
 
   it("returns an empty report when the DB has no editions", async () => {

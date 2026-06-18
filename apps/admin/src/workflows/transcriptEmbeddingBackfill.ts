@@ -86,6 +86,17 @@ import { stepResolveSubtitleTranscriptSource } from "./_steps/resolve-transcript
  */
 export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 5
 
+function transcriptEmbeddingConcurrency(): number {
+  const value =
+    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+  const concurrency = Number(value)
+
+  return Number.isInteger(concurrency) && concurrency > 0
+    ? concurrency
+    : DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+}
+
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
   mappingS3Key: string
@@ -255,9 +266,7 @@ export async function runTranscriptEmbeddingBackfill(
   // docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md
   // for the canonical HOW. feat-132's per-language step now launches
   // Mastra instead of writing Manager-produced vectors directly.
-  const concurrency =
-    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
-    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+  const concurrency = transcriptEmbeddingConcurrency()
   const limit = pLimit(concurrency)
 
   // Structured start log so the workflow's effective concurrency is
