@@ -30,6 +30,10 @@ Read-only Next.js dashboard that renders feature tickets from `docs/roadmap/` ma
 
 This app does NOT need changes when tickets are added to `docs/roadmap/`. It reads them dynamically. Only change this app if the viewer itself needs new functionality.
 
+## Excluded lane: `ai-chat` (do not register)
+
+The `docs/roadmap/ai-chat/` lane is **intentionally NOT registered in this app**. It is deliberately excluded from `LANE_DIRS` / the `Lane` union (`lib/features.ts`) and from `README_LANE_ORDER` (`scripts/generate-roadmap-readme.js`), so the viewer never renders it and the generated root `docs/roadmap/README.md` never counts it. This is by design — do not "fix" the missing lane by adding it. It is a docs-only lane maintained via its own `docs/roadmap/ai-chat/README.md` + `CLAUDE.md`, which explain the lane and why it is unregistered.
+
 ## Deployment
 
 Railway via `railway.toml`. Watch patterns: `apps/roadmap/**` and `docs/roadmap/**`. Auto-redeploys when tickets are updated on main.
