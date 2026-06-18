@@ -21,6 +21,7 @@ related:
   - "docs/solutions/platform/admin-hybrid-search-r4-pattern.md"
   - "docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md"
   - "docs/solutions/platform/mastra-transcript-embedding-workflow-pattern.md"
+  - "docs/solutions/architecture-patterns/transcript-demographics-signal-shape.md"
 date_learned: 2026-06-29
 supersedes:
   - "docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md"
