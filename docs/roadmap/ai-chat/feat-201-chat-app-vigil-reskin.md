@@ -3,7 +3,7 @@ id: "feat-201"
 title: "Chat app Vigil re-skin + conversation shell"
 owner: "jian wei"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-15"
 duration: 1
 depends_on:
@@ -12,11 +12,13 @@ blocks: []
 tags: []
 ---
 
-> Renumbered from the gated chat web-app trunk's `feat-192`. Tags cleared to
-> `[]` (no fitting forge facet). This work is already done on that trunk
-> (delivered via #1277/#1294) but lands `in-progress` here since the code isn't
-> on `main` yet.
-> Code ships via PR **#1276**; status flips to `complete` when it merges.
+## Resolution
+
+**Shipped:** 2026-06-18 via [PR #1276](https://github.com/JesusFilm/forge/pull/1276) — the re-skin was delivered through [PR #1277](https://github.com/JesusFilm/forge/pull/1277) with a `/ce-code-review` hardening pass in [PR #1294](https://github.com/JesusFilm/forge/pull/1294), squash-merged into the #1276 trunk.
+
+**What landed.** Ported the jesusfilm.ai "Vigil" design system into `globals.css` as Tailwind v4 `@theme` tokens (warm-dark palette, three fonts, page vignette); re-skinned the chat (Embersoot user bubble, plain-text assistant turns, 12px Vesper send-dot, the centered 680px reading "room", Lamplight pulse-cursor pending state); added an inlined brand lockup and a client-only conversation sidebar (new/select, first-message auto-title, resets on refresh — a brand _extension_, since the Vigil system as given is single-surface); split `chat.tsx` into presentational `composer`/`empty-state`/`message-list` with all state in `useConversations` (one-way data flow). The #1294 pass moved pending state from a global flag to **per-conversation**, wrapped reply-slot release in `try/finally` (fire-and-forget slot-leak guard, ahead of the async Mastra swap), and moved the `Message` type into `conversations.ts` so it survives the stub seam's deletion.
+
+**Residual risk / follow-ups.** Surfacing reply failures to the user and an outbound timeout on the reply path are deferred to the future Mastra integration ticket; the criteria are recorded in `apps/chat/CLAUDE.md` → "Eventual Mastra Connection". The Vigil design direction is provisional, not a locked convention.
 
 ## Problem
 
@@ -107,22 +109,3 @@ In-browser smoke (headless Chromium via chrome-devtools MCP): empty state shows
 the Newsreader prompt + starters; clicking a starter sends → Embersoot user
 bubble + stub reply; sidebar item auto-retitles; "+ New conversation" opens a
 fresh empty conversation while the prior one persists in the rail.
-
-## What was shipped
-
-Delivered via **#1277** (squash-merged into trunk **#1276**). A follow-up pass
-with `/ce-code-review` (three rounds) hardened the shipped UI — same scope, no
-new requirements — landed in **#1294**:
-
-- Pending state moved from one global flag to **per-conversation** (single
-  source of truth): the pulse cursor + disabled composer attach to the
-  conversation actually awaiting a reply, and one slow reply no longer locks the
-  others.
-- Reply-slot release wrapped in `try/finally` (fire-and-forget slot-leak guard),
-  ahead of the eventual Mastra async swap.
-- `Message` type moved to `conversations.ts` so it survives the stub seam's
-  deletion.
-- Behavioral tests added for mid-reply switching, parallel sends, and the
-  slot-leak guard.
-
-Recorded here in lieu of a separate ticket.
