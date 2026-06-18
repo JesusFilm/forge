@@ -40,7 +40,12 @@ EAS returns a public install URL for an **APK** (the `preview` profile forces
 Give stakeholders the link. They install it by either:
 
 - **Downloader app** (by AFTVnews, from the Play Store): open the EAS URL, install.
-- `adb connect <tv-ip>:5555 && adb install <file>.apk` over the network.
+- `adb connect <tv-ip>:<port> && adb install <file>.apk` over the network. The
+  port is `5555` only on Android 11 and earlier; **Android 13/14 randomizes the
+  Wireless-debugging port on every reboot** — read the current `IP:port` from
+  _Settings → System → Developer options → Wireless debugging_ (and pair once via
+  "Pair device with pairing code"). See the `/build-android` command for the full
+  Android-14 `adb pair`/`adb connect` flow.
 - A Google Drive link → a file manager on the TV.
 
 First they must enable _Settings → Developer options → Install unknown apps_ for
