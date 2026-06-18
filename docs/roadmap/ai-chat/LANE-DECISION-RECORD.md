@@ -59,32 +59,32 @@ Stay in the global `feat-NNN` sequence (no separate namespace), and renumber to
 the current global frontier. Rationale: the global sequence already contains 80+
 duplicate IDs across lanes (pre-existing, not CI-enforced); a separate namespace
 would buy isolation the rest of the roadmap doesn't have, and cross-lane
-references (`feat-197 depends_on feat-129`) read naturally in one sequence.
+references (`feat-198 depends_on feat-129`) read naturally in one sequence.
 
 ---
 
 ## Mapping table — old (gated branches) → new (this lane)
 
-> **Assigned once, here.** `feat-196` is the highest **defined** ID on this
-> fresh-off-`main` branch (held by
-> `topic-experiences/feat-196-watch-compatible-download-filenames.md`), so this
-> block starts at `feat-197`; `197–200` are free today. We do **not** chase the
-> frontier: if a parallel branch consumes one of these before merge, the
-> resulting cross-lane duplicate is acceptable (the repo already carries 80+ such
-> dups and this lane isn't rendered). Feature PRs adopt these IDs as-is. The only
-> collision this renumber actually resolves is the within-lane / cross-PR clash —
-> two `feat-174`s (seeker-RAG + chat-scaffold) would otherwise land in this same
-> folder and corrupt the `depends_on` / `blocks` graph.
+> **IDs are final at `feat-198`–`201`.** These are the four lowest free IDs above
+> the current frontier (`main`'s highest defined is `feat-197`, in
+> `content-discovery`). Once this roadmap PR merges they are fixed. The feature
+> PRs (#1276 / #1279) **adopt these IDs exactly as they appear on `main` and do
+> NOT renumber** — renumbering was this PR's job and is done. The one collision a
+> renumber had to resolve: two `feat-174`s (seeker-RAG + chat-scaffold) would
+> otherwise land in this same folder and corrupt the `depends_on` / `blocks`
+> graph; within-lane uniqueness is the rule that matters. (A cross-lane duplicate
+> with another lane would be harmless — this lane isn't rendered — but none arises
+> here.)
 
 | Old (branch)                          | Source PR | New (this lane) | Lands as    | Flips to (on code-PR merge) |
 | ------------------------------------- | --------- | --------------- | ----------- | --------------------------- |
-| `feat-170` seeker-agent-skeleton      | #1279     | **`feat-197`**  | in-progress | complete                    |
-| `feat-174` seeker-rag-retrieval-conn. | #1279     | **`feat-198`**  | in-progress | (true state at merge)       |
-| `feat-174` chat-app-scaffold          | #1276     | **`feat-199`**  | in-progress | complete                    |
-| `feat-192` chat-app-vigil-reskin      | #1276     | **`feat-200`**  | in-progress | complete                    |
+| `feat-170` seeker-agent-skeleton      | #1279     | **`feat-198`**  | in-progress | complete                    |
+| `feat-174` seeker-rag-retrieval-conn. | #1279     | **`feat-199`**  | in-progress | (true state at merge)       |
+| `feat-174` chat-app-scaffold          | #1276     | **`feat-200`**  | in-progress | complete                    |
+| `feat-192` chat-app-vigil-reskin      | #1276     | **`feat-201`**  | in-progress | complete                    |
 
-Bidirectional links updated to the new IDs: 197 `blocks` 198 / 198 `depends_on`
-197; 199 `blocks` 200 / 200 `depends_on` 199. `feat-197 depends_on feat-129`
+Bidirectional links updated to the new IDs: 198 `blocks` 199 / 199 `depends_on`
+198; 200 `blocks` 201 / 201 `depends_on` 200. `feat-198 depends_on feat-129`
 (Mastra runtime, `platform` lane) is unchanged — a real, stable cross-lane ID.
 
 ### Plan-doc sequence collisions (separate namespace — rename in the feature PRs)
@@ -99,14 +99,14 @@ Bidirectional links updated to the new IDs: 197 `blocks` 198 / 198 `depends_on`
 Tags are secondary scopes only — never the ticket's own lane. Normalized to the
 genuinely-applicable existing forge facet, or `[]` where none fits:
 
-- **feat-197 (seeker skeleton):** `["ai-chat", "agent"]` → **`[]`** (no existing
+- **feat-198 (seeker skeleton):** `["ai-chat", "agent"]` → **`[]`** (no existing
   forge facet fits a mastra agent; the lane already conveys ai-chat).
-- **feat-198 (seeker RAG):** `["ai-chat", "agent"]` → **`["search"]`** (it's
+- **feat-199 (seeker RAG):** `["ai-chat", "agent"]` → **`["search"]`** (it's
   retrieval).
-- **feat-199 (scaffold):** `["infrastructure", "chat", "scaffold"]` →
+- **feat-200 (scaffold):** `["infrastructure", "chat", "scaffold"]` →
   **`["infrastructure"]`** (dropped generic `chat` and one-off `scaffold`;
   `infrastructure` covers standing up an app).
-- **feat-200 (vigil):** `["web", "chat", "ai-chat"]` → **`[]`** (`web` is the
+- **feat-201 (vigil):** `["web", "chat", "ai-chat"]` → **`[]`** (`web` is the
   wrong app — that tag is `apps/web`; `chat` is generic; no facet fits a chat-UI
   reskin).
 
@@ -116,7 +116,7 @@ genuinely-applicable existing forge facet, or `[]` where none fits:
 
 A ticket reflects what is on `main`. The roadmap-only PR lands ahead of the
 feature code, so every ticket lands `in-progress` even when the work is finished
-on its gated branch (feat-197 and feat-200 are `complete` on their branches).
+on its gated branch (feat-198 and feat-201 are `complete` on their branches).
 Flip to `complete` only when the **code PR** merges. "In progress on `main`"
 means "tracked, code pending merge" — not lost work. There is a transient window
 after this PR merges where `main` shows `in-progress` for done-but-unmerged work;
@@ -127,19 +127,21 @@ that is expected and harmless.
 ## Residual checklist for the FEATURE PRs (after this roadmap PR merges)
 
 Once this PR is on `main`, the two feature branches stop creating roadmap
-tickets and shrink to the four mechanical steps below. The git reality: because
+tickets and shrink to the four mechanical steps below. **These IDs are final —
+adopt them exactly as they appear on `main`; do not renumber.** The git reality:
+because
 the tickets were **renumbered** (filenames changed), merging `main` does NOT
 auto-collapse them — each branch will carry BOTH its old-ID file and the new-ID
 file until you delete the old one by hand.
 
 ### PR #1279 (`feature/seeker-ai-chat`)
 
-1. Merge/rebase `origin/main` (now carrying `feat-197` / `feat-198`).
+1. Merge/rebase `origin/main` (now carrying `feat-198` / `feat-199`).
 2. `git rm` the branch's old-ID ticket files:
    `docs/roadmap/ai-chat/feat-170-seeker-agent-skeleton.md`,
    `docs/roadmap/ai-chat/feat-174-seeker-rag-retrieval-connection.md`, and the
    branch's old `LANE-DECISION-RECORD.md` (superseded by this one).
-3. Flip status on the new-ID files: `feat-197` → `complete`; `feat-198` → its
+3. Flip status on the new-ID files: `feat-198` → `complete`; `feat-199` → its
    true state at merge. On each ticket flipped to `complete`, **replace the top
    provenance banner** (the `> Renumbered from …` block) with a `## Resolution`
    section (see the lane `CLAUDE.md` template) — the banner is transient
@@ -156,12 +158,12 @@ file until you delete the old one by hand.
 
 ### PR #1276 (`feature/ai-chat-web-app`)
 
-1. Merge/rebase `origin/main` (now carrying `feat-199` / `feat-200`).
+1. Merge/rebase `origin/main` (now carrying `feat-200` / `feat-201`).
 2. `git rm` the branch's old-ID ticket files:
    `docs/roadmap/ai-chat/feat-174-chat-app-scaffold.md`,
    `docs/roadmap/ai-chat/feat-192-chat-app-vigil-reskin.md`, and the branch's
    old `LANE-DECISION-RECORD-WEB.md` (superseded by this one).
-3. Flip status on the new-ID files: `feat-199` → `complete`; `feat-200` →
+3. Flip status on the new-ID files: `feat-200` → `complete`; `feat-201` →
    `complete`. On each, **replace the top provenance banner** (the
    `> Renumbered from …` block) with a `## Resolution` section (see the lane
    `CLAUDE.md` template) — the banner is transient migration scaffolding the
@@ -182,7 +184,7 @@ file until you delete the old one by hand.
 
 ---
 
-## Verification (run on each feature PR before merging the renumber)
+## Verification (run on each feature PR before merge)
 
 ```bash
 # Any seeker/chat-web hit on an OLD id/path/seq is a miss. Remaining feat-170 /

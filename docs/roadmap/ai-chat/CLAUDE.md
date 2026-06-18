@@ -78,6 +78,25 @@ incomplete dependencies for the rendered lanes — but this lane isn't rendered,
 so nothing computes it here. Set `status: "blocked"` by hand when a ticket can't
 start, and flip it back when the block clears.
 
+## Cross-lane dependencies — record them on the ai-chat side only
+
+When an ai-chat ticket depends on (or is blocked by) a ticket in a rendered
+lane, put the reference on **this** lane's ticket and **do not** add a
+back-reference inside the rendered-lane ticket. The repo-wide "dependencies are
+bidirectional" rule does **not** safely cross the rendered/unrendered boundary —
+honoring it on the rendered side breaks the viewer:
+
+- A rendered ticket with `depends_on: [<ai-chat-id>]` is marked **permanently
+  blocked** — the viewer never loads the ai-chat ticket, so the dependency can
+  never read as `complete` (it computes blocked status from `depends_on` against
+  only the loaded lanes).
+- A rendered ticket with `blocks: [<ai-chat-id>]` renders a **dead link** — the
+  `/ticket/<id>` route `notFound()`s for an unloaded ticket.
+
+So a cross-boundary link is one-way: the ai-chat side carries the `depends_on` /
+`blocks`; the rendered side stays untouched. (This is why, e.g., `feat-129` in
+`platform` is not edited to list this lane's tickets in its `blocks`.)
+
 ## Completing a ticket — prepend a `## Resolution` section
 
 When you flip a ticket to `status: "complete"`, prepend a `## Resolution` section

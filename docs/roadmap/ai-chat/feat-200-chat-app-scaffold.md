@@ -1,5 +1,5 @@
 ---
-id: "feat-199"
+id: "feat-200"
 title: "Chat app scaffold with stubbed agent"
 owner: "jian wei"
 priority: "P1"
@@ -8,7 +8,7 @@ start_date: "2026-06-10"
 duration: 3
 depends_on: []
 blocks:
-  - "feat-200"
+  - "feat-201"
 tags:
   - "infrastructure"
 ---

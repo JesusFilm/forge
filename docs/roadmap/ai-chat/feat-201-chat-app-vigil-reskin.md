@@ -1,5 +1,5 @@
 ---
-id: "feat-200"
+id: "feat-201"
 title: "Chat app Vigil re-skin + conversation shell"
 owner: "jian wei"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-06-15"
 duration: 1
 depends_on:
-  - "feat-199"
+  - "feat-200"
 blocks: []
 tags: []
 ---
@@ -20,7 +20,7 @@ tags: []
 
 ## Problem
 
-The `apps/chat` scaffold (feat-199) shipped as a bare stub: a single
+The `apps/chat` scaffold (feat-200) shipped as a bare stub: a single
 white-background chat page with blue bubbles and a "Send" button — visually the
 opposite of the jesusfilm.ai brand, and structurally a single growing
 `chat.tsx`. Before layering on real features (memory, auth, DB, agent wiring) it

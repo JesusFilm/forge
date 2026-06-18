@@ -1,5 +1,5 @@
 ---
-id: "feat-198"
+id: "feat-199"
 title: "Seeker Agent RAG Retrieval Connection"
 owner: "jian wei"
 priority: "P2"
@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-06-10"
 duration: 3
 depends_on:
-  - "feat-197"
+  - "feat-198"
 blocks: []
 tags:
   - "search"
@@ -22,7 +22,7 @@ tags:
 
 ## Problem
 
-feat-197's seeker agent ships with a stubbed `retrieveAnswer` tool: it returns
+feat-198's seeker agent ships with a stubbed `retrieveAnswer` tool: it returns
 a fixed `[stub]` placeholder with empty `sources`, so the agent cannot ground
 factual answers. The RAG it was waiting on now exists —
 `JesusFilm/jesusfilm-rag`, a standalone retrieve-only service with a published

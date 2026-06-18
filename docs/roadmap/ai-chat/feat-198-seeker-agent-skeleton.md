@@ -1,5 +1,5 @@
 ---
-id: "feat-197"
+id: "feat-198"
 title: "Seeker Agent Skeleton"
 owner: "jian wei"
 priority: "P2"
@@ -9,7 +9,7 @@ duration: 3
 depends_on:
   - "feat-129"
 blocks:
-  - "feat-198"
+  - "feat-199"
 tags: []
 ---
 
