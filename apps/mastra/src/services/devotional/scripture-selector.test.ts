@@ -89,9 +89,7 @@ describe("selectScripture", () => {
     await expect(
       selectScripture({
         hook: HOOK,
-        llm: llmThrowing(
-          new DevotionalLlmError("request_failed", "boom"),
-        ),
+        llm: llmThrowing(new DevotionalLlmError("request_failed", "boom")),
       }),
     ).rejects.toBeInstanceOf(ScriptureSelectorError)
   })

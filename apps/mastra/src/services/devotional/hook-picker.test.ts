@@ -44,7 +44,8 @@ describe("pickHook", () => {
       devotional_news_hook: () => ({
         chosen: true,
         title: "A world thirsty for living water",
-        summary: "As leaders meet over clean water, scripture speaks of deeper thirst.",
+        summary:
+          "As leaders meet over clean water, scripture speaks of deeper thirst.",
         sourceUrl: "https://news.example.org/water-summit",
       }),
     })

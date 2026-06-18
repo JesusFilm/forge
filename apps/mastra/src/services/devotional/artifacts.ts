@@ -57,7 +57,9 @@ export const DevotionalSchema = z
       .array(z.string().max(MAX_DEVOTIONAL_SHORT_TEXT))
       .max(MAX_DEVOTIONAL_QUESTIONS),
     furtherReading: z.string().max(MAX_DEVOTIONAL_URL).nullable(),
-    blockOrder: z.array(z.enum(DEVOTIONAL_BLOCKS)).max(DEVOTIONAL_BLOCKS.length),
+    blockOrder: z
+      .array(z.enum(DEVOTIONAL_BLOCKS))
+      .max(DEVOTIONAL_BLOCKS.length),
   })
   .strict()
 

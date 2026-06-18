@@ -49,8 +49,12 @@ describe("writeDevotional", () => {
       partnerDomains: PARTNERS,
       grounding: emptyGrounding,
       llm: llmReturning({
-        reflection: "Peace is not the absence of storms but the presence of Christ.",
-        questions: ["Where is your fear loudest?", "What would trusting Jesus look like today?"],
+        reflection:
+          "Peace is not the absence of storms but the presence of Christ.",
+        questions: [
+          "Where is your fear loudest?",
+          "What would trusting Jesus look like today?",
+        ],
       }),
     })
 

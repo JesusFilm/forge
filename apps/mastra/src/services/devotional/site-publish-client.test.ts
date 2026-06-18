@@ -25,7 +25,10 @@ const DEVOTIONAL: Devotional = {
   },
   videoMatch: "search",
   reflection: "The deepest thirst is met in Christ.",
-  questions: ["What are you thirsty for?", "Where have you looked to satisfy it?"],
+  questions: [
+    "What are you thirsty for?",
+    "Where have you looked to satisfy it?",
+  ],
   furtherReading: null,
   blockOrder: ["hook", "scripture", "video", "reflection", "questions"],
 }
@@ -54,7 +57,7 @@ describe("publishDevotional", () => {
 
     expect(result).toEqual({ ok: true, published: true })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
-    const [, init] = fetchImpl.mock.calls[0] as [URL, RequestInit]
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit]
     expect((init.headers as Record<string, string>).authorization).toBe(
       "Bearer ingest-key",
     )

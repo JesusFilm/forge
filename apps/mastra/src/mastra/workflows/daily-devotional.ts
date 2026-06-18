@@ -3,10 +3,7 @@ import { randomUUID } from "node:crypto"
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import {
-  getDevotionalModel,
-  getDevotionalSafetyModel,
-} from "../../config/env"
+import { getDevotionalModel, getDevotionalSafetyModel } from "../../config/env"
 import { isValidServiceBearer } from "../../server/service-bearer"
 import {
   DevotionalArtifactError,
@@ -15,7 +12,10 @@ import {
   createDevotionalArtifactStore,
   type DevotionalArtifactStore,
 } from "../../services/devotional/artifacts"
-import { createDevotionalLlm, DevotionalLlmError } from "../../services/devotional/llm"
+import {
+  createDevotionalLlm,
+  DevotionalLlmError,
+} from "../../services/devotional/llm"
 import { pickHook } from "../../services/devotional/hook-picker"
 import { selectScripture } from "../../services/devotional/scripture-selector"
 import { matchVideo } from "../../services/devotional/video-matcher"
@@ -156,7 +156,8 @@ export async function runDailyDevotional(
   let safetyLlm = deps.safetyLlm
   try {
     llm = llm ?? createDevotionalLlm({ model: getDevotionalModel() })
-    safetyLlm = safetyLlm ?? createDevotionalLlm({ model: getDevotionalSafetyModel() })
+    safetyLlm =
+      safetyLlm ?? createDevotionalLlm({ model: getDevotionalSafetyModel() })
   } catch (error) {
     if (
       error instanceof DevotionalLlmError &&
@@ -287,7 +288,8 @@ const runStep = createStep({
     "Pick a hook, choose scripture, match a clip, write, safety-gate, then publish + persist.",
   inputSchema: DailyDevotionalWorkflowInputSchema,
   outputSchema: DailyDevotionalWorkflowOutputSchema,
-  execute: async ({ inputData, runId }) => runDailyDevotional(inputData, { runId }),
+  execute: async ({ inputData, runId }) =>
+    runDailyDevotional(inputData, { runId }),
 })
 
 export const dailyDevotionalWorkflow = createWorkflow({
@@ -341,9 +343,7 @@ export type DailyDevotionalRouteOutcome = {
   body: { result?: DailyDevotionalWorkflowResult; error?: string }
 }
 
-function routeStatusForResult(
-  result: DailyDevotionalWorkflowResult,
-): number {
+function routeStatusForResult(result: DailyDevotionalWorkflowResult): number {
   if (result.ok) return 200
   if (result.reason === "invalid_input") return 400
   if (result.reason === "config_missing") return 503

@@ -84,6 +84,10 @@ import {
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
 import {
+  dailyDevotionalWorkflow,
+  handleDailyDevotionalRouteRequest,
+} from "./workflows/daily-devotional"
+import {
   handleSubtitleEnrichmentRouteRequest,
   subtitleEnrichmentWorkflow,
 } from "./workflows/subtitle-enrichment"
@@ -145,6 +149,7 @@ export const mastra = new Mastra({
     smartCropQaWorkflow,
     smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
+    dailyDevotionalWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
   },
@@ -421,6 +426,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleInstagramDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-daily-devotional", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleDailyDevotionalRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

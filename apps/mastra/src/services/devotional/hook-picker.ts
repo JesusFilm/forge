@@ -23,23 +23,28 @@ const MAX_NEWS_CANDIDATES = 6
 const HOLIDAY_TABLE: Record<string, { title: string; summary: string }> = {
   "01-01": {
     title: "New Year's Day",
-    summary: "A threshold moment — looking back with gratitude and forward with hope.",
+    summary:
+      "A threshold moment — looking back with gratitude and forward with hope.",
   },
   "01-06": {
     title: "Epiphany",
-    summary: "The revealing of Christ to the nations, remembered with the visit of the magi.",
+    summary:
+      "The revealing of Christ to the nations, remembered with the visit of the magi.",
   },
   "10-31": {
     title: "Reformation Day",
-    summary: "A day recalling renewal and return to scripture in the life of the church.",
+    summary:
+      "A day recalling renewal and return to scripture in the life of the church.",
   },
   "11-01": {
     title: "All Saints' Day",
-    summary: "Remembering the faithful who have gone before across every nation and age.",
+    summary:
+      "Remembering the faithful who have gone before across every nation and age.",
   },
   "12-24": {
     title: "Christmas Eve",
-    summary: "The eve of the Nativity — waiting on the edge of the story of God-with-us.",
+    summary:
+      "The eve of the Nativity — waiting on the edge of the story of God-with-us.",
   },
   "12-25": {
     title: "Christmas Day",
@@ -100,8 +105,16 @@ const QUESTION_JSON_SCHEMA = {
     type: "object",
     additionalProperties: false,
     properties: {
-      title: { type: "string", minLength: 1, maxLength: MAX_DEVOTIONAL_SHORT_TEXT },
-      summary: { type: "string", minLength: 1, maxLength: MAX_DEVOTIONAL_SHORT_TEXT },
+      title: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_DEVOTIONAL_SHORT_TEXT,
+      },
+      summary: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_DEVOTIONAL_SHORT_TEXT,
+      },
     },
     required: ["title", "summary"],
   },

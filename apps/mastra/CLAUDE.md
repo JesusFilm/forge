@@ -76,6 +76,12 @@ Origin documents:
   findings, and degrades provider/config failures to an unavailable correction
   result. Manager owns deterministic exact-match application, raw artifact
   preservation, canonical source artifact writes, and operator display.
+- Daily devotional generation is Mastra-owned through
+  `/forge-daily-devotional`. Mastra owns the hook/scripture/video/writer
+  pipeline, the load-bearing fail-closed safety gate (publish only on pass), and
+  the report artifact. The watch experiment site owns the "Today's Devotional"
+  page, its ingest endpoint, and the human pull/edit control. Never republish
+  partner content — ground on it and link, but write original text.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
   contracts are HTTP payloads plus local Zod schemas.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
@@ -163,6 +169,13 @@ pnpm --filter @forge/mastra lint
 | `FIRECRAWL_MAX_SEARCH_RESULTS`               | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                           |
 | `FIRECRAWL_MAX_MARKDOWN_CHARS`               | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                           |
 | `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`           | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                      |
+| `DEVOTIONAL_SITE_INGEST_URL`                 | Watch-site "Today's Devotional" ingest endpoint. Optional; unset means publish is skipped (generation still runs).        |
+| `DEVOTIONAL_SITE_INGEST_API_KEY`             | Bearer key Mastra presents to the devotional ingest endpoint. Optional; required alongside the URL to publish.            |
+| `DEVOTIONAL_PARTNER_DOMAINS`                 | CSV allowlist of trusted partner domains for grounding and the optional further-reading link. Empty disables grounding.   |
+| `DEVOTIONAL_DEFAULT_VIDEO_ID`                | Fallback Jesus Film clip id used when video search returns nothing above threshold (always-a-clip, A8).                    |
+| `DEVOTIONAL_MODEL`                           | OpenRouter chat model for hook / scripture / writer. Defaults to `anthropic/claude-haiku-4-5`.                            |
+| `DEVOTIONAL_SAFETY_MODEL`                    | OpenRouter chat model for the safety gate. Defaults to `anthropic/claude-haiku-4-5`; upgrade independently if needed.     |
+| `DEVOTIONAL_ARTIFACT_DIR`                    | Directory for daily devotional report JSON artifacts. Defaults to `<storage>/daily-devotional`.                           |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
@@ -442,6 +455,57 @@ Failure reasons: `invalid_input` (400), `config_missing` (503, when
 `all_queries_failed` (502, only when every query errors), `artifact_failed`
 (500, when report persistence fails). Production already requires the shared
 Firecrawl env vars for Mastra's web-data surface.
+
+## Daily devotional generator
+
+The service route `POST /forge-daily-devotional` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `daily-devotional` workflow (plan:
+`docs/plans/2026-06-17-002-feat-daily-devotional-generator-plan.md`). It produces
+one timely, scripture-centered devotional per day and auto-publishes it after an
+automated safety check.
+
+Studio-friendly input (runs with no hand-written JSON):
+
+```json
+{ "date": "2026-06-22", "persistArtifact": true }
+```
+
+`date` is optional (defaults to today, `YYYY-MM-DD`) and is the per-day
+idempotency key. The pipeline, composed as injectable services under
+`src/services/devotional/`, runs: pick a hook (timely world news via Firecrawl
+search → fixed-date holiday/Christian-calendar → intriguing-question fallback) →
+choose a scripture passage that coheres with the hook → match a Jesus Film
+library clip via the Admin search-eval HTTP contract (always-a-clip fallback to
+`DEVOTIONAL_DEFAULT_VIDEO_ID`) → write an original reflection grounded in trusted
+partner teaching (never republished) with reflection questions and a flexible,
+date-varied block order → run the safety gate.
+
+**The safety gate is load-bearing and fails closed.** An LLM judge scores
+doctrine, tone, and sensitivity, but the final verdict is computed in code: it
+blocks on a judge `block`, on any dimension below the confidence threshold
+(ambiguous → block), and on any judge error/timeout (fail closed). The workflow
+publishes ONLY on `pass`; a blocked devotional is a success with
+`published: false` and a persisted blocked report.
+
+Publishing is opt-in and best-effort: with no `DEVOTIONAL_SITE_INGEST_URL` /
+`_API_KEY` it is skipped (not a failure), and a publish error never fails the
+run. Runs are idempotent per date — if a published report already exists for the
+date, publishing is skipped on rerun.
+
+Ownership: Mastra owns generation, the safety gate, and the report artifact. The
+watch experiment site (web team) owns the "Today's Devotional" page, the ingest
+endpoint, and the human pull/edit control. Scheduling is external (A6) — a daily
+Railway cron (or equivalent) calls the route with the service bearer; there is no
+in-app scheduler. Per A5 the scripture is emitted as a reference plus a short
+quote flagged `needsCanonicalSource: true` until a canonical Bible-text source is
+wired.
+
+Failure reasons: `invalid_input` (400), `config_missing` (503, when no
+OpenRouter key is configured), `generation_failed` (502, carries the failing
+`stage`), `artifact_failed` (500). Video search reuses
+`ADMIN_SEARCH_EVAL_SEARCH_URL` + `ADMIN_SEARCH_EVAL_API_KEY`; the exact
+production video-search contract is confirmed at exec time and the search client
+is an injectable seam.
 
 ## Railway Storage
 

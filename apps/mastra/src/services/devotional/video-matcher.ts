@@ -73,9 +73,7 @@ function createDefaultVideoSearch(
   }
 }
 
-function fallbackResult(
-  config: DevotionalVideoSearchConfig,
-): VideoMatchResult {
+function fallbackResult(config: DevotionalVideoSearchConfig): VideoMatchResult {
   if (!config.defaultVideoId) {
     return { video: null, videoMatch: "none" }
   }

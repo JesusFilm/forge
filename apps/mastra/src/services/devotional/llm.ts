@@ -56,16 +56,14 @@ function extractText(payload: unknown): string | null {
   return typeof content === "string" ? content : null
 }
 
-export function createDevotionalLlm(
-  options: {
-    apiKey?: string
-    model: string
-    timeoutMs?: number
-    fetchImpl?: typeof fetch
-    maxAttempts?: number
-    sleep?: (ms: number) => Promise<void>
-  },
-): DevotionalLlm {
+export function createDevotionalLlm(options: {
+  apiKey?: string
+  model: string
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+  maxAttempts?: number
+  sleep?: (ms: number) => Promise<void>
+}): DevotionalLlm {
   const apiKey = options.apiKey ?? getOpenRouterApiKey()
   if (!apiKey) {
     throw new DevotionalLlmError(

@@ -51,8 +51,16 @@ const SCRIPTURE_JSON_SCHEMA = {
     type: "object",
     additionalProperties: false,
     properties: {
-      reference: { type: "string", minLength: 1, maxLength: MAX_REFERENCE_LENGTH },
-      text: { type: "string", minLength: 1, maxLength: MAX_DEVOTIONAL_TEXT_LENGTH },
+      reference: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_REFERENCE_LENGTH,
+      },
+      text: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_DEVOTIONAL_TEXT_LENGTH,
+      },
       translation: { type: "string", maxLength: MAX_DEVOTIONAL_SHORT_TEXT },
     },
     required: ["reference", "text"],
@@ -67,10 +75,7 @@ const SYSTEM_PROMPT = [
 ].join("\n")
 
 function normalizeReference(reference: string): string {
-  return reference
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/\.$/, "")
+  return reference.trim().replace(/\s+/g, " ").replace(/\.$/, "")
 }
 
 function isWellFormedReference(reference: string): boolean {

@@ -72,12 +72,20 @@ const WRITER_JSON_SCHEMA = {
     type: "object",
     additionalProperties: false,
     properties: {
-      reflection: { type: "string", minLength: 1, maxLength: MAX_DEVOTIONAL_TEXT_LENGTH },
+      reflection: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_DEVOTIONAL_TEXT_LENGTH,
+      },
       questions: {
         type: "array",
         minItems: 1,
         maxItems: MAX_DEVOTIONAL_QUESTIONS,
-        items: { type: "string", minLength: 1, maxLength: MAX_DEVOTIONAL_SHORT_TEXT },
+        items: {
+          type: "string",
+          minLength: 1,
+          maxLength: MAX_DEVOTIONAL_SHORT_TEXT,
+        },
       },
       furtherReading: { type: "string", maxLength: MAX_DEVOTIONAL_URL },
     },
@@ -177,7 +185,8 @@ async function defaultGroundingSearch({
     query: `${query} (${sites})`,
     config: firecrawlConfig,
   })
-  if (!response.ok) throw new Error(`grounding search failed: ${response.reason}`)
+  if (!response.ok)
+    throw new Error(`grounding search failed: ${response.reason}`)
   return response.result.results
     .filter((hit) => isAllowedPartnerUrl(hit.url, partnerDomains))
     .map((hit) => ({
@@ -202,8 +211,7 @@ function renderGrounding(snippets: readonly GroundingSnippet[]): string {
 export async function writeDevotional(
   options: WriteDevotionalOptions,
 ): Promise<Devotional> {
-  const partnerDomains =
-    options.partnerDomains ?? getDevotionalPartnerDomains()
+  const partnerDomains = options.partnerDomains ?? getDevotionalPartnerDomains()
   const firecrawlConfig = options.firecrawlConfig ?? getFirecrawlConfig()
   const groundingSearch = options.grounding ?? defaultGroundingSearch
 

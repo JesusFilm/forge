@@ -57,7 +57,11 @@ const SAFETY_JSON_SCHEMA = {
       reasons: {
         type: "array",
         maxItems: MAX_DEVOTIONAL_REASONS,
-        items: { type: "string", minLength: 1, maxLength: MAX_DEVOTIONAL_SHORT_TEXT },
+        items: {
+          type: "string",
+          minLength: 1,
+          maxLength: MAX_DEVOTIONAL_SHORT_TEXT,
+        },
       },
     },
     required: ["verdict", "doctrine", "tone", "sensitivity", "reasons"],
