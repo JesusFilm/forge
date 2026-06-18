@@ -328,6 +328,21 @@ describe("runVideoEnrichment", () => {
       assetId: "asset-1",
       sourceVideoUrl: "https://stream.mux.com/play-1.m3u8",
     })
+    expect(runAudioCleanupMock.mock.invocationCallOrder[0]).toBeLessThan(
+      transcribeMock.mock.invocationCallOrder[0],
+    )
+    expect(transcribeMock).toHaveBeenCalledWith(
+      "asset-1",
+      "mux-1",
+      "en",
+      expect.objectContaining({
+        cleanedAudioArtifact: {
+          assetId: "asset-1",
+          artifactType: "cleaned-audio",
+          ext: "mp3",
+        },
+      }),
+    )
     expect(audioCleanupMock).not.toHaveBeenCalled()
     expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
       "job-1",
@@ -348,7 +363,7 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
-  it("records audio cleanup failure without failing the completed core enrichment job", async () => {
+  it("fails before transcription when required audio cleanup fails", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -395,10 +410,7 @@ describe("runVideoEnrichment", () => {
         runAudioCleanup: true,
         playbackId: "play-1",
       }),
-    ).resolves.toMatchObject({
-      assetId: "asset-1",
-      language: "en",
-    })
+    ).rejects.toThrow("ElevenLabs offline")
 
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
@@ -412,10 +424,11 @@ describe("runVideoEnrichment", () => {
         "original-audio": { kind: "downloadable" },
       },
     ])
+    expect(transcribeMock).not.toHaveBeenCalled()
     expect(updateJobMock.mock.calls).toContainEqual([
       "job-1",
       expect.objectContaining({
-        status: "completed",
+        status: "failed",
         currentStep: undefined,
       }),
     ])
@@ -484,7 +497,7 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
-  it("keeps partial audio artifact persistence failure from failing the core job", async () => {
+  it("fails before transcription when partial audio artifact persistence fails", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -538,10 +551,7 @@ describe("runVideoEnrichment", () => {
         translateTo: ["en"],
         runAudioCleanup: true,
       }),
-    ).resolves.toMatchObject({
-      assetId: "asset-1",
-      language: "en",
-    })
+    ).rejects.toThrow("ElevenLabs offline")
 
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
@@ -549,10 +559,11 @@ describe("runVideoEnrichment", () => {
       "failed",
       "ElevenLabs offline",
     ])
+    expect(transcribeMock).not.toHaveBeenCalled()
     expect(updateJobMock.mock.calls).toContainEqual([
       "job-1",
       expect.objectContaining({
-        status: "completed",
+        status: "failed",
         currentStep: undefined,
       }),
     ])
@@ -1594,6 +1605,7 @@ describe("runVideoEnrichment", () => {
     ).rejects.toThrow("subtitle fetch failed")
 
     expect(updateStepStatusMock.mock.calls).toEqual([
+      ["job-1", "audio_cleanup", "skipped"],
       ["job-1", "transcription", "running"],
       ["job-1", "transcription", "failed", "subtitle fetch failed"],
     ])

@@ -6,6 +6,7 @@ const {
   getJobMock,
   getMuxAssetMock,
   getMuxStaticRenditionSourceUrlMock,
+  isAudioCleanupConfiguredMock,
   runVideoEnrichmentMock,
   startMock,
   updateJobMock,
@@ -15,6 +16,7 @@ const {
   getJobMock: vi.fn(),
   getMuxAssetMock: vi.fn(),
   getMuxStaticRenditionSourceUrlMock: vi.fn(),
+  isAudioCleanupConfiguredMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
   updateJobMock: vi.fn(),
@@ -48,6 +50,10 @@ vi.mock("@/services/mux", () => ({
   getMuxStaticRenditionSourceUrl: getMuxStaticRenditionSourceUrlMock,
 }))
 
+vi.mock("@/services/audioCleanup", () => ({
+  isAudioCleanupConfigured: isAudioCleanupConfiguredMock,
+}))
+
 vi.mock("@/workflows/videoEnrichment", () => ({
   runVideoEnrichment: runVideoEnrichmentMock,
 }))
@@ -67,6 +73,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       await callback()
     })
     runVideoEnrichmentMock.mockResolvedValue(undefined)
+    isAudioCleanupConfiguredMock.mockReturnValue(true)
     getMuxAssetMock.mockResolvedValue({
       assetId: "mux-source-1",
       playbackId: "play-source-1",
@@ -197,6 +204,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
           },
         }),
         steps: [
+          expect.objectContaining({ name: "audio_cleanup", status: "pending" }),
           expect.objectContaining({ name: "transcription", status: "pending" }),
           expect.objectContaining({
             name: "structured_transcript",
@@ -207,7 +215,6 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
           expect.objectContaining({ name: "metadata", status: "pending" }),
           expect.objectContaining({ name: "embeddings", status: "pending" }),
           expect.objectContaining({ name: "mux_upload", status: "pending" }),
-          expect.objectContaining({ name: "audio_cleanup", status: "pending" }),
           expect.objectContaining({
             name: "theology_validation_bible_quotes",
             status: "skipped",
@@ -258,6 +265,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
           transcriptionRouting: expect.any(Object),
         }),
         requestedTranscriptionProvider: "elevenlabs",
+        runAudioCleanup: true,
       }),
     ])
     expect(dispatch.spy).toHaveBeenCalledTimes(1)
@@ -465,6 +473,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
     dispatch.expectDispatched(runVideoEnrichment, [
       expect.objectContaining({
         requestedTranscriptionProvider: "elevenlabs",
+        runAudioCleanup: true,
         initialArtifacts: expect.objectContaining({
           transcriptionRouting: expect.objectContaining({
             data: expect.objectContaining({

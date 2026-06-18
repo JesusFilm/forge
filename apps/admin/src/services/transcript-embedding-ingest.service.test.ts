@@ -109,22 +109,94 @@ function payload(overrides?: Record<string, unknown>) {
 }
 
 function hashFor(body: ReturnType<typeof payload>): string {
+  const source = body.source as {
+    text?: string
+    segments?: unknown
+    kind?: string
+    artifactKey?: string
+    languageId?: string
+    languageSlug?: string
+    subtitleId?: string
+    format?: string
+    url?: string
+    provider?: string
+    generatedAt?: string
+  }
+  const hasV2SourceMetadata =
+    source.kind != null ||
+    source.languageId != null ||
+    source.languageSlug != null ||
+    source.subtitleId != null ||
+    source.format != null ||
+    source.url != null
+
   return _internals.sha256Json({
-    text: (body.source as { text?: string }).text ?? null,
-    segments: (body.source as { segments?: unknown }).segments ?? null,
+    text: source.text ?? null,
+    segments: source.segments ?? null,
+    ...(hasV2SourceMetadata
+      ? {
+          source: {
+            kind: source.kind ?? null,
+            artifactKey: source.artifactKey ?? null,
+            languageId: source.languageId ?? null,
+            languageSlug: source.languageSlug ?? null,
+            subtitleId: source.subtitleId ?? null,
+            format: source.format ?? null,
+            url: source.url ?? null,
+            provider: source.provider ?? null,
+            generatedAt: source.generatedAt ?? null,
+          },
+        }
+      : {}),
     chunks: (
       body.chunks as Array<{
         chunkIndex: number
         text: string
         startSeconds?: number
         endSeconds?: number
+        rawSourceText?: string
+        embeddingInputText?: string
+        feltNeeds?: string[]
+        bibleVerses?: string[]
+        contentSummary?: string
+        tone?: string
+        demographics?: string[]
+        spiritualContext?: string[]
+        extractionMetadata?: Record<string, unknown>
       }>
-    ).map((chunk) => ({
-      index: chunk.chunkIndex,
-      text: chunk.text,
-      startSeconds: chunk.startSeconds ?? null,
-      endSeconds: chunk.endSeconds ?? null,
-    })),
+    ).map((chunk) => {
+      const base = {
+        index: chunk.chunkIndex,
+        text: chunk.text,
+        startSeconds: chunk.startSeconds ?? null,
+        endSeconds: chunk.endSeconds ?? null,
+      }
+      const hasEnrichedFields =
+        chunk.rawSourceText != null ||
+        chunk.embeddingInputText != null ||
+        (chunk.feltNeeds?.length ?? 0) > 0 ||
+        (chunk.bibleVerses?.length ?? 0) > 0 ||
+        chunk.contentSummary != null ||
+        chunk.tone != null ||
+        (chunk.demographics?.length ?? 0) > 0 ||
+        (chunk.spiritualContext?.length ?? 0) > 0 ||
+        chunk.extractionMetadata != null
+
+      return hasEnrichedFields
+        ? {
+            ...base,
+            rawSourceText: chunk.rawSourceText ?? null,
+            embeddingInputText: chunk.embeddingInputText ?? null,
+            feltNeeds: chunk.feltNeeds ?? [],
+            bibleVerses: chunk.bibleVerses ?? [],
+            contentSummary: chunk.contentSummary ?? null,
+            tone: chunk.tone ?? null,
+            demographics: chunk.demographics ?? [],
+            spiritualContext: chunk.spiritualContext ?? [],
+            extractionMetadata: chunk.extractionMetadata ?? null,
+          }
+        : base
+    }),
   })
 }
 
@@ -173,6 +245,127 @@ describe("ingestTranscriptEmbeddings", () => {
         }),
       }),
     )
+  })
+
+  it("accepts and forwards v2 enriched transcript chunk fields", async () => {
+    const prisma = buildPrisma()
+    const body = payload({
+      source: {
+        text: "Jesus teaches beside the lake.",
+        segments: [
+          { start: 0, end: 2, text: "Jesus teaches beside the lake." },
+        ],
+        artifactKey: "admin-video-subtitle/sub-1.vtt",
+        kind: "subtitle",
+        languageId: "lang-en",
+        languageSlug: "english",
+        subtitleId: "sub-1",
+        format: "vtt",
+        url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+        provider: "admin-subtitle",
+        generatedAt: "2026-05-25T00:00:00.000Z",
+      },
+      chunks: [
+        {
+          chunkIndex: 0,
+          chunkId: "chunk-0",
+          text: "Jesus teaches beside the lake.",
+          rawSourceText: "Jesus teaches beside the lake.",
+          embeddingInputText:
+            "Time range: 00:00-00:02\nFelt needs: Hope\nSummary: Jesus teaches beside the lake.\nTranscript: Jesus teaches beside the lake.",
+          feltNeeds: ["Hope"],
+          bibleVerses: ["John 3:16"],
+          contentSummary: "Jesus teaches beside the lake.",
+          tone: "gentle",
+          demographics: ["seekers"],
+          spiritualContext: ["teaching"],
+          extractionMetadata: { extractor: "deterministic-test" },
+          tokenCount: 24,
+          startSeconds: 0,
+          endSeconds: 2,
+          embedding: new Array(1536).fill(0.01),
+        },
+      ],
+    })
+
+    const result = await ingestTranscriptEmbeddings(prisma as never, body)
+
+    expect(result.status).toBe("created")
+    expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        chunks: [
+          expect.objectContaining({
+            rawSourceText: "Jesus teaches beside the lake.",
+            embeddingInputText: expect.stringContaining("Time range:"),
+            feltNeeds: ["Hope"],
+            bibleVerses: ["John 3:16"],
+            contentSummary: "Jesus teaches beside the lake.",
+            tone: "gentle",
+            demographics: ["seekers"],
+            spiritualContext: ["teaching"],
+            extractionMetadata: { extractor: "deterministic-test" },
+          }),
+        ],
+        provenance: expect.objectContaining({
+          sourceArtifactKey: "admin-video-subtitle/sub-1.vtt",
+          sourceKind: "subtitle",
+          sourceLanguageId: "lang-en",
+          sourceLanguageSlug: "english",
+          sourceSubtitleId: "sub-1",
+          sourceFormat: "vtt",
+          sourceUrl: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+          sourceProvider: "admin-subtitle",
+        }),
+      }),
+    )
+  })
+
+  it("rejects unsupported felt-needs values", async () => {
+    const prisma = buildPrisma()
+    const body = payload({
+      chunks: [
+        {
+          chunkIndex: 0,
+          chunkId: "chunk-0",
+          text: "Jesus teaches beside the lake.",
+          tokenCount: 6,
+          startSeconds: 0,
+          endSeconds: 2,
+          feltNeeds: ["Belonging"],
+          embedding: new Array(1536).fill(0.01),
+        },
+      ],
+    })
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, body),
+    ).rejects.toMatchObject({
+      code: "payload_invalid",
+    })
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("includes enriched metadata in v2 source hashes", () => {
+    const base = payload({
+      source: {
+        ...(payload().source as object),
+        kind: "subtitle",
+        languageId: "lang-en",
+      },
+    })
+    const enriched = payload({
+      source: base.source as object,
+      chunks: [
+        {
+          ...((base.chunks as unknown[])[0] as object),
+          feltNeeds: ["Hope"],
+          embeddingInputText: "Felt needs: Hope\nTranscript: Jesus teaches.",
+        },
+      ],
+    })
+
+    expect(hashFor(base)).not.toEqual(hashFor(enriched))
   })
 
   it("returns unchanged and skips writes when default mode sees healthy matching provenance", async () => {

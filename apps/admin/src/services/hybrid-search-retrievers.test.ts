@@ -250,7 +250,7 @@ describe("searchVideoSemantic", () => {
     expect(rows[0]!.startSeconds).toBeNull()
   })
 
-  it("queries both scene and transcript embeddings inside one semantic-video retriever", async () => {
+  it("queries transcript embeddings only inside the semantic-video retriever", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
 
     await searchVideoSemantic(prisma, {
@@ -260,12 +260,11 @@ describe("searchVideoSemantic", () => {
     })
 
     const sql = latestRawSql(prisma)
-    expect(sql).toContain("WITH scene_source AS")
-    expect(sql).toContain("scene_source AS")
+    expect(sql).not.toContain("scene_source AS")
     expect(sql).toContain("transcript_source AS")
-    expect(sql).toContain("FROM video_scene_locale vsl")
+    expect(sql).not.toContain("FROM video_scene_locale")
     expect(sql).toContain("FROM video_transcript_chunk vtc")
-    expect(sql).toContain("UNION ALL")
+    expect(sql).not.toContain("UNION ALL")
     expect(sql).not.toContain("semantic-transcript-video")
   })
 
@@ -279,39 +278,21 @@ describe("searchVideoSemantic", () => {
     })
 
     const sql = latestRawSql(prisma)
-    expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(2)
-    expect((sql.match(/vl\.status = 'published'/g) ?? []).length).toBe(2)
+    expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(1)
+    expect((sql.match(/vl\.status = 'published'/g) ?? []).length).toBe(1)
     const sqlWithFragments = latestRawSqlWithFragments(prisma)
-    expect((sqlWithFragments.match(/IS NOT NULL/g) ?? []).length).toBe(2)
-    expect(sqlWithFragments).toContain("vsl.embedding")
+    expect((sqlWithFragments.match(/IS NOT NULL/g) ?? []).length).toBe(1)
+    expect(sqlWithFragments).not.toContain("vsl.embedding")
     expect(sqlWithFragments).toContain("vtc.embedding")
-    expect(sql).toContain("vsl.locale =")
+    expect(sql).not.toContain("vsl.locale =")
     expect(sql).toContain("vtc.language =")
     expect(sql).toContain("vt.language =")
     expect(sql).toContain("requested_language AS MATERIALIZED")
 
-    const sceneSource = sqlBetween(
-      sqlWithFragments,
-      "WITH scene_source AS",
-      "transcript_source AS",
-    )
-    const sceneOrderIndex = sceneSource.indexOf("ORDER BY")
-    expect(sceneSource.indexOf("v.deleted_at IS NULL")).toBeLessThan(
-      sceneOrderIndex,
-    )
-    expect(sceneSource.indexOf("vl.status = 'published'")).toBeLessThan(
-      sceneOrderIndex,
-    )
-    expect(sceneSource.indexOf("vl.deleted_at IS NULL")).toBeLessThan(
-      sceneOrderIndex,
-    )
-    expect(sceneSource).not.toContain("LATERAL")
-    expect(sceneSource).not.toContain("embedding::text")
-
     const transcriptSource = sqlBetween(
       sqlWithFragments,
-      "transcript_source AS",
-      "semantic_evidence AS",
+      "WITH transcript_source AS",
+      "requested_language AS MATERIALIZED",
     )
     const transcriptOrderIndex = transcriptSource.indexOf("ORDER BY")
     expect(transcriptSource.indexOf("v.deleted_at IS NULL")).toBeLessThan(
@@ -333,11 +314,10 @@ describe("searchVideoSemantic", () => {
     expect(hydratedTail).toContain(
       "vd.language_id IN (SELECT id FROM requested_language)",
     )
-    expect(hydratedTail).toContain("vsl_final.embedding::text")
     expect(hydratedTail).toContain("vtc_final.embedding::text")
   })
 
-  it("selects best per-source evidence before bounding candidate windows", async () => {
+  it("selects best transcript evidence before bounding candidate windows", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
 
     await searchVideoSemantic(prisma, {
@@ -347,21 +327,10 @@ describe("searchVideoSemantic", () => {
     })
 
     const sql = latestRawSqlWithFragments(prisma)
-    expect(sql).toContain("SELECT DISTINCT ON (vs.video_id)")
+    expect(sql).not.toContain("SELECT DISTINCT ON (vs.video_id)")
     expect(sql).toContain("SELECT DISTINCT ON (vt.video_id)")
     expect(sql).not.toContain("WITH scene_nn AS MATERIALIZED")
     expect(sql).not.toContain("transcript_nn AS MATERIALIZED")
-
-    const sceneOrderIndex = sql.indexOf(
-      "ORDER BY",
-      sql.indexOf("SELECT DISTINCT ON (vs.video_id)"),
-    )
-    const sceneCandidateLimitIndex = sql.indexOf(
-      "LIMIT",
-      sql.indexOf("best_scene_per_video"),
-    )
-    expect(sceneOrderIndex).toBeGreaterThan(-1)
-    expect(sceneOrderIndex).toBeLessThan(sceneCandidateLimitIndex)
 
     const transcriptOrderIndex = sql.indexOf(
       "ORDER BY",
@@ -385,7 +354,7 @@ describe("searchVideoSemantic", () => {
     })
 
     const values = latestRawValues(prisma)
-    expect(values.filter((value) => value === 14)).toHaveLength(2)
+    expect(values.filter((value) => value === 14)).toHaveLength(1)
   })
 })
 
@@ -396,7 +365,7 @@ describe("searchVideoSemantic embedding column selection", () => {
     prisma = mockPrisma()
   })
 
-  it("reads vsl.embedding / vtc.embedding and never the removed qwen columns", async () => {
+  it("reads vtc.embedding and never scene or removed qwen columns", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
     await searchVideoSemantic(prisma, {
       queryEmbedding: "[0.1]",
@@ -405,9 +374,9 @@ describe("searchVideoSemantic embedding column selection", () => {
     })
 
     const sql = latestRawSqlWithFragments(prisma)
-    expect(sql).toContain("vsl.embedding")
+    expect(sql).not.toContain("vsl.embedding")
     expect(sql).toContain("vtc.embedding")
-    expect(sql).toContain("vsl.embedding_provider")
+    expect(sql).not.toContain("vsl.embedding_provider")
     expect(sql).toContain("vt.embedding_provider")
     expect(sql).not.toContain("embedding_qwen")
   })
@@ -430,12 +399,11 @@ describe("semantic retriever provenance gates", () => {
 
     const sql = latestRawSqlWithFragments(prisma)
     const values = latestRawValues(prisma)
-    expect(sql).toContain("vsl.embedding_provider")
     expect(sql).toContain("vt.embedding_provider")
-    expect(sql).toContain("vsl.embedding_native_dimensions")
     expect(sql).toContain("vt.embedding_native_dimensions")
-    expect(sql).toContain("vsl.embedding_transform_version IS NULL")
     expect(sql).toContain("vt.embedding_transform_version IS NULL")
+    expect(sql).not.toContain("vsl.embedding_provider")
+    expect(sql).not.toContain("video_scene_locale")
     expect(values).toContain("jesus-film-ai-gateway")
     expect(values).toContain("embeddings")
     expect(values).toContain(1536)

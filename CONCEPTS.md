@@ -4,6 +4,13 @@ Shared domain vocabulary for this project — entities, named processes, and sta
 
 ## Video & media
 
+### Smart Crop
+
+A Manager-orchestrated media-generation workflow that produces 9:16 vertical
+crop plans and renders from widescreen Mux videos. Manager owns durable job
+state and operator review, Mastra owns bounded AI crop decisions, and
+crop-worker owns FFmpeg fingerprint/render byte work.
+
 ### Core ID
 
 The stable identifier from the Core API for a Core-sourced entity. For source

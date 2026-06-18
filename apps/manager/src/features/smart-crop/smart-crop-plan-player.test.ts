@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildSmartCropQaMarkers,
   buildSmartCropBoxPercent,
   clampSmartCropBoxPercent,
   findActiveSmartCropSegment,
   formatSmartCropTime,
   interpolateSmartCropKeyframe,
+  isSmartCropAttemptSelectableForReview,
+  parseSmartCropQaIssuesForPlayer,
   parseSmartCropPlanForPlayer,
   type SmartCropPlanForPlayer,
 } from "./smart-crop-plan-player"
@@ -161,5 +164,79 @@ describe("smart crop plan player helpers", () => {
 
   it("formats timeline labels without leaking decimals", () => {
     expect(formatSmartCropTime(65.8)).toBe("1:05")
+  })
+
+  it("only treats review-ready attempts as selectable for approval", () => {
+    expect(isSmartCropAttemptSelectableForReview("complete")).toBe(true)
+    expect(isSmartCropAttemptSelectableForReview("qa_unavailable")).toBe(true)
+    expect(isSmartCropAttemptSelectableForReview("approved")).toBe(true)
+    expect(isSmartCropAttemptSelectableForReview("planned")).toBe(false)
+    expect(isSmartCropAttemptSelectableForReview("previewed")).toBe(false)
+    expect(isSmartCropAttemptSelectableForReview("failed")).toBe(false)
+  })
+
+  it("parses QA report issues for the player overlay", () => {
+    expect(
+      parseSmartCropQaIssuesForPlayer({
+        kind: "smart-crop-qa-report",
+        issues: [
+          {
+            severity: "info",
+            description: "Crop is acceptable but a little tight.",
+            atSeconds: 4.5,
+            shotId: "shot_00001",
+          },
+          { severity: "debug", description: "ignored" },
+          { severity: "critical" },
+        ],
+      }),
+    ).toEqual([
+      {
+        severity: "info",
+        description: "Crop is acceptable but a little tight.",
+        atSeconds: 4.5,
+        shotId: "shot_00001",
+      },
+    ])
+  })
+
+  it("places QA markers by timestamp or shot midpoint", () => {
+    const markers = buildSmartCropQaMarkers(
+      plan.segments,
+      [
+        {
+          severity: "info",
+          description: "Shot note",
+          shotId: "shot_00001",
+        },
+        {
+          severity: "warning",
+          description: "Frame warning",
+          atSeconds: 12,
+          shotId: "shot_00002",
+        },
+        {
+          severity: "critical",
+          description: "Global issue without placement",
+        },
+      ],
+      plan.source.durationSeconds,
+    )
+
+    expect(markers).toHaveLength(2)
+    expect(markers[0]).toMatchObject({
+      severity: "info",
+      seconds: 5,
+      percent: 25,
+      shotId: "shot_00001",
+      segment: { shotId: "shot_00001" },
+    })
+    expect(markers[1]).toMatchObject({
+      severity: "warning",
+      seconds: 12,
+      percent: 60,
+      shotId: "shot_00002",
+      segment: { shotId: "shot_00002" },
+    })
   })
 })

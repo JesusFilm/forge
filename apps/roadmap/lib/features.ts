@@ -49,6 +49,8 @@ function formatTimeline(startDate: string, duration: number): string {
   return `${fmt(start)} – ${fmt(end)}`
 }
 
+// `ai-chat` is intentionally excluded — it is a docs-only, unregistered lane.
+// Do not add it here. See CLAUDE.md → "Excluded lane: ai-chat".
 const LANE_DIRS: Lane[] = [
   "content-discovery",
   "topic-experiences",

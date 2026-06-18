@@ -12,6 +12,7 @@ import type { JobStepState } from "@/types/job"
 describe("buildInitialSteps", () => {
   it("uses the canonical persisted Forge workflow step inventory", () => {
     expect(FORGE_WORKFLOW_STEPS).toEqual([
+      "audio_cleanup",
       "transcription",
       "structured_transcript",
       "translation",
@@ -19,7 +20,6 @@ describe("buildInitialSteps", () => {
       "metadata",
       "embeddings",
       "mux_upload",
-      "audio_cleanup",
       "theology_validation_bible_quotes",
       "seo_improvements",
     ])

@@ -77,6 +77,7 @@ export function getSmartCropReport(
   const alignment = asRecord(data.alignment)
   const qa = asRecord(data.qa)
   const plan = asRecord(data.plan)
+  const attempts = asRecord(data.attempts)
   const output = asRecord(data.output)
   const usage = asRecord(data.usage)
 
@@ -110,6 +111,26 @@ export function getSmartCropReport(
           plan: {
             segmentCount: plan.segmentCount,
             approved: plan.approved,
+          },
+        }
+      : {}),
+    ...(attempts &&
+    typeof attempts.latestAttemptIndex === "number" &&
+    typeof attempts.maxRepairAttempts === "number" &&
+    typeof attempts.repairCount === "number"
+      ? {
+          attempts: {
+            latestAttemptIndex: attempts.latestAttemptIndex,
+            selectedAttemptIndex:
+              typeof attempts.selectedAttemptIndex === "number"
+                ? attempts.selectedAttemptIndex
+                : undefined,
+            maxRepairAttempts: attempts.maxRepairAttempts,
+            repairCount: attempts.repairCount,
+            manifestDigest:
+              typeof attempts.manifestDigest === "string"
+                ? attempts.manifestDigest
+                : undefined,
           },
         }
       : {}),

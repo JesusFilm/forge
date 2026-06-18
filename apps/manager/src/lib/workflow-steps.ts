@@ -3,6 +3,7 @@ import type { JobStepState, WorkflowStepName } from "@/types/job"
 // These steps are persisted at job creation and must stay aligned with the
 // Manager job read/write contracts.
 export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
+  "audio_cleanup",
   "transcription",
   "structured_transcript",
   "translation",
@@ -10,7 +11,6 @@ export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
   "metadata",
   "embeddings",
   "mux_upload",
-  "audio_cleanup",
   "theology_validation_bible_quotes",
   "seo_improvements",
 ]

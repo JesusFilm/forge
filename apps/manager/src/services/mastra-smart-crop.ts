@@ -69,6 +69,16 @@ export type SmartCropCropKeyframe = {
   height: number
 }
 
+export type SmartCropNormalizedPoint = {
+  cx: number
+  cy: number
+}
+
+export type SmartCropFaceCenter = {
+  start: SmartCropNormalizedPoint
+  end: SmartCropNormalizedPoint
+}
+
 export type SmartCropPlanSegment = {
   shotId: string
   canonicalStart: number
@@ -78,6 +88,8 @@ export type SmartCropPlanSegment = {
   secondarySubjects?: string[]
   avoidCutting?: string[]
   confidence: number
+  faceVisible?: boolean
+  faceCenter?: SmartCropFaceCenter | null
   cropKeyframes: SmartCropCropKeyframe[]
 }
 
@@ -126,6 +138,7 @@ export type SmartCropQaIssue = {
   severity: "info" | "warning" | "critical"
   description: string
   atSeconds?: number
+  shotId?: string
 }
 
 export type SmartCropQaLaunchResult =
@@ -164,9 +177,37 @@ export type SmartCropQaLaunchInput = {
   asset: { assetId: string }
   renderMode: "preview" | "full"
   planSummary: { segmentCount: number; modes: Record<string, number> }
-  frames: Array<{ atSeconds: number; url: string }>
+  frames: Array<{ atSeconds: number; url: string; shotId?: string }>
   model?: string
 }
+
+export type SmartCropRepairLaunchInput = {
+  asset: { assetId: string; playbackId?: string }
+  source: { width: number; height: number; durationSeconds: number }
+  target: { aspectRatio: "9:16"; width: number; height: number }
+  attempt: {
+    index: number
+    previousPlanGeneratedAt: string
+  }
+  issues: SmartCropQaIssue[]
+  shots: Array<{
+    shotId: string
+    start: number
+    end: number
+    previousSegment: SmartCropPlanSegment
+    frameUrls: string[]
+  }>
+  model?: string
+}
+
+export type SmartCropRepairLaunchResult =
+  | {
+      ok: true
+      segments: SmartCropPlanSegment[]
+      usage: SmartCropUsage
+      model: string
+    }
+  | MastraSmartCropFailure
 
 export type LaunchMastraSmartCropOptions = {
   baseUrl?: string
@@ -235,6 +276,27 @@ function parseOptionalStringArray(value: unknown): string[] | undefined {
   return strings.length === value.length ? strings : undefined
 }
 
+function parseNormalizedPoint(value: unknown): SmartCropNormalizedPoint | null {
+  const point = asRecord(value)
+  if (!point || typeof point.cx !== "number" || typeof point.cy !== "number") {
+    return null
+  }
+  return { cx: point.cx, cy: point.cy }
+}
+
+function parseFaceCenter(value: unknown): SmartCropFaceCenter | null {
+  const center = asRecord(value)
+  if (!center) {
+    return null
+  }
+  const start = parseNormalizedPoint(center.start)
+  const end = parseNormalizedPoint(center.end)
+  if (!start || !end) {
+    return null
+  }
+  return { start, end }
+}
+
 function parsePlanSegment(value: unknown): SmartCropPlanSegment | null {
   const segment = asRecord(value)
   if (
@@ -272,7 +334,23 @@ function parsePlanSegment(value: unknown): SmartCropPlanSegment | null {
     })
   }
 
-  return {
+  if (
+    segment.faceVisible !== undefined &&
+    typeof segment.faceVisible !== "boolean"
+  ) {
+    return null
+  }
+  let faceCenter: SmartCropFaceCenter | null | undefined
+  if (segment.faceCenter === null) {
+    faceCenter = null
+  } else if (segment.faceCenter !== undefined) {
+    faceCenter = parseFaceCenter(segment.faceCenter) ?? undefined
+    if (!faceCenter) {
+      return null
+    }
+  }
+
+  const parsed: SmartCropPlanSegment = {
     shotId: segment.shotId,
     canonicalStart: segment.canonicalStart,
     canonicalEnd: segment.canonicalEnd,
@@ -286,6 +364,13 @@ function parsePlanSegment(value: unknown): SmartCropPlanSegment | null {
     confidence: segment.confidence,
     cropKeyframes,
   }
+  if (typeof segment.faceVisible === "boolean") {
+    parsed.faceVisible = segment.faceVisible
+  }
+  if (segment.faceCenter !== undefined) {
+    parsed.faceCenter = faceCenter
+  }
+  return parsed
 }
 
 function parsePlanResult(value: unknown): SmartCropPlanLaunchResult | null {
@@ -449,6 +534,7 @@ function parseQaResult(value: unknown): SmartCropQaLaunchResult | null {
       description: issue.description,
       atSeconds:
         typeof issue.atSeconds === "number" ? issue.atSeconds : undefined,
+      shotId: typeof issue.shotId === "string" ? issue.shotId : undefined,
     })
   }
 
@@ -459,6 +545,35 @@ function parseQaResult(value: unknown): SmartCropQaLaunchResult | null {
     usage,
     model: result.model,
   }
+}
+
+function parseRepairResult(value: unknown): SmartCropRepairLaunchResult | null {
+  const record = asRecord(value)
+  const result = asRecord(record?.result)
+  if (!result || typeof result.ok !== "boolean") return null
+
+  if (result.ok === false) {
+    return parseFailure(result)
+  }
+
+  if (!Array.isArray(result.segments) || typeof result.model !== "string") {
+    return null
+  }
+  const usage = parseUsage(result.usage)
+  if (!usage) {
+    return null
+  }
+
+  const segments: SmartCropPlanSegment[] = []
+  for (const entry of result.segments) {
+    const segment = parsePlanSegment(entry)
+    if (!segment) {
+      return null
+    }
+    segments.push(segment)
+  }
+
+  return { ok: true, segments, usage, model: result.model }
 }
 
 type PostToMastraOutcome =
@@ -564,8 +679,17 @@ export async function launchSmartCropQa(
   return finalizeResult(outcome, parseQaResult)
 }
 
+export async function launchSmartCropRepair(
+  input: SmartCropRepairLaunchInput,
+  options: LaunchMastraSmartCropOptions = {},
+): Promise<SmartCropRepairLaunchResult> {
+  const outcome = await postToMastra("/forge-smart-crop-repair", input, options)
+  return finalizeResult(outcome, parseRepairResult)
+}
+
 export const _internals = {
   parsePlanResult,
   parseAlignResult,
   parseQaResult,
+  parseRepairResult,
 }

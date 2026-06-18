@@ -286,6 +286,10 @@ export function WatchPageClient({
   }, [])
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
+  const selectedLanguageCode =
+    [variant.language?.iso3, variant.language?.bcp47, variant.language?.slug]
+      .map((code) => code?.trim())
+      .find(Boolean) ?? null
   const videoSlug = video.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
   const routeWarmPromisesRef = useRef(new Map<string, Promise<void>>())
@@ -446,6 +450,12 @@ export function WatchPageClient({
               : null
           return {
             documentId: d.documentId,
+            height:
+              typeof d.height === "number" &&
+              Number.isFinite(d.height) &&
+              d.height > 0
+                ? d.height
+                : null,
             quality: d.quality as string,
             size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
           }
@@ -459,11 +469,27 @@ export function WatchPageClient({
     if (!fallbackTier) return undefined
     return buildDownloadProxyUrl({
       downloadId: fallbackTier.download.documentId,
-      filename: buildDownloadFilename(video.title, fallbackTier.tier),
+      filename: buildDownloadFilename({
+        languageCode: selectedLanguageCode,
+        languageName: variant.language?.name ?? null,
+        languageSlug: variant.language?.slug ?? null,
+        renditionHeight: fallbackTier.download.height,
+        tier: fallbackTier.tier,
+        videoSlug,
+        videoTitle: video.title,
+      }),
       variantId: variant.documentId,
       videoSlug,
     })
-  }, [downloadsForModal, variant.documentId, video.title, videoSlug])
+  }, [
+    downloadsForModal,
+    selectedLanguageCode,
+    variant.documentId,
+    variant.language?.name,
+    variant.language?.slug,
+    video.title,
+    videoSlug,
+  ])
 
   const shareHref = useMemo(
     () =>
@@ -654,7 +680,9 @@ export function WatchPageClient({
           videoTitle={video.title ?? null}
           posterUrl={posterUrl}
           durationSeconds={variant.duration ?? null}
+          languageCode={selectedLanguageCode}
           languageName={variant.language?.name ?? null}
+          languageSlug={variant.language?.slug ?? null}
           variantId={variant.documentId}
           videoSlug={videoSlug}
           onClose={closeModal}

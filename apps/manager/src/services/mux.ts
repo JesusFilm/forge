@@ -1,14 +1,26 @@
 // Mux service — video asset management and streaming.
 // Docs: https://docs.mux.com
 
-import Mux from "@mux/mux-node"
+import type Mux from "@mux/mux-node"
 import { env } from "@/config/env"
 import { normalizeGeneratedSubtitleLanguage } from "@/lib/mux-language"
 
+declare const require: (id: string) => unknown
+
 let _mux: Mux | undefined
+function loadMuxClient(): typeof Mux {
+  const muxModule = require("@mux/mux-node") as
+    | { default?: typeof Mux }
+    | typeof Mux
+  return "default" in muxModule && muxModule.default
+    ? muxModule.default
+    : (muxModule as typeof Mux)
+}
+
 export function getMux(): Mux {
   if (!_mux) {
-    _mux = new Mux({
+    const MuxClient = loadMuxClient()
+    _mux = new MuxClient({
       tokenId: env.MUX_TOKEN_ID,
       tokenSecret: env.MUX_TOKEN_SECRET,
       jwtSigningKey: env.MUX_SIGNING_KEY ?? null,

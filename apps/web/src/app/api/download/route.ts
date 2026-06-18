@@ -67,6 +67,7 @@ const BIDI_CONTROL_RE = /[‪-‮⁦-⁩]/g
 // Path separators and shell-meta characters that have no business in a
 // `Content-Disposition: filename` value.
 const FILENAME_UNSAFE_RE = /[\\/;,"]/g
+const MAX_DOWNLOAD_FILENAME_LENGTH = 200
 
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
@@ -188,17 +189,24 @@ function sanitizeFilename(raw: string): string {
     .trim()
   // After stripping, optionally trim trailing dots/spaces (Windows-hostile)
   // and clamp length to prevent absurd filenames in error logs.
-  const clamped = stripped.replace(/[.\s]+$/, "").slice(0, 200)
-  if (clamped.length === 0) return "download"
+  const trimmed = stripped.replace(/[.\s]+$/, "")
+  if (trimmed.length === 0) return "download"
+
   // Enforce extension allowlist tied to media-only payloads.
-  const lastDot = clamped.lastIndexOf(".")
-  if (lastDot > 0 && lastDot < clamped.length - 1) {
-    const ext = clamped.slice(lastDot + 1).toLowerCase()
-    if (!SAFE_DOWNLOAD_EXTENSIONS.has(ext)) {
-      return `${clamped.slice(0, lastDot)}.mp4`
-    }
-  }
-  return clamped
+  const lastDot = trimmed.lastIndexOf(".")
+  const hasExtension = lastDot > 0 && lastDot < trimmed.length - 1
+  const rawExtension = hasExtension ? trimmed.slice(lastDot) : ""
+  const normalizedExtension = rawExtension.slice(1).toLowerCase()
+  const extension = hasExtension
+    ? SAFE_DOWNLOAD_EXTENSIONS.has(normalizedExtension)
+      ? rawExtension
+      : ".mp4"
+    : ""
+  const rawBasename = hasExtension ? trimmed.slice(0, lastDot) : trimmed
+  const maxBasenameLength = MAX_DOWNLOAD_FILENAME_LENGTH - extension.length
+  const basename =
+    rawBasename.slice(0, maxBasenameLength).replace(/[.\s]+$/, "") || "download"
+  return `${basename}${extension}`
 }
 
 // Logs origin + path only; signed-URL JWTs and other secrets in query

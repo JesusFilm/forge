@@ -8,11 +8,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { env } from "./config/env.js"
 import {
+  CROP_PLAN_ARTIFACT_TYPE,
   parseCropPlan,
   parseTimelineMap,
   remapSegments,
   samplePreviewSegments,
+  type CropPlanArtifactType,
   type CropPlan,
+  type RenderArtifactSuffix,
   type TimelineMap,
 } from "./crop-plan.js"
 import type { JobDeadline } from "./deadline.js"
@@ -26,12 +29,13 @@ import { createStorage, type Storage } from "./storage.js"
 import type {
   ArtifactRef,
   CropKeyframe,
+  RenderedReportSegment,
   RenderMode,
   RenderReport,
   RenderSegment,
 } from "./types.js"
 
-export const CROP_PLAN_ARTIFACT_TYPE = "smart-crop-plan-9x16-v1"
+export { CROP_PLAN_ARTIFACT_TYPE } from "./crop-plan.js"
 export const TIMELINE_MAP_ARTIFACT_TYPE = "smart-crop-timeline-map-v1"
 export const PREVIEW_OUTPUT_ARTIFACT_TYPE = "smart-crop-preview-9x16"
 export const FULL_OUTPUT_ARTIFACT_TYPE = "smart-crop-output-9x16"
@@ -93,7 +97,7 @@ export function buildCropFilter(segment: RenderSegment): string {
 
   const xExpression = buildXExpression(sorted, segment.durationSeconds)
 
-  return `crop=${first.width}:${first.height}:'${xExpression}':${first.y},scale=${TARGET_WIDTH}:${TARGET_HEIGHT}:flags=lanczos,setsar=1`
+  return `crop=${first.width}:${first.height}:'${xExpression}':${first.y},scale=${TARGET_WIDTH}:${TARGET_HEIGHT}:flags=lanczos,setsar=1,setpts=PTS-STARTPTS`
 }
 
 export type RenderProgress = (progress: number, message: string) => void
@@ -115,7 +119,9 @@ export type RunRenderInput = {
   sourceUrl: string
   mode: RenderMode
   cropPlanAssetId: string
+  cropPlanArtifactType?: CropPlanArtifactType
   timelineMapAssetId?: string
+  artifactSuffix?: RenderArtifactSuffix
   previewFrameCount: number
   deps?: RenderDependencies
   onProgress?: RenderProgress
@@ -151,12 +157,40 @@ async function readJsonArtifact(
   }
 }
 
+function suffixArtifactType(
+  artifactType: string,
+  suffix: RenderArtifactSuffix | undefined,
+): string {
+  return suffix ? `${artifactType}-${suffix}` : artifactType
+}
+
+function buildRenderedSegments(
+  segments: RenderSegment[],
+): RenderedReportSegment[] {
+  let outputStartSeconds = 0
+  return segments.map((segment) => {
+    const outputEndSeconds = outputStartSeconds + segment.durationSeconds
+    const renderedSegment: RenderedReportSegment = {
+      shotId: segment.shotId,
+      sourceStartSeconds: segment.start,
+      sourceEndSeconds: segment.end,
+      outputStartSeconds,
+      outputEndSeconds,
+      durationSeconds: segment.durationSeconds,
+    }
+    outputStartSeconds = outputEndSeconds
+    return renderedSegment
+  })
+}
+
 export async function runRender({
   assetId,
   sourceUrl,
   mode,
   cropPlanAssetId,
+  cropPlanArtifactType = CROP_PLAN_ARTIFACT_TYPE,
   timelineMapAssetId,
+  artifactSuffix,
   previewFrameCount,
   deps = {},
   onProgress,
@@ -181,7 +215,7 @@ export async function runRender({
     await readJsonArtifact(
       storage,
       cropPlanAssetId,
-      CROP_PLAN_ARTIFACT_TYPE,
+      cropPlanArtifactType,
       "crop plan",
     ),
   )
@@ -216,8 +250,8 @@ export async function runRender({
 
   const outputArtifactType =
     mode === "preview"
-      ? PREVIEW_OUTPUT_ARTIFACT_TYPE
-      : FULL_OUTPUT_ARTIFACT_TYPE
+      ? suffixArtifactType(PREVIEW_OUTPUT_ARTIFACT_TYPE, artifactSuffix)
+      : suffixArtifactType(FULL_OUTPUT_ARTIFACT_TYPE, artifactSuffix)
 
   const tempDir = await mkdtemp(join(tmpdir(), "crop-worker-render-"))
   try {
@@ -244,6 +278,8 @@ export async function runRender({
             sourceUrl,
             "-vf",
             filter,
+            "-af",
+            "asetpts=PTS-STARTPTS",
             "-c:v",
             "libx264",
             "-preset",
@@ -352,7 +388,10 @@ export async function runRender({
           throw classifyCommandError(error, "ffmpeg")
         }
 
-        const frameArtifactType = `smart-crop-preview-frame-9x16-${String(index + 1).padStart(3, "0")}`
+        const frameArtifactType = suffixArtifactType(
+          `smart-crop-preview-frame-9x16-${String(index + 1).padStart(3, "0")}`,
+          artifactSuffix,
+        )
         await storage.writeArtifactFromFile(
           assetId,
           frameArtifactType,
@@ -370,6 +409,8 @@ export async function runRender({
       kind: "smart-crop-render-report",
       assetId,
       mode,
+      cropPlanArtifactType,
+      ...(artifactSuffix ? { artifactSuffix } : {}),
       target: {
         aspectRatio: "9:16",
         width: TARGET_WIDTH,
@@ -377,6 +418,7 @@ export async function runRender({
       },
       segmentsRendered,
       segmentsPlanned: segments.length,
+      renderedSegments: buildRenderedSegments(segments),
       outputDurationSeconds,
       outputBytes,
       renderSeconds: (Date.now() - startedAtMs) / 1000,
@@ -386,7 +428,10 @@ export async function runRender({
       generatedAt: now().toISOString(),
     }
 
-    const reportArtifactType = `smart-crop-render-report-9x16-${mode}`
+    const reportArtifactType = suffixArtifactType(
+      `smart-crop-render-report-9x16-${mode}`,
+      artifactSuffix,
+    )
     await storage.writeArtifact({
       assetId,
       artifactType: reportArtifactType,

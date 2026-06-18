@@ -1,5 +1,4 @@
 import { env } from "@/config/env"
-import type { TranscriptSourceArtifact } from "@/services/manager-artifacts.service"
 
 export type MastraTranscriptEmbeddingMode =
   | "idempotent"
@@ -13,14 +12,30 @@ export type MastraTranscriptEmbeddingTarget = {
   coreId?: string
 }
 
+type MastraTranscriptEmbeddingSourceSegment = {
+  start: number
+  end: number
+  text: string
+}
+
 export type MastraTranscriptEmbeddingLaunchInput = {
   target: MastraTranscriptEmbeddingTarget
   language: string
   cmsVideoId: number
-  transcript: Pick<
-    TranscriptSourceArtifact,
-    "text" | "segments" | "resolvedProvider"
-  >
+  transcript: {
+    text: string
+    segments: readonly MastraTranscriptEmbeddingSourceSegment[]
+    artifactKey?: string
+    kind?: "subtitle" | "manager-transcript"
+    languageId?: string | null
+    languageSlug?: string | null
+    subtitleId?: string
+    format?: "vtt" | "srt"
+    url?: string
+    provider?: string
+    resolvedProvider?: string
+    generatedAt?: string
+  }
   mode?: MastraTranscriptEmbeddingMode
 }
 
@@ -89,7 +104,7 @@ const FAILURE_REASONS = new Set([
   "admin_ingest_failed",
 ])
 
-type TranscriptSourceSegment = TranscriptSourceArtifact["segments"][number]
+type TranscriptSourceSegment = MastraTranscriptEmbeddingSourceSegment
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -187,8 +202,16 @@ export async function launchMastraTranscriptEmbedding(
     transcript: {
       text: input.transcript.text,
       segments: normalizeSegments(input.transcript.segments),
-      artifactKey: `${input.cmsVideoId}/transcript.json`,
-      provider: input.transcript.resolvedProvider,
+      artifactKey:
+        input.transcript.artifactKey ?? `${input.cmsVideoId}/transcript.json`,
+      kind: input.transcript.kind,
+      languageId: input.transcript.languageId ?? undefined,
+      languageSlug: input.transcript.languageSlug ?? undefined,
+      subtitleId: input.transcript.subtitleId,
+      format: input.transcript.format,
+      url: input.transcript.url,
+      provider: input.transcript.provider ?? input.transcript.resolvedProvider,
+      generatedAt: input.transcript.generatedAt,
     },
     mode: input.mode ?? "idempotent",
   }

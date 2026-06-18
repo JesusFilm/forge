@@ -322,10 +322,11 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
   const summary = getShortsJobSummary(job)
   const phase = summary?.phase ?? "queued"
   const isLaunchFailed = summary?.isLaunchFailed ?? false
+  const activeStall = summary?.activeStall ?? null
   // A launch-failed job (phase "queued" + status "failed") is NOT active:
   // nothing is running, so skip the progress section and phase polling
   // (recentLaunch covers the window right after a retry 202).
-  const isActive = isActiveShortsPhase(phase) && !isLaunchFailed
+  const isActive = isActiveShortsPhase(phase) && !isLaunchFailed && !activeStall
   const isEditor = isEditorShortsPhase(phase)
 
   // -------------------------------------------------------------------
@@ -635,7 +636,10 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
   // Launch-failed (queued + failed) surfaces the same failure card: a plain
   // retry POST relaunches prepare from scratch (todo 010).
   const isFailed =
-    phase === "prepare_failed" || phase === "render_failed" || isLaunchFailed
+    phase === "prepare_failed" ||
+    phase === "render_failed" ||
+    isLaunchFailed ||
+    activeStall !== null
   // Stale detection prefers the local draftVersion (polling is stopped in
   // editor phases, so the report mirror may lag the latest save).
   const effectiveDraftVersion = Math.max(
@@ -737,11 +741,13 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
         <section className="collection-card jobs-card">
           <div className="jobs-card-header">
             <h3 className="jobs-section-title">
-              {phase === "prepare_failed"
-                ? "Prepare failed"
-                : phase === "render_failed"
-                  ? "Render failed"
-                  : "Launch failed"}
+              {activeStall
+                ? activeStall.label
+                : phase === "prepare_failed"
+                  ? "Prepare failed"
+                  : phase === "render_failed"
+                    ? "Render failed"
+                    : "Launch failed"}
             </h3>
             <div className="studio-page-intro-actions">
               <button
@@ -772,7 +778,9 @@ export function ShortsJobDetail({ initialJob }: ShortsJobDetailProps) {
               ) : null}
             </div>
           </div>
-          {latestError ? (
+          {activeStall ? (
+            <p className="small jobs-empty-state">{activeStall.message}</p>
+          ) : latestError ? (
             <>
               <p className="jobs-error-text">{latestError.message}</p>
               {latestError.operatorHint ? (

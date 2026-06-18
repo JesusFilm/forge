@@ -235,14 +235,14 @@ enum SearchEvalCandidateSanitizationStatus {
 
 model User {
   chatThreadsCreated ExperienceChatThread[] // experience-AI chat (additive)
-  id            String   @id
-  name          String
-  email         String
-  emailVerified Boolean  @default(false) @map("email_verified")
-  image         String?
-  role          UserRole @default(VIEWER)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                 String                 @id
+  name               String
+  email              String
+  emailVerified      Boolean                @default(false) @map("email_verified")
+  image              String?
+  role               UserRole               @default(VIEWER)
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
 
   mediaAssets           MediaAsset[]
   mediaFolders          MediaFolder[]
@@ -1534,7 +1534,7 @@ model Experience {
 /// discriminated union in `src/domain/blocks.ts` (Unit 4e). Reads return the
 /// JSONB column directly; mutations validate before write.
 model ExperienceLocale {
-  chatThreads ExperienceChatThread[] // experience-AI chat (additive)
+  chatThreads                ExperienceChatThread[] // experience-AI chat (additive)
   id                         String                       @id @default(cuid())
   experienceId               String                       @map("experience_id")
   experience                 Experience                   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
@@ -1626,6 +1626,12 @@ model VideoTranscript {
   /// Compact provenance for Mastra-written transcript embeddings. Nullable so
   /// legacy rows from the pre-Mastra producer remain readable.
   sourceArtifactKey         String?      @map("source_artifact_key")
+  sourceKind                String?      @map("source_kind")
+  sourceLanguageId          String?      @map("source_language_id")
+  sourceLanguageSlug        String?      @map("source_language_slug")
+  sourceSubtitleId          String?      @map("source_subtitle_id")
+  sourceFormat              String?      @map("source_format")
+  sourceUrl                 String?      @map("source_url")
   sourceContentHash         String?      @map("source_content_hash")
   sourceProvider            String?      @map("source_provider")
   sourceGeneratedAt         DateTime?    @map("source_generated_at")
@@ -1656,29 +1662,42 @@ model VideoTranscript {
 /// embed/vector/similarity field leaks; and the Prisma client extension
 /// in `src/db/client.ts` strips it from default result sets).
 model VideoTranscriptChunk {
-  id           String                       @id @default(cuid())
-  transcriptId String                       @map("transcript_id")
-  transcript   VideoTranscript              @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  id                 String                       @id @default(cuid())
+  transcriptId       String                       @map("transcript_id")
+  transcript         VideoTranscript              @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
   /// Denormalized from `transcript.language`. Indexer keeps the two in sync;
   /// no DB-level CHECK (Postgres doesn't support cross-row checks cleanly).
-  language     String
+  language           String
   /// 0-based index within the transcript, stable across re-chunks.
-  chunkIndex   Int                          @map("chunk_index")
+  chunkIndex         Int                          @map("chunk_index")
   /// Opaque chunk identifier from manager's artifact (e.g. "chunk-0").
   /// Preserved for drift audits against the upstream artifact.
-  chunkId      String                       @map("chunk_id")
+  chunkId            String                       @map("chunk_id")
   /// The embedded text, verbatim from the artifact's `chunks[].text`.
-  text         String
+  text               String
+  /// Raw subtitle/transcript source text for this segment. Nullable for legacy
+  /// v1 rows where `text` was the only stored snippet.
+  rawSourceText      String?                      @map("raw_source_text")
+  /// Full vector input text. v2 rows keep this separate from user/debug
+  /// snippets so enriched metadata can be audited without replacing raw text.
+  embeddingInputText String?                      @map("embedding_input_text")
+  feltNeeds          String[]                     @default([]) @map("felt_needs")
+  bibleVerses        String[]                     @default([]) @map("bible_verses")
+  contentSummary     String?                      @map("content_summary")
+  tone               String?
+  demographics       String[]                     @default([])
+  spiritualContext   String[]                     @default([]) @map("spiritual_context")
+  extractionMetadata Json?                        @map("extraction_metadata")
   /// Estimated token count from manager's chunker.
-  tokenCount   Int                          @map("token_count")
+  tokenCount         Int                          @map("token_count")
   /// Optional timecodes when the chunk came from a segment-aware chunker.
-  startSeconds Float?                       @map("start_seconds")
-  endSeconds   Float?                       @map("end_seconds")
-  embedding    Unsupported("vector(1536)")?
-  model        String                       @default("text-embedding-3-small")
-  dimensions   Int                          @default(1536)
-  createdAt    DateTime                     @default(now()) @map("created_at")
-  updatedAt    DateTime                     @updatedAt @map("updated_at")
+  startSeconds       Float?                       @map("start_seconds")
+  endSeconds         Float?                       @map("end_seconds")
+  embedding          Unsupported("vector(1536)")?
+  model              String                       @default("text-embedding-3-small")
+  dimensions         Int                          @default(1536)
+  createdAt          DateTime                     @default(now()) @map("created_at")
+  updatedAt          DateTime                     @updatedAt @map("updated_at")
 
   @@unique([transcriptId, chunkIndex])
   @@index([language])
@@ -1695,6 +1714,7 @@ enum ExperienceChatMessageRole {
   ASSISTANT @map("assistant")
   SYSTEM    @map("system")
 }
+
 model ExperienceChatThread {
   id                 String           @id @default(cuid())
   experienceLocaleId String           @map("experience_locale_id")
