@@ -45,7 +45,9 @@ export type VideoClip = {
 }
 
 /** How the clip was chosen: real search hit, configured fallback, or none (A8). */
-export type VideoMatchSource = "search" | "fallback" | "none"
+export const VIDEO_MATCH_SOURCES = ["search", "fallback", "none"] as const
+
+export type VideoMatchSource = (typeof VIDEO_MATCH_SOURCES)[number]
 
 /**
  * The ingredients of a devotional. `blockOrder` is the per-day arrangement (a

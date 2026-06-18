@@ -168,6 +168,115 @@ describe("runDailyDevotional", () => {
     expect(publish).toHaveBeenCalledTimes(1)
   })
 
+  it("short-circuits an already-published date without regenerating or overwriting", async () => {
+    const store = memStore()
+    await store.writeReport({
+      schemaVersion: "1",
+      kind: "daily-devotional",
+      reportId: "2026-06-22",
+      mastraRunId: "prev-run",
+      date: "2026-06-22",
+      startedAt: "2026-06-22T07:00:00.000Z",
+      finishedAt: "2026-06-22T07:00:05.000Z",
+      published: true,
+      videoMatch: "none",
+      safety: PASS,
+      devotional: DEVOTIONAL,
+    })
+    const publish = vi.fn(async () => ({ ok: true as const, published: true }))
+    const pickHook = vi.fn(async () => HOOK) // must NOT run on an already-published date
+
+    const result = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({ artifactStore: store, publish, pickHook }),
+    )
+
+    expect(result.ok && result.published).toBe(true)
+    expect(publish).not.toHaveBeenCalled()
+    expect(pickHook).not.toHaveBeenCalled()
+    // The prior run's mastraRunId is preserved — the report was not overwritten.
+    expect(store.reports.get("2026-06-22")).toMatchObject({
+      mastraRunId: "prev-run",
+    })
+  })
+
+  it("does not fail the run when publish fails (best-effort)", async () => {
+    const store = memStore()
+    const result = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({
+        artifactStore: store,
+        publish: async () => ({
+          ok: false as const,
+          reason: "upstream_failed" as const,
+          retryable: true,
+        }),
+      }),
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.published).toBe(false)
+    expect(store.reports.get("2026-06-22")).toMatchObject({ published: false })
+  })
+
+  it("surfaces a non-not_found read error as artifact_failed (does not re-publish)", async () => {
+    const store = memStore()
+    const publish = vi.fn(async () => ({ ok: true as const, published: true }))
+    store.readReport = async () => {
+      throw new DevotionalArtifactError("read_failed", "io error")
+    }
+    const result = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({ artifactStore: store, publish }),
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "artifact_failed",
+      retryable: true,
+    })
+    expect(publish).not.toHaveBeenCalled()
+  })
+
+  it("classifies artifact write failures: write_failed retryable, invalid_artifact not", async () => {
+    const withWriteError = (error: DevotionalArtifactError) => {
+      const store = memStore()
+      store.writeReport = async () => {
+        throw error
+      }
+      return store
+    }
+
+    const write = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({
+        artifactStore: withWriteError(
+          new DevotionalArtifactError("write_failed", "disk full"),
+        ),
+      }),
+    )
+    expect(write).toMatchObject({
+      ok: false,
+      reason: "artifact_failed",
+      retryable: true,
+    })
+
+    const invalid = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({
+        artifactStore: withWriteError(
+          new DevotionalArtifactError("invalid_artifact", "bad shape"),
+        ),
+      }),
+    )
+    expect(invalid).toMatchObject({
+      ok: false,
+      reason: "artifact_failed",
+      retryable: false,
+    })
+  })
+
   it("rejects malformed input", async () => {
     const result = await runDailyDevotional(
       { date: "not-a-date" },
@@ -254,5 +363,20 @@ describe("handleDailyDevotionalRouteRequest", () => {
       }),
     })
     expect(gen.status).toBe(502)
+  })
+
+  it("maps artifact_failed to 500", async () => {
+    const outcome = await handleDailyDevotionalRouteRequest({
+      authHeader: "Bearer secret-key",
+      serviceKeys,
+      readJson: async () => ({}),
+      launch: async (_input, { runId }) => ({
+        ok: false,
+        reason: "artifact_failed",
+        retryable: false,
+        mastraRunId: runId,
+      }),
+    })
+    expect(outcome.status).toBe(500)
   })
 })

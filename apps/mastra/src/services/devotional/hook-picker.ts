@@ -204,8 +204,14 @@ async function tryNewsHook(
     if (!selection.chosen || !selection.title || !selection.summary) {
       return null
     }
+    // The model's sourceUrl is untrusted (news candidates originate from web
+    // search and feed the prompt — a crafted page could inject a javascript:
+    // or phishing URL). Only accept a model-supplied URL when it exactly matches
+    // a real Firecrawl candidate (which Zod already validated as a URL);
+    // otherwise fall back to the top candidate. Never publish a free-form URL.
+    const candidateUrls = new Set(candidates.map((candidate) => candidate.url))
     const sourceUrl =
-      selection.sourceUrl && selection.sourceUrl.length > 0
+      selection.sourceUrl && candidateUrls.has(selection.sourceUrl)
         ? selection.sourceUrl
         : (candidates[0]?.url ?? null)
     return {

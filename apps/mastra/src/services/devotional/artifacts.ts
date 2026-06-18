@@ -12,11 +12,11 @@ import {
   MAX_DEVOTIONAL_SHORT_TEXT,
   MAX_DEVOTIONAL_TEXT_LENGTH,
   MAX_DEVOTIONAL_URL,
+  VIDEO_MATCH_SOURCES,
   type DevotionalReport,
 } from "./types"
 
 const SAFE_ARTIFACT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/
-const VIDEO_MATCH = ["search", "fallback", "none"] as const
 
 export const HookSchema = z
   .object({
@@ -51,7 +51,7 @@ export const DevotionalSchema = z
     hook: HookSchema,
     scripture: ScriptureRefSchema,
     video: VideoClipSchema.nullable(),
-    videoMatch: z.enum(VIDEO_MATCH),
+    videoMatch: z.enum(VIDEO_MATCH_SOURCES),
     reflection: z.string().max(MAX_DEVOTIONAL_TEXT_LENGTH),
     questions: z
       .array(z.string().max(MAX_DEVOTIONAL_SHORT_TEXT))
@@ -89,7 +89,7 @@ export const DevotionalReportSchema = z
     startedAt: z.string().max(64),
     finishedAt: z.string().max(64),
     published: z.boolean(),
-    videoMatch: z.enum(VIDEO_MATCH),
+    videoMatch: z.enum(VIDEO_MATCH_SOURCES),
     safety: SafetyVerdictSchema.nullable(),
     devotional: DevotionalSchema.nullable(),
   })

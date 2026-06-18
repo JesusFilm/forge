@@ -15,6 +15,7 @@ import {
 import {
   createDevotionalLlm,
   DevotionalLlmError,
+  type DevotionalLlm,
 } from "../../services/devotional/llm"
 import { pickHook } from "../../services/devotional/hook-picker"
 import { selectScripture } from "../../services/devotional/scripture-selector"
@@ -99,8 +100,8 @@ export type DailyDevotionalDeps = {
   publish?: typeof publishDevotional
   artifactStore?: DevotionalArtifactStore
   /** Override the generation/safety LLMs (tests inject fakes). */
-  llm?: Parameters<typeof writeDevotional>[0]["llm"]
-  safetyLlm?: Parameters<typeof evaluateSafety>[0]["llm"]
+  llm?: DevotionalLlm
+  safetyLlm?: DevotionalLlm
 }
 
 function failure(
@@ -180,6 +181,47 @@ export async function runDailyDevotional(
   const publishFn = deps.publish ?? publishDevotional
   const artifactStore = deps.artifactStore ?? createDevotionalArtifactStore()
 
+  // Read any prior report for this date up front. Idempotency is per date: if
+  // this date was already published, regenerate nothing and return the stored
+  // devotional unchanged — never overwrite live (possibly human-edited) content
+  // and never re-publish. Only a genuine "not found" counts as a first run; any
+  // other read error is surfaced rather than silently treated as first run
+  // (which would otherwise re-publish over an existing day).
+  let existing: DevotionalReport | null = null
+  try {
+    existing = await artifactStore.readReport(date)
+  } catch (error) {
+    if (
+      error instanceof DevotionalArtifactError &&
+      error.code === "not_found"
+    ) {
+      existing = null
+    } else {
+      return failure("artifact_failed", {
+        mastraRunId,
+        retryable: true,
+        details: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  if (
+    existing &&
+    existing.published &&
+    existing.devotional &&
+    existing.safety
+  ) {
+    return {
+      ok: true,
+      mastraRunId,
+      date,
+      published: true,
+      videoMatch: existing.videoMatch,
+      safety: existing.safety,
+      devotional: existing.devotional,
+    }
+  }
+
   const startedAt = now().toISOString()
 
   let stage = "pick-hook"
@@ -213,22 +255,16 @@ export async function runDailyDevotional(
     })
   }
 
-  // Publish ONLY on a safety pass; best-effort and idempotent per date.
+  // Publish ONLY on a safety pass. The short-circuit above already returned for
+  // an already-published date, so here the date is not yet published — always
+  // attempt. Best-effort: a publish failure never fails the run. Per-date
+  // publish idempotency ultimately relies on the watch-site ingest deduping by
+  // date (assumption A7); if the post-publish artifact write fails, a cron retry
+  // re-attempts publish and the site absorbs the duplicate.
   let published = false
   if (safety.verdict === "pass") {
-    let alreadyPublished = false
-    try {
-      const existing = await artifactStore.readReport(date)
-      alreadyPublished = existing.published
-    } catch {
-      // No prior report for this date — proceed to publish.
-    }
-    if (alreadyPublished) {
-      published = true
-    } else {
-      const result = await publishFn({ devotional })
-      published = result.ok ? result.published : false
-    }
+    const result = await publishFn({ devotional })
+    published = result.ok ? result.published : false
   }
 
   const finishedAt = now().toISOString()
