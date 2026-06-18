@@ -3,7 +3,7 @@ id: "feat-200"
 title: "Chat app scaffold with stubbed agent"
 owner: "jian wei"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-10"
 duration: 3
 depends_on: []
@@ -13,12 +13,15 @@ tags:
   - "infrastructure"
 ---
 
-> Renumbered from the gated chat web-app trunk's `feat-174` (the original was a
-> three-way collision). Tags normalized to `["infrastructure"]`. Code ships via
-> PR **#1276**; status flips to `complete` when it merges.
->
-> Requirements (arrive with #1276):
-> `docs/brainstorms/2026-06-10-chat-app-scaffold-requirements.md`.
+## Resolution
+
+**Shipped:** 2026-06-18 via [PR #1276](https://github.com/JesusFilm/forge/pull/1276) — the scaffold originally landed through [PR #1198](https://github.com/JesusFilm/forge/pull/1198), squash-merged into the #1276 trunk.
+
+**What landed.** `apps/chat` (`@forge/chat`) scaffolded as a Next.js App Router app on port 3200: a hybrid template (roadmap-minimal dependency footprint, `apps/web`'s CI-proven eslint/tsconfig/vitest), a single client-side chat page whose replies come from a pure stub seam (`src/lib/chat-stub.ts` — no network, no persistence, resets on refresh), full app docs (`README.md`/`CLAUDE.md`/`AGENTS.md`), and a `railway.toml` (railpack builder, port 3200, `HOSTNAME=0.0.0.0`). Registered in root `CLAUDE.md` + `AGENTS.md`. The `@forge/`-scoped name is load-bearing: an unscoped name silently misses the CI affected-filter.
+
+**Compound docs.** `docs/solutions/platform/adding-new-apps.md`; `docs/solutions/workflow-issues/new-app-package-name-must-be-forge-scoped-for-ci.md`. Requirements: `docs/brainstorms/2026-06-10-chat-app-scaffold-requirements.md`.
+
+**Unblocked.** feat-201 (Vigil re-skin + conversation shell).
 
 ## Problem
 

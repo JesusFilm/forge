@@ -86,6 +86,37 @@ Do not wire either without a roadmap ticket that settles the path.
 lives in `src/lib/conversations.ts` (so it outlives the seam); its
 `id`/`role`/`content` shape is AI-SDK-aligned so the swap renames nothing.
 
+### Acceptance criteria when the stub is replaced
+
+These are deferred hardening requirements, not stub work. The current stub
+(`buildStubReply`) is a synchronous, never-failing string function, so none of
+the failure modes below exist yet — but they all go live the moment a real,
+rejectable, possibly-hanging Mastra call replaces it. Carry these into the
+roadmap ticket that settles the integration path (above) as explicit
+`## Constraints` / `## Verification` items:
+
+1. **Surface reply failures to the user.** Today a throw in reply generation
+   escapes the `setTimeout` callback as an uncaught error — the slot is released
+   (the `try/finally` guard in `use-conversations.ts` is tested), but the user
+   sees the composer silently re-enable with no message. The replacement must
+   render a failure (an assistant/error-role turn or a per-conversation error
+   flag), not fail invisibly.
+2. **Bound the call with an outbound timeout.** A hanging downstream call would
+   leave the conversation permanently pending (the per-conversation double-send
+   guard blocks re-entry with no recovery). Wrap the call with a timeout
+   strictly below any Cloudflare/CDN ceiling and present a distinct
+   timeout message — see the root `CLAUDE.md` "outbound timeout MUST be shorter
+   than the upstream caller's budget" pattern.
+3. **Reshape the seam so the swap stays single-file.** The reply _timing_
+   (`setTimeout` + `STUB_REPLY_DELAY_MS`) currently lives in
+   `use-conversations.ts`, not in `chat-stub.ts`, so a naïve swap touches two
+   files. Prefer exporting an async `generateReply(text): Promise<string>` from
+   the seam that internalizes its own latency/abort, so the hook only `await`s a
+   promise and the Mastra swap becomes a true single-file replacement. NB: this
+   changes the hook's async model and the synchronous `app-shell.test.tsx`
+   timer/throw assertions, so do it _with_ the integration, not speculatively
+   against the stub.
+
 ## Intentionally Absent
 
 - No auth (lands later, alongside Cloudflare fronting)

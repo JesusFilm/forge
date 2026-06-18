@@ -19,10 +19,10 @@ Scope: `apps/chat`.
 ## Do not
 
 - Do not wire real agents, auth, or a database without a roadmap ticket —
-  this app is stub-only by design (feat-174).
+  this app is stub-only by design (feat-200).
 - Do not add API routes, server actions, or streaming.
 - Do not add conversation persistence (a database, or storage that survives a
-  refresh) without a roadmap ticket. The multi-conversation sidebar (feat-192)
+  refresh) without a roadmap ticket. The multi-conversation sidebar (feat-201)
   is intentionally client-only and resets on refresh.
 - Do not import internals from other apps; no app may import from
   `apps/chat`.

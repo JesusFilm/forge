@@ -13,7 +13,7 @@ Create `apps/chat` (`@forge/chat`): a minimal Next.js App Router app with one fu
 
 ## Problem Frame
 
-A chat UI for the Mastra agents in `apps/mastra` needs a home, but agent integration, auth, and persistence decisions aren't ready (roadmap ticket feat-174). Scaffolding the shell now establishes the conventions, CI integration, and deploy path before any real wiring, so later work swaps a stub for an agent instead of inventing an app under pressure.
+A chat UI for the Mastra agents in `apps/mastra` needs a home, but agent integration, auth, and persistence decisions aren't ready (roadmap ticket feat-200). Scaffolding the shell now establishes the conventions, CI integration, and deploy path before any real wiring, so later work swaps a stub for an agent instead of inventing an app under pressure.
 
 ---
 
@@ -226,7 +226,7 @@ Carried from origin; deferred and documented as deferred in the app's own docs:
 
 - Railway service creation and Config-as-code wiring — manual dashboard work by someone with Railway access; the repo carries only the config file and README checklist (origin Dependencies/Assumptions).
 - `ai-chat` roadmap lane registration — explicitly gated by `todos/007-pending-p2-ai-chat-roadmap-lane-pending-team-decision.md`; not a side effect of this scaffold.
-- Compound-time follow-ups: set feat-174 to `complete`, run `ce:compound`.
+- Compound-time follow-ups: set feat-200 to `complete`, run `ce:compound`.
 
 ---
 
@@ -240,7 +240,7 @@ Carried from origin; deferred and documented as deferred in the app's own docs:
 
 ## Sources & Research
 
-- Origin requirements: `docs/brainstorms/2026-06-10-chat-app-scaffold-requirements.md`; ticket: `docs/roadmap/ai-chat/feat-174-chat-app-scaffold.md`.
+- Origin requirements: `docs/brainstorms/2026-06-10-chat-app-scaffold-requirements.md`; ticket: `docs/roadmap/ai-chat/feat-200-chat-app-scaffold.md`.
 - CI mechanics: `.github/workflows/ci.yml` (affected matrix `@forge/*` filter, `--if-present` task invocation, unconditional format job).
 - Scaffold checklist: `docs/solutions/platform/adding-new-apps.md` (confirms the zero-CI-change claim; its port bullet is stale — corrected in U6 — and its `@forge/graphql` / t3-oss `env.ts` guidance predates current reality: noted, not fixed, in this PR).
 - Railway: `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md` (dead-config incident + service-creation checklist), `docs/solutions/workflow-issues/yt-video-mapper-railway-prisma-backend-deployment.md` (positive `configFile` verification, 2026-06-09), `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md` (`[deploy.env]` unreliability, corepack pin).

@@ -25,7 +25,7 @@ tags:
 
 When scaffolding a new workspace app, the `package.json` `name` field looks like a free choice. It is not — it determines whether CI runs for the app at all. The affected-package job in `.github/workflows/ci.yml` filters changed packages with a `startswith("@forge/")` predicate, so a package whose name lacks the `@forge/` scope never enters the lint / typecheck / test / build matrix. The failure is silent: CI goes green because the app was never selected, not because it passed.
 
-This surfaced while scaffolding `apps/chat` (feat-174). It is also why `apps/roadmap` — named `"roadmap"`, with no scope — has never run in CI, and why its lint/tsconfig setup could not be trusted as a scaffold template even though it is otherwise a fine minimal app.
+This surfaced while scaffolding `apps/chat` (feat-200). It is also why `apps/roadmap` — named `"roadmap"`, with no scope — has never run in CI, and why its lint/tsconfig setup could not be trusted as a scaffold template even though it is otherwise a fine minimal app.
 
 ## Guidance
 
@@ -74,4 +74,4 @@ Test-script timing (the zero-files trap):
 ## Related
 
 - `docs/solutions/platform/adding-new-apps.md` — the scaffold checklist for this monorepo.
-- `docs/plans/2026-06-10-005-feat-chat-app-scaffold-plan.md` — the feat-174 plan whose hybrid-template decision (model CI config on `apps/web`, footprint on `apps/roadmap`) is grounded in this learning.
+- `docs/plans/2026-06-10-006-feat-chat-app-scaffold-plan.md` — the feat-200 plan whose hybrid-template decision (model CI config on `apps/web`, footprint on `apps/roadmap`) is grounded in this learning.
