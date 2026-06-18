@@ -183,6 +183,7 @@ export type SmartCropQaIssue = {
 export type SmartCropQaFrame = {
   atSeconds: number
   url: string
+  shotId?: string
 }
 
 export type RequestRenderQaReviewOptions = {
@@ -695,7 +696,11 @@ export async function requestRenderQaReview({
 
   const content: UserContentPart[] = [{ type: "text", text: instruction }]
   for (const frame of frames) {
-    content.push({ type: "text", text: `frame at ${frame.atSeconds}s:` })
+    const shotIdLabel = frame.shotId ? ` (shotId ${frame.shotId})` : ""
+    content.push({
+      type: "text",
+      text: `frame at ${frame.atSeconds}s${shotIdLabel}:`,
+    })
     content.push({ type: "image_url", image_url: { url: frame.url } })
   }
 
