@@ -5,11 +5,18 @@ import { z } from "zod"
 
 import {
   getDiscoverySiteIngestConfig,
+  getDiscoverySourcesConfig,
   getYouTubeConfig,
   type YouTubeConfig,
 } from "../../config/env"
 import { classifyContent, qualifies } from "../../services/discovery/classifier"
 import type { DiscoveredVideo } from "../../services/discovery/candidate"
+import type { SourcesConfig } from "../../services/discovery/sources-client"
+import {
+  classifyYouTubeSource,
+  loadSavedSourceValues,
+  mergeUnique,
+} from "../../services/discovery/saved-sources"
 import {
   submitCandidatesToSite,
   type SiteIngestConfig,
@@ -131,6 +138,34 @@ export type YouTubeDiscoveryOptions = {
   siteIngest?: SiteIngestConfig | null
   /** Injectable submit fn for tests; defaults to a real HTTP POST. */
   submitVideos?: (videos: DiscoveredVideo[]) => Promise<SiteIngestResult>
+  /** Saved-sources config; when set, the saved list is merged into channels/playlists. */
+  sourcesConfig?: SourcesConfig | null
+  /** Injectable fetch for the saved-sources call (tests). */
+  fetchSources?: typeof fetch
+}
+
+/**
+ * Merge the website's saved YouTube sources into the run input: each saved value
+ * is classified as a channel or a playlist and added to the matching trusted
+ * list (deduped). Best-effort — a fetch failure leaves the input unchanged.
+ */
+async function withSavedYouTubeSources(
+  input: YouTubeDiscoveryWorkflowInput,
+  options: { config?: SourcesConfig | null; fetchImpl?: typeof fetch },
+): Promise<YouTubeDiscoveryWorkflowInput> {
+  const values = await loadSavedSourceValues("youtube", options)
+  if (values.length === 0) return input
+  const channels: string[] = []
+  const playlists: string[] = []
+  for (const value of values) {
+    if (classifyYouTubeSource(value) === "playlist") playlists.push(value)
+    else channels.push(value)
+  }
+  return {
+    ...input,
+    channels: mergeUnique(input.channels, channels),
+    playlists: mergeUnique(input.playlists, playlists),
+  }
 }
 
 function toCandidate(video: YouTubeVideo): DiscoveredVideo {
@@ -483,7 +518,10 @@ export async function runYouTubeDiscovery(
   if (!parsedInput.success) {
     return failure("invalid_input", { mastraRunId, retryable: false })
   }
-  const input = parsedInput.data
+  const input = await withSavedYouTubeSources(parsedInput.data, {
+    config: options.sourcesConfig,
+    fetchImpl: options.fetchSources,
+  })
 
   const startedAt = now().toISOString()
   try {
@@ -683,10 +721,16 @@ export async function launchYouTubeDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
+  // Route/Studio path: merge the website's saved sources into the input before
+  // the workflow runs, so the daily scheduler can trigger with an empty body.
+  const inputData = await withSavedYouTubeSources(parsed.data, {
+    config: getDiscoverySourcesConfig(),
+  })
+
   const run = await youtubeAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: parsed.data })
+    result = await run.start({ inputData })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??

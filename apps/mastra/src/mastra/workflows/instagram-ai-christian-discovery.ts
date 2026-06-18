@@ -4,10 +4,16 @@ import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
 import {
+  getDiscoverySourcesConfig,
   getFirecrawlConfig,
   getInstagramSiteIngestConfig,
   type FirecrawlConfig,
 } from "../../config/env"
+import type { SourcesConfig } from "../../services/discovery/sources-client"
+import {
+  loadSavedSourceValues,
+  mergeUnique,
+} from "../../services/discovery/saved-sources"
 import {
   submitPostsToSite,
   type SiteIngestConfig,
@@ -138,6 +144,23 @@ export type InstagramDiscoveryOptions = {
   siteIngest?: SiteIngestConfig | null
   /** Injectable submit fn for tests; defaults to a real HTTP POST. */
   submitPosts?: (posts: InstagramPost[]) => Promise<SiteIngestResult>
+  /** Saved-sources config; when set, the saved handles are merged into `handles`. */
+  sourcesConfig?: SourcesConfig | null
+  /** Injectable fetch for the saved-sources call (tests). */
+  fetchSources?: typeof fetch
+}
+
+/**
+ * Merge the website's saved Instagram handles into the run input (deduped).
+ * Best-effort — a fetch failure leaves the input unchanged.
+ */
+async function withSavedInstagramSources(
+  input: InstagramDiscoveryWorkflowInput,
+  options: { config?: SourcesConfig | null; fetchImpl?: typeof fetch },
+): Promise<InstagramDiscoveryWorkflowInput> {
+  const values = await loadSavedSourceValues("instagram", options)
+  if (values.length === 0) return input
+  return { ...input, handles: mergeUnique(input.handles, values) }
 }
 
 /**
@@ -427,7 +450,10 @@ export async function runInstagramDiscovery(
   if (!parsedInput.success) {
     return failure("invalid_input", { mastraRunId, retryable: false })
   }
-  const input = parsedInput.data
+  const input = await withSavedInstagramSources(parsedInput.data, {
+    config: options.sourcesConfig,
+    fetchImpl: options.fetchSources,
+  })
 
   const startedAt = now().toISOString()
   try {
@@ -626,10 +652,14 @@ export async function launchInstagramDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
+  const inputData = await withSavedInstagramSources(parsed.data, {
+    config: getDiscoverySourcesConfig(),
+  })
+
   const run = await instagramAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: parsed.data })
+    result = await run.start({ inputData })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??

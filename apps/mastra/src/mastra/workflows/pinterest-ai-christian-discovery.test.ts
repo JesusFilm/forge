@@ -173,6 +173,37 @@ describe("runPinterestDiscovery", () => {
     expect(result.pins).toHaveLength(1)
   })
 
+  it("merges saved boards from the sources endpoint", async () => {
+    const fetchBoard = vi.fn(async () => [christianPin])
+    const sourcesJson = new Response(
+      JSON.stringify({
+        sources: [
+          { value: "https://www.pinterest.com/u/saved/", label: "Saved" },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )
+    const result = await runPinterestDiscovery(
+      { boards: [] },
+      {
+        runId: "run-saved",
+        fetchBoard,
+        artifactStore: fakeStore(),
+        siteIngest: null,
+        sourcesConfig: {
+          url: "https://site.test/api/discovery-sources",
+          token: "t",
+        },
+        fetchSources: (async () => sourcesJson) as unknown as typeof fetch,
+      },
+    )
+    expect(result.ok).toBe(true)
+    expect(fetchBoard).toHaveBeenCalledWith(
+      "https://www.pinterest.com/u/saved/",
+      expect.anything(),
+    )
+  })
+
   it("returns invalid_input for an out-of-range limit", async () => {
     const result = await runPinterestDiscovery(
       { boards: ["x"], limitPerBoard: 0 },

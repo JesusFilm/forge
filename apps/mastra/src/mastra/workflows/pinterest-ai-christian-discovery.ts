@@ -3,9 +3,17 @@ import { randomUUID } from "node:crypto"
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { getDiscoverySiteIngestConfig } from "../../config/env"
+import {
+  getDiscoverySiteIngestConfig,
+  getDiscoverySourcesConfig,
+} from "../../config/env"
 import { classifyContent } from "../../services/discovery/classifier"
 import type { DiscoveredVideo } from "../../services/discovery/candidate"
+import type { SourcesConfig } from "../../services/discovery/sources-client"
+import {
+  loadSavedSourceValues,
+  mergeUnique,
+} from "../../services/discovery/saved-sources"
 import {
   submitCandidatesToSite,
   type SiteIngestConfig,
@@ -90,6 +98,23 @@ export type PinterestDiscoveryOptions = {
   artifactStore?: PinterestDiscoveryArtifactStore
   siteIngest?: SiteIngestConfig | null
   submitPins?: (pins: DiscoveredVideo[]) => Promise<SiteIngestResult>
+  /** Saved-sources config; when set, the saved boards are merged into `boards`. */
+  sourcesConfig?: SourcesConfig | null
+  /** Injectable fetch for the saved-sources call (tests). */
+  fetchSources?: typeof fetch
+}
+
+/**
+ * Merge the website's saved Pinterest boards into the run input (deduped).
+ * Best-effort — a fetch failure leaves the input unchanged.
+ */
+async function withSavedPinterestSources(
+  input: PinterestDiscoveryWorkflowInput,
+  options: { config?: SourcesConfig | null; fetchImpl?: typeof fetch },
+): Promise<PinterestDiscoveryWorkflowInput> {
+  const values = await loadSavedSourceValues("pinterest", options)
+  if (values.length === 0) return input
+  return { ...input, boards: mergeUnique(input.boards, values) }
 }
 
 function toCandidate(pin: PinterestPin): DiscoveredVideo {
@@ -333,7 +358,10 @@ export async function runPinterestDiscovery(
   if (!parsedInput.success) {
     return failure("invalid_input", { mastraRunId, retryable: false })
   }
-  const input = parsedInput.data
+  const input = await withSavedPinterestSources(parsedInput.data, {
+    config: options.sourcesConfig,
+    fetchImpl: options.fetchSources,
+  })
 
   const startedAt = now().toISOString()
   try {
@@ -520,10 +548,14 @@ export async function launchPinterestDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
+  const inputData = await withSavedPinterestSources(parsed.data, {
+    config: getDiscoverySourcesConfig(),
+  })
+
   const run = await pinterestAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: parsed.data })
+    result = await run.start({ inputData })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??

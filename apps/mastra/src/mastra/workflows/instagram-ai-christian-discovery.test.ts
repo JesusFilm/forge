@@ -102,6 +102,30 @@ describe("runInstagramDiscovery — trusted handles", () => {
     expect(result.posts).toHaveLength(0)
   })
 
+  it("merges saved handles from the sources endpoint", async () => {
+    const searchQuery = vi.fn(async (_query: string) => [christianOnlyHit])
+    const sourcesJson = new Response(
+      JSON.stringify({ sources: [{ value: "savedhandle", label: "Saved" }] }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )
+    const result = await runInstagramDiscovery(
+      { handles: [], queries: [] },
+      {
+        runId: "run-saved-ig",
+        firecrawlConfig: CONFIG,
+        searchQuery,
+        artifactStore: fakeStore(),
+        sourcesConfig: {
+          url: "https://site.test/api/discovery-sources",
+          token: "t",
+        },
+        fetchSources: (async () => sourcesJson) as unknown as typeof fetch,
+      },
+    )
+    expect(result.ok).toBe(true)
+    expect(searchQuery.mock.calls[0]![0]).toBe("site:instagram.com/savedhandle")
+  })
+
   it("still drops commentary from a trusted handle", async () => {
     const result = await runInstagramDiscovery(
       { handles: ["someone"], queries: [] },

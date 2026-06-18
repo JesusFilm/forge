@@ -383,6 +383,36 @@ describe("runYouTubeDiscovery", () => {
     expect(result.totals.excludedCommentary).toBe(1)
   })
 
+  it("merges saved sources: a saved playlist value is pulled as a playlist", async () => {
+    const listPlaylistVideos = vi.fn(async () => [aiChristian])
+    const sourcesJson = new Response(
+      JSON.stringify({
+        sources: [{ value: "PLsaved123456", label: "QBIBLE" }],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )
+    const result = await runYouTubeDiscovery(
+      { channels: [], queries: [], playlists: [] },
+      {
+        runId: "run-saved",
+        youtubeConfig: CONFIG,
+        client: clientFor([], { listPlaylistVideos }),
+        artifactStore: fakeStore(),
+        siteIngest: null,
+        sourcesConfig: {
+          url: "https://site.test/api/discovery-sources",
+          token: "t",
+        },
+        fetchSources: (async () => sourcesJson) as unknown as typeof fetch,
+      },
+    )
+    expect(result.ok).toBe(true)
+    expect(listPlaylistVideos).toHaveBeenCalledWith(
+      "PLsaved123456",
+      expect.anything(),
+    )
+  })
+
   it("returns invalid_input for an out-of-range limit", async () => {
     const result = await runYouTubeDiscovery(
       { queries: ["q"], limitPerQuery: 0 },

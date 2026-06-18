@@ -92,6 +92,7 @@ const envSchema = z.object({
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
   INSTAGRAM_DISCOVERY_SITE_INGEST_URL: z.string().url().optional(),
   INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: z.string().min(1).optional(),
+  DISCOVERY_SOURCES_URL: z.string().url().optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -222,6 +223,7 @@ export const env = envSchema.parse({
   INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: emptyToUndefined(
     process.env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN,
   ),
+  DISCOVERY_SOURCES_URL: emptyToUndefined(process.env.DISCOVERY_SOURCES_URL),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
@@ -429,6 +431,18 @@ export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null
  */
 export function getDiscoverySiteIngestConfig(): InstagramSiteIngestConfig | null {
   return getInstagramSiteIngestConfig()
+}
+
+/**
+ * Config for reading the website's saved trusted-source list. Opt-in: returns
+ * null unless DISCOVERY_SOURCES_URL is set. Reuses the shared site-ingest token
+ * (same website, same bearer) so no new secret is needed.
+ */
+export function getDiscoverySourcesConfig(): InstagramSiteIngestConfig | null {
+  const url = env.DISCOVERY_SOURCES_URL
+  const token = env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN
+  if (!url || !token) return null
+  return { url, token }
 }
 
 export function getMastraDatabaseUrl() {
