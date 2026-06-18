@@ -1,18 +1,29 @@
-import { advanceIndex, backFace, shouldSkipSlide } from "./heroPagerState"
+import { advanceByDelta, backFace, shouldSkipSlide } from "./heroPagerState"
 
-describe("advanceIndex", () => {
-  it("advances to the next slide", () => {
-    expect(advanceIndex(0, 4)).toBe(1)
-    expect(advanceIndex(2, 4)).toBe(3)
+describe("advanceByDelta", () => {
+  it("advances to the next slide (+1)", () => {
+    expect(advanceByDelta(0, 1, 4)).toBe(1)
+    expect(advanceByDelta(2, 1, 4)).toBe(3)
   })
 
-  it("wraps the last slide back to the first", () => {
-    expect(advanceIndex(3, 4)).toBe(0)
+  it("wraps the last slide back to the first on +1", () => {
+    expect(advanceByDelta(3, 1, 4)).toBe(0)
   })
 
-  it("stays at 0 for an empty or single set", () => {
-    expect(advanceIndex(0, 0)).toBe(0)
-    expect(advanceIndex(0, 1)).toBe(0)
+  it("goes to the previous slide (-1)", () => {
+    expect(advanceByDelta(3, -1, 4)).toBe(2)
+    expect(advanceByDelta(1, -1, 4)).toBe(0)
+  })
+
+  it("wraps the first slide back to the last on -1", () => {
+    expect(advanceByDelta(0, -1, 4)).toBe(3)
+  })
+
+  it("stays at 0 for an empty or single set in either direction", () => {
+    expect(advanceByDelta(0, 1, 0)).toBe(0)
+    expect(advanceByDelta(0, -1, 0)).toBe(0)
+    expect(advanceByDelta(0, 1, 1)).toBe(0)
+    expect(advanceByDelta(0, -1, 1)).toBe(0)
   })
 })
 

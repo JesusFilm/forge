@@ -107,6 +107,10 @@ export function BibleQuotesCarouselRenderer({
   const heading = section.bqcHeading as string | null
   const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
   const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
+  // 5+ cards left-align the rail (see listContentLeftAligned below); only then
+  // is the first card flush against the screen's left edge, so only then should
+  // its focus-scale anchor to the left. A centered short rail keeps it centered.
+  const leftAligned = quotes.length >= LEFT_ALIGN_THRESHOLD
 
   const renderItem = useCallback(
     ({ item, index }: { item: QuoteItem; index: number }) => {
@@ -122,7 +126,7 @@ export function BibleQuotesCarouselRenderer({
           <QuoteCard
             quote={item}
             ctaLabel={validCtaLabel}
-            focusAnchor={index === 0 ? "left" : "center"}
+            focusAnchor={leftAligned && index === 0 ? "left" : "center"}
             onPress={() => {
               if (validCtaLink != null) {
                 setSelectedCtaUrl(validCtaLink)
@@ -132,7 +136,7 @@ export function BibleQuotesCarouselRenderer({
         </View>
       )
     },
-    [],
+    [leftAligned],
   )
 
   const keyExtractor = useCallback(
@@ -141,8 +145,6 @@ export function BibleQuotesCarouselRenderer({
   )
 
   if (quotes.length === 0) return null
-
-  const leftAligned = quotes.length >= LEFT_ALIGN_THRESHOLD
 
   return (
     <View style={styles.container}>
@@ -221,7 +223,7 @@ const styles = StyleSheet.create({
   },
   attribution: {
     fontFamily: "System",
-    fontSize: scale(14),
+    fontSize: Math.round(scale(14)),
     fontWeight: "800",
     color: "rgba(255,255,255,0.9)",
     letterSpacing: 0.8,
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
   },
   reference: {
     fontFamily: "System",
-    fontSize: scale(16),
+    fontSize: Math.round(scale(16)),
     fontWeight: "800",
     color: "rgba(255,255,255,0.7)",
     letterSpacing: 1.5,
@@ -237,11 +239,11 @@ const styles = StyleSheet.create({
   },
   quoteText: {
     fontFamily: "System",
-    fontSize: scale(18),
+    fontSize: Math.round(scale(18)),
     fontWeight: "400",
     fontStyle: "italic",
     color: "rgba(255,255,255,0.9)",
-    lineHeight: scale(26),
+    lineHeight: Math.round(scale(26)),
   },
   ctaButton: {
     marginTop: scale(12),
@@ -253,7 +255,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontFamily: "System",
-    fontSize: scale(14),
+    fontSize: Math.round(scale(14)),
     fontWeight: "600",
     color: "rgba(255,255,255,0.9)",
   },

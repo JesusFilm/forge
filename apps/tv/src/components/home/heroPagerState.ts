@@ -2,10 +2,18 @@
 // here — like homeScrollState.ts / showcaseState.ts — so the index math and the
 // "already showing it" skip guard are jest-testable without rendering.
 
-/** The next slide index, wrapping last → first. Returns 0 for an empty set. */
-export function advanceIndex(current: number, count: number): number {
+/**
+ * Step the slide index by `delta` (+1 next, -1 previous), wrapping both ends
+ * (last → first on +1, first → last on -1). Returns 0 for an empty set. The
+ * `+ count` before the modulo keeps a negative `current + delta` positive.
+ */
+export function advanceByDelta(
+  current: number,
+  delta: number,
+  count: number,
+): number {
   if (count <= 0) return 0
-  return (current + 1) % count
+  return (((current + delta) % count) + count) % count
 }
 
 /** The two-cell ring's other face. */

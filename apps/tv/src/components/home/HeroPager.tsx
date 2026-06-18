@@ -381,7 +381,12 @@ function HeroCopyLayer({ card }: { card: Slot }) {
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
-      if (!finished) return
+      // Interrupted (only on unmount today, when both op values are stopped):
+      // clear the gate so it can never strand and silence a later card change.
+      if (!finished) {
+        animatingRef.current = false
+        return
+      }
       frontRef.current = b
       // Coalesce: if newer copies arrived during the fade, chain to the latest.
       if (

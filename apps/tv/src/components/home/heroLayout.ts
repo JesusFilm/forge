@@ -15,9 +15,8 @@ const HERO_DESIGN_RATIO = 880 / 1080
 
 /**
  * The top bar sits in flow above the scroll feed, so the in-content hero
- * region is the design height minus the bar — the billboard bottom still lands
- * 700-36 from the screen top at scroll 0. The pager (a screen-level layer)
- * offsets its copy region down by TOP_BAR_HEIGHT to align with this.
+ * region is the 880/1080 design height minus the bar. The pager (a screen-level
+ * layer) offsets its copy region down by TOP_BAR_HEIGHT to align with this.
  */
 export const HERO_REGION_HEIGHT =
   Math.round(Dimensions.get("window").height * HERO_DESIGN_RATIO) -

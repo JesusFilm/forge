@@ -20,6 +20,7 @@ import {
 
 import { HomeBackdrop } from "../src/components/home/HomeBackdrop"
 import { HeroPager } from "../src/components/home/HeroPager"
+import { advanceByDelta } from "../src/components/home/heroPagerState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
@@ -262,9 +263,7 @@ export default function HomeScreen() {
   const advanceHero = useCallback(
     (delta: number) => {
       setHeroDirection(delta >= 0 ? 1 : -1)
-      setHeroIndex((i) =>
-        featuredCount > 0 ? (i + delta + featuredCount) % featuredCount : 0,
-      )
+      setHeroIndex((i) => advanceByDelta(i, delta, featuredCount))
     },
     [featuredCount],
   )
