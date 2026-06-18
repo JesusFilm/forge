@@ -53,6 +53,48 @@ export const CHRISTIAN_KEYWORDS: Keyword[] = [
   "lord",
 ]
 
+/**
+ * Signals that a caption is commentary/news/tutorial ABOUT AI content rather
+ * than an actual AI-made creation. Kept conservative: only phrases that strongly
+ * indicate talking-about (not making), to avoid dropping genuine creations.
+ */
+export const COMMENTARY_KEYWORDS: Keyword[] = [
+  "reaction",
+  "my thoughts",
+  "should we",
+  "is it ok",
+  "is it okay",
+  "debate",
+  "controversy",
+  "going viral",
+  "went viral",
+  { word: "trend" },
+  "here's how",
+  "heres how",
+  "here's my",
+  "heres my",
+  "prompt to make",
+  "chatgpt conversation",
+  "conversation with chatgpt",
+  "breaking news",
+  { word: "blogger" },
+  "tutorial",
+  "how i made",
+  "how to make",
+  "react to",
+  "reacting to",
+  "expressed concern",
+  "raises concern",
+  "speaks out",
+  "speaking out",
+  "weighs in",
+  "satirical",
+  // NOTE: keep this list conservative. Terms that collide with genuine creation
+  // captions were deliberately excluded: "according to" (Gospel attributions),
+  // "mocking" (Passion narrative + "mockingbird"), "explains"/"explained"
+  // (AI explainer films are legitimate creations).
+]
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -82,15 +124,21 @@ export function classifyPost(post: InstagramPost): MatchSignals {
   const haystack = buildHaystack(post)
   const matchedAi = matchAll(AI_KEYWORDS, haystack)
   const matchedChristian = matchAll(CHRISTIAN_KEYWORDS, haystack)
+  const matchedCommentary = matchAll(COMMENTARY_KEYWORDS, haystack)
   return {
     isAiGenerated: matchedAi.length > 0,
     isChristian: matchedChristian.length > 0,
+    isCommentary: matchedCommentary.length > 0,
     matchedAi,
     matchedChristian,
+    matchedCommentary,
   }
 }
 
-/** A post qualifies only when it signals BOTH AI-generation and Christian content. */
+/**
+ * A post qualifies only when it signals BOTH AI-generation and Christian content
+ * AND does not read as commentary/news/tutorial about AI content.
+ */
 export function qualifies(signals: MatchSignals): boolean {
-  return signals.isAiGenerated && signals.isChristian
+  return signals.isAiGenerated && signals.isChristian && !signals.isCommentary
 }

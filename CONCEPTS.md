@@ -4,6 +4,13 @@ Shared domain vocabulary for this project — entities, named processes, and sta
 
 ## Video & media
 
+### Smart Crop
+
+A Manager-orchestrated media-generation workflow that produces 9:16 vertical
+crop plans and renders from widescreen Mux videos. Manager owns durable job
+state and operator review, Mastra owns bounded AI crop decisions, and
+crop-worker owns FFmpeg fingerprint/render byte work.
+
 ### Core ID
 
 The stable identifier from the Core API for a Core-sourced entity. For source
@@ -136,6 +143,14 @@ A searchable segment of a video transcript stored separately from the transcript
 
 Deleting transcript chunks removes Admin's transcript search index for those segments but does not delete the transcript identity or Manager's source artifacts.
 
+### Source Transcript Scripture Correction
+
+A Manager enrichment quality pass that runs after transcription and before
+downstream transcript consumers. Mastra identifies high-confidence Bible-story
+ASR drift, Manager applies only deterministic exact-match corrections to the
+canonical source transcript/subtitle artifacts, raw artifacts are preserved,
+and a correction report highlights applied and flagged findings for review.
+
 ### Embedding Backfill
 
 A controlled batch process that generates or regenerates vectors for existing content without changing the underlying source content.
@@ -238,3 +253,13 @@ The Chrome is visible when playback starts, auto-hides after a few idle seconds 
 The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
 
 A Watch Session belongs to the currently-viewed Video: it is published when the details screen resolves its Video and cleared when that screen goes away, and switching the active Dub mid-playback updates the session rather than restarting playback. Player features that depend on it (the in-player language/subtitle menu, subtitle rendering) gate on the session matching what is actually playing, so playback started outside a details screen runs without them.
+
+## AI chat
+
+### Seeker Agent
+
+The first conversational agent of the planned headless Jesus Film AI Chat system, for people exploring Christianity and who Jesus is. It grounds factual answers through retrieval rather than answering from model memory: its retrieval tool fetches cited passages and the agent's own LLM synthesizes the answer, attributing sources. Studio-only until the deferred guardrail gate lands.
+
+### JesusFilm RAG
+
+The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.

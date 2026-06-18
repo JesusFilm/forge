@@ -49,4 +49,5 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - `apps/mobile/CLAUDE.md`
 - `apps/tv/CLAUDE.md`
 - `apps/roadmap/CLAUDE.md`
+- `apps/chat/AGENTS.md` + `apps/chat/CLAUDE.md`
 - `packages/admin-graphql/CLAUDE.md`

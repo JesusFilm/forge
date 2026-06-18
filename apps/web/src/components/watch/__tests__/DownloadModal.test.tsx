@@ -483,10 +483,19 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       root.render(
         <TestDownloadModal
           open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              height: 360,
+              quality: "fhd",
+            }),
+          ]}
+          languageCode="eng"
+          languageName="English"
+          languageSlug="english"
           variantId="variant-1"
           videoSlug="jesus"
-          videoTitle="JESUS"
+          videoTitle="Jesus Film"
           onClose={vi.fn()}
         />,
       )
@@ -526,9 +535,9 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     expect(a.getAttribute("href")).toContain("variantId=variant-1")
     expect(a.getAttribute("href")).toContain("videoSlug=jesus")
     expect(a.getAttribute("href")).not.toContain("stream.mux.com")
-    // Filename is derived from the video title + tier.
+    // Filename is derived from title, selected audio language, code, and height.
     const downloadAttr = a.getAttribute("download") ?? ""
-    expect(downloadAttr).toBe("jesus-highest.mp4")
+    expect(downloadAttr).toBe("Jesus-Film_English_eng_360p.mp4")
     expect(a.getAttribute("href")).toContain(
       `filename=${encodeURIComponent(downloadAttr)}`,
     )

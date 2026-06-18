@@ -19,7 +19,9 @@ import {
 } from "react-native"
 
 import { HomeBackdrop } from "../src/components/home/HomeBackdrop"
-import { HomeBillboard } from "../src/components/home/HomeBillboard"
+import { HeroPager } from "../src/components/home/HeroPager"
+import { advanceByDelta } from "../src/components/home/heroPagerState"
+import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
 import {
@@ -40,12 +42,8 @@ import {
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { useWatchHome } from "../src/hooks/useWatchHome"
 import { scale } from "../src/lib/scale"
-import { WATCH_HOME_FEATURED_RAIL } from "../src/lib/watchHome/config"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
-import {
-  resolveFeaturedTitle,
-  type WatchHomeCard,
-} from "../src/lib/watchHome/model"
+import type { WatchHomeCard } from "../src/lib/watchHome/model"
 
 /**
  * Home screen — the "Forge TV Home" redesign.
@@ -90,19 +88,6 @@ export default function HomeScreen() {
       const STRICT_MODE_DEV_RUNS = 1
       if (focusEffectRunCountRef.current <= STRICT_MODE_DEV_RUNS + 1) return
       setSearchTabFocusKey((k) => k + 1)
-    }, []),
-  )
-
-  // Featured rail title re-evaluates on every screen focus with an injected
-  // clock (the model never reads Date.now()), so a Home left open across a
-  // time-of-day boundary greets correctly on return from a pushed screen.
-  const [featuredTitle, setFeaturedTitle] = useState(() =>
-    resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date()),
-  )
-  useFocusEffect(
-    useCallback(() => {
-      const next = resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date())
-      setFeaturedTitle((prev) => (prev === next ? prev : next))
     }, []),
   )
 
@@ -184,6 +169,8 @@ export default function HomeScreen() {
   const handleRowFocus = useCallback(
     (rowIndex: number) => {
       setBrowseState(resolveBrowseState(rowIndex))
+      // Topmost section rail = rowIndex 1; anything >= 2 is a rail below it.
+      setBelowTopmost(rowIndex >= 2)
       // Defer if the row's y isn't measured yet; recordRowY flushes it.
       pendingScrollRowRef.current = scrollToRow(rowIndex) ? null : rowIndex
     },
@@ -203,6 +190,7 @@ export default function HomeScreen() {
   // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
     setBrowseState(resolveBrowseState(null))
+    setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
   }, [])
 
@@ -210,6 +198,9 @@ export default function HomeScreen() {
   // needs its own scroll hook — pin to the end in the deep state.
   const handleMissionFocus = useCallback(() => {
     setBrowseState("deep")
+    // The mission tail is below the topmost rail — keep its autoFocus OFF so a
+    // later Up traversal stays column-preserving.
+    setBelowTopmost(true)
     scrollRef.current?.scrollToEnd({ animated: true })
   }, [])
 
@@ -252,13 +243,48 @@ export default function HomeScreen() {
     router.push("/search")
   }, [router])
 
-  // The Search tab's native node, lifted from HomeTopBar so the featured rail
-  // can target it via nextFocusUp: the tab bar is centered, so the rail's
-  // left/right-most cards have no focusable directly above them and D-pad up
-  // dead-ends there (the focus engine finds nothing in the up projection).
-  // State (not a ref) so the rail re-renders once the node mounts — the same
-  // ref-as-state contract MissionSection uses for its QR destination.
-  const [searchTabNode, setSearchTabNode] = useState<ViewType | null>(null)
+  // Whether the currently-focused element is a rail BELOW the topmost one.
+  // Gates the topmost rail's autoFocus: ON while the source is the topmost rail
+  // / hero CTA / top bar (so the guide TRACKS and RESTORES its last card for
+  // Down off the CTA), OFF while coming Up from a rail below (so that traversal
+  // keeps the focus engine's column-preserving geometry).
+  const [belowTopmost, setBelowTopmost] = useState(false)
+
+  // Hero paging: the screen owns the active hero index so HeroPager (the
+  // screen-level slide layer) and the carousel's dots stay in lockstep. The
+  // chevron / auto-advance request an advance; the pager runs the slide. The
+  // hero's own art no longer drives the backdrop — the pager covers it while
+  // the hero is focused, and the backdrop is left to rail-browse.
+  const featuredCount = model?.featured.length ?? 0
+  const [heroIndex, setHeroIndex] = useState(0)
+  // Direction of the last page: +1 next (slide in from the right), -1 previous
+  // (from the left). Drives HeroPager's entry side.
+  const [heroDirection, setHeroDirection] = useState(1)
+  const advanceHero = useCallback(
+    (delta: number) => {
+      setHeroDirection(delta >= 0 ? 1 : -1)
+      setHeroIndex((i) => advanceByDelta(i, delta, featuredCount))
+    },
+    [featuredCount],
+  )
+  // Keep heroIndex in range if a background refetch shrinks the hero set, so the
+  // pager, dots and CTA never diverge.
+  useEffect(() => {
+    setHeroIndex((i) =>
+      featuredCount > 0 ? Math.min(i, featuredCount - 1) : 0,
+    )
+  }, [featuredCount])
+  const handleHeroFocusChange = useCallback((isFocused: boolean) => {
+    if (!isFocused) return
+    setBelowTopmost(false)
+    setBrowseState("browse")
+    scrollRef.current?.scrollTo({ y: 0, animated: true })
+  }, [])
+
+  // The hero CTA's native node — wired as the D-pad-up destination for EVERY
+  // card in the first section rail, so Up from any card (even the rightmost)
+  // returns to the CTA rather than dead-ending under the hero artwork.
+  const [ctaNode, setCtaNode] = useState<ViewType | null>(null)
 
   // The top bar (brandmark · Search/Home tabs · clock). Rendered in every
   // state — including loading, error and empty — so Search stays reachable
@@ -271,7 +297,6 @@ export default function HomeScreen() {
       searchTabPreferredFocus={searchTabFocusKey > 0}
       onSearchPress={handleSearchPress}
       onChromeFocus={handleChromeFocus}
-      onSearchTabNode={setSearchTabNode}
     />
   )
 
@@ -346,6 +371,17 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <HomeBackdrop card={showcase.current} browseState={browseState} />
 
+      {/* The hero slide layer sits ABOVE the ambient backdrop and BELOW the
+          ScrollView: it pages the hero art + copy with an Apple-TV slide while
+          the in-flow action row paints on top. It fades out when a rail is
+          focused (browseState "deep") so the backdrop's rail-card art shows. */}
+      <HeroPager
+        slides={model.featured}
+        index={heroIndex}
+        direction={heroDirection}
+        visible={browseState !== "deep"}
+      />
+
       {/* scrollEnabled={false}: ALL scrolling on this screen is
           row-anchored and programmatic (scrollTo/scrollToEnd below). The
           native tvOS focus-scroll must stay off — row-0 card labels sit at
@@ -361,20 +397,18 @@ export default function HomeScreen() {
       >
         <View>{topBar}</View>
 
-        <HomeBillboard card={showcase.current} />
-
+        {/* The hero is a focusable carousel (replaces the passive billboard +
+            the old featured rail). It owns the curated hero set; section rails
+            below stay at rowIndex 1..n and anchor-scroll up on focus. */}
         <View onLayout={rowLayoutHandlers[0]}>
-          <HomeRail
-            rowIndex={0}
-            eyebrow={WATCH_HOME_FEATURED_RAIL.eyebrow}
-            title={featuredTitle}
-            cards={model.featured}
-            onCardFocus={handleCardFocus}
-            onRowFocus={handleRowFocus}
-            onCardPress={handleCardPress}
-            // Only the featured rail sits under the top bar; section rails
-            // (rows >= 1) reach the full-width rail above them natively.
-            upFocusTarget={searchTabNode}
+          <HomeHeroCarousel
+            slides={model.featured}
+            index={heroIndex}
+            hasTVPreferredFocus
+            onSelect={handleCardPress}
+            onFocusChange={handleHeroFocusChange}
+            onRequestAdvance={advanceHero}
+            onCtaNode={setCtaNode}
           />
         </View>
 
@@ -388,6 +422,16 @@ export default function HomeScreen() {
               onCardFocus={handleCardFocus}
               onRowFocus={handleRowFocus}
               onCardPress={handleCardPress}
+              // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
+              // is on the LEFT — wire every card's D-pad-up to the CTA node
+              // rather than letting geometry dead-end under the artwork.
+              upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
+              // ...and restore its LAST-focused card when focus re-enters from
+              // ABOVE (Down off the hero CTA), but NOT when it re-enters from a
+              // rail BELOW — belowTopmost gates autoFocus off in that case so
+              // Up-from-below keeps the focus engine's column-preserving
+              // geometry instead of snapping to the remembered card.
+              restoreLastFocus={sectionIndex === 0 && !belowTopmost}
             />
           </View>
         ))}

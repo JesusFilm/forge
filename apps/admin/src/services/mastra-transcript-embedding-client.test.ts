@@ -95,6 +95,60 @@ describe("launchMastraTranscriptEmbedding", () => {
     expect(JSON.stringify(body)).not.toContain("embedding")
   })
 
+  it("posts resolved subtitle source keys instead of hardcoded Manager artifact keys", async () => {
+    const fetchImpl = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({ result: successResult }),
+    )
+
+    await launchMastraTranscriptEmbedding(
+      {
+        target: {
+          videoId: "v-1",
+          videoEditionId: "e-1",
+          coreId: "core-1",
+        },
+        language: "en",
+        cmsVideoId: 42,
+        transcript: {
+          text: "subtitle transcript",
+          segments: [{ start: 0, end: 2, text: "subtitle transcript" }],
+          artifactKey: "admin-video-subtitle/sub-1.vtt",
+          kind: "subtitle",
+          languageId: "lang-en",
+          languageSlug: "english",
+          subtitleId: "sub-1",
+          format: "vtt",
+          url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+          provider: "admin-subtitle",
+          generatedAt: "2026-06-01T00:00:00.000Z",
+        },
+      },
+      {
+        baseUrl: "https://mastra.internal",
+        bearer: "secret",
+        fetchImpl,
+      },
+    )
+
+    const body = JSON.parse(
+      String(fetchImpl.mock.calls[0]?.[1]?.body),
+    ) as Record<string, unknown>
+    expect(body).toMatchObject({
+      transcript: {
+        artifactKey: "admin-video-subtitle/sub-1.vtt",
+        kind: "subtitle",
+        languageId: "lang-en",
+        languageSlug: "english",
+        subtitleId: "sub-1",
+        format: "vtt",
+        url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+        provider: "admin-subtitle",
+        generatedAt: "2026-06-01T00:00:00.000Z",
+      },
+    })
+  })
+
   it("returns Mastra failures and upstream auth failures safely", async () => {
     const productFailure = {
       ok: false,

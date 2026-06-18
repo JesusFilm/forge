@@ -43,6 +43,55 @@ Live user search stays Admin-owned. Search services may generate live query
 embeddings for retrieval, but live search orchestration does not move to
 Mastra.
 
+## AI experience draft generation — structural validity & gateway-trust gate
+
+The "create full experience draft" editor action
+(`src/app/dashboard/experiences/generate-draft-action.ts` →
+`src/mastra/workflows/multi-step-draft-workflow.ts`) layers defense so a
+generated draft is never off-shape: two-phase generation (skeleton → validate
+→ sequential fill), deterministic coercion, optional per-phase
+schema-constrained decoding, and a fail-closed validate→repair loop that
+always re-validates the assembled output against the persistence-layer
+`BlocksSchema` (`@/domain/blocks`) plus the single-sourced
+`GENERATION_MIN_BLOCKS`. The generation minimum is enforced ONLY on the
+generation path — `BlocksSchema` itself stays permissive so legitimate manual
+1-block experiences still persist.
+
+### Constrained-decoding trust flag
+
+`AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED` (env, `z.enum(["true","false"])`,
+`.optional().default("false")`) marks a provider's schema-constrained decoding
+as trusted. It stays `"false"` until a GREEN smoke run — with the AI gateway
+enabled AND constrained decoding turned on — confirms the provider honors
+schema-constrained decoding for the experience schema. The default mode
+(Gemini, free-text) never depends on it: coercion + repair + the BlocksSchema
+validator carry the final guarantee regardless of the flag.
+
+### Structural-validity smoke gate
+
+`pnpm --filter @forge/admin smoke:draft-workflow`
+(`src/scripts/smoke-mastra-draft-workflow.ts`) is a REAL-LLM harness (requires
+`OPENROUTER_API_KEY`). It runs the `multi-step-draft` workflow over a committed
+prompt set and asserts the FULL structural guarantee per prompt: the workflow
+draft passes `DraftExperienceSchema` AND `normalizeExperienceDraft(draft,
+candidates)` succeeds — i.e. the assembled output also satisfies `BlocksSchema`
+plus the generation minimum, the same boundary the action enforces before
+persisting. It reports a per-prompt split (`firstPassValid` /
+`recoveredAfterRepair` / `terminalFail`) and exits non-zero on any
+terminal-fail. `recoveredAfterRepair` is always 0 here: the repair loop lives
+in `runGenerateDraftAction`, not in the workflow this harness drives directly —
+repair-recovery is covered by the action-level tests
+(`generate-draft-action.test.ts` / `repair-draft.test.ts`).
+
+Gateway-verification procedure: to authorize trusting a provider's constrained
+decoding (R6), run this smoke with the gateway enabled and constrained decoding
+on. A green run (zero terminal-fails) proves the provider's constrained output
+survives the full post-normalize `BlocksSchema` boundary — not just
+`DraftExperienceSchema` — and is the gate that authorizes flipping
+`AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED=true` for that provider. The smoke
+assertion is intrinsic to `smoke:draft-workflow` (same harness, same run, no
+opt-in path), so there is no separate `smoke:draft-structural` script.
+
 ## Folder structure
 
 ```

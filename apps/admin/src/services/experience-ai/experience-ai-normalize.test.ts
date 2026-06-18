@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest"
+import { BlocksSchema } from "@/domain/blocks"
 import {
   ExperienceAiNormalizationError,
   normalizeExperienceDraft,
 } from "./experience-ai-normalize"
-import type { DraftExperience, VideoCandidate } from "./experience-ai.schemas"
+import {
+  GENERATION_MIN_BLOCKS,
+  type DraftExperience,
+  type VideoCandidate,
+} from "./experience-ai.schemas"
 
 const candidates: VideoCandidate[] = [
   {
@@ -122,6 +127,9 @@ describe("normalizeExperienceDraft", () => {
             },
           ],
         },
+        // Second top-level block satisfies the generation minimum
+        // (GENERATION_MIN_BLOCKS); the assertions below only inspect blocks[0].
+        { t: "text", sectionRef: "s02", heading: "Closing" },
       ],
     }
 
@@ -165,6 +173,62 @@ describe("normalizeExperienceDraft", () => {
       { t: "text", sectionKey: "ai-s01", heading: "One" },
       { t: "text", sectionKey: "ai-s01-1", heading: "Two" },
     ])
+  })
+
+  describe("generation minimum-block-count gate (U1)", () => {
+    it(`throws BELOW_MIN_BLOCKS when normalized output has fewer than ${GENERATION_MIN_BLOCKS} blocks`, () => {
+      // A single top-level block normalizes into a single valid admin block —
+      // shape-valid against BlocksSchema, but below the generation minimum.
+      const draft: DraftExperience = {
+        title: "Single block",
+        metaDescription: "Single block",
+        blocks: [{ t: "text", heading: "Only one", contentParagraphs: ["x"] }],
+      }
+
+      let thrown: unknown
+      try {
+        normalizeExperienceDraft(draft, candidates)
+      } catch (error) {
+        thrown = error
+      }
+
+      expect(thrown).toBeInstanceOf(ExperienceAiNormalizationError)
+      expect((thrown as ExperienceAiNormalizationError).code).toBe(
+        "BELOW_MIN_BLOCKS",
+      )
+    })
+
+    it(`passes when normalized output has at least ${GENERATION_MIN_BLOCKS} blocks`, () => {
+      const draft: DraftExperience = {
+        title: "Two blocks",
+        metaDescription: "Two blocks",
+        blocks: [
+          { t: "text", heading: "One", contentParagraphs: ["a"] },
+          { t: "text", heading: "Two", contentParagraphs: ["b"] },
+        ],
+      }
+
+      const normalized = normalizeExperienceDraft(draft, candidates)
+      expect(normalized.blocks.length).toBeGreaterThanOrEqual(
+        GENERATION_MIN_BLOCKS,
+      )
+    })
+
+    it("leaves BlocksSchema permissive — a manual 1-block payload still validates directly", () => {
+      // BlocksSchema governs ALL persistence including legitimate manual
+      // 1-block experiences, so it must NOT inherit the generation minimum.
+      const oneBlock = [
+        {
+          t: "text" as const,
+          sectionKey: "manual-1",
+          heading: "Single manual block",
+          contentParagraphs: ["This is a legitimate one-block experience."],
+        },
+      ]
+
+      const parsed = BlocksSchema.safeParse(oneBlock)
+      expect(parsed.success).toBe(true)
+    })
   })
 
   describe("presentation defaults", () => {

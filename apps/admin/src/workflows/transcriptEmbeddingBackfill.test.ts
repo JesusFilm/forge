@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/config/env", () => ({
@@ -9,6 +10,9 @@ vi.mock("@/config/env", () => ({
 vi.mock("@/db/client", () => {
   const mock = {
     $queryRaw: vi.fn(async () => []),
+    videoSubtitle: {
+      findMany: vi.fn(async () => []),
+    },
   }
   return { prisma: mock, syncPrisma: mock }
 })
@@ -58,6 +62,7 @@ vi.mock("@/services/mastra-transcript-embedding-client", () => ({
 }))
 
 const { prisma } = await import("@/db/client")
+const { env } = await import("@/config/env")
 const { ManagerArtifactError, readTranscriptSourceArtifact } =
   await import("@/services/manager-artifacts.service")
 const { launchMastraTranscriptEmbedding } =
@@ -72,18 +77,65 @@ function row(
   editionId: string,
   coreId: string,
   bcp47: string,
+  overrides: Partial<{
+    languageId: string
+    languageSlug: string | null
+    hasSubtitle: boolean
+    hasDub: boolean
+    isPrimaryLanguage: boolean
+  }> = {},
 ) {
   return {
     video_id: videoId,
     video_edition_id: editionId,
     core_id: coreId,
+    language_id: overrides.languageId ?? `lang-${bcp47}`,
     bcp47,
+    slug: overrides.languageSlug ?? bcp47,
+    has_subtitle: overrides.hasSubtitle ?? false,
+    has_dub: overrides.hasDub ?? false,
+    is_primary_language: overrides.isPrimaryLanguage ?? true,
+  }
+}
+
+function target(
+  videoId: string,
+  editionId: string,
+  coreId: string,
+  cmsVideoId: number,
+  language: string,
+) {
+  return {
+    videoId,
+    videoEditionId: editionId,
+    coreId,
+    cmsVideoId,
+    language,
+    languageId: `lang-${language}`,
+    languageSlug: language,
+    hasSubtitle: false,
+    hasDub: false,
+    isPrimaryLanguage: true,
   }
 }
 
 describe("runTranscriptEmbeddingBackfill", () => {
   beforeEach(() => {
+    ;(
+      env as unknown as { TRANSCRIPT_EMBEDDING_CONCURRENCY: unknown }
+    ).TRANSCRIPT_EMBEDDING_CONCURRENCY = 2
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    ;(
+      prisma as unknown as {
+        videoSubtitle: { findMany: ReturnType<typeof vi.fn> }
+      }
+    ).videoSubtitle.findMany.mockReset()
+    ;(
+      prisma as unknown as {
+        videoSubtitle: { findMany: ReturnType<typeof vi.fn> }
+      }
+    ).videoSubtitle.findMany.mockResolvedValue([])
+    vi.unstubAllGlobals()
     vi.mocked(readTranscriptSourceArtifact).mockReset()
     vi.mocked(readTranscriptSourceArtifact).mockResolvedValue(STUB_TRANSCRIPT)
     vi.mocked(launchMastraTranscriptEmbedding).mockReset()
@@ -122,7 +174,86 @@ describe("runTranscriptEmbeddingBackfill", () => {
       },
       language: "en",
       cmsVideoId: 1,
-      transcript: STUB_TRANSCRIPT,
+      transcript: {
+        text: STUB_TRANSCRIPT.text,
+        segments: STUB_TRANSCRIPT.segments,
+        artifactKey: "1/transcript.json",
+        kind: "manager-transcript",
+        languageId: "lang-en",
+        languageSlug: "en",
+        provider: STUB_TRANSCRIPT.resolvedProvider,
+      },
+      mode: "idempotent",
+    })
+  })
+
+  it("uses exact Admin subtitle timed text before Manager transcript fallback", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en", {
+        languageId: "lang-en",
+        languageSlug: "english",
+        hasSubtitle: true,
+        hasDub: true,
+      }),
+    ])
+    ;(
+      prisma as unknown as {
+        videoSubtitle: { findMany: ReturnType<typeof vi.fn> }
+      }
+    ).videoSubtitle.findMany.mockResolvedValueOnce([
+      {
+        id: "sub-1",
+        languageId: "lang-en",
+        primary: true,
+        vttSrc: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+        srtSrc: null,
+        syncedAt: new Date("2026-06-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-02T00:00:00.000Z"),
+        language: { bcp47: "en", slug: "english" },
+      },
+    ])
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(`WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Subtitle transcript text.
+`)
+      }),
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.succeeded).toBe(1)
+    expect(report.outcomes[0]).toMatchObject({
+      status: "succeeded",
+      sourceKind: "subtitle",
+    })
+    expect(readTranscriptSourceArtifact).not.toHaveBeenCalled()
+    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledWith({
+      target: {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+      },
+      language: "en",
+      cmsVideoId: 1,
+      transcript: {
+        text: "Subtitle transcript text.",
+        segments: [{ start: 0, end: 2, text: "Subtitle transcript text." }],
+        artifactKey: "admin-video-subtitle/sub-1.vtt",
+        kind: "subtitle",
+        languageId: "lang-en",
+        languageSlug: "english",
+        subtitleId: "sub-1",
+        format: "vtt",
+        url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+        provider: "admin-subtitle",
+        generatedAt: "2026-06-01T00:00:00.000Z",
+      },
       mode: "idempotent",
     })
   })
@@ -191,6 +322,45 @@ describe("runTranscriptEmbeddingBackfill", () => {
     expect(report.missingArtifacts).toEqual([
       { assetId: 1, coreId: "core-a", kind: "transcript" },
     ])
+  })
+
+  it("reports dub-only targets without timed text as source gaps when Manager fallback is absent", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "es", {
+        languageId: "lang-es",
+        languageSlug: "spanish",
+        hasDub: true,
+        hasSubtitle: false,
+        isPrimaryLanguage: false,
+      }),
+    ])
+    vi.mocked(readTranscriptSourceArtifact).mockRejectedValueOnce(
+      new ManagerArtifactError(
+        "artifact_missing",
+        "transcript artifact not found for assetId=1",
+      ),
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.skipped).toBe(1)
+    expect(report.sourceGaps).toEqual([
+      {
+        assetId: 1,
+        coreId: "core-a",
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        language: "es",
+        languageId: "lang-es",
+        languageSlug: "spanish",
+        reason: "dub_without_timed_text",
+        subtitleReason: "subtitle_missing",
+        sourceKind: "transcript",
+      },
+    ])
+    expect(launchMastraTranscriptEmbedding).not.toHaveBeenCalled()
   })
 
   it("classifies invalid transcript source and Mastra product failures as failed outcomes", async () => {
@@ -266,6 +436,18 @@ describe("runTranscriptEmbeddingBackfill", () => {
     })
   })
 
+  it("uses one external groups step so production workflow steps are not dynamically repeated", async () => {
+    const source = await readFile(
+      new URL("./transcriptEmbeddingBackfill.ts", import.meta.url),
+      "utf8",
+    )
+
+    expect(source).toMatch(/stepProcessTranscriptEmbeddingGroups\(\s*groups,/)
+    expect(source).not.toMatch(/\bstepProcessTranscriptEmbeddingGroup\(/)
+    expect(source).not.toMatch(/Promise\.allSettled\(\s*groups\.map/)
+    expect(source).not.toMatch(/\basync function processGroup\b/)
+  })
+
   it("caps concurrent in-flight groups at TRANSCRIPT_EMBEDDING_CONCURRENCY", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
@@ -300,6 +482,43 @@ describe("runTranscriptEmbeddingBackfill", () => {
     expect(observedMaxInFlight).toBe(2)
   })
 
+  it("accepts raw string concurrency from the workflow runtime env", async () => {
+    ;(
+      env as unknown as { TRANSCRIPT_EMBEDDING_CONCURRENCY: unknown }
+    ).TRANSCRIPT_EMBEDDING_CONCURRENCY = "1"
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-c", "en"),
+    ])
+
+    let inFlight = 0
+    let observedMaxInFlight = 0
+    vi.mocked(launchMastraTranscriptEmbedding).mockImplementation(async () => {
+      inFlight += 1
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      inFlight -= 1
+      return {
+        ok: true,
+        status: "created",
+        chunks: 1,
+        totalTokens: 4,
+        model: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+        mastraRunId: "run-1",
+        sourceContentHash: "sha256:test",
+      }
+    })
+
+    await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(observedMaxInFlight).toBe(1)
+  })
+
   it("returns an empty report when the DB has no editions", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([])
 
@@ -317,27 +536,9 @@ describe("runTranscriptEmbeddingBackfill", () => {
 describe("groupTargetsByVideoEdition", () => {
   it("groups targets by (video, edition) preserving language order", () => {
     const groups = _internals.groupTargetsByVideoEdition([
-      {
-        videoId: "v-a",
-        videoEditionId: "e-a",
-        coreId: "core-a",
-        cmsVideoId: 1,
-        language: "en",
-      },
-      {
-        videoId: "v-a",
-        videoEditionId: "e-a",
-        coreId: "core-a",
-        cmsVideoId: 1,
-        language: "es",
-      },
-      {
-        videoId: "v-b",
-        videoEditionId: "e-b",
-        coreId: "core-b",
-        cmsVideoId: 2,
-        language: "en",
-      },
+      target("v-a", "e-a", "core-a", 1, "en"),
+      target("v-a", "e-a", "core-a", 1, "es"),
+      target("v-b", "e-b", "core-b", 2, "en"),
     ])
 
     expect(groups).toHaveLength(2)

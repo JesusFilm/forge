@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   assemblePlanArtifact,
+  buildSmartCropAttemptArtifactKeys,
+  buildSmartCropAttemptSummary,
+  buildSmartCropAttemptsArtifact,
   buildMuxOutputRecord,
   buildPlanProgressArtifact,
   buildPlanSummary,
@@ -9,13 +12,17 @@ import {
   buildShotBatches,
   buildShotFrameUrls,
   buildTimelineMapArtifact,
+  findRenderedShotIdAtTime,
   listPreviewFrameLogicalKeys,
+  mergeSmartCropRepairSegments,
   parseFingerprintArtifact,
   parseMuxOutputRecord,
   parsePlanArtifact,
   parsePlanProgressArtifact,
   parseRenderReportSummary,
+  parseSmartCropAttemptsArtifact,
   parseTimelineMapArtifactSummary,
+  shouldRepairSmartCropQa,
   shouldEmitRenderProgress,
   shouldSkipWhenArtifactExists,
   sourceDimensionsMismatch,
@@ -34,6 +41,11 @@ const SEGMENT: SmartCropPlanSegment = {
   secondarySubjects: ["disciples"],
   avoidCutting: ["faces"],
   confidence: 0.94,
+  faceVisible: true,
+  faceCenter: {
+    start: { cx: 0.72, cy: 0.24 },
+    end: { cx: 0.73, cy: 0.24 },
+  },
   cropKeyframes: [
     { progress: 0, x: 520, y: 0, width: 606, height: 1080 },
     { progress: 1, x: 560, y: 0, width: 606, height: 1080 },
@@ -185,6 +197,168 @@ describe("buildQaArtifact", () => {
   })
 })
 
+describe("smart crop repair attempts", () => {
+  it("builds stable legacy and repair attempt keys", () => {
+    expect(buildSmartCropAttemptArtifactKeys(0)).toMatchObject({
+      suffix: "attempt-000",
+      planLogicalKey: "smart-crop-plan-attempt-000",
+      planArtifactType: "smart-crop-plan-9x16-attempt-000-v1",
+      previewLogicalKey: "smart-crop-preview-attempt-000",
+      qaLogicalKey: "smart-crop-qa-attempt-000",
+    })
+    expect(buildSmartCropAttemptArtifactKeys(1)).toMatchObject({
+      planLogicalKey: "smart-crop-plan-attempt-001",
+      planArtifactType: "smart-crop-plan-9x16-attempt-001-v1",
+      previewLogicalKey: "smart-crop-preview-attempt-001",
+      renderReportArtifactType:
+        "smart-crop-render-report-9x16-preview-attempt-001",
+      qaLogicalKey: "smart-crop-qa-attempt-001",
+    })
+  })
+
+  it("round-trips the attempt manifest and rejects digest drift", () => {
+    const attempt = buildSmartCropAttemptSummary({
+      attemptIndex: 1,
+      status: "complete",
+      source: "repair",
+      repairedFromAttemptIndex: 0,
+      previewFrameLogicalKeys: [
+        "smart-crop-preview-frame-9x16-001-attempt-001",
+      ],
+      qa: { verdict: "pass", issueCount: 1, repairTriggerCount: 1 },
+      triggerIssues: [
+        {
+          severity: "warning",
+          description: "Face is cut off",
+          shotId: "shot_00421",
+        },
+      ],
+      createdAt: "2026-06-09T00:00:00.000Z",
+      updatedAt: "2026-06-09T00:00:00.000Z",
+    })
+    const manifest = buildSmartCropAttemptsArtifact({
+      assetId: "asset123",
+      attempts: [attempt],
+      selectedAttemptIndex: 1,
+      updatedAt: "2026-06-09T00:00:00.000Z",
+    })
+
+    expect(parseSmartCropAttemptsArtifact(manifest)).toMatchObject({
+      assetId: "asset123",
+      selectedAttemptIndex: 1,
+      attempts: [expect.objectContaining({ attemptIndex: 1 })],
+    })
+    expect(
+      parseSmartCropAttemptsArtifact({
+        ...manifest,
+        attempts: [{ ...attempt, status: "failed" }],
+      }),
+    ).toBeNull()
+  })
+
+  it("repairs only crop-affecting warnings, not report-only warnings", () => {
+    expect(
+      shouldRepairSmartCropQa({
+        verdict: "pass",
+        issues: [
+          {
+            severity: "warning",
+            description: "Preview frame is slightly noisy",
+          },
+        ],
+        repairAttemptCount: 0,
+      }),
+    ).toMatchObject({ action: "accept", reason: "report_only_issues" })
+
+    expect(
+      shouldRepairSmartCropQa({
+        verdict: "pass",
+        issues: [
+          {
+            severity: "warning",
+            description: "Speaker face is cut off by the crop",
+          },
+        ],
+        repairAttemptCount: 0,
+      }),
+    ).toMatchObject({ action: "repair", reason: "repair_triggering_issue" })
+
+    expect(
+      shouldRepairSmartCropQa({
+        verdict: "needs_repair",
+        issues: [],
+        repairAttemptCount: 0,
+      }),
+    ).toMatchObject({ action: "repair", reason: "verdict_needs_repair" })
+
+    expect(
+      shouldRepairSmartCropQa({
+        verdict: "fail",
+        issues: [{ severity: "critical", description: "Subject missing" }],
+        repairAttemptCount: 2,
+      }),
+    ).toMatchObject({ action: "fail", reason: "critical_after_max_repairs" })
+  })
+
+  it("merges repair replacements into a complete plan", () => {
+    const secondSegment = {
+      ...SEGMENT,
+      shotId: "shot_00422",
+      canonicalStart: 140,
+      canonicalEnd: 150,
+      cropKeyframes: [{ progress: 0, x: 300, y: 0, width: 606, height: 1080 }],
+    }
+    const replacement = {
+      ...secondSegment,
+      cropKeyframes: [{ progress: 0, x: 620, y: 0, width: 606, height: 1080 }],
+    }
+    const plan = assemblePlanArtifact({
+      assetId: "asset123",
+      muxAssetId: "mux_abc",
+      playbackId: "pb_abc",
+      source: { width: 1920, height: 1080, durationSeconds: 200 },
+      cropMode: "auto",
+      model: "m",
+      segmentsFromChunks: [[SEGMENT, secondSegment]],
+      usageTotals: { inputTokens: 10, outputTokens: 1 },
+    })
+
+    const merged = mergeSmartCropRepairSegments({
+      previousPlan: plan,
+      replacementSegments: [replacement],
+      expectedShotIds: ["shot_00422"],
+      model: "repair-model",
+      usage: { inputTokens: 3, outputTokens: 2 },
+    })
+
+    expect(merged.segments.map((segment) => segment.shotId)).toEqual([
+      "shot_00421",
+      "shot_00422",
+    ])
+    expect(merged.segments[0]).toEqual(SEGMENT)
+    expect(merged.segments[1]?.cropKeyframes[0]?.x).toBe(620)
+    expect(merged.usage).toEqual({ inputTokens: 13, outputTokens: 3 })
+    expect(() =>
+      mergeSmartCropRepairSegments({
+        previousPlan: plan,
+        replacementSegments: [replacement],
+        expectedShotIds: ["shot_missing"],
+        model: "repair-model",
+        usage: { inputTokens: 0, outputTokens: 0 },
+      }),
+    ).toThrow("repair_segments_mismatch")
+    expect(() =>
+      mergeSmartCropRepairSegments({
+        previousPlan: plan,
+        replacementSegments: [replacement, replacement],
+        expectedShotIds: ["shot_00422"],
+        model: "repair-model",
+        usage: { inputTokens: 0, outputTokens: 0 },
+      }),
+    ).toThrow("repair_segments_mismatch")
+  })
+})
+
 describe("sumUsage / buildPlanSummary / buildQaFrameTimes", () => {
   it("sums usage across chunks", () => {
     expect(
@@ -259,6 +433,9 @@ describe("artifact readers", () => {
   })
 
   it("parses plan artifacts and rejects malformed qa blocks", () => {
+    const legacySegment = { ...SEGMENT }
+    delete legacySegment.faceCenter
+    delete legacySegment.faceVisible
     const plan = assemblePlanArtifact({
       assetId: "asset123",
       muxAssetId: "mux_abc",
@@ -273,6 +450,15 @@ describe("artifact readers", () => {
     expect(parsePlanArtifact(JSON.parse(JSON.stringify(plan)))).toMatchObject({
       kind: "smart-crop-canonical-plan",
       qa: { status: "draft" },
+    })
+    const legacyPlan = {
+      ...plan,
+      segments: [legacySegment],
+    }
+    expect(
+      parsePlanArtifact(JSON.parse(JSON.stringify(legacyPlan))),
+    ).toMatchObject({
+      segments: [legacySegment],
     })
     expect(parsePlanArtifact({ ...plan, qa: { status: "maybe" } })).toBeNull()
   })
@@ -339,13 +525,33 @@ describe("artifact readers", () => {
         "unexpected-key",
       ],
       outputDurationSeconds: 88.4,
+      renderedSegments: [
+        {
+          shotId: "shot_00001",
+          outputStartSeconds: 0,
+          outputEndSeconds: 44.2,
+        },
+        {
+          shotId: "shot_00002",
+          outputStartSeconds: 44.2,
+          outputEndSeconds: 88.4,
+        },
+      ],
     }
 
+    const summary = parseRenderReportSummary(report)
     expect(listPreviewFrameLogicalKeys(report)).toEqual([
       "smart-crop-preview-frame-9x16-001",
       "smart-crop-preview-frame-9x16-002",
     ])
-    expect(parseRenderReportSummary(report)?.outputDurationSeconds).toBe(88.4)
+    expect(summary?.outputDurationSeconds).toBe(88.4)
+    expect(summary?.renderedShotIds).toEqual(["shot_00001", "shot_00002"])
+    expect(summary ? findRenderedShotIdAtTime(summary, 10) : undefined).toBe(
+      "shot_00001",
+    )
+    expect(summary ? findRenderedShotIdAtTime(summary, 60) : undefined).toBe(
+      "shot_00002",
+    )
     expect(listPreviewFrameLogicalKeys({ kind: "other" })).toEqual([])
   })
 

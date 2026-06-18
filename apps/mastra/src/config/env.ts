@@ -29,6 +29,14 @@ const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
+const DEFAULT_JESUSFILM_RAG_USER_AGENT = "forge-mastra-jesusfilm-rag/1.0"
+const DEFAULT_JESUSFILM_RAG_TIMEOUT_MS = 5_000
+const DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL =
+  DEFAULT_SUBTITLE_ENRICHMENT_MODEL
+const DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS =
+  DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS
+const DEFAULT_API_BIBLE_BASE_URL = "https://api.scripture.api.bible/v1"
+const DEFAULT_API_BIBLE_ALLOWED_HOSTS = "api.scripture.api.bible"
 const AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS =
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS
 const AI_GATEWAY_TRANSFORM_VERSION = DEFAULT_EMBEDDING_TRANSFORM_VERSION
@@ -57,6 +65,13 @@ export type FirecrawlConfig = {
   userAgent: string
   maxSearchResults: number
   maxMarkdownCharacters: number
+}
+
+export type JesusfilmRagConfig = {
+  baseUrl?: string
+  apiKey?: string
+  timeoutMs: number
+  userAgent: string
 }
 
 const envSchema = z.object({
@@ -166,6 +181,30 @@ const envSchema = z.object({
   RAILWAY_S3_BUCKET: z.string().min(1).optional(),
   RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  // RAG retrieval (feat-199). Fully optional — unset degrades to a runtime
+  // `config_missing` result, never a boot failure (ticket "never a boot
+  // failure"). The base URL is gated by `JESUSFILM_RAG_ALLOWED_HOSTS` in
+  // production (the one RAG-driven boot throw — a security control), but no RAG
+  // var is ever pushed into the production `missing` list.
+  JESUSFILM_RAG_ALLOWED_HOSTS: z.string().min(1).optional(),
+  JESUSFILM_RAG_API_KEY: z.string().min(1).optional(),
+  JESUSFILM_RAG_BASE_URL: z.string().url().optional(),
+  // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
+  // this single-attempt RAG timeout MUST stay strictly below the upstream
+  // ceiling — the Mastra agent tool-call budget, well under Railway's request
+  // limit. The 30_000 cap is comfortably under that today. If a future
+  // mastra-gateway enforces a tighter per-turn budget (e.g. 10 s), lower this
+  // cap to match so a misconfigured override can't outlive the caller.
+  JESUSFILM_RAG_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(30_000)
+    .default(DEFAULT_JESUSFILM_RAG_TIMEOUT_MS),
+  JESUSFILM_RAG_USER_AGENT: z
+    .string()
+    .min(1)
+    .default(DEFAULT_JESUSFILM_RAG_USER_AGENT),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -186,6 +225,24 @@ const envSchema = z.object({
     .positive()
     .max(25)
     .default(DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY),
+  TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL: z
+    .string()
+    .min(1)
+    .default(DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL),
+  TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(300_000)
+    .default(DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS),
+  SUBTITLE_VALIDATION_BIBLE_PROVIDER: z.string().min(1).optional(),
+  SUBTITLE_VALIDATION_BIBLE_MAP_JSON: z.string().min(2).optional(),
+  API_BIBLE_API_KEY: z.string().min(1).optional(),
+  API_BIBLE_BASE_URL: z.string().min(1).default(DEFAULT_API_BIBLE_BASE_URL),
+  API_BIBLE_ALLOWED_HOSTS: z
+    .string()
+    .min(1)
+    .default(DEFAULT_API_BIBLE_ALLOWED_HOSTS),
   SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: z.string().min(1).optional(),
   SMART_CROP_PLAN_MODEL: z.string().min(1).optional(),
   SMART_CROP_QA_MODEL: z.string().min(1).optional(),
@@ -322,6 +379,17 @@ export const env = envSchema.parse({
   RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
     process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
   ),
+  JESUSFILM_RAG_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.JESUSFILM_RAG_ALLOWED_HOSTS,
+  ),
+  JESUSFILM_RAG_API_KEY: emptyToUndefined(process.env.JESUSFILM_RAG_API_KEY),
+  JESUSFILM_RAG_BASE_URL: emptyToUndefined(process.env.JESUSFILM_RAG_BASE_URL),
+  JESUSFILM_RAG_TIMEOUT_MS: emptyToUndefined(
+    process.env.JESUSFILM_RAG_TIMEOUT_MS,
+  ),
+  JESUSFILM_RAG_USER_AGENT: emptyToUndefined(
+    process.env.JESUSFILM_RAG_USER_AGENT,
+  ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
@@ -333,6 +401,23 @@ export const env = envSchema.parse({
   ),
   SUBTITLE_ENRICHMENT_CONCURRENCY: emptyToUndefined(
     process.env.SUBTITLE_ENRICHMENT_CONCURRENCY,
+  ),
+  TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL: emptyToUndefined(
+    process.env.TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL,
+  ),
+  TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS: emptyToUndefined(
+    process.env.TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS,
+  ),
+  SUBTITLE_VALIDATION_BIBLE_PROVIDER: emptyToUndefined(
+    process.env.SUBTITLE_VALIDATION_BIBLE_PROVIDER,
+  ),
+  SUBTITLE_VALIDATION_BIBLE_MAP_JSON: emptyToUndefined(
+    process.env.SUBTITLE_VALIDATION_BIBLE_MAP_JSON,
+  ),
+  API_BIBLE_API_KEY: emptyToUndefined(process.env.API_BIBLE_API_KEY),
+  API_BIBLE_BASE_URL: emptyToUndefined(process.env.API_BIBLE_BASE_URL),
+  API_BIBLE_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.API_BIBLE_ALLOWED_HOSTS,
   ),
   SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.SMART_CROP_IMAGE_URL_ALLOWED_HOSTS,
@@ -376,6 +461,25 @@ function assertFirecrawlApiUrlAllowedForProduction() {
   if (apiUrl.protocol !== "https:" || !allowedHosts.has(apiUrl.hostname)) {
     throw new Error(
       "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
+function assertJesusfilmRagBaseUrlAllowedForProduction() {
+  // Conditional on the base URL being set: unconfigured RAG is valid by design
+  // (the feature degrades at runtime). When the URL IS set, fail-closed — https
+  // AND a non-empty allowlist containing the hostname, else throw. The allowlist
+  // has no default (the RAG's deployed hostname is not recorded in its repo), so
+  // a base-URL-set-but-allowlist-unset production config throws here. Mirrors
+  // `assertFirecrawlApiUrlAllowedForProduction` but guarded on the URL being set.
+  if (!env.JESUSFILM_RAG_BASE_URL) return
+  const baseUrl = new URL(env.JESUSFILM_RAG_BASE_URL)
+  const allowedHosts = env.JESUSFILM_RAG_ALLOWED_HOSTS
+    ? csvSet(env.JESUSFILM_RAG_ALLOWED_HOSTS)
+    : new Set<string>()
+  if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
+    throw new Error(
+      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
     )
   }
 }
@@ -435,6 +539,11 @@ export function assertMastraRuntimeEnv() {
     ["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS],
   ]
   assertFirecrawlApiUrlAllowedForProduction()
+  // The only RAG-driven boot throw (a security control). A missing
+  // JESUSFILM_RAG_API_KEY is deliberately NOT in `missing` above — a key-absent
+  // state degrades at runtime via the client's `config_missing` short-circuit,
+  // honoring the ticket's "never a boot failure" rule.
+  assertJesusfilmRagBaseUrlAllowedForProduction()
 
   if (getContentEmbeddingsProviderMode() === "gateway") {
     missing.push([
@@ -483,6 +592,15 @@ export function getFirecrawlConfig(): FirecrawlConfig {
     userAgent: env.FIRECRAWL_USER_AGENT,
     maxSearchResults: env.FIRECRAWL_MAX_SEARCH_RESULTS,
     maxMarkdownCharacters: env.FIRECRAWL_MAX_MARKDOWN_CHARS,
+  }
+}
+
+export function getJesusfilmRagConfig(): JesusfilmRagConfig {
+  return {
+    baseUrl: env.JESUSFILM_RAG_BASE_URL,
+    apiKey: env.JESUSFILM_RAG_API_KEY,
+    timeoutMs: env.JESUSFILM_RAG_TIMEOUT_MS,
+    userAgent: env.JESUSFILM_RAG_USER_AGENT,
   }
 }
 

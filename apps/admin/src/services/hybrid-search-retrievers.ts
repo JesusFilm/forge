@@ -312,13 +312,6 @@ export async function searchVideoSemantic(
   const { queryEmbedding, locale, limit } = params
   const candidateLimit = Math.max(limit * 2, limit)
 
-  const sceneProvenanceFilter = Prisma.sql`
-          AND vsl.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-          AND vsl.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND vsl.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vsl.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vsl.embedding_transform_version IS NULL
-        `
   const transcriptProvenanceFilter = Prisma.sql`
           AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
           AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
@@ -330,41 +323,7 @@ export async function searchVideoSemantic(
         `
 
   const evidenceRows = await prisma.$queryRaw<VideoSemanticEvidenceRow[]>`
-    WITH scene_source AS (
-      SELECT * FROM (
-        SELECT DISTINCT ON (vs.video_id)
-          vs.video_id                       AS video_id,
-          v.core_id                         AS video_core_id,
-          v.slug                            AS video_slug,
-          vl.title                          AS video_title,
-          vs.video_edition_id               AS video_edition_id,
-          vsl.id                            AS evidence_id,
-          'scene'                           AS evidence_source,
-          vsl.description                   AS scene_description,
-          vs.start_seconds                  AS start_seconds,
-          1 - (vsl.embedding <=> ${queryEmbedding}::vector) AS source_score
-        FROM video_scene_locale vsl
-        JOIN video_scene vs ON vs.id = vsl.video_scene_id
-        JOIN video v ON v.id = vs.video_id
-          AND v.deleted_at IS NULL
-        JOIN video_locale vl
-          ON vl.video_id = v.id
-          AND vl.locale = ${locale}
-          AND vl.status = 'published'
-          AND vl.deleted_at IS NULL
-        WHERE vsl.embedding IS NOT NULL
-          ${sceneProvenanceFilter}
-          AND vsl.locale = ${locale}
-        ORDER BY
-          vs.video_id,
-          vsl.embedding <=> ${queryEmbedding}::vector,
-          vs.start_seconds ASC,
-          vsl.id ASC
-      ) best_scene_per_video
-      ORDER BY source_score DESC, start_seconds ASC, evidence_id ASC
-      LIMIT ${candidateLimit}
-    ),
-    transcript_source AS (
+    WITH transcript_source AS (
       SELECT * FROM (
         SELECT DISTINCT ON (vt.video_id)
           vt.video_id                       AS video_id,
@@ -374,7 +333,11 @@ export async function searchVideoSemantic(
           vt.video_edition_id               AS video_edition_id,
           vtc.id                            AS evidence_id,
           'transcript'                      AS evidence_source,
-          vtc.text                          AS scene_description,
+          COALESCE(
+            NULLIF(vtc.content_summary, ''),
+            NULLIF(vtc.raw_source_text, ''),
+            vtc.text
+          )                                 AS scene_description,
           vtc.start_seconds                 AS start_seconds,
           1 - (vtc.embedding <=> ${queryEmbedding}::vector) AS source_score
         FROM video_transcript_chunk vtc
@@ -399,44 +362,32 @@ export async function searchVideoSemantic(
       ORDER BY source_score DESC, start_seconds ASC NULLS LAST, evidence_id ASC
       LIMIT ${candidateLimit}
     ),
-    semantic_evidence AS (
-      SELECT * FROM scene_source
-      UNION ALL
-      SELECT * FROM transcript_source
-    ),
     requested_language AS MATERIALIZED (
       SELECT id
       FROM language
       WHERE bcp47 = ${locale}
     )
     SELECT
-      se.video_id                      AS video_id,
-      se.video_core_id                 AS video_core_id,
-      se.video_slug                    AS video_slug,
-      se.video_title                   AS video_title,
+      ts.video_id                      AS video_id,
+      ts.video_core_id                 AS video_core_id,
+      ts.video_slug                    AS video_slug,
+      ts.video_title                   AS video_title,
       COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
-      se.evidence_id                   AS evidence_id,
-      se.evidence_source               AS evidence_source,
-      se.scene_description             AS scene_description,
-      se.start_seconds                 AS start_seconds,
+      ts.evidence_id                   AS evidence_id,
+      ts.evidence_source               AS evidence_source,
+      ts.scene_description             AS scene_description,
+      ts.start_seconds                 AS start_seconds,
       dub_mux.playback_id              AS playback_id,
-      se.source_score                  AS source_score,
-      CASE
-        WHEN se.evidence_source = 'scene' THEN vsl_final.embedding::text
-        ELSE vtc_final.embedding::text
-      END                              AS embedding_text
-    FROM semantic_evidence se
-    LEFT JOIN video_scene_locale vsl_final
-      ON se.evidence_source = 'scene'
-      AND vsl_final.id = se.evidence_id
+      ts.source_score                  AS source_score,
+      vtc_final.embedding::text        AS embedding_text
+    FROM transcript_source ts
     LEFT JOIN video_transcript_chunk vtc_final
-      ON se.evidence_source = 'transcript'
-      AND vtc_final.id = se.evidence_id
+      ON vtc_final.id = ts.evidence_id
     LEFT JOIN LATERAL (
       SELECT mv.playback_id
       FROM video_dub vd
       LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
-      WHERE vd.video_edition_id = se.video_edition_id
+      WHERE vd.video_edition_id = ts.video_edition_id
         AND vd.deleted_at IS NULL
         AND vd.language_id IN (SELECT id FROM requested_language)
       ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
@@ -445,7 +396,7 @@ export async function searchVideoSemantic(
     LEFT JOIN LATERAL (
       SELECT vi2.mobile_cinematic_high, vi2.url
       FROM video_image vi2
-      WHERE vi2.video_id = se.video_id
+      WHERE vi2.video_id = ts.video_id
         AND vi2.deleted_at IS NULL
       ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
       LIMIT 1

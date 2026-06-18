@@ -5,6 +5,7 @@ const REVIEW_RELEVANT_STEPS = new Set<WorkflowStepName>([
   "subtitle_post_process",
   "chapters",
   "metadata",
+  "translation",
   "mux_upload",
 ])
 
@@ -40,6 +41,10 @@ function getRelevantArtifactKey(job: JobRecord): string {
         artifactKey === "chapters-vtt" ||
         artifactKey === "muxSync" ||
         artifactKey === "subtitles" ||
+        artifactKey === "subtitles-raw" ||
+        artifactKey === "transcript-correction-report" ||
+        artifactKey === "transcript-raw" ||
+        artifactKey.startsWith("subtitle-validation-") ||
         artifactKey.startsWith("subtitles-")
       )
     })
@@ -63,6 +68,7 @@ function getRelevantStepKey(job: JobRecord): string {
         step.startedAt ?? "",
         step.finishedAt ?? "",
         step.error ?? "",
+        getStableValueKey(step.details),
       ].join(":"),
     )
     .join("|")

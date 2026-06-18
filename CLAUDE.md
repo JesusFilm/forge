@@ -27,6 +27,7 @@ This is a pnpm + Turborepo monorepo.
 - `apps/mobile/` — React Native / Expo app (active development, EAS for builds); reads from admin via `packages/admin-graphql`
 - `apps/tv/` — React Native TV app; reads from admin via `packages/admin-graphql`
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
+- `apps/chat/` — Next.js chat UI scaffold for the `apps/mastra` agents (client-side stub only; no agent wiring yet)
 - `packages/admin-graphql/` — gql.tada typed GraphQL client (generated from admin's `schema.graphql`); consumed by web
 - `CONCEPTS.md` (repo root) — shared domain vocabulary (entities like Video, Dub, Video Edition); relevant when orienting to the codebase or discussing domain concepts
 
@@ -40,6 +41,7 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 - Working in `apps/tv/`? Also read `apps/tv/CLAUDE.md`
 - Working in `packages/admin-graphql/`? Also read `packages/admin-graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
+- Working in `apps/chat/`? Also read `apps/chat/CLAUDE.md`
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 
@@ -124,8 +126,11 @@ docs/roadmap/
 ├── content-discovery/feat-*.md        # Search and discovery features
 ├── topic-experiences/feat-*.md        # Topic pages and AI generation
 ├── media-generation/feat-*.md         # Audio/video AI features
-└── platform/feat-*.md                 # Infrastructure and tooling
+├── platform/feat-*.md                 # Infrastructure and tooling
+└── ai-chat/feat-*.md                  # Jesus Film AI Chat — docs-only lane, NOT rendered by the viewer
 ```
+
+> **`ai-chat` is a docs-only lane.** Unlike the others it is intentionally **not** registered in the viewer app (`apps/roadmap`) and its tickets are **not** counted in the generated root `README.md`. If you are adding or modifying a ticket in the `ai-chat` lane, read `docs/roadmap/ai-chat/CLAUDE.md` first — it carries that lane's own conventions (README upkeep, ID allocation, status handling).
 
 ### Feature File Format
 
@@ -135,7 +140,7 @@ Every feature file must have this frontmatter:
 ---
 id: "feat-NNN"                # Globally unique, sequential
 title: "Short feature title"
-owner: "person-name"          # tataihono, vlad, ekkasit, nisal, urim
+owner: "person-name"          # tataihono, vlad, ekkasit, nisal, urim, jian wei, jaco
 priority: "P0"                # P0, P1, P2
 status: "not-started"         # not-started, in-progress, complete, blocked
 start_date: "2026-04-01"     # Expected start date (YYYY-MM-DD)

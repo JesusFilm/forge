@@ -547,6 +547,15 @@ export type Block = z.infer<typeof BlockSchema>
 /**
  * Schema applied to `ExperienceLocale.blocks` as a whole — an array of
  * top-level blocks. Used by the service layer before writes (Unit 7).
+ *
+ * Deliberately has NO global `.min()`: this schema governs ALL persistence,
+ * including legitimate manual experiences that may have a single block. The
+ * AI-generation minimum-block-count rule is single-sourced as
+ * `GENERATION_MIN_BLOCKS` in `services/experience-ai/experience-ai.schemas.ts`
+ * and enforced only on the generation path (the workflow's
+ * `DraftExperienceSchema` gate + the post-normalize check in
+ * `experience-ai-normalize.ts`). Adding a minimum here would reject valid
+ * hand-authored 1-block content.
  */
 export const BlocksSchema = z.array(BlockSchema)
 

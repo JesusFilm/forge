@@ -305,6 +305,11 @@ describe("indexEditionTranscript", () => {
     ]
     const sql = strings.join("?")
     expect(sql).toContain("INSERT INTO video_transcript_chunk")
+    expect(sql).toContain("raw_source_text")
+    expect(sql).toContain("embedding_input_text")
+    expect(sql).toContain("felt_needs")
+    expect(sql).toContain("content_summary")
+    expect(sql).toContain("extraction_metadata")
     expect(sql).toContain("unnest(")
     expect(sql).toContain("::text[]")
     // Way A vector cast — per-row at the SELECT seam, NOT
