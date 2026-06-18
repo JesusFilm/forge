@@ -189,6 +189,12 @@ const envSchema = z.object({
   JESUSFILM_RAG_ALLOWED_HOSTS: z.string().min(1).optional(),
   JESUSFILM_RAG_API_KEY: z.string().min(1).optional(),
   JESUSFILM_RAG_BASE_URL: z.string().url().optional(),
+  // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
+  // this single-attempt RAG timeout MUST stay strictly below the upstream
+  // ceiling — the Mastra agent tool-call budget, well under Railway's request
+  // limit. The 30_000 cap is comfortably under that today. If a future
+  // mastra-gateway enforces a tighter per-turn budget (e.g. 10 s), lower this
+  // cap to match so a misconfigured override can't outlive the caller.
   JESUSFILM_RAG_TIMEOUT_MS: z.coerce
     .number()
     .int()

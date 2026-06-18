@@ -121,7 +121,7 @@ describe("retrieve-answer tool", () => {
   ])(
     "maps client failure %s to status unavailable (never throws)",
     async (reason) => {
-      vi.spyOn(console, "error").mockImplementation(() => {})
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
       const result = await executeRetrieveAnswer(
         { query: "x" },
@@ -133,6 +133,10 @@ describe("retrieve-answer tool", () => {
         sources: [],
         message: RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
       })
+      // Every failure reason must emit exactly one structured log line. Without
+      // this, deleting or gating logRetrievalUnavailable would leave all seven
+      // cases green (the log path was previously unverified for 5 of them).
+      expect(errorSpy).toHaveBeenCalledTimes(1)
     },
   )
 
@@ -239,6 +243,33 @@ describe("retrieve-answer tool", () => {
       "[seeker] event=rag_retrieval_unavailable reason=config_missing detail=api_key_missing",
     )
     expect(line).not.toContain("a-very-secret-question-string")
+  })
+
+  it("logs the base_url_missing detail variant of config_missing", async () => {
+    // The shared failure() helper hardcodes detail=api_key_missing, so the
+    // base_url_missing branch of the log line is otherwise never exercised —
+    // a typed discriminator with no test where ONLY it can match
+    // (mocked-shape-vs-real-contract discipline).
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    const result = await executeRetrieveAnswer(
+      { query: "x" },
+      {
+        search: () =>
+          Promise.resolve({
+            ok: false,
+            reason: "config_missing",
+            retryable: false,
+            detail: "base_url_missing",
+          }),
+      },
+    )
+
+    expect(result.status).toBe("unavailable")
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    expect(errorSpy.mock.calls[0][0]).toBe(
+      "[seeker] event=rag_retrieval_unavailable reason=config_missing detail=base_url_missing",
+    )
   })
 
   it("never logs upstreamReason (RAG-controlled text) on a failure that carries one", async () => {

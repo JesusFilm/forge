@@ -242,6 +242,30 @@ describe("jesusfilm-rag client", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
+  it("reads upstreamReason from the body `message` field when `error` is absent", async () => {
+    // Exercises readUpstreamReason's `?? safeReason(record.message)` fallback.
+    // Every other error-body fixture uses `{ error }`, so without this the
+    // `message` branch is dead from a coverage standpoint and deletable.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      jsonResponse({ message: "rate window exceeded" }, { status: 400 }),
+    )
+
+    const result = await searchJesusfilmRag({
+      query: "x",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      status: 400,
+      upstreamReason: "rate window exceeded",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
   it("classifies 500 as retryable network_error", async () => {
     const fetchImpl = vi.fn<typeof fetch>(() =>
       jsonResponse({ error: "embedding provider down" }, { status: 500 }),
