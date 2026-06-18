@@ -1,6 +1,7 @@
 ---
 title: "Wiring a Mastra conversational agent: @mastra/memory API, model-router provider/key, and the catalog-vs-live trap"
 date: 2026-06-09
+last_refreshed: 2026-06-18
 category: integration-issues
 module: apps/mastra
 problem_type: integration_issue
@@ -63,7 +64,11 @@ costs real time the first time you hit it.
   is a plausible explanation but is **not confirmed** for that incident (it could
   equally have been a rate limit, a transient outage, or that `:free` variant
   being temporarily unavailable). What is certain and structural: the catalog is
-  a compile-time list, not a liveness check.
+  a compile-time list, not a liveness check. (A 2026-06-18 re-test of the sibling
+  `gemma-4-31b-it:free` — see Prevention — found exactly this intermittent,
+  fast-failing `Provider returned error` behavior with successful immediate
+  retries, which makes a free-tier rate-limit/capacity cause the most likely
+  explanation for the original `26b-a4b` failure too.)
 - **Assuming the API key alone selects the provider.** The model-router string's
   **prefix** selects provider + endpoint + which env var holds the key; setting a
   different key does not redirect an existing prefix.
@@ -178,11 +183,18 @@ provider response is the PRODUCTION CONTRACT.
 
 - **Verify a model id with one live call before relying on it.** `tsc` green is
   not "the model works." Tool-calling support and reliability vary by model and
-  are not guaranteed — verify per model with a live run. In the feat-170 smoke
-  the free `gemma-4-31b-it:free` model DID invoke the `retrieveAnswer` tool in
-  some runs but returned an opaque provider error in others; treat free-tier
-  tool-calling as inconsistent, not absent. For an agent that must reliably
-  exercise tools, prefer a model with documented, consistent tool support (e.g.
+  are not guaranteed — verify per model with a live run. The free
+  `gemma-4-31b-it:free` model IS live and DOES invoke `retrieveAnswer`: a
+  2026-06-18 re-test (8 mixed Studio-UI + `generate`-API turns) succeeded on
+  ~5/8, producing correctly source-cited answers over the real RAG path. The
+  failures returned `Provider returned error` and **fast-failed in 3-5 s vs
+  12-25 s for successes**, clustered after rapid bursts, and the same prompt
+  succeeded on immediate retry — a free-tier rate-limit/capacity signature, not
+  a missing or malformed model. The agent's "call retrieveAnswer again on each
+  new turn — an earlier failure does not mean retrieval is down" instruction
+  absorbs this within a conversation, so it is a production-promotion concern,
+  not a skeleton defect. For production (sustained, reliable tool-calling),
+  prefer a paid/stable model with documented tool support (e.g.
   `openrouter/openai/gpt-4.1-mini`).
 - **When changing providers, change the prefix AND the model id together**, and
   confirm the matching `<PROVIDER>_API_KEY` is present. Adding an opt-in
