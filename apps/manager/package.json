@@ -42,11 +42,11 @@
     "@tailwindcss/postcss": "^4.2.3",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^16.1.6",
-    "postcss": "^8.5.10",
+    "eslint": "^10.5.0",
+    "eslint-config-next": "^16.2.9",
+    "postcss": "^8.5.15",
     "tailwindcss": "^4.2.3",
-    "typescript": "^5",
-    "vitest": "3.2.4"
+    "typescript": "^6",
+    "vitest": "4.1.8"
   }
 }
