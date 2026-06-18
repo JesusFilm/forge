@@ -3,7 +3,7 @@ id: "feat-199"
 title: "Seeker Agent RAG Retrieval Connection"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-10"
 duration: 3
 depends_on:
@@ -13,11 +13,17 @@ tags:
   - "search"
 ---
 
-> Renumbered from the gated seeker trunk's `feat-174` (the original collided
-> across lanes). Code ships via PR **#1279**; status flips to `complete` when it
-> merges.
->
-> Requirements (arrive with #1279):
+## Resolution
+
+**Shipped:** 2026-06-18 via [PR #1279](https://github.com/JesusFilm/forge/pull/1279) (`feat(mastra): connect seeker agent retrieveAnswer to jesusfilm-rag`, commit `ca136fda`).
+
+**What landed.** Replaced the stubbed `retrieveAnswer` with a real typed HTTP client (`jesusfilm-rag-client.ts`) of the `JesusFilm/jesusfilm-rag` `/v1/search` service: bearer auth, strict request body, a Zod-parsed passage envelope, a typed no-throw result union (`config_missing` / `auth_failed` / `network_error` / `rejected` / `parse_error` / timeout), a single attempt bounded by `AbortSignal.timeout`, and a production https + allowed-hosts boot guard. The tool now returns passage-shaped `sources` plus an `ok` / `empty` / `unavailable` status; the agent synthesizes source-cited answers and declines plainly when there is no grounded answer. All RAG env vars are `.optional()` — unset degrades at runtime, never bricks boot. Verified live in Studio on 2026-06-18 (real passages returned, citations correct).
+
+**Compound docs.** `docs/solutions/conventions/single-service-http-client-result-union-convention.md` (this client is its single-attempt reference); `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`.
+
+**Residual risk / follow-ups.** Relevance-threshold tuning, weak-passage decline behavior, faithfulness/groundedness evals, and the guardrail gate are deferred. The prod corpus currently has one indexed source; RAG token issuance is an out-of-repo ops step.
+
+> Requirements:
 > `docs/brainstorms/2026-06-10-seeker-rag-connection-requirements.md`.
 
 ## Problem

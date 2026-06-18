@@ -1,6 +1,7 @@
 ---
 title: "Mastra Studio API routes must not inherit service-bearer route guards"
 date: 2026-05-26
+last_updated: 2026-06-09
 category: integration-issues
 module: apps/mastra
 problem_type: integration_issue
@@ -23,6 +24,8 @@ tags:
   - scene-embedding
   - service-routes
   - gateway
+  - agents
+  - route-isolation
 ---
 
 # Mastra Studio API Routes Must Not Inherit Service-Bearer Route Guards
@@ -204,8 +207,39 @@ pnpm --filter @forge/mastra lint
   recommended `/api/*` middleware before the Studio workflow graph behavior was
   validated.
 
+## Generalization: registered agents are exposed too, and route-isolation tests only guard custom routes
+
+The same framework behavior that makes Studio's `/api/workflows` calls work also
+applies to agents. **Any agent registered in `new Mastra({ agents: { ... } })`
+is automatically reachable over the framework-generated built-in `/api/agents/*`
+surface** (generate/stream), regardless of whether any custom
+`registerApiRoute` / `/forge-*` route references it. The runtime deliberately
+has no broad `/api/*` service-bearer guard (that guard would also block Studio's
+own browser calls), so a registered agent is reachable by anyone who can reach
+the Mastra HTTP endpoint.
+
+Consequence for tests: a "route-isolation" test that only inspects the custom
+`apiRoutes` array / `registerApiRoute` calls — e.g. a source-text assertion that
+the agent symbol does not appear in `apiRoutes` — proves only **"no CUSTOM route
+exposes the agent."** It does **not** prove the agent is private or unreachable.
+"Not on a custom route" ≠ "not exposed." The seeker skeleton's
+`apps/mastra/src/mastra/seeker-route-isolation.test.ts` is scoped exactly this
+way, and its header comment says so verbatim ("WHAT THIS DOES NOT PROVE: that
+the agent is unreachable … Mastra's framework-generated `/api/agents/*` surface
+exposes ANY registered agent").
+
+The real containment boundary is the same one this doc establishes for Studio:
+the network/gateway layer (`apps/mastra-gateway` + Railway networking), **not**
+application code and **not** a route-isolation test. Any such test's assertion
+comment must state plainly that it guards custom routes only — a green
+`/forge-*` isolation check must never be read as proof the agent is or isn't
+exposed.
+
 ## Related Issues
 
+- `mastra-conversational-agent-memory-and-model-router-wiring.md` documents the
+  feat-198 seeker agent wiring (memory API, model-router provider/key) whose
+  route-isolation test is the worked example of the generalization above.
 - `../platform/mastra-scene-embedding-workflow-pattern.md` documents the
   feat-133 ownership split: Manager source artifacts, Mastra provider calls,
   Admin ingest/storage/search.

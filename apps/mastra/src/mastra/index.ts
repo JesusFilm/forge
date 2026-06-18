@@ -21,6 +21,7 @@ import {
   getMastraStorageDir,
 } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
+import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
 import {
   handleTranscriptEmbeddingRouteRequest,
@@ -128,7 +129,7 @@ const redactPromptBodies: SpanOutputProcessor = {
 }
 
 export const mastra = new Mastra({
-  agents: { smokeAgent, webResearchAgent },
+  agents: { smokeAgent, seekerAgent, webResearchAgent },
   workflows: {
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
