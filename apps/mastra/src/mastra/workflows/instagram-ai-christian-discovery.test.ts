@@ -52,6 +52,73 @@ const commentaryHit = {
     "Should we be listening to AI generated Christian music? Here's my thoughts",
 }
 
+// A genuine post from a trusted account that mentions Jesus but not "AI" — it
+// would fail the keyword filter but should be kept when the account is trusted.
+const christianOnlyHit = {
+  url: "https://www.instagram.com/reel/TRUST1/",
+  title: "biblewithlife • Instagram",
+  description: "The parable of the lost sheep, retold #faith #jesus",
+}
+
+describe("runInstagramDiscovery — trusted handles", () => {
+  it("scopes each handle to an account search and trusts the results", async () => {
+    const searchQuery = vi.fn(async (query: string) =>
+      query.includes("site:instagram.com/biblewithlife")
+        ? [christianOnlyHit]
+        : [],
+    )
+    const result = await runInstagramDiscovery(
+      { handles: ["biblewithlife"], queries: [] },
+      {
+        runId: "run-handle",
+        firecrawlConfig: CONFIG,
+        searchQuery,
+        artifactStore: fakeStore(),
+      },
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    // kept despite having no AI keyword (trusted account)
+    expect(result.posts).toHaveLength(1)
+    expect(result.posts[0]!.shortcode).toBe("TRUST1")
+    // the search was scoped to the account
+    expect(searchQuery.mock.calls[0]![0]).toBe(
+      "site:instagram.com/biblewithlife",
+    )
+  })
+
+  it("does NOT keep the same non-AI post when it comes from keyword search", async () => {
+    const result = await runInstagramDiscovery(
+      { handles: [], queries: ["q"] },
+      {
+        runId: "run-search-strict",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [christianOnlyHit],
+        artifactStore: fakeStore(),
+      },
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.posts).toHaveLength(0)
+  })
+
+  it("still drops commentary from a trusted handle", async () => {
+    const result = await runInstagramDiscovery(
+      { handles: ["someone"], queries: [] },
+      {
+        runId: "run-handle-comment",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [commentaryHit],
+        artifactStore: fakeStore(),
+      },
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.posts).toHaveLength(0)
+    expect(result.totals.excludedCommentary).toBe(1)
+  })
+})
+
 describe("runInstagramDiscovery", () => {
   it("returns only qualifying posts and writes an artifact", async () => {
     const store = fakeStore()

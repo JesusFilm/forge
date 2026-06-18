@@ -292,11 +292,22 @@ workflow. It discovers AI-generated Christian videos on Instagram using
 direct crawling is unreliable; search returns post/reel URLs plus title/snippet
 that the keyword heuristic acts on.
 
+Two source modes (like YouTube), both via Firecrawl search:
+
+- **Trusted handles** — `handles` (e.g. `["biblewithlife"]`); each becomes an
+  account-scoped search (`site:instagram.com/<handle>`) and is _trusted_: kept
+  unless it reads as commentary, no AI/Christian keyword requirement. Best-effort
+  — web search does NOT reliably surface an account's full feed (low yield; a
+  faithful feed would need a paid IG scraping API or cookie-based local scraping).
+- **Keyword search** — `queries`: full filter (must signal AI + Christian, not
+  commentary). Trusted handle hits are ordered first so they win dedup ties.
+
 Input is Studio-friendly with defaults (runs with no hand-written JSON):
-`queries` (defaults to two Instagram-targeted AI/Christian queries),
-`limitPerQuery` (10), `scrapeMetadata` (false — set true to scrape each hit for
-richer metadata, slower), `maxResults` (50), `persistArtifact` (true). The
-workflow searches each query (tolerant to per-query failures), parses Instagram
+`handles` (default `[]`), `queries` (defaults to two Instagram-targeted
+AI/Christian queries), `limitPerQuery` (10), `scrapeMetadata` (false — set true to
+scrape each hit for richer metadata, slower), `maxResults` (50), `persistArtifact`
+(true). The workflow searches each source (tolerant to per-source failures),
+parses Instagram
 permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
 signal **both** AI-generation and Christian content **and** do not read as
 commentary/news/tutorial (a conservative `COMMENTARY_KEYWORDS` exclusion in

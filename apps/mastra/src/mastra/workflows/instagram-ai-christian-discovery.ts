@@ -48,13 +48,22 @@ const DEFAULT_QUERIES = [
 
 export const InstagramDiscoveryWorkflowInputSchema = z
   .object({
-    queries: z.array(z.string().min(1)).min(1).max(20).default(DEFAULT_QUERIES),
+    /** Trusted creator handles (e.g. "biblewithlife"); each becomes an
+     * account-scoped Firecrawl search and is kept unless it reads as commentary. */
+    handles: z.array(z.string().min(1)).max(50).default([]),
+    queries: z.array(z.string().min(1)).max(20).default(DEFAULT_QUERIES),
     limitPerQuery: z.number().int().positive().max(50).default(10),
     scrapeMetadata: z.boolean().default(false),
     maxResults: z.number().int().positive().max(200).default(50),
     persistArtifact: z.boolean().default(true),
   })
   .strict()
+
+/** Account-scoped web search query that biases results to one IG account. */
+export function accountSearchQuery(handle: string): string {
+  const clean = handle.trim().replace(/^@+/, "").replace(/\/+$/, "")
+  return `site:instagram.com/${clean}`
+}
 
 export type InstagramDiscoveryWorkflowInput = z.infer<
   typeof InstagramDiscoveryWorkflowInputSchema
@@ -105,6 +114,14 @@ const FirecrawlHitSchema = z
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
+
+// A hit tagged by origin: `trusted` when it came from an account-scoped handle
+// search (kept unless commentary) vs. a keyword query (full AI+Christian filter).
+const TaggedHitSchema = z
+  .object({ hit: FirecrawlHitSchema, trusted: z.boolean() })
+  .strict()
+
+type TaggedHit = { hit: FirecrawlSearchHit; trusted: boolean }
 
 export type SearchQueryFn = (
   query: string,
@@ -235,7 +252,7 @@ export async function searchInstagramCandidates(
     searchQuery: SearchQueryFn
   },
 ): Promise<{
-  hits: FirecrawlSearchHit[]
+  hits: TaggedHit[]
   queryFailures: DiscoveryQueryFailure[]
 }> {
   if (!options.firecrawlConfig.apiKey) {
@@ -248,20 +265,29 @@ export async function searchInstagramCandidates(
     )
   }
 
-  const hits: FirecrawlSearchHit[] = []
+  // Trusted handle searches first so they win dedup ties downstream.
+  const sources: Array<{ query: string; trusted: boolean }> = [
+    ...input.handles.map((handle) => ({
+      query: accountSearchQuery(handle),
+      trusted: true,
+    })),
+    ...input.queries.map((query) => ({ query, trusted: false })),
+  ]
+
+  const hits: TaggedHit[] = []
   const queryFailures: DiscoveryQueryFailure[] = []
   let anyRetryable = false
 
-  for (const query of input.queries) {
+  for (const source of sources) {
     try {
-      const queryHits = await options.searchQuery(query, {
+      const queryHits = await options.searchQuery(source.query, {
         apiKey: options.firecrawlConfig.apiKey,
         baseUrl: options.firecrawlConfig.baseUrl,
         timeoutMs: options.firecrawlConfig.timeoutMs,
         limit: input.limitPerQuery,
         scrape: input.scrapeMetadata,
       })
-      hits.push(...queryHits)
+      hits.push(...queryHits.map((hit) => ({ hit, trusted: source.trusted })))
     } catch (error) {
       const code =
         error instanceof FirecrawlSearchError ? error.code : "search_failed"
@@ -269,17 +295,14 @@ export async function searchInstagramCandidates(
         anyRetryable = true
       }
       queryFailures.push({
-        query,
+        query: source.query,
         code,
         message: error instanceof Error ? error.message : String(error),
       })
     }
   }
 
-  if (
-    input.queries.length > 0 &&
-    queryFailures.length === input.queries.length
-  ) {
+  if (sources.length > 0 && queryFailures.length === sources.length) {
     throwDiscoveryFailure(
       failure("all_queries_failed", {
         mastraRunId: options.runId,
@@ -293,38 +316,47 @@ export async function searchInstagramCandidates(
 }
 
 /**
- * Parse Firecrawl hits into Instagram posts, drop non-Instagram results,
- * dedupe by shortcode, classify, and keep only posts that signal BOTH
- * AI-generation and Christian content (capped at `maxResults`).
+ * Parse Firecrawl hits into Instagram posts, drop non-Instagram results, dedupe
+ * by shortcode, then keep posts by origin:
+ *  - Trusted (account-scoped handle search): keep everything EXCEPT obvious
+ *    commentary. No AI/Christian keyword requirement — you curated the handle.
+ *  - Keyword search: full filter — must signal BOTH AI and Christian and not
+ *    read as commentary.
+ * Trusted hits are ordered first by the search step, so they win dedup ties.
+ * Capped at `maxResults`.
  */
 export function selectQualifyingPosts(
-  hits: readonly FirecrawlSearchHit[],
+  hits: readonly TaggedHit[],
   input: InstagramDiscoveryWorkflowInput,
 ): { posts: InstagramPost[]; totals: DiscoveryTotals } {
-  const parsed: InstagramPost[] = []
-  for (const hit of hits) {
+  const parsed: Array<{ post: InstagramPost; trusted: boolean }> = []
+  for (const { hit, trusted } of hits) {
     const post = parseInstagramPost(hit)
-    if (post) parsed.push(post)
+    if (post) parsed.push({ post, trusted })
   }
 
-  const byShortcode = new Map<string, InstagramPost>()
-  for (const post of parsed) {
-    if (!byShortcode.has(post.shortcode)) byShortcode.set(post.shortcode, post)
+  const byShortcode = new Map<
+    string,
+    { post: InstagramPost; trusted: boolean }
+  >()
+  for (const entry of parsed) {
+    if (!byShortcode.has(entry.post.shortcode)) {
+      byShortcode.set(entry.post.shortcode, entry)
+    }
   }
   const deduped = [...byShortcode.values()]
 
   const qualified: InstagramPost[] = []
   let excludedCommentary = 0
-  for (const post of deduped) {
+  for (const { post, trusted } of deduped) {
     const signals = classifyPost(post)
-    if (!qualifies(signals)) {
-      // Count posts dropped solely because they read as commentary (they would
-      // otherwise have qualified on AI + Christian keywords) so the operator can
-      // see the exclusion filter working.
+    const keep = trusted ? !signals.isCommentary : qualifies(signals)
+    if (!keep) {
+      // Count commentary drops: trusted posts dropped as commentary, plus search
+      // posts that were AI + Christian but read as commentary.
       if (
-        signals.isAiGenerated &&
-        signals.isChristian &&
-        signals.isCommentary
+        signals.isCommentary &&
+        (trusted || (signals.isAiGenerated && signals.isChristian))
       ) {
         excludedCommentary += 1
       }
@@ -451,7 +483,7 @@ const SearchStepOutputSchema = z.discriminatedUnion("ok", [
     .object({
       ok: z.literal(true),
       startedAt: z.string(),
-      hits: z.array(FirecrawlHitSchema),
+      hits: z.array(TaggedHitSchema),
       queryFailures: z.array(DiscoveryQueryFailureSchema),
     })
     .strict(),
@@ -491,12 +523,15 @@ const searchStep = createStep({
       return {
         ok: true as const,
         startedAt,
-        hits: hits.map((hit) => ({
-          url: hit.url,
-          title: hit.title,
-          description: hit.description,
-          markdown: hit.markdown,
-          metadata: hit.metadata,
+        hits: hits.map(({ hit, trusted }) => ({
+          hit: {
+            url: hit.url,
+            title: hit.title,
+            description: hit.description,
+            markdown: hit.markdown,
+            metadata: hit.metadata,
+          },
+          trusted,
         })),
         queryFailures,
       }
