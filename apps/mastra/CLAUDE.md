@@ -330,17 +330,28 @@ workflow. It discovers AI-generated Christian videos on YouTube using the
 **official YouTube Data API v3** (key in `YOUTUBE_API_KEY`), in **two modes**:
 
 - **Trusted channels** — `channels` accepts channel ids (`UC…`), `@handles`, or
-  youtube.com URLs; each is resolved to its uploads playlist and the recent
-  uploads are pulled (`limitPerChannel`, default 10).
-- **Keyword discovery** — `queries` (defaults to two AI/Christian queries) are
-  run through `search.list` (`limitPerQuery`, default 10).
+  youtube.com URLs; each is resolved to its uploads playlist (`limitPerChannel`).
+- **Trusted playlists** — `playlists` accepts playlist ids (`PL…` series, `UU…`/
+  `UUSH…` uploads) and is pulled directly via `playlistItems.list`
+  (`limitPerPlaylist`), no channel resolution. Use for curated multilingual
+  series (e.g. QBIBLE).
+- **Keyword discovery** — `queries` (creation-oriented defaults) run through
+  `search.list` (`limitPerQuery`).
 
-Both sources feed one pipeline: parse items (handling both `search.list` and
-`playlistItems.list` shapes), dedupe by `videoId`, and keep only videos whose
-title+description signal **both** AI-generation and Christian content **and** do
-not read as commentary — reusing the shared classifier in
-`services/discovery/classifier.ts` (same keyword + commentary lists as Instagram).
-`totals.excludedCommentary` counts videos dropped by the commentary filter.
+**Source-dependent filtering** (key behavior): items are tagged by origin and
+filtered differently:
+
+- **Trusted (channels + playlists):** kept as-is, dropping only obvious
+  commentary/reaction/news junk. No AI/Christian keyword requirement — so
+  non-English and "Bible animation" content from a curated list is kept (the
+  English keyword filter would otherwise wrongly drop it). You curated the
+  source; the website review queue is still the human gate.
+- **Keyword search:** full filter — must signal BOTH AI and Christian and not
+  read as commentary (the shared `services/discovery/classifier.ts`).
+
+Both feed one pipeline: parse (handling `search.list` and `playlistItems.list`
+shapes), dedupe by `videoId` (trusted items ordered first, so they win ties),
+apply the per-source rule. `totals.excludedCommentary` counts commentary drops.
 
 Qualified videos are written to a validated JSON artifact under
 `<storage>/youtube-discovery/reports/<runId>.json` and, when the site ingest env

@@ -132,6 +132,89 @@ describe("runYouTubeDiscovery", () => {
     expect(result.videos[0]!.videoId).toBe("vid-good")
   })
 
+  it("pulls directly from a playlist id (no channel resolution)", async () => {
+    const listPlaylistVideos = vi.fn(async () => [aiChristian])
+    const resolveUploadsPlaylist = vi.fn(async () => "UU_x")
+    const result = await runYouTubeDiscovery(
+      { playlists: ["PLqbible123"], channels: [], queries: [] },
+      {
+        runId: "run-playlist",
+        youtubeConfig: CONFIG,
+        client: clientFor([], { listPlaylistVideos, resolveUploadsPlaylist }),
+        artifactStore: fakeStore(),
+        siteIngest: null,
+      },
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(listPlaylistVideos).toHaveBeenCalledWith(
+      "PLqbible123",
+      expect.anything(),
+    )
+    // playlists are pulled directly — no channel resolution call
+    expect(resolveUploadsPlaylist).not.toHaveBeenCalled()
+    expect(result.videos).toHaveLength(1)
+    expect(result.videos[0]!.videoId).toBe("vid-good")
+  })
+
+  it("trusts curated sources: keeps a playlist video with no English keywords", async () => {
+    // A non-English "Bible animation" title — matches no English AI/Christian
+    // keyword, so it would fail keyword search, but a trusted playlist keeps it.
+    const nonEnglish = videoItem("ko-1", "예수님의 기적 | 성경애니메이션")
+
+    const fromPlaylist = await runYouTubeDiscovery(
+      { playlists: ["PLqbible"], channels: [], queries: [] },
+      {
+        runId: "run-trust",
+        youtubeConfig: CONFIG,
+        client: clientFor([], {
+          listPlaylistVideos: vi.fn(async () => [nonEnglish]),
+        }),
+        artifactStore: fakeStore(),
+        siteIngest: null,
+      },
+    )
+    expect(fromPlaylist.ok).toBe(true)
+    if (!fromPlaylist.ok) throw new Error("expected success")
+    expect(fromPlaylist.videos).toHaveLength(1)
+    expect(fromPlaylist.videos[0]!.videoId).toBe("ko-1")
+
+    // The same video via keyword SEARCH is dropped (no AI+Christian signal).
+    const fromSearch = await runYouTubeDiscovery(
+      { queries: ["q"], channels: [], playlists: [] },
+      {
+        runId: "run-search",
+        youtubeConfig: CONFIG,
+        client: clientFor([nonEnglish]),
+        artifactStore: fakeStore(),
+        siteIngest: null,
+      },
+    )
+    expect(fromSearch.ok).toBe(true)
+    if (!fromSearch.ok) throw new Error("expected success")
+    expect(fromSearch.videos).toHaveLength(0)
+  })
+
+  it("drops commentary even from a trusted source", async () => {
+    const result = await runYouTubeDiscovery(
+      { playlists: ["PLx"], channels: [], queries: [] },
+      {
+        runId: "run-trust-comment",
+        youtubeConfig: CONFIG,
+        client: clientFor([], {
+          listPlaylistVideos: vi.fn(async () => [commentary]),
+        }),
+        artifactStore: fakeStore(),
+        siteIngest: null,
+      },
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.videos).toHaveLength(0)
+    expect(result.totals.excludedCommentary).toBe(1)
+  })
+
   it("excludes commentary videos and counts them", async () => {
     const result = await runYouTubeDiscovery(
       { queries: ["q"], channels: [] },

@@ -12,6 +12,7 @@ const SAFE_ARTIFACT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/
 const MAX_VIDEOS = 200
 const MAX_QUERIES = 20
 const MAX_CHANNELS = 50
+const MAX_PLAYLISTS = 50
 const MAX_SOURCE_FAILURES = 70
 const MAX_HASHTAGS = 30
 const MAX_SAFE_TEXT = 1024
@@ -38,7 +39,7 @@ export const YouTubeVideoSchema = z
 export const DiscoverySourceFailureSchema = z
   .object({
     source: z.string().max(MAX_SAFE_TEXT),
-    kind: z.enum(["channel", "query"]),
+    kind: z.enum(["channel", "playlist", "query"]),
     code: z.enum([...YOUTUBE_SEARCH_ERROR_CODES, "source_failed"]),
     message: z.string().max(MAX_SAFE_TEXT),
   })
@@ -63,6 +64,7 @@ export const YouTubeDiscoveryReportSchema = z
     startedAt: z.string().max(64),
     finishedAt: z.string().max(64),
     channels: z.array(z.string().max(MAX_SAFE_TEXT)).max(MAX_CHANNELS),
+    playlists: z.array(z.string().max(MAX_SAFE_TEXT)).max(MAX_PLAYLISTS),
     queries: z.array(z.string().max(MAX_SAFE_TEXT)).max(MAX_QUERIES),
     totals: YouTubeDiscoveryTotalsSchema,
     sourceFailures: z

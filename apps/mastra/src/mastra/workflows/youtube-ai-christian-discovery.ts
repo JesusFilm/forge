@@ -51,8 +51,10 @@ const DEFAULT_QUERIES = [
 export const YouTubeDiscoveryWorkflowInputSchema = z
   .object({
     channels: z.array(z.string().min(1)).max(50).default([]),
+    playlists: z.array(z.string().min(1)).max(50).default([]),
     queries: z.array(z.string().min(1)).max(20).default(DEFAULT_QUERIES),
     limitPerChannel: z.number().int().positive().max(50).default(10),
+    limitPerPlaylist: z.number().int().positive().max(50).default(10),
     limitPerQuery: z.number().int().positive().max(50).default(10),
     maxResults: z.number().int().positive().max(200).default(50),
     persistArtifact: z.boolean().default(true),
@@ -96,8 +98,16 @@ type YouTubeDiscoveryWorkflowFailure = z.infer<typeof WorkflowFailureSchema>
 type YouTubeDiscoveryWorkflowSuccess = z.infer<typeof WorkflowSuccessSchema>
 
 // Raw YouTube items cross the Mastra step boundary as opaque records; the parser
-// understands their shape on the far side.
+// understands their shape on the far side. Each item is tagged `trusted` when it
+// came from a curated channel/playlist (vs. a keyword search), which decides how
+// strictly it is filtered downstream.
 const RawItemSchema = z.record(z.string(), z.unknown())
+const TaggedRawItemSchema = z
+  .object({ raw: RawItemSchema, trusted: z.boolean() })
+  .strict()
+
+/** A raw item plus whether it came from a trusted (curated) source. */
+type TaggedRawItem = { raw: YouTubeRawItem; trusted: boolean }
 
 export type YouTubeClient = {
   searchVideos: typeof searchVideos
@@ -267,7 +277,7 @@ export async function collectYouTubeCandidates(
     client: YouTubeClient
   },
 ): Promise<{
-  items: YouTubeRawItem[]
+  items: TaggedRawItem[]
   sourceFailures: DiscoverySourceFailure[]
 }> {
   if (!options.youtubeConfig.apiKey) {
@@ -285,7 +295,8 @@ export async function collectYouTubeCandidates(
     baseUrl: options.youtubeConfig.baseUrl,
     timeoutMs: options.youtubeConfig.timeoutMs,
   }
-  const items: YouTubeRawItem[] = []
+  // Trusted (curated) sources first so they win ties during dedup downstream.
+  const items: TaggedRawItem[] = []
   const sourceFailures: DiscoverySourceFailure[] = []
   let anyRetryable = false
 
@@ -299,11 +310,29 @@ export async function collectYouTubeCandidates(
         ...requestOptions,
         limit: input.limitPerChannel,
       })
-      items.push(...channelItems)
+      items.push(...channelItems.map((raw) => ({ raw, trusted: true })))
     } catch (error) {
       const { failure: f, retryable } = sourceFailureFrom(
         channel,
         "channel",
+        error,
+      )
+      if (retryable) anyRetryable = true
+      sourceFailures.push(f)
+    }
+  }
+
+  for (const playlist of input.playlists) {
+    try {
+      const playlistItems = await options.client.listPlaylistVideos(playlist, {
+        ...requestOptions,
+        limit: input.limitPerPlaylist,
+      })
+      items.push(...playlistItems.map((raw) => ({ raw, trusted: true })))
+    } catch (error) {
+      const { failure: f, retryable } = sourceFailureFrom(
+        playlist,
+        "playlist",
         error,
       )
       if (retryable) anyRetryable = true
@@ -317,7 +346,7 @@ export async function collectYouTubeCandidates(
         ...requestOptions,
         limit: input.limitPerQuery,
       })
-      items.push(...queryItems)
+      items.push(...queryItems.map((raw) => ({ raw, trusted: false })))
     } catch (error) {
       const { failure: f, retryable } = sourceFailureFrom(query, "query", error)
       if (retryable) anyRetryable = true
@@ -325,7 +354,8 @@ export async function collectYouTubeCandidates(
     }
   }
 
-  const totalSources = input.channels.length + input.queries.length
+  const totalSources =
+    input.channels.length + input.playlists.length + input.queries.length
   if (totalSources > 0 && sourceFailures.length === totalSources) {
     throwDiscoveryFailure(
       failure("all_sources_failed", {
@@ -340,38 +370,47 @@ export async function collectYouTubeCandidates(
 }
 
 /**
- * Parse raw items into videos, drop unparseable ones, dedupe by videoId,
- * classify, and keep only videos that signal BOTH AI-generation and Christian
- * content (capped at `maxResults`).
+ * Parse raw items into videos, drop unparseable ones, dedupe by videoId, then
+ * keep videos by source:
+ *  - Trusted (curated channel/playlist): keep everything EXCEPT obvious
+ *    commentary/reaction/news junk. No AI/Christian keyword requirement, so
+ *    non-English and "Bible animation" content from your own list is kept.
+ *  - Keyword search: full filter — must signal BOTH AI and Christian and not
+ *    read as commentary.
+ * Trusted items are ordered first by the collector, so they win dedup ties.
+ * Capped at `maxResults`.
  */
 export function selectQualifyingVideos(
-  items: readonly YouTubeRawItem[],
+  items: readonly TaggedRawItem[],
   input: YouTubeDiscoveryWorkflowInput,
 ): { videos: YouTubeVideo[]; totals: YouTubeDiscoveryTotals } {
-  const parsed: YouTubeVideo[] = []
+  const parsed: Array<{ video: YouTubeVideo; trusted: boolean }> = []
   for (const item of items) {
-    const video = parseYouTubeVideo(item)
-    if (video) parsed.push(video)
+    const video = parseYouTubeVideo(item.raw)
+    if (video) parsed.push({ video, trusted: item.trusted })
   }
 
-  const byId = new Map<string, YouTubeVideo>()
-  for (const video of parsed) {
-    if (!byId.has(video.videoId)) byId.set(video.videoId, video)
+  const byId = new Map<string, { video: YouTubeVideo; trusted: boolean }>()
+  for (const entry of parsed) {
+    if (!byId.has(entry.video.videoId)) byId.set(entry.video.videoId, entry)
   }
   const deduped = [...byId.values()]
 
   const qualified: YouTubeVideo[] = []
   let excludedCommentary = 0
-  for (const video of deduped) {
+  for (const { video, trusted } of deduped) {
     const signals = classifyContent({
       caption: `${video.title} ${video.description}`,
       hashtags: video.hashtags,
     })
-    if (!qualifies(signals)) {
+    const keep = trusted ? !signals.isCommentary : qualifies(signals)
+    if (!keep) {
+      // Count drops attributable to the commentary filter: any trusted item
+      // dropped as commentary, plus search items that were AI+Christian but read
+      // as commentary (the exclusion filter's job).
       if (
-        signals.isAiGenerated &&
-        signals.isChristian &&
-        signals.isCommentary
+        signals.isCommentary &&
+        (trusted || (signals.isAiGenerated && signals.isChristian))
       ) {
         excludedCommentary += 1
       }
@@ -403,6 +442,7 @@ function buildReport(args: {
   startedAt: string
   finishedAt: string
   channels: string[]
+  playlists: string[]
   queries: string[]
   totals: YouTubeDiscoveryTotals
   sourceFailures: DiscoverySourceFailure[]
@@ -416,6 +456,7 @@ function buildReport(args: {
     startedAt: args.startedAt,
     finishedAt: args.finishedAt,
     channels: args.channels,
+    playlists: args.playlists,
     queries: args.queries,
     totals: args.totals,
     sourceFailures: args.sourceFailures,
@@ -461,6 +502,7 @@ export async function runYouTubeDiscovery(
         startedAt,
         finishedAt,
         channels: input.channels,
+        playlists: input.playlists,
         queries: input.queries,
         totals,
         sourceFailures,
@@ -499,7 +541,7 @@ const CollectStepOutputSchema = z.discriminatedUnion("ok", [
     .object({
       ok: z.literal(true),
       startedAt: z.string(),
-      items: z.array(RawItemSchema),
+      items: z.array(TaggedRawItemSchema),
       sourceFailures: z.array(DiscoverySourceFailureSchema),
     })
     .strict(),
@@ -539,7 +581,10 @@ const collectStep = createStep({
       return {
         ok: true as const,
         startedAt,
-        items: items as Record<string, unknown>[],
+        items: items.map((it) => ({
+          raw: it.raw as Record<string, unknown>,
+          trusted: it.trusted,
+        })),
         sourceFailures,
       }
     } catch (error) {
@@ -561,7 +606,7 @@ const filterStep = createStep({
     const input =
       YouTubeDiscoveryWorkflowInputSchema.parse(getInitData<unknown>())
     const { videos, totals } = selectQualifyingVideos(
-      inputData.items as YouTubeRawItem[],
+      inputData.items as TaggedRawItem[],
       input,
     )
     return {
@@ -592,6 +637,7 @@ const reportStep = createStep({
         startedAt: inputData.startedAt,
         finishedAt,
         channels: input.channels,
+        playlists: input.playlists,
         queries: input.queries,
         totals: inputData.totals,
         sourceFailures: inputData.sourceFailures,

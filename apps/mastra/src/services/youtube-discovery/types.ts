@@ -38,8 +38,8 @@ export type YouTubeVideo = {
   matchedChristian: string[]
 }
 
-/** How a single discovery source (a channel or a query) is identified. */
-export type DiscoverySourceKind = "channel" | "query"
+/** How a single discovery source (a channel, a playlist, or a query) is identified. */
+export type DiscoverySourceKind = "channel" | "playlist" | "query"
 
 export type DiscoverySourceFailure = {
   source: string
@@ -66,6 +66,7 @@ export type YouTubeDiscoveryReport = {
   startedAt: string
   finishedAt: string
   channels: string[]
+  playlists: string[]
   queries: string[]
   totals: YouTubeDiscoveryTotals
   sourceFailures: DiscoverySourceFailure[]
