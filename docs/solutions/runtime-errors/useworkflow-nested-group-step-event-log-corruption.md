@@ -1,5 +1,5 @@
 ---
-title: "useworkflow group workers must be single durable steps"
+title: "useworkflow group fanout must run inside one durable step"
 date: "2026-06-18"
 category: runtime-errors
 module: apps/admin
@@ -7,7 +7,7 @@ problem_type: runtime_error
 component: background_job
 symptoms:
   - "Production GraphQL trigger returned HTTP 200 with errors ['Unexpected error.'] after the transcript embedding backfill started"
-  - "Railway logs showed Workflow run failed with 1 uncommitted operation(s) for the processGroup step"
+  - "Railway logs showed Workflow run failed with 1 uncommitted operation(s) for processGroup, then for stepProcessTranscriptEmbeddingGroup"
   - "Workflow runtime reported Unconsumed event in event log and called the event log corrupted or invalid"
   - "Local unit tests and type checks passed because they exercised the workflow body without the production event-log runtime"
 root_cause: wrong_api
@@ -24,91 +24,99 @@ tags:
   - transcript-embeddings
   - backfill
   - event-log
-  - step-wrapper
+  - single-step
 ---
 
-# useworkflow group workers must be single durable steps
+# useworkflow group fanout must run inside one durable step
 
 ## Problem
 
-The production transcript embedding backfill failed after it successfully started because the grouped worker was itself a `"use step"` and then called helpers that also created durable `"use step"` operations. The production workflow runtime rejected that nested step shape as an invalid event log, so a full-corpus backfill could not complete even though local checks were green.
+The production transcript embedding backfill failed after it successfully started because the workflow body dynamically called the same `"use step"` group worker once per `(video, edition)` group. The production workflow runtime gave those repeated calls the same step identity and rejected the resulting event log, so a full-corpus backfill could not complete even though local checks were green.
 
 ## Symptoms
 
 - Admin GraphQL returned a success-shaped HTTP response with `triggerTranscriptEmbeddingBackfill: null` and `errors: ["Unexpected error."]` after roughly 103 seconds.
 - Production logs showed the backfill start line, including `totalTargets=208073`, `groupCount=1452`, and `concurrency=1`, then some per-target skip/fail logs, then a workflow runtime failure.
 - The runtime error included `Workflow run failed with 1 uncommitted operation(s): step "step//./src/workflows/transcriptEmbeddingBackfill//processGroup"` and `Unconsumed event in event log`.
+- Moving `processGroup` to an external `stepProcessTranscriptEmbeddingGroup` wrapper changed the failing step id but did not fix the class: production then failed with `step "//./src/workflows/_steps/process-transcript-embedding-group//stepProcessTranscriptEmbeddingGroup"`.
 - The earlier hotfix that coerced `TRANSCRIPT_EMBEDDING_CONCURRENCY` from string to number was necessary but separate. It fixed `p-limit` input validation, then exposed this deeper production-only workflow composition bug.
 
 ## What Didn't Work
 
 - **Stopping after the env coercion hotfix.** The first failure was real: Railway env vars arrive as strings and `p-limit` requires a number. After that fix deployed, the retry reached the group-processing phase and failed for a different reason.
-- **Keeping `processGroup` as an inline step inside the workflow file.** The worker needed Node-only services such as transcript source resolution, S3 artifact reads, and Mastra launch code. Making the helper plain inside the workflow file risked dragging those imports into workflow compilation, while leaving it as a nested step corrupted the production event log.
-- **Trusting local workflow-body tests alone.** Vitest runs the function body in an inert-directive mode; it does not replay the durable event log the same way production does. The nested shape only failed once the compiled workflow runtime executed it.
+- **One external step per group.** Moving the per-group worker to `_steps/process-transcript-embedding-group.ts` kept Node-only imports out of the workflow file, but the workflow still called the same `"use step"` function from `groups.map(...)`. Production rejected the repeated dynamic step events.
+- **Trusting local workflow-body tests alone.** Vitest runs the function body in an inert-directive mode; it does not replay the durable event log the same way production does. The repeated-step shape only failed once the compiled workflow runtime executed it.
 
 ## Solution
 
-Move the grouped worker into one external step wrapper and make that wrapper the only durable boundary for per-group work.
+Move the whole grouped fanout into one external step wrapper. The workflow calls `stepProcessTranscriptEmbeddingGroups(...)` exactly once. That plural step owns `pLimit + Promise.allSettled` internally and calls a plain per-group helper.
 
 ```ts
 // apps/admin/src/workflows/transcriptEmbeddingBackfill.ts
-import { stepProcessTranscriptEmbeddingGroup } from "./_steps/process-transcript-embedding-group"
+import { stepProcessTranscriptEmbeddingGroups } from "./_steps/process-transcript-embedding-group"
 
-const settled = await Promise.allSettled(
-  groups.map((group) =>
-    limit(() =>
-      stepProcessTranscriptEmbeddingGroup(group, input.mode ?? "idempotent"),
-    ),
-  ),
+const outcomes = await stepProcessTranscriptEmbeddingGroups(
+  groups,
+  input.mode ?? "idempotent",
+  concurrency,
 )
 ```
 
 ```ts
 // apps/admin/src/workflows/_steps/process-transcript-embedding-group.ts
-export async function stepProcessTranscriptEmbeddingGroup(
+async function processTranscriptEmbeddingGroup(
   group: BackfillGroup,
   mode: MastraTranscriptEmbeddingMode,
 ): Promise<BackfillOutcome[]> {
+  // Plain helper. No "use step" directive.
+}
+
+export async function stepProcessTranscriptEmbeddingGroups(
+  groups: readonly BackfillGroup[],
+  mode: MastraTranscriptEmbeddingMode,
+  concurrency: number,
+): Promise<BackfillOutcome[]> {
   "use step"
 
-  const outcomes: BackfillOutcome[] = []
-  for (const target of group.targets) {
-    const subtitleResolution = await resolveSubtitleTranscriptSource(
-      prisma,
-      target,
-    )
-    // Resolve subtitle first, fall back to manager transcript source, then
-    // launch Mastra and return typed per-target outcomes.
-  }
-  return outcomes
+  const limit = pLimit(concurrency)
+  const settled = await Promise.allSettled(
+    groups.map((group) =>
+      limit(() => processTranscriptEmbeddingGroup(group, mode)),
+    ),
+  )
+
+  return flattenGroupOutcomes(settled, groups)
 }
 ```
 
 The guard test is intentionally simple and source-level because this is a structural workflow constraint:
 
 ```ts
-it("uses one external group step so production workflow steps are not nested", async () => {
+it("uses one external groups step so production workflow steps are not dynamically repeated", async () => {
   const source = await readFile(
     new URL("./transcriptEmbeddingBackfill.ts", import.meta.url),
     "utf8",
   )
 
-  expect(source).toContain("stepProcessTranscriptEmbeddingGroup")
+  expect(source).toMatch(/stepProcessTranscriptEmbeddingGroups\(\s*groups,/)
+  expect(source).not.toMatch(/\bstepProcessTranscriptEmbeddingGroup\(/)
+  expect(source).not.toMatch(/Promise\.allSettled\(\s*groups\.map/)
   expect(source).not.toMatch(/\basync function processGroup\b/)
 })
 ```
 
 ## Why This Works
 
-Production sees one durable operation for each active group: `stepProcessTranscriptEmbeddingGroup`. Inside that boundary the code can call plain async helpers, load subtitle or manager transcript sources, launch Mastra, and emit typed outcomes without creating child workflow steps.
+Production sees one durable operation for the whole fanout: `stepProcessTranscriptEmbeddingGroups`. Inside that boundary the code can use ordinary async control flow, call a plain per-group helper many times, load subtitle or manager transcript sources, launch Mastra, and emit typed outcomes without creating repeated workflow step events.
 
-The split also keeps the workflow file import graph cleaner. `transcriptEmbeddingBackfill.ts` owns orchestration, grouping, bounded parallelism, and reporting. `_steps/process-transcript-embedding-group.ts` owns Node-only group work and can import Prisma, S3-backed manager artifact readers, subtitle resolvers, and Mastra client services without forcing those details into the top-level workflow body.
+The split also keeps the workflow file import graph cleaner. `transcriptEmbeddingBackfill.ts` owns mapping, enumeration, grouping, the start log, and reporting. `_steps/process-transcript-embedding-group.ts` owns Node-only fanout work and can import Prisma, S3-backed manager artifact readers, subtitle resolvers, Mastra client services, and `p-limit` without forcing those details into the top-level workflow body.
 
 ## Prevention
 
-- Treat grouped backfill workers as one durable step boundary. Do not create child `"use step"` functions from inside a per-group `"use step"` body.
-- If a group worker needs Node-only services, put it in an external `_steps/*` wrapper and import that single wrapper from the workflow file.
-- Add a structural guard test when fixing this class of bug. It should assert the workflow calls the external step wrapper and no longer defines the old inline grouped step.
+- Treat grouped backfill fanout as one durable step boundary. Do not call the same `"use step"` function dynamically from `groups.map(...)`.
+- Keep the repeated per-group operation as a plain helper inside the plural step module.
+- If the fanout needs Node-only services, put the plural wrapper in an external `_steps/*` module and import only that single wrapper from the workflow file.
+- Add a structural guard test when fixing this class of bug. It should assert the workflow calls the plural external step wrapper once and no longer performs `Promise.allSettled(groups.map(...step...))` in workflow scope.
 - Build or smoke the production workflow enough to exercise workflow manifest and step discovery. Local unit tests are still useful, but they cannot prove production event-log validity.
 
 ## Related
