@@ -466,6 +466,12 @@ export default function WatchVideoPage() {
           <>
             <ActionButtonRow
               downloadState={getRecord(video.slug)?.state ?? null}
+              downloadProgress={(() => {
+                const record = getRecord(video.slug)
+                return record && record.totalBytes > 0
+                  ? record.bytesWritten / record.totalBytes
+                  : null
+              })()}
               onDownload={() => {
                 const state = getRecord(video.slug)?.state
                 if (state && state !== "canceled") {

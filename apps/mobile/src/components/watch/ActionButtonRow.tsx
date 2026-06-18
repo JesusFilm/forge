@@ -1,10 +1,12 @@
+import { type ReactNode } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { ACCENT, TEXT_SECONDARY } from "../../lib/color"
+import { ACCENT_ON_DARK, BG_COLOR, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import type { OfflineDownloadState } from "../../lib/offlineManifest"
+import { DownloadProgressRing } from "./DownloadProgressRing"
 
 // Green for a completed offline copy (the "downloaded" tick).
 const DOWNLOADED_COLOR = "#34d399"
@@ -17,6 +19,8 @@ export interface ActionButtonRowProps {
   onShare: () => void
   /** Per-video offline state; drives the Download button's icon/label/color. */
   downloadState?: OfflineDownloadState | null
+  /** Download progress (0..1) for the in-progress ring; null when unknown. */
+  downloadProgress?: number | null
 }
 
 type ActionItem = {
@@ -24,6 +28,56 @@ type ActionItem = {
   label: string
   color: string
   onPress: () => void
+  /** Replaces the plain icon (e.g. the progress ring) when present. */
+  node?: ReactNode
+}
+
+const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
+  new Set<OfflineDownloadState>(["downloading", "queued", "paused"])
+
+/**
+ * The Download button while a transfer is live: a circular progress ring around
+ * a small glyph, labelled with the percentage so the user can see how much has
+ * downloaded. Falls back to {@link downloadAction} for downloaded/failed/idle.
+ */
+function downloadingAction(
+  state: OfflineDownloadState,
+  progress: number | null | undefined,
+  onPress: () => void,
+): ActionItem {
+  const pct =
+    progress != null && progress > 0 ? Math.round(progress * 100) : null
+  const label =
+    state === "queued"
+      ? "Queued"
+      : state === "paused"
+        ? "Paused"
+        : pct != null
+          ? `${pct}%`
+          : "Downloading"
+  const node = (
+    <DownloadProgressRing
+      size={28}
+      strokeWidth={3}
+      progress={progress ?? 0}
+      color={ACCENT_ON_DARK}
+      trackColor="rgba(255, 255, 255, 0.18)"
+      cutoutColor={BG_COLOR}
+    >
+      <Ionicons
+        name={state === "paused" ? "pause" : "arrow-down"}
+        size={13}
+        color={ACCENT_ON_DARK}
+      />
+    </DownloadProgressRing>
+  )
+  return {
+    icon: "arrow-down-circle",
+    label,
+    color: ACCENT_ON_DARK,
+    onPress,
+    node,
+  }
 }
 
 function downloadAction(
@@ -36,22 +90,6 @@ function downloadAction(
         icon: "checkmark-circle",
         label: "Downloaded",
         color: DOWNLOADED_COLOR,
-        onPress,
-      }
-    case "downloading":
-      return {
-        icon: "arrow-down-circle",
-        label: "Downloading",
-        color: ACCENT,
-        onPress,
-      }
-    case "queued":
-      return { icon: "time-outline", label: "Queued", color: ACCENT, onPress }
-    case "paused":
-      return {
-        icon: "pause-circle-outline",
-        label: "Paused",
-        color: ACCENT,
         onPress,
       }
     case "failed":
@@ -77,11 +115,17 @@ export function ActionButtonRow({
   onSubtitles,
   onShare,
   downloadState,
+  downloadProgress,
 }: ActionButtonRowProps) {
   const typography = useTypography()
 
+  const downloadItem =
+    downloadState && IN_PROGRESS_STATES.has(downloadState)
+      ? downloadingAction(downloadState, downloadProgress, onDownload)
+      : downloadAction(downloadState, onDownload)
+
   const actions: ActionItem[] = [
-    downloadAction(downloadState, onDownload),
+    downloadItem,
     {
       icon: "globe-outline",
       label: "Language",
@@ -115,7 +159,9 @@ export function ActionButtonRow({
           accessibilityRole="button"
           accessibilityLabel={action.label}
         >
-          <Ionicons name={action.icon} size={24} color={action.color} />
+          {action.node ?? (
+            <Ionicons name={action.icon} size={24} color={action.color} />
+          )}
           <Text
             style={[
               styles.actionLabel,

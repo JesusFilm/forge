@@ -13,7 +13,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import {
   configureDownloadEngine,
   listExistingDownloadTasks,
+  notifyIosBackgroundComplete,
   startMediaDownload,
+  wireExistingTask,
+  type MediaDownloadHandlers,
 } from "../lib/downloadEngine"
 import { resolveBundle } from "../lib/downloadOutcome"
 import { reconcile } from "../lib/downloadReconciliation"
@@ -183,9 +186,129 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [removeRecord],
   )
 
+  // Build the native event handlers for one download, bound to its identity and
+  // sidecars. Shared by startDownload (fresh) and the launch reattach (re-bind
+  // a task that survived a restart) so both paths commit identically.
+  const buildHandlers = useCallback(
+    (args: {
+      videoSlug: string
+      committedPath: string
+      pendingPath: string
+      /** Total-size fallback when the OS hasn't reported one yet. */
+      fallbackTotalBytes: number
+      subtitleLanguageSlug: string | null
+      subtitleUrl: string | null
+      posterUrl: string | null
+    }): MediaDownloadHandlers => {
+      const { videoSlug, committedPath, pendingPath, fallbackTotalBytes } = args
+
+      const patch = (fields: Partial<OfflineDownloadRecord>) => {
+        const current = recordsRef.current[videoSlug]
+        if (!current) return
+        void writeRecord({ ...current, ...fields })
+      }
+
+      const finalize = async (location: string) => {
+        try {
+          // This module version delivers `location` already equal to the task
+          // destination (our pendingPath) — the native side has moved the bytes
+          // there. So the "move" is a pending -> committed rename. Guard the
+          // benign cases (already committed, or the source is missing because a
+          // prior attempt already moved it) so they don't force `failed`.
+          const source = (await fileExists(location)) ? location : pendingPath
+          if (source !== committedPath) {
+            if (await fileExists(source)) {
+              await moveFile(source, committedPath)
+            } else if (!(await fileExists(committedPath))) {
+              patch({ state: "failed" })
+              return
+            }
+          }
+          let subtitleVerified = false
+          let subtitleTerminallyFailed = false
+          if (args.subtitleLanguageSlug && args.subtitleUrl) {
+            try {
+              await downloadToFile(
+                args.subtitleUrl,
+                buildSubtitlePath(
+                  OFFLINE_ROOT,
+                  videoSlug,
+                  args.subtitleLanguageSlug,
+                ),
+              )
+              subtitleVerified = true
+            } catch {
+              subtitleTerminallyFailed = true
+            }
+          }
+          let posterPath: string | null = null
+          if (args.posterUrl) {
+            const target = buildPosterPath(OFFLINE_ROOT, videoSlug)
+            try {
+              await downloadToFile(args.posterUrl, target)
+              posterPath = target
+            } catch {
+              posterPath = null
+            }
+          }
+          const bundle = resolveBundle({
+            mediaVerified: true,
+            subtitleRequested: args.subtitleLanguageSlug != null,
+            subtitleVerified,
+            subtitleTerminallyFailed,
+          })
+          if (bundle.kind === "downloaded") {
+            patch({
+              state: "downloaded",
+              committedPath,
+              pendingPath: null,
+              posterPath,
+              subtitleLanguageSlug: bundle.subtitleDegraded
+                ? null
+                : args.subtitleLanguageSlug,
+            })
+          } else {
+            patch({ state: "failed" })
+          }
+        } catch {
+          patch({ state: "failed" })
+        }
+      }
+
+      return {
+        onBegin: ({ expectedBytes }) =>
+          patch({
+            totalBytes: expectedBytes > 0 ? expectedBytes : fallbackTotalBytes,
+          }),
+        onProgress: ({ bytesDownloaded, bytesTotal }) =>
+          patch({
+            bytesWritten: bytesDownloaded,
+            totalBytes: bytesTotal || fallbackTotalBytes,
+          }),
+        onDone: ({ location }) => {
+          void finalize(location)
+          // Tell iOS this background-session job is done, or it throttles the
+          // app's future background time and later transfers stall mid-flight.
+          notifyIosBackgroundComplete(videoSlug)
+        },
+        onInterruption: (classification) => {
+          if (classification.state === "canceled") {
+            void deleteDownload(videoSlug)
+          } else {
+            patch({ state: classification.state })
+          }
+          notifyIosBackgroundComplete(videoSlug)
+        },
+      }
+    },
+    [writeRecord, deleteDownload],
+  )
+
   // Defensive launch reattach: reconcile records against live native tasks and
-  // on-disk files, applying the manifest-safe action now. Restarting interrupted
-  // transfers (rebind/requeue/repair) is a follow-up on the queue.
+  // on-disk files, dropping orphans, then RE-BIND handlers onto every surviving
+  // in-flight task. A reattached task object carries no JS callbacks, so a
+  // transfer that completes after this launch would otherwise fire its done
+  // event into the void and never advance to "downloaded".
   useEffect(() => {
     if (!isReady) return
     let cancelled = false
@@ -216,10 +339,50 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           pendingFileSlugs,
           committedFileSlugs,
         })
+        const droppedSlugs = new Set<string>()
         for (const action of actions) {
           if (cancelled) return
-          if (action.action === "dropRecord")
+          if (action.action === "dropRecord") {
+            droppedSlugs.add(action.videoSlug)
             await removeRecord(action.videoSlug)
+          }
+        }
+        if (cancelled) return
+        for (const task of tasks) {
+          const record = recordsRef.current[task.id]
+          if (!record || droppedSlugs.has(task.id)) continue
+          if (
+            record.state !== "downloading" &&
+            record.state !== "queued" &&
+            record.state !== "paused"
+          ) {
+            continue
+          }
+          const committedPath =
+            record.committedPath ??
+            buildCommittedPath(
+              OFFLINE_ROOT,
+              record.videoSlug,
+              record.renditionDocumentId,
+            )
+          const pendingPath =
+            record.pendingPath ??
+            buildPendingPath(OFFLINE_ROOT, record.videoSlug, "reattach")
+          // The chosen subtitle's volatile URL is not persisted, so a sidecar
+          // can't be re-fetched on reattach — commit media-only (v1 emits no
+          // subtitles; sidecar re-association is a follow-up).
+          wireExistingTask(
+            task,
+            buildHandlers({
+              videoSlug: record.videoSlug,
+              committedPath,
+              pendingPath,
+              fallbackTotalBytes: record.totalBytes,
+              subtitleLanguageSlug: null,
+              subtitleUrl: null,
+              posterUrl: null,
+            }),
+          )
         }
       } catch {
         // Reattach is best-effort and must never break boot.
@@ -228,7 +391,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isReady, removeRecord])
+  }, [isReady, removeRecord, buildHandlers])
 
   const startDownload = useCallback(
     async (request: StartDownloadRequest) => {
@@ -275,66 +438,6 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         totalBytes: Number(rendition.size) || 0,
       })
 
-      const patch = (fields: Partial<OfflineDownloadRecord>) => {
-        const current = recordsRef.current[videoSlug]
-        if (!current) return
-        void writeRecord({ ...current, ...fields })
-      }
-
-      const finalize = async (location: string) => {
-        try {
-          await moveFile(location, committedPath)
-          let subtitleVerified = false
-          let subtitleTerminallyFailed = false
-          if (request.subtitleLanguageSlug && request.subtitleUrl) {
-            try {
-              await downloadToFile(
-                request.subtitleUrl,
-                buildSubtitlePath(
-                  OFFLINE_ROOT,
-                  videoSlug,
-                  request.subtitleLanguageSlug,
-                ),
-              )
-              subtitleVerified = true
-            } catch {
-              subtitleTerminallyFailed = true
-            }
-          }
-          let posterPath: string | null = null
-          if (request.posterUrl) {
-            const target = buildPosterPath(OFFLINE_ROOT, videoSlug)
-            try {
-              await downloadToFile(request.posterUrl, target)
-              posterPath = target
-            } catch {
-              posterPath = null
-            }
-          }
-          const bundle = resolveBundle({
-            mediaVerified: true,
-            subtitleRequested: request.subtitleLanguageSlug != null,
-            subtitleVerified,
-            subtitleTerminallyFailed,
-          })
-          if (bundle.kind === "downloaded") {
-            patch({
-              state: "downloaded",
-              committedPath,
-              pendingPath: null,
-              posterPath,
-              subtitleLanguageSlug: bundle.subtitleDegraded
-                ? null
-                : request.subtitleLanguageSlug,
-            })
-          } else {
-            patch({ state: "failed" })
-          }
-        } catch {
-          patch({ state: "failed" })
-        }
-      }
-
       startMediaDownload(
         {
           id: videoSlug,
@@ -342,26 +445,18 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           destination: pendingPath,
           allowCellular: request.allowCellular,
         },
-        {
-          onProgress: ({ bytesDownloaded, bytesTotal }) =>
-            patch({
-              bytesWritten: bytesDownloaded,
-              totalBytes: bytesTotal || Number(rendition.size) || 0,
-            }),
-          onDone: ({ location }) => {
-            void finalize(location)
-          },
-          onInterruption: (classification) => {
-            if (classification.state === "canceled") {
-              void deleteDownload(videoSlug)
-            } else {
-              patch({ state: classification.state })
-            }
-          },
-        },
+        buildHandlers({
+          videoSlug,
+          committedPath,
+          pendingPath,
+          fallbackTotalBytes: Number(rendition.size) || 0,
+          subtitleLanguageSlug: request.subtitleLanguageSlug,
+          subtitleUrl: request.subtitleUrl,
+          posterUrl: request.posterUrl,
+        }),
       )
     },
-    [wifiOnly, writeRecord, deleteDownload],
+    [wifiOnly, writeRecord, buildHandlers],
   )
 
   const value = useMemo<DownloadsContextValue>(

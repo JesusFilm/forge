@@ -83,7 +83,7 @@ export default defineConfig(
     },
   },
   {
-    files: ["apps/roadmap/scripts/**/*.js"],
+    files: ["apps/roadmap/scripts/**/*.js", "apps/mobile/plugins/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",

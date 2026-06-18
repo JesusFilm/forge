@@ -41,9 +41,34 @@ export function configureDownloadEngine(opts: { wifiOnly: boolean }): void {
 }
 
 export type MediaDownloadHandlers = {
+  /** Fires once when the transfer begins, carrying the OS-reported size. */
+  onBegin?: (p: { expectedBytes: number }) => void
   onProgress: (p: { bytesDownloaded: number; bytesTotal: number }) => void
   onDone: (p: { location: string; bytesTotal: number }) => void
   onInterruption: (classification: OutcomeClassification) => void
+}
+
+/**
+ * Bind the native task events to our handlers. Shared by {@link
+ * startMediaDownload} (fresh task) and {@link wireExistingTask} (a task that
+ * survived a prior session): a reattached task object carries NO callbacks, so
+ * its events would fire into the void until they are re-bound here.
+ */
+function attachHandlers(
+  task: EngineTask,
+  handlers: MediaDownloadHandlers,
+): EngineTask {
+  return task
+    .begin(({ expectedBytes }) => handlers.onBegin?.({ expectedBytes }))
+    .progress(({ bytesDownloaded, bytesTotal }) =>
+      handlers.onProgress({ bytesDownloaded, bytesTotal }),
+    )
+    .done(({ location, bytesTotal }) =>
+      handlers.onDone({ location, bytesTotal }),
+    )
+    .error((params) =>
+      handlers.onInterruption(classifyInterruption(mapNativeError(params))),
+    )
 }
 
 export type MediaDownloadSpec = {
@@ -74,18 +99,20 @@ export function startMediaDownload(
     isAllowedOverRoaming: spec.allowCellular,
   })
 
-  task
-    .progress(({ bytesDownloaded, bytesTotal }) =>
-      handlers.onProgress({ bytesDownloaded, bytesTotal }),
-    )
-    .done(({ location, bytesTotal }) =>
-      handlers.onDone({ location, bytesTotal }),
-    )
-    .error((params) =>
-      handlers.onInterruption(classifyInterruption(mapNativeError(params))),
-    )
+  return attachHandlers(task, handlers)
+}
 
-  return task
+/**
+ * Re-bind handlers onto a task recovered via {@link listExistingDownloadTasks}
+ * after an app restart. Without this, a transfer that completes post-relaunch
+ * dispatches its done event into a task with no callbacks and can never reach
+ * the committed state.
+ */
+export function wireExistingTask(
+  task: EngineTask,
+  handlers: MediaDownloadHandlers,
+): void {
+  attachHandlers(task, handlers)
 }
 
 /** Live native tasks surviving from a prior session — feeds reconciliation. */
