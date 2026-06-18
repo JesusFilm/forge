@@ -15,7 +15,7 @@
 //                                     across every language in a group,
 //                                     so fetching it once per group
 //                                     collapses S3 reads from N×L to N.
-//   4. processGroup                 — per-group worker:
+//   4. stepProcessTranscriptEmbeddingGroups — one durable step that:
 //        4a. Load transcript source artifact ONCE for the group.
 //        4b. For each language in the group, call Mastra with Admin
 //            target identifiers so Mastra embeds and Admin ingest stores.
@@ -44,7 +44,6 @@
 // ['en', 'es', 'fr']` constant + an `en` fallback; both dropped once
 // the enumeration became data-derived.
 
-import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import { env } from "@/config/env"
 import {
@@ -56,7 +55,7 @@ import type {
   ResolvedTranscriptEmbeddingSource,
   TranscriptSourceGap,
 } from "@/services/transcript-source-resolver.service"
-import { stepProcessTranscriptEmbeddingGroup } from "./_steps/process-transcript-embedding-group"
+import { stepProcessTranscriptEmbeddingGroups } from "./_steps/process-transcript-embedding-group"
 
 /**
  * Default per-group concurrency for the Mastra transcript-embedding
@@ -247,13 +246,10 @@ export async function runTranscriptEmbeddingBackfill(
   // collapses from per-target to per-group.
   const groups = groupTargetsByVideoEdition(targets)
 
-  // Bounded parallelism over GROUPS (Stage 2 reshape). Same shape /
-  // same rule as R1 — see the R1 sibling for the full rationale and
-  // docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md
-  // for the canonical HOW. feat-132's per-language step now launches
-  // Mastra instead of writing Manager-produced vectors directly.
+  // Bounded parallelism is intentionally inside one durable step below.
+  // Production useworkflow rejects dynamic repeated calls to the same step
+  // function from a groups.map(...) loop with event-log corruption.
   const concurrency = transcriptEmbeddingConcurrency()
-  const limit = pLimit(concurrency)
 
   // Structured start log so the workflow's effective concurrency is
   // observable from any trigger path. `groupCount` surfaces Stage 2's
@@ -272,51 +268,11 @@ export async function runTranscriptEmbeddingBackfill(
     }),
   )
 
-  // One batch wall-clock baseline; reused for synthetic-failed
-  // outcomes so dashboards built on `outcomes[].durationMs` aren't
-  // polluted with `0`s when the defensive branch fires.
-  const batchStartedAt = Date.now()
-
-  const settled = await Promise.allSettled(
-    groups.map((group) =>
-      limit(() =>
-        // Deliberately do NOT catch here. `processGroup` already
-        // returns typed outcomes for every per-target error it can see
-        // (including a group-level artifact-load failure cascaded to
-        // per-language outcomes); an unexpected throw past that
-        // boundary should propagate as a `rejected` settled result so
-        // the synthetic-failed branch below records it (with real
-        // elapsed time) and the per-target isolation contract is
-        // observable to tests.
-        stepProcessTranscriptEmbeddingGroup(group, input.mode ?? "idempotent"),
-      ),
-    ),
+  const outcomes = await stepProcessTranscriptEmbeddingGroups(
+    groups,
+    input.mode ?? "idempotent",
+    concurrency,
   )
-
-  const outcomes: BackfillOutcome[] = settled.flatMap((result, i) => {
-    const group = groups[i]!
-    if (result.status === "fulfilled") return result.value
-    // Synthetic-failed cascade for the WHOLE group — a thrown error
-    // past `processGroup`'s defensive branch is a step-plumbing fault
-    // and should not aggregate as "one of the languages failed";
-    // every language in the affected group lost its work.
-    const reason =
-      result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-    const durationMs = Date.now() - batchStartedAt
-    return group.targets.map((target) => {
-      const synthetic: BackfillOutcome = {
-        status: "failed",
-        target,
-        language: target.language,
-        reason,
-        durationMs,
-      }
-      logOutcome(synthetic)
-      return synthetic
-    })
-  })
 
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,
@@ -590,66 +546,6 @@ function stepReport(args: {
     failed,
     missingArtifacts: deriveMissingArtifacts(args.outcomes),
     sourceGaps: deriveSourceGaps(args.outcomes),
-  }
-}
-
-function logOutcome(outcome: BackfillOutcome): void {
-  try {
-    switch (outcome.status) {
-      case "succeeded":
-        console.log(
-          JSON.stringify({
-            workflow: "transcript-embedding-backfill",
-            event: "transcript_index_complete",
-            coreId: outcome.target.coreId,
-            videoEditionId: outcome.target.videoEditionId,
-            language: outcome.language,
-            chunksIndexed: outcome.chunksIndexed,
-            embeddingsWritten: outcome.embeddingsWritten,
-            chunksPruned: outcome.chunksPruned,
-            durationMs: outcome.durationMs,
-          }),
-        )
-        return
-      case "skipped":
-        console.log(
-          JSON.stringify({
-            workflow: "transcript-embedding-backfill",
-            event: "transcript_index_skipped",
-            coreId: outcome.target.coreId,
-            videoEditionId: outcome.target.videoEditionId,
-            language: outcome.language,
-            reason: outcome.reason,
-            durationMs: outcome.durationMs,
-          }),
-        )
-        return
-      case "failed":
-        console.error(
-          JSON.stringify({
-            workflow: "transcript-embedding-backfill",
-            event: "transcript_index_failed",
-            coreId: outcome.target.coreId,
-            videoEditionId: outcome.target.videoEditionId,
-            language: outcome.language,
-            reason: outcome.reason,
-            durationMs: outcome.durationMs,
-          }),
-        )
-        return
-      default: {
-        const _exhaustive: never = outcome
-        throw new Error(
-          `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
-        )
-      }
-    }
-  } catch (logErr) {
-    console.error(
-      `[transcript-embedding-backfill] logOutcome failed: ${
-        logErr instanceof Error ? logErr.message : String(logErr)
-      }`,
-    )
   }
 }
 

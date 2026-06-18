@@ -1,3 +1,4 @@
+import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import {
   ManagerArtifactError,
@@ -215,16 +216,14 @@ async function launchTranscriptEmbedding(
 }
 
 /**
- * One durable group step. Keep this as the only step boundary for group work:
- * creating child `"use step"` calls from inside the group worker corrupts the
- * production workflow event log.
+ * Plain per-group worker. This deliberately is NOT a `"use step"` function:
+ * production useworkflow gives every call to the same step function the same
+ * step id, so dynamic groups.map(stepFn) fanout corrupts the event log.
  */
-export async function stepProcessTranscriptEmbeddingGroup(
+async function processTranscriptEmbeddingGroup(
   group: BackfillGroup,
   mode: MastraTranscriptEmbeddingMode,
 ): Promise<BackfillOutcome[]> {
-  "use step"
-
   const groupStartedAt = Date.now()
   let managerSourceState: ManagerSourceLoadState = { status: "not-attempted" }
 
@@ -306,4 +305,49 @@ export async function stepProcessTranscriptEmbeddingGroup(
     outcomes.push(outcome)
   }
   return outcomes
+}
+
+/**
+ * One durable step for all group work. Keep bounded parallelism inside this
+ * step so the production workflow event log sees a single step event rather
+ * than thousands of repeated dynamic group step events.
+ */
+export async function stepProcessTranscriptEmbeddingGroups(
+  groups: readonly BackfillGroup[],
+  mode: MastraTranscriptEmbeddingMode,
+  concurrency: number,
+): Promise<BackfillOutcome[]> {
+  "use step"
+
+  const limit = pLimit(concurrency)
+  const batchStartedAt = Date.now()
+
+  const settled = await Promise.allSettled(
+    groups.map((group) =>
+      limit(() => processTranscriptEmbeddingGroup(group, mode)),
+    ),
+  )
+
+  return settled.flatMap((result, i) => {
+    const group = groups[i]!
+    if (result.status === "fulfilled") return result.value
+
+    const reason =
+      result.reason instanceof Error
+        ? result.reason.message
+        : String(result.reason)
+    const durationMs = Date.now() - batchStartedAt
+
+    return group.targets.map((target) => {
+      const synthetic: BackfillOutcome = {
+        status: "failed",
+        target,
+        language: target.language,
+        reason,
+        durationMs,
+      }
+      logOutcome(synthetic)
+      return synthetic
+    })
+  })
 }

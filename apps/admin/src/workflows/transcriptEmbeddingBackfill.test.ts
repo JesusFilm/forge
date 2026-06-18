@@ -436,13 +436,15 @@ Subtitle transcript text.
     })
   })
 
-  it("uses one external group step so production workflow steps are not nested", async () => {
+  it("uses one external groups step so production workflow steps are not dynamically repeated", async () => {
     const source = await readFile(
       new URL("./transcriptEmbeddingBackfill.ts", import.meta.url),
       "utf8",
     )
 
-    expect(source).toContain("stepProcessTranscriptEmbeddingGroup")
+    expect(source).toMatch(/stepProcessTranscriptEmbeddingGroups\(\s*groups,/)
+    expect(source).not.toMatch(/\bstepProcessTranscriptEmbeddingGroup\(/)
+    expect(source).not.toMatch(/Promise\.allSettled\(\s*groups\.map/)
     expect(source).not.toMatch(/\basync function processGroup\b/)
   })
 
