@@ -365,6 +365,20 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/es/es-ES/spanish-castilian.html")
   })
 
+  it("rewrites localized videos indexes while preserving the raw language slug", async () => {
+    const response = await proxy(
+      makeRequest("/spanish-latin-american.html/videos"),
+    )
+    expect(rewritePath(response)).toBe(
+      "/es/es-419/videos/spanish-latin-american",
+    )
+  })
+
+  it("rewrites unsupported-language videos indexes with English chrome fallback", async () => {
+    const response = await proxy(makeRequest("/aari.html/videos"))
+    expect(rewritePath(response)).toBe("/en/en/videos/aari")
+  })
+
   it("404s bcp47 catalog keys as one-segment public homes", async () => {
     const response = await proxy(makeRequest("/en.html"))
     expect(response.status).toBe(404)

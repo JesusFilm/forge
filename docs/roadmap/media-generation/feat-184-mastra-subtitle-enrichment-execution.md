@@ -11,6 +11,7 @@ depends_on:
   - "feat-129"
 blocks:
   - "feat-188"
+  - "feat-192"
 tags:
   - "manager"
   - "mastra"

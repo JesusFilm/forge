@@ -1,4 +1,9 @@
-import type { MuxSyncComparison, SceneEmbeddingSyncReport } from "@/types/job"
+import type {
+  MuxSyncComparison,
+  SceneEmbeddingSyncReport,
+  SubtitleValidationStepSummary,
+} from "@/types/job"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 
 export type ReviewMode = "after" | "before"
 
@@ -81,10 +86,46 @@ export type ReviewChaptersDomain =
       message: string
     }
 
+export type ReviewSubtitleValidationArtifact = {
+  key: string
+  href: string
+  languageCode: string
+}
+
+export type ReviewSubtitleValidationDomain =
+  | {
+      status: "available"
+      summary: SubtitleValidationStepSummary
+      artifacts: ReviewSubtitleValidationArtifact[]
+    }
+  | {
+      status: "unavailable"
+      reason: string
+    }
+
+export type ReviewTranscriptCorrectionArtifact = {
+  key: string
+  href: string
+  kind: "report" | "raw_transcript" | "raw_subtitles"
+}
+
+export type ReviewTranscriptCorrectionDomain =
+  | {
+      status: "available"
+      summary: TranscriptScriptureCorrectionStepSummary
+      artifacts: ReviewTranscriptCorrectionArtifact[]
+    }
+  | {
+      status: "unavailable"
+      reason: string
+    }
+
 export type JobReviewSnapshot = {
   subtitles: ReviewSubtitleDomain
   metadata: ReviewMetadataDomain
   chapters: ReviewChaptersDomain
+  validation?: ReviewSubtitleValidationDomain
+  transcriptCorrection?: ReviewTranscriptCorrectionDomain
 }
 
 export type JobReviewContext = {

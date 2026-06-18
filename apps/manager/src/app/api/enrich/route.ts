@@ -41,6 +41,8 @@ type VideoNode = {
   documentId: string
   requestedId?: string
   coreId?: string | null
+  title?: string | null
+  label?: string | null
   primaryLanguage?: LanguageNode | null
   variants?: Parameters<typeof materializeEnrichmentTargetForJob>[0]["variants"]
 }
@@ -172,6 +174,8 @@ async function readAdminEnrichmentVideos(
       documentId: video.documentId,
       requestedId,
       coreId: video.coreId,
+      title: video.title ?? null,
+      label: video.label ?? null,
       primaryLanguage: languageNodeFrom(video.primaryLanguage),
       variants: (video.variants ?? []).map((variant) => ({
         language: languageNodeFrom(variant?.language),
@@ -209,6 +213,9 @@ export function buildMaterializationMetadata(params: {
     requestedTargetLanguageIds,
     resolvedTargetLanguageCodes,
   } = params
+  const sourceInputMetadata = materialization.sourceInputUrl
+    ? redactSourceUrlForMetadata(materialization.sourceInputUrl)
+    : {}
 
   const baseMetadata = {
     mode: materialization.materializationMode,
@@ -232,9 +239,7 @@ export function buildMaterializationMetadata(params: {
 
   if (materialization.materializationMode === "snapshot_to_stage_clone") {
     return {
-      ...(materialization.sourceInputUrl
-        ? redactSourceUrlForMetadata(materialization.sourceInputUrl)
-        : {}),
+      ...sourceInputMetadata,
       ...baseMetadata,
       targetEnvironment: "mux-stage",
       stageMuxAssetId: materialization.targetMuxAssetId,
@@ -243,6 +248,7 @@ export function buildMaterializationMetadata(params: {
   }
 
   return {
+    ...sourceInputMetadata,
     ...baseMetadata,
     targetEnvironment: "mux-production",
     reusedMuxAssetId: materialization.targetMuxAssetId,
@@ -277,6 +283,7 @@ export async function createEnrichmentJobs(
         targetLanguageIds,
         {
           videoDocumentId: video.documentId,
+          sourceMediaTitle: video.title ?? undefined,
           initialArtifacts: {
             transcriptionRouting: {
               kind: "metadata",
@@ -430,6 +437,7 @@ export async function createEnrichmentJobs(
           normalizedTargets.targetLanguageCodes,
           {
             videoDocumentId: video.documentId,
+            sourceMediaTitle: video.title ?? undefined,
             initialArtifacts: {
               transcriptionRouting: {
                 kind: "metadata",
@@ -471,6 +479,8 @@ export async function createEnrichmentJobs(
             runAudioCleanup: isAudioCleanupConfigured(),
             initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
             videoDocumentId: video.documentId,
+            videoTitle: video.title ?? undefined,
+            videoLabel: video.label ?? undefined,
             requestedTranscriptionProvider: "automatic",
           })
         } catch (err: unknown) {

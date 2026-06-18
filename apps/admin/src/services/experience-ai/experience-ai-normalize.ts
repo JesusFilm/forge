@@ -5,6 +5,7 @@ import type {
   SectionContentBlock,
 } from "@/domain/blocks"
 import { BlocksSchema } from "@/domain/blocks"
+import { GENERATION_MIN_BLOCKS } from "./experience-ai.schemas"
 import type {
   DraftAnyBlock,
   DraftBlock,
@@ -63,13 +64,31 @@ export type NormalizedExperienceDraft = {
   blocks: Block[]
 }
 
+/**
+ * Literal-union of every normalization failure the AI-draft generation path
+ * can throw. Consumers (e.g. `generate-draft-action.ts`) classify on `.code`
+ * with an exhaustive `switch` + `never` fallthrough, so ADDING a member here
+ * is a compile-time forcing function: every exhaustive handler stops compiling
+ * until the new code is mapped.
+ *
+ * - `UNKNOWN_VIDEO_REF` / `UNKNOWN_SECTION_REF` — the model referenced a
+ *   candidate/section that does not exist (unresolvable reference).
+ * - `DUPLICATE_SECTION_REF` — reserved for a duplicate-section failure.
+ * - `INVALID_BLOCKS` — the normalized output failed `BlocksSchema` shape
+ *   validation.
+ * - `BELOW_MIN_BLOCKS` — the normalized output is shape-valid but has fewer
+ *   than `GENERATION_MIN_BLOCKS` top-level blocks (generation-path minimum).
+ */
+export type ExperienceAiNormalizationErrorCode =
+  | "UNKNOWN_VIDEO_REF"
+  | "UNKNOWN_SECTION_REF"
+  | "DUPLICATE_SECTION_REF"
+  | "INVALID_BLOCKS"
+  | "BELOW_MIN_BLOCKS"
+
 export class ExperienceAiNormalizationError extends Error {
   constructor(
-    readonly code:
-      | "UNKNOWN_VIDEO_REF"
-      | "UNKNOWN_SECTION_REF"
-      | "DUPLICATE_SECTION_REF"
-      | "INVALID_BLOCKS",
+    readonly code: ExperienceAiNormalizationErrorCode,
     message: string,
   ) {
     super(message)
@@ -523,11 +542,24 @@ export function normalizeExperienceDraft(
     normalizeDraftBlock(block, sectionKeys, candidateMap, [index]),
   ) as Block[]
 
+  // `BlocksSchema` is intentionally left permissive: it governs ALL
+  // persistence — including legitimate manual experiences that may have a
+  // single block — so it carries no global `.min()`. The generation
+  // minimum-block-count rule is enforced HERE, on the generation path only,
+  // single-sourced from `GENERATION_MIN_BLOCKS` (the same constant the
+  // workflow's `DraftExperienceSchema.blocks.min(...)` gate uses).
   const parsed = BlocksSchema.safeParse(blocks)
   if (!parsed.success) {
     throw new ExperienceAiNormalizationError(
       "INVALID_BLOCKS",
       "AI draft did not normalize into a valid admin BlocksSchema payload",
+    )
+  }
+
+  if (parsed.data.length < GENERATION_MIN_BLOCKS) {
+    throw new ExperienceAiNormalizationError(
+      "BELOW_MIN_BLOCKS",
+      `AI draft normalized into ${parsed.data.length} block(s); generation requires at least ${GENERATION_MIN_BLOCKS}`,
     )
   }
 

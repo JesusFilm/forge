@@ -101,6 +101,26 @@ type ManagerJobRow = {
   errors: unknown
 }
 
+type SourceTitleFallback = {
+  sourceCollectionTitle?: string
+  sourceMediaTitle?: string
+}
+
+type VideoTitleLocale = {
+  locale: string | null
+  title: string | null
+}
+
+type VideoTitleFallbackRow = {
+  id: string
+  locales: VideoTitleLocale[]
+  parents: Array<{
+    parent: {
+      locales: VideoTitleLocale[]
+    } | null
+  }>
+}
+
 function assertManagerJobAccess(user: Principal | null) {
   if (!hasPermission(user, "write:manager-jobs")) {
     throw new ForbiddenError()
@@ -115,7 +135,110 @@ function toJobSteps(value: unknown): ManagerJobStep[] {
   return Array.isArray(value) ? (value as ManagerJobStep[]) : []
 }
 
-function toJobRecord(row: ManagerJobRow): ManagerJobRecord {
+function trimNonBlank(value: string | null | undefined): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function titleFromLocales(locales: VideoTitleLocale[]): string | undefined {
+  const titledLocales = locales
+    .map((locale) => ({
+      locale: locale.locale,
+      title: trimNonBlank(locale.title),
+    }))
+    .filter(
+      (locale): locale is { locale: string | null; title: string } =>
+        locale.title != null,
+    )
+
+  return (
+    titledLocales.find((locale) => locale.locale === "en")?.title ??
+    titledLocales[0]?.title
+  )
+}
+
+function sourceTitleFallbackFromVideo(
+  video: VideoTitleFallbackRow,
+): SourceTitleFallback {
+  const parentTitles = Array.from(
+    new Set(
+      video.parents
+        .map((relation) =>
+          relation.parent
+            ? titleFromLocales(relation.parent.locales)
+            : undefined,
+        )
+        .filter((title): title is string => title != null),
+    ),
+  )
+
+  return {
+    sourceMediaTitle: titleFromLocales(video.locales),
+    sourceCollectionTitle:
+      parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
+  }
+}
+
+async function loadSourceTitleFallbacks(
+  prisma: PrismaClient,
+  rows: ManagerJobRow[],
+): Promise<Map<string, SourceTitleFallback>> {
+  const videoIds = Array.from(
+    new Set(
+      rows
+        .filter((row) => !row.sourceMediaTitle || !row.sourceCollectionTitle)
+        .map((row) => trimNonBlank(row.videoDocumentId))
+        .filter((id): id is string => id != null),
+    ),
+  )
+
+  if (videoIds.length === 0) {
+    return new Map()
+  }
+
+  const videos = await prisma.video.findMany({
+    where: { id: { in: videoIds }, deletedAt: null },
+    include: {
+      locales: {
+        where: { deletedAt: null, title: { not: null } },
+        select: { locale: true, title: true },
+        orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+      },
+      parents: {
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        include: {
+          parent: {
+            include: {
+              locales: {
+                where: { deletedAt: null, title: { not: null } },
+                select: { locale: true, title: true },
+                orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  return new Map(
+    videos.map((video) => [
+      video.id,
+      sourceTitleFallbackFromVideo(video as VideoTitleFallbackRow),
+    ]),
+  )
+}
+
+function toJobRecord(
+  row: ManagerJobRow,
+  sourceTitleFallback: SourceTitleFallback = {},
+): ManagerJobRecord {
+  const sourceCollectionTitle =
+    trimNonBlank(row.sourceCollectionTitle) ??
+    sourceTitleFallback.sourceCollectionTitle
+  const sourceMediaTitle =
+    trimNonBlank(row.sourceMediaTitle) ?? sourceTitleFallback.sourceMediaTitle
+
   return {
     id: row.id,
     muxAssetId: row.muxAssetId,
@@ -136,10 +259,8 @@ function toJobRecord(row: ManagerJobRow): ManagerJobRecord {
         }
       : {}),
     resolvedTargetLanguageCodes: row.resolvedTargetLanguageCodes,
-    ...(row.sourceCollectionTitle
-      ? { sourceCollectionTitle: row.sourceCollectionTitle }
-      : {}),
-    ...(row.sourceMediaTitle ? { sourceMediaTitle: row.sourceMediaTitle } : {}),
+    ...(sourceCollectionTitle ? { sourceCollectionTitle } : {}),
+    ...(sourceMediaTitle ? { sourceMediaTitle } : {}),
     requestedLanguageAbbreviations: row.requestedLanguageAbbreviations,
     options: row.options,
     status: row.status as ManagerJobStatus,
@@ -184,7 +305,18 @@ export class ManagerJobService {
       take: Math.max(1, limit),
       skip: Math.max(0, offset),
     })
-    return rows.map((row) => toJobRecord(row))
+    const titleFallbacksByVideoId = await loadSourceTitleFallbacks(
+      this.prisma,
+      rows,
+    )
+    return rows.map((row) =>
+      toJobRecord(
+        row,
+        row.videoDocumentId
+          ? (titleFallbacksByVideoId.get(row.videoDocumentId) ?? {})
+          : {},
+      ),
+    )
   }
 
   async count({ user }: { user: Principal | null }) {
@@ -200,7 +332,16 @@ export class ManagerJobService {
     if (!row) {
       throw new NotFoundError("Manager enrichment job", id)
     }
-    return toJobRecord(row)
+    const titleFallbacksByVideoId = await loadSourceTitleFallbacks(
+      this.prisma,
+      [row],
+    )
+    return toJobRecord(
+      row,
+      row.videoDocumentId
+        ? (titleFallbacksByVideoId.get(row.videoDocumentId) ?? {})
+        : {},
+    )
   }
 
   async create({

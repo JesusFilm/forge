@@ -21,6 +21,7 @@ import {
   getMastraStorageDir,
 } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
+import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
 import {
   handleTranscriptEmbeddingRouteRequest,
@@ -76,6 +77,10 @@ import {
   smartCropQaWorkflow,
 } from "./workflows/smart-crop-qa"
 import {
+  handleSmartCropRepairRouteRequest,
+  smartCropRepairWorkflow,
+} from "./workflows/smart-crop-repair"
+import {
   handleInstagramDiscoveryRouteRequest,
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
@@ -83,6 +88,10 @@ import {
   handleSubtitleEnrichmentRouteRequest,
   subtitleEnrichmentWorkflow,
 } from "./workflows/subtitle-enrichment"
+import {
+  handleTranscriptScriptureCorrectionRouteRequest,
+  transcriptScriptureCorrectionWorkflow,
+} from "./workflows/transcript-scripture-correction"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -120,7 +129,7 @@ const redactPromptBodies: SpanOutputProcessor = {
 }
 
 export const mastra = new Mastra({
-  agents: { smokeAgent, webResearchAgent },
+  agents: { smokeAgent, seekerAgent, webResearchAgent },
   workflows: {
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
@@ -135,8 +144,10 @@ export const mastra = new Mastra({
     smartCropPlanWorkflow,
     smartCropAlignWorkflow,
     smartCropQaWorkflow,
+    smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
+    transcriptScriptureCorrectionWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -375,6 +386,21 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-smart-crop-repair", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSmartCropRepairRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
       registerApiRoute("/forge-search-eval-baseline-portability", {
         method: "POST",
         handler: async (c) => {
@@ -415,6 +441,23 @@ export const mastra = new Mastra({
             serviceKeys,
             readJson: () => c.req.json(),
           })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-transcript-scripture-correction", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleTranscriptScriptureCorrectionRouteRequest(
+            {
+              authHeader: c.req.header("authorization"),
+              serviceKeys,
+              readJson: () => c.req.json(),
+            },
+          )
 
           return new Response(JSON.stringify(outcome.body), {
             status: outcome.status,

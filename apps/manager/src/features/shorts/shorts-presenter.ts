@@ -4,6 +4,10 @@
 // smart-crop-presenter.ts.
 
 import { SHORT_CLIP_DURATION } from "@forge/shorts-compositions/schema"
+import {
+  getShortsActiveStall,
+  type ShortsActiveStall,
+} from "@/lib/shorts-stale"
 import { getShortsReport } from "@/lib/shorts-report"
 import type { JobRecord, ShortsJobReport, ShortsPhase } from "@/types/job"
 
@@ -258,12 +262,16 @@ export type ShortsJobSummary = {
   phaseTone: ShortsPhaseTone
   /** Phase "queued" + job status "failed": the create launch never ran. */
   isLaunchFailed: boolean
+  activeStall: ShortsActiveStall | null
   annotationLabel: string | null
   isStale: boolean
   report: ShortsJobReport | null
 }
 
-export function getShortsJobSummary(job: JobRecord): ShortsJobSummary | null {
+export function getShortsJobSummary(
+  job: JobRecord,
+  options: { now?: Date } = {},
+): ShortsJobSummary | null {
   const shorts = job.options.shorts
   if (!shorts) {
     return null
@@ -277,6 +285,10 @@ export function getShortsJobSummary(job: JobRecord): ShortsJobSummary | null {
   // a workflow that is about to run.
   const phase = report?.phase ?? "queued"
   const isLaunchFailed = isShortsLaunchFailed(phase, job.status)
+  const activeStall =
+    isLaunchFailed || job.status === "failed"
+      ? null
+      : getShortsActiveStall(job, report, options.now)
 
   return {
     assetId: shorts.assetId,
@@ -286,9 +298,15 @@ export function getShortsJobSummary(job: JobRecord): ShortsJobSummary | null {
     clip: shorts.clip,
     clipRangeLabel: formatClipRange(shorts.clip),
     phase,
-    phaseLabel: isLaunchFailed ? "Launch failed" : formatShortsPhase(phase),
-    phaseTone: isLaunchFailed ? "failed" : shortsPhaseTone(phase),
+    phaseLabel: isLaunchFailed
+      ? "Launch failed"
+      : activeStall
+        ? activeStall.label
+        : formatShortsPhase(phase),
+    phaseTone:
+      isLaunchFailed || activeStall ? "failed" : shortsPhaseTone(phase),
     isLaunchFailed,
+    activeStall,
     annotationLabel: formatShortsAnnotation(report?.annotation ?? null),
     isStale: isShortsDraftStale(report),
     report,

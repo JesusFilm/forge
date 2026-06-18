@@ -73,6 +73,7 @@ const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
  * the builder boundary is type-narrowing instead of type-laundering.
  */
 type LocalizedHomeRoute = `/${string}.html${"" | `?${string}`}`
+type LanguageInventoryRoute = `/${string}.html/videos`
 type WatchVideoRoute = `/${string}.html/${string}.html${"" | `?${string}`}`
 type WatchEpisodeRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
@@ -95,6 +96,13 @@ export function localizedHomePath(
 ): LocalizedHomeRoute & Route {
   const path = `/${appendHtmlSuffix(lang)}`
   return appendQueryString(path) as LocalizedHomeRoute & Route
+}
+
+/** Build a localized inventory path `/{lang}.html/videos` (e.g. `/spanish-latin-american.html/videos`). */
+export function languageInventoryPath(
+  lang: LocaleSlug,
+): LanguageInventoryRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/videos` as LanguageInventoryRoute & Route
 }
 
 /** Build the canonical two-segment watch path `/{slug}.html/{lang}.html`. */

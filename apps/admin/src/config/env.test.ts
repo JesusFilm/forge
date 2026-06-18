@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest"
 import {
   assertBearerCsvsDisjoint,
   concurrencyEnvSchema,
+  constrainedDecodingTrustedEnvSchema,
   DEFAULT_WEB_CANONICAL_ORIGIN,
   env,
+  experienceAiMaxRepairAttemptsEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   webCanonicalOriginEnvSchema,
 } from "@/config/env"
@@ -66,6 +68,55 @@ describe("env", () => {
 
     it("rejects non-numeric strings", () => {
       expect(() => concurrencyEnvSchema.parse("nope")).toThrow()
+    })
+  })
+
+  // AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED (U4). `createEnv` is
+  // skipped under CI, so the schema fragment is exercised directly —
+  // binding the test to the real `.optional().default("false")` contract.
+  describe("constrainedDecodingTrustedEnvSchema", () => {
+    it('defaults to "false" when absent', () => {
+      expect(constrainedDecodingTrustedEnvSchema.parse(undefined)).toBe("false")
+    })
+
+    it('accepts the literal "true"', () => {
+      expect(constrainedDecodingTrustedEnvSchema.parse("true")).toBe("true")
+    })
+
+    it('accepts the literal "false"', () => {
+      expect(constrainedDecodingTrustedEnvSchema.parse("false")).toBe("false")
+    })
+
+    it("rejects any other non-empty value", () => {
+      expect(() => constrainedDecodingTrustedEnvSchema.parse("1")).toThrow()
+      expect(() => constrainedDecodingTrustedEnvSchema.parse("yes")).toThrow()
+      expect(() => constrainedDecodingTrustedEnvSchema.parse("TRUE")).toThrow()
+    })
+  })
+
+  // EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS (U5). Schema fragment exercised
+  // directly (createEnv is skipped under CI) so the test binds to the real
+  // `z.coerce.number().int().min(0).max(5).optional().default(2)` contract.
+  describe("experienceAiMaxRepairAttemptsEnvSchema", () => {
+    it("defaults to 2 when absent", () => {
+      expect(experienceAiMaxRepairAttemptsEnvSchema.parse(undefined)).toBe(2)
+    })
+
+    it("coerces a numeric string and accepts 0 through 5", () => {
+      expect(experienceAiMaxRepairAttemptsEnvSchema.parse("0")).toBe(0)
+      expect(experienceAiMaxRepairAttemptsEnvSchema.parse("2")).toBe(2)
+      expect(experienceAiMaxRepairAttemptsEnvSchema.parse("5")).toBe(5)
+    })
+
+    it("rejects negative, fractional, and out-of-range values", () => {
+      expect(() => experienceAiMaxRepairAttemptsEnvSchema.parse("-1")).toThrow()
+      expect(() =>
+        experienceAiMaxRepairAttemptsEnvSchema.parse("1.5"),
+      ).toThrow()
+      expect(() => experienceAiMaxRepairAttemptsEnvSchema.parse("6")).toThrow()
+      expect(() =>
+        experienceAiMaxRepairAttemptsEnvSchema.parse("nope"),
+      ).toThrow()
     })
   })
 

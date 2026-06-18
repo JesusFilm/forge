@@ -119,6 +119,44 @@ describe("GET /api/videos in mock mode", () => {
     )
   })
 
+  it("orders collection children by their parent relation order", async () => {
+    const seed = cloneMockCmsSeed(
+      DEFAULT_MOCK_CMS_SEED.readModels.videoCoverage,
+    )
+    const collection = seed[0]
+    const episodeOne = seed[1]
+    const episodeTwo = seed[2]
+
+    getCmsGatewayMock.mockReturnValue({
+      mode: "mock",
+      getVideoCoverage: getVideoCoverageMock.mockResolvedValue([
+        collection,
+        {
+          ...episodeTwo,
+          parentRelations: [
+            { parentDocumentId: collection.documentId, order: 2 },
+          ],
+        },
+        {
+          ...episodeOne,
+          parentRelations: [
+            { parentDocumentId: collection.documentId, order: 1 },
+          ],
+        },
+      ]),
+    })
+
+    const response = await GET(new Request("http://example.test/api/videos"))
+
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+    expect(
+      payload.collections[0].videos.map(
+        (video: { coreId: string }) => video.coreId,
+      ),
+    ).toEqual(["ep-1", "ep-2"])
+  })
+
   it("falls back to the slug when Admin omits a preferred localized title", async () => {
     const standalone = DEFAULT_MOCK_CMS_SEED.readModels.videoCoverage[3]
 

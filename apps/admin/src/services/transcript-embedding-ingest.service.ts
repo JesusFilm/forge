@@ -38,6 +38,23 @@ const TranscriptSourceSegmentSchema = z
   })
   .strict()
 
+export const CANONICAL_FELT_NEEDS = [
+  "Acceptance",
+  "Anxiety",
+  "Depression",
+  "Fear/Power",
+  "Forgiveness",
+  "Guilt/Righteousness",
+  "Honor/Shame",
+  "Hope",
+  "Loneliness",
+  "Love",
+  "Security",
+  "Significance",
+] as const
+
+const FeltNeedSchema = z.enum(CANONICAL_FELT_NEEDS)
+
 const IngestChunkSchema = z
   .object({
     chunkIndex: z.number().int().nonnegative(),
@@ -46,6 +63,15 @@ const IngestChunkSchema = z
     tokenCount: z.number().int().nonnegative(),
     startSeconds: z.number().finite().nonnegative().optional(),
     endSeconds: z.number().finite().nonnegative().optional(),
+    rawSourceText: z.string().min(1).optional(),
+    embeddingInputText: z.string().min(1).optional(),
+    feltNeeds: z.array(FeltNeedSchema).default([]),
+    bibleVerses: z.array(z.string().min(1)).default([]),
+    contentSummary: z.string().min(1).optional(),
+    tone: z.string().min(1).optional(),
+    demographics: z.array(z.string().min(1)).default([]),
+    spiritualContext: z.array(z.string().min(1)).default([]),
+    extractionMetadata: z.record(z.string(), z.unknown()).optional(),
     embedding: z.array(z.number().finite()).min(1),
   })
   .strict()
@@ -64,6 +90,12 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         text: z.string().optional(),
         segments: z.array(TranscriptSourceSegmentSchema).optional(),
         artifactKey: z.string().min(1).optional(),
+        kind: z.enum(["subtitle", "manager-transcript"]).optional(),
+        languageId: z.string().min(1).optional(),
+        languageSlug: z.string().min(1).optional(),
+        subtitleId: z.string().min(1).optional(),
+        format: z.enum(["vtt", "srt"]).optional(),
+        url: z.string().min(1).optional(),
         provider: z.string().min(1).optional(),
         generatedAt: EmbeddingTimestampSchema.optional(),
         contentHash: z.string().min(1),
@@ -192,6 +224,8 @@ export class TranscriptEmbeddingIngestError extends Error {
   }
 }
 
+const TRANSCRIPT_INGEST_TRANSACTION_TIMEOUT_MS = 30_000
+
 function sha256Json(value: unknown): string {
   return `sha256:${createHash("sha256")
     .update(JSON.stringify(value))
@@ -199,15 +233,65 @@ function sha256Json(value: unknown): string {
 }
 
 function sourceContentHash(payload: TranscriptEmbeddingIngestPayload): string {
+  const hasV2SourceMetadata =
+    payload.source.kind != null ||
+    payload.source.languageId != null ||
+    payload.source.languageSlug != null ||
+    payload.source.subtitleId != null ||
+    payload.source.format != null ||
+    payload.source.url != null
+
   const computed = sha256Json({
     text: payload.source.text ?? null,
     segments: payload.source.segments ?? null,
-    chunks: payload.chunks.map((chunk) => ({
-      index: chunk.chunkIndex,
-      text: chunk.text,
-      startSeconds: chunk.startSeconds ?? null,
-      endSeconds: chunk.endSeconds ?? null,
-    })),
+    ...(hasV2SourceMetadata
+      ? {
+          source: {
+            kind: payload.source.kind ?? null,
+            artifactKey: payload.source.artifactKey ?? null,
+            languageId: payload.source.languageId ?? null,
+            languageSlug: payload.source.languageSlug ?? null,
+            subtitleId: payload.source.subtitleId ?? null,
+            format: payload.source.format ?? null,
+            url: payload.source.url ?? null,
+            provider: payload.source.provider ?? null,
+            generatedAt: payload.source.generatedAt ?? null,
+          },
+        }
+      : {}),
+    chunks: payload.chunks.map((chunk) => {
+      const base = {
+        index: chunk.chunkIndex,
+        text: chunk.text,
+        startSeconds: chunk.startSeconds ?? null,
+        endSeconds: chunk.endSeconds ?? null,
+      }
+      const hasEnrichedFields =
+        chunk.rawSourceText != null ||
+        chunk.embeddingInputText != null ||
+        chunk.feltNeeds.length > 0 ||
+        chunk.bibleVerses.length > 0 ||
+        chunk.contentSummary != null ||
+        chunk.tone != null ||
+        chunk.demographics.length > 0 ||
+        chunk.spiritualContext.length > 0 ||
+        chunk.extractionMetadata != null
+
+      return hasEnrichedFields
+        ? {
+            ...base,
+            rawSourceText: chunk.rawSourceText ?? null,
+            embeddingInputText: chunk.embeddingInputText ?? null,
+            feltNeeds: chunk.feltNeeds,
+            bibleVerses: chunk.bibleVerses,
+            contentSummary: chunk.contentSummary ?? null,
+            tone: chunk.tone ?? null,
+            demographics: chunk.demographics,
+            spiritualContext: chunk.spiritualContext,
+            extractionMetadata: chunk.extractionMetadata ?? null,
+          }
+        : base
+    }),
   })
 
   if (payload.source.contentHash && payload.source.contentHash !== computed) {
@@ -495,6 +579,12 @@ async function writePayload(
         embeddingNativeDimensions: payload.model.nativeDimensions,
         embeddingTransformVersion: payload.model.transformVersion,
         sourceArtifactKey: payload.source.artifactKey,
+        sourceKind: payload.source.kind,
+        sourceLanguageId: payload.source.languageId,
+        sourceLanguageSlug: payload.source.languageSlug,
+        sourceSubtitleId: payload.source.subtitleId,
+        sourceFormat: payload.source.format,
+        sourceUrl: payload.source.url,
         sourceContentHash: hash,
         sourceProvider: payload.source.provider ?? payload.model.provider,
         sourceGeneratedAt: payload.source.generatedAt,
@@ -630,12 +720,16 @@ export async function ingestTranscriptEmbeddings(
         mastraRunId: payload.generation.mastraRunId,
       }
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      timeout: TRANSCRIPT_INGEST_TRANSACTION_TIMEOUT_MS,
+    },
   )
 }
 
 export const _internals = {
   sha256Json,
+  sourceContentHash,
   validateChunks,
   existingMatches,
 }

@@ -170,12 +170,18 @@ function renderWatchPage({
     downloads: [
       {
         documentId: "47420a5c-0ae1-465e-bcc9-98056566d087",
+        height: 360,
         quality: "fhd",
         size: "1048576",
         url: "https://stream.mux.com/raw-client-leak.mp4",
       },
     ],
-    language: { slug: languageSlug, name: languageSlug },
+    language: {
+      bcp47: "en",
+      iso3: "eng",
+      slug: languageSlug,
+      name: languageSlug === "english" ? "English" : languageSlug,
+    },
     muxVideo: { playbackId: "playback-1" },
   }
   const video = {
@@ -227,6 +233,11 @@ describe("WatchPageClient download boundary", () => {
     expect(renderer?.getAttribute("data-download-href")).not.toContain(
       "stream.mux.com",
     )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      `filename=${encodeURIComponent(
+        "Jesus-Is-Brought-to-Pilate_English_eng_360p.mp4",
+      )}`,
+    )
     expect(renderer?.getAttribute("data-share-href")).toContain(
       "https://www.facebook.com/sharer/sharer.php",
     )
@@ -251,14 +262,21 @@ describe("WatchPageClient download boundary", () => {
 
     const latestProps = downloadModalProps.at(-1) as {
       downloads: Array<Record<string, unknown>>
+      languageCode: string
+      languageName: string
+      languageSlug: string
       variantId: string
       videoSlug: string
     }
     expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
     expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
+    expect(latestProps.languageCode).toBe("eng")
+    expect(latestProps.languageName).toBe("English")
+    expect(latestProps.languageSlug).toBe("english")
     expect(latestProps.downloads).toEqual([
       {
         documentId: "47420a5c-0ae1-465e-bcc9-98056566d087",
+        height: 360,
         quality: "fhd",
         size: 1048576,
       },

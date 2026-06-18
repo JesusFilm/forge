@@ -379,4 +379,37 @@ describe("resolveWatchHome", () => {
     expect(queryMock.mock.calls[0][0].variables.locale).toBe("ru")
     expect(queryMock.mock.calls[0][0].variables.coreIds).toContain("1_jf-0-0")
   })
+
+  it("uses an explicit language slug when the caller provides one", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchHomeVideos: [
+          makeVideo({
+            variants: [
+              makeVariant({
+                slug: "spanish-latin-american",
+                language: {
+                  coreId: "21028",
+                  bcp47: "es-419",
+                  slug: "spanish-latin-american",
+                  name: { en: "Spanish, Latin American" },
+                },
+              }),
+            ],
+          }),
+        ],
+      },
+    })
+
+    const { resolveWatchHome } = await import("../watch-home")
+
+    const result = await resolveWatchHome("es", "spanish-latin-american")
+
+    expect(result.error).toBeNull()
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe(
+      "spanish-latin-american",
+    )
+    expect(queryMock.mock.calls[0][0].variables.locale).toBe("es")
+  })
 })

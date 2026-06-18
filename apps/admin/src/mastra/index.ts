@@ -98,6 +98,9 @@ export function buildMastraInstance(): Mastra {
       "experience-planner": specialized["experience-planner"],
       "experience-critic": specialized["experience-critic"],
       "experience-reviser": specialized["experience-reviser"],
+      // Two-phase draft workflow agents (workflow-only; memory-less).
+      "experience-skeleton": specialized["experience-skeleton"],
+      "experience-fill": specialized["experience-fill"],
       "auto-enrich": buildAutoEnrichAgent(),
     },
     workflows: {

@@ -710,9 +710,12 @@ const getCachedWatchHomeModel = unstable_cache(
 )
 
 export const resolveWatchHome = cache(
-  async (locale: string): Promise<WatchHomeResult> => {
+  async (
+    locale: string,
+    languageSlugOverride?: string | null,
+  ): Promise<WatchHomeResult> => {
     try {
-      const languageSlug = selectedLanguageSlug(locale)
+      const languageSlug = languageSlugOverride ?? selectedLanguageSlug(locale)
       const model = await getCachedWatchHomeModel(locale, languageSlug)
       return {
         data: JSON.parse(JSON.stringify(model)) as WatchHomeModel,

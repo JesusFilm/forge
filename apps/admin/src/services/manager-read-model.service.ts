@@ -24,6 +24,8 @@ export type ManagerLanguageGeo = {
 export type ManagerVideoForEnrichment = {
   documentId: string
   coreId: string | null
+  title: string | null
+  label: string | null
   primaryLanguage: {
     coreId: string | null
     bcp47: string | null
@@ -45,6 +47,11 @@ export type ManagerVideoForEnrichment = {
 
 export type ManagerCoverageCounts = { human: number; ai: number }
 
+export type ManagerVideoParentRelation = {
+  parentDocumentId: string
+  order: number | null
+}
+
 export type ManagerVideoCoverage = {
   documentId: string
   coreId: string | null
@@ -54,6 +61,7 @@ export type ManagerVideoCoverage = {
   aiMetadata: boolean | null
   imageUrl: string | null
   parentDocumentIds: string[]
+  parentRelations: ManagerVideoParentRelation[]
   coverage: {
     subtitles: ManagerCoverageCounts
     audio: ManagerCoverageCounts
@@ -81,6 +89,7 @@ type CoverageAggregateRow = {
 }
 
 type VideoTitleLocale = {
+  videoId?: string | null
   locale: string | null
   languageId: string | null
   title: string | null
@@ -335,9 +344,55 @@ export class ManagerReadModelService {
       },
     })
 
+    const videoIds = videos.map((video) => video.id)
+    const primaryLanguageIds = Array.from(
+      new Set(
+        videos
+          .map((video) => video.primaryLanguageId)
+          .filter(
+            (id): id is string => typeof id === "string" && id.length > 0,
+          ),
+      ),
+    )
+    const titleLocaleFilters: Prisma.VideoLocaleWhereInput[] = [
+      { locale: "en" },
+    ]
+    if (primaryLanguageIds.length > 0) {
+      titleLocaleFilters.push({ languageId: { in: primaryLanguageIds } })
+    }
+    const titleLocales =
+      videoIds.length === 0
+        ? []
+        : await this.prisma.videoLocale.findMany({
+            where: {
+              deletedAt: null,
+              title: { not: null },
+              videoId: { in: videoIds },
+              OR: titleLocaleFilters,
+            },
+            select: {
+              videoId: true,
+              locale: true,
+              languageId: true,
+              title: true,
+            },
+            orderBy: [{ locale: "asc" }, { updatedAt: "desc" }],
+          })
+    const titleLocalesByVideoId = new Map<string, VideoTitleLocale[]>()
+    for (const locale of titleLocales) {
+      const locales = titleLocalesByVideoId.get(locale.videoId) ?? []
+      locales.push(locale)
+      titleLocalesByVideoId.set(locale.videoId, locales)
+    }
+
     return videos.map((video) => ({
       documentId: video.id,
       coreId: video.coreId ?? null,
+      title: titleFrom(
+        titleLocalesByVideoId.get(video.id) ?? [],
+        video.primaryLanguageId ? [video.primaryLanguageId] : [],
+      ),
+      label: video.label ?? null,
       primaryLanguage: video.primaryLanguage
         ? {
             coreId: video.primaryLanguage.coreId ?? null,
@@ -403,7 +458,17 @@ export class ManagerReadModelService {
           orderBy: { updatedAt: "desc" },
           take: 1,
         },
-        parents: true,
+        parents: {
+          select: {
+            parentId: true,
+            order: true,
+          },
+          orderBy: [
+            { order: { sort: "asc", nulls: "last" } },
+            { createdAt: "asc" },
+            { id: "asc" },
+          ],
+        },
       },
       orderBy: { updatedAt: "desc" },
     })
@@ -448,6 +513,10 @@ export class ManagerReadModelService {
       aiMetadata: video.aiMetadata ?? null,
       imageUrl: normalizeManagerVideoImageUrl(video.images[0]?.url),
       parentDocumentIds: video.parents.map((parent) => parent.parentId),
+      parentRelations: video.parents.map((parent) => ({
+        parentDocumentId: parent.parentId,
+        order: parent.order ?? null,
+      })),
       coverage: {
         subtitles: countsForVideo(subtitleCountsByVideoId, video.id),
         audio: countsForVideo(dubCountsByVideoId, video.id),

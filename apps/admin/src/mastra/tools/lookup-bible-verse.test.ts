@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
-  if (typeof value === "object" && value !== null && "error" in value) {
+// Also excludes `void`: Mastra's createTool types execute's return as
+// `T | void`, and once the admin program's total type-instantiation load is
+// high the checker keeps the `void` arm instead of resolving to T. Excluding
+// it here (with a runtime null-guard) keeps these tests robust to that budget.
+function assertOk<T>(value: T): Exclude<T, { error: unknown } | void> {
+  if (value == null) {
+    throw new Error("tool returned no result")
+  }
+  if (typeof value === "object" && "error" in value) {
     throw new Error("tool returned a ValidationError instead of a result")
   }
-  return value as Exclude<T, { error: unknown }>
+  return value as Exclude<T, { error: unknown } | void>
 }
 
 const findManyMock = vi.hoisted(() => vi.fn())

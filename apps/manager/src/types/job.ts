@@ -5,6 +5,14 @@
 
 export type JobStatus = "pending" | "running" | "completed" | "failed"
 
+import type {
+  SubtitleValidationBasis,
+  SubtitleValidationLanguageSummary,
+  SubtitleValidationStepSummary,
+  SubtitleValidationVerdict,
+} from "@/lib/subtitle-validation"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
+
 export type StepStatus =
   | "pending"
   | "running"
@@ -132,6 +140,14 @@ export type SmartCropUsageSummary = {
   outputTokens: number
 }
 
+export type SmartCropAttemptsSummary = {
+  latestAttemptIndex: number
+  selectedAttemptIndex?: number
+  maxRepairAttempts: number
+  repairCount: number
+  manifestDigest?: string
+}
+
 // `qa` carries either a real verdict or the reason the QA step was skipped
 // as advisory (mastra config gap such as frame_host_not_allowed — a config
 // problem, not a content verdict).
@@ -147,6 +163,7 @@ export type SmartCropJobReport = {
   alignment?: SmartCropAlignmentSummary
   qa?: SmartCropQaSummary
   plan?: SmartCropPlanSummary
+  attempts?: SmartCropAttemptsSummary
   output?: SmartCropOutputSummary
   usage?: SmartCropUsageSummary
 }
@@ -194,6 +211,13 @@ export type TranslationLanguageResult = {
   lang: string
   status: "completed" | "failed"
   error?: string
+}
+
+export type {
+  SubtitleValidationBasis,
+  SubtitleValidationLanguageSummary,
+  SubtitleValidationStepSummary,
+  SubtitleValidationVerdict,
 }
 
 export type MastraStepCorrelation = {
@@ -308,6 +332,8 @@ export type TranscriptionRoutingReport = {
 
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
+  subtitleValidation?: SubtitleValidationStepSummary
+  transcriptCorrection?: TranscriptScriptureCorrectionStepSummary
   mastra?: MastraStepCorrelation
   // Live crop-worker render progress (0..1) + human-readable message,
   // written throttled by the smart-crop workflow steps.

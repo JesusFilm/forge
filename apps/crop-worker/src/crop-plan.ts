@@ -8,6 +8,23 @@
 import { z } from "zod"
 import type { RenderSegment } from "./types.js"
 
+export const CROP_PLAN_ARTIFACT_TYPE = "smart-crop-plan-9x16-v1"
+export const CROP_PLAN_ATTEMPT_ARTIFACT_TYPE_PATTERN =
+  /^smart-crop-plan-9x16-attempt-\d{3}-v1$/
+export const RENDER_ARTIFACT_SUFFIX_PATTERN = /^attempt-\d{3}$/
+
+export const cropPlanArtifactTypeSchema = z.union([
+  z.literal(CROP_PLAN_ARTIFACT_TYPE),
+  z.string().regex(CROP_PLAN_ATTEMPT_ARTIFACT_TYPE_PATTERN),
+])
+
+export const renderArtifactSuffixSchema = z
+  .string()
+  .regex(RENDER_ARTIFACT_SUFFIX_PATTERN)
+
+export type CropPlanArtifactType = z.infer<typeof cropPlanArtifactTypeSchema>
+export type RenderArtifactSuffix = z.infer<typeof renderArtifactSuffixSchema>
+
 const cropKeyframeSchema = z.looseObject({
   progress: z.number().min(0).max(1),
   x: z.number(),
