@@ -82,7 +82,7 @@ export const retrieveAnswerOutputSchema = z
           text: z.string(),
           sourceName: z.string(),
           title: z.string().nullable(),
-          url: z.string(),
+          url: z.url(),
           score: z.number(),
         })
         .strict(),

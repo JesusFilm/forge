@@ -13,10 +13,10 @@ from the main DS Year 1 roadmap.
 
 ## Status (June 18, 2026)
 
-- **Total tickets:** 4
+- **Total tickets:** 5
 - ✅ **Complete:** 2
 - 🟡 **In progress:** 2
-- 🔵 **Not started:** 0
+- 🔵 **Not started:** 1
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -27,3 +27,4 @@ from the main DS Year 1 roadmap.
 | [feat-199](feat-199-seeker-rag-retrieval-connection.md) | Seeker Agent RAG Retrieval Connection       | jian wei | P2       | 2026-06-10 | 3    | ✅ complete    | #1279   |
 | [feat-200](feat-200-chat-app-scaffold.md)               | Chat app scaffold with stubbed agent        | jian wei | P1       | 2026-06-10 | 3    | 🟡 in-progress | #1276   |
 | [feat-201](feat-201-chat-app-vigil-reskin.md)           | Chat app Vigil re-skin + conversation shell | jian wei | P1       | 2026-06-15 | 1    | 🟡 in-progress | #1276   |
+| [feat-202](feat-202-seeker-rag-runtime-hardening.md)    | Seeker RAG runtime hardening                | jian wei | P2       | 2026-06-18 | 2    | 🔵 not-started | —       |

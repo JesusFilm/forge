@@ -131,37 +131,39 @@ an env-derived `getXConfig()` default):
 
 Treat admin as the internal-service exception, not the template.
 
-## Copy, don't extract — for now, and for honest reasons
+## Note: the shared helpers are currently duplicated, not extracted
 
-The genuinely-shared helpers live in **exactly two** files —
-`firecrawl-client.ts` and `jesusfilm-rag-client.ts`: `safeReason` and
-`readUpstreamReason` are byte-identical; `endpoint` is functionally identical
-(bodies match — only the parameter name differs, `apiUrl` vs `baseUrl`); and
-`failureForStatus` matches modulo its return-type name. The admin variant does
-not have these helpers. So this is duplication across _two_ consumers, not three
-— the classic "rule of three" extraction threshold is **not** reached.
+This is a **descriptive observation, not a rule to enforce.** The
+genuinely-shared helpers live in two files — `firecrawl-client.ts` and
+`jesusfilm-rag-client.ts`: `safeReason` and `readUpstreamReason` are
+byte-identical; `endpoint` is functionally identical (bodies match — only the
+parameter name differs, `apiUrl` vs `baseUrl`); `failureForStatus` matches modulo
+its return-type name. The admin variant does not have these helpers, so this is
+duplication across _two_ consumers — and, importantly, the two are one lineage
+(`jesusfilm-rag-client.ts` was copied from `firecrawl-client.ts`), not two
+independent designs that happened to converge. The helpers are tiny, pure, and
+frozen (no churn since firecrawl), so a second copy currently costs little.
 
-The pure, divergence-free helpers (`endpoint`, `safeReason`) genuinely _could_
-be extracted today into `apps/mastra/src/services/http-client-util.ts` without
-coupling anything — they know nothing about retry, redirect, or status. The
-deliberate call is to **keep copying for now** because only two consumers share
-them and the helpers are tiny and frozen (no churn since firecrawl), so carrying
-a second copy costs almost nothing. Note the tension: that same low churn means
-the revisit trigger below may never fire — acceptable precisely because frozen
-six-line pure helpers are nearly free to carry. `failureForStatus` and the
-request/retry loop stay per-file regardless — those genuinely diverge
-(firecrawl's `invalid_response` + retry; admin's 401-only).
+We deliberately did **not** add "keep in sync" breadcrumb comments to the copies.
+A prose comment with no test behind it is the weakest form of coupling and tends
+to rot — it asserts an invariant it cannot enforce. If these helpers ever need to
+stay identical _under change_, the honest fix is one of:
 
-**Guard the copies so the trigger can fire.** Copy-paste's failure mode is that
-the next editor doesn't know a twin exists. Add a one-line cross-reference
-comment in each copied helper (e.g. `// byte-identical twin in firecrawl-client.ts`)
-so a change that should touch all copies is visible to whoever edits one.
+- **Extract** the pure, divergence-free helpers (`endpoint`, `safeReason`,
+  `readUpstreamReason`) into a shared `apps/mastra/src/services/http-client-util.ts`
+  — they know nothing about retry, redirect, or status, so sharing them couples
+  nothing. This deletes the drift problem outright.
+- **Bind** them with a parity test if they must stay separate for some reason —
+  enforcement a comment can't provide.
 
-**Revisit trigger (measurable, not "someday"):** extract `endpoint`/`safeReason`
-into a shared util the next time a change must be applied to all copies
-(change-amplification is the real cost of duplication), or when a third file
-needs the helper. Do not gate extraction on "a 4th client appears AND helpers
-are genuinely identical" — that AND-clause never fires.
+`failureForStatus` and the request/retry loop stay per-file regardless — those
+genuinely diverge (firecrawl's `invalid_response` + retry; admin's 401-only).
+
+**When extraction is worth it:** the next time a change must touch all copies
+(change-amplification is the real cost of duplication), or when a third consumer
+needs the helper. Until then, two frozen copies of a six-line pure helper is an
+accepted, low-cost state — just don't mistake it for a convention others must
+replicate.
 
 ## Why This Matters
 

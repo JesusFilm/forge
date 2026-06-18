@@ -82,7 +82,9 @@ const CitationSchema = z
   .object({
     sourceName: z.string(),
     title: z.string().nullable(),
-    url: z.string(),
+    // `.url()`: the agent cites this verbatim, so a malformed URL is rejected as
+    // a parse_error (-> `unavailable`) rather than cited as a broken source.
+    url: z.url(),
   })
   .passthrough()
 

@@ -164,15 +164,15 @@ instance, add it here — that's the META home.
 
 ## Why a META doc, not just cross-references
 
-The four worked instances cite each other in a triangle. None of
-them is the canonical home. Adding a fifth instance forces a fifth
-set of bidirectional cross-references. This META doc is the apex —
-new instances cite this doc, and this doc adds them to the table
-above.
+Without a META home the worked instances would cite each other in a
+web — none of them the canonical home — and every new instance would
+force another full set of bidirectional cross-references. This META
+doc is the apex — new instances cite this doc, and this doc adds them
+to the table above.
 
 ## Recovery when contracts are structurally broken
 
-The eight worked instances above all describe traps where the
+The worked instances above all describe traps where the
 contract IS satisfiable — the test was just shaped wrong. There's a
 distinct failure mode: **the producer and consumer have a structural
 impedance mismatch and no real fixture can succeed**. The signature
