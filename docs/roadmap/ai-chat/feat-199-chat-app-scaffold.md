@@ -14,8 +14,8 @@ tags:
 ---
 
 > Renumbered from the gated chat web-app trunk's `feat-174` (the original was a
-> three-way collision). Tags normalized to `["ai-chat", "infrastructure"]`. Code
-> ships via PR **#1276**; status flips to `complete` when it merges.
+> three-way collision). Tags normalized to `["infrastructure"]`. Code ships via
+> PR **#1276**; status flips to `complete` when it merges.
 >
 > Requirements (arrive with #1276):
 > `docs/brainstorms/2026-06-10-chat-app-scaffold-requirements.md`.

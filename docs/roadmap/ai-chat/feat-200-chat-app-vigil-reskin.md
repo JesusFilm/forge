@@ -12,9 +12,10 @@ blocks: []
 tags: []
 ---
 
-> Renumbered from the gated chat web-app trunk's `feat-192`. Tags normalized to
-> `["ai-chat"]`. This work is already done on that trunk (delivered via
-> #1277/#1294) but lands `in-progress` here since the code isn't on `main` yet.
+> Renumbered from the gated chat web-app trunk's `feat-192`. Tags cleared to
+> `[]` (no fitting forge facet). This work is already done on that trunk
+> (delivered via #1277/#1294) but lands `in-progress` here since the code isn't
+> on `main` yet.
 > Code ships via PR **#1276**; status flips to `complete` when it merges.
 
 ## Problem

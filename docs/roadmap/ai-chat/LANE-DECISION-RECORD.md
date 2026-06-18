@@ -140,8 +140,10 @@ file until you delete the old one by hand.
    `docs/roadmap/ai-chat/feat-174-seeker-rag-retrieval-connection.md`, and the
    branch's old `LANE-DECISION-RECORD.md` (superseded by this one).
 3. Flip status on the new-ID files: `feat-197` → `complete`; `feat-198` → its
-   true state at merge. Prepend a `## Resolution` section (see the lane
-   `CLAUDE.md` template) to each ticket flipped to `complete`. Update this lane's
+   true state at merge. On each ticket flipped to `complete`, **replace the top
+   provenance banner** (the `> Renumbered from …` block) with a `## Resolution`
+   section (see the lane `CLAUDE.md` template) — the banner is transient
+   migration scaffolding the Resolution supersedes. Update this lane's
    `README.md` Status block + table (emoji-prefixed).
 4. Repoint references to the new IDs across the seeker IN-SCOPE inventory (from
    the old seeker record): brainstorms `2026-06-08-...` / `2026-06-10-...`; plans
@@ -160,8 +162,10 @@ file until you delete the old one by hand.
    `docs/roadmap/ai-chat/feat-192-chat-app-vigil-reskin.md`, and the branch's
    old `LANE-DECISION-RECORD-WEB.md` (superseded by this one).
 3. Flip status on the new-ID files: `feat-199` → `complete`; `feat-200` →
-   `complete`. Prepend a `## Resolution` section (see the lane `CLAUDE.md`
-   template) to each. Update this lane's `README.md` Status block + table
+   `complete`. On each, **replace the top provenance banner** (the
+   `> Renumbered from …` block) with a `## Resolution` section (see the lane
+   `CLAUDE.md` template) — the banner is transient migration scaffolding the
+   Resolution supersedes. Update this lane's `README.md` Status block + table
    (emoji-prefixed).
 4. Repoint references to the new IDs across the chat-web IN-SCOPE inventory (from
    the old web record): brainstorm `2026-06-10-chat-app-scaffold-requirements.md`;
