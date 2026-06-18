@@ -46,6 +46,13 @@ type FocusableCardProps = {
   hasTVPreferredFocus?: boolean
   focusScale?: number
   /**
+   * Where the focus scale grows from. "center" (default) scales symmetrically;
+   * "left" pins the left edge so the card grows rightward only — use it for the
+   * first item in a left-aligned rail so a focused first card stays flush with
+   * the rail inset instead of bleeding toward the screen edge.
+   */
+  focusAnchor?: "center" | "left"
+  /**
    * Focus highlight style. "crimson" (default) is the app-wide Crimson Gallery
    * glow — keep it on SDUI / series / legacy surfaces. "white" draws the
    * WATCH_THEME white ring (a white border + neutral shadow) used by Home, the
@@ -69,6 +76,7 @@ export function FocusableCard({
   onBlur,
   hasTVPreferredFocus,
   focusScale,
+  focusAnchor = "center",
   focusRing = "crimson",
   accessibilityLabel,
   accessibilityHint,
@@ -141,6 +149,7 @@ export function FocusableCard({
           layoutStyle,
           isFocused &&
             (whiteRing ? styles.focusShadowNeutral : styles.focusGlow),
+          focusAnchor === "left" && styles.focusAnchorLeft,
           { transform: [{ scale }] },
         ]}
       >
@@ -166,6 +175,11 @@ const styles = StyleSheet.create({
   outer: {
     borderRadius: scaleSize(16),
     overflow: "visible",
+  },
+  // Scale from the left edge instead of the center, so a focused card grows
+  // rightward only — keeps a left-aligned rail's first card flush with its inset.
+  focusAnchorLeft: {
+    transformOrigin: "0% 50%",
   },
   inner: {
     borderRadius: scaleSize(16),
