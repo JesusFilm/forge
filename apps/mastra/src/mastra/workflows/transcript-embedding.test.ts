@@ -140,6 +140,7 @@ describe("transcript embedding workflow", () => {
             bibleVerses: [],
             contentSummary: "Hello there. This is a transcript.",
             tone: "reflective",
+            demographics: [],
             startSeconds: 0,
             endSeconds: 4,
             embedding: vector(1),
@@ -346,16 +347,16 @@ describe("transcript embedding workflow", () => {
     })
   })
 
-  it("plans v2 enriched chunks with source provenance and canonical felt needs", () => {
+  it("plans v2 enriched chunks with source provenance, canonical felt needs, and demographics", () => {
     const planned = planTranscriptEmbeddingRun(
       input({
         transcript: {
-          text: "Jesus gives hope and love in John 3:16.",
+          text: "Jesus gives hope and love to children and parents in the family in John 3:16.",
           segments: [
             {
               start: 65,
               end: 70,
-              text: "Jesus gives hope and love in John 3:16.",
+              text: "Jesus gives hope and love to children and parents in the family in John 3:16.",
             },
           ],
           artifactKey: "admin-video-subtitle/sub-1.vtt",
@@ -383,11 +384,16 @@ describe("transcript embedding workflow", () => {
       contentHash: expect.stringMatching(/^sha256:/),
     })
     expect(planned.chunks[0]).toMatchObject({
-      rawSourceText: "Jesus gives hope and love in John 3:16.",
+      rawSourceText:
+        "Jesus gives hope and love to children and parents in the family in John 3:16.",
       feltNeeds: ["Hope", "Love"],
       bibleVerses: ["John 3:16"],
+      demographics: ["Children", "Parents", "Families"],
       embeddingInputText: expect.stringContaining("Time range: 01:05-01:10"),
     })
+    expect(planned.chunks[0]?.embeddingInputText).toContain(
+      "Demographics: Children, Parents, Families",
+    )
   })
 
   it("preserves precise failures through the committed route launcher", async () => {
