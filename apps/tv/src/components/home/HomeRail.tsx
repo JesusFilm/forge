@@ -118,6 +118,13 @@ type HomeRailProps = {
    * undefined and rely on the full-width rail above them.
    */
   upFocusTarget?: ViewType | null
+  /**
+   * When true, this rail's TVFocusGuideView restores its LAST-focused card when
+   * focus re-enters. The topmost rail enables it ONLY while the source focus is
+   * NOT a rail below it (the parent gates this), so Down off the hero CTA
+   * restores the last card, while Up from a rail below stays column-preserving.
+   */
+  restoreLastFocus?: boolean
 }
 
 export const HomeRail = memo(function HomeRail({
@@ -129,6 +136,7 @@ export const HomeRail = memo(function HomeRail({
   onRowFocus,
   onCardPress,
   upFocusTarget,
+  restoreLastFocus,
 }: HomeRailProps) {
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
@@ -197,16 +205,16 @@ export const HomeRail = memo(function HomeRail({
         </Text>
       </View>
 
-      {/* No autoFocus: autoFocus restores each rail's LAST-focused card on
-          re-entry, which teleported focus horizontally between rails. Without
-          it the tvOS focus engine uses spatial geometry — up/down lands on the
-          card nearest the leaving card's on-screen x (column-preserving). The
-          skip into shorter rails is handled by the invisible RailPad cards
-          (see `items`), not the guide.
+      {/* autoFocus restores this rail's LAST-focused card when focus re-enters
+          (the topmost rail uses it for Down off the hero CTA). The parent gates
+          it OFF whenever the source focus is a rail BELOW, so Up-from-below
+          keeps the focus engine's column-preserving geometry instead. Other
+          rails leave it off entirely. The skip into shorter rails is handled by
+          the invisible RailPad cards (see `items`), not the guide.
           extraData={lastCardNode}: FlatList re-renders rows on data/extraData
           change only — the pads need to re-render once the bounce target is
           captured. */}
-      <TVFocusGuideView>
+      <TVFocusGuideView autoFocus={restoreLastFocus}>
         <FlatList
           data={items}
           extraData={lastCardNode}
