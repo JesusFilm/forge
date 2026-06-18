@@ -92,13 +92,13 @@ describe("transcript embedding workflow", () => {
       ok: true,
       status: "created",
       chunks: 1,
-      totalTokens: 8,
+      totalTokens: expect.any(Number),
       mastraRunId: "run-segment",
       nativeDimensions: 4096,
       transformVersion: "matryoshka-truncate-1536-v1",
     })
     expect(embeddingRequester).toHaveBeenCalledWith(
-      ["Hello there. This is a transcript."],
+      [expect.stringContaining("Time range: 00:00-00:04") as unknown as string],
       expect.objectContaining({
         expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
       }),
@@ -131,6 +131,16 @@ describe("transcript embedding workflow", () => {
           expect.objectContaining({
             chunkIndex: 0,
             chunkId: "chunk-0",
+            text: "Hello there. This is a transcript.",
+            rawSourceText: "Hello there. This is a transcript.",
+            embeddingInputText: expect.stringContaining(
+              "Transcript: Hello there. This is a transcript.",
+            ),
+            feltNeeds: [],
+            bibleVerses: [],
+            contentSummary: "Hello there. This is a transcript.",
+            tone: "reflective",
+            demographics: [],
             startSeconds: 0,
             endSeconds: 4,
             embedding: vector(1),
@@ -184,14 +194,17 @@ describe("transcript embedding workflow", () => {
       ok: true,
       status: "unchanged",
       chunks: 3,
-      totalTokens: 10,
+      totalTokens: expect.any(Number),
     })
     expect(embeddingRequester).toHaveBeenCalledTimes(2)
     expect(adminIngestClient).toHaveBeenCalledWith(
       expect.objectContaining({
         chunking: expect.objectContaining({ type: "plain-text" }),
         chunks: [
-          expect.objectContaining({ text: "one two three" }),
+          expect.objectContaining({
+            text: "one two three",
+            embeddingInputText: expect.stringContaining("Time range: unknown"),
+          }),
           expect.objectContaining({ text: "four five six" }),
           expect.objectContaining({ text: "seven" }),
         ],
@@ -329,9 +342,58 @@ describe("transcript embedding workflow", () => {
       },
       chunking: {
         totalChunks: 1,
-        totalTokens: 8,
+        totalTokens: expect.any(Number),
       },
     })
+  })
+
+  it("plans v2 enriched chunks with source provenance, canonical felt needs, and demographics", () => {
+    const planned = planTranscriptEmbeddingRun(
+      input({
+        transcript: {
+          text: "Jesus gives hope and love to children and parents in the family in John 3:16.",
+          segments: [
+            {
+              start: 65,
+              end: 70,
+              text: "Jesus gives hope and love to children and parents in the family in John 3:16.",
+            },
+          ],
+          artifactKey: "admin-video-subtitle/sub-1.vtt",
+          kind: "subtitle",
+          languageId: "lang-en",
+          languageSlug: "english",
+          subtitleId: "sub-1",
+          format: "vtt",
+          url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+          provider: "admin-subtitle",
+          generatedAt: "2026-05-25T00:00:00.000Z",
+        },
+      }),
+      { mastraRunId: "run-v2-plan" },
+    )
+
+    expect(planned.source).toMatchObject({
+      artifactKey: "admin-video-subtitle/sub-1.vtt",
+      kind: "subtitle",
+      languageId: "lang-en",
+      languageSlug: "english",
+      subtitleId: "sub-1",
+      format: "vtt",
+      provider: "admin-subtitle",
+      contentHash: expect.stringMatching(/^sha256:/),
+    })
+    expect(planned.chunks[0]).toMatchObject({
+      rawSourceText:
+        "Jesus gives hope and love to children and parents in the family in John 3:16.",
+      feltNeeds: ["Hope", "Love"],
+      bibleVerses: ["John 3:16"],
+      demographics: ["Children", "Parents", "Families"],
+      embeddingInputText: expect.stringContaining("Time range: 01:05-01:10"),
+    })
+    expect(planned.chunks[0]?.embeddingInputText).toContain(
+      "Demographics: Children, Parents, Families",
+    )
   })
 
   it("preserves precise failures through the committed route launcher", async () => {

@@ -14,6 +14,8 @@ import type {
 export const SMART_CROP_PLAN_BATCH_SIZE = 8
 export const SMART_CROP_FRAME_WIDTH = 768
 export const SMART_CROP_PLANNER_VERSION = "smart-crop-planner-v1"
+export const SMART_CROP_MAX_REPAIR_ATTEMPTS = 2
+export const SMART_CROP_ATTEMPTS_ARTIFACT_TYPE = "smart-crop-attempts-9x16-v1"
 
 // ---------------------------------------------------------------------------
 // Artifact shapes (wire contracts — literals from the plan doc)
@@ -100,6 +102,56 @@ export type SmartCropQaArtifact = {
   generatedAt: string
 }
 
+export type SmartCropAttemptStatus =
+  | "planned"
+  | "previewed"
+  | "qa_unavailable"
+  | "complete"
+  | "failed"
+  | "approved"
+  | "rejected"
+
+export type SmartCropAttemptArtifactKeys = {
+  attemptIndex: number
+  suffix: string | null
+  planLogicalKey: string
+  planArtifactType: string
+  previewLogicalKey: string
+  previewArtifactType: string
+  renderReportLogicalKey: string
+  renderReportArtifactType: string
+  qaLogicalKey: string
+  qaArtifactType: string
+  previewFrameLogicalKeyPattern: string
+}
+
+export type SmartCropAttemptSummary = SmartCropAttemptArtifactKeys & {
+  status: SmartCropAttemptStatus
+  source: "initial" | "repair"
+  repairedFromAttemptIndex?: number
+  createdAt: string
+  updatedAt: string
+  previewFrameLogicalKeys: string[]
+  qa?: {
+    verdict?: SmartCropQaArtifact["verdict"]
+    unavailableReason?: string
+    issueCount: number
+    repairTriggerCount: number
+  }
+  triggerIssues: SmartCropQaIssue[]
+}
+
+export type SmartCropAttemptsArtifact = {
+  version: 1
+  kind: "smart-crop-attempts"
+  assetId: string
+  maxRepairAttempts: number
+  selectedAttemptIndex?: number
+  attempts: SmartCropAttemptSummary[]
+  updatedAt: string
+  manifestDigest: string
+}
+
 // ---------------------------------------------------------------------------
 // Pure helpers
 // ---------------------------------------------------------------------------
@@ -152,6 +204,120 @@ export function sumUsage(usages: readonly SmartCropUsage[]): SmartCropUsage {
     }),
     { inputTokens: 0, outputTokens: 0 },
   )
+}
+
+export function formatSmartCropAttemptSuffix(attemptIndex: number): string {
+  if (!Number.isInteger(attemptIndex) || attemptIndex < 0) {
+    throw new Error(`Invalid smart-crop attempt index: ${attemptIndex}`)
+  }
+  return `attempt-${String(attemptIndex).padStart(3, "0")}`
+}
+
+export function buildSmartCropAttemptArtifactKeys(
+  attemptIndex: number,
+): SmartCropAttemptArtifactKeys {
+  const suffix = formatSmartCropAttemptSuffix(attemptIndex)
+
+  return {
+    attemptIndex,
+    suffix,
+    planLogicalKey: `smart-crop-plan-${suffix}`,
+    planArtifactType: `smart-crop-plan-9x16-${suffix}-v1`,
+    previewLogicalKey: `smart-crop-preview-${suffix}`,
+    previewArtifactType: `smart-crop-preview-9x16-${suffix}`,
+    renderReportLogicalKey: `smart-crop-render-report-preview-${suffix}`,
+    renderReportArtifactType: `smart-crop-render-report-9x16-preview-${suffix}`,
+    qaLogicalKey: `smart-crop-qa-${suffix}`,
+    qaArtifactType: `smart-crop-qa-9x16-${suffix}-v1`,
+    previewFrameLogicalKeyPattern: `smart-crop-preview-frame-9x16-{NNN}-${suffix}`,
+  }
+}
+
+export function buildSmartCropAttemptSummary(input: {
+  attemptIndex: number
+  status: SmartCropAttemptStatus
+  source: "initial" | "repair"
+  repairedFromAttemptIndex?: number
+  createdAt?: string
+  updatedAt?: string
+  previewFrameLogicalKeys?: string[]
+  qa?: SmartCropAttemptSummary["qa"]
+  triggerIssues?: SmartCropQaIssue[]
+}): SmartCropAttemptSummary {
+  const now = new Date().toISOString()
+  return {
+    ...buildSmartCropAttemptArtifactKeys(input.attemptIndex),
+    status: input.status,
+    source: input.source,
+    ...(input.repairedFromAttemptIndex != null
+      ? { repairedFromAttemptIndex: input.repairedFromAttemptIndex }
+      : {}),
+    createdAt: input.createdAt ?? now,
+    updatedAt: input.updatedAt ?? now,
+    previewFrameLogicalKeys: input.previewFrameLogicalKeys ?? [],
+    ...(input.qa ? { qa: input.qa } : {}),
+    triggerIssues: input.triggerIssues ?? [],
+  }
+}
+
+function normalizeForDigest(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value)
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(normalizeForDigest).join(",")}]`
+  }
+  const record = value as Record<string, unknown>
+  return `{${Object.keys(record)
+    .filter((key) => key !== "manifestDigest")
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${normalizeForDigest(record[key])}`)
+    .join(",")}}`
+}
+
+export function digestSmartCropAttemptsArtifact(
+  artifact: Omit<SmartCropAttemptsArtifact, "manifestDigest"> & {
+    manifestDigest?: string
+  },
+): string {
+  const normalized = normalizeForDigest(artifact)
+  let hash = 0x811c9dc5
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash ^= normalized.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return `fnv1a:${(hash >>> 0).toString(16).padStart(8, "0")}`
+}
+
+export function buildSmartCropAttemptsArtifact(input: {
+  assetId: string
+  attempts: SmartCropAttemptSummary[]
+  selectedAttemptIndex?: number
+  maxRepairAttempts?: number
+  updatedAt?: string
+}): SmartCropAttemptsArtifact {
+  const artifact = {
+    version: 1 as const,
+    kind: "smart-crop-attempts" as const,
+    assetId: input.assetId,
+    maxRepairAttempts:
+      input.maxRepairAttempts ?? SMART_CROP_MAX_REPAIR_ATTEMPTS,
+    ...(input.selectedAttemptIndex != null
+      ? { selectedAttemptIndex: input.selectedAttemptIndex }
+      : {}),
+    attempts: [...input.attempts].sort(
+      (left, right) => left.attemptIndex - right.attemptIndex,
+    ),
+    updatedAt: input.updatedAt ?? new Date().toISOString(),
+  }
+  const serializable = JSON.parse(JSON.stringify(artifact)) as Omit<
+    SmartCropAttemptsArtifact,
+    "manifestDigest"
+  >
+  return {
+    ...serializable,
+    manifestDigest: digestSmartCropAttemptsArtifact(serializable),
+  }
 }
 
 // Crop window MVP rule: width = largest even integer <= source.height * 9/16,
@@ -369,6 +535,31 @@ function parseStringArray(value: unknown): string[] | undefined {
   return strings.length === value.length ? strings : undefined
 }
 
+function parseNormalizedPoint(
+  value: unknown,
+): { cx: number; cy: number } | null {
+  const point = asRecord(value)
+  if (!point || typeof point.cx !== "number" || typeof point.cy !== "number") {
+    return null
+  }
+  return { cx: point.cx, cy: point.cy }
+}
+
+function parseFaceCenter(
+  value: unknown,
+): SmartCropPlanSegment["faceCenter"] | null {
+  const center = asRecord(value)
+  if (!center) {
+    return null
+  }
+  const start = parseNormalizedPoint(center.start)
+  const end = parseNormalizedPoint(center.end)
+  if (!start || !end) {
+    return null
+  }
+  return { start, end }
+}
+
 // Validates a plan-segment array (used by both the final plan artifact and
 // the plan-progress checkpoint). Returns null when any entry is malformed.
 export function parsePlanSegments(
@@ -417,7 +608,23 @@ export function parsePlanSegments(
       })
     }
 
-    segments.push({
+    if (
+      segment.faceVisible !== undefined &&
+      typeof segment.faceVisible !== "boolean"
+    ) {
+      return null
+    }
+    let faceCenter: SmartCropPlanSegment["faceCenter"] | undefined
+    if (segment.faceCenter === null) {
+      faceCenter = null
+    } else if (segment.faceCenter !== undefined) {
+      faceCenter = parseFaceCenter(segment.faceCenter) ?? undefined
+      if (!faceCenter) {
+        return null
+      }
+    }
+
+    const parsed: SmartCropPlanSegment = {
       shotId: segment.shotId,
       canonicalStart: segment.canonicalStart,
       canonicalEnd: segment.canonicalEnd,
@@ -430,7 +637,14 @@ export function parsePlanSegments(
       avoidCutting: parseStringArray(segment.avoidCutting),
       confidence: segment.confidence,
       cropKeyframes,
-    })
+    }
+    if (typeof segment.faceVisible === "boolean") {
+      parsed.faceVisible = segment.faceVisible
+    }
+    if (segment.faceCenter !== undefined) {
+      parsed.faceCenter = faceCenter
+    }
+    segments.push(parsed)
   }
 
   return segments
@@ -542,6 +756,277 @@ export function parsePlanArtifact(
     usage,
     qa,
     generatedAt: record.generatedAt,
+  }
+}
+
+function parseQaIssue(value: unknown): SmartCropQaIssue | null {
+  const issue = asRecord(value)
+  if (
+    !issue ||
+    (issue.severity !== "info" &&
+      issue.severity !== "warning" &&
+      issue.severity !== "critical") ||
+    typeof issue.description !== "string"
+  ) {
+    return null
+  }
+  return {
+    severity: issue.severity,
+    description: issue.description,
+    atSeconds:
+      typeof issue.atSeconds === "number" ? issue.atSeconds : undefined,
+    shotId: typeof issue.shotId === "string" ? issue.shotId : undefined,
+  }
+}
+
+function parseAttemptQaSummary(
+  value: unknown,
+): SmartCropAttemptSummary["qa"] | undefined {
+  const qa = asRecord(value)
+  if (!qa || typeof qa.issueCount !== "number") {
+    return undefined
+  }
+  const verdict =
+    qa.verdict === "pass" ||
+    qa.verdict === "needs_repair" ||
+    qa.verdict === "fail"
+      ? qa.verdict
+      : undefined
+  return {
+    ...(verdict ? { verdict } : {}),
+    unavailableReason:
+      typeof qa.unavailableReason === "string"
+        ? qa.unavailableReason
+        : undefined,
+    issueCount: qa.issueCount,
+    repairTriggerCount:
+      typeof qa.repairTriggerCount === "number" ? qa.repairTriggerCount : 0,
+  }
+}
+
+const ATTEMPT_STATUSES = new Set<SmartCropAttemptStatus>([
+  "planned",
+  "previewed",
+  "qa_unavailable",
+  "complete",
+  "failed",
+  "approved",
+  "rejected",
+])
+
+export function parseSmartCropAttemptsArtifact(
+  value: unknown,
+): SmartCropAttemptsArtifact | null {
+  const record = asRecord(value)
+  if (
+    !record ||
+    record.kind !== "smart-crop-attempts" ||
+    typeof record.assetId !== "string" ||
+    typeof record.maxRepairAttempts !== "number" ||
+    !Array.isArray(record.attempts) ||
+    typeof record.updatedAt !== "string" ||
+    typeof record.manifestDigest !== "string"
+  ) {
+    return null
+  }
+  if (
+    digestSmartCropAttemptsArtifact(
+      record as Omit<SmartCropAttemptsArtifact, "manifestDigest"> & {
+        manifestDigest?: string
+      },
+    ) !== record.manifestDigest
+  ) {
+    return null
+  }
+
+  const attempts: SmartCropAttemptSummary[] = []
+  for (const entry of record.attempts) {
+    const attempt = asRecord(entry)
+    if (
+      !attempt ||
+      typeof attempt.attemptIndex !== "number" ||
+      typeof attempt.status !== "string" ||
+      !ATTEMPT_STATUSES.has(attempt.status as SmartCropAttemptStatus) ||
+      (attempt.source !== "initial" && attempt.source !== "repair") ||
+      typeof attempt.planLogicalKey !== "string" ||
+      typeof attempt.planArtifactType !== "string" ||
+      typeof attempt.previewLogicalKey !== "string" ||
+      typeof attempt.previewArtifactType !== "string" ||
+      typeof attempt.renderReportLogicalKey !== "string" ||
+      typeof attempt.renderReportArtifactType !== "string" ||
+      typeof attempt.qaLogicalKey !== "string" ||
+      typeof attempt.qaArtifactType !== "string" ||
+      typeof attempt.previewFrameLogicalKeyPattern !== "string" ||
+      typeof attempt.createdAt !== "string" ||
+      typeof attempt.updatedAt !== "string"
+    ) {
+      return null
+    }
+
+    const previewFrameLogicalKeys = Array.isArray(
+      attempt.previewFrameLogicalKeys,
+    )
+      ? attempt.previewFrameLogicalKeys.filter(
+          (key): key is string => typeof key === "string",
+        )
+      : []
+    const triggerIssues = Array.isArray(attempt.triggerIssues)
+      ? attempt.triggerIssues.map(parseQaIssue).filter((issue) => issue != null)
+      : []
+
+    attempts.push({
+      attemptIndex: attempt.attemptIndex,
+      suffix: typeof attempt.suffix === "string" ? attempt.suffix : null,
+      planLogicalKey: attempt.planLogicalKey,
+      planArtifactType: attempt.planArtifactType,
+      previewLogicalKey: attempt.previewLogicalKey,
+      previewArtifactType: attempt.previewArtifactType,
+      renderReportLogicalKey: attempt.renderReportLogicalKey,
+      renderReportArtifactType: attempt.renderReportArtifactType,
+      qaLogicalKey: attempt.qaLogicalKey,
+      qaArtifactType: attempt.qaArtifactType,
+      previewFrameLogicalKeyPattern: attempt.previewFrameLogicalKeyPattern,
+      status: attempt.status as SmartCropAttemptStatus,
+      source: attempt.source,
+      repairedFromAttemptIndex:
+        typeof attempt.repairedFromAttemptIndex === "number"
+          ? attempt.repairedFromAttemptIndex
+          : undefined,
+      createdAt: attempt.createdAt,
+      updatedAt: attempt.updatedAt,
+      previewFrameLogicalKeys,
+      qa: parseAttemptQaSummary(attempt.qa),
+      triggerIssues,
+    })
+  }
+
+  const artifact: SmartCropAttemptsArtifact = {
+    version: 1,
+    kind: "smart-crop-attempts",
+    assetId: record.assetId,
+    maxRepairAttempts: record.maxRepairAttempts,
+    selectedAttemptIndex:
+      typeof record.selectedAttemptIndex === "number"
+        ? record.selectedAttemptIndex
+        : undefined,
+    attempts,
+    updatedAt: record.updatedAt,
+    manifestDigest: record.manifestDigest,
+  }
+
+  return artifact
+}
+
+const CROP_AFFECTING_WARNING_PATTERN =
+  /\b(crop|framing|face|head|subject|speaker|cut off|cut-off|off[- ]?center|out of frame|edge|composition|shot|pan|drift|keyframe|safe zone)\b/i
+
+export function isSmartCropQaIssueRepairTrigger(
+  issue: SmartCropQaIssue,
+): boolean {
+  if (issue.severity === "critical") {
+    return true
+  }
+  if (issue.severity !== "warning") {
+    return false
+  }
+  return Boolean(
+    issue.shotId || CROP_AFFECTING_WARNING_PATTERN.test(issue.description),
+  )
+}
+
+export type SmartCropQaRepairDecision = {
+  action: "repair" | "accept" | "fail"
+  reason:
+    | "clean_pass"
+    | "report_only_issues"
+    | "verdict_needs_repair"
+    | "verdict_fail"
+    | "repair_triggering_issue"
+    | "max_repairs_reached"
+    | "critical_after_max_repairs"
+  triggerIssues: SmartCropQaIssue[]
+}
+
+export function shouldRepairSmartCropQa(input: {
+  verdict: SmartCropQaArtifact["verdict"]
+  issues: readonly SmartCropQaIssue[]
+  repairAttemptCount: number
+  maxRepairAttempts?: number
+}): SmartCropQaRepairDecision {
+  const triggerIssues = input.issues.filter(isSmartCropQaIssueRepairTrigger)
+  const maxRepairAttempts =
+    input.maxRepairAttempts ?? SMART_CROP_MAX_REPAIR_ATTEMPTS
+  const hasRepairSignal =
+    input.verdict === "needs_repair" ||
+    input.verdict === "fail" ||
+    triggerIssues.length > 0
+
+  if (!hasRepairSignal) {
+    return {
+      action: "accept",
+      reason: input.issues.length === 0 ? "clean_pass" : "report_only_issues",
+      triggerIssues,
+    }
+  }
+
+  if (input.repairAttemptCount < maxRepairAttempts) {
+    return {
+      action: "repair",
+      reason:
+        input.verdict === "fail"
+          ? "verdict_fail"
+          : input.verdict === "needs_repair"
+            ? "verdict_needs_repair"
+            : "repair_triggering_issue",
+      triggerIssues,
+    }
+  }
+
+  const hasCritical = input.issues.some(
+    (issue) => issue.severity === "critical",
+  )
+  return {
+    action: input.verdict === "fail" || hasCritical ? "fail" : "accept",
+    reason:
+      input.verdict === "fail" || hasCritical
+        ? "critical_after_max_repairs"
+        : "max_repairs_reached",
+    triggerIssues,
+  }
+}
+
+export function mergeSmartCropRepairSegments(input: {
+  previousPlan: SmartCropPlanArtifact
+  replacementSegments: SmartCropPlanSegment[]
+  expectedShotIds: string[]
+  model: string
+  usage: SmartCropUsage
+  generatedAt?: string
+}): SmartCropPlanArtifact {
+  const expected = new Set(input.expectedShotIds)
+  const replacements = new Map(
+    input.replacementSegments.map((segment) => [segment.shotId, segment]),
+  )
+  if (
+    input.replacementSegments.length !== expected.size ||
+    replacements.size !== expected.size ||
+    [...expected].some((shotId) => !replacements.has(shotId))
+  ) {
+    throw new Error(
+      `repair_segments_mismatch: expected ${[...expected].join(", ")} but got ${input.replacementSegments.map((segment) => segment.shotId).join(", ")}`,
+    )
+  }
+
+  const mergedSegments = input.previousPlan.segments.map(
+    (segment) => replacements.get(segment.shotId) ?? segment,
+  )
+  return {
+    ...input.previousPlan,
+    strategy: { ...input.previousPlan.strategy, model: input.model },
+    segments: mergedSegments,
+    usage: sumUsage([input.previousPlan.usage, input.usage]),
+    qa: { status: "draft" },
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
   }
 }
 
@@ -660,6 +1145,12 @@ export function sourceDimensionsMismatch(
 export type SmartCropRenderReportSummary = {
   previewFrameArtifactTypes: string[]
   outputDurationSeconds: number | null
+  renderedSegments: Array<{
+    shotId: string
+    outputStartSeconds: number
+    outputEndSeconds: number
+  }>
+  renderedShotIds: string[]
 }
 
 export function parseRenderReportSummary(
@@ -677,6 +1168,22 @@ export function parseRenderReportSummary(
         (entry): entry is string => typeof entry === "string",
       )
     : []
+  const renderedSegments = Array.isArray(record.renderedSegments)
+    ? record.renderedSegments
+        .map((entry) => asRecord(entry))
+        .filter(
+          (entry): entry is Record<string, unknown> =>
+            entry !== null &&
+            typeof entry.shotId === "string" &&
+            typeof entry.outputStartSeconds === "number" &&
+            typeof entry.outputEndSeconds === "number",
+        )
+        .map((entry) => ({
+          shotId: entry.shotId as string,
+          outputStartSeconds: entry.outputStartSeconds as number,
+          outputEndSeconds: entry.outputEndSeconds as number,
+        }))
+    : []
 
   return {
     previewFrameArtifactTypes,
@@ -684,7 +1191,25 @@ export function parseRenderReportSummary(
       typeof record.outputDurationSeconds === "number"
         ? record.outputDurationSeconds
         : null,
+    renderedSegments,
+    renderedShotIds: [
+      ...new Set(renderedSegments.map((entry) => entry.shotId)),
+    ],
   }
+}
+
+export function findRenderedShotIdAtTime(
+  summary: SmartCropRenderReportSummary,
+  atSeconds: number,
+): string | undefined {
+  return summary.renderedSegments.find((segment, index) => {
+    const isLast = index === summary.renderedSegments.length - 1
+    return (
+      atSeconds >= segment.outputStartSeconds &&
+      (atSeconds < segment.outputEndSeconds ||
+        (isLast && atSeconds <= segment.outputEndSeconds))
+    )
+  })?.shotId
 }
 
 // Preview-frame logical keys for the job artifact manifest. The crop-worker
@@ -696,7 +1221,9 @@ export function listPreviewFrameLogicalKeys(renderReport: unknown): string[] {
     return []
   }
   return summary.previewFrameArtifactTypes.filter((artifactType) =>
-    /^smart-crop-preview-frame-9x16-\d{3}$/.test(artifactType),
+    /^smart-crop-preview-frame-9x16-\d{3}(?:-attempt-\d{3})?$/.test(
+      artifactType,
+    ),
   )
 }
 

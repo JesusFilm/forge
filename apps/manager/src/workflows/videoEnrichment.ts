@@ -32,7 +32,10 @@ import type {
   MastraSubtitleTranslationContext,
 } from "@/services/mastra-subtitle-enrichment"
 import type { MastraTranscriptEmbeddingResult } from "@/services/mastra-transcript-embeddings"
-import type { TranscriptionResult } from "@/services/transcription"
+import type {
+  CleanedAudioTranscriptionSource,
+  TranscriptionResult,
+} from "@/services/transcription"
 import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import {
   stepGetJob,
@@ -463,6 +466,80 @@ export async function runVideoEnrichment(
   })
 
   try {
+    async function runAudioCleanupStep(): Promise<CleanedAudioTranscriptionSource> {
+      try {
+        await markStepRunning(input.jobId, "audio_cleanup")
+        const audioCleanupResult = await stepAudioCleanup({
+          assetId: input.assetId,
+          muxAssetId: input.muxAssetId,
+          playbackId: input.playbackId,
+        })
+        await persistMergedArtifacts(
+          input.jobId,
+          buildDownloadableArtifactManifest(audioCleanupResult.artifactKeys),
+        )
+        await markStepComplete(input.jobId, "audio_cleanup")
+        return {
+          assetId: input.assetId,
+          artifactType: "cleaned-audio",
+          ext: "mp3",
+        }
+      } catch (audioError) {
+        const audioCleanupArtifactKeys =
+          getPersistedAudioCleanupArtifactKeys(audioError)
+
+        try {
+          await persistMergedArtifacts(
+            input.jobId,
+            buildDownloadableArtifactManifest(audioCleanupArtifactKeys),
+          )
+        } catch (persistError) {
+          console.error(
+            JSON.stringify({
+              event: "audio_cleanup_artifact_manifest_failed",
+              jobId: input.jobId,
+              error:
+                persistError instanceof Error
+                  ? persistError.message
+                  : "Unknown artifact persistence error",
+            }),
+          )
+        }
+
+        const msg =
+          audioError instanceof Error ? audioError.message : "Unknown error"
+        try {
+          await markStepFailed(input.jobId, "audio_cleanup", msg)
+        } catch (statusError) {
+          console.error(
+            JSON.stringify({
+              event: "audio_cleanup_status_update_failed",
+              jobId: input.jobId,
+              error:
+                statusError instanceof Error
+                  ? statusError.message
+                  : "Unknown status update error",
+            }),
+          )
+        }
+        console.error(
+          JSON.stringify({
+            event: "audio_cleanup_failed_before_transcription",
+            jobId: input.jobId,
+            error: msg,
+          }),
+        )
+        throw audioError
+      }
+    }
+
+    const cleanedAudioArtifact = input.runAudioCleanup
+      ? await runAudioCleanupStep()
+      : undefined
+    if (!input.runAudioCleanup) {
+      await markStepSkipped(input.jobId, "audio_cleanup")
+    }
+
     // Step 1: Transcription
     await markStepRunning(input.jobId, "transcription")
     let transcription: Awaited<ReturnType<typeof stepTranscribe>>
@@ -473,6 +550,7 @@ export async function runVideoEnrichment(
         language,
         input.requestedTranscriptionProvider,
         artifactManifest,
+        cleanedAudioArtifact,
       )
       const transcriptionArtifacts = transcription.routingReport
         ? mergeArtifactEntries(
@@ -577,71 +655,6 @@ export async function runVideoEnrichment(
       }
     }
 
-    async function runAudioCleanupStep(): Promise<void> {
-      try {
-        await markStepRunning(input.jobId, "audio_cleanup")
-        const audioCleanupResult = await stepAudioCleanup({
-          assetId: input.assetId,
-          muxAssetId: input.muxAssetId,
-          playbackId: input.playbackId,
-        })
-        await persistMergedArtifacts(
-          input.jobId,
-          buildDownloadableArtifactManifest(audioCleanupResult.artifactKeys),
-        )
-        await markStepComplete(input.jobId, "audio_cleanup")
-      } catch (audioError) {
-        const audioCleanupArtifactKeys =
-          getPersistedAudioCleanupArtifactKeys(audioError)
-
-        try {
-          await persistMergedArtifacts(
-            input.jobId,
-            buildDownloadableArtifactManifest(audioCleanupArtifactKeys),
-          )
-        } catch (persistError) {
-          console.error(
-            JSON.stringify({
-              event: "audio_cleanup_artifact_manifest_failed",
-              jobId: input.jobId,
-              error:
-                persistError instanceof Error
-                  ? persistError.message
-                  : "Unknown artifact persistence error",
-            }),
-          )
-        }
-
-        const msg =
-          audioError instanceof Error ? audioError.message : "Unknown error"
-        try {
-          await markStepFailed(input.jobId, "audio_cleanup", msg)
-        } catch (statusError) {
-          console.error(
-            JSON.stringify({
-              event: "audio_cleanup_status_update_failed",
-              jobId: input.jobId,
-              error:
-                statusError instanceof Error
-                  ? statusError.message
-                  : "Unknown status update error",
-            }),
-          )
-        }
-        console.error(
-          JSON.stringify({
-            event: "audio_cleanup_failed_in_enrichment",
-            jobId: input.jobId,
-            error: msg,
-          }),
-        )
-      }
-    }
-
-    const audioCleanupPromise = input.runAudioCleanup
-      ? runAudioCleanupStep()
-      : undefined
-
     const translationPromise = runParallelStep(
       "translation",
       () =>
@@ -705,19 +718,15 @@ export async function runVideoEnrichment(
     ])
 
     if (translationResult.status === "rejected") {
-      await audioCleanupPromise
       throw translationResult.reason
     }
     if (chaptersResult.status === "rejected") {
-      await audioCleanupPromise
       throw chaptersResult.reason
     }
     if (metadataResult.status === "rejected") {
-      await audioCleanupPromise
       throw metadataResult.reason
     }
     if (embeddingsResult.status === "rejected") {
-      await audioCleanupPromise
       throw embeddingsResult.reason
     }
 
@@ -760,14 +769,7 @@ export async function runVideoEnrichment(
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error"
       await markStepFailed(input.jobId, "mux_upload", msg)
-      await audioCleanupPromise
       throw err
-    }
-
-    if (audioCleanupPromise) {
-      await audioCleanupPromise
-    } else {
-      await markStepSkipped(input.jobId, "audio_cleanup")
     }
 
     // Optional: Scene analysis (chapters → scene boundaries → OpenRouter + stills)
@@ -869,6 +871,7 @@ async function stepTranscribe(
   language: string,
   requestedProvider: RequestedTranscriptionProvider | undefined,
   artifacts: JobArtifactManifest,
+  cleanedAudioArtifact?: CleanedAudioTranscriptionSource,
 ) {
   "use step"
   const { getTranscriptionRoutingReport } =
@@ -878,6 +881,7 @@ async function stepTranscribe(
   return transcribe(assetId, muxAssetId, language, {
     requestedProvider,
     sourceInputUrl: priorRoutingReport?.sourceInputUrl,
+    cleanedAudioArtifact,
     priorRoutingReport,
   })
 }

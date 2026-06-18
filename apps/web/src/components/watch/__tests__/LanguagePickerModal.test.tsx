@@ -72,6 +72,13 @@ function $$(selector: string): HTMLElement[] {
   return Array.from(document.querySelectorAll(selector)) as HTMLElement[]
 }
 
+function elementClassName(
+  element: HTMLElement | SVGElement | null | undefined,
+): string {
+  const className = element?.className
+  return typeof className === "string" ? className : (className?.baseVal ?? "")
+}
+
 function expectMultilingualTooltip(
   testId: string,
   expected: string[],
@@ -452,7 +459,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(languageIcon?.querySelector("svg")).not.toBeNull()
     expect(languageIcon?.className).toContain("size-8")
     expect(languageIcon?.className).not.toContain("size-10")
-    expect(languageIcon?.querySelector("svg")?.className.baseVal).toContain(
+    expect(elementClassName(languageIcon?.querySelector("svg"))).toContain(
       "size-4",
     )
     expect(languageIcon?.className).not.toContain("rounded-full")
@@ -574,7 +581,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(subtitlesIcon?.querySelector("svg")).not.toBeNull()
     expect(subtitlesIcon?.className).toContain("size-8")
     expect(subtitlesIcon?.className).not.toContain("size-10")
-    expect(subtitlesIcon?.querySelector("svg")?.className.baseVal).toContain(
+    expect(elementClassName(subtitlesIcon?.querySelector("svg"))).toContain(
       "size-4",
     )
     expect(subtitlesIcon?.className).not.toContain("rounded-full")
@@ -865,7 +872,7 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-request-sent-icon"]',
     )
     expect(sentIcon).not.toBeNull()
-    expect(sentIcon?.getAttribute("class")).toContain("text-emerald-400")
+    expect(elementClassName(sentIcon)).toContain("text-emerald-400")
     expect(routerPushMock).not.toHaveBeenCalled()
     expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
   })

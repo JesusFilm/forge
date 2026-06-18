@@ -53,6 +53,7 @@ export const SmartCropQaInputSchema = z
           .object({
             atSeconds: z.number().min(0),
             url: z.string().url(),
+            shotId: z.string().min(1).optional(),
           })
           .strict(),
       )

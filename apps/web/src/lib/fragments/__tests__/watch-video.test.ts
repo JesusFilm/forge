@@ -71,8 +71,12 @@ describe("WatchVideo split GraphQL operations", () => {
     expect(printed).toMatch(/documentId\s*:\s*\bid\b/)
     expect(printed).toMatch(/\bhls\b/)
     expect(printed).toMatch(/\bduration\b/)
-    expect(printed).toMatch(/\blanguage\s*\{[\s\S]*?coreId[\s\S]*?slug/)
-    expect(printed).toMatch(/\bdownloads\s*\{[\s\S]*?quality[\s\S]*?size/)
+    expect(printed).toMatch(
+      /\blanguage\s*\{[\s\S]*?coreId[\s\S]*?iso3[\s\S]*?slug/,
+    )
+    expect(printed).toMatch(
+      /\bdownloads\s*\{[\s\S]*?height[\s\S]*?quality[\s\S]*?size/,
+    )
     expect(printed).toMatch(/\bmuxVideo\s*\{[\s\S]*?playbackId/)
     expect(printed).toMatch(
       /\bvideoEdition\s*\{[\s\S]*?subtitles\s*\{[\s\S]*?vttSrc[\s\S]*?srtSrc[\s\S]*?primary[\s\S]*?aiGenerated/,

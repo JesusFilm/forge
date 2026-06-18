@@ -339,12 +339,27 @@ describe("getShortsJobSummary", () => {
   it("keeps a genuinely queued job presented as queued", () => {
     const summary = getShortsJobSummary(
       buildJob({ artifacts: {}, status: "pending" }),
+      { now: new Date("2026-06-11T00:01:00.000Z") },
     )
     expect(summary).toMatchObject({
       phase: "queued",
       phaseLabel: "Queued",
       phaseTone: "pending",
       isLaunchFailed: false,
+    })
+  })
+
+  it("presents stale queued work as launch stalled", () => {
+    const summary = getShortsJobSummary(
+      buildJob({ artifacts: {}, status: "pending" }),
+      { now: new Date("2026-06-11T00:10:00.000Z") },
+    )
+    expect(summary).toMatchObject({
+      phase: "queued",
+      phaseLabel: "Launch stalled",
+      phaseTone: "failed",
+      isLaunchFailed: false,
+      activeStall: expect.objectContaining({ retryKind: "prepare" }),
     })
   })
 

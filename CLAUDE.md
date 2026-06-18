@@ -126,8 +126,11 @@ docs/roadmap/
 ├── content-discovery/feat-*.md        # Search and discovery features
 ├── topic-experiences/feat-*.md        # Topic pages and AI generation
 ├── media-generation/feat-*.md         # Audio/video AI features
-└── platform/feat-*.md                 # Infrastructure and tooling
+├── platform/feat-*.md                 # Infrastructure and tooling
+└── ai-chat/feat-*.md                  # Jesus Film AI Chat — docs-only lane, NOT rendered by the viewer
 ```
+
+> **`ai-chat` is a docs-only lane.** Unlike the others it is intentionally **not** registered in the viewer app (`apps/roadmap`) and its tickets are **not** counted in the generated root `README.md`. If you are adding or modifying a ticket in the `ai-chat` lane, read `docs/roadmap/ai-chat/CLAUDE.md` first — it carries that lane's own conventions (README upkeep, ID allocation, status handling).
 
 ### Feature File Format
 
@@ -137,7 +140,7 @@ Every feature file must have this frontmatter:
 ---
 id: "feat-NNN"                # Globally unique, sequential
 title: "Short feature title"
-owner: "person-name"          # tataihono, vlad, ekkasit, nisal, urim
+owner: "person-name"          # tataihono, vlad, ekkasit, nisal, urim, jian wei, jaco
 priority: "P0"                # P0, P1, P2
 status: "not-started"         # not-started, in-progress, complete, blocked
 start_date: "2026-04-01"     # Expected start date (YYYY-MM-DD)
