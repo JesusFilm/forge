@@ -365,6 +365,27 @@ and query errors). The YouTube key is opt-in — optional and not part of
 `assertMastraRuntimeEnv()`. The same `INSTAGRAM_DISCOVERY_SITE_INGEST_*` vars are
 reused as the shared website-ingest config for all discovery platforms.
 
+## Pinterest AI/Christian discovery
+
+The service route `POST /forge-pinterest-discovery` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `pinterest-ai-christian-discovery`
+workflow. Pinterest exposes a **free public RSS feed** for any public board
+(`https://<host>/<user>/<board>.rss`) — no API key needed. Input: `boards`
+(board page URLs), `limitPerBoard` (15), `maxResults` (100), `persistArtifact`.
+
+Pinterest is **board-only** (RSS has no keyword search), and boards are curated
+trusted sources, so the rule is **trust-the-source**: every pin is kept except
+obvious commentary/reaction/news junk (the shared `services/discovery/classifier.ts`
+commentary list). No AI/Christian keyword requirement. Pins are parsed from the
+RSS items (pin id from the `/pin/<id>/` URL, image from the entity-encoded
+description, caption from the title), deduped by pin id, and submitted to the
+website review queue tagged `platform: "pinterest"` with board attribution. The
+website review queue stays the human gate.
+
+Failure reasons: `invalid_input` (400), `all_boards_failed` (502, only when every
+board errors — e.g. all private/404). No API key, so no `config_missing`. RSS
+parsing is a small tolerant regex parser (no XML dependency).
+
 ## Railway Storage
 
 Production `@forge/mastra` uses the existing Mastra Postgres database through
