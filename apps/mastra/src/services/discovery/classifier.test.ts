@@ -64,6 +64,21 @@ describe("classifyContent", () => {
     expect(qualifies(signals)).toBe(false)
   })
 
+  it("excludes meme/novelty, talk-about-AI, and news junk", () => {
+    const cases = [
+      "Omg Jesus #ai #funny #trending #memes #aiart",
+      "Jesus and Buddha jousting #midjourney #aiart #ai #jesus",
+      "AI & Christianity: What Every Believer Must Know!",
+      "How Satan is Using AI Videos to Trick Many Christians.. Be Advised!",
+      "AI-generated singer hits No. 1 on Christian music charts",
+    ]
+    for (const caption of cases) {
+      const signals = classifyContent(content(caption))
+      expect(signals.isCommentary).toBe(true)
+      expect(qualifies(signals)).toBe(false)
+    }
+  })
+
   it("keeps a genuine creation that has no commentary words", () => {
     const signals = classifyContent(
       content(

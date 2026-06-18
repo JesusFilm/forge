@@ -108,10 +108,33 @@ export const COMMENTARY_KEYWORDS: Keyword[] = [
   "speaking out",
   "weighs in",
   "satirical",
+  // Meme / novelty junk (YouTube noise): clearly not a devotional creation.
+  "#funny",
+  "#memes",
+  "#meme",
+  { word: "funny" },
+  { word: "meme" },
+  { word: "memes" },
+  "jousting",
+  { word: "buddha" },
+  "cutebaby",
+  "cute baby",
+  // "Talk about AI" teaching / warning clickbait (not a creation).
+  "must know",
+  "be advised",
+  "is using ai",
+  "using ai to",
+  "trick many",
+  "be deceived",
+  // News / chart coverage about AI content (not a creation).
+  "music charts",
+  "hits no",
+  "no. 1",
   // NOTE: keep this list conservative. Terms that collide with genuine creation
   // captions were deliberately excluded: "according to" (Gospel attributions),
   // "mocking" (Passion narrative + "mockingbird"), "explains"/"explained"
-  // (AI explainer films are legitimate creations).
+  // (AI explainer films are legitimate creations), and "viral" (genuine
+  // creations sometimes describe themselves as viral).
 ]
 
 function escapeRegExp(value: string): string {

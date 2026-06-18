@@ -40,9 +40,12 @@ import { isValidServiceBearer } from "../../server/service-bearer"
 
 const WORKFLOW_FAILURE_ERROR_PREFIX = "YOUTUBE_DISCOVERY_WORKFLOW_FAILED:"
 
+// Creation-oriented defaults: bias toward AI-made films/animation rather than
+// generic "video", which pulls in commentary, news, and memes about AI.
 const DEFAULT_QUERIES = [
-  "AI generated Jesus video",
-  "AI generated Christian video",
+  "AI generated Bible story film",
+  "cinematic AI Jesus short film",
+  "AI animated gospel story",
 ]
 
 export const YouTubeDiscoveryWorkflowInputSchema = z
