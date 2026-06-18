@@ -12,13 +12,13 @@ origin: docs/brainstorms/2026-06-10-seeker-rag-connection-requirements.md
 
 Replace the seeker agent's stub `retrieveAnswer` tool with a real HTTP client of the `JesusFilm/jesusfilm-rag` service (`POST {base}/v1/search`, bearer auth, published OpenAPI v1 contract). The tool returns ranked, cited passages plus a status the agent can act on; the agent's own LLM synthesizes source-attributed answers. Configuration is fully optional — unset env vars degrade to an explicit "retrieval unavailable" result, never a boot failure.
 
-Roadmap ticket: `docs/roadmap/ai-chat/feat-174-seeker-rag-retrieval-connection.md` (feat-174, depends on feat-170).
+Roadmap ticket: `docs/roadmap/ai-chat/feat-199-seeker-rag-retrieval-connection.md` (feat-199, depends on feat-198).
 
 ---
 
 ## Problem Frame
 
-feat-170 shipped the seeker agent skeleton with a deliberately stubbed `retrieveAnswer`: a fixed `[stub]` answer and empty `sources`, guarded by a pinned `STUB_MARKER` regression test. The RAG it waited on now exists and is deployed on the org's Railway account. The missing piece is entirely on our side: the client, its configuration, the tool's passage-shaped contract, and the agent instructions that turn passages into cited answers (see origin: `docs/brainstorms/2026-06-10-seeker-rag-connection-requirements.md`).
+feat-198 shipped the seeker agent skeleton with a deliberately stubbed `retrieveAnswer`: a fixed `[stub]` answer and empty `sources`, guarded by a pinned `STUB_MARKER` regression test. The RAG it waited on now exists and is deployed on the org's Railway account. The missing piece is entirely on our side: the client, its configuration, the tool's passage-shaped contract, and the agent instructions that turn passages into cited answers (see origin: `docs/brainstorms/2026-06-10-seeker-rag-connection-requirements.md`).
 
 ---
 
@@ -43,7 +43,7 @@ Carried from origin; R-IDs preserved.
 **Safety**
 
 - R9. The stub's `STUB_MARKER` regression test is replaced by guards at both layers: the tool's `sources` contain only passages the RAG actually returned, and the agent's instructions forbid citing any source name or URL not present in the current tool result.
-- R10. The seeker agent stays Studio-only; the feat-170 route-isolation test continues to pass and no new public surface is added.
+- R10. The seeker agent stays Studio-only; the feat-198 route-isolation test continues to pass and no new public surface is added.
 
 **Verification**
 
@@ -178,7 +178,7 @@ HTTP status classification inside the client (mirrors `failureForStatus` in `fir
 - **Goal:** `apps/mastra` docs reflect real retrieval: env vars documented, "stub" framing removed, unconfigured behavior described.
 - **Requirements:** R7 (docs half); roadmap hygiene
 - **Dependencies:** U1–U4
-- **Files:** `apps/mastra/CLAUDE.md`, `apps/mastra/AGENTS.md`, `docs/roadmap/ai-chat/feat-174-seeker-rag-retrieval-connection.md`
+- **Files:** `apps/mastra/CLAUDE.md`, `apps/mastra/AGENTS.md`, `docs/roadmap/ai-chat/feat-199-seeker-rag-retrieval-connection.md`
 - **Approach:** CLAUDE.md: add the five `JESUSFILM_RAG_*` rows to the Environment table (optional posture, defaults, fail-closed prod guard note); rewrite the Seeker agent section — intro drops "stub `retrieveAnswer` tool", Local run shows both configured and unconfigured behavior (unconfigured → explicit unavailable result), delete the "Real RAG / retrieval backend" bullet from "Not wired yet", keep Containment and the remaining deferred bullets (guardrail gate, public surface, Postgres memory, agent evals). AGENTS.md: keep aligned per its own instruction — add a one-line core-model note that RAG retrieval is Mastra-owned through the seeker tool with an outbound-only bearer. Roadmap ticket status flips to `complete` only at feature completion.
 - **Test expectation:** none — documentation only.
 - **Verification:** `pnpm --filter @forge/mastra lint` (prettier/markdown checks in CI) passes; CLAUDE.md env table renders correctly.
@@ -201,7 +201,7 @@ Carried from origin; verification notes added.
 Carried from origin:
 
 - Prod corpus backfill and source coverage — owned by the jesusfilm-rag repo.
-- The seeker agent's guardrail gate, full persona, and public exposure — deferred per feat-170.
+- The seeker agent's guardrail gate, full persona, and public exposure — deferred per feat-198.
 - MCP integration — revisit if the RAG ships its MCP adapter.
 - Tool-side answer generation.
 - Language filtering — corpus is English-only; this plan omits `policy.language` and drops the `locale` input (KTD). On the multilingual revisit, prefer carrying locale via runtime/session context into the executor, normalized to bare codes — not an LLM-populated input field, which is exactly the unreliable value the origin warned about.
@@ -210,7 +210,7 @@ Carried from origin:
 ### Deferred to Follow-Up Work
 
 - Capture the RAG-client pattern in `docs/solutions/` via `ce:compound` after landing (nothing documents the `firecrawl-client.ts` convention yet). Note in it that `failureForStatus`-shaped helpers will then exist in three files (`firecrawl-client.ts`, `admin-search-eval-client.ts`, the new client) — make the rule-of-three extraction call explicitly rather than letting the duplication accrue silently.
-- Agent evals (faithfulness/groundedness) — feat-170 deferred them "once RAG lands"; they become possible after this feature but belong to the guardrail-gate work.
+- Agent evals (faithfulness/groundedness) — feat-198 deferred them "once RAG lands"; they become possible after this feature but belong to the guardrail-gate work.
 - Passage-content prompt-injection handling is a prerequisite the guardrail-gate ticket must own before any non-Studio exposure — this plan defines the seam and documents the risk; the gate owns the defense.
 
 ---
@@ -236,7 +236,7 @@ Inferred plan-time bets the origin left open; flag during review if any should f
 - **RAG-side query handling is a named live-verification gate:** seeker questions are sensitive-category personal data in a ministry context, and this repo's no-query-logging discipline only covers our half. Before R11's live leg, confirm the RAG side's logging/retention posture for raw `query` text under this consumer token — this is a gate on live verification, not a best-effort aside.
 - **Retrieved passages are untrusted input the agent is tuned to obey:** the `message`-field design deliberately maximizes model compliance with tool-result text, and corpus passages arrive in that same channel — an injected corpus document could steer the agent, and the R9 guard does not help (an injected passage IS in the tool result). Blast radius today is misleading output to an authenticated Studio tester plus thread-lifetime memory poisoning; the U4 quoted-material instruction line documents intent, and the real defense belongs to the guardrail gate (see Deferred).
 - **Existing agent surface becomes credentialed egress:** every registered agent is reachable on Mastra's built-in `/api/agents/*` surface (gateway-gated externally, open to the Railway private network); after this feature that surface drives an all-sources RAG bearer — any gateway-session user or internal caller can spend RAG quota or pull corpus content through the seeker. R10's "no new public surface" is true but this existing surface gains capability. Mitigation: the per-consumer revocable token (R1) and the containment posture already documented in `apps/mastra/CLAUDE.md`.
-- **Free-tier model tool-calling is inconsistent:** feat-170's smoke saw `gemma-4-31b-it:free` invoke the tool in some runs and fail opaquely in others (`docs/solutions/integration-issues/mastra-conversational-agent-memory-and-model-router-wiring.md`). Changing the model is out of scope; e2e verification must distinguish integration failures (tool/client/contract) from model lapses.
+- **Free-tier model tool-calling is inconsistent:** feat-198's smoke saw `gemma-4-31b-it:free` invoke the tool in some runs and fail opaquely in others (`docs/solutions/integration-issues/mastra-conversational-agent-memory-and-model-router-wiring.md`). Changing the model is out of scope; e2e verification must distinguish integration failures (tool/client/contract) from model lapses.
 - **RAG contract drift:** additive changes (a new response field, contract-legal within v1) are tolerated by the passthrough parse and keep working; only a removed/renamed required field surfaces as a loud `unavailable` + `parse_error` log. The client's JSDoc stamps the contract version/date the fixtures were captured against. A strict whole-envelope parse was rejected precisely because it would turn legal additive evolution into a silent total outage.
 - **CodeQL may flag the env-derived fetch URL** (`js/request-forgery`) as it has on other allowlisted egress (`docs/solutions/security-issues/ssrf-defense-streaming-proxy-and-codeql-fp-20260504.md`); the hostname allowlist + https guard is the real control — expect a dismissible alert, don't weaken the guard for it.
 - **Stale dev process confusion:** a Mastra dev server still bound to 4111 serves old env/code and makes new env vars appear broken — kill before validating (`docs/solutions/integration-issues/mastra-studio-api-auth-guard.md`).

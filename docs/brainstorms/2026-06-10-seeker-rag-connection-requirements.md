@@ -17,7 +17,7 @@ answers from them.
 
 ## Problem Frame
 
-feat-170 shipped the seeker agent skeleton with a deliberately stubbed
+feat-198 shipped the seeker agent skeleton with a deliberately stubbed
 `retrieveAnswer` tool: it returns a fixed `[stub]` placeholder and empty
 `sources`, so the agent can demonstrate the chat → tool-call → memory shape in
 Studio but cannot actually ground a factual answer. The stub's contract was
@@ -42,7 +42,7 @@ instructions that turn retrieved passages into cited answers.
 - **Direct HTTP against the v1 contract.** The service's MCP adapter does not
   exist yet; the published `/v1` REST contract is the only door and is
   contract-stable (additive-only within v1).
-- **Optional configuration with graceful degradation.** Continues feat-170's
+- **Optional configuration with graceful degradation.** Continues feat-198's
   zero-new-required-env-vars rule: the RAG base URL and bearer token are
   optional in `apps/mastra/src/config/env.ts`. Unconfigured, the app boots and
   every other workflow runs; only the tool degrades to an explicit
@@ -92,7 +92,7 @@ instructions that turn retrieved passages into cited answers.
   at both layers: the tool's `sources` contain only passages the RAG actually
   returned, and the agent's instructions forbid citing any source name or URL
   not present in the current tool result.
-- R10. The seeker agent stays Studio-only; the feat-170 route-isolation test
+- R10. The seeker agent stays Studio-only; the feat-198 route-isolation test
   continues to pass and no new public surface is added.
 
 **Verification**
@@ -134,7 +134,7 @@ instructions that turn retrieved passages into cited answers.
 - Prod corpus backfill and source coverage — owned by the jesusfilm-rag repo;
   we consume whatever is indexed.
 - The seeker agent's guardrail gate, full persona, and public exposure — still
-  deferred per feat-170.
+  deferred per feat-198.
 - MCP integration — revisit if the RAG ships its MCP adapter.
 - Tool-side answer generation.
 - Language filtering — the corpus is English-only today. The RAG's language
@@ -207,6 +207,6 @@ instructions that turn retrieved passages into cited answers.
   timeout, config accessor.
 - `apps/mastra/src/config/env.ts` + `apps/mastra/.env.example` — where optional
   config lands.
-- `docs/roadmap/ai-chat/feat-170-seeker-agent-skeleton.md` and
+- `docs/roadmap/ai-chat/feat-198-seeker-agent-skeleton.md` and
   `docs/plans/2026-06-08-003-feat-seeker-agent-skeleton-plan.md` — the skeleton
   this builds on, including the safety posture this work carries forward.

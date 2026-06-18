@@ -6,7 +6,7 @@ export type { JesusfilmRagConfig } from "../config/env"
 
 /**
  * Typed, single-attempt HTTP client for the JesusFilm RAG retrieval service
- * (feat-174): `POST {baseUrl}/v1/search`, bearer auth.
+ * (feat-199): `POST {baseUrl}/v1/search`, bearer auth.
  *
  * CONTRACT PROVENANCE: shapes below are transcribed from
  * `github.com/JesusFilm/jesusfilm-rag` `contracts/openapi.v1.json` as captured

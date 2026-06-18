@@ -238,7 +238,7 @@ exposed.
 ## Related Issues
 
 - `mastra-conversational-agent-memory-and-model-router-wiring.md` documents the
-  feat-170 seeker agent wiring (memory API, model-router provider/key) whose
+  feat-198 seeker agent wiring (memory API, model-router provider/key) whose
   route-isolation test is the worked example of the generalization above.
 - `../platform/mastra-scene-embedding-workflow-pattern.md` documents the
   feat-133 ownership split: Manager source artifacts, Mastra provider calls,

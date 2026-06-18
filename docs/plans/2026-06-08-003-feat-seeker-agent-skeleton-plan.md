@@ -1,15 +1,15 @@
 ---
-title: "feat: Seeker Agent Skeleton (feat-170)"
+title: "feat: Seeker Agent Skeleton (feat-198)"
 type: feat
 status: active
 date: 2026-06-08
 origin: docs/brainstorms/2026-06-08-seeker-agent-skeleton-requirements.md
-roadmap: docs/roadmap/ai-chat/feat-170-seeker-agent-skeleton.md
+roadmap: docs/roadmap/ai-chat/feat-198-seeker-agent-skeleton.md
 branch: feat/seeker-agent-skeleton
 scope: apps/mastra
 ---
 
-# feat: Seeker Agent Skeleton (feat-170)
+# feat: Seeker Agent Skeleton (feat-198)
 
 ## Summary
 
@@ -70,7 +70,7 @@ guardrail gate AND an explicit gateway access decision.
 
 ## Requirements
 
-Traced from the origin requirements doc and `feat-170` ticket:
+Traced from the origin requirements doc and `feat-198` ticket:
 
 - **R1** — A `seeker-agent.ts` `Agent` registered in `index.ts` `agents: {}`,
   with minimal placeholder instructions (helps people exploring Christianity /
@@ -511,7 +511,7 @@ breadcrumb, the route-isolation test, the CLAUDE.md section, and colocated tests
 ## Sources & Research
 
 - Origin requirements: `docs/brainstorms/2026-06-08-seeker-agent-skeleton-requirements.md`
-- Roadmap ticket: `docs/roadmap/ai-chat/feat-170-seeker-agent-skeleton.md`
+- Roadmap ticket: `docs/roadmap/ai-chat/feat-198-seeker-agent-skeleton.md`
 - In-app templates: `apps/mastra/src/mastra/agents/web-research-agent.ts`,
   `apps/mastra/src/mastra/tools/firecrawl.ts`,
   `apps/mastra/src/mastra/agents/smoke-agent.ts` +

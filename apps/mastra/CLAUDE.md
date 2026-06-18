@@ -387,11 +387,11 @@ is not the deterministic product contract here.
 
 ## Seeker agent
 
-`seekerAgent` (feat-170, feat-174) is the first conversational agent of the
+`seekerAgent` (feat-198, feat-199) is the first conversational agent of the
 planned "Jesus Film AI Chat" system, **Studio-only**, proving the
 chat -> tool-call -> remembered-context shape: citation-disciplined
 instructions with a mandatory safety line, the `retrieveAnswer` tool backed by
-the JesusFilm RAG service (feat-174), and per-agent in-memory `Memory`. The tool
+the JesusFilm RAG service (feat-199), and per-agent in-memory `Memory`. The tool
 returns ranked, cited **passages** (`{ status, sources, message? }`) and the
 agent's own LLM synthesizes the source-attributed answer — the tool generates
 nothing. When the RAG env vars are unset (or the service is unreachable), the

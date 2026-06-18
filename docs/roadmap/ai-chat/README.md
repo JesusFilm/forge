@@ -14,8 +14,8 @@ from the main DS Year 1 roadmap.
 ## Status (June 18, 2026)
 
 - **Total tickets:** 4
-- ✅ **Complete:** 0
-- 🟡 **In progress:** 4
+- ✅ **Complete:** 2
+- 🟡 **In progress:** 2
 - 🔵 **Not started:** 0
 - 🔴 **Blocked:** 0
 
@@ -23,7 +23,7 @@ from the main DS Year 1 roadmap.
 
 | ID                                                      | Feature                                     | Owner    | Priority | Start      | Days | Status         | Code PR |
 | ------------------------------------------------------- | ------------------------------------------- | -------- | -------- | ---------- | ---- | -------------- | ------- |
-| [feat-198](feat-198-seeker-agent-skeleton.md)           | Seeker Agent Skeleton                       | jian wei | P2       | 2026-06-09 | 3    | 🟡 in-progress | #1279   |
-| [feat-199](feat-199-seeker-rag-retrieval-connection.md) | Seeker Agent RAG Retrieval Connection       | jian wei | P2       | 2026-06-10 | 3    | 🟡 in-progress | #1279   |
+| [feat-198](feat-198-seeker-agent-skeleton.md)           | Seeker Agent Skeleton                       | jian wei | P2       | 2026-06-09 | 3    | ✅ complete    | #1279   |
+| [feat-199](feat-199-seeker-rag-retrieval-connection.md) | Seeker Agent RAG Retrieval Connection       | jian wei | P2       | 2026-06-10 | 3    | ✅ complete    | #1279   |
 | [feat-200](feat-200-chat-app-scaffold.md)               | Chat app scaffold with stubbed agent        | jian wei | P1       | 2026-06-10 | 3    | 🟡 in-progress | #1276   |
 | [feat-201](feat-201-chat-app-vigil-reskin.md)           | Chat app Vigil re-skin + conversation shell | jian wei | P1       | 2026-06-15 | 1    | 🟡 in-progress | #1276   |

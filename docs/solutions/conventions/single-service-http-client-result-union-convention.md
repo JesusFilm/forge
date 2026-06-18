@@ -33,7 +33,7 @@ related:
 
 `apps/mastra` makes outbound HTTP calls to a few services. Two of them —
 `firecrawl-client.ts` (external, retrying) and `jesusfilm-rag-client.ts`
-(external, single-attempt, added in feat-174) — share a near-identical client
+(external, single-attempt, added in feat-199) — share a near-identical client
 shape and byte-identical helpers, and that shared shape is the convention this
 doc captures. A third, `admin-search-eval-client.ts`, is a **related but
 deliberately divergent variant** for an internal same-trust admin service; it
@@ -206,7 +206,7 @@ Two security points a future client author must carry forward:
 
 ## Examples
 
-feat-174's `jesusfilm-rag-client.ts` is the single-attempt reference:
+feat-199's `jesusfilm-rag-client.ts` is the single-attempt reference:
 `searchJesusfilmRag({ query, config = getJesusfilmRagConfig(), fetchImpl = fetch })`
 short-circuits `config_missing` (with a `detail` naming which half of the
 URL/key pair is absent), sends lowercase headers + `redirect: "error"` +

@@ -3,7 +3,7 @@ id: "feat-198"
 title: "Seeker Agent Skeleton"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-09"
 duration: 3
 depends_on:
@@ -13,15 +13,22 @@ blocks:
 tags: []
 ---
 
-> Renumbered from the gated seeker trunk's `feat-170` (the original collided
-> with a `content-discovery` ticket). Code ships via PR **#1279**; status flips
-> to `complete` when it merges.
->
-> **Plan / implementation record:**
-> `docs/plans/2026-06-08-003-feat-seeker-agent-skeleton-plan.md` (arrives with
-> #1279) is the authoritative record of technical decisions and what actually
-> shipped. Where it and this ticket differ, the plan wins (e.g. the
-> dedicated-store note on "What To Build" item 3 below).
+## Resolution
+
+**Shipped:** 2026-06-18 via [PR #1279](https://github.com/JesusFilm/forge/pull/1279) (`feat(mastra): seeker agent skeleton — first Jesus Film AI Chat agent`, commit `c61c9dc2`).
+
+**What landed.** The first conversational agent in `apps/mastra`: `seekerAgent` with placeholder instructions plus a one-line safety guard, a stubbed `retrieveAnswer` tool (`createTool`), and a per-agent in-memory `Memory` over a **dedicated** `InMemoryStore` (plan KTD1 — not the app-level store, so seeker memory cannot persist to Postgres and there is no circular import). A commented guardrail attach-point marks where honesty/crisis-deferral checks will hook; a route-isolation test asserts the agent is wired to no `registerApiRoute` (Studio-only); observability traces inherit the instance-level `redactPromptBodies` span processor. The stubbed retrieval was superseded by feat-199.
+
+**Compound docs.** `docs/solutions/integration-issues/mastra-conversational-agent-memory-and-model-router-wiring.md`; `docs/solutions/integration-issues/mastra-studio-api-auth-guard.md`.
+
+**Residual risk / follow-ups.** Full persona + safety guardrails (incl. crisis handling) and any public surface remain a deferred release gate. The free-tier model `gemma-4-31b-it:free` shows intermittent provider errors (live re-test 2026-06-18, ~5/8 success) — acceptable for Studio, revisit a paid/stable model before production.
+
+**Unblocked.** feat-199 (Seeker Agent RAG Retrieval Connection).
+
+> Plan / implementation record:
+> `docs/plans/2026-06-08-003-feat-seeker-agent-skeleton-plan.md` is the
+> authoritative record of technical decisions and what actually shipped — where
+> it and this ticket differ, the plan wins.
 
 ## Problem
 

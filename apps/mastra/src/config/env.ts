@@ -181,7 +181,7 @@ const envSchema = z.object({
   RAILWAY_S3_BUCKET: z.string().min(1).optional(),
   RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-  // RAG retrieval (feat-174). Fully optional — unset degrades to a runtime
+  // RAG retrieval (feat-199). Fully optional — unset degrades to a runtime
   // `config_missing` result, never a boot failure (ticket "never a boot
   // failure"). The base URL is gated by `JESUSFILM_RAG_ALLOWED_HOSTS` in
   // production (the one RAG-driven boot throw — a security control), but no RAG

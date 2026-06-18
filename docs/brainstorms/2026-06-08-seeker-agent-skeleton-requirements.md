@@ -3,7 +3,7 @@
 - **Date:** 2026-06-08
 - **Status:** Ready for planning
 - **Lane (proposed):** `ai-chat` — _Jesus Film AI Chat_, the headless multi-agent system (pending team decision — see Dependencies)
-- **Roadmap ticket:** `docs/roadmap/ai-chat/feat-170-seeker-agent-skeleton.md`
+- **Roadmap ticket:** `docs/roadmap/ai-chat/feat-198-seeker-agent-skeleton.md`
 - **Branch:** `feat/seeker-agent-skeleton` (do not push to `main` until the lane decision lands)
 
 ## Problem
@@ -63,9 +63,9 @@ These are recorded here so planning does not pull them in, and so the deferral i
 ## Dependencies / Outstanding Questions
 
 1. **`ai-chat` lane is pending a team decision.** The team needs to agree on how the roadmap documents new lanes before `ai-chat` is added to the repo's canonical surfaces. Until then, on this branch:
-   - **Apply:** the `feat-170` ticket file + this requirements doc.
+   - **Apply:** the `feat-198` ticket file + this requirements doc.
    - **Recipe only (do NOT apply):** root `CLAUDE.md` Roadmap Structure tree + tag-vocabulary edits, and the hardcoded lane spots in `apps/roadmap/` (enumerated below). These are captured in `todos/007-pending-p2-ai-chat-roadmap-lane-pending-team-decision.md`.
-2. **Roadmap app impact (verified).** The roadmap viewer hardcodes its lanes in **two files** — a `feat-170` file in `docs/roadmap/ai-chat/` is **silently ignored** (not rendered, no crash), and the `/lane/ai-chat` page would **404**, until all of these learn about `ai-chat`:
+2. **Roadmap app impact (verified).** The roadmap viewer hardcodes its lanes in **two files** — a `feat-198` file in `docs/roadmap/ai-chat/` is **silently ignored** (not rendered, no crash), and the `/lane/ai-chat` page would **404**, until all of these learn about `ai-chat`:
    - `apps/roadmap/lib/features.ts` — the `Lane` type union (~line 11)
    - `apps/roadmap/lib/features.ts` — `LANE_DIRS` (~line 52)
    - `apps/roadmap/lib/features.ts` — `ALL_LANES` (~line 187) — drives `/lane/[lane]` static params + route guard, contributions, llms.txt

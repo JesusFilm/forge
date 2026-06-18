@@ -1,5 +1,5 @@
 /**
- * Seeker-agent Memory primitive (feat-170, U2).
+ * Seeker-agent Memory primitive (feat-198, U2).
  *
  * Wires `@mastra/memory`'s `Memory` against a DEDICATED in-memory store,
  * independent of `index.ts`'s `MASTRA_STORAGE_BACKEND` switch. The seeker

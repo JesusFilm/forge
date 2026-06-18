@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 /**
- * Route-isolation guard for the seeker agent (feat-170, U5).
+ * Route-isolation guard for the seeker agent (feat-198, U5).
  *
  * WHAT THIS PROVES: no *custom* `registerApiRoute` in `index.ts` wires up the
  * seeker agent — i.e. no hand-written `/forge-*` route exposes it.

@@ -672,7 +672,7 @@ describe("Mastra env", () => {
     )
   })
 
-  // --- feat-174: JESUSFILM_RAG_* optional config + production host guard ---
+  // --- feat-199: JESUSFILM_RAG_* optional config + production host guard ---
 
   // Stub the full required production set so RAG-guard tests isolate the RAG
   // var behavior (a missing unrelated required var would otherwise mask it).

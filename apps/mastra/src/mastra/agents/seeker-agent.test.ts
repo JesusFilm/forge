@@ -27,7 +27,7 @@ describe("seeker agent", () => {
     )
   })
 
-  it("carries the feat-174 citation-discipline instructions", async () => {
+  it("carries the feat-199 citation-discipline instructions", async () => {
     const instructions = await seekerAgent.getInstructions()
     const text =
       typeof instructions === "string"

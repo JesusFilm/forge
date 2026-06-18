@@ -29,7 +29,7 @@ tags:
 
 ## Problem
 
-Standing up the first conversational `Agent` in `apps/mastra` (the feat-170
+Standing up the first conversational `Agent` in `apps/mastra` (the feat-198
 seeker skeleton) surfaced three non-obvious `@mastra/core` / `@mastra/memory`
 contracts that type-check cleanly but behave differently than they read. Each
 costs real time the first time you hit it.
@@ -57,7 +57,7 @@ costs real time the first time you hit it.
   union of provider/model ids. But that union ends with a `(string & {})` arm, so
   **any** string compiles — a typo or a made-up id passes `tsc` too. Catalog
   membership is therefore not even a compile-time guarantee the id is well-formed,
-  let alone that the upstream provider serves it. In the feat-170 smoke,
+  let alone that the upstream provider serves it. In the feat-198 smoke,
   `gemma-4-26b-a4b-it:free` (a union member) failed at runtime with an opaque
   `provider returned error` while the sibling `gemma-4-31b-it:free` worked. The
   specific cause of that failure was never captured from logs — catalog-vs-live

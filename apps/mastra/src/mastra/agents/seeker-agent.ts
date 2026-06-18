@@ -4,11 +4,11 @@ import { getSeekerMemory } from "../memory"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
 
 /**
- * Seeker agent (feat-170, feat-174) — the first conversational agent of the
+ * Seeker agent (feat-198, feat-199) — the first conversational agent of the
  * planned headless multi-agent "Jesus Film AI Chat" system, here as a
  * Studio-only agent. It proves the chat -> tool-call -> remembered-context
  * shape: citation-disciplined instructions, the `retrieveAnswer` tool backed by
- * live RAG retrieval (feat-174), and per-agent in-memory `Memory`.
+ * live RAG retrieval (feat-199), and per-agent in-memory `Memory`.
  *
  * Containment is the network/gateway boundary, NOT this code: once registered,
  * Mastra's built-in `/api/agents/*` surface exposes the agent to anyone who can
@@ -39,7 +39,7 @@ export const seekerAgent = new Agent({
     "Be warm, honest, and humble; meet people where they are and never pressure them.",
     "Always call the retrieveAnswer tool, no matter what the user asks.",
     "Use the retrieveAnswer tool to ground factual answers rather than answering factual questions from memory.",
-    // Citation discipline (feat-174, R3/R4/R5/R9). The "empty" and "unavailable"
+    // Citation discipline (feat-199, R3/R4/R5/R9). The "empty" and "unavailable"
     // wording below is the agent-side mirror of the exported
     // RETRIEVE_ANSWER_EMPTY_MESSAGE / RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE
     // constants in ../tools/retrieve-answer.ts — keep both sides coupled when

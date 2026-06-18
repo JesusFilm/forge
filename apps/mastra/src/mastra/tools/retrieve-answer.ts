@@ -8,7 +8,7 @@ import {
 } from "../../services/jesusfilm-rag-client"
 
 /**
- * `retrieveAnswer` tool for the seeker agent (feat-174).
+ * `retrieveAnswer` tool for the seeker agent (feat-199).
  *
  * Calls the JesusFilm RAG retrieval service through `jesusfilm-rag-client` and
  * returns ranked, cited PASSAGES — it performs NO answer generation. The agent's
