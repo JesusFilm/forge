@@ -225,6 +225,10 @@ describe("ingestTranscriptEmbeddings", () => {
       dimensions: 1536,
       mastraRunId: "run-1",
     })
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: "Serializable",
+      timeout: 30_000,
+    })
     expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledWith(
       prisma,
       expect.objectContaining({

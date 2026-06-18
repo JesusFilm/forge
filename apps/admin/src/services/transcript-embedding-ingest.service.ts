@@ -224,6 +224,8 @@ export class TranscriptEmbeddingIngestError extends Error {
   }
 }
 
+const TRANSCRIPT_INGEST_TRANSACTION_TIMEOUT_MS = 30_000
+
 function sha256Json(value: unknown): string {
   return `sha256:${createHash("sha256")
     .update(JSON.stringify(value))
@@ -718,7 +720,10 @@ export async function ingestTranscriptEmbeddings(
         mastraRunId: payload.generation.mastraRunId,
       }
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      timeout: TRANSCRIPT_INGEST_TRANSACTION_TIMEOUT_MS,
+    },
   )
 }
 
