@@ -40,6 +40,20 @@ type CanonicalFeltNeed =
   | "Security"
   | "Significance"
 
+type CanonicalDemographic =
+  | "Children"
+  | "Youth"
+  | "Young Adults"
+  | "Parents"
+  | "Families"
+  | "Women"
+  | "Men"
+  | "Religious Leaders"
+  | "Disciples"
+  | "Seekers"
+  | "Outsiders"
+  | "People in Crisis"
+
 const GenerationModeSchema = z
   .enum(["idempotent", "repair", "force", "model-upgrade"])
   .default("idempotent")
@@ -259,7 +273,7 @@ type PlannedChunk = {
   bibleVerses?: string[]
   contentSummary?: string
   tone?: string
-  demographics?: string[]
+  demographics?: CanonicalDemographic[]
   spiritualContext?: string[]
   extractionMetadata?: Record<string, unknown>
   tokenCount: number
@@ -470,6 +484,61 @@ function inferFeltNeeds(text: string): CanonicalFeltNeed[] {
   return needs
 }
 
+function inferDemographics(text: string): CanonicalDemographic[] {
+  const lower = text.toLowerCase()
+  const demographics: CanonicalDemographic[] = []
+  const add = (demographic: CanonicalDemographic) => {
+    if (!demographics.includes(demographic)) demographics.push(demographic)
+  }
+
+  if (/\b(child|children|kid|kids|little ones)\b/.test(lower)) add("Children")
+  if (/\b(youth|teen|teenager|teenagers|young people)\b/.test(lower)) {
+    add("Youth")
+  }
+  if (/\b(young man|young woman|young adult|young adults)\b/.test(lower)) {
+    add("Young Adults")
+  }
+  if (/\b(parent|parents|mother|father|mom|dad)\b/.test(lower)) add("Parents")
+  if (/\b(family|families|household|households)\b/.test(lower)) {
+    add("Families")
+  }
+  if (/\b(woman|women|wife|wives|widow|widows)\b/.test(lower)) add("Women")
+  if (/\b(man|men|husband|husbands)\b/.test(lower)) add("Men")
+  if (
+    /\b(pharisee|pharisees|priest|priests|rabbi|rabbis|teacher of the law|teachers of the law|religious leader|religious leaders)\b/.test(
+      lower,
+    )
+  ) {
+    add("Religious Leaders")
+  }
+  if (/\b(disciple|disciples|follower|followers)\b/.test(lower)) {
+    add("Disciples")
+  }
+  if (
+    /\b(seek|seeks|seeking|searched|searching|question|questions|asked him|ask him)\b/.test(
+      lower,
+    )
+  ) {
+    add("Seekers")
+  }
+  if (
+    /\b(samaritan|samaritans|gentile|gentiles|tax collector|tax collectors|foreigner|foreigners|outcast|outcasts|sinner|sinners)\b/.test(
+      lower,
+    )
+  ) {
+    add("Outsiders")
+  }
+  if (
+    /\b(sick|ill|blind|lame|leper|lepers|poor|hungry|prisoner|prisoners|mourning|grieving|possessed|oppressed)\b/.test(
+      lower,
+    )
+  ) {
+    add("People in Crisis")
+  }
+
+  return demographics
+}
+
 function enrichChunk(chunk: PlannedChunk): PlannedChunk {
   const rawSourceText = chunk.rawSourceText ?? chunk.text
   const feltNeeds = inferFeltNeeds(rawSourceText)
@@ -477,7 +546,7 @@ function enrichChunk(chunk: PlannedChunk): PlannedChunk {
   const contentSummary = summarizeChunkText(rawSourceText)
   const timeRange = `${formatTimeRange(chunk.startSeconds)}-${formatTimeRange(chunk.endSeconds)}`
   const tone = "reflective"
-  const demographics: string[] = []
+  const demographics = inferDemographics(rawSourceText)
   const spiritualContext = bibleVerses.length > 0 ? ["Bible reference"] : []
   const embeddingInputText = [
     `Time range: ${timeRange}`,
@@ -506,6 +575,7 @@ function enrichChunk(chunk: PlannedChunk): PlannedChunk {
     extractionMetadata: {
       strategy: "deterministic-transcript-grounded-v1",
       source: "transcript",
+      demographicsStrategy: "explicit-cue-taxonomy-v1",
     },
     tokenCount: estimateTokenCount(embeddingInputText),
   }
