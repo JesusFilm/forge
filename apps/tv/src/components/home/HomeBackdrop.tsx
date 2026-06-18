@@ -34,37 +34,42 @@ const CANCEL_FADE_MS = 200
 // props keep one identity across renders; WATCH_THEME.scrim(0) (never
 // "transparent") avoids dark banding.
 //
+// The three ambient scrims + the deep-scrim color are exported so the hero
+// pager (HeroPager) can paint pixel-matched scrims over its own sliding
+// artwork. Export-only — the constants and this component's behavior are
+// otherwise unchanged.
+//
 // linear-gradient(90deg, rgba(7,7,8,.9) 0%, rgba(7,7,8,.5) 36%, 0 at 62%)
-const LEFT_SCRIM_COLORS = [
+export const LEFT_SCRIM_COLORS = [
   WATCH_THEME.scrim(0.9),
   WATCH_THEME.scrim(0.5),
   WATCH_THEME.scrim(0),
 ] as const
-const LEFT_SCRIM_LOCATIONS = [0, 0.36, 0.62] as const
-const LEFT_SCRIM_START = { x: 0, y: 0.5 }
-const LEFT_SCRIM_END = { x: 1, y: 0.5 }
+export const LEFT_SCRIM_LOCATIONS = [0, 0.36, 0.62] as const
+export const LEFT_SCRIM_START = { x: 0, y: 0.5 }
+export const LEFT_SCRIM_END = { x: 1, y: 0.5 }
 
 // linear-gradient(0deg, rgba(7,7,8,.96) 6%, rgba(7,7,8,.55) 30%, 0 at 58%)
-const BOTTOM_SCRIM_COLORS = [
+export const BOTTOM_SCRIM_COLORS = [
   WATCH_THEME.scrim(0.96),
   WATCH_THEME.scrim(0.55),
   WATCH_THEME.scrim(0),
 ] as const
-const BOTTOM_SCRIM_LOCATIONS = [0.06, 0.3, 0.58] as const
-const BOTTOM_SCRIM_START = { x: 0.5, y: 1 }
-const BOTTOM_SCRIM_END = { x: 0.5, y: 0 }
+export const BOTTOM_SCRIM_LOCATIONS = [0.06, 0.3, 0.58] as const
+export const BOTTOM_SCRIM_START = { x: 0.5, y: 1 }
+export const BOTTOM_SCRIM_END = { x: 0.5, y: 0 }
 
 // linear-gradient(180deg, rgba(7,7,8,.55) 0%, 0 at 20%)
-const TOP_SCRIM_COLORS = [
+export const TOP_SCRIM_COLORS = [
   WATCH_THEME.scrim(0.55),
   WATCH_THEME.scrim(0),
 ] as const
-const TOP_SCRIM_LOCATIONS = [0, 0.2] as const
-const TOP_SCRIM_START = { x: 0.5, y: 0 }
-const TOP_SCRIM_END = { x: 0.5, y: 1 }
+export const TOP_SCRIM_LOCATIONS = [0, 0.2] as const
+export const TOP_SCRIM_START = { x: 0.5, y: 0 }
+export const TOP_SCRIM_END = { x: 0.5, y: 1 }
 
 /** Deep scrim layer color (design `.deep-scrim`); its OPACITY is animated. */
-const DEEP_SCRIM_COLOR = "rgba(6,6,8,0.9)"
+export const DEEP_SCRIM_COLOR = "rgba(6,6,8,0.9)"
 
 type SlotIndex = 0 | 1
 
