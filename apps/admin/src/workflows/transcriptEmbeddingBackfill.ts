@@ -51,26 +51,12 @@ import {
   loadCoreIdMapping,
   type CoreIdMapping,
 } from "@/services/core-id-mapping.service"
-import {
-  ManagerArtifactError,
-  type TranscriptSourceArtifact,
-} from "@/services/manager-artifacts.service"
-import {
-  launchMastraTranscriptEmbedding,
-  type MastraTranscriptEmbeddingLaunchResult,
-  type MastraTranscriptEmbeddingMode,
-} from "@/services/mastra-transcript-embedding-client"
+import { type MastraTranscriptEmbeddingMode } from "@/services/mastra-transcript-embedding-client"
 import type {
   ResolvedTranscriptEmbeddingSource,
   TranscriptSourceGap,
 } from "@/services/transcript-source-resolver.service"
-// The artifact-load step lives in a separate module on purpose — the
-// useworkflow build plugin treats functions imported into a workflow
-// file as workflow scope, so importing `readTranscriptSourceArtifact` here
-// would trip the Node-module reachability check even though the actual
-// call is inside `"use step"`. See `_steps/load-manager-artifact.ts`.
-import { stepLoadTranscriptSourceArtifact } from "./_steps/load-manager-artifact"
-import { stepResolveSubtitleTranscriptSource } from "./_steps/resolve-transcript-source"
+import { stepProcessTranscriptEmbeddingGroup } from "./_steps/process-transcript-embedding-group"
 
 /**
  * Default per-group concurrency for the Mastra transcript-embedding
@@ -302,7 +288,7 @@ export async function runTranscriptEmbeddingBackfill(
         // the synthetic-failed branch below records it (with real
         // elapsed time) and the per-target isolation contract is
         // observable to tests.
-        processGroup(group, input.mode ?? "idempotent"),
+        stepProcessTranscriptEmbeddingGroup(group, input.mode ?? "idempotent"),
       ),
     ),
   )
@@ -518,235 +504,6 @@ function groupTargetsByVideoEdition(
   return Array.from(groupMap.values(), (e) => e.group)
 }
 
-type ManagerSourceLoadState =
-  | { status: "not-attempted" }
-  | { status: "resolved"; artifact: TranscriptSourceArtifact }
-  | { status: "failed"; reason: string; missing: boolean }
-
-function managerTranscriptSourceFromArtifact(
-  target: BackfillTarget,
-  artifact: TranscriptSourceArtifact,
-): ResolvedTranscriptEmbeddingSource {
-  const sourceKey = `${target.cmsVideoId}/transcript.json`
-  return {
-    sourceKind: "manager-transcript",
-    transcript: {
-      text: artifact.text,
-      segments: artifact.segments,
-      artifactKey: sourceKey,
-      kind: "manager-transcript",
-      languageId: target.languageId,
-      languageSlug: target.languageSlug,
-      provider: artifact.resolvedProvider,
-    },
-    provenance: {
-      sourceKind: "manager-transcript",
-      sourceKey,
-      language: artifact.language || target.language,
-      languageId: target.languageId,
-      languageSlug: target.languageSlug,
-    },
-  }
-}
-
-function sourceGapForMissingManager(
-  target: BackfillTarget,
-  subtitleGap?: TranscriptSourceGap,
-): TranscriptEmbeddingSourceGap {
-  const reason =
-    target.hasDub && !target.hasSubtitle && !target.isPrimaryLanguage
-      ? "dub_without_timed_text"
-      : (subtitleGap?.reason ?? "artifact_missing")
-
-  return {
-    assetId: target.cmsVideoId,
-    coreId: target.coreId,
-    videoId: target.videoId,
-    videoEditionId: target.videoEditionId,
-    language: target.language,
-    languageId: target.languageId,
-    languageSlug: target.languageSlug,
-    reason,
-    subtitleReason: subtitleGap?.reason,
-    subtitleId: subtitleGap?.subtitleId,
-    subtitleFormat: subtitleGap?.format,
-    sourceKind: "transcript",
-  }
-}
-
-/**
- * Per-group worker. Resolves subtitle timed text per language first, then
- * lazily loads the Manager transcript source artifact ONCE if any target in
- * the group needs fallback.
- */
-async function processGroup(
-  group: BackfillGroup,
-  mode: MastraTranscriptEmbeddingMode,
-): Promise<BackfillOutcome[]> {
-  "use step"
-  const groupStartedAt = Date.now()
-
-  // useworkflow replay note: the S3 read goes through `stepLoadArtifact`
-  // (a `"use step"` function below) so a worker restart mid-group
-  // replays the journaled result instead of re-fetching. The build
-  // plugin requires this — `s3.ts` imports Node-only modules
-  // (`node:fs/promises`, `node:path`) for the local-fallback path, so
-  // any direct call from the workflow scope is rejected at compile
-  // time. Persisting ~250 KB JSON per group as a step result is the
-  // necessary trade-off; it's small per-call but adds up across a full
-  // backfill — operators monitoring useworkflow journal size should be
-  // aware.
-
-  let managerSourceState: ManagerSourceLoadState = { status: "not-attempted" }
-
-  const outcomes: BackfillOutcome[] = []
-  for (const target of group.targets) {
-    const subtitleResolution = await stepResolveSubtitleTranscriptSource(target)
-    let source: ResolvedTranscriptEmbeddingSource | null =
-      subtitleResolution.status === "resolved"
-        ? subtitleResolution.source
-        : null
-
-    if (!source) {
-      if (managerSourceState.status === "not-attempted") {
-        try {
-          managerSourceState = {
-            status: "resolved",
-            artifact: await stepLoadTranscriptSourceArtifact(group.cmsVideoId),
-          }
-        } catch (error) {
-          const missing =
-            error instanceof ManagerArtifactError &&
-            error.code === "artifact_missing"
-          managerSourceState = {
-            status: "failed",
-            missing,
-            reason: missing
-              ? "artifact_missing"
-              : error instanceof Error
-                ? error.message
-                : String(error),
-          }
-        }
-      }
-
-      if (managerSourceState.status === "resolved") {
-        source = managerTranscriptSourceFromArtifact(
-          target,
-          managerSourceState.artifact,
-        )
-      } else if (managerSourceState.status === "failed") {
-        const durationMs = Date.now() - groupStartedAt
-        const sourceGap = sourceGapForMissingManager(
-          target,
-          subtitleResolution.status === "gap"
-            ? subtitleResolution.gap
-            : undefined,
-        )
-        const outcome: BackfillOutcome = managerSourceState.missing
-          ? {
-              status: "skipped",
-              target,
-              language: target.language,
-              reason: sourceGap.reason,
-              sourceGap,
-              durationMs,
-            }
-          : {
-              status: "failed",
-              target,
-              language: target.language,
-              reason: managerSourceState.reason,
-              durationMs,
-            }
-        logOutcome(outcome)
-        outcomes.push(outcome)
-        continue
-      } else {
-        throw new Error("internal transcript source resolver state was unset")
-      }
-    }
-
-    const outcome = await _internals.stepLaunchMastraTranscriptEmbedding(
-      target,
-      source,
-      mode,
-    )
-    logOutcome(outcome)
-    outcomes.push(outcome)
-  }
-  return outcomes
-}
-
-async function stepLaunchMastraTranscriptEmbedding(
-  target: BackfillTarget,
-  transcriptSource: ResolvedTranscriptEmbeddingSource,
-  mode: MastraTranscriptEmbeddingMode,
-): Promise<BackfillOutcome> {
-  "use step"
-
-  const startedAt = Date.now()
-
-  try {
-    const result = await launchMastraTranscriptEmbedding({
-      target: {
-        videoId: target.videoId,
-        videoEditionId: target.videoEditionId,
-        coreId: target.coreId,
-      },
-      language: target.language,
-      cmsVideoId: target.cmsVideoId,
-      transcript: transcriptSource.transcript,
-      mode,
-    })
-    if (!result.ok) {
-      return {
-        status: "failed",
-        target,
-        language: target.language,
-        reason: result.reason,
-        durationMs: Date.now() - startedAt,
-      }
-    }
-    return toSucceeded(
-      target,
-      transcriptSource.sourceKind,
-      result,
-      Date.now() - startedAt,
-    )
-  } catch (error) {
-    const durationMs = Date.now() - startedAt
-    // Branch on the typed error class, not error-message regex. Only a
-    // genuinely-missing artifact gets demoted to skipped; every other
-    // error shape (ManagerArtifactError artifact_invalid /
-    // artifact_read_failed, Mastra launch failure, etc.) stays classified as failed
-    // so the operator sees it in the report. With Stage 2's group-level
-    // artifact load, an `artifact_missing` here would only fire if the
-    // launcher somehow bypassed the cached source path; keep the
-    // classification path intact for safety in depth.
-    if (
-      error instanceof ManagerArtifactError &&
-      error.code === "artifact_missing"
-    ) {
-      return {
-        status: "skipped",
-        target,
-        language: target.language,
-        reason: "artifact_missing",
-        durationMs,
-      }
-    }
-    const reason = error instanceof Error ? error.message : String(error)
-    return {
-      status: "failed",
-      target,
-      language: target.language,
-      reason,
-      durationMs,
-    }
-  }
-}
-
 /**
  * Project the outcome list to the deduped, sorted set of missing
  * transcript source artifacts. See R1's `deriveMissingArtifacts` for the full
@@ -836,28 +593,7 @@ function stepReport(args: {
   }
 }
 
-function toSucceeded(
-  target: BackfillTarget,
-  sourceKind: ResolvedTranscriptEmbeddingSource["sourceKind"],
-  result: Extract<MastraTranscriptEmbeddingLaunchResult, { ok: true }>,
-  durationMs: number,
-): BackfillOutcome {
-  return {
-    status: "succeeded",
-    target,
-    language: target.language,
-    sourceKind,
-    chunksIndexed: result.chunks,
-    embeddingsWritten: result.status === "unchanged" ? 0 : result.chunks,
-    chunksPruned: 0,
-    durationMs,
-  }
-}
-
 function logOutcome(outcome: BackfillOutcome): void {
-  // Same defensive wrap R3 adopted: logOutcome runs OUTSIDE the
-  // per-target try/catch, so a JSON.stringify throw would halt the
-  // run and break per-target isolation.
   try {
     switch (outcome.status) {
       case "succeeded":
@@ -918,16 +654,8 @@ function logOutcome(outcome: BackfillOutcome): void {
 }
 
 // Exported for tests — pure helpers safe to exercise without the
-// useworkflow runtime. `stepLaunchMastraTranscriptEmbedding` is referenced
-// through `_internals` from `processGroup` so tests can
-// `vi.spyOn(_internals, "stepLaunchMastraTranscriptEmbedding")` to force a
-// `Promise.allSettled` rejection — the only way to exercise the
-// synthetic-failed defensive branch, since the real step body catches
-// everything internally.
+// useworkflow runtime.
 export const _internals = {
   stepReport,
-  stepLaunchMastraTranscriptEmbedding,
-  toSucceeded,
-  logOutcome,
   groupTargetsByVideoEdition,
 }

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/config/env", () => ({
@@ -433,6 +434,16 @@ Subtitle transcript text.
       chunksIndexed: 1,
       embeddingsWritten: 0,
     })
+  })
+
+  it("uses one external group step so production workflow steps are not nested", async () => {
+    const source = await readFile(
+      new URL("./transcriptEmbeddingBackfill.ts", import.meta.url),
+      "utf8",
+    )
+
+    expect(source).toContain("stepProcessTranscriptEmbeddingGroup")
+    expect(source).not.toMatch(/\basync function processGroup\b/)
   })
 
   it("caps concurrent in-flight groups at TRANSCRIPT_EMBEDDING_CONCURRENCY", async () => {
