@@ -3,7 +3,7 @@ id: "feat-196"
 title: "Watch multilingual search behavior"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-06-22"
 duration: 5
 depends_on: []

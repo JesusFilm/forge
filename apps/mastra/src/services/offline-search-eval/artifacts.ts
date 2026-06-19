@@ -89,6 +89,8 @@ const BaselineCaseSchema = z
   .object({
     caseId: z.string().max(128),
     locale: z.string().max(32),
+    languageSlug: z.string().max(128).optional(),
+    websiteLocale: z.string().max(32).optional(),
     queryText: z.string().max(MAX_SAFE_TEXT),
     source: z.literal("seed"),
     tags: z.array(z.string().max(64)).max(MAX_TAGS),
@@ -207,6 +209,8 @@ const ComparisonOutcomeSchema = z
     kind: ReportOutcomeKindSchema,
     caseId: z.string().max(128),
     locale: z.string().max(32),
+    languageSlug: z.string().max(128).optional(),
+    websiteLocale: z.string().max(32).optional(),
     queryText: z.string().max(MAX_SAFE_TEXT),
     source: z.literal("seed"),
     baselineResults: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
