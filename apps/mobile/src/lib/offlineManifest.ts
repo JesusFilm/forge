@@ -46,6 +46,21 @@ const VALID_STATES: ReadonlySet<string> = new Set<OfflineDownloadState>([
   "canceled",
 ])
 
+/**
+ * Snapshot of the previous downloaded copy, kept on a record DURING a
+ * non-destructive quality/language swap (U8): the old file stays playable until
+ * the new download verifies, then the old is deleted; on failure the record
+ * reverts to this snapshot. Absent on normal records.
+ */
+export type SwapFrom = {
+  committedPath: string
+  renditionDocumentId: string
+  qualityLabel: string
+  subtitleLanguageSlug: string | null
+  totalBytes: number
+  posterPath: string | null
+}
+
 export type OfflineDownloadRecord = {
   /** Schema version; a record from a different version is dropped on read. */
   version: number
@@ -69,6 +84,8 @@ export type OfflineDownloadRecord = {
   posterPath: string | null
   bytesWritten: number
   totalBytes: number
+  /** Present only mid-swap; see {@link SwapFrom}. */
+  swapFrom?: SwapFrom | null
 }
 
 function asString(value: unknown): string | null {
@@ -77,6 +94,23 @@ function asString(value: unknown): string | null {
 
 function asFiniteNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
+}
+
+/** Tolerant parse of the mid-swap snapshot; null unless it carries identity. */
+function parseSwapFrom(value: unknown): SwapFrom | null {
+  if (value == null || typeof value !== "object") return null
+  const o = value as Record<string, unknown>
+  const committedPath = asString(o.committedPath)
+  const renditionDocumentId = asString(o.renditionDocumentId)
+  if (!committedPath || !renditionDocumentId) return null
+  return {
+    committedPath,
+    renditionDocumentId,
+    qualityLabel: asString(o.qualityLabel) ?? "",
+    subtitleLanguageSlug: asString(o.subtitleLanguageSlug),
+    totalBytes: asFiniteNumber(o.totalBytes),
+    posterPath: asString(o.posterPath),
+  }
 }
 
 /**
@@ -124,6 +158,7 @@ export function parseOfflineRecord(
     posterPath: asString(obj.posterPath),
     bytesWritten: asFiniteNumber(obj.bytesWritten),
     totalBytes: asFiniteNumber(obj.totalBytes),
+    swapFrom: parseSwapFrom(obj.swapFrom),
   }
 }
 

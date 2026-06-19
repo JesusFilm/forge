@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 
 import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
 import { SheetLoading } from "../../src/components/watch/SheetLoading"
@@ -20,8 +20,11 @@ export default function DownloadSheetRoute() {
     ensureActiveVariantMedia,
     setSnackbarMessage,
   } = useWatchSession()
-  const { startDownload } = useDownloads()
+  const { startDownload, swapDownload } = useDownloads()
   const { wifiOnly } = useWatchPreferences()
+  // Opened via "Change quality / language" on a downloaded video → swap mode.
+  const { swap } = useLocalSearchParams<{ swap?: string }>()
+  const isSwap = swap === "1"
 
   // Downloads are fetched lazily per dub — kick off the active variant's fetch
   // when the sheet opens (no-op if already loaded / in flight).
@@ -53,7 +56,8 @@ export default function DownloadSheetRoute() {
     // (dub + rendition documentId, subtitle slug) is stored so the engine can
     // re-resolve fresh URLs before each (re)start. Title + poster feed the
     // offline library (My Downloads).
-    const result = await startDownload({
+    const enqueue = isSwap ? swapDownload : startDownload
+    const result = await enqueue({
       videoSlug: video.slug,
       title: video.title ?? "",
       dubDocumentId: activeVariant.documentId,
@@ -68,7 +72,7 @@ export default function DownloadSheetRoute() {
       setSnackbarMessage("Not enough storage to download this video.")
       return
     }
-    setSnackbarMessage("Download started")
+    setSnackbarMessage(isSwap ? "Updating download…" : "Download started")
     router.back()
   }
 

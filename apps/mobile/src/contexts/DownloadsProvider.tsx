@@ -33,6 +33,7 @@ import {
   fileExists,
   freeDiskBytes,
   moveFile,
+  removeUri,
   removeVideoDir,
 } from "../lib/offlineFileSystem"
 import {
@@ -44,6 +45,7 @@ import {
   serializeOfflineIndex,
   serializeOfflineRecord,
   type OfflineDownloadRecord,
+  type SwapFrom,
 } from "../lib/offlineManifest"
 import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
 import { getApolloClient } from "../lib/apolloClient"
@@ -95,6 +97,8 @@ type DownloadsContextValue = {
   offlineRecords: OfflineDownloadRecord[]
   /** Enqueue an offline download (one copy per video). */
   startDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
+  /** Swap a downloaded video to a new quality/language, non-destructively. */
+  swapDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /** Remove an offline copy: its files and its manifest entry. */
   deleteDownload: (videoSlug: string) => Promise<void>
 }
@@ -265,6 +269,25 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         void writeRecord({ ...current, ...fields })
       }
 
+      // A swap's new download failed — restore the original copy (AE2): drop the
+      // new partial and revert the record's identity to the snapshot. The old
+      // file was never touched, so it's still playable.
+      const revertSwap = (swap: SwapFrom) => {
+        void removeUri(pendingPath)
+        patch({
+          state: "downloaded",
+          committedPath: swap.committedPath,
+          renditionDocumentId: swap.renditionDocumentId,
+          qualityLabel: swap.qualityLabel,
+          subtitleLanguageSlug: swap.subtitleLanguageSlug,
+          posterPath: swap.posterPath,
+          totalBytes: swap.totalBytes,
+          bytesWritten: swap.totalBytes,
+          pendingPath: null,
+          swapFrom: null,
+        })
+      }
+
       const finalize = async (location: string) => {
         try {
           // This module version delivers `location` already equal to the task
@@ -277,7 +300,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             if (await fileExists(source)) {
               await moveFile(source, committedPath)
             } else if (!(await fileExists(committedPath))) {
-              patch({ state: "failed" })
+              const swap = recordsRef.current[videoSlug]?.swapFrom
+              if (swap) revertSwap(swap)
+              else patch({ state: "failed" })
               return
             }
           }
@@ -324,11 +349,22 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                 ? null
                 : args.subtitleLanguageSlug,
             })
+            // Swap success: the new copy is verified — remove the superseded old
+            // file (it was kept playable until this moment).
+            const swap = recordsRef.current[videoSlug]?.swapFrom
+            if (swap) {
+              await removeUri(swap.committedPath)
+              patch({ swapFrom: null })
+            }
           } else {
-            patch({ state: "failed" })
+            const swap = recordsRef.current[videoSlug]?.swapFrom
+            if (swap) revertSwap(swap)
+            else patch({ state: "failed" })
           }
         } catch {
-          patch({ state: "failed" })
+          const swap = recordsRef.current[videoSlug]?.swapFrom
+          if (swap) revertSwap(swap)
+          else patch({ state: "failed" })
         }
       }
 
@@ -349,7 +385,11 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           notifyIosBackgroundComplete(videoSlug)
         },
         onInterruption: (classification) => {
-          if (classification.state === "canceled") {
+          const swap = recordsRef.current[videoSlug]?.swapFrom
+          if (swap) {
+            // A swap was interrupted — keep the original copy intact.
+            revertSwap(swap)
+          } else if (classification.state === "canceled") {
             void deleteDownload(videoSlug)
           } else {
             patch({ state: classification.state })
@@ -602,15 +642,115 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [wifiOnly, writeRecord, buildHandlers],
   )
 
+  // U8: non-destructive quality/language swap on an already-downloaded video.
+  // The new copy downloads alongside the old (kept playable via swapFrom); on
+  // success the old file is deleted, on failure the record reverts (AE2).
+  const swapDownload = useCallback(
+    async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
+      const { videoSlug, rendition } = request
+      const existing = recordsRef.current[videoSlug]
+      // Only a completed copy can be swapped; else treat it as a fresh download.
+      if (
+        !existing ||
+        existing.state !== "downloaded" ||
+        !existing.committedPath
+      ) {
+        return startDownload(request)
+      }
+      // Identical rendition + subtitle → nothing to change.
+      if (
+        existing.renditionDocumentId === rendition.documentId &&
+        existing.subtitleLanguageSlug === request.subtitleLanguageSlug
+      ) {
+        return { ok: false, reason: "exists" }
+      }
+      // The new copy lives alongside the old until verified, so reserve room.
+      const required = (Number(rendition.size) || 0) + STORAGE_RESERVE_BYTES
+      const free = await freeDiskBytes()
+      if (free > 0 && free < required) {
+        return { ok: false, reason: "insufficient-storage" }
+      }
+      try {
+        configureDownloadEngine({ wifiOnly })
+        await ensureVideoDir(videoSlug)
+      } catch {
+        return { ok: false, reason: "error" }
+      }
+
+      const nonce = `${Date.now().toString(36)}-${Math.floor(
+        Math.random() * 1e9,
+      ).toString(36)}`
+      const pendingPath = buildPendingPath(OFFLINE_ROOT, videoSlug, nonce)
+      const committedPath = buildCommittedPath(
+        OFFLINE_ROOT,
+        videoSlug,
+        rendition.documentId,
+      )
+      const swapFrom: SwapFrom = {
+        committedPath: existing.committedPath,
+        renditionDocumentId: existing.renditionDocumentId,
+        qualityLabel: existing.qualityLabel,
+        subtitleLanguageSlug: existing.subtitleLanguageSlug,
+        totalBytes: existing.totalBytes,
+        posterPath: existing.posterPath,
+      }
+      await writeRecord({
+        ...existing,
+        renditionDocumentId: rendition.documentId,
+        qualityLabel: rendition.quality,
+        title: request.title || existing.title,
+        subtitleLanguageSlug: request.subtitleLanguageSlug,
+        state: "downloading",
+        committedPath: null,
+        pendingPath,
+        bytesWritten: 0,
+        totalBytes: Number(rendition.size) || 0,
+        swapFrom,
+      })
+
+      const fresh = await reresolveMediaUrl({
+        dubDocumentId: request.dubDocumentId,
+        renditionDocumentId: rendition.documentId,
+        qualityLabel: rendition.quality,
+        totalBytes: Number(rendition.size) || 0,
+        subtitleLanguageSlug: request.subtitleLanguageSlug,
+      })
+
+      startMediaDownload(
+        {
+          id: videoSlug,
+          url: fresh?.mediaUrl ?? rendition.url,
+          destination: pendingPath,
+          allowCellular: request.allowCellular,
+        },
+        buildHandlers({
+          videoSlug,
+          committedPath,
+          pendingPath,
+          fallbackTotalBytes: Number(rendition.size) || 0,
+          subtitleLanguageSlug: request.subtitleLanguageSlug,
+          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
+          posterUrl: request.posterUrl,
+        }),
+      )
+      return { ok: true }
+    },
+    [wifiOnly, writeRecord, buildHandlers, startDownload],
+  )
+
   const value = useMemo<DownloadsContextValue>(
     () => ({
       isReady,
       getRecord: (videoSlug) => records[videoSlug] ?? null,
       committedFor: (videoSlug) => {
         const record = records[videoSlug]
-        return record && record.state === "downloaded" && record.committedPath
-          ? record.committedPath
-          : null
+        if (!record) return null
+        if (record.state === "downloaded" && record.committedPath)
+          return record.committedPath
+        // During a swap the new copy isn't committed yet — keep the snapshot's
+        // old file playable until the swap verifies.
+        if (record.swapFrom?.committedPath) return record.swapFrom.committedPath
+        return null
       },
       downloadedSlugs: Object.values(records)
         .filter((record) => record.state === "downloaded")
@@ -619,9 +759,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         (record) => record.state !== "canceled",
       ),
       startDownload,
+      swapDownload,
       deleteDownload,
     }),
-    [records, isReady, startDownload, deleteDownload],
+    [records, isReady, startDownload, swapDownload, deleteDownload],
   )
 
   return (

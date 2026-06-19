@@ -474,14 +474,32 @@ export default function WatchVideoPage() {
               })()}
               onDownload={() => {
                 const state = getRecord(video.slug)?.state
-                if (state && state !== "canceled") {
-                  // A copy/queue entry exists (one per video). Offer to remove
-                  // it; changing quality/language is the swap follow-up.
+                if (state === "downloaded") {
+                  // Saved: offer a non-destructive quality/language swap or a
+                  // delete (the current copy stays playable during a swap).
                   Alert.alert(
                     "Offline download",
-                    state === "downloaded"
-                      ? "This video is saved for offline viewing."
-                      : "This video is downloading.",
+                    "This video is saved for offline viewing.",
+                    [
+                      {
+                        text: "Change quality / language",
+                        onPress: () => router.push("/watch/download?swap=1"),
+                      },
+                      {
+                        text: "Remove download",
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ],
+                  )
+                } else if (state && state !== "canceled") {
+                  // A transfer is in flight (one copy per video). Offer to remove.
+                  Alert.alert(
+                    "Offline download",
+                    "This video is downloading.",
                     [
                       {
                         text: "Remove download",

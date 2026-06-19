@@ -23,6 +23,7 @@ const RECORD: OfflineDownloadRecord = {
   posterPath: "file:///docs/downloads/the-birth-of-jesus/poster.jpg",
   bytesWritten: 412_000_000,
   totalBytes: 412_000_000,
+  swapFrom: null,
 }
 
 describe("offlineRecordKey", () => {
@@ -40,6 +41,32 @@ describe("offlineRecordKey", () => {
 describe("parseOfflineRecord", () => {
   it("round-trips a full record", () => {
     expect(parseOfflineRecord(serializeOfflineRecord(RECORD))).toEqual(RECORD)
+  })
+
+  it("round-trips a mid-swap record's swapFrom snapshot", () => {
+    const swapping: OfflineDownloadRecord = {
+      ...RECORD,
+      state: "downloading",
+      committedPath: null,
+      swapFrom: {
+        committedPath: "file:///docs/downloads/x/old.mp4",
+        renditionDocumentId: "rend-low-1",
+        qualityLabel: "Low",
+        subtitleLanguageSlug: null,
+        totalBytes: 100,
+        posterPath: null,
+      },
+    }
+    expect(parseOfflineRecord(serializeOfflineRecord(swapping))).toEqual(
+      swapping,
+    )
+  })
+
+  it("drops a malformed swapFrom (no identity) to null", () => {
+    const out = parseOfflineRecord(
+      JSON.stringify({ ...RECORD, swapFrom: { qualityLabel: "Low" } }),
+    )
+    expect(out?.swapFrom).toBeNull()
   })
 
   it("preserves a null subtitle slug (No subtitles)", () => {
