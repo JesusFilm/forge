@@ -7,7 +7,7 @@ import { SheetError } from "../../src/components/watch/SheetError"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
-import type { WatchDownload } from "../../src/lib/normalizeVideo"
+import type { WatchDownload, WatchSubtitle } from "../../src/lib/normalizeVideo"
 
 export default function DownloadSheetRoute() {
   const router = useRouter()
@@ -44,17 +44,20 @@ export default function DownloadSheetRoute() {
       />
     )
 
-  const onStartDownload = (rendition: WatchDownload) => {
+  const onStartDownload = (
+    rendition: WatchDownload,
+    subtitle: WatchSubtitle | null,
+  ) => {
     if (!activeVariant) return
-    // v1 first cut: audio = active dub; no subtitle/poster yet (subtitle picker
-    // + poster caching are follow-ups). Identity is stored so the engine can
-    // re-resolve a fresh URL before each (re)start.
+    // Audio = active dub; the optional subtitle is the user's pick. Identity
+    // (dub + rendition documentId, subtitle slug) is stored so the engine can
+    // re-resolve fresh URLs before each (re)start. Poster caching is U12.
     void startDownload({
       videoSlug: video.slug,
       dubDocumentId: activeVariant.documentId,
       rendition,
-      subtitleLanguageSlug: null,
-      subtitleUrl: null,
+      subtitleLanguageSlug: subtitle?.languageSlug ?? null,
+      subtitleUrl: subtitle?.vttSrc ?? null,
       posterUrl: null,
       allowCellular: !wifiOnly,
     })
@@ -68,6 +71,7 @@ export default function DownloadSheetRoute() {
       duration={video.duration}
       languageName={activeVariant?.languageName ?? null}
       downloads={activeVariantMedia?.downloads ?? []}
+      subtitles={activeVariantMedia?.subtitles ?? []}
       onStartDownload={onStartDownload}
     />
   )

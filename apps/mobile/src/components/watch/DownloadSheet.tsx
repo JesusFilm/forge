@@ -21,7 +21,7 @@ import {
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
-import type { WatchDownload } from "../../lib/normalizeVideo"
+import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
 function formatDuration(seconds: number | null): string {
@@ -155,12 +155,17 @@ export type DownloadSheetProps = {
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
+  /** Available subtitle tracks for the active dub (empty if none). */
+  subtitles: WatchSubtitle[]
   /**
-   * Enqueue the chosen rendition for offline download. The parent builds the
-   * full request (identity + fresh URLs) and dismisses the sheet; the download
-   * runs in the background via DownloadsProvider.
+   * Enqueue the chosen rendition + optional subtitle for offline download. The
+   * parent builds the full request (identity + fresh URLs) and dismisses the
+   * sheet; the download runs in the background via DownloadsProvider.
    */
-  onStartDownload: (rendition: WatchDownload) => void
+  onStartDownload: (
+    rendition: WatchDownload,
+    subtitle: WatchSubtitle | null,
+  ) => void
 }
 
 export function DownloadSheetContent({
@@ -168,6 +173,7 @@ export function DownloadSheetContent({
   duration,
   languageName,
   downloads,
+  subtitles,
   onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
@@ -175,6 +181,10 @@ export function DownloadSheetContent({
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
+  // null = "No subtitles" (the default); otherwise a subtitle languageSlug.
+  const [selectedSubtitleSlug, setSelectedSubtitleSlug] = useState<
+    string | null
+  >(null)
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
 
@@ -182,10 +192,22 @@ export function DownloadSheetContent({
     if (!touAccepted || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
+    const selectedSubtitle =
+      selectedSubtitleSlug == null
+        ? null
+        : (subtitles.find((s) => s.languageSlug === selectedSubtitleSlug) ??
+          null)
     // Enqueue and hand off to the background engine; the parent dismisses the
     // sheet. One copy per video is enforced by DownloadsProvider.
-    onStartDownload(selected)
-  }, [touAccepted, tiered, selectedIndex, onStartDownload])
+    onStartDownload(selected, selectedSubtitle)
+  }, [
+    touAccepted,
+    tiered,
+    selectedIndex,
+    selectedSubtitleSlug,
+    subtitles,
+    onStartDownload,
+  ])
 
   const renderQualityRow = useCallback(
     ({ item, index }: { item: TieredDownload; index: number }) => {
@@ -299,6 +321,54 @@ export function DownloadSheetContent({
             ItemSeparatorComponent={() => <View style={styles.qualityGap} />}
           />
         </View>
+
+        {subtitles.length > 0 && (
+          <View style={styles.qualitySection}>
+            <Text style={[styles.qualitySectionLabel, typography.bodySmall]}>
+              Subtitles
+            </Text>
+            <View style={styles.subtitleList}>
+              {[
+                { slug: null as string | null, name: "No subtitles" },
+                ...subtitles.map((s) => ({
+                  slug: s.languageSlug,
+                  name: s.languageName,
+                })),
+              ].map((opt) => {
+                const isSelected = selectedSubtitleSlug === opt.slug
+                return (
+                  <Pressable
+                    key={opt.slug ?? "__none__"}
+                    style={({ pressed }) => [
+                      styles.qualityRow,
+                      isSelected
+                        ? styles.qualityRowSelected
+                        : styles.qualityRowDefault,
+                      pressed && feedback.pressed,
+                    ]}
+                    onPress={() => setSelectedSubtitleSlug(opt.slug)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={opt.name}
+                  >
+                    <Text
+                      style={[
+                        styles.qualityLabel,
+                        typography.body,
+                        isSelected && styles.qualityLabelSelected,
+                      ]}
+                    >
+                      {opt.name}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color="#ffffff" />
+                    )}
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+        )}
 
         <View style={styles.touRow}>
           <Pressable
@@ -432,6 +502,9 @@ const styles = StyleSheet.create({
   },
   qualityGap: {
     height: 8,
+  },
+  subtitleList: {
+    gap: 8,
   },
   qualityLabel: {
     color: TEXT_PRIMARY,

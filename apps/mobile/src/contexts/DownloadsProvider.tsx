@@ -573,7 +573,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           pendingPath,
           fallbackTotalBytes: Number(rendition.size) || 0,
           subtitleLanguageSlug: request.subtitleLanguageSlug,
-          subtitleUrl: request.subtitleUrl,
+          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
           posterUrl: request.posterUrl,
         }),
       )
