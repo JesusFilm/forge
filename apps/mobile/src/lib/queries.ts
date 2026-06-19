@@ -213,25 +213,99 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
 
+// ── Lean series-screen video fragment ──────────────────────────────
+//
+// SYNC: mirrors apps/tv/src/lib/videoQueries.ts `seriesWatchVideoFragment`.
+//
+// A leaner sibling of watchVideoFragment for the SERIES screen, which consumes
+// far less of the video than the watch screen. It DELIBERATELY OMITS two heavy
+// selections the watch screen needs but the series screen never reads:
+//   1. the `parents → parent → children` sibling chain — the series screen
+//      renders its episode grid from its OWN `children` (below) and never shows
+//      siblings (that's the watch screen's Up Next). On a Jesus-film-sized
+//      series the chain is ~208 nodes / ~190KB and ~1.6s of prod resolver time.
+//   2. each dub's `duration` + `muxVideo.playbackId` — player-only fields. The
+//      series screen needs only a playable `hls` + `language` to pick and swap
+//      the trailer; a series carries ~2,270 dubs, so every per-dub field
+//      multiplies (bytes + a per-dub muxVideo relation resolution server-side).
+// The bulk childDubLanguages aggregation (the largest remaining term) is a
+// known-slow admin resolver pending a composite index — see the hand-off note
+// in docs/.
+export const seriesWatchVideoFragment = adminGraphql(`
+  fragment SeriesWatchVideo on Video @_unmask {
+    documentId: id
+    slug
+    label
+    images {
+      documentId: id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+    }
+    primaryLanguage {
+      coreId
+      bcp47
+    }
+    locales(locale: $locale) {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+    variants: dubs {
+      documentId: id
+      slug
+      published
+      hls
+      language {
+        coreId
+        bcp47
+        slug
+        name
+      }
+    }
+    studyQuestions {
+      documentId: id
+      languageSlug
+      value: text
+      order
+    }
+    bibleCitations {
+      documentId: id
+      chapterStart
+      chapterEnd
+      verseStart
+      verseEnd
+      order
+      osisId
+      bibleBook {
+        documentId: id
+        name
+      }
+    }
+  }
+`)
+
 // ── Series detail query ─────────────────────────────────────────────
 //
 // A series is a Video whose label is SERIES/COLLECTION (or which has children).
-// The series detail page needs three things the single-video query doesn't:
+// The series detail page needs two things the single-video query doesn't:
 //   1. the series' OWN `children` (the episode grid) — distinct from the
-//      `parents.parent.children` siblings the WatchVideo fragment carries;
+//      `parents.parent.children` siblings (which this query no longer fetches);
 //   2. `childDubLanguages` — the server-aggregated union of languages the
-//      episodes are available in, which drives the language sheet;
-//   3. (already in WatchVideo) the series' own `variants`/dubs — a playable one
-//      is the trailer.
-// These series-only selections live HERE, on a dedicated operation, NOT on the
-// shared `watchVideoFragment` — keeping the single-video query lean (see the
-// payload note above). gql.tada infers the types from admin's introspection;
-// no admin schema change is needed (the fields already exist).
+//      episodes are available in, which drives the language sheet.
+// The series' own `variants`/dubs (a playable one is the trailer) come from the
+// lean `seriesWatchVideoFragment` below — NOT the heavier `watchVideoFragment`.
+// These series-only selections live HERE, on the operation. gql.tada infers the
+// types from admin's introspection; no admin schema change is needed.
 export const GET_SERIES_BY_SLUG = adminGraphql(
   `
     query GetSeriesBySlug($locale: String!, $slug: String!) {
       videoBySlug(slug: $slug) {
-        ...WatchVideo
+        ...SeriesWatchVideo
         children {
           order
           child {
@@ -260,7 +334,7 @@ export const GET_SERIES_BY_SLUG = adminGraphql(
       }
     }
   `,
-  [watchVideoFragment],
+  [seriesWatchVideoFragment],
 )
 
 export type SeriesVideoData = AdminResultOf<typeof GET_SERIES_BY_SLUG>
