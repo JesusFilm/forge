@@ -46,7 +46,9 @@ function downloadingAction(
   onPress: () => void,
 ): ActionItem {
   const pct =
-    progress != null && progress > 0 ? Math.round(progress * 100) : null
+    progress != null && progress > 0
+      ? Math.min(100, Math.round(progress * 100))
+      : null
   const label =
     state === "queued"
       ? "Queued"

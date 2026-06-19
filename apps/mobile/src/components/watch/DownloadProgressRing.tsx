@@ -13,7 +13,7 @@ import { StyleSheet, View } from "react-native"
  * left half covers 50–100%. `cutoutColor` MUST match the surface behind the ring
  * (the watch screen is `BG_COLOR`) so the punched centre reads as transparent.
  */
-export interface DownloadProgressRingProps {
+export type DownloadProgressRingProps = {
   size: number
   strokeWidth: number
   /** 0..1 (clamped). */

@@ -102,5 +102,15 @@ export default defineConfig(
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
+  {
+    files: ["apps/mobile/plugins/**/*.test.js"],
+    languageOptions: {
+      globals: {
+        describe: "readonly",
+        it: "readonly",
+        expect: "readonly",
+      },
+    },
+  },
   eslintPluginPrettierRecommended,
 )

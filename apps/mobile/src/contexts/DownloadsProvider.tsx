@@ -51,6 +51,7 @@ import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
 import { getApolloClient } from "../lib/apolloClient"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
 import { GET_VIDEO_DUB } from "../lib/queries"
+import { validateActionUrl } from "../lib/validateUrl"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -124,11 +125,16 @@ async function reresolveMediaUrl(args: {
   totalBytes: number
   subtitleLanguageSlug: string | null
 }): Promise<{ mediaUrl: string; subtitleUrl: string | null } | null> {
+  // A hung network-only query would stall the (re)start forever — it has no
+  // inherent deadline. Abort after 10s so callers fall back gracefully.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10_000)
   try {
     const res = await getApolloClient().query({
       query: GET_VIDEO_DUB,
       variables: { id: args.dubDocumentId },
       fetchPolicy: "network-only",
+      context: { fetchOptions: { signal: controller.signal } },
     })
     const media = normalizeDubMedia(res.data?.videoDub ?? null)
     if (!media) return null
@@ -145,6 +151,8 @@ async function reresolveMediaUrl(args: {
     }
   } catch {
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -195,18 +203,28 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const writeRecord = useCallback(async (record: OfflineDownloadRecord) => {
+    // The index only changes when the SET of slugs changes (a brand-new
+    // record). A patch to an existing record — including every progress tick —
+    // leaves the index identical, so skip that write: rewriting it on each tick
+    // doubles AsyncStorage churn for no benefit.
+    const isNew = !(record.videoSlug in recordsRef.current)
     const next = { ...recordsRef.current, [record.videoSlug]: record }
     recordsRef.current = next
     setRecords(next)
     try {
-      await AsyncStorage.setItem(
-        offlineRecordKey(record.videoSlug),
-        serializeOfflineRecord(record),
-      )
-      await AsyncStorage.setItem(
-        OFFLINE_INDEX_STORAGE_KEY,
-        serializeOfflineIndex(Object.keys(next)),
-      )
+      if (isNew) {
+        // multiSet so the record and the index that lists it land together — a
+        // record present in the index but missing on disk reads back as null.
+        await AsyncStorage.multiSet([
+          [offlineRecordKey(record.videoSlug), serializeOfflineRecord(record)],
+          [OFFLINE_INDEX_STORAGE_KEY, serializeOfflineIndex(Object.keys(next))],
+        ])
+      } else {
+        await AsyncStorage.setItem(
+          offlineRecordKey(record.videoSlug),
+          serializeOfflineRecord(record),
+        )
+      }
     } catch {
       // Best-effort; the in-memory record still applies this session.
     }
@@ -309,22 +327,31 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           let subtitleVerified = false
           let subtitleTerminallyFailed = false
           if (args.subtitleLanguageSlug && args.subtitleUrl) {
-            try {
-              await downloadToFile(
-                args.subtitleUrl,
-                buildSubtitlePath(
-                  OFFLINE_ROOT,
-                  videoSlug,
-                  args.subtitleLanguageSlug,
-                ),
-              )
-              subtitleVerified = true
-            } catch {
+            // Validate the CMS-sourced URL before fetching (CLAUDE.md: validate
+            // all CMS URLs). An unsafe URL is a terminal subtitle failure —
+            // media still completes, the subtitle degrades.
+            if (!validateActionUrl(args.subtitleUrl)) {
               subtitleTerminallyFailed = true
+            } else {
+              try {
+                await downloadToFile(
+                  args.subtitleUrl,
+                  buildSubtitlePath(
+                    OFFLINE_ROOT,
+                    videoSlug,
+                    args.subtitleLanguageSlug,
+                  ),
+                )
+                subtitleVerified = true
+              } catch {
+                subtitleTerminallyFailed = true
+              }
             }
           }
           let posterPath: string | null = null
-          if (args.posterUrl) {
+          // Validate the CMS-sourced poster URL before fetching; an unsafe URL
+          // simply leaves the library without a cached poster.
+          if (args.posterUrl && validateActionUrl(args.posterUrl)) {
             const target = buildPosterPath(OFFLINE_ROOT, videoSlug)
             try {
               await downloadToFile(args.posterUrl, target)
@@ -349,11 +376,16 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                 ? null
                 : args.subtitleLanguageSlug,
             })
-            // Swap success: the new copy is verified — remove the superseded old
-            // file (it was kept playable until this moment).
+            // Swap success: the new copy is verified — remove the superseded
+            // old file (it was kept playable until this moment). Guard the
+            // subtitle-only swap: the rendition is unchanged, so the old
+            // committed path EQUALS the new one — deleting it would destroy the
+            // media we just committed into it (data loss).
             const swap = recordsRef.current[videoSlug]?.swapFrom
             if (swap) {
-              await removeUri(swap.committedPath)
+              if (swap.committedPath !== committedPath) {
+                await removeUri(swap.committedPath)
+              }
               patch({ swapFrom: null })
             }
           } else {
@@ -379,10 +411,14 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             totalBytes: bytesTotal || fallbackTotalBytes,
           }),
         onDone: ({ location }) => {
-          void finalize(location)
-          // Tell iOS this background-session job is done, or it throttles the
-          // app's future background time and later transfers stall mid-flight.
-          notifyIosBackgroundComplete(videoSlug)
+          // Signal iOS only AFTER finalize's awaits settle (the media rename
+          // plus the subtitle/poster sidecar fetches). Signalling first lets
+          // iOS suspend the app mid-finalize on a background-only launch,
+          // cutting the sidecars short. `finally` so we always signal — not
+          // doing so throttles the app's future background time.
+          void finalize(location).finally(() =>
+            notifyIosBackgroundComplete(videoSlug),
+          )
         },
         onInterruption: (classification) => {
           const swap = recordsRef.current[videoSlug]?.swapFrom
@@ -414,6 +450,15 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         const tasks = await listExistingDownloadTasks().catch(() => [])
         const liveTaskSlugs = new Set(tasks.map((task) => task.id))
         const current = Object.values(recordsRef.current)
+        // Snapshot pending paths up front so a cleanupOrphanPending action can
+        // still find the file to delete even if the record was dropped earlier
+        // in the action loop (e.g. a canceled record).
+        const pendingPathBySlug = new Map<string, string>()
+        for (const record of current) {
+          if (record.pendingPath) {
+            pendingPathBySlug.set(record.videoSlug, record.pendingPath)
+          }
+        }
         const committedFileSlugs = new Set<string>()
         const pendingFileSlugs = new Set<string>()
         await Promise.all(
@@ -450,6 +495,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             subtitleLanguageSlug: record.subtitleLanguageSlug,
           })
           if (cancelled || !refreshed) return
+          // Don't restart against an unsafe URL — leave the record for a future
+          // launch to re-resolve.
+          if (!validateActionUrl(refreshed.mediaUrl)) return
           const nonce = `${Date.now().toString(36)}-${Math.floor(
             Math.random() * 1e9,
           ).toString(36)}`
@@ -506,6 +554,16 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           ) {
             const record = recordsRef.current[action.videoSlug]
             if (record) await restartInterrupted(record)
+          } else if (action.action === "cleanupOrphanPending") {
+            // A `.pending` partial with no in-flight record backing it — delete
+            // the leaked bytes and clear the stale path so it isn't re-flagged
+            // on the next launch.
+            const pending = pendingPathBySlug.get(action.videoSlug)
+            if (pending) await removeUri(pending)
+            const record = recordsRef.current[action.videoSlug]
+            if (record?.pendingPath) {
+              await writeRecord({ ...record, pendingPath: null })
+            }
           }
         }
         if (cancelled) return
@@ -620,10 +678,19 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
 
+      const mediaUrl = fresh?.mediaUrl ?? rendition.url
+      // Validate the CMS-sourced media URL before handing it to the native
+      // downloader (CLAUDE.md invariant). Both candidates failing means we have
+      // no safe URL — drop the provisional record and report the error.
+      if (!validateActionUrl(mediaUrl)) {
+        await removeRecord(videoSlug)
+        return { ok: false, reason: "error" }
+      }
+
       startMediaDownload(
         {
           id: videoSlug,
-          url: fresh?.mediaUrl ?? rendition.url,
+          url: mediaUrl,
           destination: pendingPath,
           allowCellular: request.allowCellular,
         },
@@ -639,7 +706,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       )
       return { ok: true }
     },
-    [wifiOnly, writeRecord, buildHandlers],
+    [wifiOnly, writeRecord, removeRecord, buildHandlers],
   )
 
   // U8: non-destructive quality/language swap on an already-downloaded video.
@@ -716,10 +783,19 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
 
+      const mediaUrl = fresh?.mediaUrl ?? rendition.url
+      // Validate the CMS-sourced media URL before starting. On failure restore
+      // the pre-swap record (the old copy is untouched; no pending file exists
+      // yet) so the user keeps their working download.
+      if (!validateActionUrl(mediaUrl)) {
+        await writeRecord(existing)
+        return { ok: false, reason: "error" }
+      }
+
       startMediaDownload(
         {
           id: videoSlug,
-          url: fresh?.mediaUrl ?? rendition.url,
+          url: mediaUrl,
           destination: pendingPath,
           allowCellular: request.allowCellular,
         },

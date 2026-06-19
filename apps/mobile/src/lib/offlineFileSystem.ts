@@ -75,5 +75,13 @@ export async function moveFile(from: string, to: string): Promise<void> {
  * background engine, not here.
  */
 export async function downloadToFile(url: string, dest: string): Promise<void> {
-  await downloadAsync(url, dest)
+  // Race a 30s deadline so a stalled CDN can't block finalize (and the iOS
+  // background-completion signal that follows it) indefinitely. Callers treat a
+  // throw as a terminal sidecar failure and degrade gracefully.
+  await Promise.race([
+    downloadAsync(url, dest),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("downloadToFile timeout")), 30_000),
+    ),
+  ])
 }

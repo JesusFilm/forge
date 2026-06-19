@@ -95,3 +95,9 @@ module.exports = function withBackgroundDownloaderAppDelegate(config) {
     return cfg
   })
 }
+
+// Exported for unit tests — the AST transform is pure and a regression here
+// silently breaks the native build (the method lands in the wrong Swift class).
+// Attached after the default export above, which reassigns `module.exports`.
+module.exports.removeBackgroundSessionMethod = removeBackgroundSessionMethod
+module.exports.insertIntoAppDelegate = insertIntoAppDelegate
