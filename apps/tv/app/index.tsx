@@ -33,6 +33,7 @@ import {
 } from "../src/components/home/homeScrollState"
 import { HomeTopBar } from "../src/components/home/HomeTopBar"
 import { MissionSection } from "../src/components/home/MissionSection"
+import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import {
   createShowcaseFocusDebouncer,
   INITIAL_SHOWCASE_STATE,
@@ -283,8 +284,16 @@ export default function HomeScreen() {
 
   // The hero CTA's native node — wired as the D-pad-up destination for EVERY
   // card in the first section rail, so Up from any card (even the rightmost)
-  // returns to the CTA rather than dead-ending under the hero artwork.
+  // returns to the CTA rather than dead-ending under the hero artwork. ALSO the
+  // destination of the hero's TVFocusGuideView (below), so Down from the top bar
+  // tabs lands on See more.
   const [ctaNode, setCtaNode] = useState<ViewType | null>(null)
+
+  // The top bar Search tab's native node — wired as the D-pad-up destination for
+  // both hero action buttons. The centered tab bar has no horizontal overlap
+  // with the left-anchored hero action row, so Up from the hero dead-ends
+  // without an explicit destination (the mirror of ctaNode's job for the rail).
+  const [searchTabNode, setSearchTabNode] = useState<ViewType | null>(null)
 
   // The top bar (brandmark · Search/Home tabs · clock). Rendered in every
   // state — including loading, error and empty — so Search stays reachable
@@ -297,6 +306,7 @@ export default function HomeScreen() {
       searchTabPreferredFocus={searchTabFocusKey > 0}
       onSearchPress={handleSearchPress}
       onChromeFocus={handleChromeFocus}
+      onSearchTabNode={setSearchTabNode}
     />
   )
 
@@ -399,17 +409,32 @@ export default function HomeScreen() {
 
         {/* The hero is a focusable carousel (replaces the passive billboard +
             the old featured rail). It owns the curated hero set; section rails
-            below stay at rowIndex 1..n and anchor-scroll up on focus. */}
+            below stay at rowIndex 1..n and anchor-scroll up on focus.
+
+            The guide bridges D-pad DOWN from the centered top bar tabs into the
+            hero: the hero's only focusables (See more + chevron) are
+            left-anchored, so Down from a centered tab has no horizontal
+            projection overlap and geometry falls straight through to the first
+            rail. nextFocusDown set on the tabs can't fix it — they live in the
+            sticky header, whose re-parented children drop nextFocus hints. This
+            is the app's established offset-focus bridge (see MissionSection):
+            a Down-entry into the hero region redirects to the See more CTA. */}
         <View onLayout={rowLayoutHandlers[0]}>
-          <HomeHeroCarousel
-            slides={model.featured}
-            index={heroIndex}
-            hasTVPreferredFocus
-            onSelect={handleCardPress}
-            onFocusChange={handleHeroFocusChange}
-            onRequestAdvance={advanceHero}
-            onCtaNode={setCtaNode}
-          />
+          <TVFocusGuideView
+            autoFocus
+            destinations={ctaNode != null ? [ctaNode] : undefined}
+          >
+            <HomeHeroCarousel
+              slides={model.featured}
+              index={heroIndex}
+              hasTVPreferredFocus
+              onSelect={handleCardPress}
+              onFocusChange={handleHeroFocusChange}
+              onRequestAdvance={advanceHero}
+              onCtaNode={setCtaNode}
+              upFocusTarget={searchTabNode}
+            />
+          </TVFocusGuideView>
         </View>
 
         {model.sections.map((section, sectionIndex) => (
