@@ -6,8 +6,9 @@
 // The screen has three visual states driven by WHERE focus sits:
 //   "top"    — focus on the top bar tabs: feed pinned to 0, no deep scrim,
 //              top bar fully visible.
-//   "browse" — focus on a row-0 (featured) card: feed stays at 0, deep scrim
-//              at 0.22, top bar visible.
+//   "browse" — focus on a row-0 (featured) card: the rail anchors up from its
+//              peeking position to near the viewport top, deep scrim at 0.22,
+//              top bar visible.
 //   "deep"   — focus in rows >= 1: the row anchors near the viewport top,
 //              deep scrim fully on, top bar hidden.
 
@@ -30,11 +31,12 @@ export function resolveBrowseState(rowIndex: number | null): HomeBrowseState {
 }
 
 /**
- * Scroll target for a focused row. Row 0 pins the feed to 0 — the featured
- * rail's old scroll-to-top behavior folds in here. Rows >= 1 anchor the
- * shelf's measured layout y minus the anchor offset, clamped at 0. Returns
- * null when the row's layout has not been measured yet — the caller skips
- * the scroll rather than jumping somewhere wrong.
+ * Scroll target for a focused row. EVERY row (including row 0, the featured
+ * rail) anchors the shelf's measured layout y minus the anchor offset, clamped
+ * at 0: the tall hero leaves the featured rail peeking at scroll 0, so focusing
+ * it must scroll up to reveal it just like any deeper row. Returns null when
+ * the row's layout has not been measured yet — the caller skips the scroll
+ * rather than jumping somewhere wrong.
  */
 export function resolveRowScrollTarget(args: {
   rowIndex: number
@@ -43,7 +45,6 @@ export function resolveRowScrollTarget(args: {
   /** Already-scaled anchor distance from the viewport top. */
   anchorOffset: number
 }): number | null {
-  if (args.rowIndex <= 0) return 0
   const y = args.rowLayoutYs[args.rowIndex]
   if (y == null) return null
   return Math.max(0, y - args.anchorOffset)

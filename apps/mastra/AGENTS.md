@@ -26,6 +26,11 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
   reads Manager transcript artifacts, translates and retimes subtitles, and
   writes Manager-compatible subtitle/translation artifacts to shared storage.
+- Owns RAG retrieval for the seeker agent through the `retrieveAnswer` tool and
+  `jesusfilm-rag-client` (outbound-only bearer to the JesusFilm RAG service;
+  the tool returns cited passages, the agent generates the answer). Fully
+  optional config — unset degrades to an explicit unavailable result, never a
+  boot failure.
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized

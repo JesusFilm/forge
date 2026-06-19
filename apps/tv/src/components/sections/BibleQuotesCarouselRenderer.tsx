@@ -18,6 +18,11 @@ import { SECTION_HEADING } from "./sectionHeading"
 const CARD_SIZE = scale(340)
 const CARD_GAP = scale(24)
 
+// At 5+ cards the row overflows the 1920-wide canvas, so a centered list
+// pushes the first card's left edge off-screen. Left-align past this count
+// so the first card is fully visible (matching the VideoCarousel rail).
+const LEFT_ALIGN_THRESHOLD = 5
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type QuoteItem = {
@@ -41,10 +46,12 @@ function QuoteCard({
   quote,
   ctaLabel,
   onPress,
+  focusAnchor,
 }: {
   quote: QuoteItem
   ctaLabel: string | null
   onPress: () => void
+  focusAnchor: "center" | "left"
 }) {
   const imageSource = resolveImageUrl(quote.imageUrl ?? null)
   const bgColor = quote.backgroundColor ?? "#292524"
@@ -52,6 +59,7 @@ function QuoteCard({
   return (
     <FocusableCard
       onPress={onPress}
+      focusAnchor={focusAnchor}
       style={{ ...styles.card, backgroundColor: bgColor }}
       accessibilityLabel={`${quote.reference}: ${quote.text}`}
     >
@@ -99,29 +107,37 @@ export function BibleQuotesCarouselRenderer({
   const heading = section.bqcHeading as string | null
   const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
   const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
+  // 5+ cards left-align the rail (see listContentLeftAligned below); only then
+  // is the first card flush against the screen's left edge, so only then should
+  // its focus-scale anchor to the left. A centered short rail keeps it centered.
+  const leftAligned = quotes.length >= LEFT_ALIGN_THRESHOLD
 
-  const renderItem = useCallback(({ item }: { item: QuoteItem }) => {
-    const hasValidCta =
-      item.ctaLabel != null &&
-      item.ctaLink != null &&
-      validateActionUrl(item.ctaLink)
-    const validCtaLink = hasValidCta ? item.ctaLink : null
-    const validCtaLabel = hasValidCta ? (item.ctaLabel ?? null) : null
+  const renderItem = useCallback(
+    ({ item, index }: { item: QuoteItem; index: number }) => {
+      const hasValidCta =
+        item.ctaLabel != null &&
+        item.ctaLink != null &&
+        validateActionUrl(item.ctaLink)
+      const validCtaLink = hasValidCta ? item.ctaLink : null
+      const validCtaLabel = hasValidCta ? (item.ctaLabel ?? null) : null
 
-    return (
-      <View style={styles.cardWrapper}>
-        <QuoteCard
-          quote={item}
-          ctaLabel={validCtaLabel}
-          onPress={() => {
-            if (validCtaLink != null) {
-              setSelectedCtaUrl(validCtaLink)
-            }
-          }}
-        />
-      </View>
-    )
-  }, [])
+      return (
+        <View style={styles.cardWrapper}>
+          <QuoteCard
+            quote={item}
+            ctaLabel={validCtaLabel}
+            focusAnchor={leftAligned && index === 0 ? "left" : "center"}
+            onPress={() => {
+              if (validCtaLink != null) {
+                setSelectedCtaUrl(validCtaLink)
+              }
+            }}
+          />
+        </View>
+      )
+    },
+    [leftAligned],
+  )
 
   const keyExtractor = useCallback(
     (item: QuoteItem, index: number) => `bqc-${item.id}-${index}`,
@@ -144,7 +160,10 @@ export function BibleQuotesCarouselRenderer({
           keyExtractor={keyExtractor}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            leftAligned && styles.listContentLeftAligned,
+          ]}
           ItemSeparatorComponent={Separator}
         />
       </TVFocusGuideView>
@@ -181,6 +200,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
   },
+  listContentLeftAligned: {
+    justifyContent: "flex-start",
+    paddingHorizontal: scale(80),
+  },
   cardWrapper: {
     paddingVertical: scale(40),
   },
@@ -200,7 +223,7 @@ const styles = StyleSheet.create({
   },
   attribution: {
     fontFamily: "System",
-    fontSize: scale(14),
+    fontSize: Math.round(scale(14)),
     fontWeight: "800",
     color: "rgba(255,255,255,0.9)",
     letterSpacing: 0.8,
@@ -208,7 +231,7 @@ const styles = StyleSheet.create({
   },
   reference: {
     fontFamily: "System",
-    fontSize: scale(16),
+    fontSize: Math.round(scale(16)),
     fontWeight: "800",
     color: "rgba(255,255,255,0.7)",
     letterSpacing: 1.5,
@@ -216,11 +239,11 @@ const styles = StyleSheet.create({
   },
   quoteText: {
     fontFamily: "System",
-    fontSize: scale(18),
+    fontSize: Math.round(scale(18)),
     fontWeight: "400",
     fontStyle: "italic",
     color: "rgba(255,255,255,0.9)",
-    lineHeight: scale(26),
+    lineHeight: Math.round(scale(26)),
   },
   ctaButton: {
     marginTop: scale(12),
@@ -232,7 +255,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontFamily: "System",
-    fontSize: scale(14),
+    fontSize: Math.round(scale(14)),
     fontWeight: "600",
     color: "rgba(255,255,255,0.9)",
   },

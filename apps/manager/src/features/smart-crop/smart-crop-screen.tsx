@@ -27,6 +27,11 @@ import { apiFetch } from "@/lib/api-fetch"
 import type { SmartCropVideoResolution } from "@/app/api/smart-crop/videos/[coreId]/route"
 import type { JobRecord, SmartCropCropMode } from "@/types/job"
 import {
+  flattenSmartCropPickerVideos,
+  type SmartCropPickerVideo,
+  type SmartCropVideosApiResponse,
+} from "./smart-crop-picker"
+import {
   getSmartCropJobSummary,
   type SmartCropJobSummary,
 } from "./smart-crop-presenter"
@@ -51,53 +56,7 @@ type SmartCropScreenProps = {
   initialJobs: JobRecord[]
 }
 
-type VideoPickerItem = {
-  id: string
-  coreId: string | null
-  title: string
-  slug: string | null
-  imageUrl: string | null
-  label: string
-}
-
-type VideosApiItem = VideoPickerItem
-
-type VideosApiResponse = {
-  collections: Array<VideosApiItem & { videos: VideosApiItem[] }>
-  standalone: VideosApiItem[]
-}
-
-function flattenVideoPickerItems(
-  payload: VideosApiResponse,
-): VideoPickerItem[] {
-  const byId = new Map<string, VideoPickerItem>()
-  const add = (item: VideosApiItem) => {
-    if (!byId.has(item.id)) {
-      byId.set(item.id, {
-        id: item.id,
-        coreId: item.coreId,
-        title: item.title,
-        slug: item.slug,
-        imageUrl: item.imageUrl,
-        label: item.label,
-      })
-    }
-  }
-
-  for (const collection of payload.collections ?? []) {
-    add(collection)
-    for (const video of collection.videos ?? []) {
-      add(video)
-    }
-  }
-  for (const video of payload.standalone ?? []) {
-    add(video)
-  }
-
-  return [...byId.values()].sort((left, right) =>
-    left.title.localeCompare(right.title),
-  )
-}
+type VideoPickerItem = SmartCropPickerVideo
 
 function describeVideoResolutionIssue(
   reason: SmartCropVideoResolution["reason"],
@@ -617,8 +576,8 @@ function CanonicalJobForm({
           setLoadFailed(true)
           return
         }
-        const payload = (await response.json()) as VideosApiResponse
-        setVideos(flattenVideoPickerItems(payload))
+        const payload = (await response.json()) as SmartCropVideosApiResponse
+        setVideos(flattenSmartCropPickerVideos(payload))
       } catch {
         if (!controller.signal.aborted) setLoadFailed(true)
       }
