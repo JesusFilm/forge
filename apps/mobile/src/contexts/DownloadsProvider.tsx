@@ -44,7 +44,10 @@ import {
   serializeOfflineRecord,
   type OfflineDownloadRecord,
 } from "../lib/offlineManifest"
-import type { WatchDownload } from "../lib/normalizeVideo"
+import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
+import { getApolloClient } from "../lib/apolloClient"
+import { resolveFromMedia } from "../lib/downloadUrlResolution"
+import { GET_VIDEO_DUB } from "../lib/queries"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -91,6 +94,46 @@ type DownloadsContextValue = {
 
 const DownloadsContext = createContext<DownloadsContextValue | null>(null)
 
+/**
+ * Re-resolve a fresh media URL from a record's stable identity (U4). The
+ * manifest stores identity (dub + rendition documentId, quality, subtitle slug),
+ * never the volatile signed URL — which expires — so a (re)start re-fetches
+ * `videoDub(id)` and re-picks the rendition. `network-only` because a cache-first
+ * read would hand back the very stale URL we are trying to refresh. Returns null
+ * on any failure (offline, dub gone, no matching rendition); callers fall back to
+ * the page URL (initial) or defer to the next launch (resume).
+ */
+async function reresolveMediaUrl(args: {
+  dubDocumentId: string
+  renditionDocumentId: string
+  qualityLabel: string
+  totalBytes: number
+  subtitleLanguageSlug: string | null
+}): Promise<{ mediaUrl: string; subtitleUrl: string | null } | null> {
+  try {
+    const res = await getApolloClient().query({
+      query: GET_VIDEO_DUB,
+      variables: { id: args.dubDocumentId },
+      fetchPolicy: "network-only",
+    })
+    const media = normalizeDubMedia(res.data?.videoDub ?? null)
+    if (!media) return null
+    const resolution = resolveFromMedia(media, {
+      renditionDocumentId: args.renditionDocumentId,
+      qualityLabel: args.qualityLabel,
+      totalBytes: args.totalBytes || undefined,
+      subtitleLanguageSlug: args.subtitleLanguageSlug,
+    })
+    if (resolution.kind !== "resolved") return null
+    return {
+      mediaUrl: resolution.mediaUrl,
+      subtitleUrl: resolution.subtitleUrl,
+    }
+  } catch {
+    return null
+  }
+}
+
 type RecordMap = Record<string, OfflineDownloadRecord>
 
 export function DownloadsProvider({ children }: { children: ReactNode }) {
@@ -101,6 +144,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   recordsRef.current = records
 
   const { wifiOnly } = useWatchPreferences()
+  // Read inside the launch-reattach effect without making it re-run (and re-queue
+  // downloads) every time the preference toggles.
+  const wifiOnlyRef = useRef(wifiOnly)
+  wifiOnlyRef.current = wifiOnly
 
   // Hydrate the sharded manifest on mount. Bulletproof: any read/parse failure
   // degrades to an empty manifest rather than throwing during boot.
@@ -339,12 +386,76 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           pendingFileSlugs,
           committedFileSlugs,
         })
+
+        // U6: re-resolve a fresh URL and restart a transfer that was interrupted
+        // (force-quit / OS-evicted → no live task) or whose committed file went
+        // missing ("repair"). Offline at launch → reresolve returns null → leave
+        // the record untouched for the next launch.
+        const restartInterrupted = async (record: OfflineDownloadRecord) => {
+          const refreshed = await reresolveMediaUrl({
+            dubDocumentId: record.dubDocumentId,
+            renditionDocumentId: record.renditionDocumentId,
+            qualityLabel: record.qualityLabel,
+            totalBytes: record.totalBytes,
+            subtitleLanguageSlug: record.subtitleLanguageSlug,
+          })
+          if (cancelled || !refreshed) return
+          const nonce = `${Date.now().toString(36)}-${Math.floor(
+            Math.random() * 1e9,
+          ).toString(36)}`
+          const pendingPath =
+            record.pendingPath ??
+            buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
+          const committedPath = buildCommittedPath(
+            OFFLINE_ROOT,
+            record.videoSlug,
+            record.renditionDocumentId,
+          )
+          try {
+            configureDownloadEngine({ wifiOnly: wifiOnlyRef.current })
+            await ensureVideoDir(record.videoSlug)
+          } catch {
+            return
+          }
+          if (cancelled) return
+          await writeRecord({
+            ...record,
+            state: "downloading",
+            committedPath: null,
+            pendingPath,
+            bytesWritten: 0,
+          })
+          startMediaDownload(
+            {
+              id: record.videoSlug,
+              url: refreshed.mediaUrl,
+              destination: pendingPath,
+              allowCellular: !wifiOnlyRef.current,
+            },
+            buildHandlers({
+              videoSlug: record.videoSlug,
+              committedPath,
+              pendingPath,
+              fallbackTotalBytes: record.totalBytes,
+              subtitleLanguageSlug: null,
+              subtitleUrl: null,
+              posterUrl: null,
+            }),
+          )
+        }
+
         const droppedSlugs = new Set<string>()
         for (const action of actions) {
           if (cancelled) return
           if (action.action === "dropRecord") {
             droppedSlugs.add(action.videoSlug)
             await removeRecord(action.videoSlug)
+          } else if (
+            action.action === "requeue" ||
+            action.action === "repair"
+          ) {
+            const record = recordsRef.current[action.videoSlug]
+            if (record) await restartInterrupted(record)
           }
         }
         if (cancelled) return
@@ -391,7 +502,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isReady, removeRecord, buildHandlers])
+  }, [isReady, removeRecord, buildHandlers, writeRecord])
 
   const startDownload = useCallback(
     async (request: StartDownloadRequest) => {
@@ -438,10 +549,21 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         totalBytes: Number(rendition.size) || 0,
       })
 
+      // U4: refresh the signed URL right before starting — the sheet's URL may
+      // have expired while it sat open. Fall back to the page URL so a transient
+      // refresh failure never blocks an otherwise-valid download.
+      const fresh = await reresolveMediaUrl({
+        dubDocumentId: request.dubDocumentId,
+        renditionDocumentId: rendition.documentId,
+        qualityLabel: rendition.quality,
+        totalBytes: Number(rendition.size) || 0,
+        subtitleLanguageSlug: request.subtitleLanguageSlug,
+      })
+
       startMediaDownload(
         {
           id: videoSlug,
-          url: rendition.url,
+          url: fresh?.mediaUrl ?? rendition.url,
           destination: pendingPath,
           allowCellular: request.allowCellular,
         },
