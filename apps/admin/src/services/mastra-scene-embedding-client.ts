@@ -1,4 +1,5 @@
 import { env } from "@/config/env"
+import { resolveMastraLaunchTimeoutMs } from "@/services/mastra-launch-timeout"
 import {
   sceneAnalysisArtifactKey,
   type SceneAnalysisResult,
@@ -211,7 +212,9 @@ export async function launchMastraSceneEmbedding(
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(
-          options.timeoutMs ?? env.MASTRA_SCENE_EMBEDDING_TIMEOUT_MS ?? 120_000,
+          resolveMastraLaunchTimeoutMs(
+            options.timeoutMs ?? env.MASTRA_SCENE_EMBEDDING_TIMEOUT_MS,
+          ),
         ),
       },
     )

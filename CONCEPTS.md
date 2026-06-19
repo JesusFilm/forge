@@ -119,6 +119,10 @@ The response-side state that says whether semantic retrieval actually contribute
 
 A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.
 
+### AI Gateway
+
+The project-owned embedding provider surface that produces vectors for Content Embeddings. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
+
 ### Embedding Provenance
 
 The metadata that says which provider contract produced a stored Content Embedding and how that vector was transformed before storage. Provenance is part of search correctness: it prevents legacy vectors, newly generated vectors, and future provider variants from being treated as the same embedding space.
