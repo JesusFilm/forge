@@ -15,6 +15,7 @@ const RECORD: OfflineDownloadRecord = {
   dubDocumentId: "dub-123",
   renditionDocumentId: "rend-high-456",
   qualityLabel: "High",
+  title: "The Birth of Jesus",
   subtitleLanguageSlug: "english",
   state: "downloaded",
   committedPath: "file:///docs/downloads/the-birth-of-jesus/rend-high-456.mp4",
@@ -98,6 +99,7 @@ describe("parseOfflineRecord", () => {
     expect(out?.committedPath).toBeNull()
     expect(out?.posterPath).toBeNull()
     expect(out?.qualityLabel).toBe("")
+    expect(out?.title).toBe("")
   })
 })
 

@@ -1,5 +1,6 @@
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import { useRouter } from "expo-router"
+import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useDownloads } from "../../contexts/DownloadsProvider"
@@ -18,13 +19,18 @@ import type {
 const DOWNLOADED_COLOR = "#34d399"
 const FAILED_COLOR = "#fb7185"
 
-/** Humanize a video slug for display (the record doesn't store a title yet). */
+/** Humanize a video slug as a fallback when the record has no stored title. */
 function slugToTitle(slug: string): string {
   return slug
     .split("-")
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
+}
+
+/** Prefer the stored human title; fall back to a humanized slug. */
+function displayTitle(record: OfflineDownloadRecord): string {
+  return record.title || slugToTitle(record.videoSlug)
 }
 
 function formatBytes(bytes: number): string {
@@ -84,25 +90,34 @@ export function MyDownloadsSection() {
               )
             }
             accessibilityRole="button"
-            accessibilityLabel={`${slugToTitle(record.videoSlug)}, ${statusLine(record)}`}
+            accessibilityLabel={`${displayTitle(record)}, ${statusLine(record)}`}
           >
             <View style={styles.thumb}>
-              <Ionicons
-                name={
-                  record.state === "downloaded"
-                    ? "checkmark-circle"
-                    : "arrow-down-circle-outline"
-                }
-                size={22}
-                color={stateColor(record.state)}
-              />
+              {record.posterPath ? (
+                <Image
+                  source={record.posterPath}
+                  style={styles.thumbImage}
+                  contentFit="cover"
+                  recyclingKey={record.videoSlug}
+                />
+              ) : (
+                <Ionicons
+                  name={
+                    record.state === "downloaded"
+                      ? "checkmark-circle"
+                      : "arrow-down-circle-outline"
+                  }
+                  size={22}
+                  color={stateColor(record.state)}
+                />
+              )}
             </View>
             <View style={styles.rowText}>
               <Text
                 style={[styles.rowTitle, typography.body]}
                 numberOfLines={1}
               >
-                {slugToTitle(record.videoSlug)}
+                {displayTitle(record)}
               </Text>
               <Text
                 style={[
@@ -119,7 +134,7 @@ export function MyDownloadsSection() {
               onPress={() =>
                 Alert.alert(
                   "Remove download",
-                  `Remove "${slugToTitle(record.videoSlug)}" from offline downloads?`,
+                  `Remove "${displayTitle(record)}" from offline downloads?`,
                   [
                     {
                       text: "Remove",
@@ -133,7 +148,7 @@ export function MyDownloadsSection() {
                 )
               }
               accessibilityRole="button"
-              accessibilityLabel={`Remove ${slugToTitle(record.videoSlug)}`}
+              accessibilityLabel={`Remove ${displayTitle(record)}`}
             >
               <Ionicons name="trash-outline" size={20} color={TEXT_SECONDARY} />
             </Pressable>
@@ -178,6 +193,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    overflow: "hidden",
+  },
+  thumbImage: {
+    width: "100%",
+    height: "100%",
   },
   rowText: {
     flex: 1,

@@ -56,6 +56,8 @@ export type OfflineDownloadRecord = {
   renditionDocumentId: string
   /** Human-facing quality label (e.g. "High"); a re-resolution fallback. */
   qualityLabel: string
+  /** Human title for the offline library; an empty value falls back to slug. */
+  title: string
   /** Chosen subtitle language slug, or null for "No subtitles". */
   subtitleLanguageSlug: string | null
   state: OfflineDownloadState
@@ -114,6 +116,7 @@ export function parseOfflineRecord(
     dubDocumentId,
     renditionDocumentId,
     qualityLabel: asString(obj.qualityLabel) ?? "",
+    title: asString(obj.title) ?? "",
     subtitleLanguageSlug: asString(obj.subtitleLanguageSlug),
     state: state as OfflineDownloadState,
     committedPath: asString(obj.committedPath),

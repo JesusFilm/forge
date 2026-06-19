@@ -15,6 +15,7 @@ function record(
     dubDocumentId: "dub",
     renditionDocumentId: "rend",
     qualityLabel: "High",
+    title: "Test",
     subtitleLanguageSlug: null,
     state,
     committedPath: null,

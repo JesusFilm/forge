@@ -31,6 +31,7 @@ import {
   downloadToFile,
   ensureVideoDir,
   fileExists,
+  freeDiskBytes,
   moveFile,
   removeVideoDir,
 } from "../lib/offlineFileSystem"
@@ -62,6 +63,8 @@ import { useWatchPreferences } from "./WatchPreferencesProvider"
  */
 export type StartDownloadRequest = {
   videoSlug: string
+  /** Human title stored on the record for the offline library. */
+  title: string
   dubDocumentId: string
   /** The chosen rendition (documentId/quality/size/url) to download. */
   rendition: WatchDownload
@@ -75,6 +78,10 @@ export type StartDownloadRequest = {
   allowCellular: boolean
 }
 
+export type StartDownloadResult =
+  | { ok: true }
+  | { ok: false; reason: "exists" | "insufficient-storage" | "error" }
+
 type DownloadsContextValue = {
   /** False until the persisted manifest has been read. */
   isReady: boolean
@@ -87,12 +94,15 @@ type DownloadsContextValue = {
   /** All offline records (downloaded + in-progress) for the library. */
   offlineRecords: OfflineDownloadRecord[]
   /** Enqueue an offline download (one copy per video). */
-  startDownload: (request: StartDownloadRequest) => Promise<void>
+  startDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /** Remove an offline copy: its files and its manifest entry. */
   deleteDownload: (videoSlug: string) => Promise<void>
 }
 
 const DownloadsContext = createContext<DownloadsContextValue | null>(null)
+
+/** Keep this much storage free; refuse a download that would breach it (U12). */
+const STORAGE_RESERVE_BYTES = 250 * 1024 * 1024
 
 /**
  * Re-resolve a fresh media URL from a record's stable identity (U4). The
@@ -505,7 +515,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   }, [isReady, removeRecord, buildHandlers, writeRecord])
 
   const startDownload = useCallback(
-    async (request: StartDownloadRequest) => {
+    async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
       const { videoSlug, rendition } = request
       const existing = recordsRef.current[videoSlug]
       // One copy per video: ignore if a live copy/queue entry already exists.
@@ -514,14 +524,23 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         existing.state !== "failed" &&
         existing.state !== "canceled"
       ) {
-        return
+        return { ok: false, reason: "exists" }
+      }
+
+      // U12: refuse before writing a record if the footprint plus a reserve (so
+      // the device never fills up) won't fit. A free read of 0 means the API is
+      // unavailable — don't block on a check we couldn't perform.
+      const required = (Number(rendition.size) || 0) + STORAGE_RESERVE_BYTES
+      const free = await freeDiskBytes()
+      if (free > 0 && free < required) {
+        return { ok: false, reason: "insufficient-storage" }
       }
 
       try {
         configureDownloadEngine({ wifiOnly })
         await ensureVideoDir(videoSlug)
       } catch {
-        return
+        return { ok: false, reason: "error" }
       }
 
       const nonce = `${Date.now().toString(36)}-${Math.floor(
@@ -540,6 +559,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         dubDocumentId: request.dubDocumentId,
         renditionDocumentId: rendition.documentId,
         qualityLabel: rendition.quality,
+        title: request.title,
         subtitleLanguageSlug: request.subtitleLanguageSlug,
         state: "downloading",
         committedPath: null,
@@ -577,6 +597,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           posterUrl: request.posterUrl,
         }),
       )
+      return { ok: true }
     },
     [wifiOnly, writeRecord, buildHandlers],
   )

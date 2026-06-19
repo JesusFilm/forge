@@ -44,23 +44,30 @@ export default function DownloadSheetRoute() {
       />
     )
 
-  const onStartDownload = (
+  const onStartDownload = async (
     rendition: WatchDownload,
     subtitle: WatchSubtitle | null,
   ) => {
     if (!activeVariant) return
     // Audio = active dub; the optional subtitle is the user's pick. Identity
     // (dub + rendition documentId, subtitle slug) is stored so the engine can
-    // re-resolve fresh URLs before each (re)start. Poster caching is U12.
-    void startDownload({
+    // re-resolve fresh URLs before each (re)start. Title + poster feed the
+    // offline library (My Downloads).
+    const result = await startDownload({
       videoSlug: video.slug,
+      title: video.title ?? "",
       dubDocumentId: activeVariant.documentId,
       rendition,
       subtitleLanguageSlug: subtitle?.languageSlug ?? null,
       subtitleUrl: subtitle?.vttSrc ?? null,
-      posterUrl: null,
+      posterUrl: video.posterUrl,
       allowCellular: !wifiOnly,
     })
+    if (!result.ok && result.reason === "insufficient-storage") {
+      // Stay on the sheet so the user can pick a smaller quality.
+      setSnackbarMessage("Not enough storage to download this video.")
+      return
+    }
     setSnackbarMessage("Download started")
     router.back()
   }
