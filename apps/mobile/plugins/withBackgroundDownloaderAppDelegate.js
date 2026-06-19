@@ -1,4 +1,14 @@
-const { withAppDelegate } = require("@expo/config-plugins")
+// Loaded defensively: under pnpm's strict layout @expo/config-plugins is only
+// resolvable here when it's a direct dependency of apps/mobile (it is, via
+// devDependencies). If resolution ever fails, no-op rather than crash the native
+// build's "generate app.config" phase — the prebuilt ios/ AppDelegate is already
+// patched, so skipping here is safe.
+let withAppDelegate = null
+try {
+  ;({ withAppDelegate } = require("@expo/config-plugins"))
+} catch {
+  withAppDelegate = null
+}
 
 /**
  * react-native-background-downloader's own config plugin injects
@@ -69,6 +79,14 @@ function insertIntoAppDelegate(src) {
 }
 
 module.exports = function withBackgroundDownloaderAppDelegate(config) {
+  if (!withAppDelegate) {
+    console.warn(
+      "[withBackgroundDownloaderAppDelegate] @expo/config-plugins not resolvable; " +
+        "skipping AppDelegate relocation. Run `pnpm install` so apps/mobile has " +
+        "@expo/config-plugins, then re-run `expo prebuild`.",
+    )
+    return config
+  }
   return withAppDelegate(config, (cfg) => {
     if (cfg.modResults.language !== "swift") return cfg
     let contents = removeBackgroundSessionMethod(cfg.modResults.contents)

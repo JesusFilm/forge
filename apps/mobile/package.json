@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@babel/runtime": "^7.28.0",
+    "@expo/config-plugins": "~54.0.4",
     "@types/jest": "^29.5.0",
     "@types/react": "~19.1.17",
     "babel-preset-expo": "^54.0.10",
