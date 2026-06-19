@@ -48,7 +48,8 @@
         {
           "supportsBackgroundPlayback": false
         }
-      ]
+      ],
+      "./plugins/withTVInfoPlistFixes"
     ],
     "extra": {
       "router": {

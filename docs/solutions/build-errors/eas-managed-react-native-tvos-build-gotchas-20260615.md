@@ -1,6 +1,7 @@
 ---
-title: "EAS managed-workflow build gotchas for a react-native-tvos app"
+title: "EAS managed-workflow build & submit gotchas for a react-native-tvos app"
 date: "2026-06-15"
+last_updated: "2026-06-19"
 category: build-errors
 module: tv-app
 problem_type: build_error
@@ -11,22 +12,23 @@ symptoms:
   - "Android eas build fails: aapt2 mergeReleaseResources reports Duplicate resources for ic_launcher (.webp vs .png)"
   - 'config-tv throws "One or more image paths not defined" unless all 7 appleTVImages exist at exact sizes'
   - "tvOS rejects icons with an alpha channel; sips cannot strip alpha and errors on a .png that is actually WebP"
+  - "eas submit (tvOS) delivers the .ipa to App Store Connect as iOS: rejected with ITMS-90508/90545/90713/90039; the build never registers"
 root_cause: config_error
 resolution_type: config_change
 related_components:
   - development_workflow
 tags:
   - eas-build
+  - eas-submit
   - react-native-tvos
-  - expo
   - tvos
-  - android-tv
   - config-tv
+  - altool
   - provisioning-profile
   - app-icon
 ---
 
-# EAS managed-workflow build gotchas for a react-native-tvos app
+# EAS managed-workflow build & submit gotchas for a react-native-tvos app
 
 > Searchable companion to the operational runbook at `apps/tv/DISTRIBUTION.md`.
 > That file has the step-by-step commands; this one captures root cause +
@@ -35,8 +37,10 @@ tags:
 ## Problem
 
 Standing up EAS Build distribution + brand icons for the **managed-workflow**
-`react-native-tvos` app (`apps/tv`) hit three distinct build-blocking failures,
-all living in the seam between Expo's managed prebuild, the
+`react-native-tvos` app (`apps/tv`) hit four distinct failures — three block the
+build, one blocks submission to App Store Connect — all rooted in EAS tooling
+silently defaulting a managed TV app's Apple platform to **iOS**, in the seam
+between Expo's managed prebuild, the
 `@react-native-tvos/config-tv` plugin, and `eas-cli`'s Apple-platform
 resolution. None reproduce in a phone Expo project — they are specific to a TV
 target whose native `ios/`/`android/` dirs are gitignored and regenerated on
@@ -121,11 +125,48 @@ Verify each output with `file out.png` / `sips -g hasAlpha out.png`. If a source
 `.png` is secretly WebP (`sips` says `Can't write format: org.webmproject.webp`),
 force `sips -s format png` — or generate through sharp end-to-end.
 
+### Gotcha 4 — `eas submit` delivers a tvOS `.ipa` as iOS
+
+`eas submit --platform ios` uploads the tvOS `.ipa` to App Store Connect
+**declaring the platform as iOS** — and it has no flag to declare tvOS. App Store
+Connect then runs its **iOS** validation suite against the tvOS binary and rejects
+every delivery; the build never registers (no record in TestFlight), and the only
+feedback is a rejection email:
+
+```
+ITMS-90508  DTPlatformName 'appletvos' is invalid
+ITMS-90545  provisioning profile is not compatible with iOS apps
+ITMS-90713  CFBundleIconName missing            (iOS-only key)
+ITMS-90039  CFBundleIcons.CFBundlePrimaryIcon type mismatch   (iOS dict form)
+```
+
+The binary is correct tvOS (`CFBundleSupportedPlatforms=[AppleTVOS]`,
+`DTPlatformName=appletvos`, `UIDeviceFamily=[3]`). Bypass `eas submit` and upload
+with Apple's `altool`, explicitly typed `appletvos` (ASC API key `.p8` at
+`~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`):
+
+```bash
+xcrun altool --validate-app -f <build>.ipa -t appletvos \
+  --apiKey <KeyID> --apiIssuer <IssuerID>   # dry run: SAME ITMS checks, no upload
+xcrun altool --upload-app   -f <build>.ipa -t appletvos \
+  --apiKey <KeyID> --apiIssuer <IssuerID>   # the real upload
+```
+
+`--validate-app` on the exact `.ipa` that `eas submit` got rejected returns
+"VERIFY SUCCEEDED with no errors", then `--upload-app` registers the build and it
+processes to `VALID` in TestFlight. The Transporter Mac app also works (it
+auto-detects tvOS from the binary). **Red herring:** before finding this, we
+deleted `LSRequiresIPhoneOS` (which config-tv leaves in the Info.plist) on the
+theory it forced iOS validation — it didn't. Removing it is correct tvOS hygiene
+(keep the `withTVInfoPlistFixes` plugin), but **no binary edit can fix a
+delivery-tool platform mislabel.**
+
 ## Why This Works
 
 - **tvOS profile:** `eas-cli` (≤20.1.0) `getApplePlatformFromTarget` reads the pbxproj `SDKROOT`/`TARGETED_DEVICE_FAMILY` and **falls back to `ApplePlatform.IOS`** when neither is present (`build/project/ios/target.js`). In a managed workflow `ios/` is gitignored, so there is no pbxproj — eas-cli defaults to iOS and mints an `IOS_APP_STORE` profile. It never consults config-tv's `isTV` flag. One real prebuild gives eas-cli a TV pbxproj to read, so it resolves tvOS once and stores the right profile.
 - **Android duplicate:** aapt2 keys resources by **name within a mipmap folder**, not by extension. `expo.icon` emits `ic_launcher.webp`; config-tv's `androidTVIcon` copies the icon in as `ic_launcher.png`. Same name, two formats → `mergeReleaseResources` aborts. Dropping `androidTVIcon` leaves exactly one `ic_launcher`.
 - **Icons:** the asset catalog enforces exact pixel dimensions and Apple's tvOS icon spec forbids alpha; sharp's `.flatten({background}).removeAlpha()` on a `channels:3` canvas is the only reliable way across macOS tooling to produce opaque, exactly-sized RGB PNGs.
+- **eas submit / tvOS:** `eas submit` exposes no tvOS platform declaration, so it delivers the upload as iOS and Apple runs iOS validation against the tvOS binary. The binary's own `CFBundleSupportedPlatforms`/`DTPlatformName` do **not** override the platform the delivery tool declares — the delivery-time `altool -t appletvos` flag is what selects which ruleset Apple applies.
 
 ## Prevention
 
@@ -135,6 +176,8 @@ force `sips -s format png` — or generate through sharp end-to-end.
 - **Reproduce the failing resource/Gradle task locally** (`./gradlew :app:processReleaseResources`) rather than fighting binary-encoded EAS logs, and don't assume a repeatable build failure is "flaky."
 - **Mocked-vs-real discipline:** the managed `expo prebuild` does NOT surface the aapt2 duplicate — only the real `mergeReleaseResources` Gradle task does, and a tvOS build succeeding with the same icon sources does not clear Android. Exercise both real platform tasks before trusting the icon/credential setup.
 - **Belt-and-suspenders:** config-tv enables TV when `env.EXPO_TV || params.isTV` (`build/utils/config.js`), so pinning `EXPO_TV: "1"` in **every** `eas.json` build profile guarantees the managed prebuild targets TV even if `isTV` is ever dropped.
+- **Never `eas submit` a managed react-native-tvos build** — it delivers as iOS (no tvOS flag). Submit with `xcrun altool ... -t appletvos` or the Transporter app, both of which type the delivery as tvOS.
+- **Suspect the delivery tool, not the binary, when rejections contradict the binary's own metadata.** A binary rejected on platform/icon/provisioning errors whose metadata is already correct tvOS is a delivery-platform mislabel. Run `altool --validate-app -t <platform>` FIRST — it runs the real ITMS checks offline at zero cost and isolates binary-vs-delivery faults. Chasing binary-side fixes first (the `LSRequiresIPhoneOS` removal, the App Store Connect platform-add) burned three deliveries that one up-front `--validate-app` would have saved.
 
 ## Related Issues
 
