@@ -184,6 +184,38 @@ function normalizeSegments(
   }))
 }
 
+function summarizeBody(body: string | undefined): string | undefined {
+  const trimmed = body?.replace(/\s+/g, " ").trim()
+  if (!trimmed) return undefined
+  return trimmed.slice(0, 240)
+}
+
+function parseJsonBody(body: string | undefined): unknown {
+  if (!body) return undefined
+  try {
+    return JSON.parse(body)
+  } catch {
+    return undefined
+  }
+}
+
+function logMastraLaunchFailure(details: {
+  status: number
+  statusText: string
+  contentType: string | null
+  body: string | undefined
+}): void {
+  console.error(
+    JSON.stringify({
+      event: "mastra_transcript_embedding_launch_failed",
+      status: details.status,
+      statusText: details.statusText,
+      contentType: details.contentType,
+      body: summarizeBody(details.body),
+    }),
+  )
+}
+
 export async function launchMastraTranscriptEmbedding(
   input: MastraTranscriptEmbeddingLaunchInput,
   options: LaunchMastraTranscriptEmbeddingOptions = {},
@@ -234,7 +266,17 @@ export async function launchMastraTranscriptEmbedding(
         ),
       },
     )
-  } catch {
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "mastra_transcript_embedding_launch_threw",
+        name: error instanceof Error ? error.name : "unknown",
+        message:
+          error instanceof Error
+            ? error.message.slice(0, 240)
+            : String(error).slice(0, 240),
+      }),
+    )
     return { ok: false, reason: "network_error", retryable: true }
   }
 
@@ -242,12 +284,17 @@ export async function launchMastraTranscriptEmbedding(
     return { ok: false, reason: "auth_failed", retryable: false }
   }
 
-  const result = parseWorkflowResult(
-    await response.json().catch(() => undefined),
-  )
+  const responseBody = await response.text().catch(() => undefined)
+  const result = parseWorkflowResult(parseJsonBody(responseBody))
   if (result) return result
 
   if (!response.ok) {
+    logMastraLaunchFailure({
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get("content-type"),
+      body: responseBody,
+    })
     return {
       ok: false,
       reason: "network_error",
