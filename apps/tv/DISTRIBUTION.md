@@ -85,12 +85,45 @@ as-is instead of re-resolving the platform (which would flip back to iOS).
 
 ```bash
 cd apps/tv
-npx eas-cli build  --platform ios --profile production   # store-signed tvOS build
-npx eas-cli submit --platform ios --profile production   # uploads to App Store Connect → TestFlight
+npx eas-cli build --platform ios --profile production   # store-signed tvOS build (.ipa)
 ```
 
-Requires the Apple Developer Program ($99/yr) and an App Store Connect app record
-for bundle id `org.jesusfilm.forgetv` (EAS can create the credentials interactively).
+Requires the Apple Developer Program ($99/yr) and a **tvOS** App Store Connect app
+record for `org.jesusfilm.forgetv` (Apple ID `6781137518`). The app MUST support
+tvOS — if it was auto-created iOS-only, add the platform in App Store Connect
+(**Add Platform → tvOS**). Note `appleTVImages` requires no alpha channel and
+exact sizes; the `withTVInfoPlistFixes` config plugin (`apps/tv/plugins/`) strips
+the stray `LSRequiresIPhoneOS` key that config-tv leaves in (tvOS hygiene).
+
+### Gotcha (CRITICAL): do NOT use `eas submit` for tvOS — it delivers as iOS
+
+`eas submit --platform ios` uploads the tvOS `.ipa` **declaring the platform as
+iOS**, so App Store Connect runs iOS validation against a tvOS binary and rejects
+every delivery — the build never registers, you just get an email:
+
+```
+ITMS-90508  DTPlatformName 'appletvos' is invalid
+ITMS-90545  provisioning profile is not compatible with iOS apps
+ITMS-90713  CFBundleIconName missing            (iOS-only key)
+ITMS-90039  CFBundleIcons.CFBundlePrimaryIcon type mismatch   (iOS dict form)
+```
+
+The binary is correct tvOS — only the delivery platform is wrong. **Submit with
+Apple's `altool`, explicitly typed `appletvos`.** Put the ASC API key at
+`~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`, then:
+
+```bash
+# grab the built .ipa from the EAS build page, then:
+xcrun altool --validate-app -f <build>.ipa -t appletvos \
+  --apiKey <KeyID> --apiIssuer <IssuerID>   # dry run: SAME ITMS checks, no upload
+xcrun altool --upload-app   -f <build>.ipa -t appletvos \
+  --apiKey <KeyID> --apiIssuer <IssuerID>   # the real upload
+```
+
+**Always `--validate-app` first** — it runs every ITMS check without spending a
+delivery, so you confirm a clean "VERIFY SUCCEEDED" before uploading. The
+Transporter Mac app also works (it auto-detects tvOS from the binary).
+`eas submit` does not, and there is no flag to make it.
 
 - **Internal testing**: up to 100 testers who are members of your App Store
   Connect team. No Beta App Review; builds are ready in minutes.
