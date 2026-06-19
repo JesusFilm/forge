@@ -1,3 +1,5 @@
+/* global require, module */
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { withInfoPlist } = require("expo/config-plugins")
 
 /**
