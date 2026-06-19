@@ -56,6 +56,12 @@ type HomeHeroCarouselProps = {
   /** Exposes the See more CTA's node so the first section rail can wire it as
    *  the D-pad-up destination for ALL its cards. */
   onCtaNode?: (node: ViewType | null) => void
+  /** The top bar's Search tab node — the D-pad-up destination for BOTH hero
+   *  buttons. The centered tab bar has no horizontal overlap with the
+   *  left-anchored action row, so the focus engine finds nothing directly above;
+   *  this explicit destination bridges Up from the hero to the top bar (the
+   *  mirror of how the section rail wires its cards' Up to the CTA). */
+  upFocusTarget?: ViewType | null
 }
 
 export function HomeHeroCarousel({
@@ -66,6 +72,7 @@ export function HomeHeroCarousel({
   onFocusChange,
   onRequestAdvance,
   onCtaNode,
+  upFocusTarget,
 }: HomeHeroCarouselProps) {
   const count = slides.length
   const safeIndex = count > 0 ? ((index % count) + count) % count : 0
@@ -190,6 +197,7 @@ export function HomeHeroCarousel({
                 hasTVPreferredFocus={hasTVPreferredFocus}
                 onNode={handleSeeMoreNode}
                 selfNode={seeMoreNode}
+                upFocusTarget={upFocusTarget}
               />
               <HeroChevronButton
                 onPress={() => onRequestAdvance(1)}
@@ -197,6 +205,7 @@ export function HomeHeroCarousel({
                 onBlur={handleChevronBlur}
                 onNode={setChevronNode}
                 selfNode={chevronNode}
+                upFocusTarget={upFocusTarget}
               />
             </View>
           ) : null
@@ -226,6 +235,7 @@ function HeroCtaButton({
   hasTVPreferredFocus,
   onNode,
   selfNode,
+  upFocusTarget,
 }: {
   label: string
   onPress: () => void
@@ -234,6 +244,7 @@ function HeroCtaButton({
   hasTVPreferredFocus?: boolean
   onNode?: (node: ViewType | null) => void
   selfNode: ViewType | null
+  upFocusTarget?: ViewType | null
 }) {
   const { setFocused, progress } = useFocusAnimation()
   const animatedStyle = useMemo(
@@ -260,6 +271,9 @@ function HeroCtaButton({
       // Stay on See more on Left (no real neighbour) so the capture turns Left
       // into a previous-slide instead of letting focus escape the hero.
       nextFocusLeft={selfNode ?? undefined}
+      // Up bridges to the top bar's Search tab — geometry alone dead-ends here
+      // (left-anchored button, centered tabs, no horizontal overlap).
+      nextFocusUp={upFocusTarget ?? undefined}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -285,12 +299,14 @@ function HeroChevronButton({
   onBlur,
   onNode,
   selfNode,
+  upFocusTarget,
 }: {
   onPress: () => void
   onFocus: () => void
   onBlur: () => void
   onNode: (node: ViewType | null) => void
   selfNode: ViewType | null
+  upFocusTarget?: ViewType | null
 }) {
   const { setFocused, progress } = useFocusAnimation()
   const ringStyle = useMemo(() => ({ opacity: progress }), [progress])
@@ -309,6 +325,9 @@ function HeroChevronButton({
       // Stay on the chevron on Right (no real neighbour) so the capture can turn
       // Right into an advance rather than letting focus escape the hero.
       nextFocusRight={selfNode ?? undefined}
+      // Up bridges to the top bar's Search tab — same offset-geometry dead-end
+      // as See more (both hero buttons share the one Up destination).
+      nextFocusUp={upFocusTarget ?? undefined}
       accessibilityRole="button"
       accessibilityLabel="Next featured title"
     >

@@ -49,10 +49,16 @@ type HomeTopBarProps = {
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
   /**
-   * Receives the Search tab's native node so the featured rail can wire it as
-   * its cards' `nextFocusUp` target — the centered tab bar has no horizontal
-   * overlap with the rail's edge cards, so D-pad up from them needs an
+   * Receives the Search tab's native node so the hero (or featured rail) can
+   * wire it as its `nextFocusUp` target — the centered tab bar has no horizontal
+   * overlap with the left-anchored hero buttons, so D-pad up from them needs an
    * explicit destination (the focus engine finds nothing directly above).
+   *
+   * The reverse (Down from a tab back to the hero) is NOT wired here: a
+   * `nextFocusDown` set on these tabs is dropped by the focus engine because
+   * they live in the ScrollView's sticky header (re-parented children lose
+   * nextFocus hints). The hero owns that bridge instead, via a
+   * TVFocusGuideView — see app/index.tsx.
    */
   onSearchTabNode?: (node: ViewType | null) => void
 }
@@ -167,7 +173,7 @@ type TopBarTabProps = {
   onChromeFocus: () => void
   focusable: boolean
   hasTVPreferredFocus?: boolean
-  /** Lifts this tab's native node up so a rail can target it via nextFocusUp. */
+  /** Lifts this tab's native node up so the hero can target it via nextFocusUp. */
   nodeRef?: (node: ViewType | null) => void
 }
 
