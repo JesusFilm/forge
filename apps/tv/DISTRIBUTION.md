@@ -113,10 +113,15 @@ Apple's `altool`, explicitly typed `appletvos`.** Put the ASC API key at
 `~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`, then:
 
 ```bash
-# grab the built .ipa from the EAS build page, then:
-xcrun altool --validate-app -f <build>.ipa -t appletvos \
+# download the latest build's .ipa by CLI (no browser needed):
+URL=$(npx eas-cli build:list --platform ios --profile production --limit 1 --json --non-interactive \
+  | node -e "process.stdin.once('data',d=>process.stdout.write(JSON.parse(d)[0].artifacts.applicationArchiveUrl))")
+curl -fL "$URL" -o /tmp/jfw.ipa
+# <KeyID> and <IssuerID> are the ASC API key identifiers (NOT the app/team id),
+# kept alongside the .p8 in ~/.appstoreconnect/private_keys/ (e.g. an info.txt). Then:
+xcrun altool --validate-app -f /tmp/jfw.ipa -t appletvos \
   --apiKey <KeyID> --apiIssuer <IssuerID>   # dry run: SAME ITMS checks, no upload
-xcrun altool --upload-app   -f <build>.ipa -t appletvos \
+xcrun altool --upload-app   -f /tmp/jfw.ipa -t appletvos \
   --apiKey <KeyID> --apiIssuer <IssuerID>   # the real upload
 ```
 

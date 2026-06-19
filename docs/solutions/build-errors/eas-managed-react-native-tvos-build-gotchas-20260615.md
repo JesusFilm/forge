@@ -21,11 +21,11 @@ tags:
   - eas-build
   - eas-submit
   - react-native-tvos
-  - expo
   - tvos
   - config-tv
   - altool
-  - testflight
+  - provisioning-profile
+  - app-icon
 ---
 
 # EAS managed-workflow build & submit gotchas for a react-native-tvos app

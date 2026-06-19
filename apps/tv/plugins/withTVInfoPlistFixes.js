@@ -3,9 +3,11 @@ const { withInfoPlist } = require("expo/config-plugins")
 /**
  * @react-native-tvos/config-tv leaves `LSRequiresIPhoneOS: true` in the
  * generated Info.plist (its withTVInfoPlist only sets UIRequiredDeviceCapabilities).
- * That single key makes App Store Connect validate the tvOS binary as an iOS app,
- * triggering ITMS-90508 / ITMS-90545 / ITMS-90713 / ITMS-90039 on submission.
- * tvOS apps must NOT declare LSRequiresIPhoneOS — delete it.
+ * tvOS apps must NOT declare LSRequiresIPhoneOS — delete it for correct tvOS hygiene.
+ *
+ * NOTE: this is hygiene, NOT the cause of the ITMS-90508/90545/90713/90039 submission
+ * rejections. Those come from `eas submit` delivering the tvOS binary typed as iOS;
+ * submit via `xcrun altool -t appletvos` instead (see apps/tv/DISTRIBUTION.md).
  */
 module.exports = function withTVInfoPlistFixes(config) {
   return withInfoPlist(config, (cfg) => {
