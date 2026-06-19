@@ -90,6 +90,8 @@ export function startMediaDownload(
   spec: MediaDownloadSpec,
   handlers: MediaDownloadHandlers,
 ): EngineTask {
+  // The library strips a leading `file://` from `destination` itself, so expo's
+  // `documentDirectory` URI is fine to pass through.
   const task = createDownloadTask({
     id: spec.id,
     url: spec.url,
@@ -99,7 +101,14 @@ export function startMediaDownload(
     isAllowedOverRoaming: spec.allowCellular,
   })
 
-  return attachHandlers(task, handlers)
+  attachHandlers(task, handlers)
+  // createDownloadTask only CREATES the task + sets its params; the native
+  // transfer doesn't begin until start() invokes the native download(). Without
+  // it, no begin/progress/done event ever fires and the record stays
+  // "downloading" at 0 bytes. Reattached tasks are already running, so
+  // wireExistingTask must NOT call start() (it would error "already started").
+  task.start()
+  return task
 }
 
 /**
