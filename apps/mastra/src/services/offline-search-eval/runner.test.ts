@@ -112,15 +112,17 @@ function memoryStore(baseline?: BaselineArtifact): SearchEvalArtifactStore & {
 describe("runOfflineSearchEval", () => {
   it("captures seed-only baselines while keeping generated candidates exploratory", async () => {
     const store = memoryStore()
-    const searchClient = vi.fn(async () => ({
-      ok: true as const,
-      result: {
-        results: [resultA],
-        hasMore: false,
-        query: "Jesus",
-        searchMode: "hybrid" as const,
-      },
-    }))
+    const searchClient = vi.fn(
+      async (_input: { payload: Record<string, unknown> }) => ({
+        ok: true as const,
+        result: {
+          results: [resultA],
+          hasMore: false,
+          query: "Jesus",
+          searchMode: "hybrid" as const,
+        },
+      }),
+    )
     const candidateListClient = vi.fn(async () => ({
       ok: true as const,
       result: {
@@ -175,6 +177,28 @@ describe("runOfflineSearchEval", () => {
         entry.queryText.includes("generated"),
       ),
     ).toBe(false)
+    expect(store.baselines[0]?.cases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          caseId: "seed-french-route-english-who-is-jesus",
+          locale: "en",
+          languageSlug: "english",
+          websiteLocale: "fr",
+        }),
+      ]),
+    )
+    expect(searchClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          query: "Bible Project",
+          locale: "en",
+          languageSlug: "english",
+        }),
+      }),
+    )
+    for (const call of searchClient.mock.calls) {
+      expect(call[0]?.payload).not.toHaveProperty("websiteLocale")
+    }
     expect(result.ok && result.report.generatedCandidateBehavior).toMatchObject(
       {
         included: 1,

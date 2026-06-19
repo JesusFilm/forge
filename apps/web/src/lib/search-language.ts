@@ -9,8 +9,6 @@ import {
 
 export type SearchLanguageResolutionSource =
   | "explicit-selection"
-  | "search-preference"
-  | "audio-preference"
   | "route"
   | "accept-language"
   | "fallback"
@@ -84,8 +82,6 @@ export type SearchLanguageResolution = {
 export type ResolveSearchLanguageInput = {
   selectedEnglishNames?: readonly string[]
   explicitSlug?: string | null
-  searchPreferenceSlug?: string | null
-  audioPreferenceSlug?: string | null
   routeLanguageSlug?: string | null
   acceptLanguage?: string | null
   languageOptions?: readonly SearchLanguageOption[]
@@ -157,6 +153,13 @@ function optionForPublicSlug(
   return options.find((option) => option.publicSlug === publicSlug) ?? null
 }
 
+export function findSearchLanguageOptionByPublicSlug(
+  publicSlug: string,
+  options: readonly SearchLanguageOption[] = [],
+): SearchLanguageOption | null {
+  return optionForPublicSlug(publicSlug, options)
+}
+
 function resolutionFromSlug(
   slug: string | null | undefined,
   source: SearchLanguageResolutionSource,
@@ -208,26 +211,14 @@ function resolutionFromAcceptLanguage(
 export function resolveSearchLanguage({
   selectedEnglishNames = [],
   explicitSlug,
-  searchPreferenceSlug,
-  audioPreferenceSlug,
   routeLanguageSlug,
   acceptLanguage,
   languageOptions = [],
 }: ResolveSearchLanguageInput): SearchLanguageResolution {
   const explicitSelection = selectedEnglishNames[0]
   const candidates: Array<SearchLanguageResolution | null> = [
-    resolutionFromEnglishName(explicitSelection, languageOptions),
     resolutionFromSlug(explicitSlug, "explicit-selection", languageOptions),
-    resolutionFromSlug(
-      searchPreferenceSlug,
-      "search-preference",
-      languageOptions,
-    ),
-    resolutionFromSlug(
-      audioPreferenceSlug,
-      "audio-preference",
-      languageOptions,
-    ),
+    resolutionFromEnglishName(explicitSelection, languageOptions),
     resolutionFromSlug(routeLanguageSlug, "route", languageOptions),
     resolutionFromAcceptLanguage(acceptLanguage, languageOptions),
   ]

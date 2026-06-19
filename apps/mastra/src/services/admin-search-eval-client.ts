@@ -471,6 +471,7 @@ export async function callAdminEvalSearch(input: {
   payload: {
     query: string
     locale: string
+    languageSlug?: string
     limit?: number
     offset?: number
     mode?: string | null
