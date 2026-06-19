@@ -60,11 +60,20 @@ import { SeriesActionRow } from "../../src/components/series/SeriesActionRow"
 import { SeriesLanguagePanel } from "../../src/components/series/SeriesLanguagePanel"
 import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
 import { WATCH_THEME } from "../../src/components/watch/watchDetailTheme"
-import { COLORS } from "../../src/lib/colors"
+import { COLORS, hexToRgba } from "../../src/lib/colors"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
+
+// The hero's LAYOUT slot stops short of full height so the top of the episode
+// rail peeks above the fold — the TV "next-row peek" affordance that tells the
+// viewer the screen scrolls (we deliberately don't ship a scroll-hint chevron).
+// Kept small/slight: just enough to reveal the rail heading + the card tops.
+// The backdrop image is NOT shortened by this — it renders at full SCREEN_HEIGHT
+// and the hero's overflow:hidden simply clips its bottom (where the rail sits),
+// so the thumbnail framing is identical to a full-height hero (top not trimmed).
+const HERO_PEEK = scale(170)
 
 // Stable fallback for the language panel while no record is resolved — a
 // fresh [] each render would re-run the panel's rows memo (the watch screen's
@@ -331,6 +340,25 @@ export default function SeriesScreen() {
             />
           </View>
 
+          {/* Soft fade at the hero's VISIBLE bottom edge → blends the artwork
+              into the episode rail's background (WATCH_THEME.below) instead of a
+              hard cut. Anchored to the hero (not the full-height backdrop) so it
+              sits exactly at the clipped bottom edge; rendered before heroContent
+              so the title/buttons stay crisp on top. */}
+          <LinearGradient
+            colors={[
+              hexToRgba(WATCH_THEME.below, 0),
+              hexToRgba(WATCH_THEME.below, 0.8),
+              WATCH_THEME.below,
+            ]}
+            locations={[0, 0.65, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.heroBottomFade}
+            pointerEvents="none"
+            collapsable={false}
+          />
+
           <View style={styles.heroContent}>
             <View style={styles.kicker}>
               <View style={styles.badge}>
@@ -423,22 +451,40 @@ const styles = StyleSheet.create({
 
   // ── Hero ──────────────────────────────────────────────────────────
   hero: {
-    height: SCREEN_HEIGHT,
+    height: SCREEN_HEIGHT - HERO_PEEK,
     justifyContent: "flex-end",
     backgroundColor: "#000000",
     overflow: "hidden",
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    // Full-screen height (NOT absoluteFill of the shortened hero) so the cover
+    // framing matches a full-height hero — the hero's overflow:hidden clips the
+    // bottom HERO_PEEK, which is where the episode rail peeks through.
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SCREEN_HEIGHT,
     overflow: "hidden",
   },
   backdropFallback: {
     backgroundColor: COLORS.surfaceContainer,
   },
+  // Soft fade from the artwork into the rail's background at the hero's bottom
+  // edge (kills the hard line). Anchored to the hero bottom, behind heroContent.
+  heroBottomFade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: scale(220),
+  },
   heroContent: {
     alignItems: "flex-start",
     paddingHorizontal: scale(80),
-    paddingBottom: scale(96),
+    // Tightened (was 96) to shrink the dead band between the action row and the
+    // episode rail below.
+    paddingBottom: scale(52),
   },
   kicker: {
     flexDirection: "row",
@@ -491,7 +537,8 @@ const styles = StyleSheet.create({
   // ── Below the fold (episode rail) ─────────────────────────────────
   below: {
     backgroundColor: WATCH_THEME.below,
-    paddingTop: scale(48),
+    // Tightened (was 48) so the rail sits closer under the hero action row.
+    paddingTop: scale(24),
   },
 
   // ── Error state ───────────────────────────────────────────────────
