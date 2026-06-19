@@ -7,19 +7,29 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
+  Calendar,
   Check,
+  ChevronDown,
   Crop,
+  ExternalLink,
   Film,
   Languages,
+  LockKeyhole,
+  MoreVertical,
   RefreshCw,
   Search,
+  SlidersHorizontal,
+  Sparkles,
   X,
 } from "lucide-react"
 import { createPortal } from "react-dom"
 import { apiFetch } from "@/lib/api-fetch"
 import type { SmartCropVideoResolution } from "@/app/api/smart-crop/videos/[coreId]/route"
 import type { JobRecord, SmartCropCropMode } from "@/types/job"
-import { getSmartCropJobSummary } from "./smart-crop-presenter"
+import {
+  getSmartCropJobSummary,
+  type SmartCropJobSummary,
+} from "./smart-crop-presenter"
 
 const SMART_CROP_POLL_INTERVAL_MS = 5_000
 const VIDEO_PICKER_RESULT_LIMIT = 40
@@ -110,6 +120,211 @@ function formatUpdatedAt(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso))
+}
+
+function formatRelativeActivity(iso: string, now: number | null): string {
+  if (!iso) return "n/a"
+  const timestamp = new Date(iso).getTime()
+  if (Number.isNaN(timestamp)) return "n/a"
+  if (now === null) return formatUpdatedAt(iso)
+
+  const elapsedMinutes = Math.max(0, Math.floor((now - timestamp) / 60_000))
+  if (elapsedMinutes < 1) return "Just now"
+  if (elapsedMinutes < 60) return `${elapsedMinutes} min ago`
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60)
+  if (elapsedHours < 24) {
+    return `${elapsedHours} hr${elapsedHours === 1 ? "" : "s"} ago`
+  }
+  if (elapsedHours < 48) return "Yesterday"
+
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  if (elapsedDays < 7) {
+    return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"} ago`
+  }
+
+  return formatUpdatedAt(iso)
+}
+
+type SmartCropTone = "danger" | "neutral" | "running" | "success" | "warning"
+
+type SmartCropStatusDisplay = {
+  label: string
+  detail: string
+  tone: SmartCropTone
+}
+
+type SmartCropProgressDisplay = {
+  label: string
+  percent: number
+  tone: SmartCropTone
+}
+
+function getSmartCropSourceTitle(job: JobRecord): string {
+  return (
+    job.sourceMediaTitle ??
+    job.sourceCollectionTitle ??
+    job.videoDocumentId ??
+    job.options.smartCrop?.assetId ??
+    job.muxAssetId
+  )
+}
+
+function getSmartCropRowSubtitle(
+  job: JobRecord,
+  summary: SmartCropJobSummary,
+): string {
+  const bits = [
+    summary.kind === "canonical" ? "Master source" : "Localized source",
+    job.sourceLanguageCode?.toUpperCase(),
+    summary.assetId,
+  ].filter(Boolean)
+
+  return bits.join(" / ")
+}
+
+function getSmartCropThumbnailUrl(job: JobRecord): string | null {
+  if (!job.muxPlaybackId || job.muxPlaybackId.startsWith("mock")) {
+    return null
+  }
+
+  return `https://image.mux.com/${encodeURIComponent(job.muxPlaybackId)}/thumbnail.webp?width=320&time=3`
+}
+
+function getSmartCropStatusDisplay(
+  job: JobRecord,
+  summary: SmartCropJobSummary,
+): SmartCropStatusDisplay {
+  if (job.status === "failed") {
+    return {
+      label: "Failed",
+      detail:
+        job.errors.at(-1)?.message ?? `${summary.phaseLabel} did not complete`,
+      tone: "danger",
+    }
+  }
+
+  if (job.status === "running") {
+    return {
+      label: summary.kind === "localized" ? "Rendering" : "Processing",
+      detail: `${summary.phaseLabel} in progress`,
+      tone: "running",
+    }
+  }
+
+  if (job.status === "pending") {
+    return {
+      label: "Queued",
+      detail: "Waiting for workflow",
+      tone: "neutral",
+    }
+  }
+
+  const needsPlanReview =
+    summary.kind === "canonical" &&
+    (summary.report?.plan?.approved === false ||
+      summary.report?.qa?.verdict === "needs_repair")
+
+  if (needsPlanReview) {
+    return {
+      label: "Needs review",
+      detail: "QA complete",
+      tone: "warning",
+    }
+  }
+
+  if (summary.kind === "canonical") {
+    return {
+      label: "Approved",
+      detail: "Ready for localized renders",
+      tone: "success",
+    }
+  }
+
+  return {
+    label: "Completed",
+    detail: summary.report?.output ? "Ready to preview" : "Ready for delivery",
+    tone: "success",
+  }
+}
+
+function getSmartCropProgressDisplay(
+  job: JobRecord,
+  summary: SmartCropJobSummary,
+): SmartCropProgressDisplay {
+  if (job.status === "failed") {
+    return { label: "Failed", percent: 0, tone: "danger" }
+  }
+
+  if (job.status === "completed") {
+    return { label: "Complete", percent: 100, tone: "success" }
+  }
+
+  const totalSteps = Math.max(job.steps.length, 1)
+  const completedSteps = job.steps.filter(
+    (step) => step.status === "completed" || step.status === "skipped",
+  ).length
+  const percent = Math.max(
+    8,
+    Math.min(96, Math.round((completedSteps / totalSteps) * 100)),
+  )
+
+  return { label: summary.phaseLabel, percent, tone: "running" }
+}
+
+function getSmartCropActionLabel(
+  job: JobRecord,
+  summary: SmartCropJobSummary,
+  status: SmartCropStatusDisplay,
+): string {
+  if (job.status === "failed") return "View details"
+  if (job.status === "pending" || job.status === "running")
+    return "View progress"
+  if (status.label === "Needs review") return "Review plan"
+  if (summary.kind === "canonical") return "Preview"
+  return "View output"
+}
+
+function getSmartCropActivityActor(
+  job: JobRecord,
+  summary: SmartCropJobSummary,
+): string {
+  if (job.status === "pending" || job.status === "running") return "System"
+  if (summary.kind === "localized") return "System"
+  return "Manager"
+}
+
+function SmartCropJobThumb({ job }: { job: JobRecord }) {
+  const imageUrl = getSmartCropThumbnailUrl(job)
+  const [canShowImage, setCanShowImage] = useState(Boolean(imageUrl))
+
+  useEffect(() => {
+    setCanShowImage(Boolean(imageUrl))
+  }, [imageUrl])
+
+  if (canShowImage && imageUrl) {
+    return (
+      // Mux thumbnail URLs are external runtime media, so img is intentional here.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        className="smart-crop-job-thumb"
+        src={imageUrl}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        onError={() => setCanShowImage(false)}
+      />
+    )
+  }
+
+  return (
+    <span
+      className="smart-crop-job-thumb smart-crop-job-thumb-placeholder"
+      aria-hidden="true"
+    >
+      <Film className="icon" aria-hidden="true" />
+    </span>
+  )
 }
 
 async function createSmartCropJob(
@@ -358,7 +573,15 @@ function SmartCropVideoPickerModal({
   )
 }
 
-function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
+function CanonicalJobForm({
+  formId,
+  onCreated,
+  variant = "standalone",
+}: {
+  formId?: string
+  onCreated: () => void
+  variant?: "embedded" | "standalone"
+}) {
   const [videos, setVideos] = useState<VideoPickerItem[] | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [query, setQuery] = useState("")
@@ -378,6 +601,7 @@ function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState<RequestStatus>({ type: "idle" })
   const modalRoot = typeof document === "undefined" ? null : document.body
+  const isEmbedded = variant === "embedded"
   const openPicker = useCallback(() => {
     setIsPickerOpen(true)
   }, [])
@@ -525,10 +749,20 @@ function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="collection-card jobs-card jobs-form">
-      <div className="jobs-card-header">
-        <h2 className="jobs-card-title">Canonical crop plan</h2>
-      </div>
+    <form
+      id={formId}
+      onSubmit={onSubmit}
+      className={
+        isEmbedded
+          ? "jobs-form smart-crop-create-form"
+          : "collection-card jobs-card jobs-form"
+      }
+    >
+      {!isEmbedded ? (
+        <div className="jobs-card-header">
+          <h2 className="jobs-card-title">Canonical crop plan</h2>
+        </div>
+      ) : null}
       <div className="jobs-field smart-crop-video-select-field">
         <div className="small jobs-field-label">Source video</div>
         <button
@@ -632,7 +866,7 @@ function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
           ) : (
             <Crop className="icon" aria-hidden="true" />
           )}
-          {isSubmitting ? "Creating..." : "Start canonical job"}
+          {isSubmitting ? "Creating..." : "Create master crop plan"}
         </button>
       </div>
       <FormStatus status={status} />
@@ -640,7 +874,15 @@ function CanonicalJobForm({ onCreated }: { onCreated: () => void }) {
   )
 }
 
-function LocalizedJobForm({ onCreated }: { onCreated: () => void }) {
+function LocalizedJobForm({
+  formId,
+  onCreated,
+  variant = "standalone",
+}: {
+  formId?: string
+  onCreated: () => void
+  variant?: "embedded" | "standalone"
+}) {
   const [muxAssetId, setMuxAssetId] = useState("")
   const [assetId, setAssetId] = useState("")
   const [canonicalAssetId, setCanonicalAssetId] = useState("")
@@ -648,6 +890,7 @@ function LocalizedJobForm({ onCreated }: { onCreated: () => void }) {
   const [cropMode, setCropMode] = useState<SmartCropCropMode>("auto")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState<RequestStatus>({ type: "idle" })
+  const isEmbedded = variant === "embedded"
 
   const canSubmit =
     muxAssetId.trim().length > 0 &&
@@ -683,10 +926,20 @@ function LocalizedJobForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="collection-card jobs-card jobs-form">
-      <div className="jobs-card-header">
-        <h2 className="jobs-card-title">Localized 9:16 output</h2>
-      </div>
+    <form
+      id={formId}
+      onSubmit={onSubmit}
+      className={
+        isEmbedded
+          ? "jobs-form smart-crop-create-form"
+          : "collection-card jobs-card jobs-form"
+      }
+    >
+      {!isEmbedded ? (
+        <div className="jobs-card-header">
+          <h2 className="jobs-card-title">Localized 9:16 output</h2>
+        </div>
+      ) : null}
       <div className="grid cols-2 jobs-form-grid">
         <label className="jobs-field">
           <div className="small jobs-field-label">Localized Mux Asset ID</div>
@@ -739,7 +992,7 @@ function LocalizedJobForm({ onCreated }: { onCreated: () => void }) {
           ) : (
             <Languages className="icon" aria-hidden="true" />
           )}
-          {isSubmitting ? "Creating..." : "Start localized job"}
+          {isSubmitting ? "Creating..." : "Render localized version"}
         </button>
       </div>
       <FormStatus status={status} />
@@ -749,6 +1002,7 @@ function LocalizedJobForm({ onCreated }: { onCreated: () => void }) {
 
 export function SmartCropScreen({ initialJobs }: SmartCropScreenProps) {
   const [jobs, setJobs] = useState<JobRecord[]>(initialJobs)
+  const [activityNow, setActivityNow] = useState<number | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -771,89 +1025,266 @@ export function SmartCropScreen({ initialJobs }: SmartCropScreenProps) {
     return () => window.clearInterval(id)
   }, [refresh])
 
+  useEffect(() => {
+    const updateActivityNow = () => setActivityNow(Date.now())
+    const timeoutId = window.setTimeout(updateActivityNow, 0)
+    const intervalId = window.setInterval(updateActivityNow, 60_000)
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.clearInterval(intervalId)
+    }
+  }, [])
+
   return (
     <>
-      <header className="studio-page-intro">
+      <header className="studio-page-intro studio-page-intro--with-actions smart-crop-hero">
         <div className="studio-page-intro-copy">
           <span className="studio-page-eyebrow">Media generation</span>
           <h1>Smart Crop</h1>
           <p>
-            Convert Mux videos into 9:16 verticals: canonical AI crop plans,
-            operator approval, and localized reuse via shot alignment.
+            Create master crop plans and render localized 9:16 vertical videos.{" "}
+            <button
+              type="button"
+              className="smart-crop-learn-more"
+              disabled
+              title="Documentation link is not wired in this build"
+            >
+              Learn more
+              <ExternalLink className="icon" aria-hidden="true" />
+            </button>
           </p>
+        </div>
+        <div className="studio-page-intro-actions smart-crop-hero-actions">
+          <a
+            href="#smart-crop-canonical-card"
+            className="smart-crop-action-button smart-crop-action-button-secondary"
+          >
+            <Crop className="icon" aria-hidden="true" />
+            New master crop plan
+          </a>
+          <a
+            href="#smart-crop-localized-card"
+            className="smart-crop-action-button smart-crop-action-button-primary"
+          >
+            <Sparkles className="icon" aria-hidden="true" />
+            Render localized version
+          </a>
         </div>
       </header>
 
-      <div className="grid cols-2">
-        <CanonicalJobForm onCreated={() => void refresh()} />
-        <LocalizedJobForm onCreated={() => void refresh()} />
-      </div>
-
-      <section className="collection-card jobs-card">
-        <div className="jobs-card-header">
-          <h2 className="jobs-card-title">Smart Crop jobs</h2>
+      <section className="smart-crop-console-card">
+        <div className="smart-crop-console-header">
+          <div>
+            <h2 className="smart-crop-console-title">Smart Crop jobs</h2>
+            <p className="smart-crop-console-kicker">
+              Plans, localized renders, QA state, and delivery readiness.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="smart-crop-refresh-button"
+            onClick={() => void refresh()}
+          >
+            <RefreshCw className="icon" aria-hidden="true" />
+            Refresh
+          </button>
         </div>
+
+        <div
+          className="smart-crop-filter-bar"
+          aria-label="Smart Crop job filters"
+        >
+          <label className="smart-crop-filter-control smart-crop-filter-search">
+            <Search className="icon" aria-hidden="true" />
+            <span className="sr-only">Search Smart Crop jobs</span>
+            <input
+              disabled
+              placeholder="Search videos..."
+              title="Search is not available yet"
+            />
+          </label>
+          <button
+            type="button"
+            className="smart-crop-filter-control smart-crop-filter-button"
+            disabled
+            title="Type filtering is not available yet"
+          >
+            <SlidersHorizontal className="icon" aria-hidden="true" />
+            Type: All
+            <ChevronDown className="icon" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="smart-crop-filter-control smart-crop-filter-button"
+            disabled
+            title="Status filtering is not available yet"
+          >
+            Status: All
+            <ChevronDown className="icon" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="smart-crop-filter-control smart-crop-filter-button"
+            disabled
+            title="Language filtering is not available yet"
+          >
+            Language: All
+            <ChevronDown className="icon" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="smart-crop-filter-control smart-crop-filter-button"
+            disabled
+            title="Date filtering is not available yet"
+          >
+            Date range
+            <Calendar className="icon" aria-hidden="true" />
+          </button>
+        </div>
+
         {jobs.length === 0 ? (
-          <p className="small jobs-empty-state">
-            No smart-crop jobs yet. Create a canonical job to start.
-          </p>
+          <div className="smart-crop-empty-state" role="status">
+            <Film className="icon" aria-hidden="true" />
+            <p>No smart-crop jobs yet. Create a master crop plan to start.</p>
+          </div>
         ) : (
           <div className="jobs-table-wrap smart-crop-jobs-table-wrap">
             <table className="table jobs-table smart-crop-jobs-table">
               <colgroup>
-                <col className="smart-crop-jobs-col-job" />
-                <col className="smart-crop-jobs-col-kind" />
-                <col className="smart-crop-jobs-col-asset" />
-                <col className="smart-crop-jobs-col-language" />
+                <col className="smart-crop-jobs-col-video" />
+                <col className="smart-crop-jobs-col-type" />
                 <col className="smart-crop-jobs-col-status" />
-                <col className="smart-crop-jobs-col-phase" />
-                <col className="smart-crop-jobs-col-updated" />
+                <col className="smart-crop-jobs-col-progress" />
+                <col className="smart-crop-jobs-col-language" />
+                <col className="smart-crop-jobs-col-activity" />
+                <col className="smart-crop-jobs-col-actions" />
               </colgroup>
               <thead>
                 <tr>
-                  <th>Job</th>
-                  <th>Kind</th>
-                  <th>Asset</th>
-                  <th>Language</th>
+                  <th>Video</th>
+                  <th>Type</th>
                   <th>Status</th>
-                  <th>Phase</th>
-                  <th>Updated</th>
+                  <th>Progress</th>
+                  <th>Language</th>
+                  <th>Last activity</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => {
                   const summary = getSmartCropJobSummary(job)
                   if (!summary) return null
+                  const sourceTitle = getSmartCropSourceTitle(job)
+                  const status = getSmartCropStatusDisplay(job, summary)
+                  const progress = getSmartCropProgressDisplay(job, summary)
+                  const actionLabel = getSmartCropActionLabel(
+                    job,
+                    summary,
+                    status,
+                  )
                   return (
                     <tr key={job.id}>
                       <td>
-                        <Link href={`/dashboard/smart-crop/${job.id}`}>
-                          <span className="smart-crop-jobs-id">{job.id}</span>
-                        </Link>
+                        <div className="smart-crop-video-cell">
+                          <SmartCropJobThumb job={job} />
+                          <span className="smart-crop-video-copy">
+                            <Link
+                              href={`/dashboard/smart-crop/${job.id}`}
+                              className="smart-crop-video-title"
+                            >
+                              {sourceTitle}
+                            </Link>
+                            <span
+                              className="smart-crop-video-meta"
+                              title={getSmartCropRowSubtitle(job, summary)}
+                            >
+                              {getSmartCropRowSubtitle(job, summary)}
+                            </span>
+                          </span>
+                        </div>
                       </td>
                       <td>
-                        <span className="jobs-language-badge">
-                          {summary.kind}
+                        <span
+                          className={`smart-crop-type-pill smart-crop-type-pill-${summary.kind}`}
+                        >
+                          {summary.kind === "canonical"
+                            ? "Master plan"
+                            : "Localized render"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="smart-crop-status-stack">
+                          <span
+                            className={`smart-crop-status-badge smart-crop-status-badge-${status.tone}`}
+                          >
+                            {status.label}
+                          </span>
+                          <span className="smart-crop-status-detail">
+                            <span
+                              className={`smart-crop-status-dot smart-crop-status-dot-${status.tone}`}
+                              aria-hidden="true"
+                            />
+                            {status.detail}
+                          </span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className="smart-crop-progress">
+                          <span className="smart-crop-progress-label">
+                            {progress.label}
+                          </span>
+                          <span
+                            className="smart-crop-progress-meter"
+                            aria-hidden="true"
+                          >
+                            <span
+                              className={`smart-crop-progress-fill smart-crop-progress-fill-${progress.tone}`}
+                              style={{ width: `${progress.percent}%` }}
+                            />
+                          </span>
+                          <span className="smart-crop-progress-percent">
+                            {progress.percent}%
+                          </span>
                         </span>
                       </td>
                       <td>
                         <span
-                          className="smart-crop-jobs-asset"
-                          title={summary.assetId}
+                          className={
+                            summary.language
+                              ? "smart-crop-language"
+                              : "smart-crop-language smart-crop-language-empty"
+                          }
                         >
-                          {summary.assetId}
+                          {summary.language?.toUpperCase() ?? "—"}
                         </span>
                       </td>
-                      <td>{summary.language ?? "—"}</td>
                       <td>
-                        <span
-                          className={`jobs-progress-summary jobs-progress-summary-${job.status}`}
-                        >
-                          {job.status}
+                        <span className="smart-crop-activity">
+                          <span>
+                            {formatRelativeActivity(job.updatedAt, activityNow)}
+                          </span>
+                          <span>{getSmartCropActivityActor(job, summary)}</span>
                         </span>
                       </td>
-                      <td>{summary.phaseLabel}</td>
-                      <td>{formatUpdatedAt(job.updatedAt)}</td>
+                      <td>
+                        <span className="smart-crop-actions-cell">
+                          <Link
+                            href={`/dashboard/smart-crop/${job.id}`}
+                            className="smart-crop-row-action"
+                          >
+                            {actionLabel}
+                          </Link>
+                          <button
+                            type="button"
+                            className="smart-crop-row-menu"
+                            disabled
+                            title="More actions are not available yet"
+                            aria-label="More actions unavailable"
+                          >
+                            <MoreVertical className="icon" aria-hidden="true" />
+                          </button>
+                        </span>
+                      </td>
                     </tr>
                   )
                 })}
@@ -861,6 +1292,123 @@ export function SmartCropScreen({ initialJobs }: SmartCropScreenProps) {
             </table>
           </div>
         )}
+
+        <div
+          className="smart-crop-table-footer"
+          aria-label="Smart Crop pagination"
+        >
+          <span>
+            Showing {jobs.length === 0 ? 0 : 1}-{jobs.length} of {jobs.length}{" "}
+            jobs
+          </span>
+          <div className="smart-crop-pagination" aria-hidden="true">
+            <button type="button" className="smart-crop-page-button" disabled>
+              ‹
+            </button>
+            <button
+              type="button"
+              className="smart-crop-page-button is-current"
+              disabled
+            >
+              1
+            </button>
+            <button type="button" className="smart-crop-page-button" disabled>
+              2
+            </button>
+            <button type="button" className="smart-crop-page-button" disabled>
+              …
+            </button>
+            <button type="button" className="smart-crop-page-button" disabled>
+              ›
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="smart-crop-create-section"
+        aria-labelledby="smart-crop-create-title"
+      >
+        <div className="smart-crop-create-heading">
+          <h2 id="smart-crop-create-title">Create new job</h2>
+        </div>
+        <div className="smart-crop-create-grid">
+          <article
+            id="smart-crop-canonical-card"
+            className="smart-crop-create-card smart-crop-create-card-canonical"
+          >
+            <div className="smart-crop-create-card-header">
+              <span className="smart-crop-create-icon" aria-hidden="true">
+                <Crop className="icon" />
+              </span>
+              <div>
+                <h3>1. Master Crop Plan</h3>
+                <p>Analyze a source video and create an AI crop plan.</p>
+              </div>
+            </div>
+            <ul className="smart-crop-create-list">
+              <li>
+                <Check className="icon" aria-hidden="true" />
+                Detect shots and key moments
+              </li>
+              <li>
+                <Check className="icon" aria-hidden="true" />
+                Define optimal 9:16 framing
+              </li>
+            </ul>
+            <CanonicalJobForm
+              formId="smart-crop-canonical-form"
+              variant="embedded"
+              onCreated={() => void refresh()}
+            />
+          </article>
+
+          <article
+            id="smart-crop-localized-card"
+            className="smart-crop-create-card smart-crop-create-card-localized"
+          >
+            <div className="smart-crop-create-card-header">
+              <span className="smart-crop-create-icon" aria-hidden="true">
+                <Sparkles className="icon" />
+              </span>
+              <div>
+                <h3>2. Localized Render</h3>
+                <p>Render a localized 9:16 video using an approved plan.</p>
+              </div>
+            </div>
+            <ul className="smart-crop-create-list">
+              <li>
+                <Check className="icon" aria-hidden="true" />
+                Reuse approved crop plan
+              </li>
+              <li>
+                <Check className="icon" aria-hidden="true" />
+                Generate localized vertical video
+              </li>
+            </ul>
+            <LocalizedJobForm
+              formId="smart-crop-localized-form"
+              variant="embedded"
+              onCreated={() => void refresh()}
+            />
+          </article>
+        </div>
+        <details className="smart-crop-advanced-settings">
+          <summary>
+            <LockKeyhole className="icon" aria-hidden="true" />
+            Advanced settings
+            <span>(Mux IDs, asset IDs, playback options)</span>
+            <ChevronDown
+              className="icon smart-crop-advanced-chevron"
+              aria-hidden="true"
+            />
+          </summary>
+          <p>
+            Advanced inputs are available inside each job form. Additional batch
+            settings are intentionally disabled until the workflow supports
+            them.
+          </p>
+        </details>
       </section>
     </>
   )

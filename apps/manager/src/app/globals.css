@@ -8071,12 +8071,16 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .studio-page--jobs > .jobs-card,
 .studio-page--agents > .collection-card,
 .studio-page--agents > .jobs-card,
+.studio-page--smart-crop > .collection-card,
+.studio-page--smart-crop > .jobs-card,
 .studio-page--job-detail > .collection-card,
 .studio-page--job-detail > .jobs-card,
 .studio-page--jobs > .collection-card:hover,
 .studio-page--jobs > .collection-card:focus-visible,
 .studio-page--agents > .collection-card:hover,
 .studio-page--agents > .collection-card:focus-visible,
+.studio-page--smart-crop > .collection-card:hover,
+.studio-page--smart-crop > .collection-card:focus-visible,
 .studio-page--job-detail > .collection-card:hover,
 .studio-page--job-detail > .collection-card:focus-visible {
   background: transparent;
@@ -8090,11 +8094,13 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .studio-page--jobs .jobs-card-header,
 .studio-page--agents .jobs-card-header,
+.studio-page--smart-crop .jobs-card-header,
 .studio-page--job-detail .jobs-card-header {
   margin-bottom: 14px;
 }
 
 .studio-page--jobs .jobs-table-wrap,
+.studio-page--smart-crop .jobs-table-wrap,
 .studio-page--job-detail .jobs-table-wrap {
   margin-left: 0;
   margin-right: 0;
@@ -13290,6 +13296,8 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .design-system-eleven .studio-page--jobs > .jobs-card,
 .design-system-eleven .studio-page--agents > .collection-card,
 .design-system-eleven .studio-page--agents > .jobs-card,
+.design-system-eleven .studio-page--smart-crop > .collection-card,
+.design-system-eleven .studio-page--smart-crop > .jobs-card,
 .design-system-eleven .studio-page--job-detail > .collection-card,
 .design-system-eleven .studio-page--job-detail > .jobs-card {
   background: transparent;
@@ -13304,12 +13312,16 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .design-system-eleven .studio-page--jobs > .jobs-card:hover,
 .design-system-eleven .studio-page--agents > .collection-card:hover,
 .design-system-eleven .studio-page--agents > .jobs-card:hover,
+.design-system-eleven .studio-page--smart-crop > .collection-card:hover,
+.design-system-eleven .studio-page--smart-crop > .jobs-card:hover,
 .design-system-eleven .studio-page--job-detail > .collection-card:hover,
 .design-system-eleven .studio-page--job-detail > .jobs-card:hover,
 .design-system-eleven .studio-page--jobs > .collection-card:focus-visible,
 .design-system-eleven .studio-page--jobs > .jobs-card:focus-visible,
 .design-system-eleven .studio-page--agents > .collection-card:focus-visible,
 .design-system-eleven .studio-page--agents > .jobs-card:focus-visible,
+.design-system-eleven .studio-page--smart-crop > .collection-card:focus-visible,
+.design-system-eleven .studio-page--smart-crop > .jobs-card:focus-visible,
 .design-system-eleven .studio-page--job-detail > .collection-card:focus-visible,
 .design-system-eleven .studio-page--job-detail > .jobs-card:focus-visible {
   background: transparent;
@@ -13619,48 +13631,1025 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .smart-crop-jobs-table {
   table-layout: fixed;
-  min-width: 920px;
+  min-width: 860px;
+}
+
+.design-system-eleven .smart-crop-jobs-table {
+  table-layout: fixed;
+  min-width: 860px;
 }
 
 .smart-crop-jobs-table th,
 .smart-crop-jobs-table td {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  vertical-align: middle;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .smart-crop-jobs-table .smart-crop-jobs-col-job {
-  width: 21%;
+  width: 22%;
 }
 
 .smart-crop-jobs-table .smart-crop-jobs-col-kind {
-  width: 12%;
+  width: 104px;
 }
 
 .smart-crop-jobs-table .smart-crop-jobs-col-asset {
-  width: 30%;
+  width: 34%;
 }
 
 .smart-crop-jobs-table .smart-crop-jobs-col-language {
-  width: 8%;
+  width: 96px;
 }
 
-.smart-crop-jobs-table .smart-crop-jobs-col-status {
-  width: 9%;
-}
-
-.smart-crop-jobs-table .smart-crop-jobs-col-phase {
-  width: 10%;
+.smart-crop-jobs-table .smart-crop-jobs-col-state {
+  width: 20%;
 }
 
 .smart-crop-jobs-table .smart-crop-jobs-col-updated {
-  width: 10%;
+  width: 128px;
+}
+
+.smart-crop-jobs-table-wrap {
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius);
+  margin-left: 0;
+  margin-right: 0;
+  padding-bottom: 0;
+}
+
+.smart-crop-jobs-table thead th {
+  background: var(--ds-panel-muted);
+  border-bottom-color: var(--ds-line-strong);
+}
+
+.smart-crop-jobs-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.smart-crop-jobs-link {
+  display: inline-flex;
+  max-width: 100%;
+  border-radius: calc(var(--ds-radius) - 6px);
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.smart-crop-jobs-link:hover,
+.smart-crop-jobs-link:focus-visible {
+  color: var(--accent);
+  text-decoration: none;
+  outline: none;
+}
+
+.smart-crop-jobs-link:focus-visible {
+  box-shadow: 0 0 0 3px var(--ds-hover);
 }
 
 .smart-crop-jobs-id,
 .smart-crop-jobs-asset {
-  display: inline-block;
+  display: block;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-crop-jobs-link:hover .smart-crop-jobs-id,
+.smart-crop-jobs-link:focus-visible .smart-crop-jobs-id {
+  text-decoration: underline;
+}
+
+.smart-crop-jobs-asset {
+  color: var(--ds-ink);
+  background: transparent;
+}
+
+.smart-crop-kind-badge,
+.smart-crop-language {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--ds-line);
+  border-radius: 999px;
+  color: var(--ds-ink);
+  background: var(--ds-panel);
+  font-size: 0.84rem;
+  font-weight: 550;
+  line-height: 1;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.smart-crop-language {
+  color: var(--ds-muted);
+  text-transform: none;
+}
+
+.smart-crop-language-empty {
+  min-width: 28px;
+  padding: 0 8px;
+  color: var(--ds-soft);
+}
+
+.smart-crop-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.smart-crop-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--ds-line);
+  border-radius: 999px;
+  color: var(--ds-muted);
+  background: var(--ds-panel-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.smart-crop-status-pill-completed {
+  color: var(--ds-success);
+  background: color-mix(in srgb, var(--ds-success) 8%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--ds-success) 24%, var(--ds-line));
+}
+
+.smart-crop-status-pill-failed {
+  color: var(--ds-danger);
+  background: color-mix(in srgb, var(--ds-danger) 8%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--ds-danger) 24%, var(--ds-line));
+}
+
+.smart-crop-status-pill-running {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 8%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--warn) 24%, var(--ds-line));
+}
+
+.smart-crop-phase-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-weight: 550;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-crop-updated-at {
+  display: inline-block;
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.smart-crop-hero {
+  align-items: start;
+  gap: 24px;
+}
+
+.smart-crop-hero .studio-page-intro-copy {
+  max-width: 760px;
+}
+
+.smart-crop-learn-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  line-height: inherit;
+  background: transparent;
+  border: 0;
+  cursor: not-allowed;
+  opacity: 0.72;
+  vertical-align: baseline;
+}
+
+.smart-crop-learn-more .icon {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+.smart-crop-hero-actions {
+  align-items: center;
+  justify-content: flex-end;
+  min-width: min(100%, 520px);
+}
+
+.smart-crop-action-button,
+.smart-crop-refresh-button,
+.smart-crop-row-action,
+.smart-crop-page-button,
+.smart-crop-row-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border-radius: calc(var(--ds-radius) - 6px);
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+.smart-crop-action-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--ds-line-strong);
+}
+
+.smart-crop-action-button:hover,
+.smart-crop-action-button:focus-visible,
+.smart-crop-refresh-button:hover,
+.smart-crop-refresh-button:focus-visible,
+.smart-crop-row-action:hover,
+.smart-crop-row-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ds-focus-ring);
+}
+
+.smart-crop-action-button-primary {
+  color: var(--ds-bg);
+  background: var(--ds-black);
+  border-color: var(--ds-black);
+}
+
+.smart-crop-action-button-primary:hover,
+.smart-crop-action-button-primary:focus-visible {
+  color: var(--ds-bg);
+  background: color-mix(in srgb, var(--ds-black) 90%, var(--accent));
+}
+
+.smart-crop-action-button-secondary {
+  color: var(--ds-ink);
+  background: var(--ds-panel);
+}
+
+.smart-crop-action-button-secondary:hover,
+.smart-crop-action-button-secondary:focus-visible,
+.smart-crop-refresh-button:hover,
+.smart-crop-refresh-button:focus-visible,
+.smart-crop-row-action:hover,
+.smart-crop-row-action:focus-visible {
+  color: var(--ds-ink);
+  background: var(--ds-hover);
+  border-color: var(--ds-line-strong);
+}
+
+.smart-crop-console-card {
+  display: grid;
+  overflow: hidden;
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius);
+}
+
+.smart-crop-console-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px 28px 10px;
+}
+
+.smart-crop-console-title,
+.smart-crop-create-heading h2,
+.smart-crop-create-card h3 {
+  margin: 0;
+  color: var(--ds-ink);
+  letter-spacing: 0;
+}
+
+.smart-crop-console-title {
+  font-size: 1.24rem;
+  font-weight: 780;
+}
+
+.smart-crop-console-kicker {
+  margin: 6px 0 0;
+  color: var(--ds-muted);
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.smart-crop-refresh-button {
+  flex: 0 0 auto;
+  padding: 0 14px;
+  color: var(--ds-ink);
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  cursor: pointer;
+}
+
+.smart-crop-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 28px 24px;
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.smart-crop-filter-control {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  gap: 10px;
+  padding: 0 14px;
+  color: var(--ds-ink);
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  border-radius: calc(var(--ds-radius) - 5px);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-bg) 56%, transparent);
+}
+
+.smart-crop-filter-control:disabled,
+.smart-crop-filter-control input:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.smart-crop-filter-search {
+  width: min(340px, 100%);
+}
+
+.smart-crop-filter-search input {
+  width: 100%;
+  min-width: 0;
+  color: var(--ds-ink);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.smart-crop-filter-search input::placeholder {
+  color: var(--ds-muted);
+}
+
+.smart-crop-filter-button {
+  font: inherit;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.smart-crop-empty-state {
+  display: grid;
+  gap: 10px;
+  min-height: 180px;
+  place-items: center;
+  padding: 32px;
+  color: var(--ds-muted);
+  text-align: center;
+}
+
+.smart-crop-empty-state .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.smart-crop-empty-state p {
+  margin: 0;
+}
+
+.smart-crop-jobs-table-wrap {
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  background: var(--ds-panel);
+  border: 0;
+  border-radius: 0;
+}
+
+.smart-crop-jobs-table,
+.design-system-eleven .smart-crop-jobs-table {
+  table-layout: fixed;
+  min-width: 1000px;
+}
+
+.smart-crop-jobs-table th,
+.smart-crop-jobs-table td {
+  overflow: hidden;
+  padding: 16px 18px;
+}
+
+.smart-crop-jobs-table thead th {
+  color: var(--ds-muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: none;
+  background: var(--ds-panel-muted);
+  border-bottom: 1px solid var(--ds-line);
+}
+
+.smart-crop-jobs-table tbody td {
+  background: var(--ds-panel);
+}
+
+.smart-crop-jobs-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--ds-hover) 54%, var(--ds-panel));
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-video {
+  width: 20%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-type {
+  width: 14%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-status {
+  width: 18%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-progress {
+  width: 20%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-language {
+  width: 7%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-activity {
+  width: 10%;
+}
+
+.smart-crop-jobs-table .smart-crop-jobs-col-actions {
+  width: 11%;
+}
+
+.smart-crop-jobs-table th:nth-child(1),
+.smart-crop-jobs-table td:nth-child(1) {
+  width: 20%;
+}
+
+.smart-crop-jobs-table th:nth-child(2),
+.smart-crop-jobs-table td:nth-child(2) {
+  width: 14%;
+}
+
+.smart-crop-jobs-table th:nth-child(3),
+.smart-crop-jobs-table td:nth-child(3) {
+  width: 18%;
+}
+
+.smart-crop-jobs-table th:nth-child(4),
+.smart-crop-jobs-table td:nth-child(4) {
+  width: 20%;
+}
+
+.smart-crop-jobs-table th:nth-child(5),
+.smart-crop-jobs-table td:nth-child(5) {
+  width: 7%;
+}
+
+.smart-crop-jobs-table th:nth-child(6),
+.smart-crop-jobs-table td:nth-child(6) {
+  width: 10%;
+}
+
+.smart-crop-jobs-table th:nth-child(7),
+.smart-crop-jobs-table td:nth-child(7) {
+  width: 11%;
+}
+
+.smart-crop-video-cell {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.smart-crop-job-thumb {
+  display: inline-grid;
+  width: 66px;
+  height: 37px;
+  place-items: center;
+  object-fit: cover;
+  color: var(--ds-muted);
+  background: var(--ds-panel-muted);
+  border: 1px solid var(--ds-line);
+  border-radius: calc(var(--ds-radius) - 6px);
+}
+
+.smart-crop-job-thumb-placeholder {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 9%, var(--ds-panel)),
+    var(--ds-panel-muted)
+  );
+}
+
+.smart-crop-video-copy,
+.smart-crop-status-stack,
+.smart-crop-progress,
+.smart-crop-activity {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.smart-crop-video-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-weight: 760;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.smart-crop-video-title:hover,
+.smart-crop-video-title:focus-visible {
+  color: var(--accent);
+  outline: none;
+  text-decoration: none;
+}
+
+.smart-crop-video-meta,
+.smart-crop-status-detail,
+.smart-crop-activity span + span,
+.smart-crop-progress-percent {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-crop-type-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 0 11px;
+  overflow: hidden;
+  border: 1px solid var(--ds-line);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-crop-type-pill-canonical {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--warn) 24%, var(--ds-line));
+}
+
+.smart-crop-type-pill-localized {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--ds-line));
+}
+
+.smart-crop-status-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--ds-line);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 780;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.smart-crop-status-badge-success,
+.smart-crop-progress-fill-success {
+  color: var(--ds-success);
+  background: color-mix(in srgb, var(--ds-success) 11%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--ds-success) 28%, var(--ds-line));
+}
+
+.smart-crop-status-badge-warning {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 11%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--warn) 28%, var(--ds-line));
+}
+
+.smart-crop-status-badge-danger {
+  color: var(--ds-danger);
+  background: color-mix(in srgb, var(--ds-danger) 10%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--ds-danger) 28%, var(--ds-line));
+}
+
+.smart-crop-status-badge-running {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--ds-line));
+}
+
+.smart-crop-status-badge-neutral {
+  color: var(--ds-muted);
+  background: var(--ds-panel-muted);
+  border-color: var(--ds-line);
+}
+
+.smart-crop-status-detail {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.smart-crop-status-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.smart-crop-status-dot-success {
+  color: var(--ds-success);
+}
+
+.smart-crop-status-dot-warning {
+  color: var(--warn);
+}
+
+.smart-crop-status-dot-danger {
+  color: var(--ds-danger);
+}
+
+.smart-crop-status-dot-running {
+  color: var(--accent);
+}
+
+.smart-crop-status-dot-neutral {
+  color: var(--ds-muted);
+}
+
+.smart-crop-progress-label,
+.smart-crop-activity span:first-child {
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-crop-progress-meter {
+  display: block;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  background: var(--ds-panel-muted);
+  border-radius: 999px;
+}
+
+.smart-crop-progress-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+}
+
+.smart-crop-progress-fill-running {
+  background: var(--accent);
+}
+
+.smart-crop-progress-fill-success {
+  background: var(--ds-success);
+}
+
+.smart-crop-progress-fill-danger {
+  background: var(--ds-danger);
+}
+
+.smart-crop-progress-fill-warning {
+  background: var(--warn);
+}
+
+.smart-crop-progress-fill-neutral {
+  background: var(--ds-muted);
+}
+
+.smart-crop-actions-cell {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) 32px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.smart-crop-row-action {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 10px;
+  color: var(--ds-ink);
+  font-size: 0.88rem;
+  text-overflow: ellipsis;
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  white-space: nowrap;
+}
+
+.smart-crop-row-menu {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  color: var(--ds-muted);
+  background: transparent;
+  border: 0;
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.smart-crop-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 28px;
+  color: var(--ds-muted);
+  border-top: 1px solid var(--ds-line);
+}
+
+.smart-crop-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.smart-crop-page-button {
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+  color: var(--ds-muted);
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  cursor: not-allowed;
+}
+
+.smart-crop-page-button.is-current {
+  color: var(--ds-ink);
+  background: var(--ds-panel-muted);
+  border-color: var(--ds-line-strong);
+}
+
+.smart-crop-create-section {
+  display: grid;
+  gap: 18px;
+}
+
+.smart-crop-create-heading h2 {
+  font-size: 1.28rem;
+  font-weight: 780;
+}
+
+.smart-crop-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.smart-crop-create-card {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+  padding: 28px;
+  background: var(--ds-panel);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius);
+}
+
+.smart-crop-create-card-canonical {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--warn) 8%, var(--ds-panel)),
+    var(--ds-panel) 46%
+  );
+  border-color: color-mix(in srgb, var(--warn) 22%, var(--ds-line));
+}
+
+.smart-crop-create-card-localized {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 7%, var(--ds-panel)),
+    var(--ds-panel) 46%
+  );
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--ds-line));
+}
+
+.smart-crop-create-card-header {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+
+.smart-crop-create-icon {
+  display: inline-grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--ds-panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--ds-line));
+  border-radius: 999px;
+}
+
+.smart-crop-create-card-canonical .smart-crop-create-icon {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, var(--ds-panel));
+  border-color: color-mix(in srgb, var(--warn) 24%, var(--ds-line));
+}
+
+.smart-crop-create-card h3 {
+  font-size: 1.15rem;
+  font-weight: 780;
+}
+
+.smart-crop-create-card p {
+  margin: 6px 0 0;
+  color: var(--ds-muted);
+  line-height: 1.45;
+}
+
+.smart-crop-create-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  color: var(--ds-ink);
+  list-style: none;
+}
+
+.smart-crop-create-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.smart-crop-create-list .icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--ds-success);
+}
+
+.smart-crop-create-form {
+  gap: 14px;
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.smart-crop-create-form .jobs-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.smart-crop-create-form .jobs-actions {
+  margin-top: 2px;
+}
+
+.smart-crop-advanced-settings {
+  justify-self: center;
+  color: var(--ds-muted);
+}
+
+.smart-crop-advanced-settings summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ds-muted);
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.smart-crop-advanced-settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.smart-crop-advanced-settings summary span {
+  color: var(--ds-ink);
+}
+
+.smart-crop-advanced-settings p {
+  max-width: 620px;
+  margin: 10px auto 0;
+  text-align: center;
+}
+
+.smart-crop-advanced-chevron {
+  transition: transform 150ms ease;
+}
+
+.smart-crop-advanced-settings[open] .smart-crop-advanced-chevron {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 1040px) {
+  .smart-crop-hero-actions {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .smart-crop-create-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .smart-crop-hero,
+  .smart-crop-console-header,
+  .smart-crop-table-footer {
+    align-items: stretch;
+  }
+
+  .smart-crop-hero-actions,
+  .smart-crop-console-header,
+  .smart-crop-table-footer {
+    flex-direction: column;
+  }
+
+  .smart-crop-action-button,
+  .smart-crop-refresh-button {
+    width: 100%;
+  }
+
+  .smart-crop-console-header,
+  .smart-crop-filter-bar,
+  .smart-crop-table-footer,
+  .smart-crop-create-card {
+    padding-inline: 18px;
+  }
+
+  .smart-crop-filter-control,
+  .smart-crop-filter-search {
+    width: 100%;
+  }
+
+  .smart-crop-filter-button {
+    justify-content: space-between;
+  }
+
+  .smart-crop-create-card {
+    padding-block: 22px;
+  }
+
+  .smart-crop-create-card-header {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .smart-crop-create-icon {
+    width: 46px;
+    height: 46px;
+  }
+
+  .smart-crop-create-form .jobs-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-crop-pagination {
+    justify-content: flex-start;
+  }
 }
 
 .smart-crop-plan-review-card {
