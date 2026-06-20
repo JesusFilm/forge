@@ -26,6 +26,8 @@ const DEFAULT_OVERLAP_TOKENS = 100
 const DEFAULT_MAX_BATCH_CHUNKS = 8
 const DEFAULT_MAX_BATCH_TOKENS = 20_000
 const CHUNKING_VERSION = "enriched-transcript-v2"
+const DEFAULT_PROVIDER_BATCH_MAX_ATTEMPTS = 3
+const DEFAULT_PROVIDER_BATCH_RETRY_DELAY_MS = 1_000
 
 type CanonicalFeltNeed =
   | "Acceptance"
@@ -377,6 +379,8 @@ export type TranscriptEmbeddingWorkflowOptions = {
       itemLabel: string
     },
   ) => Promise<EmbeddingProviderResult>
+  providerRetryMaxAttempts?: number
+  providerRetryDelayMs?: number
   adminIngestClient?: (
     payload: AdminTranscriptEmbeddingIngestPayload,
   ) => Promise<AdminTranscriptIngestClientResult>
@@ -776,13 +780,44 @@ function createBatches(
   return batches
 }
 
+function isRecoverableGatewayProviderError(
+  error: unknown,
+): error is EmbeddingProviderError {
+  return (
+    error instanceof EmbeddingProviderError &&
+    (error.code === "upstream_failed" || error.code === "invalid_response")
+  )
+}
+
 function shouldSplitProviderBatch(error: unknown, batchSize: number): boolean {
   return (
     batchSize > 1 &&
-    error instanceof EmbeddingProviderError &&
-    error.code === "upstream_failed" &&
+    isRecoverableGatewayProviderError(error) &&
     !error.retryable
   )
+}
+
+function shouldRetryProviderBatch(
+  error: unknown,
+  options: { batchSize: number; attempt: number; maxAttempts: number },
+): boolean {
+  if (options.attempt >= options.maxAttempts) return false
+  if (!isRecoverableGatewayProviderError(error)) return false
+
+  return error.retryable || options.batchSize === 1
+}
+
+function retryDelayMs(options: {
+  baseDelayMs: number
+  attempt: number
+}): number {
+  if (options.baseDelayMs <= 0) return 0
+  return options.baseDelayMs * 2 ** Math.max(0, options.attempt - 1)
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve()
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function combineEmbeddingProviderResults(
@@ -843,90 +878,137 @@ async function requestEmbeddingBatchWithFallback(
   const batchInput = batch.map(
     (chunk) => chunk.embeddingInputText ?? chunk.text,
   )
+  const maxAttempts =
+    options.providerRetryMaxAttempts ?? DEFAULT_PROVIDER_BATCH_MAX_ATTEMPTS
+  const retryBaseDelayMs =
+    options.providerRetryDelayMs ?? DEFAULT_PROVIDER_BATCH_RETRY_DELAY_MS
 
-  try {
-    const rawResult = options.embeddingRequester
-      ? await options.embeddingRequester(batchInput, {
-          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-          context: options.context,
-          itemLabel: "chunks",
+  for (let attempt = 1; ; attempt += 1) {
+    let rawResult: EmbeddingProviderResult
+    try {
+      rawResult = options.embeddingRequester
+        ? await options.embeddingRequester(batchInput, {
+            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+            context: options.context,
+            itemLabel: "chunks",
+          })
+        : await requestEmbeddingVectors(batchInput, {
+            apiKey: options.apiKey ?? options.providerConfig.apiKey,
+            baseUrl:
+              options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+            model: options.planned.model.name,
+            provider: options.planned.model.provider,
+            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+            expectedNativeDimensions:
+              options.providerConfig.expectedNativeDimensions,
+            truncateToDimensions: options.providerConfig.truncateToDimensions,
+            transformVersion: options.providerConfig.transformVersion,
+            userAgent: options.providerConfig.userAgent,
+            context: options.context,
+            itemLabel: "chunks",
+            timeoutMs: options.timeoutMs ?? options.providerConfig.timeoutMs,
+            fetchImpl: options.fetchImpl,
+          })
+    } catch (error) {
+      if (
+        shouldRetryProviderBatch(error, {
+          batchSize: batch.length,
+          attempt,
+          maxAttempts,
         })
-      : await requestEmbeddingVectors(batchInput, {
-          apiKey: options.apiKey ?? options.providerConfig.apiKey,
-          baseUrl: options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+      ) {
+        const delayMs = retryDelayMs({
+          baseDelayMs: retryBaseDelayMs,
+          attempt,
+        })
+        console.warn(
+          JSON.stringify({
+            event: "transcript_embedding_batch_provider_retry",
+            context: options.context,
+            mastraRunId: options.planned.generation.mastraRunId,
+            target: options.planned.target,
+            language: options.planned.language,
+            model: options.planned.model.name,
+            provider: options.planned.model.provider,
+            requestModel: requestModelForEndpoint(
+              options.planned.model.name,
+              options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+            ),
+            errorCode:
+              error instanceof EmbeddingProviderError ? error.code : "unknown",
+            retryable:
+              error instanceof EmbeddingProviderError ? error.retryable : null,
+            attempt,
+            maxAttempts,
+            delayMs,
+            chunkCount: batch.length,
+            tokenCount: batch.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
+          }),
+        )
+        await sleep(delayMs)
+        continue
+      }
+
+      if (!shouldSplitProviderBatch(error, batch.length)) throw error
+
+      const splitDepth = options.splitDepth ?? 0
+      const splitPath = options.splitPath ?? "root"
+      console.warn(
+        JSON.stringify({
+          event: "transcript_embedding_batch_split_retry",
+          context: options.context,
+          mastraRunId: options.planned.generation.mastraRunId,
+          target: options.planned.target,
+          language: options.planned.language,
           model: options.planned.model.name,
           provider: options.planned.model.provider,
-          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-          expectedNativeDimensions:
-            options.providerConfig.expectedNativeDimensions,
-          truncateToDimensions: options.providerConfig.truncateToDimensions,
-          transformVersion: options.providerConfig.transformVersion,
-          userAgent: options.providerConfig.userAgent,
-          context: options.context,
-          itemLabel: "chunks",
-          timeoutMs: options.timeoutMs ?? options.providerConfig.timeoutMs,
-          fetchImpl: options.fetchImpl,
-        })
+          requestModel: requestModelForEndpoint(
+            options.planned.model.name,
+            options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+          ),
+          errorCode:
+            error instanceof EmbeddingProviderError ? error.code : "unknown",
+          retryable:
+            error instanceof EmbeddingProviderError ? error.retryable : null,
+          splitDepth,
+          splitPath,
+          chunkCount: batch.length,
+          tokenCount: batch.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
+        }),
+      )
+
+      const splitIndex = Math.ceil(batch.length / 2)
+      const left = await requestEmbeddingBatchWithFallback(
+        batch.slice(0, splitIndex),
+        {
+          ...options,
+          context: `${options.context} split 1/2`,
+          splitDepth: splitDepth + 1,
+          splitPath: `${splitPath}.1`,
+        },
+      )
+      const right = await requestEmbeddingBatchWithFallback(
+        batch.slice(splitIndex),
+        {
+          ...options,
+          context: `${options.context} split 2/2`,
+          splitDepth: splitDepth + 1,
+          splitPath: `${splitPath}.2`,
+        },
+      )
+
+      return combineEmbeddingProviderResults(left, right, {
+        context: options.context,
+        itemLabel: "chunks",
+        expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+        expectedCount: batch.length,
+      })
+    }
 
     return validateEmbeddingProviderResult(rawResult, batch.length, {
       expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
       context: options.context,
       itemLabel: "chunks",
-    })
-  } catch (error) {
-    if (!shouldSplitProviderBatch(error, batch.length)) throw error
-
-    const splitDepth = options.splitDepth ?? 0
-    const splitPath = options.splitPath ?? "root"
-    console.warn(
-      JSON.stringify({
-        event: "transcript_embedding_batch_split_retry",
-        context: options.context,
-        mastraRunId: options.planned.generation.mastraRunId,
-        target: options.planned.target,
-        language: options.planned.language,
-        model: options.planned.model.name,
-        provider: options.planned.model.provider,
-        requestModel: requestModelForEndpoint(
-          options.planned.model.name,
-          options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
-        ),
-        errorCode:
-          error instanceof EmbeddingProviderError ? error.code : "unknown",
-        retryable:
-          error instanceof EmbeddingProviderError ? error.retryable : null,
-        splitDepth,
-        splitPath,
-        chunkCount: batch.length,
-        tokenCount: batch.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
-      }),
-    )
-
-    const splitIndex = Math.ceil(batch.length / 2)
-    const left = await requestEmbeddingBatchWithFallback(
-      batch.slice(0, splitIndex),
-      {
-        ...options,
-        context: `${options.context} split 1/2`,
-        splitDepth: splitDepth + 1,
-        splitPath: `${splitPath}.1`,
-      },
-    )
-    const right = await requestEmbeddingBatchWithFallback(
-      batch.slice(splitIndex),
-      {
-        ...options,
-        context: `${options.context} split 2/2`,
-        splitDepth: splitDepth + 1,
-        splitPath: `${splitPath}.2`,
-      },
-    )
-
-    return combineEmbeddingProviderResults(left, right, {
-      context: options.context,
-      itemLabel: "chunks",
-      expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-      expectedCount: batch.length,
     })
   }
 }

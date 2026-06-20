@@ -354,6 +354,192 @@ describe("transcript embedding workflow", () => {
     )
   })
 
+  it("splits non-retryable invalid provider responses and preserves chunk order", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const embeddingRequester = vi.fn(async (items: string[]) => {
+      if (items.length > 1) {
+        throw new EmbeddingProviderError(
+          "invalid_response",
+          "provider returned an error envelope without data",
+          false,
+        )
+      }
+      return seededEmbeddingResult(items)
+    })
+    const adminIngestClient = vi.fn(async (payload) => ({
+      ok: true as const,
+      result: {
+        status: "created" as const,
+        target: {
+          videoId: "video-1",
+          videoEditionId: "edition-1",
+          coreId: "core-1",
+          language: payload.language,
+        },
+        chunks: payload.chunks.length,
+        model: payload.model.name,
+        dimensions: payload.model.dimensions,
+        mastraRunId: payload.generation.mastraRunId,
+      },
+    }))
+
+    const result = await runTranscriptEmbeddingWorkflow(
+      input({
+        transcript: {
+          text: "one two three four five six seven eight nine ten eleven twelve",
+          artifactKey: "asset-1/transcript.json",
+        },
+        chunking: {
+          maxChunkTokens: 4,
+          overlapTokens: 0,
+          maxBatchChunks: 4,
+          maxBatchTokens: 100_000,
+        },
+      }),
+      {
+        runId: "run-split-invalid-response",
+        embeddingRequester,
+        adminIngestClient,
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "created",
+      chunks: 4,
+      mastraRunId: "run-split-invalid-response",
+    })
+    expect(
+      embeddingRequester.mock.calls.map(([items]) => items.length),
+    ).toEqual([4, 2, 1, 1, 2, 1, 1])
+    const splitWarnings = warnSpy.mock.calls.map(([message]) =>
+      JSON.parse(String(message)),
+    )
+    expect(splitWarnings).toEqual([
+      expect.objectContaining({
+        event: "transcript_embedding_batch_split_retry",
+        mastraRunId: "run-split-invalid-response",
+        errorCode: "invalid_response",
+        retryable: false,
+        splitDepth: 0,
+        splitPath: "root",
+        chunkCount: 4,
+      }),
+      expect.objectContaining({
+        splitDepth: 1,
+        splitPath: "root.1",
+        chunkCount: 2,
+      }),
+      expect.objectContaining({
+        splitDepth: 1,
+        splitPath: "root.2",
+        chunkCount: 2,
+      }),
+    ])
+    const serializedWarnings = JSON.stringify(splitWarnings)
+    expect(serializedWarnings).not.toContain("one two three")
+    expect(serializedWarnings).not.toContain("Transcript:")
+    expect(serializedWarnings).not.toContain("embeddingInputText")
+    expect(serializedWarnings).not.toContain("provider returned")
+    warnSpy.mockRestore()
+    expect(adminIngestClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chunks: [
+          expect.objectContaining({
+            text: "one two three",
+            embedding: vector(1),
+          }),
+          expect.objectContaining({
+            text: "four five six",
+            embedding: vector(2),
+          }),
+          expect.objectContaining({
+            text: "seven eight nine",
+            embedding: vector(3),
+          }),
+          expect.objectContaining({
+            text: "ten eleven twelve",
+            embedding: vector(4),
+          }),
+        ],
+      }),
+    )
+  })
+
+  it("retries unsplittable gateway provider responses with scrubbed telemetry", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const embeddingRequester = vi.fn(async (items: string[]) => {
+      if (embeddingRequester.mock.calls.length < 3) {
+        throw new EmbeddingProviderError(
+          "invalid_response",
+          "gateway returned an empty response body",
+          false,
+        )
+      }
+      return seededEmbeddingResult(items)
+    })
+    const adminIngestClient = vi.fn(async (payload) => ({
+      ok: true as const,
+      result: {
+        status: "created" as const,
+        target: {
+          videoId: "video-1",
+          videoEditionId: "edition-1",
+          coreId: "core-1",
+          language: payload.language,
+        },
+        chunks: payload.chunks.length,
+        model: payload.model.name,
+        dimensions: payload.model.dimensions,
+        mastraRunId: payload.generation.mastraRunId,
+      },
+    }))
+
+    const result = await runTranscriptEmbeddingWorkflow(input(), {
+      runId: "run-singleton-retry",
+      embeddingRequester,
+      adminIngestClient,
+      providerRetryDelayMs: 0,
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "created",
+      chunks: 1,
+      mastraRunId: "run-singleton-retry",
+    })
+    expect(embeddingRequester).toHaveBeenCalledTimes(3)
+    const retryWarnings = warnSpy.mock.calls.map(([message]) =>
+      JSON.parse(String(message)),
+    )
+    expect(retryWarnings).toEqual([
+      expect.objectContaining({
+        event: "transcript_embedding_batch_provider_retry",
+        mastraRunId: "run-singleton-retry",
+        errorCode: "invalid_response",
+        retryable: false,
+        attempt: 1,
+        maxAttempts: 3,
+        delayMs: 0,
+        chunkCount: 1,
+      }),
+      expect.objectContaining({
+        event: "transcript_embedding_batch_provider_retry",
+        attempt: 2,
+        maxAttempts: 3,
+        delayMs: 0,
+        chunkCount: 1,
+      }),
+    ])
+    const serializedWarnings = JSON.stringify(retryWarnings)
+    expect(serializedWarnings).not.toContain("Jesus teaches hope")
+    expect(serializedWarnings).not.toContain("Transcript:")
+    expect(serializedWarnings).not.toContain("embeddingInputText")
+    expect(serializedWarnings).not.toContain("gateway returned")
+    warnSpy.mockRestore()
+    expect(adminIngestClient).toHaveBeenCalledOnce()
+  })
+
   it("rejects malformed split child results before Admin ingest", async () => {
     const embeddingRequester = vi.fn(async (items: string[]) => {
       if (items.length > 2) {

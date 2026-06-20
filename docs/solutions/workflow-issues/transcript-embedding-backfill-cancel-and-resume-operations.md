@@ -238,6 +238,47 @@ broaden this hotfix into a chunking contract change during incident recovery;
 add a reviewed follow-up if operators need a hard max override or split-attempt
 budget.
 
+### Hotfix checkpoint: 2026-06-20 invalid Gateway envelopes and singleton retry
+
+After the split-batch hotfix was deployed, scoped retries were started through
+the existing Admin GraphQL mutation, one `coreId` at a time with only that
+core's failed languages. This avoided a corpus restart, but new
+`1_jf-0-0` snapshots still failed after the deploy with `provider_failed` and
+`retryable=false`.
+
+The important reproduction result was negative: the exact stored workflow input
+for a failed `1_jf-0-0/chk` run planned 35 chunks in five provider batches
+`[8, 8, 8, 8, 3]` with about 18.9k total chunk tokens, and every batch
+succeeded against the same AI Gateway when replayed in isolation. That proves
+the transcript payload itself was not intrinsically unembeddable. The remaining
+failure shape was load- or response-shape-sensitive: Gateway could still return
+an error that Mastra collapsed to `provider_failed retryable=false`, but the
+first split hotfix only recovered `upstream_failed` multi-chunk errors.
+
+The second Mastra hotfix keeps recovery narrow:
+
+- Treat `EmbeddingProviderError` codes `upstream_failed` and `invalid_response`
+  as recoverable Gateway provider errors.
+- Split only non-retryable recoverable multi-chunk errors. Retryable overload
+  errors are retried in place and are not split after retry exhaustion, because
+  splitting retryable 429/5xx-style failures amplifies load.
+- Retry unsplittable singleton recoverable errors with bounded exponential
+  backoff. This handles transient Gateway envelopes once a batch has already
+  been reduced to one chunk.
+- Keep the catch boundary around the provider call only. Post-provider
+  validation errors, such as a child batch returning the wrong number of
+  vectors, remain hard failures and cannot be hidden by further splitting.
+- Log scrubbed `transcript_embedding_batch_provider_retry` diagnostics with
+  run id, target, language, model, provider, request model, error code,
+  retryable flag, attempt, delay, chunk count, and token count. Do not log
+  transcript text, embedding input text, vectors, keys, or raw provider bodies.
+
+The formal review for this second hotfix is staged at
+`/tmp/compound-engineering/ce-code-review/20260620-053700-transcript-provider-retry/report.md`.
+It caught the retryable-error fanout risk before deploy; the fix now preserves
+the split fallback for non-retryable Gateway envelopes while avoiding extra
+load during retryable overload incidents.
+
 ## Cleanup and Versioning Strategy
 
 Successful enriched transcript writes are upserts on the transcript identity
