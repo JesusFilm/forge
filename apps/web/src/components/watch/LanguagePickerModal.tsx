@@ -676,7 +676,7 @@ export function LanguagePickerModal({
       />
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+        className="top-0 left-0 h-[100svh] w-screen max-w-none translate-x-0 translate-y-0 overflow-x-hidden overflow-y-auto border-0 bg-transparent px-3 py-24 text-stone-100 ring-0 sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[calc(100svh-6rem)] sm:w-full sm:max-w-[608px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:p-0"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
         portalContainer={portalContainer}
@@ -687,7 +687,7 @@ export function LanguagePickerModal({
             : t("dialogTitle")}
         </DialogTitle>
 
-        <div className="relative flex flex-col gap-10">
+        <div className="relative mx-auto flex min-h-full w-full max-w-[608px] flex-col justify-center gap-10 sm:min-h-0">
           <MultilingualTooltipPanel
             copy={activeTooltipCopy}
             excludedLanguage={excludedTooltipLanguage}
@@ -776,23 +776,23 @@ export function LanguagePickerModal({
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
               <MultilingualTooltip
                 copy={MULTILINGUAL_TOOLTIPS.subtitles}
                 testId="watch-language-picker-tooltip-subtitles"
-                className="min-w-0 flex-1"
+                className="w-full min-w-0 sm:flex-1"
                 onActivate={setActiveTooltipCopy}
                 onDeactivate={clearActiveTooltip}
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <span
                       data-testid="watch-language-picker-subtitles-icon"
                       className="flex size-8 shrink-0 items-center justify-center text-stone-200"
                     >
                       <Captions aria-hidden className="size-4" />
                     </span>
-                    <h2 className="text-xl font-semibold text-stone-100">
+                    <h2 className="min-w-0 text-xl font-semibold text-stone-100">
                       {t("subtitlesHeading")}
                     </h2>
                   </div>
@@ -806,7 +806,7 @@ export function LanguagePickerModal({
                   </span>
                 </div>
               </MultilingualTooltip>
-              <div className="flex items-center gap-4">
+              <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
                 {sameLanguageSubtitleOptions.length === 0 ? (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}
@@ -820,7 +820,7 @@ export function LanguagePickerModal({
                       data-testid="watch-language-picker-request-ai-translation"
                       disabled={translationRequestSent}
                       onClick={() => setTranslationRequestSent(true)}
-                      className="gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-[11px] font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100"
+                      className="min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-[11px] leading-4 font-bold tracking-wider whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none sm:whitespace-nowrap"
                     >
                       {translationRequestSent ? (
                         <Check
@@ -921,7 +921,7 @@ export function LanguagePickerModal({
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-6 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3 pt-3">
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.close}
               testId="watch-language-picker-tooltip-close"

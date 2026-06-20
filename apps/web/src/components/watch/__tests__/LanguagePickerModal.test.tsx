@@ -561,6 +561,12 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     const modal = $('[data-testid="watch-language-picker-modal"]')
     expect(modal?.className).toContain("bg-transparent")
+    expect(modal?.className).toContain("h-[100svh]")
+    expect(modal?.className).toContain("w-screen")
+    expect(modal?.className).toContain("max-w-none")
+    expect(modal?.className).toContain("overflow-x-hidden")
+    expect(modal?.className).toContain("overflow-y-auto")
+    expect(modal?.className).not.toContain("max-w-[min(90vw,608px)]")
     expect(modal?.className).toContain("sm:max-w-[608px]")
 
     expect(
@@ -618,6 +624,16 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(toggle.parentElement?.parentElement?.className).toContain(
       "items-center",
     )
+    expect(toggle.parentElement?.parentElement?.className).toContain(
+      "flex-wrap",
+    )
+    expect(toggle.parentElement?.parentElement?.className).toContain("min-w-0")
+    expect(
+      toggle.parentElement?.parentElement?.parentElement?.className,
+    ).toContain("flex-col")
+    expect(
+      toggle.parentElement?.parentElement?.parentElement?.className,
+    ).toContain("sm:flex-row")
     const thumb = toggle.querySelector('span[aria-hidden="true"]')
     expect(thumb?.className).toContain("size-7")
     expect(thumb?.className).toContain("translate-x-7")
@@ -824,6 +840,12 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(button.className).toContain("px-3")
     expect(button.className).toContain("py-1.5")
     expect(button.className).toContain("text-[11px]")
+    expect(button.className).toContain("min-w-0")
+    expect(button.className).toContain("max-w-full")
+    expect(button.className).toContain("flex-1")
+    expect(button.className).toContain("sm:flex-none")
+    expect(button.className).toContain("shrink")
+    expect(button.className).toContain("whitespace-normal")
     expect(
       $('[data-testid="watch-language-picker-request-icon"]'),
     ).not.toBeNull()
@@ -859,6 +881,10 @@ describe("LanguagePickerModal — globe overlay", () => {
       ["Subtitles unavailable"],
     )
     expect(button.parentElement?.parentElement?.contains(toggle)).toBe(true)
+    expect(button.parentElement?.parentElement?.className).toContain(
+      "flex-wrap",
+    )
+    expect(button.parentElement?.parentElement?.className).toContain("min-w-0")
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
 
     act(() => {
