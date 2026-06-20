@@ -403,6 +403,28 @@ export type TranscriptEmbeddingRouteOutcome = {
   body: { result?: TranscriptEmbeddingWorkflowResult; error?: string }
 }
 
+function routeRequestEnvelope(body: unknown): {
+  runId: string
+  input: unknown
+} {
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    "runId" in body &&
+    "input" in body
+  ) {
+    const record = body as { runId?: unknown; input?: unknown }
+    const runId =
+      typeof record.runId === "string" && record.runId.trim()
+        ? record.runId.trim()
+        : randomUUID()
+    return { runId, input: record.input }
+  }
+
+  return { runId: randomUUID(), input: body }
+}
+
 function normalizeTranscriptText(
   transcript: TranscriptEmbeddingWorkflowInput["transcript"],
 ): string {
@@ -1743,12 +1765,15 @@ export async function handleTranscriptEmbeddingRouteRequest({
     }
   }
 
-  const runId = randomUUID()
   const body = await readJson().catch(() => undefined)
+  const envelope = routeRequestEnvelope(body)
   const result =
     body === undefined
-      ? failure("invalid_input", { mastraRunId: runId, retryable: false })
-      : await launch(body, { runId })
+      ? failure("invalid_input", {
+          mastraRunId: envelope.runId,
+          retryable: false,
+        })
+      : await launch(envelope.input, { runId: envelope.runId })
 
   return {
     status: routeStatusForResult(result),
@@ -1766,4 +1791,5 @@ export const _internals = {
   toAdminPayload,
   CHUNKING_VERSION,
   workflowFailureFromRunResult,
+  routeRequestEnvelope,
 }

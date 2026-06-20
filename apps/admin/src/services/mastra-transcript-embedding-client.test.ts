@@ -60,6 +60,7 @@ describe("launchMastraTranscriptEmbedding", () => {
         {
           baseUrl: "https://mastra.internal",
           bearer: "secret",
+          runId: "run-launch-1",
           fetchImpl,
         },
       ),
@@ -77,20 +78,23 @@ describe("launchMastraTranscriptEmbedding", () => {
       }),
     )
     expect(body).toMatchObject({
-      target: {
-        admin: {
-          videoId: "v-1",
-          videoEditionId: "e-1",
-          coreId: "core-1",
+      runId: "run-launch-1",
+      input: {
+        target: {
+          admin: {
+            videoId: "v-1",
+            videoEditionId: "e-1",
+            coreId: "core-1",
+          },
         },
+        language: "en",
+        transcript: {
+          text: "hello transcript",
+          artifactKey: "42/transcript.json",
+          provider: "mux",
+        },
+        mode: "repair",
       },
-      language: "en",
-      transcript: {
-        text: "hello transcript",
-        artifactKey: "42/transcript.json",
-        provider: "mux",
-      },
-      mode: "repair",
     })
     expect(JSON.stringify(body)).not.toContain("embedding")
   })
@@ -131,21 +135,55 @@ describe("launchMastraTranscriptEmbedding", () => {
       },
     )
 
-    const body = JSON.parse(
-      String(fetchImpl.mock.calls[0]?.[1]?.body),
-    ) as Record<string, unknown>
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as {
+      input?: Record<string, unknown>
+    }
     expect(body).toMatchObject({
-      transcript: {
-        artifactKey: "admin-video-subtitle/sub-1.vtt",
-        kind: "subtitle",
-        languageId: "lang-en",
-        languageSlug: "english",
-        subtitleId: "sub-1",
-        format: "vtt",
-        url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
-        provider: "admin-subtitle",
-        generatedAt: "2026-06-01T00:00:00.000Z",
+      input: {
+        transcript: {
+          artifactKey: "admin-video-subtitle/sub-1.vtt",
+          kind: "subtitle",
+          languageId: "lang-en",
+          languageSlug: "english",
+          subtitleId: "sub-1",
+          format: "vtt",
+          url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+          provider: "admin-subtitle",
+          generatedAt: "2026-06-01T00:00:00.000Z",
+        },
       },
+    })
+  })
+
+  it("preserves caller run id on Mastra gateway timeouts", async () => {
+    const timedOut = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({ error: "Gateway Timeout" }, { status: 504 }),
+    )
+
+    await expect(
+      launchMastraTranscriptEmbedding(
+        {
+          target: { videoId: "v-1", videoEditionId: "e-1" },
+          language: "en",
+          cmsVideoId: 42,
+          transcript: {
+            text: "hello transcript",
+            segments: [{ start: 0, end: 1, text: "hello transcript" }],
+          },
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          runId: "run-timeout",
+          fetchImpl: timedOut,
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+      mastraRunId: "run-timeout",
     })
   })
 
@@ -235,6 +273,7 @@ describe("launchMastraTranscriptEmbedding", () => {
         {
           baseUrl: "https://mastra.internal",
           bearer: "secret",
+          runId: "run-malformed-status",
           fetchImpl: malformedStatus,
         },
       ),
@@ -242,6 +281,7 @@ describe("launchMastraTranscriptEmbedding", () => {
       ok: false,
       reason: "parse_error",
       retryable: true,
+      mastraRunId: "run-malformed-status",
     })
 
     const malformedReason = vi.fn(
@@ -269,6 +309,7 @@ describe("launchMastraTranscriptEmbedding", () => {
         {
           baseUrl: "https://mastra.internal",
           bearer: "secret",
+          runId: "run-malformed-reason",
           fetchImpl: malformedReason,
         },
       ),
@@ -276,6 +317,7 @@ describe("launchMastraTranscriptEmbedding", () => {
       ok: false,
       reason: "parse_error",
       retryable: true,
+      mastraRunId: "run-malformed-reason",
     })
   })
 })

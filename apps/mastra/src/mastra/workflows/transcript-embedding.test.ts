@@ -864,6 +864,52 @@ describe("transcript embedding workflow", () => {
     })
   })
 
+  it("accepts a caller run id envelope at the transcript embedding route", async () => {
+    const launch = vi.fn(async () => ({
+      ok: true as const,
+      status: "created" as const,
+      chunks: 1,
+      totalTokens: 4,
+      model: "embeddings",
+      provider: "jesus-film-ai-gateway",
+      dimensions: 1536,
+      mastraRunId: "run-from-admin",
+      sourceContentHash: "sha256:test",
+      target: {
+        videoId: "video-1",
+        videoEditionId: "edition-1",
+        coreId: "core-1",
+        language: "en",
+      },
+      chunking: {
+        type: "segment-aware" as const,
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        version: _internals.CHUNKING_VERSION,
+      },
+    }))
+    const workflowInput = input()
+
+    const response = await handleTranscriptEmbeddingRouteRequest({
+      authHeader: "Bearer secret",
+      serviceKeys: ["secret"],
+      readJson: async () => ({
+        runId: "run-from-admin",
+        input: workflowInput,
+      }),
+      launch,
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body.result).toMatchObject({
+      ok: true,
+      mastraRunId: "run-from-admin",
+    })
+    expect(launch).toHaveBeenCalledWith(workflowInput, {
+      runId: "run-from-admin",
+    })
+  })
+
   it("marks committed Mastra runs as failed when the workflow result is a typed failure", async () => {
     const run = await transcriptEmbeddingWorkflow.createRun({
       runId: "run-committed-provider-config",

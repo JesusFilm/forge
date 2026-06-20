@@ -22,10 +22,38 @@ import type {
   TranscriptEmbeddingSourceGap,
 } from "../transcriptEmbeddingBackfill"
 
+const TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS = 20 * 60 * 1_000
+const TIMED_OUT_LAUNCH_CONFIRM_POLL_MS = 5_000
+
 type ManagerSourceLoadState =
   | { status: "not-attempted" }
   | { status: "resolved"; artifact: TranscriptSourceArtifact }
   | { status: "failed"; reason: string; missing: boolean }
+
+type TranscriptIngestConfirmation = {
+  chunks: number
+  totalTokens: number
+  model: string
+  provider: string
+  dimensions: number
+  mastraRunId: string
+  sourceContentHash: string
+}
+
+type TranscriptIngestConfirmationRow = {
+  total_chunks: number | bigint
+  total_tokens: number | bigint
+  model: string
+  dimensions: number
+  embedding_provider: string | null
+  source_content_hash: string | null
+  healthy_chunks: number | bigint
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve()
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 function managerTranscriptSourceFromArtifact(
   target: BackfillTarget,
@@ -81,7 +109,9 @@ function sourceGapForMissingManager(
 function toSucceeded(
   target: BackfillTarget,
   sourceKind: ResolvedTranscriptEmbeddingSource["sourceKind"],
-  result: Extract<MastraTranscriptEmbeddingLaunchResult, { ok: true }>,
+  result:
+    | Extract<MastraTranscriptEmbeddingLaunchResult, { ok: true }>
+    | TranscriptIngestConfirmation,
   durationMs: number,
 ): BackfillOutcome {
   return {
@@ -90,7 +120,8 @@ function toSucceeded(
     language: target.language,
     sourceKind,
     chunksIndexed: result.chunks,
-    embeddingsWritten: result.status === "unchanged" ? 0 : result.chunks,
+    embeddingsWritten:
+      "status" in result && result.status === "unchanged" ? 0 : result.chunks,
     chunksPruned: 0,
     durationMs,
   }
@@ -156,6 +187,69 @@ function logOutcome(outcome: BackfillOutcome): void {
   }
 }
 
+async function readTranscriptIngestConfirmation(
+  target: BackfillTarget,
+  language: string,
+  mastraRunId: string,
+): Promise<TranscriptIngestConfirmation | null> {
+  const rows = await prisma.$queryRaw<TranscriptIngestConfirmationRow[]>`
+    SELECT
+      vt.total_chunks,
+      vt.total_tokens,
+      vt.model,
+      vt.dimensions,
+      vt.embedding_provider,
+      vt.source_content_hash,
+      COUNT(vtc.id) FILTER (WHERE vtc.embedding IS NOT NULL) AS healthy_chunks
+    FROM video_transcript vt
+    LEFT JOIN video_transcript_chunk vtc
+      ON vtc.transcript_id = vt.id
+    WHERE vt.video_edition_id = ${target.videoEditionId}
+      AND vt.language = ${language}
+      AND vt.mastra_run_id = ${mastraRunId}
+    GROUP BY vt.id
+    LIMIT 1
+  `
+  const row = rows[0]
+  if (!row) return null
+
+  const chunks = Number(row.total_chunks)
+  const healthyChunks = Number(row.healthy_chunks)
+  if (!Number.isFinite(chunks) || chunks <= 0 || healthyChunks !== chunks) {
+    return null
+  }
+
+  return {
+    chunks,
+    totalTokens: Number(row.total_tokens),
+    model: row.model,
+    provider: row.embedding_provider ?? "unknown",
+    dimensions: Number(row.dimensions),
+    mastraRunId,
+    sourceContentHash: row.source_content_hash ?? "",
+  }
+}
+
+async function waitForTimedOutLaunchIngest(
+  target: BackfillTarget,
+  language: string,
+  mastraRunId: string,
+): Promise<TranscriptIngestConfirmation | null> {
+  const deadline = Date.now() + TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS
+
+  while (Date.now() <= deadline) {
+    const confirmation = await readTranscriptIngestConfirmation(
+      target,
+      language,
+      mastraRunId,
+    )
+    if (confirmation) return confirmation
+    await sleep(TIMED_OUT_LAUNCH_CONFIRM_POLL_MS)
+  }
+
+  return null
+}
+
 async function launchTranscriptEmbedding(
   target: BackfillTarget,
   transcriptSource: ResolvedTranscriptEmbeddingSource,
@@ -176,6 +270,22 @@ async function launchTranscriptEmbedding(
       mode,
     })
     if (!result.ok) {
+      if (result.reason === "network_error" && result.mastraRunId) {
+        const confirmation = await waitForTimedOutLaunchIngest(
+          target,
+          target.language,
+          result.mastraRunId,
+        )
+        if (confirmation) {
+          return toSucceeded(
+            target,
+            transcriptSource.sourceKind,
+            confirmation,
+            Date.now() - startedAt,
+          )
+        }
+      }
+
       return {
         status: "failed",
         target,

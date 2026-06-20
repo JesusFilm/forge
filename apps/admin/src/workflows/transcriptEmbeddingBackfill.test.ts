@@ -436,6 +436,41 @@ Subtitle transcript text.
     })
   })
 
+  it("confirms timed-out Mastra launches through the later Admin ingest row", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw
+      .mockResolvedValueOnce([row("v-a", "e-a", "core-a", "en")])
+      .mockResolvedValueOnce([
+        {
+          total_chunks: 2,
+          total_tokens: 24,
+          model: "embeddings",
+          dimensions: 1536,
+          embedding_provider: "jesus-film-ai-gateway",
+          source_content_hash: "sha256:confirmed",
+          healthy_chunks: 2,
+        },
+      ])
+    vi.mocked(launchMastraTranscriptEmbedding).mockResolvedValueOnce({
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+      mastraRunId: "run-timeout-continued",
+    })
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.succeeded).toBe(1)
+    expect(report.failed).toBe(0)
+    expect(report.outcomes[0]).toMatchObject({
+      status: "succeeded",
+      language: "en",
+      chunksIndexed: 2,
+      embeddingsWritten: 2,
+    })
+  })
+
   it("uses one external groups step so production workflow steps are not dynamically repeated", async () => {
     const source = await readFile(
       new URL("./transcriptEmbeddingBackfill.ts", import.meta.url),

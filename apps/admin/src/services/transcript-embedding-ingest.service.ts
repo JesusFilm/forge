@@ -225,6 +225,53 @@ export class TranscriptEmbeddingIngestError extends Error {
 }
 
 const TRANSCRIPT_INGEST_TRANSACTION_TIMEOUT_MS = 30_000
+const TRANSCRIPT_INGEST_TRANSACTION_MAX_ATTEMPTS = 3
+const TRANSCRIPT_INGEST_TRANSACTION_RETRY_DELAY_MS = 250
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve()
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isRetryableTranscriptIngestTransactionError(error: unknown): boolean {
+  const record =
+    error && typeof error === "object"
+      ? (error as { name?: unknown; code?: unknown; message?: unknown })
+      : null
+  const name = typeof record?.name === "string" ? record.name : ""
+  const code = typeof record?.code === "string" ? record.code : ""
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof record?.message === "string"
+        ? record.message
+        : ""
+
+  const isCurrentErrorRetryable =
+    name === "PrismaClientKnownRequestError" &&
+    (code === "P2034" ||
+      (code === "P2010" &&
+        /40001|40P01|serialize|serialization|deadlock/i.test(message)))
+  if (isCurrentErrorRetryable) return true
+
+  const nestedCause =
+    record && "cause" in record
+      ? (record as { cause?: unknown }).cause
+      : error instanceof TranscriptEmbeddingIngestError
+        ? error.cause
+        : undefined
+
+  return (
+    nestedCause !== undefined &&
+    isRetryableTranscriptIngestTransactionError(nestedCause)
+  )
+}
+
+function transactionRetryDelayMs(attempt: number): number {
+  return (
+    TRANSCRIPT_INGEST_TRANSACTION_RETRY_DELAY_MS * 2 ** Math.max(0, attempt - 1)
+  )
+}
 
 function sha256Json(value: unknown): string {
   return `sha256:${createHash("sha256")
@@ -640,90 +687,132 @@ export async function ingestTranscriptEmbeddings(
   const target = await resolveTarget(prisma, payload)
   const mode = payload.generation.mode as TranscriptEmbeddingGenerationMode
 
-  return prisma.$transaction(
-    async (tx) => {
-      await lockTranscriptTarget(tx, target, payload.language)
-      const existing = await readExistingTranscript(
-        tx,
-        target,
-        payload.language,
+  for (
+    let attempt = 1;
+    attempt <= TRANSCRIPT_INGEST_TRANSACTION_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          await lockTranscriptTarget(tx, target, payload.language)
+          const existing = await readExistingTranscript(
+            tx,
+            target,
+            payload.language,
+          )
+
+          if (existing) {
+            const matches = existingMatches(existing, payload, hash)
+            const healthyChunks = matches
+              ? await countHealthyChunks(tx, existing.id)
+              : 0
+
+            if (
+              mode === "idempotent" &&
+              matches &&
+              healthyChunks === payload.chunks.length
+            ) {
+              return {
+                status: "unchanged",
+                target: { ...target, language: payload.language },
+                chunks: payload.chunks.length,
+                model: payload.model.name,
+                dimensions: payload.model.dimensions,
+                mastraRunId: payload.generation.mastraRunId,
+              }
+            }
+
+            if (mode === "idempotent") {
+              return resultForRejected(
+                payload,
+                target,
+                "existing_transcript_differs",
+              )
+            }
+
+            if (mode === "repair" && !matches) {
+              return resultForRejected(
+                payload,
+                target,
+                "repair_requires_matching_provenance",
+              )
+            }
+            if (mode === "repair" && healthyChunks === payload.chunks.length) {
+              return {
+                status: "unchanged",
+                target: { ...target, language: payload.language },
+                chunks: payload.chunks.length,
+                model: payload.model.name,
+                dimensions: payload.model.dimensions,
+                mastraRunId: payload.generation.mastraRunId,
+              }
+            }
+          }
+
+          let status: TranscriptEmbeddingIngestStatus = "created"
+          if (existing) {
+            if (mode === "idempotent") {
+              return resultForRejected(
+                payload,
+                target,
+                "existing_transcript_differs",
+              )
+            }
+            status = statusForEmbeddingRewrite(mode)
+          }
+
+          await writePayload(tx, payload, target, chunks, hash)
+
+          return {
+            status,
+            target: { ...target, language: payload.language },
+            chunks: payload.chunks.length,
+            model: payload.model.name,
+            dimensions: payload.model.dimensions,
+            mastraRunId: payload.generation.mastraRunId,
+          }
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          timeout: TRANSCRIPT_INGEST_TRANSACTION_TIMEOUT_MS,
+        },
       )
-
-      if (existing) {
-        const matches = existingMatches(existing, payload, hash)
-        const healthyChunks = matches
-          ? await countHealthyChunks(tx, existing.id)
-          : 0
-
-        if (
-          mode === "idempotent" &&
-          matches &&
-          healthyChunks === payload.chunks.length
-        ) {
-          return {
-            status: "unchanged",
-            target: { ...target, language: payload.language },
-            chunks: payload.chunks.length,
-            model: payload.model.name,
-            dimensions: payload.model.dimensions,
-            mastraRunId: payload.generation.mastraRunId,
-          }
-        }
-
-        if (mode === "idempotent") {
-          return resultForRejected(
-            payload,
-            target,
-            "existing_transcript_differs",
-          )
-        }
-
-        if (mode === "repair" && !matches) {
-          return resultForRejected(
-            payload,
-            target,
-            "repair_requires_matching_provenance",
-          )
-        }
-        if (mode === "repair" && healthyChunks === payload.chunks.length) {
-          return {
-            status: "unchanged",
-            target: { ...target, language: payload.language },
-            chunks: payload.chunks.length,
-            model: payload.model.name,
-            dimensions: payload.model.dimensions,
-            mastraRunId: payload.generation.mastraRunId,
-          }
-        }
+    } catch (error) {
+      if (
+        attempt >= TRANSCRIPT_INGEST_TRANSACTION_MAX_ATTEMPTS ||
+        !isRetryableTranscriptIngestTransactionError(error)
+      ) {
+        throw error
       }
 
-      let status: TranscriptEmbeddingIngestStatus = "created"
-      if (existing) {
-        if (mode === "idempotent") {
-          return resultForRejected(
-            payload,
-            target,
-            "existing_transcript_differs",
-          )
-        }
-        status = statusForEmbeddingRewrite(mode)
-      }
+      const delayMs = transactionRetryDelayMs(attempt)
+      console.warn(
+        JSON.stringify({
+          event: "transcript_embedding_ingest_transaction_retry",
+          target: {
+            videoId: target.videoId,
+            videoEditionId: target.videoEditionId,
+            coreId: target.coreId,
+          },
+          language: payload.language,
+          mastraRunId: payload.generation.mastraRunId,
+          attempt,
+          maxAttempts: TRANSCRIPT_INGEST_TRANSACTION_MAX_ATTEMPTS,
+          delayMs,
+          code:
+            error && typeof error === "object" && "code" in error
+              ? String((error as { code?: unknown }).code ?? "")
+              : "unknown",
+        }),
+      )
+      await sleep(delayMs)
+    }
+  }
 
-      await writePayload(tx, payload, target, chunks, hash)
-
-      return {
-        status,
-        target: { ...target, language: payload.language },
-        chunks: payload.chunks.length,
-        model: payload.model.name,
-        dimensions: payload.model.dimensions,
-        mastraRunId: payload.generation.mastraRunId,
-      }
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      timeout: TRANSCRIPT_INGEST_TRANSACTION_TIMEOUT_MS,
-    },
+  throw new TranscriptEmbeddingIngestError(
+    "write_failed",
+    "transcript embedding ingest retry loop exhausted unexpectedly",
   )
 }
 
@@ -732,4 +821,5 @@ export const _internals = {
   sourceContentHash,
   validateChunks,
   existingMatches,
+  isRetryableTranscriptIngestTransactionError,
 }

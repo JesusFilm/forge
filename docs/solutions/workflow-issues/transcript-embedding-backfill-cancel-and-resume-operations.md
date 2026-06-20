@@ -19,6 +19,7 @@ tags:
   - cancellation
   - resume
   - railway
+  - timeout
 ---
 
 # Transcript embedding backfills need cancellable resume batches
@@ -278,6 +279,64 @@ The formal review for this second hotfix is staged at
 It caught the retryable-error fanout risk before deploy; the fix now preserves
 the split fallback for non-retryable Gateway envelopes while avoiding extra
 load during retryable overload incidents.
+
+### Hotfix checkpoint: 2026-06-20 launch timeout correlation and ingest retry
+
+After the provider split/retry hotfixes, fresh all-language backfill logs
+showed a different failure shape. Admin received a Mastra HTTP 504 after about
+180 seconds and recorded `transcript_index_failed reason=network_error`, but
+the corresponding Mastra workflow could continue past the Admin request
+boundary and ingest transcript rows later. Admin's own timeout was already set
+higher than the observed 180 second cutoff, so the likely boundary was the
+private HTTP/proxy path between Admin and Mastra, not the local fetch timeout.
+
+This creates a false-negative launch result: the target looks failed in the
+backfill report even though the run may still complete and write vectors.
+Retried targets can then overlap with an in-flight Mastra run, which also
+showed up as transient serializable/deadlock conflicts during transcript
+ingest (`P2034` and `P2010` with `40001`/`40P01`-style messages).
+
+The third hotfix keeps the synchronous endpoint but adds a correlation bridge:
+
+- Admin generates or accepts a caller run id for each Mastra launch and sends
+  the route body as `{ runId, input }`.
+- Mastra's `/forge-transcript-embeddings` route accepts that envelope and uses
+  the caller run id when creating the workflow run. Legacy callers can still
+  send the original raw workflow input body.
+- When Admin receives a retryable launch network error with a run id, the
+  backfill step polls Admin transcript storage for an exact
+  `video_edition_id`, `language`, and `mastra_run_id` match before marking the
+  target failed.
+- The confirmation query only succeeds when the transcript row has all chunks
+  present with non-null embeddings, so a partial write is not counted as a
+  successful backfill target.
+- Admin ingest retries the serializable transaction up to three attempts for
+  retryable Prisma transaction conflicts, logging only scrubbed correlation
+  fields.
+
+The important implementation boundary is that this is a bridge, not the final
+architecture. It prevents successful-but-slow Mastra runs from being reported
+as failed, but a first-class operator surface should eventually launch Mastra
+as an asynchronous job with a durable ledger or callback instead of waiting for
+the full workflow result through one HTTP request.
+
+The regression coverage is split across the two services:
+
+- `apps/mastra/src/mastra/workflows/transcript-embedding.test.ts` proves the
+  route accepts the caller run-id envelope and passes the same run id into the
+  workflow launcher.
+- `apps/admin/src/services/mastra-transcript-embedding-client.test.ts` proves
+  Admin preserves the caller run id on 504/network launch failures.
+- `apps/admin/src/workflows/transcriptEmbeddingBackfill.test.ts` proves a
+  timed-out launch is converted back to success when the exact Mastra run later
+  appears as a healthy transcript ingest row.
+- `apps/admin/src/services/transcript-embedding-ingest.service.test.ts` proves
+  retryable transcript transaction conflicts are retried, including the edge
+  case where the retryable Prisma code is on the top-level error and a nested
+  cause is non-retryable.
+
+The formal review for this hotfix is staged at
+`/tmp/compound-engineering/ce-code-review/20260620-071501-launch-timeout-correlation/report.md`.
 
 ## Cleanup and Versioning Strategy
 
