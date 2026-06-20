@@ -187,6 +187,39 @@ describe("launchMastraTranscriptEmbedding", () => {
     })
   })
 
+  it("preserves caller run id when the Mastra launch fetch throws", async () => {
+    const threw = vi.fn(async () => {
+      throw Object.assign(new Error("operation timed out"), {
+        name: "TimeoutError",
+      })
+    })
+
+    await expect(
+      launchMastraTranscriptEmbedding(
+        {
+          target: { videoId: "v-1", videoEditionId: "e-1" },
+          language: "en",
+          cmsVideoId: 42,
+          transcript: {
+            text: "hello transcript",
+            segments: [{ start: 0, end: 1, text: "hello transcript" }],
+          },
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          runId: "run-fetch-threw",
+          fetchImpl: threw as typeof fetch,
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+      mastraRunId: "run-fetch-threw",
+    })
+  })
+
   it("returns Mastra failures and upstream auth failures safely", async () => {
     const productFailure = {
       ok: false,

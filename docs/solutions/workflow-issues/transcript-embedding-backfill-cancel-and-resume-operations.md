@@ -338,6 +338,45 @@ The regression coverage is split across the two services:
 The formal review for this hotfix is staged at
 `/tmp/compound-engineering/ce-code-review/20260620-071501-launch-timeout-correlation/report.md`.
 
+### Hotfix checkpoint: thrown launch timeouts must preserve run ids
+
+After the Admin worker received the launch-timeout correlation hotfix, the
+all-language run resumed and successfully wrote fresh `1_jf-0-0` transcript
+rows. Progress later paused with no Admin ingest writes after
+2026-06-20 07:45:27 UTC while two transcript Workflow runs still held locked
+Graphile jobs. A scoped recovery run was still active beside the original
+all-language run, so it was cancelled through Workflow's native CLI while
+preserving the original all-language run:
+
+```bash
+WORKFLOW_TARGET_WORLD='@workflow/world-postgres' \
+WORKFLOW_POSTGRES_URL="$DATABASE_PUBLIC_URL" \
+pnpm --filter @forge/admin exec workflow cancel \
+  wrun_01KVHRYGJMW6QP4TBD70HS39GT \
+  --backend @workflow/world-postgres
+```
+
+The focused code gap was in Admin's Mastra launch client. The previous
+correlation bridge preserved the caller run id for HTTP 5xx/429 responses and
+parse errors, but the `fetch` catch branch still returned a retryable
+`network_error` without `mastraRunId`. That branch is the one hit by thrown
+timeouts such as `TimeoutError`, so the backfill step could not poll Admin
+storage for a late successful ingest. It would classify the target as failed
+even though Admin had already generated a stable run id before the request.
+
+The fix in `apps/admin/src/services/mastra-transcript-embedding-client.ts`
+returns the generated `runId` on thrown `network_error` results and includes
+the same run id in the scrubbed launch-threw diagnostic log. Regression
+coverage in `apps/admin/src/services/mastra-transcript-embedding-client.test.ts`
+now simulates a thrown `TimeoutError` and asserts that the result preserves
+`mastraRunId`.
+
+When this hotfix is deployed, restart or redeploy `@forge/admin/worker` after
+the scoped run cancellation. The cancelled run's Workflow status changes
+immediately, but an already locked Graphile job can remain held until the
+running worker process unwinds. Restarting the worker kills the stale in-flight
+JavaScript loop and lets the runtime re-enqueue only active runs.
+
 ### Deployment checkpoint: Admin worker must receive Admin-side hotfixes
 
 The launch-timeout correlation hotfix changed both Admin web code and Admin

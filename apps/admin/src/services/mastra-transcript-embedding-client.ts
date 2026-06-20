@@ -276,6 +276,7 @@ export async function launchMastraTranscriptEmbedding(
     console.error(
       JSON.stringify({
         event: "mastra_transcript_embedding_launch_threw",
+        mastraRunId: runId,
         name: error instanceof Error ? error.name : "unknown",
         message:
           error instanceof Error
@@ -283,7 +284,12 @@ export async function launchMastraTranscriptEmbedding(
             : String(error).slice(0, 240),
       }),
     )
-    return { ok: false, reason: "network_error", retryable: true }
+    return {
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+      mastraRunId: runId,
+    }
   }
 
   if (response.status === 401) {
