@@ -338,6 +338,40 @@ The regression coverage is split across the two services:
 The formal review for this hotfix is staged at
 `/tmp/compound-engineering/ce-code-review/20260620-071501-launch-timeout-correlation/report.md`.
 
+### Deployment checkpoint: Admin worker must receive Admin-side hotfixes
+
+The launch-timeout correlation hotfix changed both Admin web code and Admin
+workflow/backfill code. Deploying `@forge/admin` alone is not enough in
+production: the durable transcript backfill loop runs on the separate
+`@forge/admin/worker` Railway service. After the web and Mastra services were
+updated, `@forge/admin/worker` was still on the June 19 deployment from `main`,
+so re-enqueued transcript runs could continue using the old launch behavior.
+
+The operational fix was to deploy the same hotfix commit to the worker service:
+
+```bash
+railway up \
+  --project 98952497-a4d9-4714-8fe8-0cdbff3147c9 \
+  --environment production \
+  --service '@forge/admin/worker' \
+  --detach \
+  --message 'hotfix transcript embedding launch timeout correlation f4b48379'
+```
+
+Deployment `46f2c673-f3a3-4af7-b117-1b314989679b` reached `SUCCESS` on
+2026-06-20. Startup logs showed `No pending migrations to apply` followed by
+`[world-postgres] Re-enqueued 3 active run(s) on startup`, which confirmed the
+worker was live and had picked up active durable runs on the new code.
+
+When an Admin-side hotfix touches workflow steps, launch clients, ingest
+helpers, or any code reachable from a `"use workflow"` body, verify all three
+runtime surfaces before retrying production work:
+
+- `@forge/admin` for GraphQL trigger and internal Mastra ingest routes.
+- `@forge/admin/worker` for the durable Workflow loop and per-target launch
+  logic.
+- `@forge/mastra` for provider chunking, embedding, and Admin callback behavior.
+
 ## Cleanup and Versioning Strategy
 
 Successful enriched transcript writes are upserts on the transcript identity
