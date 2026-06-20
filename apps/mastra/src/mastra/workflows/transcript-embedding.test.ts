@@ -59,6 +59,27 @@ function embeddingResult(inputs: string[]): EmbeddingProviderResult {
   }
 }
 
+function seededEmbeddingResult(inputs: string[]): EmbeddingProviderResult {
+  const seedForInput = (value: string) => {
+    if (value.includes("Transcript: one two three")) return 1
+    if (value.includes("Transcript: four five six")) return 2
+    if (value.includes("Transcript: seven eight nine")) return 3
+    if (value.includes("Transcript: ten eleven twelve")) return 4
+    return 9
+  }
+
+  return {
+    embeddings: inputs.map((value) => vector(seedForInput(value))),
+    dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+    tokenCount: inputs.length * 3,
+    model: "embeddings",
+    provider: "jesus-film-ai-gateway",
+    requestModel: "embeddings",
+    nativeDimensions: 4096,
+    transformVersion: "matryoshka-truncate-1536-v1",
+  }
+}
+
 describe("transcript embedding workflow", () => {
   it("plans segment-aware chunks and submits aligned vectors to Admin ingest", async () => {
     const embeddingRequester = vi.fn(async (items: string[]) =>
@@ -210,6 +231,224 @@ describe("transcript embedding workflow", () => {
         ],
       }),
     )
+  })
+
+  it("recursively splits non-retryable provider batch rejections and preserves chunk order", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const embeddingRequester = vi.fn(async (items: string[]) => {
+      if (items.length > 1) {
+        throw new EmbeddingProviderError(
+          "upstream_failed",
+          "provider rejected oversized batch",
+          false,
+        )
+      }
+      return seededEmbeddingResult(items)
+    })
+    const adminIngestClient = vi.fn(async (payload) => ({
+      ok: true as const,
+      result: {
+        status: "created" as const,
+        target: {
+          videoId: "video-1",
+          videoEditionId: "edition-1",
+          coreId: "core-1",
+          language: payload.language,
+        },
+        chunks: payload.chunks.length,
+        model: payload.model.name,
+        dimensions: payload.model.dimensions,
+        mastraRunId: payload.generation.mastraRunId,
+      },
+    }))
+
+    const result = await runTranscriptEmbeddingWorkflow(
+      input({
+        transcript: {
+          text: "one two three four five six seven eight nine ten eleven twelve",
+          artifactKey: "asset-1/transcript.json",
+        },
+        chunking: {
+          maxChunkTokens: 4,
+          overlapTokens: 0,
+          maxBatchChunks: 4,
+          maxBatchTokens: 100_000,
+        },
+      }),
+      {
+        runId: "run-split-batch",
+        embeddingRequester,
+        adminIngestClient,
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "created",
+      chunks: 4,
+      mastraRunId: "run-split-batch",
+    })
+    expect(
+      embeddingRequester.mock.calls.map(([items]) => items.length),
+    ).toEqual([4, 2, 1, 1, 2, 1, 1])
+    const splitWarnings = warnSpy.mock.calls.map(([message]) =>
+      JSON.parse(String(message)),
+    )
+    expect(splitWarnings).toEqual([
+      expect.objectContaining({
+        event: "transcript_embedding_batch_split_retry",
+        mastraRunId: "run-split-batch",
+        language: "en",
+        model: "embeddings",
+        provider: "jesus-film-ai-gateway",
+        requestModel: "embeddings",
+        errorCode: "upstream_failed",
+        retryable: false,
+        splitDepth: 0,
+        splitPath: "root",
+        chunkCount: 4,
+      }),
+      expect.objectContaining({
+        splitDepth: 1,
+        splitPath: "root.1",
+        chunkCount: 2,
+      }),
+      expect.objectContaining({
+        splitDepth: 1,
+        splitPath: "root.2",
+        chunkCount: 2,
+      }),
+    ])
+    const serializedWarnings = JSON.stringify(splitWarnings)
+    expect(serializedWarnings).not.toContain("one two three")
+    expect(serializedWarnings).not.toContain("Transcript:")
+    expect(serializedWarnings).not.toContain("embeddingInputText")
+    expect(serializedWarnings).not.toContain('"embeddings":')
+    expect(serializedWarnings).not.toContain('"embedding":')
+    expect(serializedWarnings).not.toContain("apiKey")
+    expect(serializedWarnings).not.toContain(
+      "provider rejected oversized batch",
+    )
+    warnSpy.mockRestore()
+    expect(adminIngestClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chunks: [
+          expect.objectContaining({
+            text: "one two three",
+            embedding: vector(1),
+          }),
+          expect.objectContaining({
+            text: "four five six",
+            embedding: vector(2),
+          }),
+          expect.objectContaining({
+            text: "seven eight nine",
+            embedding: vector(3),
+          }),
+          expect.objectContaining({
+            text: "ten eleven twelve",
+            embedding: vector(4),
+          }),
+        ],
+      }),
+    )
+  })
+
+  it("rejects malformed split child results before Admin ingest", async () => {
+    const embeddingRequester = vi.fn(async (items: string[]) => {
+      if (items.length > 2) {
+        throw new EmbeddingProviderError(
+          "upstream_failed",
+          "provider rejected oversized batch",
+          false,
+        )
+      }
+      if (items.length === 2) return seededEmbeddingResult(items.slice(0, 1))
+      return seededEmbeddingResult(items)
+    })
+    const adminIngestClient = vi.fn()
+
+    await expect(
+      runTranscriptEmbeddingWorkflow(
+        input({
+          transcript: {
+            text: "one two three four five six seven eight nine ten eleven twelve",
+            artifactKey: "asset-1/transcript.json",
+          },
+          chunking: {
+            maxChunkTokens: 4,
+            overlapTokens: 0,
+            maxBatchChunks: 4,
+            maxBatchTokens: 100_000,
+          },
+        }),
+        {
+          runId: "run-split-count-mismatch",
+          embeddingRequester,
+          adminIngestClient,
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "provider_failed",
+      retryable: true,
+      mastraRunId: "run-split-count-mismatch",
+      adminStatus: undefined,
+      adminReason: undefined,
+    })
+    expect(
+      embeddingRequester.mock.calls.map(([items]) => items.length),
+    ).toEqual([4, 2])
+    expect(adminIngestClient).not.toHaveBeenCalled()
+  })
+
+  it("rejects inconsistent split child provenance before Admin ingest", async () => {
+    const embeddingRequester = vi.fn(async (items: string[]) => {
+      if (items.length > 2) {
+        throw new EmbeddingProviderError(
+          "upstream_failed",
+          "provider rejected oversized batch",
+          false,
+        )
+      }
+      const result = seededEmbeddingResult(items)
+      if (items[0]?.includes("Transcript: one two three")) {
+        return { ...result, transformVersion: undefined }
+      }
+      return result
+    })
+    const adminIngestClient = vi.fn()
+
+    await expect(
+      runTranscriptEmbeddingWorkflow(
+        input({
+          transcript: {
+            text: "one two three four five six seven eight nine ten eleven twelve",
+            artifactKey: "asset-1/transcript.json",
+          },
+          chunking: {
+            maxChunkTokens: 4,
+            overlapTokens: 0,
+            maxBatchChunks: 4,
+            maxBatchTokens: 100_000,
+          },
+        }),
+        {
+          runId: "run-split-provenance-mismatch",
+          embeddingRequester,
+          adminIngestClient,
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "provider_dimension_mismatch",
+      retryable: false,
+      mastraRunId: "run-split-provenance-mismatch",
+    })
+    expect(
+      embeddingRequester.mock.calls.map(([items]) => items.length),
+    ).toEqual([4, 2, 2])
+    expect(adminIngestClient).not.toHaveBeenCalled()
   })
 
   it("returns safe failures for empty sources, provider failures, and Admin rejects", async () => {
