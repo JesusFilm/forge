@@ -1,5 +1,6 @@
 // Transcript embedding backfill — durable useworkflow job that launches
-// Mastra from manager's transcript.json source artifacts.
+// Mastra from subtitle timed text first, then manager transcript.json
+// fallback artifacts.
 //
 // Flow (Stage 2 — feat-116):
 //   1. stepLoadMapping              — load coreId → cms video id snapshot
@@ -11,21 +12,21 @@
 //                                     dub languages
 //   3. groupTargetsByVideoEdition   — flat targets → groups keyed by
 //                                     (videoId, videoEditionId). The
-//                                     transcript source artifact is shared
-//                                     across every language in a group,
-//                                     so fetching it once per group
-//                                     collapses S3 reads from N×L to N.
-//   4. stepProcessTranscriptEmbeddingGroups — one durable step that:
-//        4a. Load transcript source artifact ONCE for the group.
+//                                     transcript source gaps still aggregate
+//                                     at the video-edition boundary.
+//   4. stepProcessTranscriptEmbeddingGroups — target-bounded durable batches:
+//        4a. Load transcript source artifact through a step-local cache.
 //        4b. For each language in the group, call Mastra with Admin
 //            target identifiers so Mastra embeds and Admin ingest stores.
-//   5. stepReport                   — aggregate per-target outcomes.
+//   5. stepConfirmTranscriptEmbeddingIngests — short polling steps for Mastra
+//                                     runs that outlive the launch request.
+//   6. stepReport                   — aggregate per-target outcomes.
 //
 // feat-132 boundary: Admin never imports manager-generated transcript
 // vectors. Admin reads transcript source only; Mastra owns chunking and
 // provider calls; Admin ingest owns vector storage.
 //
-// Per-target errors are caught inside the per-language step so one bad
+// Per-target errors are caught inside the per-language helper so one bad
 // artifact doesn't halt the backfill. A group-level artifact-load
 // failure cascades to per-language outcomes for every language in the
 // group with the right classification (artifact_missing → skipped;
@@ -34,16 +35,16 @@
 // (transcriptId, chunkIndex) for chunks), so the workflow is safe to
 // re-run.
 //
-// pLimit boundary moved up one level relative to Stage 1: the cap now
-// constrains concurrent (video, edition) GROUPS, not concurrent flat
-// targets. Inside a group, per-language work runs sequentially so the
-// loaded artifact stays scoped to one stack frame.
+// Concurrency boundary moved up one level relative to Stage 1, then
+// feat-192's production hotfix added target-bounded step batches so the full
+// corpus is not held inside one Graphile task.
 //
 // Language model: data-derived at enumeration time, not a hardcoded
 // list. Earlier prototype iterations hardcoded a `DEFAULT_LOCALES =
 // ['en', 'es', 'fr']` constant + an `en` fallback; both dropped once
 // the enumeration became data-derived.
 
+import { getWorkflowMetadata, sleep } from "workflow"
 import { prisma } from "@/db/client"
 import { env } from "@/config/env"
 import {
@@ -55,7 +56,12 @@ import type {
   ResolvedTranscriptEmbeddingSource,
   TranscriptSourceGap,
 } from "@/services/transcript-source-resolver.service"
-import { stepProcessTranscriptEmbeddingGroups } from "./_steps/process-transcript-embedding-group"
+import {
+  stepConfirmTranscriptEmbeddingIngests,
+  stepFailPendingTranscriptEmbeddingIngests,
+  stepProcessTranscriptEmbeddingGroups,
+  type PendingTranscriptIngestConfirmation,
+} from "./_steps/process-transcript-embedding-group"
 
 /**
  * Default per-group concurrency for the Mastra transcript-embedding
@@ -70,6 +76,18 @@ import { stepProcessTranscriptEmbeddingGroups } from "./_steps/process-transcrip
  * provider work to Mastra.
  */
 export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 5
+export const DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT = 50
+export const DEFAULT_TRANSCRIPT_EMBEDDING_STEP_MAX_DURATION_MS = 220_000
+export const DEFAULT_TRANSCRIPT_EMBEDDING_LAUNCH_TIMEOUT_MS = 120_000
+export const TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS = 20 * 60 * 1_000
+export const TIMED_OUT_LAUNCH_CONFIRM_POLL_MS = 5_000
+
+type TranscriptEmbeddingRuntimeConfig = {
+  concurrency: number
+  stepTargetLimit: number
+  stepMaxDurationMs: number
+  launchTimeoutMs: number
+}
 
 function transcriptEmbeddingConcurrency(): number {
   const value =
@@ -80,6 +98,15 @@ function transcriptEmbeddingConcurrency(): number {
   return Number.isInteger(concurrency) && concurrency > 0
     ? concurrency
     : DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+}
+
+function transcriptEmbeddingRuntimeConfig(): TranscriptEmbeddingRuntimeConfig {
+  return {
+    concurrency: transcriptEmbeddingConcurrency(),
+    stepTargetLimit: DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT,
+    stepMaxDurationMs: DEFAULT_TRANSCRIPT_EMBEDDING_STEP_MAX_DURATION_MS,
+    launchTimeoutMs: DEFAULT_TRANSCRIPT_EMBEDDING_LAUNCH_TIMEOUT_MS,
+  }
 }
 
 export type TranscriptEmbeddingBackfillInput = {
@@ -242,19 +269,30 @@ export async function runTranscriptEmbeddingBackfill(
     ? allTargets.filter((t) => languageFilter.has(t.language))
     : allTargets
 
-  // Group flat targets by (video, edition) so the artifact load
-  // collapses from per-target to per-group.
+  // Group flat targets by (video, edition) first so reporting and source-gap
+  // aggregation keep the same order. The runtime batcher below shards large
+  // groups by target so no single Workflow step owns a whole multilingual
+  // edition.
   const groups = groupTargetsByVideoEdition(targets)
 
-  // Bounded parallelism is intentionally inside one durable step below.
-  // Production useworkflow rejects dynamic repeated calls to the same step
-  // function from a groups.map(...) loop with event-log corruption.
-  const concurrency = transcriptEmbeddingConcurrency()
+  // Persist runtime knobs before batching so replay keeps the same partitioning
+  // even if Railway env changes during a long run.
+  const runtimeConfig = await stepResolveTranscriptEmbeddingRuntimeConfig()
+
+  // Production useworkflow rejects parallel repeated calls to the same step
+  // function from a groups.map(...) loop with event-log corruption. Keep the
+  // repeated step calls sequential at workflow scope, and keep the parallelism
+  // inside each target-bounded batch step.
+  const groupBatches = batchGroupsByTargetLimit(
+    groups,
+    runtimeConfig.stepTargetLimit,
+  )
 
   // Structured start log so the workflow's effective concurrency is
   // observable from any trigger path. `groupCount` surfaces Stage 2's
   // reshape so an operator inspecting logs can see the artifact-fetch
-  // fan-in.
+  // fan-in. `groupBatchCount` and `stepTargetLimit` surface the Workflow
+  // time-slicing boundary used to keep Graphile tasks below the step ceiling.
   console.log(
     JSON.stringify({
       workflow: "transcript-embedding-backfill",
@@ -262,16 +300,42 @@ export async function runTranscriptEmbeddingBackfill(
       mappingGeneratedAt: mapping.generatedAt,
       totalTargets: targets.length,
       groupCount: groups.length,
-      concurrency,
+      groupBatchCount: groupBatches.length,
+      stepTargetLimit: runtimeConfig.stepTargetLimit,
+      stepMaxDurationMs: runtimeConfig.stepMaxDurationMs,
+      launchTimeoutMs: runtimeConfig.launchTimeoutMs,
+      concurrency: runtimeConfig.concurrency,
       languageFilter:
         input.languages && input.languages.length > 0 ? input.languages : null,
     }),
   )
 
-  const outcomes = await stepProcessTranscriptEmbeddingGroups(
-    groups,
-    input.mode ?? "idempotent",
-    concurrency,
+  const outcomes: BackfillOutcome[] = []
+  let pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
+  for (const groupBatch of groupBatches) {
+    let remainingBatch = groupBatch
+    while (remainingBatch.length > 0) {
+      const batchResult = await stepProcessTranscriptEmbeddingGroups(
+        remainingBatch,
+        input.mode ?? "idempotent",
+        runtimeConfig.concurrency,
+        runtimeConfig.stepMaxDurationMs,
+        runtimeConfig.launchTimeoutMs,
+      )
+      outcomes.push(...batchResult.outcomes)
+      pendingConfirmations.push(...batchResult.pendingConfirmations)
+
+      const confirmation =
+        await confirmPendingTranscriptIngestsOnce(pendingConfirmations)
+      outcomes.push(...confirmation.outcomes)
+      pendingConfirmations = confirmation.pendingConfirmations
+      remainingBatch = batchResult.unprocessedGroups
+    }
+  }
+  outcomes.push(
+    ...(await waitForPendingTranscriptIngestConfirmations(
+      pendingConfirmations,
+    )),
   )
 
   return stepReport({
@@ -286,6 +350,58 @@ export async function runTranscriptEmbeddingBackfill(
 async function stepLoadMapping(s3Key: string): Promise<CoreIdMapping> {
   "use step"
   return loadCoreIdMapping(s3Key)
+}
+
+async function stepResolveTranscriptEmbeddingRuntimeConfig(): Promise<TranscriptEmbeddingRuntimeConfig> {
+  "use step"
+  return transcriptEmbeddingRuntimeConfig()
+}
+
+async function confirmPendingTranscriptIngestsOnce(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+) {
+  if (pendingConfirmations.length === 0) {
+    return { outcomes: [], pendingConfirmations: [] }
+  }
+  return stepConfirmTranscriptEmbeddingIngests(pendingConfirmations)
+}
+
+async function waitForPendingTranscriptIngestConfirmations(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+): Promise<BackfillOutcome[]> {
+  let pending = Array.from(pendingConfirmations)
+  const outcomes: BackfillOutcome[] = []
+  const maxPolls = Math.ceil(
+    TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS / TIMED_OUT_LAUNCH_CONFIRM_POLL_MS,
+  )
+
+  for (let poll = 0; pending.length > 0 && poll <= maxPolls; poll += 1) {
+    const confirmation = await stepConfirmTranscriptEmbeddingIngests(pending)
+    outcomes.push(...confirmation.outcomes)
+    pending = confirmation.pendingConfirmations
+
+    if (pending.length === 0 || poll === maxPolls) break
+    await sleepForPendingConfirmation(TIMED_OUT_LAUNCH_CONFIRM_POLL_MS)
+  }
+
+  if (pending.length === 0) return outcomes
+
+  outcomes.push(...(await stepFailPendingTranscriptEmbeddingIngests(pending)))
+  return outcomes
+}
+
+async function sleepForPendingConfirmation(ms: number): Promise<void> {
+  try {
+    getWorkflowMetadata()
+    await sleep(ms)
+  } catch {
+    await stepSleepForDirectExecution(ms)
+  }
+}
+
+async function stepSleepForDirectExecution(ms: number): Promise<void> {
+  "use step"
+  await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function stepEnumerateTargets(
@@ -460,6 +576,41 @@ function groupTargetsByVideoEdition(
   return Array.from(groupMap.values(), (e) => e.group)
 }
 
+function batchGroupsByTargetLimit(
+  groups: readonly BackfillGroup[],
+  targetLimit: number,
+): BackfillGroup[][] {
+  const safeLimit =
+    Number.isInteger(targetLimit) && targetLimit > 0
+      ? targetLimit
+      : DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT
+  const batches: BackfillGroup[][] = []
+  let current: BackfillGroup[] = []
+  let currentTargetCount = 0
+
+  const flush = () => {
+    if (current.length === 0) return
+    batches.push(current)
+    current = []
+    currentTargetCount = 0
+  }
+
+  for (const group of groups) {
+    for (const target of group.targets) {
+      if (currentTargetCount >= safeLimit) flush()
+
+      current.push({
+        ...group,
+        targets: [target],
+      })
+      currentTargetCount += 1
+    }
+  }
+
+  flush()
+  return batches
+}
+
 /**
  * Project the outcome list to the deduped, sorted set of missing
  * transcript source artifacts. See R1's `deriveMissingArtifacts` for the full
@@ -554,4 +705,5 @@ function stepReport(args: {
 export const _internals = {
   stepReport,
   groupTargetsByVideoEdition,
+  batchGroupsByTargetLimit,
 }

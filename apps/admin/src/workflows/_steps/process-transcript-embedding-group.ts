@@ -1,4 +1,3 @@
-import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import {
   ManagerArtifactError,
@@ -22,13 +21,13 @@ import type {
   TranscriptEmbeddingSourceGap,
 } from "../transcriptEmbeddingBackfill"
 
-const TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS = 20 * 60 * 1_000
-const TIMED_OUT_LAUNCH_CONFIRM_POLL_MS = 5_000
-
 type ManagerSourceLoadState =
-  | { status: "not-attempted" }
   | { status: "resolved"; artifact: TranscriptSourceArtifact }
   | { status: "failed"; reason: string; missing: boolean }
+
+type ManagerSourceLoader = (
+  cmsVideoId: number,
+) => Promise<ManagerSourceLoadState>
 
 type TranscriptIngestConfirmation = {
   chunks: number
@@ -40,6 +39,26 @@ type TranscriptIngestConfirmation = {
   sourceContentHash: string
 }
 
+export type PendingTranscriptIngestConfirmation = {
+  status: "pending-ingest-confirmation"
+  target: BackfillTarget
+  language: string
+  sourceKind: ResolvedTranscriptEmbeddingSource["sourceKind"]
+  mastraRunId: string
+  startedAtEpochMs: number
+}
+
+export type TranscriptEmbeddingGroupBatchResult = {
+  outcomes: BackfillOutcome[]
+  pendingConfirmations: PendingTranscriptIngestConfirmation[]
+  unprocessedGroups: BackfillGroup[]
+}
+
+export type TranscriptIngestConfirmationBatchResult = {
+  outcomes: BackfillOutcome[]
+  pendingConfirmations: PendingTranscriptIngestConfirmation[]
+}
+
 type TranscriptIngestConfirmationRow = {
   total_chunks: number | bigint
   total_tokens: number | bigint
@@ -48,11 +67,6 @@ type TranscriptIngestConfirmationRow = {
   embedding_provider: string | null
   source_content_hash: string | null
   healthy_chunks: number | bigint
-}
-
-function sleep(ms: number): Promise<void> {
-  if (ms <= 0) return Promise.resolve()
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function managerTranscriptSourceFromArtifact(
@@ -78,6 +92,40 @@ function managerTranscriptSourceFromArtifact(
       languageId: target.languageId,
       languageSlug: target.languageSlug,
     },
+  }
+}
+
+function createManagerSourceLoader(): ManagerSourceLoader {
+  const cache = new Map<number, Promise<ManagerSourceLoadState>>()
+
+  return (cmsVideoId) => {
+    const existing = cache.get(cmsVideoId)
+    if (existing) return existing
+
+    const loading = readTranscriptSourceArtifact(String(cmsVideoId))
+      .then(
+        (artifact): ManagerSourceLoadState => ({
+          status: "resolved",
+          artifact,
+        }),
+      )
+      .catch((error): ManagerSourceLoadState => {
+        const missing =
+          error instanceof ManagerArtifactError &&
+          error.code === "artifact_missing"
+        return {
+          status: "failed",
+          missing,
+          reason: missing
+            ? "artifact_missing"
+            : error instanceof Error
+              ? error.message
+              : String(error),
+        }
+      })
+
+    cache.set(cmsVideoId, loading)
+    return loading
   }
 }
 
@@ -230,60 +278,41 @@ async function readTranscriptIngestConfirmation(
   }
 }
 
-async function waitForTimedOutLaunchIngest(
-  target: BackfillTarget,
-  language: string,
-  mastraRunId: string,
-): Promise<TranscriptIngestConfirmation | null> {
-  const deadline = Date.now() + TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS
-
-  while (Date.now() <= deadline) {
-    const confirmation = await readTranscriptIngestConfirmation(
-      target,
-      language,
-      mastraRunId,
-    )
-    if (confirmation) return confirmation
-    await sleep(TIMED_OUT_LAUNCH_CONFIRM_POLL_MS)
-  }
-
-  return null
-}
-
 async function launchTranscriptEmbedding(
   target: BackfillTarget,
   transcriptSource: ResolvedTranscriptEmbeddingSource,
   mode: MastraTranscriptEmbeddingMode,
-): Promise<BackfillOutcome> {
+  launchTimeoutMs: number,
+): Promise<BackfillOutcome | PendingTranscriptIngestConfirmation> {
   const startedAt = Date.now()
 
   try {
-    const result = await launchMastraTranscriptEmbedding({
-      target: {
-        videoId: target.videoId,
-        videoEditionId: target.videoEditionId,
-        coreId: target.coreId,
+    const result = await launchMastraTranscriptEmbedding(
+      {
+        target: {
+          videoId: target.videoId,
+          videoEditionId: target.videoEditionId,
+          coreId: target.coreId,
+        },
+        language: target.language,
+        cmsVideoId: target.cmsVideoId,
+        transcript: transcriptSource.transcript,
+        mode,
       },
-      language: target.language,
-      cmsVideoId: target.cmsVideoId,
-      transcript: transcriptSource.transcript,
-      mode,
-    })
+      { timeoutMs: launchTimeoutMs },
+    )
     if (!result.ok) {
       if (result.reason === "network_error" && result.mastraRunId) {
-        const confirmation = await waitForTimedOutLaunchIngest(
+        const pending: PendingTranscriptIngestConfirmation = {
+          status: "pending-ingest-confirmation",
           target,
-          target.language,
-          result.mastraRunId,
-        )
-        if (confirmation) {
-          return toSucceeded(
-            target,
-            transcriptSource.sourceKind,
-            confirmation,
-            Date.now() - startedAt,
-          )
+          language: target.language,
+          sourceKind: transcriptSource.sourceKind,
+          mastraRunId: result.mastraRunId,
+          startedAtEpochMs: startedAt,
         }
+        logPendingConfirmation(pending)
+        return pending
       }
 
       return {
@@ -325,6 +354,30 @@ async function launchTranscriptEmbedding(
   }
 }
 
+function logPendingConfirmation(
+  pending: PendingTranscriptIngestConfirmation,
+): void {
+  try {
+    console.log(
+      JSON.stringify({
+        workflow: "transcript-embedding-backfill",
+        event: "transcript_index_pending_ingest_confirmation",
+        coreId: pending.target.coreId,
+        videoEditionId: pending.target.videoEditionId,
+        language: pending.language,
+        sourceKind: pending.sourceKind,
+        mastraRunId: pending.mastraRunId,
+      }),
+    )
+  } catch (logErr) {
+    console.error(
+      `[transcript-embedding-backfill] logPendingConfirmation failed: ${
+        logErr instanceof Error ? logErr.message : String(logErr)
+      }`,
+    )
+  }
+}
+
 /**
  * Plain per-group worker. This deliberately is NOT a `"use step"` function:
  * production useworkflow gives every call to the same step function the same
@@ -333,11 +386,13 @@ async function launchTranscriptEmbedding(
 async function processTranscriptEmbeddingGroup(
   group: BackfillGroup,
   mode: MastraTranscriptEmbeddingMode,
-): Promise<BackfillOutcome[]> {
+  loadManagerSource: ManagerSourceLoader,
+  launchTimeoutMs: number,
+): Promise<TranscriptIngestConfirmationBatchResult> {
   const groupStartedAt = Date.now()
-  let managerSourceState: ManagerSourceLoadState = { status: "not-attempted" }
 
   const outcomes: BackfillOutcome[] = []
+  const pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
   for (const target of group.targets) {
     const subtitleResolution = await resolveSubtitleTranscriptSource(
       prisma,
@@ -349,36 +404,9 @@ async function processTranscriptEmbeddingGroup(
         : null
 
     if (!source) {
-      if (managerSourceState.status === "not-attempted") {
-        try {
-          managerSourceState = {
-            status: "resolved",
-            artifact: await readTranscriptSourceArtifact(
-              String(group.cmsVideoId),
-            ),
-          }
-        } catch (error) {
-          const missing =
-            error instanceof ManagerArtifactError &&
-            error.code === "artifact_missing"
-          managerSourceState = {
-            status: "failed",
-            missing,
-            reason: missing
-              ? "artifact_missing"
-              : error instanceof Error
-                ? error.message
-                : String(error),
-          }
-        }
-      }
+      const managerSourceState = await loadManagerSource(group.cmsVideoId)
 
-      if (managerSourceState.status === "resolved") {
-        source = managerTranscriptSourceFromArtifact(
-          target,
-          managerSourceState.artifact,
-        )
-      } else if (managerSourceState.status === "failed") {
+      if (managerSourceState.status === "failed") {
         const durationMs = Date.now() - groupStartedAt
         const sourceGap = sourceGapForMissingManager(
           target,
@@ -405,59 +433,153 @@ async function processTranscriptEmbeddingGroup(
         logOutcome(outcome)
         outcomes.push(outcome)
         continue
-      } else {
-        throw new Error("internal transcript source resolver state was unset")
       }
+
+      source = managerTranscriptSourceFromArtifact(
+        target,
+        managerSourceState.artifact,
+      )
     }
 
-    const outcome = await launchTranscriptEmbedding(target, source, mode)
-    logOutcome(outcome)
-    outcomes.push(outcome)
+    const outcome = await launchTranscriptEmbedding(
+      target,
+      source,
+      mode,
+      launchTimeoutMs,
+    )
+    if (outcome.status === "pending-ingest-confirmation") {
+      pendingConfirmations.push(outcome)
+    } else {
+      logOutcome(outcome)
+      outcomes.push(outcome)
+    }
   }
-  return outcomes
+  return { outcomes, pendingConfirmations }
 }
 
 /**
- * One durable step for all group work. Keep bounded parallelism inside this
- * step so the production workflow event log sees a single step event rather
- * than thousands of repeated dynamic group step events.
+ * One durable step for a bounded batch of group work. Keep parallelism inside
+ * this step so the production workflow event log sees sequential batch steps
+ * rather than repeated dynamic group step fanout.
  */
 export async function stepProcessTranscriptEmbeddingGroups(
   groups: readonly BackfillGroup[],
   mode: MastraTranscriptEmbeddingMode,
   concurrency: number,
+  stepMaxDurationMs: number,
+  launchTimeoutMs: number,
+): Promise<TranscriptEmbeddingGroupBatchResult> {
+  "use step"
+
+  const safeConcurrency =
+    Number.isInteger(concurrency) && concurrency > 0 ? concurrency : 1
+  const safeStepMaxDurationMs =
+    Number.isInteger(stepMaxDurationMs) && stepMaxDurationMs > 0
+      ? stepMaxDurationMs
+      : 220_000
+  const batchStartedAt = Date.now()
+  const loadManagerSource = createManagerSourceLoader()
+
+  const outcomes: BackfillOutcome[] = []
+  const pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
+  const unprocessedGroups: BackfillGroup[] = []
+
+  for (let i = 0; i < groups.length; i += safeConcurrency) {
+    if (i > 0 && Date.now() - batchStartedAt >= safeStepMaxDurationMs) {
+      unprocessedGroups.push(...groups.slice(i))
+      break
+    }
+
+    const wave = groups.slice(i, i + safeConcurrency)
+    const settled = await Promise.allSettled(
+      wave.map((group) =>
+        processTranscriptEmbeddingGroup(
+          group,
+          mode,
+          loadManagerSource,
+          launchTimeoutMs,
+        ),
+      ),
+    )
+
+    for (const [waveIndex, result] of settled.entries()) {
+      const group = wave[waveIndex]!
+      if (result.status === "fulfilled") {
+        outcomes.push(...result.value.outcomes)
+        pendingConfirmations.push(...result.value.pendingConfirmations)
+        continue
+      }
+
+      const reason =
+        result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason)
+      const durationMs = Date.now() - batchStartedAt
+
+      for (const target of group.targets) {
+        const synthetic: BackfillOutcome = {
+          status: "failed",
+          target,
+          language: target.language,
+          reason,
+          durationMs,
+        }
+        logOutcome(synthetic)
+        outcomes.push(synthetic)
+      }
+    }
+  }
+
+  return { outcomes, pendingConfirmations, unprocessedGroups }
+}
+
+export async function stepConfirmTranscriptEmbeddingIngests(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+): Promise<TranscriptIngestConfirmationBatchResult> {
+  "use step"
+
+  const outcomes: BackfillOutcome[] = []
+  const pending: PendingTranscriptIngestConfirmation[] = []
+
+  for (const confirmation of pendingConfirmations) {
+    const result = await readTranscriptIngestConfirmation(
+      confirmation.target,
+      confirmation.language,
+      confirmation.mastraRunId,
+    )
+
+    if (!result) {
+      pending.push(confirmation)
+      continue
+    }
+
+    const outcome = toSucceeded(
+      confirmation.target,
+      confirmation.sourceKind,
+      result,
+      Date.now() - confirmation.startedAtEpochMs,
+    )
+    logOutcome(outcome)
+    outcomes.push(outcome)
+  }
+
+  return { outcomes, pendingConfirmations: pending }
+}
+
+export async function stepFailPendingTranscriptEmbeddingIngests(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
 ): Promise<BackfillOutcome[]> {
   "use step"
 
-  const limit = pLimit(concurrency)
-  const batchStartedAt = Date.now()
-
-  const settled = await Promise.allSettled(
-    groups.map((group) =>
-      limit(() => processTranscriptEmbeddingGroup(group, mode)),
-    ),
-  )
-
-  return settled.flatMap((result, i) => {
-    const group = groups[i]!
-    if (result.status === "fulfilled") return result.value
-
-    const reason =
-      result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-    const durationMs = Date.now() - batchStartedAt
-
-    return group.targets.map((target) => {
-      const synthetic: BackfillOutcome = {
-        status: "failed",
-        target,
-        language: target.language,
-        reason,
-        durationMs,
-      }
-      logOutcome(synthetic)
-      return synthetic
-    })
+  return pendingConfirmations.map((confirmation) => {
+    const outcome: BackfillOutcome = {
+      status: "failed",
+      target: confirmation.target,
+      language: confirmation.language,
+      reason: "network_error",
+      durationMs: Date.now() - confirmation.startedAtEpochMs,
+    }
+    logOutcome(outcome)
+    return outcome
   })
 }

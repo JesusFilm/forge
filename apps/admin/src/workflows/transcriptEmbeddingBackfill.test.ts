@@ -7,6 +7,16 @@ vi.mock("@/config/env", () => ({
   },
 }))
 
+vi.mock("workflow", () => ({
+  getWorkflowMetadata: vi.fn(() => ({
+    workflowName: "test-workflow",
+    workflowRunId: "test-run",
+    workflowStartedAt: new Date("2026-06-20T00:00:00.000Z"),
+    url: "http://test.local/workflow",
+  })),
+  sleep: vi.fn(async () => undefined),
+}))
+
 vi.mock("@/db/client", () => {
   const mock = {
     $queryRaw: vi.fn(async () => []),
@@ -63,6 +73,7 @@ vi.mock("@/services/mastra-transcript-embedding-client", () => ({
 
 const { prisma } = await import("@/db/client")
 const { env } = await import("@/config/env")
+const { getWorkflowMetadata, sleep } = await import("workflow")
 const { ManagerArtifactError, readTranscriptSourceArtifact } =
   await import("@/services/manager-artifacts.service")
 const { launchMastraTranscriptEmbedding } =
@@ -136,6 +147,15 @@ describe("runTranscriptEmbeddingBackfill", () => {
       }
     ).videoSubtitle.findMany.mockResolvedValue([])
     vi.unstubAllGlobals()
+    vi.mocked(getWorkflowMetadata).mockClear()
+    vi.mocked(getWorkflowMetadata).mockReturnValue({
+      workflowName: "test-workflow",
+      workflowRunId: "test-run",
+      workflowStartedAt: new Date("2026-06-20T00:00:00.000Z"),
+      url: "http://test.local/workflow",
+    })
+    vi.mocked(sleep).mockClear()
+    vi.mocked(sleep).mockResolvedValue(undefined)
     vi.mocked(readTranscriptSourceArtifact).mockReset()
     vi.mocked(readTranscriptSourceArtifact).mockResolvedValue(STUB_TRANSCRIPT)
     vi.mocked(launchMastraTranscriptEmbedding).mockReset()
@@ -166,25 +186,28 @@ describe("runTranscriptEmbeddingBackfill", () => {
     expect(report.succeeded).toBe(2)
     expect(report.failed).toBe(0)
     expect(readTranscriptSourceArtifact).toHaveBeenCalledTimes(2)
-    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledWith({
-      target: {
-        videoId: "v-a",
-        videoEditionId: "e-a",
-        coreId: "core-a",
+    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledWith(
+      {
+        target: {
+          videoId: "v-a",
+          videoEditionId: "e-a",
+          coreId: "core-a",
+        },
+        language: "en",
+        cmsVideoId: 1,
+        transcript: {
+          text: STUB_TRANSCRIPT.text,
+          segments: STUB_TRANSCRIPT.segments,
+          artifactKey: "1/transcript.json",
+          kind: "manager-transcript",
+          languageId: "lang-en",
+          languageSlug: "en",
+          provider: STUB_TRANSCRIPT.resolvedProvider,
+        },
+        mode: "idempotent",
       },
-      language: "en",
-      cmsVideoId: 1,
-      transcript: {
-        text: STUB_TRANSCRIPT.text,
-        segments: STUB_TRANSCRIPT.segments,
-        artifactKey: "1/transcript.json",
-        kind: "manager-transcript",
-        languageId: "lang-en",
-        languageSlug: "en",
-        provider: STUB_TRANSCRIPT.resolvedProvider,
-      },
-      mode: "idempotent",
-    })
+      { timeoutMs: 120_000 },
+    )
   })
 
   it("uses exact Admin subtitle timed text before Manager transcript fallback", async () => {
@@ -233,32 +256,35 @@ Subtitle transcript text.
       sourceKind: "subtitle",
     })
     expect(readTranscriptSourceArtifact).not.toHaveBeenCalled()
-    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledWith({
-      target: {
-        videoId: "v-a",
-        videoEditionId: "e-a",
-        coreId: "core-a",
+    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledWith(
+      {
+        target: {
+          videoId: "v-a",
+          videoEditionId: "e-a",
+          coreId: "core-a",
+        },
+        language: "en",
+        cmsVideoId: 1,
+        transcript: {
+          text: "Subtitle transcript text.",
+          segments: [{ start: 0, end: 2, text: "Subtitle transcript text." }],
+          artifactKey: "admin-video-subtitle/sub-1.vtt",
+          kind: "subtitle",
+          languageId: "lang-en",
+          languageSlug: "english",
+          subtitleId: "sub-1",
+          format: "vtt",
+          url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
+          provider: "admin-subtitle",
+          generatedAt: "2026-06-01T00:00:00.000Z",
+        },
+        mode: "idempotent",
       },
-      language: "en",
-      cmsVideoId: 1,
-      transcript: {
-        text: "Subtitle transcript text.",
-        segments: [{ start: 0, end: 2, text: "Subtitle transcript text." }],
-        artifactKey: "admin-video-subtitle/sub-1.vtt",
-        kind: "subtitle",
-        languageId: "lang-en",
-        languageSlug: "english",
-        subtitleId: "sub-1",
-        format: "vtt",
-        url: "https://api-media-core.jesusfilm.org/subtitles/en.vtt",
-        provider: "admin-subtitle",
-        generatedAt: "2026-06-01T00:00:00.000Z",
-      },
-      mode: "idempotent",
-    })
+      { timeoutMs: 120_000 },
+    )
   })
 
-  it("loads transcript source once per (video, edition) group across languages", async () => {
+  it("shares Manager transcript source loads inside a target-bounded step batch", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-a", "e-a", "core-a", "es"),
@@ -304,7 +330,7 @@ Subtitle transcript text.
       row("v-a", "e-a", "core-a", "en"),
       row("v-a", "e-a", "core-a", "es"),
     ])
-    vi.mocked(readTranscriptSourceArtifact).mockRejectedValueOnce(
+    vi.mocked(readTranscriptSourceArtifact).mockRejectedValue(
       new ManagerArtifactError(
         "artifact_missing",
         "transcript artifact not found for assetId=1",
@@ -471,13 +497,73 @@ Subtitle transcript text.
     })
   })
 
-  it("uses one external groups step so production workflow steps are not dynamically repeated", async () => {
+  it("fails timed-out Mastra launches when no later Admin ingest row appears", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw
+      .mockResolvedValueOnce([row("v-a", "e-a", "core-a", "en")])
+      .mockResolvedValue([])
+    vi.mocked(launchMastraTranscriptEmbedding).mockResolvedValueOnce({
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+      mastraRunId: "run-timeout-never-ingested",
+    })
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.succeeded).toBe(0)
+    expect(report.failed).toBe(1)
+    expect(report.outcomes[0]).toMatchObject({
+      status: "failed",
+      language: "en",
+      reason: "network_error",
+    })
+    expect(sleep).toHaveBeenCalledTimes(240)
+  })
+
+  it("reports target-bounded batch sizing through the workflow dispatch path", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce(
+      Array.from({ length: 51 }, (_, i) =>
+        row(`v-${i}`, `e-${i}`, "core-a", `l${i}`),
+      ),
+    )
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    try {
+      const report = await runTranscriptEmbeddingBackfill({
+        mappingS3Key: "admin-migrations/core-id-mapping.json",
+      })
+
+      const startMessage = logSpy.mock.calls
+        .map(([message]) => String(message))
+        .find((message) => message.includes('"event":"start"'))
+
+      expect(report.totalTargets).toBe(51)
+      expect(report.succeeded).toBe(51)
+      expect(JSON.parse(startMessage ?? "{}")).toMatchObject({
+        totalTargets: 51,
+        groupCount: 51,
+        groupBatchCount: 2,
+        stepTargetLimit: 50,
+        concurrency: 2,
+      })
+    } finally {
+      logSpy.mockRestore()
+    }
+  })
+
+  it("uses sequential target-bounded group batch steps so production workflow steps are not parallel-repeated", async () => {
     const source = await readFile(
       new URL("./transcriptEmbeddingBackfill.ts", import.meta.url),
       "utf8",
     )
 
-    expect(source).toMatch(/stepProcessTranscriptEmbeddingGroups\(\s*groups,/)
+    expect(source).toMatch(/batchGroupsByTargetLimit\(\s*groups,/)
+    expect(source).toMatch(/for \(const groupBatch of groupBatches\)/)
+    expect(source).toMatch(
+      /stepProcessTranscriptEmbeddingGroups\(\s*remainingBatch,/,
+    )
     expect(source).not.toMatch(/\bstepProcessTranscriptEmbeddingGroup\(/)
     expect(source).not.toMatch(/Promise\.allSettled\(\s*groups\.map/)
     expect(source).not.toMatch(/\basync function processGroup\b/)
@@ -582,5 +668,36 @@ describe("groupTargetsByVideoEdition", () => {
       "es",
     ])
     expect(groups[1]?.targets.map((target) => target.language)).toEqual(["en"])
+  })
+
+  it("batches groups by target count and shards oversized multilingual groups into single-target entries", () => {
+    const groups = _internals.groupTargetsByVideoEdition([
+      target("v-a", "e-a", "core-a", 1, "en"),
+      target("v-a", "e-a", "core-a", 1, "es"),
+      target("v-a", "e-a", "core-a", 1, "fr"),
+      target("v-a", "e-a", "core-a", 1, "af"),
+      target("v-a", "e-a", "core-a", 1, "am"),
+      target("v-a", "e-a", "core-a", 1, "ar"),
+      target("v-b", "e-b", "core-b", 2, "en"),
+    ])
+
+    const batches = _internals.batchGroupsByTargetLimit(groups, 5)
+
+    expect(batches).toHaveLength(2)
+    expect(batches[0]?.map((group) => group.targets.length)).toEqual([
+      1, 1, 1, 1, 1,
+    ])
+    expect(
+      batches[0]?.flatMap((group) =>
+        group.targets.map((target) => target.language),
+      ),
+    ).toEqual(["en", "es", "fr", "af", "am"])
+    expect(batches[1]?.map((group) => group.targets.length)).toEqual([1, 1])
+    expect(
+      batches[1]?.flatMap((group) =>
+        group.targets.map((target) => target.language),
+      ),
+    ).toEqual(["ar", "en"])
+    expect(batches[1]?.[1]?.videoEditionId).toBe("e-b")
   })
 })

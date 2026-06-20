@@ -1,6 +1,7 @@
 ---
 title: "useworkflow group fanout must run inside one durable step"
 date: "2026-06-18"
+last_updated: "2026-06-20"
 category: runtime-errors
 module: apps/admin
 problem_type: runtime_error
@@ -113,11 +114,23 @@ The split also keeps the workflow file import graph cleaner. `transcriptEmbeddin
 
 ## Prevention
 
-- Treat grouped backfill fanout as one durable step boundary. Do not call the same `"use step"` function dynamically from `groups.map(...)`.
-- Keep the repeated per-group operation as a plain helper inside the plural step module.
+- Do not call the same `"use step"` function dynamically from
+  `groups.map(...)` or any other parallel fanout in workflow scope.
+- Keep repeated in-step group work as plain helpers when the whole workload can
+  finish comfortably inside the worker step runtime budget.
+- If one plural step grows too large for production, split the workload into
+  target-bounded sequential step calls at workflow scope. Keep each step's
+  internal fanout small, and use workflow-level `sleep()` for long waits.
 - If the fanout needs Node-only services, put the plural wrapper in an external `_steps/*` module and import only that single wrapper from the workflow file.
 - Add a structural guard test when fixing this class of bug. It should assert the workflow calls the plural external step wrapper once and no longer performs `Promise.allSettled(groups.map(...step...))` in workflow scope.
 - Build or smoke the production workflow enough to exercise workflow manifest and step discovery. Local unit tests are still useful, but they cannot prove production event-log validity.
+
+Update on 2026-06-20: the enriched transcript backfill outgrew the single
+plural step and failed at the Graphile worker boundary around 300 seconds.
+That newer fix keeps the event-log lesson here, but changes the shape from
+"one giant plural step" to "sequential target-bounded plural steps." See
+[Transcript embedding backfills need cancellable resume batches](../workflow-issues/transcript-embedding-backfill-cancel-and-resume-operations.md)
+for the operational pattern.
 
 ## Related
 

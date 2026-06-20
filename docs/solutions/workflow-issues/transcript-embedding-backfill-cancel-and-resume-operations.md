@@ -411,6 +411,73 @@ runtime surfaces before retrying production work:
   logic.
 - `@forge/mastra` for provider chunking, embedding, and Admin callback behavior.
 
+### Hotfix checkpoint: target-sharded workflow batches avoid the 300s step ceiling
+
+A fresh all-language `MODEL_UPGRADE` run,
+`wrun_01KVJ27XMP17800AZY5R3FHJ0V`, was started through the existing Admin
+GraphQL trigger with no `coreIds` and no `languages` filters. That was the
+right all-language trigger shape, but it exposed a different Workflow runtime
+boundary: one giant `stepProcessTranscriptEmbeddingGroups` step attempted to
+own 208k targets and 1,452 groups.
+
+The worker logs showed the same durable step failing twice at roughly five
+minutes:
+
+```text
+[Graphile Worker] Failed task 27779 (workflow_steps, 300561.18ms, attempt 1 of 3) with error 'fetch failed'
+[Graphile Worker] Failed task 27779 (workflow_steps, 300457.84ms, attempt 2 of 3) with error 'fetch failed'
+```
+
+Workflow storage then showed the run on attempt 3 for
+`step//./src/workflows/_steps/process-transcript-embedding-group//stepProcessTranscriptEmbeddingGroups`.
+The run was cancelled before the last retry could burn more provider work.
+This failure was not an AI Gateway outage and not the earlier `1_jf-0-0`
+provider batch failure: Admin storage continued receiving transcript writes,
+and the failure was concentrated at the Workflow/Graphile task boundary.
+
+No reliable timeout knob was found in `@workflow/world-postgres` for this
+boundary. The queue worker posts each step to the local Workflow HTTP route,
+and the local execution failed around the same 300 second window. The fix is to
+make each step small enough that it naturally returns before that boundary:
+
+- Split each `(video, edition, language)` target into a one-target shard.
+- Persist runtime knobs in `stepResolveTranscriptEmbeddingRuntimeConfig` before
+  batching so workflow replay keeps the same partitioning even if Railway env
+  changes during a long run.
+- Pack shards into target-bounded batches using the default step target limit
+  of 50.
+- Call `stepProcessTranscriptEmbeddingGroups` sequentially per batch from the
+  workflow body. Parallelism stays inside each small batch, not across dynamic
+  workflow step fanout.
+- Inside a durable batch step, launch targets in waves capped by
+  `TRANSCRIPT_EMBEDDING_CONCURRENCY`. Stop launching new waves once the step
+  has spent the default 220 second budget, return unprocessed groups, and let
+  the workflow call the next durable step.
+- Pass a 120 second Admin-side launch timeout to Mastra. A long Mastra run can
+  continue and ingest later, but the Admin Workflow step returns before the
+  Graphile five-minute boundary.
+- Convert Mastra launch network errors that include a run id into pending
+  ingest confirmations instead of sleeping inside the worker step.
+- Check pending confirmations opportunistically between launch batches, then
+  drain any remaining pending confirmations with short
+  `stepConfirmTranscriptEmbeddingIngests` calls separated by workflow-level
+  `sleep()`, so the wait is durable and does not hold one Graphile task open.
+- Convert unresolved confirmations to `network_error` outcomes only after the
+  20 minute confirmation window.
+
+The tradeoff is deliberate. Manager fallback artifacts may be read once per
+durable step per `cmsVideoId` during a full backfill rather than once per
+whole run. The step-local loader caches source artifacts while a batch is
+active, but later batches may reread the same Manager artifact. That costs
+extra S3 reads, but it keeps every Workflow step bounded and avoids replaying a
+giant step after a five-minute worker failure. A future first-class
+ledger/generation table can optimize source reuse without putting the whole
+corpus back inside one step.
+
+Deploy both `@forge/admin` and `@forge/admin/worker` before retrying this
+class of hotfix. The GraphQL surface starts the run, but the worker service is
+the process executing the target-sharded steps.
+
 ## Cleanup and Versioning Strategy
 
 Successful enriched transcript writes are upserts on the transcript identity
@@ -457,6 +524,8 @@ intended all-language run as complete.
   rows.
 - A useworkflow step wraps many provider launches or database writes inside one
   step body.
+- A Graphile-backed Workflow step fails near 300 seconds even though per-target
+  provider and database work can still succeed.
 
 ## Examples
 
