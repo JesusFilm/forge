@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { unstable_cache } from "next/cache"
 import { adminGraphql } from "@forge/admin-graphql"
 
 import client from "@/lib/admin-client"
@@ -66,6 +67,13 @@ type SearchLanguageMetadata = {
 
 const PAGE_SIZE = 500
 const MAX_LANGUAGE_PAGES = 10
+const SEARCH_LANGUAGE_METADATA_CACHE_TTL_SECONDS = 5 * 60
+
+const fetchCachedSearchLanguageMetadata = unstable_cache(
+  fetchSearchLanguageMetadataUncached,
+  ["watch-search-language-metadata"],
+  { revalidate: SEARCH_LANGUAGE_METADATA_CACHE_TTL_SECONDS },
+)
 
 export async function getSearchLanguageOptions(
   input: {
@@ -105,20 +113,8 @@ export async function getSearchLanguageOptions(
   const acceptLanguage = requestHeaders?.get("accept-language") ?? null
   const countryName = countryCode ? countryNameFromCode(countryCode) : null
 
-  if (!algoliaEnabled) {
-    return {
-      ok: true,
-      algoliaEnabled,
-      options: [],
-      countrySuggestion: null,
-      recommendedLanguage: null,
-      countryCode,
-      countryName,
-    }
-  }
-
   try {
-    const metadata = await fetchSearchLanguageMetadata()
+    const metadata = await fetchCachedSearchLanguageMetadata()
     const result = buildSearchLanguageOptions({
       languages: metadata.languages,
       countries: metadata.countries,
@@ -133,7 +129,6 @@ export async function getSearchLanguageOptions(
       options: result.options,
       countrySuggestion: result.countrySuggestion,
       recommendedLanguage: recommendedLanguageOption({
-        countrySuggestion: result.countrySuggestion,
         options: result.options,
         acceptLanguage,
       }),
@@ -160,7 +155,7 @@ export async function getSearchLanguageOptions(
   }
 }
 
-async function fetchSearchLanguageMetadata(): Promise<SearchLanguageMetadata> {
+async function fetchSearchLanguageMetadataUncached(): Promise<SearchLanguageMetadata> {
   const languages: SearchLanguageMetadataLanguage[] = []
   let countries: SearchLanguageMetadataCountry[] = []
 
@@ -221,17 +216,12 @@ function readCountryCode(requestHeaders: Headers | null): string | null {
 }
 
 function recommendedLanguageOption({
-  countrySuggestion,
   options,
   acceptLanguage,
 }: {
-  countrySuggestion: SearchLanguageCountrySuggestion | null
   options: readonly SearchLanguageOption[]
   acceptLanguage: string | null
 }): SearchLanguageOption | null {
-  const countryLanguage = countrySuggestion?.languages[0]
-  if (countryLanguage) return countryLanguage
-
   const locale = parseAcceptLanguage(acceptLanguage)
   const publicSlug = locale
     ? publicWatchAudioLanguageSlugForLocale(locale)

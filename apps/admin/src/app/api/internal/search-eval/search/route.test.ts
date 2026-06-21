@@ -1,23 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const rateLimitAuthRoute = vi.fn()
-const isValidSearchTraceSamplingBearer = vi.fn()
-const search = vi.fn()
-const recordSearchTraceSafely = vi.fn()
-
-vi.mock("@/auth/rate-limit", () => ({ rateLimitAuthRoute }))
-vi.mock("@/auth/search-trace-bearer", () => ({
-  isValidSearchTraceSamplingBearer,
+const routeMocks = vi.hoisted(() => ({
+  rateLimitAuthRoute: vi.fn(),
+  isValidSearchTraceSamplingBearer: vi.fn(),
+  search: vi.fn(),
+  recordSearchTraceSafely: vi.fn(),
+  languageFindFirst: vi.fn(),
 }))
-vi.mock("@/db/client", () => ({ prisma: {} }))
-vi.mock("@/services/search-trace.service", () => ({ recordSearchTraceSafely }))
-vi.mock("@/services/hybrid-search.service", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/services/hybrid-search.service")
-  >("@/services/hybrid-search.service")
+
+const {
+  rateLimitAuthRoute,
+  isValidSearchTraceSamplingBearer,
+  search,
+  recordSearchTraceSafely,
+  languageFindFirst,
+} = routeMocks
+
+vi.mock("@/auth/rate-limit", () => ({
+  rateLimitAuthRoute: routeMocks.rateLimitAuthRoute,
+}))
+vi.mock("@/auth/search-trace-bearer", () => ({
+  isValidSearchTraceSamplingBearer: routeMocks.isValidSearchTraceSamplingBearer,
+}))
+vi.mock("@/db/client", () => ({
+  prisma: {
+    language: {
+      findFirst: routeMocks.languageFindFirst,
+    },
+  },
+}))
+vi.mock("@/services/search-trace.service", () => ({
+  recordSearchTraceSafely: routeMocks.recordSearchTraceSafely,
+}))
+vi.mock("@/services/hybrid-search.service", () => {
+  const contentTypes = new Set(["video", "experience"])
   return {
-    ...actual,
-    HybridSearchService: vi.fn(() => ({ search })),
+    HybridSearchService: vi.fn(() => ({ search: routeMocks.search })),
+    isContentType: (value: string) => contentTypes.has(value),
   }
 })
 
@@ -40,6 +59,7 @@ describe("POST /api/internal/search-eval/search", () => {
     vi.clearAllMocks()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     isValidSearchTraceSamplingBearer.mockReturnValue(true)
+    languageFindFirst.mockResolvedValue(null)
     search.mockResolvedValue({
       results: [
         {
@@ -96,6 +116,53 @@ describe("POST /api/internal/search-eval/search", () => {
       contentTypes: ["video"],
     })
     expect(recordSearchTraceSafely).not.toHaveBeenCalled()
+  })
+
+  it("resolves a public language slug before running Admin search", async () => {
+    languageFindFirst.mockResolvedValueOnce({ bcp47: "es" })
+
+    const response = await POST(
+      request({
+        query: "Jesus",
+        locale: "en",
+        languageSlug: "spanish-castilian",
+        limit: 10,
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(languageFindFirst).toHaveBeenCalledWith({
+      where: { slug: "spanish-castilian", deletedAt: null },
+      select: { bcp47: true },
+    })
+    expect(search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "Jesus",
+        locale: "es",
+        limit: 10,
+      }),
+    )
+  })
+
+  it("rejects unsafe or unknown language slugs before search", async () => {
+    for (const body of [
+      { query: "Jesus", locale: "en", languageSlug: "../spanish" },
+      { query: "Jesus", locale: "en", languageSlug: "x".repeat(129) },
+    ]) {
+      const response = await POST(request(body))
+      expect(response.status).toBe(400)
+    }
+
+    languageFindFirst.mockResolvedValueOnce(null)
+    const response = await POST(
+      request({
+        query: "Jesus",
+        locale: "en",
+        languageSlug: "missing-language",
+      }),
+    )
+    expect(response.status).toBe(400)
+    expect(search).not.toHaveBeenCalled()
   })
 
   it("rejects missing bearer before parsing the body", async () => {

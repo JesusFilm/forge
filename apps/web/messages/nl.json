@@ -193,7 +193,10 @@
     "searchSuggestionWithLanguage": "Zoek {suggestion} in {language}",
     "inLanguage": "in {language}",
     "browseByRegion": "Bladeren op regio",
-    "clearLanguages": "Wissen"
+    "clearLanguages": "Wissen",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kijken",

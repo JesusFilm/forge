@@ -28,11 +28,12 @@ import {
 } from "@/lib/watch-player-chrome-events"
 
 const navigationMocks = vi.hoisted(() => ({
+  pathname: "/",
   replace: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
+  usePathname: () => navigationMocks.pathname,
   useRouter: () => ({
     replace: navigationMocks.replace,
   }),
@@ -59,6 +60,7 @@ let root: Root
 
 beforeEach(() => {
   vi.clearAllMocks()
+  navigationMocks.pathname = "/"
   window.history.replaceState(null, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -76,6 +78,23 @@ afterEach(() => {
 })
 
 const mockedRunSearch = vi.mocked(runSearch)
+const mockedGetSearchLanguageOptions = vi.mocked(getSearchLanguageOptions)
+
+const englishSearchLanguage = {
+  englishName: "English",
+  nativeName: "English",
+  bcp47: "en",
+  publicSlug: "english",
+  regionNames: ["Europe"],
+}
+
+const spanishSearchLanguage = {
+  englishName: "Spanish, Castilian",
+  nativeName: "Español",
+  bcp47: "es-ES",
+  publicSlug: "spanish-castilian",
+  regionNames: ["Europe"],
+}
 
 function dispatchChromeVisibility(visible: boolean, opacity?: number) {
   window.dispatchEvent(
@@ -405,7 +424,7 @@ describe("FloatingSearchProvider — header backdrop", () => {
 
 describe("FloatingSearchProvider — search mode", () => {
   it("uses the server language metadata response to enable Algolia UI on open", async () => {
-    vi.mocked(getSearchLanguageOptions).mockResolvedValueOnce({
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
       ok: true,
       algoliaEnabled: true,
       options: [
@@ -532,6 +551,223 @@ describe("FloatingSearchProvider — search mode", () => {
     ).toBeNull()
   })
 
+  it("uses the manual semantic search language selection for the next search", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      algoliaEnabled: false,
+      options: [englishSearchLanguage, spanishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
+
+    const input = await openSearchOverlay()
+    const languageToggle = document.querySelector(
+      '[aria-controls="search-language-panel"]',
+    ) as HTMLButtonElement | null
+
+    expect(languageToggle).not.toBeNull()
+    expect(languageToggle?.getAttribute("aria-expanded")).toBe("false")
+    expect(document.querySelector("#search-language-autocomplete")).toBeNull()
+    expect(document.body.textContent).not.toContain("Browse by region")
+    expect(document.body.textContent).not.toContain("Spanish, Castilian")
+
+    await act(async () => {
+      languageToggle?.click()
+      await Promise.resolve()
+    })
+
+    const languageSearchInput = document.querySelector(
+      "#search-language-autocomplete",
+    ) as HTMLInputElement | null
+
+    expect(languageSearchInput).not.toBeNull()
+    expect(languageSearchInput?.value).toBe("English")
+    expect(document.body.textContent).toContain("Search language")
+    expect(
+      document.querySelector("#search-language-autocomplete-listbox"),
+    ).not.toBeNull()
+    expect(document.body.textContent).toContain("Spanish, Castilian")
+
+    act(() => {
+      setInputValue(languageSearchInput as HTMLInputElement, "span")
+    })
+
+    const spanishButton = document.querySelector(
+      '[role="option"][aria-label="Spanish, Castilian"]',
+    ) as HTMLButtonElement | null
+
+    expect(spanishButton).not.toBeNull()
+
+    await act(async () => {
+      spanishButton?.click()
+      await Promise.resolve()
+    })
+    await submitDebouncedSearch(input, "jesus")
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "jesus",
+        languageEnglishNames: ["Spanish, Castilian"],
+        languageSlug: "spanish-castilian",
+      }),
+    )
+
+    const clearLanguageButton = document.querySelector(
+      '[aria-label="Use website default search language"]',
+    ) as HTMLButtonElement | null
+    expect(clearLanguageButton).not.toBeNull()
+
+    await act(async () => {
+      clearLanguageButton?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: "jesus",
+        languageEnglishNames: ["English"],
+        languageSlug: "english",
+      }),
+    )
+  })
+
+  it("defaults semantic search language from the Watch route before browser recommendation", async () => {
+    vi.useFakeTimers()
+    navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      algoliaEnabled: false,
+      options: [englishSearchLanguage, spanishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "jesus")
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "jesus",
+        languageSlug: "spanish-castilian",
+      }),
+    )
+  })
+
+  it("pauses semantic debounce for a detected query language until confirmed", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      algoliaEnabled: false,
+      options: [englishSearchLanguage, spanishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
+
+    const input = await openSearchOverlay()
+
+    act(() => {
+      setInputValue(input, "la vida de Jesús en español para niños")
+      vi.advanceTimersByTime(400)
+    })
+
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain("Spanish detected")
+
+    const confirm = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Search in Spanish",
+    ) as HTMLButtonElement | undefined
+
+    await act(async () => {
+      confirm?.click()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "la vida de Jesús en español para niños",
+        languageEnglishNames: ["Spanish, Castilian"],
+        languageSlug: "spanish-castilian",
+      }),
+    )
+  })
+
+  it("waits for semantic language metadata before searching a detectable query", async () => {
+    vi.useFakeTimers()
+    type LanguageOptionsResponse = Awaited<
+      ReturnType<typeof getSearchLanguageOptions>
+    >
+    let resolveLanguageOptions: (
+      value: LanguageOptionsResponse,
+    ) => void = () => {}
+    const delayedLanguageOptions = new Promise<LanguageOptionsResponse>(
+      (resolve) => {
+        resolveLanguageOptions = resolve
+      },
+    )
+    mockedGetSearchLanguageOptions.mockReturnValueOnce(delayedLanguageOptions)
+    mockedRunSearch.mockResolvedValue(searchResult("semantic"))
+
+    const input = await openSearchOverlay()
+
+    act(() => {
+      setInputValue(input, "la vida de Jesús en español para niños")
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(400)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+    expect(document.body.textContent).not.toContain("Spanish detected")
+
+    await act(async () => {
+      resolveLanguageOptions({
+        ok: true,
+        algoliaEnabled: false,
+        options: [englishSearchLanguage, spanishSearchLanguage],
+        countrySuggestion: null,
+        recommendedLanguage: englishSearchLanguage,
+        countryCode: null,
+        countryName: null,
+      })
+      await delayedLanguageOptions
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain("Spanish detected")
+
+    const confirm = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Search in Spanish",
+    ) as HTMLButtonElement | undefined
+
+    await act(async () => {
+      confirm?.click()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "la vida de Jesús en español para niños",
+        languageEnglishNames: ["Spanish, Castilian"],
+        languageSlug: "spanish-castilian",
+      }),
+    )
+  })
+
   it("uses the latest server search source to toggle Algolia-only UI state", async () => {
     vi.mocked(runSearch)
       .mockResolvedValueOnce(searchResult("algolia"))
@@ -624,6 +860,96 @@ describe("FloatingSearchProvider — search mode", () => {
       }),
     )
     expect(error?.textContent).toBe("Failed to load more results.")
+  })
+
+  it("keeps the resolved semantic language when loading more after metadata refresh", async () => {
+    navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      algoliaEnabled: false,
+      options: [englishSearchLanguage, spanishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        searchResult("semantic", {
+          results: [videoResult("semantic-1")],
+          hasMore: true,
+          nextOffset: 10,
+          resolvedLanguage: {
+            locale: "es",
+            publicSlug: "spanish-castilian",
+            englishName: "Spanish, Castilian",
+            source: "route",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("semantic", {
+          results: [videoResult("semantic-2")],
+          hasMore: false,
+          resolvedLanguage: {
+            locale: "es",
+            publicSlug: "spanish-castilian",
+            englishName: "Spanish, Castilian",
+            source: "route",
+          },
+        }),
+      )
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="search-mode-harness-button"]',
+    ) as HTMLButtonElement
+    const loadMoreButton = document.querySelector(
+      '[data-testid="search-mode-harness-load-more-button"]',
+    ) as HTMLButtonElement
+    const resultCount = document.querySelector(
+      '[data-testid="search-result-count"]',
+    )
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(resultCount?.textContent).toBe("1")
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        query: "jesus",
+        languageEnglishNames: ["Spanish, Castilian"],
+        languageSlug: "spanish-castilian",
+      }),
+    )
+
+    await act(async () => {
+      loadMoreButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(resultCount?.textContent).toBe("2")
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        query: "jesus",
+        offset: 10,
+        languageEnglishNames: ["Spanish, Castilian"],
+        languageSlug: "spanish-castilian",
+      }),
+    )
   })
 
   it("clears loading state when an in-flight search is reset before it resolves", async () => {
@@ -1219,8 +1545,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(bottomBackdrop?.className).toContain("bg-black/85")
     expect(bottomBackdrop?.className).toContain("backdrop-blur-[14px]")
     expect(scrollBody?.className).toContain("z-1")
-    expect(scrollBody?.className).toContain("pt-44")
-    expect(scrollBody?.className).toContain("sm:pt-32")
+    expect(scrollBody?.className).toContain("top-44")
+    expect(scrollBody?.className).toContain("sm:top-32")
+    expect(scrollBody?.className).toContain("bottom-0")
     expect(overlayField).not.toBeNull()
     expect(overlayField?.className).toContain("rounded-[35px]")
     expect(overlayField?.className).toContain("bg-white")

@@ -39,8 +39,10 @@ vi.mock("./algolia-video-transform", () => ({
 import { searchAlgoliaVideos } from "./algolia-search"
 import { transformAlgoliaVideoHits } from "./algolia-video-transform"
 import { isWatchAlgoliaSearchEnabled } from "./feature-flags"
+import { readPreferredLanguageSlug } from "./language-preference-server"
 import { runSearch } from "./search-actions"
 import { searchVideos } from "./search"
+import { readSearchLanguagePreferenceSlug } from "./search-language-preference-server"
 
 const spanishOption = {
   coreId: "21028",
@@ -98,12 +100,14 @@ describe("runSearch", () => {
       query: "jesus",
       limit: 5,
       offset: 10,
-      languageEnglishNames: ["Spanish Castilian"],
+      languageSlug: "spanish-castilian",
       languageOptions: [spanishOption],
     })
 
     expect(searchVideos).toHaveBeenCalledWith("jesus", 5, 10, undefined, "es")
     expect(searchAlgoliaVideos).not.toHaveBeenCalled()
+    expect(readSearchLanguagePreferenceSlug).not.toHaveBeenCalled()
+    expect(readPreferredLanguageSlug).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       ok: true,
       resultSource: "semantic",
@@ -255,6 +259,7 @@ describe("runSearch", () => {
       type: "experience",
       limit: 5,
       offset: 10,
+      routeLanguageSlug: "french",
     })
 
     expect(searchVideos).toHaveBeenCalledWith(
@@ -262,7 +267,7 @@ describe("runSearch", () => {
       5,
       10,
       "experience",
-      "pt",
+      "fr",
     )
     expect(searchAlgoliaVideos).not.toHaveBeenCalled()
   })
