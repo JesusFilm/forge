@@ -27,11 +27,13 @@ describe("parseStoredPreferences", () => {
       audioLanguageSlug: "spanish",
       subtitleLanguageSlug: "english",
       subtitlesEnabled: true,
+      wifiOnly: true,
     })
     expect(parseStoredPreferences(raw)).toEqual({
       audioLanguageSlug: "spanish",
       subtitleLanguageSlug: "english",
       subtitlesEnabled: true,
+      wifiOnly: true,
     })
   })
 
@@ -42,6 +44,7 @@ describe("parseStoredPreferences", () => {
       audioLanguageSlug: "french",
       subtitleLanguageSlug: null,
       subtitlesEnabled: false,
+      wifiOnly: false,
     })
   })
 
@@ -57,6 +60,7 @@ describe("parseStoredPreferences", () => {
       audioLanguageSlug: null,
       subtitleLanguageSlug: null,
       subtitlesEnabled: true,
+      wifiOnly: false,
     })
   })
 
@@ -76,9 +80,38 @@ describe("parseStoredPreferences", () => {
       audioLanguageSlug: "portuguese",
       subtitleLanguageSlug: "spanish",
       subtitlesEnabled: true,
+      wifiOnly: true,
     }
     expect(parseStoredPreferences(serializeWatchPreferences(prefs))).toEqual(
       prefs,
     )
+  })
+})
+
+describe("parseStoredPreferences — wifiOnly", () => {
+  it("defaults wifiOnly to false", () => {
+    expect(DEFAULT_WATCH_PREFERENCES.wifiOnly).toBe(false)
+    expect(parseStoredPreferences(null).wifiOnly).toBe(false)
+    expect(parseStoredPreferences("{}").wifiOnly).toBe(false)
+  })
+
+  it("reads wifiOnly true only for a strict boolean true", () => {
+    expect(
+      parseStoredPreferences(JSON.stringify({ wifiOnly: true })).wifiOnly,
+    ).toBe(true)
+    expect(
+      parseStoredPreferences(JSON.stringify({ wifiOnly: "yes" })).wifiOnly,
+    ).toBe(false)
+    expect(
+      parseStoredPreferences(JSON.stringify({ wifiOnly: 1 })).wifiOnly,
+    ).toBe(false)
+  })
+
+  it("keeps wifiOnly default when other fields are present (partial blob)", () => {
+    const out = parseStoredPreferences(
+      JSON.stringify({ audioLanguageSlug: "korean" }),
+    )
+    expect(out.audioLanguageSlug).toBe("korean")
+    expect(out.wifiOnly).toBe(false)
   })
 })

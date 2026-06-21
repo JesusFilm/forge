@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
+  Alert,
   Animated,
   AppState,
   BackHandler,
@@ -54,6 +55,10 @@ import { Snackbar } from "../../src/components/ui/Snackbar"
 import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
 import { PLAYER_HEIGHT_RATIO } from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
+import { OFFLINE_ROOT } from "../../src/lib/offlineFileSystem"
+import { buildSubtitlePath } from "../../src/lib/offlineFiles"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 // Inline player is inset this far on each side; the back button floats just
@@ -74,6 +79,12 @@ export default function WatchVideoPage() {
 
   const navigation = useNavigation()
   const router = useRouter()
+  const {
+    getRecord,
+    deleteDownload,
+    committedFor,
+    isReady: downloadsReady,
+  } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -245,7 +256,30 @@ export default function WatchVideoPage() {
     if (subtitleEnabled) ensureActiveVariantMedia()
   }, [subtitleEnabled, ensureActiveVariantMedia])
 
+  // Offline: when a committed local copy exists (manifest hydrated), play it
+  // from disk ahead of the GraphQL source chain. The local URI is validated
+  // against the offline root before it reaches the player / subtitle reader.
+  const offlineRecord = downloadsReady ? getRecord(decodedSlug) : null
+  const offlineCommitted = downloadsReady ? committedFor(decodedSlug) : null
+  const offlineSource =
+    offlineCommitted && validateLocalMediaUrl(offlineCommitted, OFFLINE_ROOT)
+      ? offlineCommitted
+      : null
+  const offlineSubtitle =
+    offlineSource && offlineRecord?.subtitleLanguageSlug
+      ? (() => {
+          const path = buildSubtitlePath(
+            OFFLINE_ROOT,
+            decodedSlug,
+            offlineRecord.subtitleLanguageSlug,
+          )
+          return validateLocalMediaUrl(path, OFFLINE_ROOT) ? path : null
+        })()
+      : null
+
   const subtitleVttSrc = useMemo(() => {
+    // Offline playback shows only the locally-saved subtitle (read from disk).
+    if (offlineSource) return offlineSubtitle
     if (!subtitleEnabled || !activeSubtitleSlug || !activeVariantMedia)
       return null
     return (
@@ -253,7 +287,13 @@ export default function WatchVideoPage() {
         (s) => s.languageSlug === activeSubtitleSlug,
       )?.vttSrc ?? null
     )
-  }, [subtitleEnabled, activeSubtitleSlug, activeVariantMedia])
+  }, [
+    offlineSource,
+    offlineSubtitle,
+    subtitleEnabled,
+    activeSubtitleSlug,
+    activeVariantMedia,
+  ])
 
   // Prefer the resolved video; fall back to the seed so first paint has
   // content. The player source resolves to the active variant, then the
@@ -261,7 +301,10 @@ export default function WatchVideoPage() {
   const displayTitle = video?.title ?? seed?.title ?? null
   const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
   const playerSource =
-    activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl
+    offlineSource ??
+    activeVariant?.hls ??
+    video?.streamingUrl ??
+    seedStreamingUrl
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -305,7 +348,7 @@ export default function WatchVideoPage() {
 
   // Cold deep link with nothing to paint yet → layout-matched skeleton,
   // never a blank full-screen spinner.
-  if (!hasVideo && seed == null && loading) {
+  if (!hasVideo && seed == null && loading && !offlineSource) {
     return (
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
@@ -321,7 +364,7 @@ export default function WatchVideoPage() {
   }
 
   // No video, no seed, not loading → genuinely nothing to show.
-  if (!hasVideo && seed == null) {
+  if (!hasVideo && seed == null && !offlineSource) {
     return (
       // screenContainer (no horizontal padding) hosts the absolute back button
       // so it aligns with the loading/loaded states; the centered error content
@@ -422,7 +465,56 @@ export default function WatchVideoPage() {
         {hasVideo ? (
           <>
             <ActionButtonRow
-              onDownload={() => router.push("/watch/download")}
+              downloadState={getRecord(video.slug)?.state ?? null}
+              downloadProgress={(() => {
+                const record = getRecord(video.slug)
+                return record && record.totalBytes > 0
+                  ? record.bytesWritten / record.totalBytes
+                  : null
+              })()}
+              onDownload={() => {
+                const state = getRecord(video.slug)?.state
+                if (state === "downloaded") {
+                  // Saved: offer a non-destructive quality/language swap or a
+                  // delete (the current copy stays playable during a swap).
+                  Alert.alert(
+                    "Offline download",
+                    "This video is saved for offline viewing.",
+                    [
+                      {
+                        text: "Change quality / language",
+                        onPress: () => router.push("/watch/download?swap=1"),
+                      },
+                      {
+                        text: "Remove download",
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ],
+                  )
+                } else if (state && state !== "canceled") {
+                  // A transfer is in flight (one copy per video). Offer to remove.
+                  Alert.alert(
+                    "Offline download",
+                    "This video is downloading.",
+                    [
+                      {
+                        text: "Remove download",
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
+                      },
+                      { text: "Keep", style: "cancel" },
+                    ],
+                  )
+                } else {
+                  router.push("/watch/download")
+                }
+              }}
               onLanguage={() => router.push("/watch/language")}
               onSubtitles={() => router.push("/watch/subtitle")}
               onShare={handleShare}
