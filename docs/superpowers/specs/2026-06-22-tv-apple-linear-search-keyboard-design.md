@@ -156,9 +156,12 @@ const isAppleTV = Platform.OS === "ios"
   resultsPane, `RESULTS_COLUMNS = 3`). Android path stays identical.
 - **`SearchBodyStacked`** (Apple TV) — vertical stack:
   `SearchKeyboardLinear` (top) → meta line → `TVFocusGuideView` results region
-  filling the rest, full screen width. Full width → **5 columns**
-  (`STACKED_RESULTS_COLUMNS = 5`) vs the two-pane's 3. Same conditional inside:
-  `SearchResultsGrid` when `hasQuery`, else `SearchBrowse`.
+  filling the rest, full screen width. Full width → **omit `columns`** so
+  `SearchResultsGrid` uses its purpose-built responsive full-width default
+  (4 columns at 1080p, 6 at 4K-class ≥2880dp) vs the two-pane's fixed 3.
+  (Revised from an earlier hardcoded "5": the grid has no path that yields
+  exactly 5, and reusing its tuned default is the cleaner choice.) Same
+  conditional inside: `SearchResultsGrid` when `hasQuery`, else `SearchBrowse`.
 
 `bodyProps` carries: `query`, `state`, `results`, `meta`, `hasQuery`,
 `setSanitizedQuery`, `submit`, `runQueryImmediate`, `clearAll`, `recents`,
