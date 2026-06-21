@@ -17,13 +17,13 @@ import { getSearchLanguageOptions } from "@/lib/search-language-actions"
 import type { SearchActionResultSource, SearchResult } from "@/lib/search"
 import {
   MAX_SEARCH_LANGUAGE_FILTERS,
+  findSearchLanguageOptionByPublicSlug,
   groupSearchLanguagesByRegion,
   normalizeSearchLanguageEnglishNames,
   stripLanguageFromSearchQuery,
   type SearchLanguageCountrySuggestion,
   type SearchLanguageOption,
 } from "@/lib/search-language"
-import { writeSearchLanguagePreferenceSlug } from "@/lib/search-language-preference-client"
 import { buildSearchUrl } from "@/lib/search-url"
 import { parseWatchPath } from "@/lib/routes"
 import {
@@ -34,9 +34,12 @@ import {
 import { SearchOverlay } from "./SearchOverlay"
 
 const SEARCH_PAGE_SIZE = 10
+const SEARCH_LANGUAGE_OPTIONS_FALLBACK_MS = 1200
 
 type ActiveSearchSignature = {
   query: string
+  languageEnglishNames: string[]
+  languageSlug: string | null
   languageKey: string
   routeLanguageSlug: string | null
   resultSource: SearchActionResultSource
@@ -103,6 +106,7 @@ export function FloatingSearchController({
     useState<SearchLanguageCountrySuggestion | null>(null)
   const [recommendedLanguage, setRecommendedLanguage] =
     useState<SearchLanguageOption | null>(null)
+  const [languageOptionsLoaded, setLanguageOptionsLoaded] = useState(false)
   const [languageOptionsLoading, setLanguageOptionsLoading] = useState(false)
   const [languageOptionsError, setLanguageOptionsError] = useState<
     string | null
@@ -114,9 +118,12 @@ export function FloatingSearchController({
     useState<string[]>([])
   const [selectedLanguageRegionByName, setSelectedLanguageRegionByName] =
     useState<Record<string, string>>({})
+  const [selectedSearchLanguageOption, setSelectedSearchLanguageOption] =
+    useState<SearchLanguageOption | null>(null)
 
   const requestIdRef = useRef(0)
   const languageOptionsRequestIdRef = useRef(0)
+  const languageOptionsLoadedRef = useRef(false)
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loadingMoreRef = useRef(false)
   const loadMoreRunIdRef = useRef(0)
@@ -124,6 +131,10 @@ export function FloatingSearchController({
   const languageOptionsRef = useRef<SearchLanguageOption[]>([])
   const queryRef = useRef("")
   const selectedLanguageEnglishNamesRef = useRef<string[]>([])
+  const selectedSearchLanguageOptionRef = useRef<SearchLanguageOption | null>(
+    null,
+  )
+  const searchLanguageSelectionUserSetRef = useRef(false)
   const activeSearchSignatureRef = useRef<ActiveSearchSignature | null>(null)
   useEffect(() => {
     displayResultsRef.current = displayResults
@@ -134,6 +145,9 @@ export function FloatingSearchController({
   useEffect(() => {
     selectedLanguageEnglishNamesRef.current = selectedLanguageEnglishNames
   }, [selectedLanguageEnglishNames])
+  useEffect(() => {
+    selectedSearchLanguageOptionRef.current = selectedSearchLanguageOption
+  }, [selectedSearchLanguageOption])
 
   const setQuery = useCallback(
     (nextQuery: string) => {
@@ -170,12 +184,23 @@ export function FloatingSearchController({
     }
     return null
   }, [pathname])
+  const defaultSearchLanguage = useMemo(
+    () =>
+      defaultSearchLanguageOption({
+        options: languageOptions,
+        routeLanguageSlug,
+        recommendedLanguage,
+      }),
+    [languageOptions, recommendedLanguage, routeLanguageSlug],
+  )
 
   const refreshLanguageOptions = useCallback(
     async (
       availableLanguageFacets?: Record<string, number>,
     ): Promise<SearchLanguageOption[]> => {
       const thisRequest = ++languageOptionsRequestIdRef.current
+      languageOptionsLoadedRef.current = false
+      setLanguageOptionsLoaded(false)
       setLanguageOptionsLoading(true)
       setLanguageOptionsError(null)
 
@@ -192,12 +217,38 @@ export function FloatingSearchController({
           setLanguageOptions(response.options)
           setLanguageCountrySuggestion(response.countrySuggestion)
           setRecommendedLanguage(response.recommendedLanguage)
+          if (!searchLanguageSelectionUserSetRef.current) {
+            const defaultOption = defaultSearchLanguageOption({
+              options: response.options,
+              routeLanguageSlug,
+              recommendedLanguage: response.recommendedLanguage,
+            })
+            const nextLanguages = defaultOption
+              ? [defaultOption.englishName]
+              : []
+            selectedSearchLanguageOptionRef.current = defaultOption
+            selectedLanguageEnglishNamesRef.current = nextLanguages
+            setSelectedSearchLanguageOption(defaultOption)
+            setSelectedLanguageEnglishNames(nextLanguages)
+            setSelectedLanguageRegionByName(
+              defaultOption?.regionNames[0]
+                ? { [defaultOption.englishName]: defaultOption.regionNames[0] }
+                : {},
+            )
+          }
           return response.options
         }
 
         setLanguageOptions([])
         setLanguageCountrySuggestion(null)
         setRecommendedLanguage(null)
+        if (!searchLanguageSelectionUserSetRef.current) {
+          selectedSearchLanguageOptionRef.current = null
+          selectedLanguageEnglishNamesRef.current = []
+          setSelectedSearchLanguageOption(null)
+          setSelectedLanguageEnglishNames([])
+          setSelectedLanguageRegionByName({})
+        }
         setLanguageOptionsError(response.error.message)
         return []
       } catch {
@@ -205,16 +256,44 @@ export function FloatingSearchController({
         setLanguageOptions([])
         setLanguageCountrySuggestion(null)
         setRecommendedLanguage(null)
+        if (!searchLanguageSelectionUserSetRef.current) {
+          selectedSearchLanguageOptionRef.current = null
+          selectedLanguageEnglishNamesRef.current = []
+          setSelectedSearchLanguageOption(null)
+          setSelectedLanguageEnglishNames([])
+          setSelectedLanguageRegionByName({})
+        }
         setLanguageOptionsError("Language options are unavailable.")
         return []
       } finally {
         if (languageOptionsRequestIdRef.current === thisRequest) {
+          languageOptionsLoadedRef.current = true
+          setLanguageOptionsLoaded(true)
           setLanguageOptionsLoading(false)
         }
       }
     },
-    [],
+    [routeLanguageSlug],
   )
+
+  useEffect(() => {
+    if (searchLanguageSelectionUserSetRef.current) return
+    selectedSearchLanguageOptionRef.current = defaultSearchLanguage
+    setSelectedSearchLanguageOption(defaultSearchLanguage)
+    const nextLanguages = defaultSearchLanguage
+      ? [defaultSearchLanguage.englishName]
+      : []
+    selectedLanguageEnglishNamesRef.current = nextLanguages
+    setSelectedLanguageEnglishNames(nextLanguages)
+    setSelectedLanguageRegionByName(
+      defaultSearchLanguage?.regionNames[0]
+        ? {
+            [defaultSearchLanguage.englishName]:
+              defaultSearchLanguage.regionNames[0],
+          }
+        : {},
+    )
+  }, [defaultSearchLanguage])
 
   useEffect(() => {
     if (!open) return
@@ -247,13 +326,13 @@ export function FloatingSearchController({
   const search = useCallback(
     async (
       q: string,
-      options?: { languageEnglishNames?: string[] },
+      options?: {
+        languageEnglishNames?: string[]
+        languageSlug?: string | null
+      },
     ): Promise<void> => {
       const trimmed = q.trim()
       setQuery(q)
-      const activeLanguageEnglishNames =
-        options?.languageEnglishNames ?? selectedLanguageEnglishNamesRef.current
-      const activeLanguageKey = searchLanguageKey(activeLanguageEnglishNames)
 
       // Bump the request id immediately so any in-flight request (from a prior
       // call in any branch — exit-animation, Apollo, or clear) fails its
@@ -316,15 +395,27 @@ export function FloatingSearchController({
       }, skeletonThreshold)
 
       try {
-        const currentLanguageOptions =
-          languageOptionsRef.current.length > 0
-            ? languageOptionsRef.current
-            : await refreshLanguageOptions(
+        const currentLanguageOptions = languageOptionsLoadedRef.current
+          ? languageOptionsRef.current
+          : await withSearchLanguageOptionsFallback(
+              refreshLanguageOptions(
                 Object.keys(languageFacets).length > 0
                   ? languageFacets
                   : undefined,
-              )
+              ),
+              () => languageOptionsRef.current,
+            )
         if (requestIdRef.current !== thisRequest) return
+        const activeLanguageEnglishNames =
+          options?.languageEnglishNames ??
+          selectedLanguageEnglishNamesRef.current
+        const defaultLanguageSlug = algoliaSearchEnabled
+          ? null
+          : (selectedSearchLanguageOptionRef.current?.publicSlug ?? null)
+        const activeLanguageSlug =
+          options?.languageSlug !== undefined
+            ? options.languageSlug
+            : defaultLanguageSlug
 
         const data = await runSearch({
           query: trimmed.slice(0, 200),
@@ -332,6 +423,7 @@ export function FloatingSearchController({
           offset: 0,
           languageEnglishNames: activeLanguageEnglishNames,
           languageOptions: currentLanguageOptions,
+          languageSlug: activeLanguageSlug,
           routeLanguageSlug,
         })
 
@@ -360,9 +452,18 @@ export function FloatingSearchController({
         setResultsKey((k) => k + 1)
         setHasMore(data.hasMore)
         setResultSource(data.resultSource)
+        const signatureLanguageSlug =
+          data.resultSource === "semantic"
+            ? data.resolvedLanguage.publicSlug
+            : null
         activeSearchSignatureRef.current = {
           query: trimmed.slice(0, 200),
-          languageKey: activeLanguageKey,
+          languageEnglishNames: [...activeLanguageEnglishNames],
+          languageSlug: signatureLanguageSlug,
+          languageKey: searchLanguageKey(
+            activeLanguageEnglishNames,
+            signatureLanguageSlug,
+          ),
           routeLanguageSlug,
           resultSource: data.resultSource,
           nextOffset: data.nextOffset ?? newResults.length,
@@ -388,6 +489,7 @@ export function FloatingSearchController({
     [
       clearLoadingForRequest,
       languageFacets,
+      algoliaSearchEnabled,
       maybeSetLanguageFacets,
       pathname,
       refreshLanguageOptions,
@@ -401,8 +503,18 @@ export function FloatingSearchController({
     const expectedSignature = activeSearchSignatureRef.current
     if (!expectedSignature) return
     const currentQuery = queryRef.current.trim().slice(0, 200)
+    const currentLanguageSlug =
+      resultSource === "algolia"
+        ? null
+        : (selectedSearchLanguageOptionRef.current?.publicSlug ??
+          expectedSignature.languageSlug)
+    const currentLanguageEnglishNames =
+      selectedLanguageEnglishNamesRef.current.length > 0
+        ? selectedLanguageEnglishNamesRef.current
+        : expectedSignature.languageEnglishNames
     const currentLanguageKey = searchLanguageKey(
-      selectedLanguageEnglishNamesRef.current,
+      currentLanguageEnglishNames,
+      currentLanguageSlug,
     )
     if (
       expectedSignature.query !== currentQuery ||
@@ -427,8 +539,9 @@ export function FloatingSearchController({
         query: currentQuery,
         limit: SEARCH_PAGE_SIZE,
         offset: expectedSignature.nextOffset,
-        languageEnglishNames: selectedLanguageEnglishNamesRef.current,
+        languageEnglishNames: expectedSignature.languageEnglishNames,
         languageOptions: languageOptionsRef.current,
+        languageSlug: expectedSignature.languageSlug,
         routeLanguageSlug,
       })
       if (requestIdRef.current !== thisRequest) return
@@ -496,10 +609,6 @@ export function FloatingSearchController({
         return next
       })
 
-      if (!selected && option.publicSlug) {
-        writeSearchLanguagePreferenceSlug(option.publicSlug)
-      }
-
       const nextQuery = selected
         ? query
         : stripLanguageFromSearchQuery(option.englishName, query)
@@ -511,18 +620,40 @@ export function FloatingSearchController({
   const selectSearchLanguage = useCallback(
     (option: SearchLanguageOption, regionName?: string): void => {
       const nextLanguages = [option.englishName]
+      searchLanguageSelectionUserSetRef.current = true
       selectedLanguageEnglishNamesRef.current = nextLanguages
+      selectedSearchLanguageOptionRef.current = option.publicSlug
+        ? option
+        : null
       setSelectedLanguageEnglishNames(nextLanguages)
+      setSelectedSearchLanguageOption(option.publicSlug ? option : null)
       setSelectedLanguageRegionByName(
         regionName ? { [option.englishName]: regionName } : {},
       )
-
-      if (option.publicSlug) {
-        writeSearchLanguagePreferenceSlug(option.publicSlug)
-      }
     },
     [],
   )
+
+  const resetSearchLanguageToDefault = useCallback((): void => {
+    const defaultOption = defaultSearchLanguage
+    searchLanguageSelectionUserSetRef.current = false
+    selectedSearchLanguageOptionRef.current = defaultOption
+    const nextLanguages = defaultOption ? [defaultOption.englishName] : []
+    selectedLanguageEnglishNamesRef.current = nextLanguages
+    setSelectedSearchLanguageOption(defaultOption)
+    setSelectedLanguageEnglishNames(nextLanguages)
+    setSelectedLanguageRegionByName(
+      defaultOption?.regionNames[0]
+        ? { [defaultOption.englishName]: defaultOption.regionNames[0] }
+        : {},
+    )
+    if (query.trim().length > 0) {
+      void search(query, {
+        languageEnglishNames: nextLanguages,
+        languageSlug: defaultOption?.publicSlug ?? null,
+      })
+    }
+  }, [defaultSearchLanguage, query, search])
 
   const clearSearchLanguages = useCallback((): void => {
     selectedLanguageEnglishNamesRef.current = []
@@ -580,16 +711,20 @@ export function FloatingSearchController({
       languageGroups,
       languageCountrySuggestion,
       recommendedLanguage,
+      languageOptionsLoaded,
       languageOptionsLoading,
       languageOptionsError,
       selectedLanguageEnglishNames,
       selectedLanguageRegionByName,
+      selectedSearchLanguageOption,
+      defaultSearchLanguageOption: defaultSearchLanguage,
       setOpen,
       setQuery,
       search,
       loadMore,
       toggleSearchLanguage,
       selectSearchLanguage,
+      resetSearchLanguageToDefault,
       clearSearchLanguages,
       closeAndKeepQuery,
     }),
@@ -613,16 +748,20 @@ export function FloatingSearchController({
       languageGroups,
       languageCountrySuggestion,
       recommendedLanguage,
+      languageOptionsLoaded,
       languageOptionsLoading,
       languageOptionsError,
       selectedLanguageEnglishNames,
       selectedLanguageRegionByName,
+      selectedSearchLanguageOption,
+      defaultSearchLanguage,
       setOpen,
       setQuery,
       search,
       loadMore,
       toggleSearchLanguage,
       selectSearchLanguage,
+      resetSearchLanguageToDefault,
       clearSearchLanguages,
       closeAndKeepQuery,
     ],
@@ -640,8 +779,63 @@ export function FloatingSearchController({
   )
 }
 
-function searchLanguageKey(languageEnglishNames: readonly string[]): string {
-  return normalizeSearchLanguageEnglishNames(languageEnglishNames).join(
-    "\u0001",
-  )
+function searchLanguageKey(
+  languageEnglishNames: readonly string[],
+  languageSlug: string | null,
+): string {
+  return [
+    languageSlug ?? "",
+    normalizeSearchLanguageEnglishNames(languageEnglishNames).join("\u0001"),
+  ].join("\u0002")
+}
+
+function withSearchLanguageOptionsFallback(
+  promise: Promise<SearchLanguageOption[]>,
+  fallback: () => SearchLanguageOption[],
+): Promise<SearchLanguageOption[]> {
+  return new Promise((resolve) => {
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (settled) return
+      settled = true
+      resolve(fallback())
+    }, SEARCH_LANGUAGE_OPTIONS_FALLBACK_MS)
+
+    promise.then(
+      (options) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        resolve(options)
+      },
+      () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        resolve(fallback())
+      },
+    )
+  })
+}
+
+function defaultSearchLanguageOption({
+  options,
+  routeLanguageSlug,
+  recommendedLanguage,
+}: {
+  options: readonly SearchLanguageOption[]
+  routeLanguageSlug: string | null
+  recommendedLanguage: SearchLanguageOption | null
+}): SearchLanguageOption | null {
+  if (routeLanguageSlug) {
+    const routeOption = findSearchLanguageOptionByPublicSlug(
+      routeLanguageSlug,
+      options,
+    )
+    if (routeOption) return routeOption
+  }
+
+  if (recommendedLanguage?.publicSlug) return recommendedLanguage
+
+  return findSearchLanguageOptionByPublicSlug("english", options)
 }

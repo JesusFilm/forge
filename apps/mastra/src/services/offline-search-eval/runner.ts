@@ -287,7 +287,7 @@ function generatedCaseFor(
 }
 
 async function searchAdmin(
-  prompt: { queryText: string; locale: string },
+  prompt: { queryText: string; locale: string; languageSlug?: string },
   input: OfflineSearchEvalInput,
   options: RunnerOptions,
   timing?: SearchTiming,
@@ -299,6 +299,7 @@ async function searchAdmin(
     payload: {
       query: prompt.queryText,
       locale: prompt.locale,
+      ...(prompt.languageSlug ? { languageSlug: prompt.languageSlug } : {}),
       limit: input.searchLimit ?? DEFAULT_SEARCH_LIMIT,
       mode: input.searchMode ?? null,
       contentType: input.contentType ?? null,
@@ -325,6 +326,8 @@ async function searchSeedCases(
     cases.push({
       caseId: prompt.id,
       locale: prompt.locale,
+      ...(prompt.languageSlug ? { languageSlug: prompt.languageSlug } : {}),
+      ...(prompt.websiteLocale ? { websiteLocale: prompt.websiteLocale } : {}),
       queryText: prompt.queryText,
       source: "seed",
       tags: prompt.tags,
@@ -343,6 +346,8 @@ function baselineReportOutcomes(
     kind: entry.searchFailure ? "search-failure" : "tie",
     caseId: entry.caseId,
     locale: entry.locale,
+    ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+    ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
     queryText: entry.queryText,
     source: "seed",
     baselineResults: entry.results,
@@ -425,7 +430,10 @@ async function exploratoryGeneratedOutcomes(
     }
 
     const result = await searchAdmin(
-      { queryText: entry.queryText, locale: entry.locale },
+      {
+        queryText: entry.queryText,
+        locale: entry.locale,
+      },
       input,
       options,
       timing,
@@ -502,7 +510,11 @@ async function compareBaselineCases({
 
   for (const entry of baselineCases) {
     const current = await searchAdmin(
-      { queryText: entry.queryText, locale: entry.locale },
+      {
+        queryText: entry.queryText,
+        locale: entry.locale,
+        languageSlug: entry.languageSlug,
+      },
       input,
       options,
       timing,
@@ -516,6 +528,8 @@ async function compareBaselineCases({
         kind: "search-failure",
         caseId: entry.caseId,
         locale: entry.locale,
+        ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+        ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
         queryText: entry.queryText,
         source: "seed",
         baselineResults: entry.results,
@@ -548,6 +562,8 @@ async function compareBaselineCases({
         kind: collapseSwapVerdicts(forward.verdict, swapped.verdict),
         caseId: entry.caseId,
         locale: entry.locale,
+        ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+        ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
         queryText: entry.queryText,
         source: "seed",
         baselineResults: entry.results,
@@ -569,6 +585,8 @@ async function compareBaselineCases({
         kind: "judge-failure",
         caseId: entry.caseId,
         locale: entry.locale,
+        ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+        ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
         queryText: entry.queryText,
         source: "seed",
         baselineResults: entry.results,

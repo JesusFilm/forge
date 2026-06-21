@@ -193,7 +193,10 @@
     "searchSuggestionWithLanguage": "Caută {suggestion} în {language}",
     "inLanguage": "în {language}",
     "browseByRegion": "Răsfoiește după regiune",
-    "clearLanguages": "Șterge"
+    "clearLanguages": "Șterge",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",

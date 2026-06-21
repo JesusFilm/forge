@@ -107,6 +107,16 @@ a high-strength source attribution on their own.
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
 
+### Search Language
+
+The language semantic search uses to interpret and match a query. Search Language is separate from UI locale, public Watch route language, and audio-language selection: changing it affects search results but does not change the viewer's website language, URL language segment, or selected Dub.
+
+Search Language identity should travel as the public language slug selected or confirmed by the viewer. Locale tags are useful for fallback negotiation and search execution, but they are not the exact identity of the viewer's chosen search language.
+
+### Query Language Suggestion
+
+A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
+
 ### Keyword-First Search
 
 A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
@@ -118,6 +128,10 @@ The response-side state that says whether semantic retrieval actually contribute
 ### Content Embedding
 
 A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.
+
+### AI Gateway
+
+The project-owned embedding provider surface that produces vectors for Content Embeddings. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
 
 ### Embedding Provenance
 
