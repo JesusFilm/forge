@@ -785,6 +785,25 @@ describe("normalizeMode", () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
+  it("recognizes 'semantic-only' only for internal eval callers", () => {
+    const warn = vi.fn()
+    expect(
+      normalizeMode(
+        "semantic-only",
+        { warn },
+        { allowInternalEvalModes: true },
+      ),
+    ).toBe("semantic-only")
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it("treats public 'semantic-only' as unknown and falls back to hybrid", () => {
+    const warn = vi.fn()
+    expect(normalizeMode("semantic-only", { warn })).toBe("hybrid")
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0]![0]).toContain("mode=semantic-only")
+  })
+
   it("is case-sensitive — 'HYBRID' / 'Keyword-First' are unknown", () => {
     const warn = vi.fn()
     expect(normalizeMode("HYBRID", { warn })).toBe("hybrid")

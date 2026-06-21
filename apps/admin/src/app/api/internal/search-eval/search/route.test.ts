@@ -113,6 +113,7 @@ describe("POST /api/internal/search-eval/search", () => {
       limit: 10,
       offset: undefined,
       mode: "keyword-first",
+      allowInternalEvalModes: true,
       contentTypes: ["video"],
     })
     expect(recordSearchTraceSafely).not.toHaveBeenCalled()
@@ -140,6 +141,7 @@ describe("POST /api/internal/search-eval/search", () => {
         query: "Jesus",
         locale: "es",
         limit: 10,
+        allowInternalEvalModes: true,
       }),
     )
   })

@@ -24,6 +24,11 @@ const NATIVE_SEARCH_EVAL_TARGET_ID = "offline-search-eval" as const
 const SAMPLE_PROMPT_SET_VERSION = "sample/search-eval/v1"
 const NATIVE_LIST_PAGE_SIZE = 200
 const MAX_NATIVE_LIST_PAGES = 25
+const SEARCH_PIPELINE_MODES = [
+  "hybrid",
+  "keyword-first",
+  "semantic-only",
+] as const
 
 type NativeScorer = MastraScorer<
   string,
@@ -60,7 +65,7 @@ export const NativeSearchEvalInputSchema = z
     searchOptions: z
       .object({
         limit: z.number().int().positive(),
-        mode: z.enum(["hybrid", "keyword-first"]),
+        mode: z.enum(SEARCH_PIPELINE_MODES),
         contentType: z.enum(["all", "video", "experience"]),
       })
       .strict(),
@@ -440,14 +445,18 @@ function nativeReportDatasetName(
   report: SearchEvalReport,
   environmentLabel: string,
 ) {
-  return `search-eval:${environmentLabel}:${report.metadata.baselineName}`
+  return `search-eval:${environmentLabel}:${report.metadata.baselineName}:${searchMode(
+    report.metadata.search.mode,
+  )}`
 }
 
 function nativeReportDatasetKey(
   report: SearchEvalReport,
   environmentLabel: string,
 ) {
-  return `search-eval:${environmentLabel}:${report.metadata.baselineName}:${report.metadata.promptSetVersion}`
+  return `search-eval:${environmentLabel}:${report.metadata.baselineName}:${report.metadata.promptSetVersion}:mode:${searchMode(
+    report.metadata.search.mode,
+  )}`
 }
 
 function nativeReportExperimentName(
@@ -455,7 +464,9 @@ function nativeReportExperimentName(
   environmentLabel: string,
 ) {
   const verb = report.kind === "baseline-report" ? "baseline" : "compare"
-  return `search-eval-${verb}:${environmentLabel}:${report.metadata.baselineName}:${report.reportId}`
+  return `search-eval-${verb}:${environmentLabel}:${report.metadata.baselineName}:${searchMode(
+    report.metadata.search.mode,
+  )}:${report.reportId}`
 }
 
 function nativeReportExperimentKey(
@@ -879,7 +890,9 @@ function reportOutcomeSourceKey(
   report: SearchEvalReport,
   outcome: ComparisonOutcome,
 ) {
-  return `prompt-set:${report.metadata.promptSetVersion}:case:${outcome.caseId}`
+  return `prompt-set:${report.metadata.promptSetVersion}:mode:${searchMode(
+    report.metadata.search.mode,
+  )}:case:${outcome.caseId}`
 }
 
 function nativeResult(result: SearchEvalResult) {
@@ -902,7 +915,10 @@ function resultAnchor(result: SearchEvalResult) {
   }
 }
 
-function searchMode(mode: string | null): "hybrid" | "keyword-first" {
+function searchMode(
+  mode: string | null,
+): "hybrid" | "keyword-first" | "semantic-only" {
+  if (mode === "semantic-only") return "semantic-only"
   return mode === "keyword-first" ? "keyword-first" : "hybrid"
 }
 

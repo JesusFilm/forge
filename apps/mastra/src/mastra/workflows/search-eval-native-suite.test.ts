@@ -305,19 +305,19 @@ describe("search eval native suite workflow", () => {
         action: "sync-report",
         reportId: "report-1",
         dataset: {
-          name: "search-eval:local:seed-baseline",
+          name: "search-eval:local:seed-baseline:hybrid",
           status: "created",
           itemCount: 1,
         },
         experiment: {
-          name: "search-eval-baseline:local:seed-baseline:report-1",
+          name: "search-eval-baseline:local:seed-baseline:hybrid:report-1",
           status: "created",
         },
         report: {
           mastraEvaluation: {
             integrationStatus: "native_synced",
             dataset: {
-              name: "search-eval:local:seed-baseline",
+              name: "search-eval:local:seed-baseline:hybrid",
               itemCount: 1,
             },
           },
