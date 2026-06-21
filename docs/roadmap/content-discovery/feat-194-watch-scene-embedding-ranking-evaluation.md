@@ -3,7 +3,7 @@ id: "feat-194"
 title: "Watch scene embedding ranking evaluation"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-06-16"
 duration: 4
 depends_on: []
@@ -69,10 +69,26 @@ Roadmap window: this week, June 16-19, 2026.
 - Document recommendation: keep, remove, or downweight scene embeddings.
 - Implement removal/downweighting if evals show they reduce relevance.
 
+## Completion Notes
+
+Completed 2026-06-21 after verifying the current `upstream/main` search path no
+longer consumes scene embeddings for video semantic search.
+
+Evidence:
+
+- `apps/admin/src/services/hybrid-search-retrievers.ts` now builds
+  `searchVideoSemantic` from `transcript_source` only.
+- Static grep against `upstream/main` found no `video_scene_locale`,
+  `scene_source`, or `'scene'` evidence source references in
+  `apps/admin/src/services/hybrid-search-retrievers.ts` or
+  `apps/admin/src/services/hybrid-search.service.ts`.
+- The semantic-video result shape is still retained for API/debug
+  compatibility, but the evidence source is transcript-backed:
+  `video_transcript_chunk` / `'transcript' AS evidence_source`.
+
 ## Verification
 
-- The eval report names the exact strategy variants compared.
-- The recommendation cites query examples where scene embeddings helped or
-  hurt.
-- If code changes are made, focused hybrid-search retriever and fusion tests
-  cover the new ranking behavior.
+- `git grep -n -e "video_scene_locale" -e "scene_source" -e "'scene'" upstream/main -- apps/admin/src/services/hybrid-search-retrievers.ts apps/admin/src/services/hybrid-search.service.ts`
+  returned no matches.
+- `git grep -n -e "video_transcript_chunk" -e "transcript_source" -e "'transcript'" upstream/main -- apps/admin/src/services/hybrid-search-retrievers.ts`
+  confirmed the live semantic-video search evidence path is transcript-only.
