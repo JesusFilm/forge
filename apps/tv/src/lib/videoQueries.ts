@@ -138,7 +138,7 @@ export type WatchVideoData = ResultOf<typeof GET_VIDEO_BY_SLUG>
 
 // ── Lean series-screen video fragment ──────────────────────────────
 //
-// SYNC: mirrors apps/mobile/src/lib/queries.ts `seriesVideoFragment`.
+// SYNC: mirrors apps/mobile/src/lib/queries.ts `seriesWatchVideoFragment`.
 //
 // A leaner sibling of watchVideoFragment for the SERIES screen, which consumes
 // far less of the video than the watch screen. It DELIBERATELY OMITS two heavy

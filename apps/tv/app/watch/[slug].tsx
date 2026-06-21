@@ -41,7 +41,10 @@ import {
   buildRelatedQuestionsBlock,
 } from "../../src/components/watch/detailsAdapters"
 import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
-import { WATCH_THEME } from "../../src/components/watch/watchDetailTheme"
+import {
+  WATCH_THEME,
+  HERO_PEEK,
+} from "../../src/components/watch/watchDetailTheme"
 import { SECTION_HEADING } from "../../src/components/sections/sectionHeading"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
@@ -220,12 +223,18 @@ export default function WatchVideoScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero: full-screen cinematic backdrop with content anchored bottom-left. */}
+        {/* Hero: cinematic backdrop with content anchored bottom-left. The
+            backdrop fills the (HERO_PEEK-shortened) hero so the video clips by
+            construction on BOTH tvOS and Android — a full-height VideoView would
+            punch through the Up Next rail on Android (SurfaceView ignores
+            overflow:hidden). bottomFadeColor draws the hero→rail fade INSIDE the
+            backdrop so it composites over that SurfaceView. */}
         <View style={styles.hero}>
           <VideoBackdrop
             streamingUrl={backdropSource ?? null}
             posterUrl={displayPoster}
             overlayVisible={playerState.isVisible}
+            bottomFadeColor={WATCH_THEME.below}
           />
 
           <View style={styles.heroContent}>
@@ -327,7 +336,12 @@ const styles = StyleSheet.create({
 
   // ── Hero ──────────────────────────────────────────────────────────
   hero: {
-    height: SCREEN_HEIGHT,
+    // Shortened by HERO_PEEK so the Up Next rail peeks above the fold. The
+    // VideoBackdrop fills this (not full-screen) so its VideoView clips by
+    // construction on both tvOS and Android; the hero→rail fade is drawn inside
+    // the backdrop (bottomFadeColor) so it composites over the Android
+    // SurfaceView. overflow:hidden still guards the poster/scrim layers.
+    height: SCREEN_HEIGHT - HERO_PEEK,
     justifyContent: "flex-end",
     backgroundColor: "#000000",
     overflow: "hidden",
@@ -335,7 +349,9 @@ const styles = StyleSheet.create({
   heroContent: {
     alignItems: "flex-start",
     paddingHorizontal: scale(80),
-    paddingBottom: scale(96),
+    // Tightened (was 96) to shrink the dead band between the action row and the
+    // Up Next rail below.
+    paddingBottom: scale(52),
   },
   kicker: {
     flexDirection: "row",
@@ -388,7 +404,8 @@ const styles = StyleSheet.create({
   // ── Below the fold ────────────────────────────────────────────────
   below: {
     backgroundColor: WATCH_THEME.below,
-    paddingTop: scale(48),
+    // Tightened (was 48) so the rail sits closer under the hero action row.
+    paddingTop: scale(24),
   },
   aboutRow: {
     flexDirection: "row",

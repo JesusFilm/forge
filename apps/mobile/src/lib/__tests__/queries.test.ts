@@ -63,4 +63,13 @@ describe("GET_VIDEO_BY_SLUG (watch screen) keeps the full fragment", () => {
     expect(bulkSdl).toContain("duration")
     expect(bulkSdl).toContain("playbackId")
   })
+
+  // ...and does NOT carry the series-only selections (mirrors the TV
+  // "shared fragment stays lean" guard): the watch query must stay focused.
+  it("EXCLUDES series-only selections (childDubLanguages + top-level children)", () => {
+    expect(bulkSdl).not.toContain("childDubLanguages")
+    // `children` appears only inside the WatchVideo fragment's parents.parent
+    // sibling path — never as a top-level operation selection.
+    expect(operationOnly(bulkSdl)).not.toContain("children")
+  })
 })

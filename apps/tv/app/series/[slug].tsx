@@ -59,21 +59,22 @@ import { RetryButton } from "../../src/components/RetryButton"
 import { SeriesActionRow } from "../../src/components/series/SeriesActionRow"
 import { SeriesLanguagePanel } from "../../src/components/series/SeriesLanguagePanel"
 import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
-import { WATCH_THEME } from "../../src/components/watch/watchDetailTheme"
+import {
+  WATCH_THEME,
+  HERO_PEEK,
+  HERO_BOTTOM_FADE_HEIGHT,
+} from "../../src/components/watch/watchDetailTheme"
 import { COLORS, hexToRgba } from "../../src/lib/colors"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
-// The hero's LAYOUT slot stops short of full height so the top of the episode
-// rail peeks above the fold — the TV "next-row peek" affordance that tells the
-// viewer the screen scrolls (we deliberately don't ship a scroll-hint chevron).
-// Kept small/slight: just enough to reveal the rail heading + the card tops.
-// The backdrop image is NOT shortened by this — it renders at full SCREEN_HEIGHT
-// and the hero's overflow:hidden simply clips its bottom (where the rail sits),
-// so the thumbnail framing is identical to a full-height hero (top not trimmed).
-const HERO_PEEK = scale(170)
+// HERO_PEEK / HERO_BOTTOM_FADE_HEIGHT are shared with the watch screen (see
+// watchDetailTheme). The series backdrop is a static expo-image, so — unlike the
+// watch screen's VideoView — it renders at full SCREEN_HEIGHT and the hero's
+// overflow:hidden clips its bottom HERO_PEEK (thumbnail framing stays full, top
+// not trimmed); the rail peeks through there.
 
 // Stable fallback for the language panel while no record is resolved — a
 // fresh [] each render would re-run the panel's rows memo (the watch screen's
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: scale(220),
+    height: HERO_BOTTOM_FADE_HEIGHT,
   },
   heroContent: {
     alignItems: "flex-start",

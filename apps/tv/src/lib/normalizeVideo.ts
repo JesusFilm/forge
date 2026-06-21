@@ -460,9 +460,11 @@ export function normalizeSeries(
   if (raw == null || !raw.documentId) return null
   const cached = normalizeSeriesCache.get(raw)
   if (cached !== undefined) return cached
-  // RawSeriesVideo is a structural superset of RawVideo (it spreads WatchVideo),
-  // so the shared builder maps the common fields; episodes + languages attach on
-  // top.
+  // RawSeriesVideo spreads the lean SeriesWatchVideo fragment — a SUBSET of
+  // WatchVideo (no parents chain; per-dub duration/muxVideo dropped). The shared
+  // builder accepts it via NormalizableVideo, mapping the common fields; the
+  // dropped fields resolve to siblings=[] / duration=null / muxPlaybackId=null
+  // on the series path (unused here). episodes + languages attach on top.
   const result: WatchSeriesRecord = {
     ...buildWatchVideoRecord(raw),
     episodes: buildEpisodes(raw),

@@ -18,9 +18,9 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
-import { COLORS } from "../../lib/colors"
+import { COLORS, hexToRgba } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
-import { WATCH_THEME } from "./watchDetailTheme"
+import { WATCH_THEME, HERO_BOTTOM_FADE_HEIGHT } from "./watchDetailTheme"
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
@@ -39,12 +39,22 @@ type VideoBackdropProps = {
    * be decoding at a time.
    */
   overlayVisible: boolean
+  /**
+   * When set, paints a bottom-edge fade to this color (e.g. WATCH_THEME.below)
+   * so the hero blends into the section below it. Rendered as the LAST layer
+   * with collapsable={false} so it composites OVER the Android VideoView
+   * SurfaceView (a regular sibling view in the parent would be punched through —
+   * see apps/tv/CLAUDE.md "Android TV VideoView z-order"). Anchored to the
+   * backdrop's own bottom, so the backdrop must be sized to the visible hero.
+   */
+  bottomFadeColor?: string | null
 }
 
 export function VideoBackdrop({
   streamingUrl,
   posterUrl,
   overlayVisible,
+  bottomFadeColor,
 }: VideoBackdropProps) {
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
@@ -269,6 +279,28 @@ export function VideoBackdrop({
         pointerEvents="none"
         collapsable={false}
       />
+
+      {/* Bottom-edge fade into the section below the hero (opt-in via
+          bottomFadeColor). MUST live here, inside the backdrop, AFTER the
+          VideoView and with collapsable={false} — same reason the scrims above
+          do: on Android TV the VideoView is a SurfaceView that renders over
+          sibling RN views, so a fade placed in the parent hero would be punched
+          through. Anchored to this container's bottom = the visible hero edge. */}
+      {bottomFadeColor != null ? (
+        <LinearGradient
+          colors={[
+            hexToRgba(bottomFadeColor, 0),
+            hexToRgba(bottomFadeColor, 0.8),
+            bottomFadeColor,
+          ]}
+          locations={[0, 0.65, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.bottomFade}
+          pointerEvents="none"
+          collapsable={false}
+        />
+      ) : null}
     </View>
   )
 }
@@ -281,5 +313,12 @@ const styles = StyleSheet.create({
   },
   fallbackBg: {
     backgroundColor: COLORS.surfaceContainer,
+  },
+  bottomFade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: HERO_BOTTOM_FADE_HEIGHT,
   },
 })

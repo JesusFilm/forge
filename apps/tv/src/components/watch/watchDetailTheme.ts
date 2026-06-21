@@ -10,6 +10,8 @@
 // No expo-blur dependency on TV, so the "frosted glass" pills are approximated
 // with a translucent white fill over the dark scrim — no actual backdrop blur.
 
+import { scale } from "../../lib/scale"
+
 /** Near-black surface/ink shared by WATCH_THEME (focusInk) and SEARCH_THEME. */
 export const NEAR_BLACK = "#0a0a0b"
 
@@ -41,6 +43,15 @@ export const WATCH_THEME = {
   /** Translucent chip behind the kicker badge ("SERIES"). */
   badgeBg: "rgba(255,255,255,0.16)",
 } as const
+
+// ── Hero layout (shared by the watch + series detail screens) ──────
+// The hero's LAYOUT slot stops short of full height by HERO_PEEK so the next
+// section (Up Next / Episodes rail) peeks above the fold — the TV next-row-peek
+// affordance (we deliberately don't ship a scroll-hint chevron).
+// HERO_BOTTOM_FADE_HEIGHT is the height of the gradient that fades the hero's
+// bottom edge into the rail background (WATCH_THEME.below), killing the hard seam.
+export const HERO_PEEK = scale(170)
+export const HERO_BOTTOM_FADE_HEIGHT = scale(220)
 
 // SECTION_HEADING moved to ../sections/sectionHeading (a generic SDUI section
 // renderer must not depend on this watch-only token file).
