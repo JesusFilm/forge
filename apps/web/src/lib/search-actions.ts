@@ -3,7 +3,6 @@
 import { headers } from "next/headers"
 
 import { isWatchAlgoliaSearchEnabled } from "./feature-flags"
-import { readPreferredLanguageSlug } from "./language-preference-server"
 import { searchAlgoliaVideos } from "./algolia-search"
 import { transformAlgoliaVideoHits } from "./algolia-video-transform"
 import { isPublicWatchLanguageSlug } from "./locale"
@@ -14,7 +13,6 @@ import {
   type SearchError,
   type SearchResult,
 } from "./search"
-import { readSearchLanguagePreferenceSlug } from "./search-language-preference-server"
 import {
   findSearchLanguageOptionByEnglishName,
   normalizeSearchLanguageEnglishNames,
@@ -58,25 +56,16 @@ export async function runSearch(input: {
   const truncatedQuery = query.slice(0, 200)
   const selectedLanguageEnglishNames =
     normalizeSearchLanguageEnglishNames(languageEnglishNames)
-  const [
-    flagEnabled,
-    searchPreferenceSlug,
-    audioPreferenceSlug,
-    acceptLanguage,
-  ] = await Promise.all([
+  const [flagEnabled, acceptLanguage] = await Promise.all([
     isWatchAlgoliaSearchEnabled({
       custom: { surface: "floating-search-modal" },
     }),
-    readSearchLanguagePreferenceSlug(),
-    readPreferredLanguageSlug(),
     readAcceptLanguageHeader(),
   ])
 
   const resolvedLanguage = resolveSearchLanguage({
     selectedEnglishNames: selectedLanguageEnglishNames,
     explicitSlug: languageSlug,
-    searchPreferenceSlug,
-    audioPreferenceSlug,
     routeLanguageSlug,
     acceptLanguage,
     languageOptions,

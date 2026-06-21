@@ -336,6 +336,40 @@ describe("native search eval projection", () => {
     expect(mastra.datasetsById.get("dataset-1")?.experiments).toHaveLength(2)
   })
 
+  it("preserves report outcome language context in native Dataset items", async () => {
+    const mastra = createFakeMastra()
+    const sample = createSampleSearchEvalReport({
+      runId: "sample-run-1",
+      now: new Date("2026-05-28T00:00:00.000Z"),
+    })
+    const report = {
+      ...sample,
+      outcomes: sample.outcomes.map((outcome) => ({
+        ...outcome,
+        languageSlug: "spanish-castilian",
+        websiteLocale: "en",
+      })),
+    }
+
+    await syncSearchEvalReportToNativeEvaluation({
+      mastra,
+      report,
+      environmentLabel: "local",
+    })
+
+    const item = mastra.datasetsById.get("dataset-1")?.items[0]
+    expect(item?.input).toMatchObject({
+      languageSlug: "spanish-castilian",
+      websiteLocale: "en",
+    })
+    expect(item?.metadata).toMatchObject({
+      forgeSearchEval: {
+        languageSlug: "spanish-castilian",
+        websiteLocale: "en",
+      },
+    })
+  })
+
   it("keeps only sanitized promoted candidates in native datasets", async () => {
     const mastra = createFakeMastra()
     const candidates = [

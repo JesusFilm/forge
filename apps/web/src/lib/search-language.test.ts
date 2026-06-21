@@ -56,12 +56,27 @@ describe("stripLanguageFromSearchQuery", () => {
 })
 
 describe("resolveSearchLanguage", () => {
-  it("uses selected Algolia language names before persisted preferences", () => {
+  it("uses explicit public slugs before legacy selected English names", () => {
     expect(
       resolveSearchLanguage({
         selectedEnglishNames: ["Spanish Castilian"],
-        searchPreferenceSlug: "french",
-        audioPreferenceSlug: "english",
+        explicitSlug: "french",
+        languageOptions,
+      }),
+    ).toEqual({
+      locale: "fr",
+      publicSlug: "french",
+      englishName: "French",
+      source: "explicit-selection",
+    })
+  })
+
+  it("uses selected language names before route and browser defaults", () => {
+    expect(
+      resolveSearchLanguage({
+        selectedEnglishNames: ["Spanish Castilian"],
+        routeLanguageSlug: "french",
+        acceptLanguage: "en-US,en;q=0.9",
         languageOptions,
       }),
     ).toEqual({
@@ -69,21 +84,6 @@ describe("resolveSearchLanguage", () => {
       publicSlug: "spanish-castilian",
       englishName: "Spanish, Castilian",
       source: "explicit-selection",
-    })
-  })
-
-  it("uses the search preference before the existing audio preference", () => {
-    expect(
-      resolveSearchLanguage({
-        searchPreferenceSlug: "french",
-        audioPreferenceSlug: "spanish-castilian",
-        languageOptions,
-      }),
-    ).toMatchObject({
-      locale: "fr",
-      publicSlug: "french",
-      englishName: "French",
-      source: "search-preference",
     })
   })
 

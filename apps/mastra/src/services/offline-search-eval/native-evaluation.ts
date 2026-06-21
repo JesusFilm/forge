@@ -47,6 +47,8 @@ export const NativeSearchEvalInputSchema = z
   .object({
     query: z.string(),
     locale: z.string(),
+    languageSlug: z.string().nullable().optional(),
+    websiteLocale: z.string().nullable().optional(),
     source: z.enum([
       "seed",
       "generated_catalog",
@@ -86,6 +88,8 @@ export const NativeSearchEvalOutputSchema = z
     ]),
     caseId: z.string(),
     locale: z.string(),
+    languageSlug: z.string().nullable().optional(),
+    websiteLocale: z.string().nullable().optional(),
     query: z.string(),
     baselineTopResults: z.array(SearchEvalNativeResultSchema),
     currentTopResults: z.array(SearchEvalNativeResultSchema),
@@ -752,6 +756,8 @@ function nativeDatasetItemFromOutcome(input: {
     input: {
       query: input.outcome.queryText,
       locale: input.outcome.locale,
+      languageSlug: input.outcome.languageSlug ?? null,
+      websiteLocale: input.outcome.websiteLocale ?? null,
       source: input.outcome.source,
       searchOptions: {
         limit: input.report.metadata.search.limit,
@@ -780,6 +786,8 @@ function nativeDatasetItemFromOutcome(input: {
         promptSetVersion: input.report.metadata.promptSetVersion,
         caseId: input.outcome.caseId,
         locale: input.outcome.locale,
+        languageSlug: input.outcome.languageSlug ?? null,
+        websiteLocale: input.outcome.websiteLocale ?? null,
         promptSource: input.outcome.source,
         outcomeKind: input.outcome.kind,
         generatedCandidate: false,
@@ -797,6 +805,8 @@ function nativeOutputFromOutcome(
     outcomeKind: outcome.kind,
     caseId: outcome.caseId,
     locale: outcome.locale,
+    languageSlug: outcome.languageSlug ?? null,
+    websiteLocale: outcome.websiteLocale ?? null,
     query: outcome.queryText,
     baselineTopResults: outcome.baselineResults.slice(0, 5).map(nativeResult),
     currentTopResults: outcome.currentResults.slice(0, 5).map(nativeResult),

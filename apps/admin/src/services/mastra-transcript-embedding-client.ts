@@ -1,4 +1,5 @@
 import { env } from "@/config/env"
+import { resolveMastraLaunchTimeoutMs } from "@/services/mastra-launch-timeout"
 
 export type MastraTranscriptEmbeddingMode =
   | "idempotent"
@@ -260,9 +261,9 @@ export async function launchMastraTranscriptEmbedding(
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(
-          options.timeoutMs ??
-            env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS ??
-            120_000,
+          resolveMastraLaunchTimeoutMs(
+            options.timeoutMs ?? env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+          ),
         ),
       },
     )
@@ -307,4 +308,5 @@ export async function launchMastraTranscriptEmbedding(
 
 export const _internals = {
   parseWorkflowResult,
+  resolveMastraLaunchTimeoutMs,
 }

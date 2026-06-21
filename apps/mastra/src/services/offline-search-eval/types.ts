@@ -18,6 +18,8 @@ export type SearchEvalResult = {
 export type SeedPromptCase = {
   id: string
   locale: string
+  languageSlug?: string
+  websiteLocale?: string
   queryText: string
   source: "seed"
   tags: string[]
@@ -40,6 +42,8 @@ export type SearchEvalCase = SeedPromptCase | GeneratedPromptCase
 export type BaselineCase = {
   caseId: string
   locale: string
+  languageSlug?: string
+  websiteLocale?: string
   queryText: string
   source: "seed"
   tags: string[]
@@ -108,6 +112,8 @@ export type ComparisonOutcome = {
   kind: ReportOutcomeKind
   caseId: string
   locale: string
+  languageSlug?: string
+  websiteLocale?: string
   queryText: string
   source: "seed"
   baselineResults: SearchEvalResult[]

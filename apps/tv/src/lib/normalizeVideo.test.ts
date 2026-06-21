@@ -477,6 +477,37 @@ describe("normalizeSeries — base record + trailer", () => {
     expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
     expect(result.variants).toHaveLength(2)
   })
+
+  // Contract guard (mocked-shape vs real-contract): SeriesWatchVideo selects
+  // dubs WITHOUT the player-only duration/muxVideo, so the lean shape has those
+  // keys ABSENT (undefined), not null. The shared builder must still produce a
+  // playable trailer from hls alone; deleting the `?? null` coalescing in
+  // buildWatchVideoRecord should fail here.
+  it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        variants: [
+          {
+            documentId: "dub-lean",
+            slug: "english",
+            published: true,
+            hls: "https://stream.mux.com/lean.m3u8",
+            language: {
+              coreId: "c-en",
+              bcp47: "en",
+              slug: "english",
+              name: { en: "English" },
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.streamingUrl).toBe("https://stream.mux.com/lean.m3u8")
+    expect(result.duration).toBeNull()
+    expect(result.muxPlaybackId).toBeNull()
+    expect(result.variants[0].duration).toBeNull()
+    expect(result.variants[0].muxPlaybackId).toBeNull()
+  })
 })
 
 describe("normalizeSeries — episodes (own children)", () => {

@@ -10,6 +10,10 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(),
 }))
 
+vi.mock("next/cache", () => ({
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+}))
+
 vi.mock("@/lib/admin-client", () => ({
   default: {
     query: vi.fn(),
@@ -62,19 +66,37 @@ describe("getSearchLanguageOptions", () => {
     consoleError.mockRestore()
   })
 
-  it("returns empty metadata without querying admin when the Algolia flag is off", async () => {
+  it("loads language metadata when the Algolia flag is off", async () => {
     flagMock.mockResolvedValueOnce(false)
+    queryMock.mockResolvedValueOnce({
+      data: {
+        languages: [englishLanguage, spanishLanguage],
+        countries: [],
+      },
+    })
 
     await expect(getSearchLanguageOptions()).resolves.toMatchObject({
       ok: true,
       algoliaEnabled: false,
-      options: [],
+      options: [
+        {
+          englishName: "English",
+          publicSlug: "english",
+        },
+        {
+          englishName: "Spanish, Castilian",
+          publicSlug: "spanish-castilian",
+        },
+      ],
       countrySuggestion: null,
-      recommendedLanguage: null,
+      recommendedLanguage: {
+        englishName: "Spanish, Castilian",
+        publicSlug: "spanish-castilian",
+      },
       countryCode: "US",
       countryName: "United States",
     })
-    expect(queryMock).not.toHaveBeenCalled()
+    expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
   it("builds facet-limited options, country suggestions, and a recommended language", async () => {
@@ -143,8 +165,8 @@ describe("getSearchLanguageOptions", () => {
         ],
       },
       recommendedLanguage: {
-        englishName: "English",
-        publicSlug: "english",
+        englishName: "Spanish, Castilian",
+        publicSlug: "spanish-castilian",
       },
     })
   })

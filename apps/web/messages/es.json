@@ -193,7 +193,10 @@
     "searchSuggestionWithLanguage": "Buscar {suggestion} en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Explorar por región",
-    "clearLanguages": "Borrar"
+    "clearLanguages": "Borrar",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
