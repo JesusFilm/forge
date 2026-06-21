@@ -186,9 +186,22 @@ function pickFirstLocale(
 
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
 
+// The series query (GET_SERIES_BY_SLUG → SeriesWatchVideo) fetches a leaner
+// shape than the watch query: no `parents` chain, and each dub omits the
+// player-only `duration` + `muxVideo`. These permissive aliases let the shared
+// builder accept BOTH shapes — the full watch fragment and the lean series one
+// — without loosening either operation's own generated type.
+type NormalizableVariant = Omit<RawVariant, "duration" | "muxVideo"> &
+  Partial<Pick<RawVariant, "duration" | "muxVideo">>
+
+type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
+  parents?: RawVideo["parents"]
+  variants?: readonly NormalizableVariant[] | null
+}
+
 function pickFirstPlayableVariant(
-  variants: RawVideo["variants"] | undefined | null,
-): RawVariant | null {
+  variants: readonly NormalizableVariant[] | undefined | null,
+): NormalizableVariant | null {
   if (!variants) return null
   return (
     variants.find(
@@ -293,7 +306,7 @@ export function normalizeVideo(
   return result
 }
 
-function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
+function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
   const locale = pickFirstLocale(raw.locales)
   const firstPlayable = pickFirstPlayableVariant(raw.variants)
 
@@ -447,9 +460,11 @@ export function normalizeSeries(
   if (raw == null || !raw.documentId) return null
   const cached = normalizeSeriesCache.get(raw)
   if (cached !== undefined) return cached
-  // RawSeriesVideo is a structural superset of RawVideo (it spreads WatchVideo),
-  // so the shared builder maps the common fields; episodes + languages attach on
-  // top.
+  // RawSeriesVideo spreads the lean SeriesWatchVideo fragment — a SUBSET of
+  // WatchVideo (no parents chain; per-dub duration/muxVideo dropped). The shared
+  // builder accepts it via NormalizableVideo, mapping the common fields; the
+  // dropped fields resolve to siblings=[] / duration=null / muxPlaybackId=null
+  // on the series path (unused here). episodes + languages attach on top.
   const result: WatchSeriesRecord = {
     ...buildWatchVideoRecord(raw),
     episodes: buildEpisodes(raw),

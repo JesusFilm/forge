@@ -99,9 +99,34 @@ describe("GET_VIDEO_BY_SLUG (lean bulk video + dub list)", () => {
 })
 
 describe("GET_SERIES_BY_SLUG (series detail: own children + language union)", () => {
-  it("queries videoBySlug(slug:) and spreads the shared WatchVideo fragment", () => {
+  it("queries videoBySlug(slug:) and spreads the lean SeriesWatchVideo fragment", () => {
     expect(seriesOpSdl).toMatch(/videoBySlug\(slug:\s*\$slug\)/)
-    expect(seriesOpSdl).toContain("...WatchVideo")
+    expect(seriesOpSdl).toContain("...SeriesWatchVideo")
+    // The series screen does NOT use the full WatchVideo fragment — that one
+    // carries the watch screen's sibling chain + player-only per-dub fields.
+    expect(seriesOpSdl).not.toContain("...WatchVideo")
+  })
+
+  // Perf guard (TV series 10s render): the series screen renders the EpisodeRail
+  // from its OWN children and never renders siblings, so the parents → parent →
+  // children chain (~208 nodes / ~190KB on a Jesus-sized series, ~1.6s of prod
+  // resolver time) must NOT be fetched here. It lives only on the watch screen's
+  // full WatchVideo fragment.
+  it("EXCLUDES the parents/siblings chain", () => {
+    expect(seriesSdl).not.toContain("parents")
+  })
+
+  // Perf guard: the series screen only needs a playable `hls` + `language` to
+  // pick and swap the trailer. Each dub's `duration` + `muxVideo.playbackId`
+  // are player-only (watch screen) — fetching them across ~2,270 dubs is dead
+  // weight (bytes + a per-dub muxVideo relation resolution server-side).
+  it("KEEPS variants: dubs with hls + language, but EXCLUDES per-dub duration + muxVideo", () => {
+    expect(seriesSdl).toContain("variants: dubs")
+    expect(seriesSdl).toContain("hls")
+    expect(seriesSdl).toMatch(/language\s*\{/)
+    expect(seriesSdl).not.toContain("duration")
+    expect(seriesSdl).not.toContain("muxVideo")
+    expect(seriesSdl).not.toContain("playbackId")
   })
 
   it("selects the series' own children with the relation `order` field", () => {
