@@ -4,6 +4,8 @@ import {
   buildLetterRows,
   buildLinearKeys,
   GRID_COLUMNS,
+  GRID_KEY_DIMS,
+  LINEAR_KEY_DIMS,
 } from "./keyGrid"
 
 describe("buildLetterRows", () => {
@@ -155,5 +157,31 @@ describe("buildLinearKeys", () => {
       buildLinearKeys(true).map((k) => k.id),
     )
     expect(buildLinearKeys(false)[0].id).toBe("letter-0")
+  })
+})
+
+describe("key dimension tokens", () => {
+  // Pin the exact values: GRID_KEY_DIMS reproduces SearchKeyboard's current
+  // pixel values, so a stray edit here would silently shift the Android grid.
+  // This converts the "byte-identical Android" guarantee from a one-time
+  // simulator check into a CI-enforced contract.
+  it("GRID_KEY_DIMS reproduces the grid's pixel values", () => {
+    expect(GRID_KEY_DIMS).toEqual({
+      size: 72,
+      wideWidth: 154,
+      radius: 12,
+      labelFontSize: 26,
+      iconSize: 28,
+    })
+  })
+
+  it("LINEAR_KEY_DIMS holds the single-line keyboard values", () => {
+    expect(LINEAR_KEY_DIMS).toEqual({
+      size: 48,
+      wideWidth: 72,
+      radius: 10,
+      labelFontSize: 20,
+      iconSize: 24,
+    })
   })
 })

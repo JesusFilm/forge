@@ -209,6 +209,9 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
 function SearchBodyStacked(props: SearchBodyProps) {
   return (
     <View style={styles.stackedBody}>
+      {/* Like SearchKeyboard in the two-pane body, SearchKeyboardLinear is not
+          given a dynamic React key: remounting it on a query/state change kills
+          focus on the currently-pressed key. Keep it mounted. */}
       <SearchKeyboardLinear
         value={props.query}
         onChange={props.onChangeQuery}
