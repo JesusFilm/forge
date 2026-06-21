@@ -2,6 +2,7 @@ import {
   applyKey,
   buildActionRow,
   buildLetterRows,
+  buildLinearKeys,
   GRID_COLUMNS,
 } from "./keyGrid"
 
@@ -107,5 +108,52 @@ describe("applyKey", () => {
     expect(applyKey("ab", { kind: "submit" })).toBeNull()
     expect(applyKey("ab", { kind: "shift" })).toBeNull()
     expect(applyKey("", { kind: "shift" })).toBeNull()
+  })
+})
+
+describe("buildLinearKeys", () => {
+  it("is 26 letters followed by the action row (shift · space · delete · search)", () => {
+    const keys = buildLinearKeys(false)
+    expect(keys).toHaveLength(30)
+    expect(
+      keys
+        .slice(0, 26)
+        .map((k) => k.label)
+        .join(""),
+    ).toBe("abcdefghijklmnopqrstuvwxyz")
+    expect(keys.slice(26).map((k) => k.action.kind)).toEqual([
+      "shift",
+      "space",
+      "backspace",
+      "submit",
+    ])
+  })
+
+  it("flips every letter to uppercase when shifted, action row unchanged in kind", () => {
+    const upper = buildLinearKeys(true)
+    expect(
+      upper
+        .slice(0, 26)
+        .map((k) => k.label)
+        .join(""),
+    ).toBe("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    expect(upper.slice(26).map((k) => k.action.kind)).toEqual([
+      "shift",
+      "space",
+      "backspace",
+      "submit",
+    ])
+  })
+
+  it("has unique ids across the whole row", () => {
+    const ids = buildLinearKeys(false).map((k) => k.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it("reuses position-based letter ids (stable across case toggle)", () => {
+    expect(buildLinearKeys(false).map((k) => k.id)).toEqual(
+      buildLinearKeys(true).map((k) => k.id),
+    )
+    expect(buildLinearKeys(false)[0].id).toBe("letter-0")
   })
 })
