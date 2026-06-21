@@ -237,6 +237,7 @@ export async function POST(request: Request): Promise<Response> {
       limit: params.limit,
       offset: params.offset,
       mode: params.mode,
+      allowInternalEvalModes: true,
       contentTypes: params.contentTypes,
     })
     console.info(

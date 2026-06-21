@@ -3,7 +3,7 @@ id: "feat-193"
 title: "Watch search readiness eval suite"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-06-16"
 duration: 4
 depends_on:
@@ -24,7 +24,7 @@ tags:
 
 The team needs a concrete launch-readiness answer for Watch search, not just
 ad hoc spot checks. The current search work has multiple possible execution
-modes: keyword-first, hybrid, semantic, and Algolia fallback. Without a shared
+modes: keyword-first, hybrid, and semantic-only diagnostics. Without a shared
 eval set and a readable report, humans and AI agents cannot confidently decide
 whether the current implementation is ready to launch.
 
@@ -65,8 +65,8 @@ Roadmap window: this week, June 16-19, 2026.
    - confusing or ambiguous searches;
    - multilingual queries;
    - scene-like queries.
-4. Run the same dataset against keyword, hybrid, semantic, and Algolia-backed
-   result modes.
+4. Run the same dataset against keyword-first, hybrid, and internal-only
+   semantic-only result modes.
 5. Produce a report that includes ranked results, relevance scores, obvious
    failures, no-result cases, and summary metrics.
 6. Make the report structured enough that both team members and AI agents can
@@ -78,7 +78,10 @@ Roadmap window: this week, June 16-19, 2026.
 - Queries include product titles, felt needs, Bible topics, misspellings,
   synonyms, confusing queries, multilingual queries, and scene-like queries.
 - Real Algolia-derived queries are included where available.
-- Eval compares keyword, hybrid, semantic, and Algolia-backed results.
+- Eval compares keyword-first, hybrid, and internal-only semantic-only results.
+- Keyword-first brand/product cases include `bible project`, which should bring
+  back Bible Project videos, and `Jesus`, which should bring back the JESUS
+  film/video.
 - Output includes scored/ranked results, obvious failures, and summary metrics.
 - Team members and AI agents can use the generated report to decide whether the
   current search implementation is launch-ready.
@@ -89,3 +92,52 @@ Roadmap window: this week, June 16-19, 2026.
 - Confirm the report includes enough per-query detail to diagnose failures.
 - Confirm the report includes a summary that can support a launch/no-launch
   recommendation without rereading every raw result.
+
+## Progress Notes
+
+- 2026-06-21: Expanded
+  `apps/mastra/src/services/offline-search-eval/seed-prompt-set.ts` to
+  `search-eval-seed-prompts/v5` with exactly 100 reusable readiness prompts.
+- The prompt set now includes product titles, felt needs, Bible topics,
+  misspellings, synonyms, confusing searches, multilingual searches, and
+  scene-like searches.
+- Added explicit keyword-first brand/product readiness checks for
+  `bible project` and `jesus`.
+- Seeded the set from Algolia Productivity MCP analytics for
+  `FJYYBFHBHS / video-variants-prd`, covering 2026-05-22 through 2026-06-21.
+  The top non-empty query, `jesus` with count=88 and nbHits=395, is preserved
+  as the canonical high-traffic baseline prompt.
+- Added no-result regressions from Algolia analytics, including
+  `walking wih jesus`, `walking wth jesus`, `jrius daughter`,
+  `finding hope when life feels heavy`, and `world cup 2026 outreach`.
+- Added focused tests that enforce the 100-query size, unique IDs, required
+  readiness categories, Algolia-derived baseline coverage, no-result typo
+  coverage, and multilingual/locale-mismatch cases.
+- Added internal-only `semantic-only` execution through Admin's eval route.
+  Public REST and GraphQL still treat `semantic-only` as an unknown mode and
+  fall back to `hybrid`.
+- Extended Mastra offline eval and orchestrator schemas to accept `hybrid`,
+  `keyword-first`, and `semantic-only`, while rejecting `algolia-backed`.
+- Native Evaluation projection now preserves `semantic-only` and includes the
+  requested search mode in dataset, experiment, and report outcome source keys
+  so mode-by-mode evidence does not overwrite itself.
+- Algolia is prompt provenance only in this ticket; no Algolia-backed execution,
+  fallback path, or follow-up ticket is in scope.
+- Code-level implementation is verified below. A launch/no-launch decision
+  still requires running the Mastra eval workflow against a configured Admin
+  search-eval endpoint and reviewing the produced report.
+
+## Implementation Verification Notes
+
+- Passed:
+  `pnpm --filter @forge/admin test -- hybrid-search.keyword-first hybrid-search.service route.test.ts`
+- Passed:
+  `pnpm --filter @forge/admin test -- hybrid-search.bible-project`
+- Passed:
+  `pnpm --filter @forge/mastra test -- seed-prompt-set runner offline-search-eval search-eval-orchestrator native-evaluation admin-search-eval-client search-eval-native-suite artifacts report`
+- Typecheck caveat: `pnpm --filter @forge/admin typecheck` currently fails on
+  pre-existing Prisma schema drift in
+  `apps/admin/src/services/transcript-embedding.service.ts` for `sourceKind`.
+- Typecheck caveat: `pnpm --filter @forge/mastra typecheck` currently fails
+  because `apps/mastra/src/mastra/memory.ts` cannot resolve `@mastra/memory` in
+  this isolated worktree dependency setup.

@@ -244,4 +244,110 @@ describe("HybridSearchService keyword-first branch", () => {
     expect(searchByTrigram).toHaveBeenCalled()
     expect(searchByExactTitle).toHaveBeenCalled()
   })
+
+  it("dispatches semantic retrievers only when semantic-only is enabled for internal eval", async () => {
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+
+    await service.search({
+      query: "jesus",
+      locale: "en",
+      mode: "semantic-only",
+      allowInternalEvalModes: true,
+    })
+
+    expect(searchVideoSemantic).toHaveBeenCalledWith(mockPrisma, {
+      queryEmbedding: "[0.1,0.2,0.3]",
+      locale: "en",
+      limit: 60,
+    })
+    expect(searchExperienceSemantic).toHaveBeenCalledWith(mockPrisma, {
+      queryEmbedding: "[0.1,0.2,0.3]",
+      locale: "en",
+      limit: 60,
+    })
+    expect(searchVideoKeyword).not.toHaveBeenCalled()
+    expect(searchExperienceKeyword).not.toHaveBeenCalled()
+    expect(searchByKeywordWeighted).not.toHaveBeenCalled()
+    expect(searchByTrigram).not.toHaveBeenCalled()
+    expect(searchByExactTitle).not.toHaveBeenCalled()
+  })
+
+  it("keeps semantic-only internal and falls back to hybrid without the eval flag", async () => {
+    const warn = vi.fn()
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger: { warn, error: vi.fn() },
+    })
+
+    await service.search({
+      query: "jesus",
+      locale: "en",
+      mode: "semantic-only",
+    })
+
+    expect(searchVideoKeyword).toHaveBeenCalled()
+    expect(searchExperienceKeyword).toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("semantic-only"))
+  })
+
+  it("semantic-only video content type skips experience retrievers", async () => {
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+
+    await service.search({
+      query: "jesus",
+      locale: "en",
+      mode: "semantic-only",
+      allowInternalEvalModes: true,
+      contentTypes: ["video"],
+    })
+
+    expect(searchVideoSemantic).toHaveBeenCalled()
+    expect(searchExperienceSemantic).not.toHaveBeenCalled()
+    expect(searchExperienceKeyword).not.toHaveBeenCalled()
+    expect(searchVideoKeyword).not.toHaveBeenCalled()
+    expect(searchByKeywordWeighted).not.toHaveBeenCalled()
+    expect(searchByTrigram).not.toHaveBeenCalled()
+    expect(searchByExactTitle).not.toHaveBeenCalled()
+  })
+
+  it("semantic-only embedding failure returns an empty degraded response without lexical fallback", async () => {
+    const failingEmbedder: QueryEmbedder = vi
+      .fn()
+      .mockRejectedValue(new Error("provider down"))
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: failingEmbedder,
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+
+    const result = await service.search({
+      query: "jesus",
+      locale: "en",
+      mode: "semantic-only",
+      allowInternalEvalModes: true,
+    })
+
+    expect(result).toMatchObject({
+      results: [],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "keyword-only",
+    })
+    expect(searchVideoSemantic).not.toHaveBeenCalled()
+    expect(searchExperienceSemantic).not.toHaveBeenCalled()
+    expect(searchVideoKeyword).not.toHaveBeenCalled()
+    expect(searchExperienceKeyword).not.toHaveBeenCalled()
+    expect(searchByKeywordWeighted).not.toHaveBeenCalled()
+    expect(searchByTrigram).not.toHaveBeenCalled()
+    expect(searchByExactTitle).not.toHaveBeenCalled()
+  })
 })
