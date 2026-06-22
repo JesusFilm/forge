@@ -1,7 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
+import { after } from "next/server"
 import type { Principal } from "@/auth/principal"
 import { ExperienceService } from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+
+// Override only `after` so the service's manifest-refresh scheduling is
+// observable; everything else in next/server stays real.
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>()
+  return { ...actual, after: vi.fn() }
+})
 
 vi.mock("./watch-route-manifest-refresh.service", () => ({
   refreshWatchRouteManifest: vi.fn().mockResolvedValue({ status: "refreshed" }),
@@ -69,6 +77,7 @@ describe("ExperienceService", () => {
     prisma = mockPrisma()
     service = new ExperienceService(prisma)
     vi.mocked(refreshWatchRouteManifest).mockClear()
+    vi.mocked(after).mockClear()
   })
 
   // ---------------------------------------------------------------------------
@@ -701,6 +710,50 @@ describe("ExperienceService", () => {
       expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
         prisma,
         reason: "experience.publish",
+      })
+    })
+
+    it("schedules the manifest refresh through after() so it survives the response", async () => {
+      const localeRow = {
+        id: "loc-1",
+        experienceId: "exp-1",
+        locale: "en",
+        slug: "publish-after",
+        isHomepage: false,
+        pathSegment: null,
+        status: "DRAFT",
+        title: "Before publish",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [],
+        publishedAt: null,
+        createdAt: new Date("2026-04-15T12:00:00.000Z"),
+        updatedAt: new Date("2026-04-15T12:00:00.000Z"),
+        experience: { ownerId: "alice", archivedAt: null },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...localeRow,
+        status: "PUBLISHED",
+      })
+
+      await service.publishLocale({
+        input: { id: "loc-1" },
+        user: EDITOR_ALICE,
+      })
+
+      // The refresh is handed to after() rather than left as a bare detached
+      // promise — that is what keeps it alive past a standalone Server Action
+      // response so newly published slugs reach the persisted snapshot.
+      expect(after).toHaveBeenCalledTimes(1)
+      const scheduled = vi.mocked(after).mock.calls[0]?.[0] as () => unknown
+      expect(typeof scheduled).toBe("function")
+      // Invoking the scheduled task resolves to the refresh outcome and never
+      // throws (refreshWatchRouteManifest returns a typed outcome).
+      await expect(Promise.resolve(scheduled())).resolves.toEqual({
+        status: "refreshed",
       })
     })
 
