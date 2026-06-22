@@ -87,6 +87,8 @@ type ExistingTranscriptBackfillHealthRow = {
   chunks_with_embedding_input_text: number | bigint
 }
 
+export const TRANSCRIPT_EMBEDDING_PROCESS_WAVE_SAFETY_BUFFER_MS = 30_000
+
 function resumeTargetKey(videoEditionId: string, language: string): string {
   return `${videoEditionId}::${language}`
 }
@@ -607,14 +609,23 @@ export async function stepProcessTranscriptEmbeddingGroups(
   const outcomes: BackfillOutcome[] = []
   const pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
   const unprocessedGroups: BackfillGroup[] = []
+  let wavesStarted = 0
 
   for (let i = 0; i < groups.length; i += safeConcurrency) {
-    if (i > 0 && Date.now() - batchStartedAt >= safeStepMaxDurationMs) {
+    if (
+      shouldDeferNextTranscriptEmbeddingWave({
+        wavesStarted,
+        elapsedMs: Date.now() - batchStartedAt,
+        stepMaxDurationMs: safeStepMaxDurationMs,
+        launchTimeoutMs,
+      })
+    ) {
       unprocessedGroups.push(...groups.slice(i))
       break
     }
 
     const wave = groups.slice(i, i + safeConcurrency)
+    wavesStarted += 1
     const settled = await Promise.allSettled(
       wave.map((group) =>
         processTranscriptEmbeddingGroup(
@@ -656,6 +667,40 @@ export async function stepProcessTranscriptEmbeddingGroups(
   }
 
   return { outcomes, pendingConfirmations, unprocessedGroups }
+}
+
+export function shouldDeferNextTranscriptEmbeddingWave({
+  wavesStarted,
+  elapsedMs,
+  stepMaxDurationMs,
+  launchTimeoutMs,
+  safetyBufferMs = TRANSCRIPT_EMBEDDING_PROCESS_WAVE_SAFETY_BUFFER_MS,
+}: {
+  wavesStarted: number
+  elapsedMs: number
+  stepMaxDurationMs: number
+  launchTimeoutMs: number
+  safetyBufferMs?: number
+}): boolean {
+  if (wavesStarted <= 0) return false
+
+  const safeElapsedMs =
+    Number.isFinite(elapsedMs) && elapsedMs > 0 ? elapsedMs : 0
+  const safeStepMaxDurationMs =
+    Number.isFinite(stepMaxDurationMs) && stepMaxDurationMs > 0
+      ? stepMaxDurationMs
+      : 0
+  const safeLaunchTimeoutMs =
+    Number.isFinite(launchTimeoutMs) && launchTimeoutMs > 0
+      ? launchTimeoutMs
+      : 0
+  const safeSafetyBufferMs =
+    Number.isFinite(safetyBufferMs) && safetyBufferMs > 0 ? safetyBufferMs : 0
+
+  if (safeElapsedMs >= safeStepMaxDurationMs) return true
+
+  const remainingBudgetMs = safeStepMaxDurationMs - safeElapsedMs
+  return remainingBudgetMs <= safeLaunchTimeoutMs + safeSafetyBufferMs
 }
 
 export async function stepConfirmTranscriptEmbeddingIngests(

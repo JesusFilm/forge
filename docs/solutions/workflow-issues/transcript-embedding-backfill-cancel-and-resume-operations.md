@@ -620,6 +620,31 @@ The expected early signals are:
   ingest normally.
 - No confirm-ingest Graphile task runs near the 300 second boundary.
 
+### Hotfix checkpoint: 2026-06-22 projected process-step budget
+
+A scoped resume for `1_jf-0-0` after the bounded-confirm hotfix still
+reproduced the event-log corruption shape. The poisoned run
+`wrun_01KVPDSDX54JPV9FFVR43FQV4W` had a duplicate `step_started` for
+`stepProcessTranscriptEmbeddingGroups`. The completed attempt ran for about
+316 seconds, which crossed the same worker task-boundary window even though
+the pending-confirm payloads were already bounded.
+
+The follow-up fix is to budget process waves by projected runtime. After the
+first launch wave, `stepProcessTranscriptEmbeddingGroups` now defers remaining
+groups when the remaining step budget is less than or equal to
+`launchTimeoutMs + safetyBufferMs`. Deferred groups return as
+`unprocessedGroups`, so the parent workflow can continue them in a fresh
+durable step without rewriting rows the strict `MODEL_UPGRADE` resume guard
+already considers healthy.
+
+Resume with the same recovery shape after deploy: use the existing Admin
+GraphQL trigger, scoped to `coreIds: ["1_jf-0-0"]`, with no language filter.
+Expected healthy signals are: at least one process step logs real
+`already_enriched_healthy` skips, process-step durations remain below the
+Graphile boundary, no duplicate `step_started` events appear for the resumed
+run, and legacy or incomplete `1_jf-0-0` language rows continue through Mastra
+and Admin ingest.
+
 ## Cleanup and Versioning Strategy
 
 Successful enriched transcript writes are upserts on the transcript identity
@@ -762,6 +787,7 @@ so operators and agents do not overestimate how much work will be skipped.
 ## Related
 
 - [Bound durable workflow step payloads before persistence](bound-durable-workflow-step-payloads-before-persistence.md)
+- [Budget durable workflow steps by projected runtime](budget-durable-workflow-steps-by-projected-runtime.md)
 - [useworkflow group fanout must run inside one durable step](../runtime-errors/useworkflow-nested-group-step-event-log-corruption.md)
 - [Mastra transcript launch network error diagnostics](../runtime-errors/mastra-transcript-launch-network-error-diagnostics.md)
 - [Admin Postgres workflow operations pattern](../best-practices/admin-postgres-workflow-operations-pattern-20260501.md)
