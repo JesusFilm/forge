@@ -8,6 +8,7 @@ import {
   PLAN_EXPERIENCE_PROMPT,
   CRITIQUE_EXPERIENCE_PROMPT,
   REVISE_EXPERIENCE_PROMPT,
+  GENERATE_VIDEO_SECTION_PROMPT,
 } from "./index"
 import type { PromptId } from "./index"
 
@@ -271,6 +272,50 @@ Rules:
 
     it("tells the reviser to use tools verbatim and never invent video ids", () => {
       expect(REVISE_EXPERIENCE_PROMPT).toContain("never invent video ids")
+    })
+  })
+
+  describe("GENERATE_VIDEO_SECTION_PROMPT", () => {
+    it("tailors framing to the audience/locale without changing grounded facts", () => {
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain("AUDIENCE & PERSONA")
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "TAILOR THE FRAMING, NOT THE FACTS",
+      )
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "MUST NOT change which study questions you use",
+      )
+    })
+
+    it("forbids the model from authoring verse text (reference-first scripture)", () => {
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "REFERENCE ONLY, NEVER VERSE TEXT",
+      )
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        'MUST NOT write a "text" field on any quote',
+      )
+    })
+
+    it("requires references and FAQ to come from the provided grounding only", () => {
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "Use ONLY references from the provided citations",
+      )
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "Do NOT invent questions that are not among the provided study questions",
+      )
+    })
+
+    it("omits FAQ / scripture rather than fabricating when grounding is absent", () => {
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "OMIT the relatedQuestions block",
+      )
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "OMIT the bibleQuotesCarousel block",
+      )
+    })
+
+    it("anchors on candidate v01 and never invents a video id", () => {
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain('"candidateRef": "v01"')
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain("NEVER invent a video id")
     })
   })
 

@@ -50,7 +50,23 @@ const assetId = z.string().min(1).optional()
 export const BibleQuoteItemSchema = z
   .object({
     reference: z.string().min(1),
-    text: z.string().min(1),
+    /**
+     * Verse text. Optional because reference-first scripture (video-anchored
+     * generation) stores only the reference + structured citation identity and
+     * resolves the actual verse text at web render from the YouVersion / jsdelivr
+     * pipeline — the LLM never authors it. Hand-authored quotes may still carry text.
+     */
+    text: z.string().min(1).optional(),
+    /**
+     * Structured citation identity (from BibleCitation rows) so apps/web can resolve
+     * verse text by stable book/chapter/verse instead of parsing the reference label.
+     * Optional for backward compatibility with existing hand-authored quotes.
+     */
+    osisId: z.string().min(1).optional(),
+    chapterStart: z.number().int().min(1).optional(),
+    chapterEnd: z.number().int().min(1).optional(),
+    verseStart: z.number().int().min(1).optional(),
+    verseEnd: z.number().int().min(1).optional(),
     backgroundImageUrl: z.string().url().optional(),
     backgroundImageAssetId: assetId,
     ctaEnabled: z.boolean().optional(),

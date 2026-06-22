@@ -147,18 +147,32 @@ function BibleQuoteCard({
 }
 
 function QuoteCard({ quote }: { quote: QuoteItem }) {
+  // Reference-first scripture (video-anchored generation) stores only the
+  // reference; verse text is resolved at render in a follow-up. Until then,
+  // render the reference prominently with a "read it" hint instead of a blank.
+  const hasText = typeof quote.text === "string" && quote.text.trim().length > 0
   return (
     <BibleQuoteCard
       imageUrl={quote.imageUrl}
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >
-      <span className="mb-1 block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase">
+      <span
+        className={`mb-1 block font-semibold tracking-[0.15em] text-amber-200/60 uppercase ${
+          hasText ? "text-[10px]" : "text-sm"
+        }`}
+      >
         {quote.reference}
       </span>
-      <p className="text-base leading-relaxed text-balance text-white/90">
-        {quote.text}
-      </p>
+      {hasText ? (
+        <p className="text-base leading-relaxed text-balance text-white/90">
+          {quote.text}
+        </p>
+      ) : (
+        <p className="text-sm leading-relaxed text-balance text-white/70">
+          Read this passage in your Bible.
+        </p>
+      )}
     </BibleQuoteCard>
   )
 }

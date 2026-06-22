@@ -274,8 +274,8 @@ export async function runTranscriptEmbeddingBackfill(
     : allTargets
 
   // Group flat targets by (video, edition) first so reporting and source-gap
-  // aggregation keep the same order. The runtime batcher below shards large
-  // groups by target so no single Workflow step owns a whole multilingual
+  // aggregation keep the same order. The runtime batcher below keeps target
+  // chunks bounded so no single Workflow step owns a whole multilingual
   // edition.
   const groups = groupTargetsByVideoEdition(targets)
 
@@ -701,14 +701,23 @@ function batchGroupsByTargetLimit(
   }
 
   for (const group of groups) {
-    for (const target of group.targets) {
-      if (currentTargetCount >= safeLimit) flush()
+    for (let targetIndex = 0; targetIndex < group.targets.length; ) {
+      const remainingBatchCapacity = safeLimit - currentTargetCount
+      if (remainingBatchCapacity <= 0) {
+        flush()
+        continue
+      }
 
+      const targets = group.targets.slice(
+        targetIndex,
+        targetIndex + remainingBatchCapacity,
+      )
       current.push({
         ...group,
-        targets: [target],
+        targets,
       })
-      currentTargetCount += 1
+      currentTargetCount += targets.length
+      targetIndex += targets.length
     }
   }
 

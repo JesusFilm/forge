@@ -30,6 +30,7 @@ export { CRITIQUE_EXPERIENCE_PROMPT } from "./critique-experience-prompt"
 export { REVISE_EXPERIENCE_PROMPT } from "./revise-experience-prompt"
 export { SKELETON_EXPERIENCE_PROMPT } from "./skeleton-prompt"
 export { FILL_EXPERIENCE_PROMPT } from "./fill-prompt"
+export { GENERATE_VIDEO_SECTION_PROMPT } from "./generate-video-section-prompt"
 
 export type PromptId =
   | "draft-experience"
@@ -41,3 +42,4 @@ export type PromptId =
   | "revise-experience"
   | "skeleton-experience"
   | "fill-experience"
+  | "generate-video-section"
