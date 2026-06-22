@@ -168,6 +168,12 @@ export const env = createEnv({
     // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
     // Kept separate from transcript/scene ingest and workflow launch credentials.
     MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for the standalone Mastra chat agent's tool
+    // callbacks (consolidation U7): search-videos / lookup-bible-verse /
+    // fetch-video-image. A DIFFERENT capability than vector ingest or workflow
+    // launch (read-only catalog reads), so it gets its own CSV and joins the
+    // disjointness invariant below. Optional so an unprovisioned env still boots.
+    ADMIN_AGENT_TOOLS_API_KEYS: z.string().min(1).optional(),
     // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
@@ -454,6 +460,9 @@ export const env = createEnv({
     MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
     ),
+    ADMIN_AGENT_TOOLS_API_KEYS: emptyToUndefined(
+      process.env.ADMIN_AGENT_TOOLS_API_KEYS,
+    ),
     EXPERIENCE_EXEMPLAR_MAX_DISTANCE: emptyToUndefined(
       process.env.EXPERIENCE_EXEMPLAR_MAX_DISTANCE,
     ),
@@ -636,6 +645,7 @@ const BEARER_CSV_KEYS = [
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
   "MASTRA_SCENE_INGEST_API_KEYS",
   "MASTRA_EXPERIENCE_INGEST_API_KEYS",
+  "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
@@ -713,6 +723,7 @@ assertBearerCsvsDisjoint({
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
   MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+  ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
