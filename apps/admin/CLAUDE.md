@@ -1150,15 +1150,36 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   anywhere, it produces no targets (a data-quality signal, not a
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
-  Safe to re-run. The workflow loads the Manager transcript source once
-  per `(video, edition)` group and launches Mastra once per target.
-- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
-  enumerated `(video, edition, language)` targets by
-  `(video, edition)` and parallelises over GROUPS via
-  `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
-Promise.allSettled` — never bare `Promise.all`. Per-language work
-  inside a group runs sequentially with the source artifact in scope. Same
-  shape / same rule as R1.
+  Safe to re-run at the storage identity level. The workflow first groups
+  enumerated targets by `(video, edition)` for stable reporting and source
+  gap aggregation, then shards each `(video, edition, language)` target into
+  target-bounded batches so no single Workflow step owns the full
+  all-language corpus.
+- **Bounded parallelism (Stage 2 — feat-116, updated for feat-192 hotfix):**
+  the workflow calls `stepProcessTranscriptEmbeddingGroups` sequentially per
+  target-bounded batch. Parallelism stays inside each batch via
+  `TRANSCRIPT_EMBEDDING_CONCURRENCY`; do not use parallel dynamic workflow
+  step fanout. The default step target limit is 50, each durable step stops
+  launching new work after a 220s budget and returns remaining groups for the
+  next step, and each Mastra launch has a 120s Admin-side timeout. The start
+  log includes `groupBatchCount`, `stepTargetLimit`, `stepMaxDurationMs`, and
+  `launchTimeoutMs` for production verification. Runtime knobs are resolved in
+  a step before batching so workflow replay keeps the same partitioning even if
+  Railway env changes mid-run.
+- **Manager transcript fallback tradeoff:** target sharding means Manager
+  fallback artifacts may be read once per durable step per `cmsVideoId`, not
+  once for the whole run. The step-local source loader caches artifact reads
+  while that batch is active, but later batches may reread the same Manager
+  artifact. That is intentional for all-language backfills: bounded step
+  duration is more important than whole-run S3 memoization until a first-class
+  backfill ledger exists.
+- **Timed-out Mastra launch confirmation:** if Admin receives a retryable
+  Mastra launch network error that still has a `mastraRunId`, the batch step
+  returns a pending confirmation. The workflow checks pending confirmations
+  opportunistically between launch batches, then drains any remaining pending
+  runs through short `stepConfirmTranscriptEmbeddingIngests` calls separated by
+  workflow-level `sleep()`. Unresolved confirmations are marked failed only
+  after the 20 minute confirmation window. Do not sleep inside the worker step.
 - Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. Admin
   backfill is now network-bound on Mastra plus DB-bound inside the
   ingest callback; default `5` leaves headroom on admin's

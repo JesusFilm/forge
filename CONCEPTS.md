@@ -175,6 +175,11 @@ and a correction report highlights applied and flagged findings for review.
 
 A controlled batch process that generates or regenerates vectors for existing content without changing the underlying source content.
 
+For large corpora, an Embedding Backfill's completion state should be judged
+from stored embedding provenance and healthy vector rows, not from the lifetime
+of the trigger request that started it. Resume flows should preserve already
+healthy embeddings and continue from missing, legacy, or incomplete rows.
+
 ## Known-caller auth
 
 ### Search Passport

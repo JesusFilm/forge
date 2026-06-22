@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import { env } from "@/config/env"
 import { resolveMastraLaunchTimeoutMs } from "@/services/mastra-launch-timeout"
 
@@ -78,6 +80,7 @@ export type LaunchMastraTranscriptEmbeddingOptions = {
   baseUrl?: string
   bearer?: string
   timeoutMs?: number
+  runId?: string
   fetchImpl?: typeof fetch
 }
 
@@ -227,7 +230,8 @@ export async function launchMastraTranscriptEmbedding(
     return { ok: false, reason: "config_missing", retryable: false }
   }
 
-  const body = {
+  const runId = options.runId ?? randomUUID()
+  const workflowInput = {
     target: {
       admin: input.target,
     },
@@ -248,6 +252,7 @@ export async function launchMastraTranscriptEmbedding(
     },
     mode: input.mode ?? "idempotent",
   }
+  const body = { runId, input: workflowInput }
 
   let response: Response
   try {
@@ -271,6 +276,7 @@ export async function launchMastraTranscriptEmbedding(
     console.error(
       JSON.stringify({
         event: "mastra_transcript_embedding_launch_threw",
+        mastraRunId: runId,
         name: error instanceof Error ? error.name : "unknown",
         message:
           error instanceof Error
@@ -278,7 +284,12 @@ export async function launchMastraTranscriptEmbedding(
             : String(error).slice(0, 240),
       }),
     )
-    return { ok: false, reason: "network_error", retryable: true }
+    return {
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+      mastraRunId: runId,
+    }
   }
 
   if (response.status === 401) {
@@ -300,10 +311,17 @@ export async function launchMastraTranscriptEmbedding(
       ok: false,
       reason: "network_error",
       retryable: response.status >= 500 || response.status === 429,
+      mastraRunId:
+        response.status >= 500 || response.status === 429 ? runId : undefined,
     }
   }
 
-  return { ok: false, reason: "parse_error", retryable: true }
+  return {
+    ok: false,
+    reason: "parse_error",
+    retryable: true,
+    mastraRunId: runId,
+  }
 }
 
 export const _internals = {
