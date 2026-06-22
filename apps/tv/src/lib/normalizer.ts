@@ -1,9 +1,9 @@
 // SYNC: keep in sync with apps/mobile/src/lib/normalizer.ts
 
 /**
- * Thin normalizer: maps __typename strings to clean `kind` discriminants.
- * Does NOT create a parallel type hierarchy — renderers receive gql.tada
- * ResultOf types with `kind` added for dispatch.
+ * Thin normalizer: maps __typename strings to clean `kind` discriminants. No
+ * parallel type hierarchy — renderers receive gql.tada ResultOf types with
+ * `kind` added for dispatch.
  */
 
 const TYPENAME_TO_KIND = {

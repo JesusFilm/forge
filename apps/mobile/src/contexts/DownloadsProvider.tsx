@@ -55,14 +55,9 @@ import { validateActionUrl } from "../lib/validateUrl"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
- * App-wide offline-downloads state. Mounted at the root layout (not the watch
- * route) so the green-tick badge on detail pages and the My Downloads surface —
- * both outside the watch route group — can read it.
- *
- * Hydrates the sharded manifest (bulletproof tolerant parse), exposes the read
- * surface (committedFor/getRecord) plus startDownload/deleteDownload, configures
- * the native engine, and runs a defensive launch reattach. The actual transfer +
- * background behavior is verified on a device; this code wires the flow.
+ * App-wide offline-downloads state, mounted at the root layout (not the watch
+ * route) so the detail-page badge and My Downloads — both outside the watch
+ * route group — can read it. Transfer/background behavior is device-verified.
  */
 export type StartDownloadRequest = {
   videoSlug: string
@@ -110,13 +105,9 @@ const DownloadsContext = createContext<DownloadsContextValue | null>(null)
 const STORAGE_RESERVE_BYTES = 250 * 1024 * 1024
 
 /**
- * Re-resolve a fresh media URL from a record's stable identity (U4). The
- * manifest stores identity (dub + rendition documentId, quality, subtitle slug),
- * never the volatile signed URL — which expires — so a (re)start re-fetches
- * `videoDub(id)` and re-picks the rendition. `network-only` because a cache-first
- * read would hand back the very stale URL we are trying to refresh. Returns null
- * on any failure (offline, dub gone, no matching rendition); callers fall back to
- * the page URL (initial) or defer to the next launch (resume).
+ * Re-resolve a fresh media URL from a record's stable identity (U4): the manifest
+ * stores identity, never the volatile signed URL, so re-fetch `videoDub(id)` and
+ * re-pick. `network-only` so cache doesn't hand back the stale URL. Null on failure.
  */
 async function reresolveMediaUrl(args: {
   dubDocumentId: string
@@ -203,10 +194,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const writeRecord = useCallback(async (record: OfflineDownloadRecord) => {
-    // The index only changes when the SET of slugs changes (a brand-new
-    // record). A patch to an existing record — including every progress tick —
-    // leaves the index identical, so skip that write: rewriting it on each tick
-    // doubles AsyncStorage churn for no benefit.
+    // Only rewrite the index when the slug SET changes (a brand-new record);
+    // patching an existing record leaves it identical, so skip it — rewriting
+    // on every progress tick doubles AsyncStorage churn for no benefit.
     const isNew = !(record.videoSlug in recordsRef.current)
     const next = { ...recordsRef.current, [record.videoSlug]: record }
     recordsRef.current = next
@@ -308,11 +298,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
       const finalize = async (location: string) => {
         try {
-          // This module version delivers `location` already equal to the task
-          // destination (our pendingPath) — the native side has moved the bytes
-          // there. So the "move" is a pending -> committed rename. Guard the
-          // benign cases (already committed, or the source is missing because a
-          // prior attempt already moved it) so they don't force `failed`.
+          // `location` already equals our pendingPath, so the "move" is a pending -> committed
+          // rename. Guard the benign cases (already committed, or the source already moved by a
+          // prior attempt) so they don't force `failed`.
           const source = (await fileExists(location)) ? location : pendingPath
           if (source !== committedPath) {
             if (await fileExists(source)) {
@@ -376,11 +364,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                 ? null
                 : args.subtitleLanguageSlug,
             })
-            // Swap success: the new copy is verified — remove the superseded
-            // old file (it was kept playable until this moment). Guard the
-            // subtitle-only swap: the rendition is unchanged, so the old
-            // committed path EQUALS the new one — deleting it would destroy the
-            // media we just committed into it (data loss).
+            // Swap verified: remove the superseded old file. Guard the
+            // subtitle-only swap where rendition is unchanged so old path
+            // EQUALS new — deleting it would destroy the media we just committed.
             const swap = recordsRef.current[videoSlug]?.swapFrom
             if (swap) {
               if (swap.committedPath !== committedPath) {
@@ -411,11 +397,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             totalBytes: bytesTotal || fallbackTotalBytes,
           }),
         onDone: ({ location }) => {
-          // Signal iOS only AFTER finalize's awaits settle (the media rename
-          // plus the subtitle/poster sidecar fetches). Signalling first lets
-          // iOS suspend the app mid-finalize on a background-only launch,
-          // cutting the sidecars short. `finally` so we always signal — not
-          // doing so throttles the app's future background time.
+          // Signal iOS only AFTER finalize settles; signalling first lets iOS
+          // suspend mid-finalize on a background-only launch, cutting sidecars
+          // short. `finally` so we always signal — else iOS throttles future background time.
           void finalize(location).finally(() =>
             notifyIosBackgroundComplete(videoSlug),
           )
@@ -437,11 +421,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [writeRecord, deleteDownload],
   )
 
-  // Defensive launch reattach: reconcile records against live native tasks and
-  // on-disk files, dropping orphans, then RE-BIND handlers onto every surviving
-  // in-flight task. A reattached task object carries no JS callbacks, so a
-  // transfer that completes after this launch would otherwise fire its done
-  // event into the void and never advance to "downloaded".
+  // Defensive launch reattach: reconcile records vs live tasks + on-disk files,
+  // drop orphans, then RE-BIND handlers onto surviving tasks. A reattached task
+  // carries no JS callbacks, so its done event would otherwise fire into the void.
   useEffect(() => {
     if (!isReady) return
     let cancelled = false
@@ -482,10 +464,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           committedFileSlugs,
         })
 
-        // U6: re-resolve a fresh URL and restart a transfer that was interrupted
-        // (force-quit / OS-evicted → no live task) or whose committed file went
-        // missing ("repair"). Offline at launch → reresolve returns null → leave
-        // the record untouched for the next launch.
+        // U6: re-resolve and restart a transfer interrupted (force-quit /
+        // OS-evicted → no live task) or whose committed file went missing
+        // ("repair"). Offline → reresolve null → leave the record for next launch.
         const restartInterrupted = async (record: OfflineDownloadRecord) => {
           const refreshed = await reresolveMediaUrl({
             dubDocumentId: record.dubDocumentId,

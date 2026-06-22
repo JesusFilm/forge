@@ -114,17 +114,9 @@ export default function WatchVideoPage() {
     }
   }, [])
 
-  // Fullscreen side-effects: disable the iOS edge-swipe back (so it can't pop
-  // the route mid-fullscreen) and drive orientation. The native header stays
-  // hidden in both states (see app/watch/_layout.tsx) — the floating back
-  // button is the inline back affordance.
-  //
-  // Orientation is driven TWO ways because react-native-screens (which
-  // expo-router's native Stack uses) owns the view controller's
-  // supportedInterfaceOrientations and overrides expo-screen-orientation's
-  // lockAsync. Setting the screen's `orientation` option is what actually
-  // rotates the view; the expo-screen-orientation calls re-assert the lock and
-  // cover the global/non-screen paths.
+  // Fullscreen: disable iOS edge-swipe back (can't pop mid-fullscreen); native header
+  // stays hidden both states (see app/watch/_layout.tsx), floating back button is the
+  // affordance. Orientation set via screen `orientation` + lockAsync since RN-screens overrides lockAsync.
   useEffect(() => {
     navigation.setOptions({
       gestureEnabled: !isFullscreen,
@@ -176,15 +168,9 @@ export default function WatchVideoPage() {
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
-    // cache-first, NOT cache-and-network: this payload is huge for videos with
-    // many dubs (e.g. birth-of-jesus is ~9.5MB / 2,259 dubs). cache-and-network
-    // refetched and re-parsed all of it on every (re-)entry, then re-ran
-    // normalizeVideo over every dub on the JS thread — freezing the whole screen
-    // (player, buttons, expanders all dead). cache-first reads the warm cache on
-    // re-entry with no refetch. First cold load still fetches once.
-    // NOTE: if cache persistence (U7) is enabled, revisit this — a restored
-    // snapshot strips volatile URLs, so cache-first must be paired with a
-    // cold-start revalidation there.
+    // cache-first, NOT cache-and-network: payload is huge (~9.5MB / 2,259 dubs)
+    // and cache-and-network re-parsed it per re-entry, freezing JS. NOTE: if cache
+    // persistence (U7) lands, revisit — restored snapshots need cold-start revalidation.
     fetchPolicy: "cache-first",
     // Render whatever the cache holds (prefetch) the moment it exists.
     returnPartialData: true,
@@ -201,12 +187,9 @@ export default function WatchVideoPage() {
     [data],
   )
 
-  // A series reached via /watch (deep link, recommendation, or a stale search
-  // entry) redirects to the dedicated series page. Detection is label-based —
-  // the lean watch fragment doesn't fetch the video's own children. Fires once
-  // per resolved slug (a ref guard) so it can't loop, and as early as the record
-  // resolves to minimize the brief watch-screen flash (the seed's playbackId is
-  // null for a series, so no stream loads in that window).
+  // A series reached via /watch redirects to the series page. Detection is
+  // label-based (lean fragment doesn't fetch children). Ref-guarded to once per
+  // slug (can't loop), as early as the record resolves to minimize the flash.
   const redirectedRef = useRef<string | null>(null)
   useEffect(() => {
     if (!normalized) return
@@ -225,10 +208,9 @@ export default function WatchVideoPage() {
     [seed],
   )
 
-  // Publish the fetched video into the shared session so the sheet routes can
-  // read variants/subtitles without refetching. Keyed on the normalized object
-  // so partial → full enrichment (returnPartialData) republishes; the session
-  // guards against resetting user selections across these republishes.
+  // Publish video into the shared session so sheet routes read variants/subtitles
+  // without refetching. Keyed on the normalized object so partial→full enrichment
+  // republishes; the session guards user selections across republishes.
   useEffect(() => {
     if (normalized) {
       setVideo(normalized)
@@ -238,10 +220,9 @@ export default function WatchVideoPage() {
     }
   }, [normalized, setVideo, apolloClient])
 
-  // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
-  // the previous video from the session so the loading guard shows the spinner
-  // instead of the prior video's content, and the sheets don't read its stale
-  // variants. The publish effect above repopulates once the new data arrives.
+  // Navigated to a not-yet-loaded video (e.g. Up Next): drop the previous video
+  // so the loading guard shows the spinner (not stale content/variants). The
+  // publish effect above repopulates once the new data arrives.
   useEffect(() => {
     if (video && video.slug !== decodedSlug && !normalized) {
       setVideo(null)
@@ -417,12 +398,9 @@ export default function WatchVideoPage() {
     <View style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
-      {/* Player is pinned at the route root (outside the ScrollView) so its
-          custom fullscreen can expand to an absolute-fill window overlay above
-          the page, without ever being reparented (which would release the
-          expo-video player). Inline it sits at the top safe edge, inset by
-          PLAYER_SIDE_PADDING per side; content scrolls beneath it. The dock
-          padding is dropped in fullscreen, where the player goes absolute. */}
+      {/* Player pinned at route root (outside ScrollView) so its fullscreen can
+          expand to an absolute-fill overlay without reparenting (which would
+          release the expo-video player). Inline: top safe edge + side inset. */}
       <View
         style={
           isFullscreen

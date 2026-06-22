@@ -10,12 +10,9 @@ import type { WatchHomeCard } from "../../lib/watchHome/model"
 export type RailItem = { kind: "card"; card: WatchHomeCard } | { kind: "pad" }
 
 /**
- * Real cards, then invisible pads filling the rail out to `visibleColumns`, so
- * an over-hanging vertical D-pad move always finds a focusable cell here (a
- * shorter rail is otherwise SKIPPED by the tvOS focus engine). A rail already
- * at/over the column count gets no pads. An empty rail gets nothing — pads
- * with no real card to bounce to are pointless (and HomeRail renders null for
- * an empty rail anyway).
+ * Real cards, then invisible pads filling the rail to `visibleColumns` so an
+ * over-hanging vertical D-pad move always finds a focusable cell (the tvOS focus
+ * engine SKIPS shorter rails). Rails at/over the column count, and empty rails, get none.
  */
 export function buildRailItems(
   cards: WatchHomeCard[],

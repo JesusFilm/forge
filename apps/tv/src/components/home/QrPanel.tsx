@@ -1,8 +1,6 @@
-// The mission tail's QR block — the beta signup URL as a pure View grid via
-// qrcode-generator (react-native-svg is BANNED in apps/tv: its podspec breaks
-// under pnpm + the tvOS fork — react-native-tvos-porting-pitfalls-20260414.md
-// §2). Mirrors LinkModal's QrMatrix construction. Display-only: no press
-// action here; the non-actioning focus wrapper lives in MissionSection.
+// Beta-signup QR as a pure View grid via qrcode-generator (react-native-svg is
+// BANNED in apps/tv — react-native-tvos-porting-pitfalls-20260414.md §2). Mirrors
+// LinkModal's QrMatrix; display-only, focus wrapper lives in MissionSection.
 
 import { useMemo } from "react"
 import { StyleSheet, Text, View } from "react-native"
@@ -15,10 +13,8 @@ import {
   BETA_SIGNUP_URL,
 } from "./missionContent"
 
-// Target edge for the QR tile, quiet zone included. The realized size lands
-// within one cell-rounding of this — comfortably over the plan's scale(300)
-// couch-scannability floor. (LinkModal's fullscreen-modal QR uses 480; this
-// one shares the band with the mission cards, so slightly smaller.)
+// QR tile target edge (quiet zone included). Above the scale(300) couch-scan
+// floor; smaller than LinkModal's 480 since it shares the mission-card band.
 const QR_TARGET_SIZE = scale(360)
 
 // QR modules need hard black-on-white for scanner contrast — deliberately

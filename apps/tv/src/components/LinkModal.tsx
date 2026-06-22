@@ -17,10 +17,9 @@ import { scale } from "../lib/scale"
 const isTvOS = Platform.isTV && Platform.OS === "ios"
 
 // ── WebView (Android TV only) ──────────────────────────────────────────────
-// Dynamic require — tvOS ships no WebKit, so the RNCWebViewModule native
-// module is absent on Apple TV. A static `import` would trigger TurboModule
-// registration at module load and redbox on tvOS before any component mounts.
-// The conditional require skips the evaluation entirely on tvOS.
+// Dynamic require: tvOS ships no WebKit, so a static `import` would trigger
+// TurboModule registration at load and redbox before any component mounts.
+// The conditional require skips evaluation entirely on tvOS.
 type WebViewComponent = typeof import("react-native-webview").WebView
 const WebView: WebViewComponent | null =
   Platform.OS === "android"

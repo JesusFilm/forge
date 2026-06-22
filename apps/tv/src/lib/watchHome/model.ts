@@ -1,20 +1,7 @@
 /**
- * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (itself ported from
- * apps/web/src/lib/watch-home.ts) — sync obligation in ./config.ts. TV
- * adaptations on top of mobile's cuts:
- *
- *   - No carousel/pager machinery: the playlist sequence, carousel pools, and
- *     Mux inserts do not port. The hero pool surfaces as `model.featured` —
- *     WATCH_HOME_HERO_SOURCE_IDS through the card normalizer (web's
- *     heroSlides recipe) — rendered as the first rail with an image-only
- *     showcase.
- *   - No playbackId on cards: TV cards carry slug/coreId routing data only;
- *     playable streams resolve lazily at selection time (the 9.5MB lean-bulk
- *     rule).
- *   - Time-of-day: `resolveFeaturedTitle` picks the featured rail's title
- *     variant from an INJECTED Date — no clock reads inside the builder.
- *
- * Pure TypeScript only — no React/React Native imports.
+ * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (ported from apps/web/src/lib/watch-home.ts)
+ * — sync obligation in ./config.ts. TV cuts: no carousel/pager (hero → `model.featured`), no
+ * playbackId on cards (lazy streams; 9.5MB lean-bulk), time-of-day title from an INJECTED Date. Pure TS.
  */
 
 import {
@@ -28,9 +15,8 @@ import {
 } from "./config"
 
 /**
- * Lean bulk-video input shape: card fields only, no dubs/variants. Mirrors
- * the `WatchHomeVideo` fragment in ./homeQueries.ts, using the codebase-wide
- * `documentId: id` alias convention.
+ * Lean bulk-video input: card fields only, no dubs/variants. Mirrors the
+ * `WatchHomeVideo` fragment in ./homeQueries.ts (`documentId: id` alias).
  */
 export type WatchHomeImageInput = {
   url?: string | null
@@ -89,10 +75,9 @@ export type WatchHomeCard = {
   description: string | null
   label: string
   /**
-   * The raw wire enum (e.g. "SERIES") behind the display-text `label`. Shape
-   * predicates (isSeriesSearchResult) match the uppercase wire literals, so
-   * routing must read THIS field — feeding it display text silently breaks
-   * the label branch and leaves childCount as the only signal.
+   * Raw wire enum (e.g. "SERIES") behind display-text `label`. Routing must
+   * read THIS — shape predicates (isSeriesSearchResult) match uppercase wire
+   * literals; display text silently breaks the branch, leaving only childCount.
    */
   rawLabel: string | null
   metaLabel: string | null
@@ -181,14 +166,9 @@ function buildMetaLabel(args: {
 }
 
 /**
- * Resolve the featured rail's display title for an injected clock. The clock
- * is ALWAYS a parameter — consumers re-evaluate on screen focus; the model
- * never reads Date.now().
- *
- * Boundaries: morning < 12:00, afternoon < 17:00, evening otherwise. Web's
- * overlay windows (5–9 / 12–17 / 17–21, base title in the gaps) only pin the
- * afternoon→evening boundary at 17:00; TV totalizes the rest because the rail
- * always needs a label.
+ * Featured rail title for an injected clock (ALWAYS a param — consumers
+ * re-evaluate on focus; model never reads Date.now()). Boundaries: morning
+ * <12:00, afternoon <17:00, evening otherwise (web only pins the 17:00 edge).
  */
 export function resolveFeaturedTitle(
   config: Pick<WatchHomeFeaturedRailConfig, "title" | "titleVariants">,
@@ -202,10 +182,9 @@ export function resolveFeaturedTitle(
   return variants.evening
 }
 
-// KTD5: the admin Video.parents/children relation is inverted on main and can
-// surface self-references/duplicates. All children reads self-filter + dedupe
-// (BEFORE any limit slice) so cards are correct the moment the relation is
-// fixed, with no further change here.
+// KTD5: admin Video.parents/children relation is inverted on main and can
+// surface self-refs/duplicates. Self-filter + dedupe BEFORE any limit slice so
+// cards are correct the moment the relation is fixed, no further change here.
 function resolvedChildren(
   parent: WatchHomeVideoInput,
 ): WatchHomeChildVideoInput[] {

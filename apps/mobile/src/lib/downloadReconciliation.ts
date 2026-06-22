@@ -1,12 +1,9 @@
 import type { OfflineDownloadRecord } from "./offlineManifest"
 
 /**
- * Pure launch reconciliation (U6): given the persisted manifest records, the
- * live native download tasks (from the background module's
- * getExistingDownloadTasks), and what partial/committed files exist on disk,
- * decide what to do on cold start. A partial is NEVER presented as complete.
- *
- * Pure so the reattach brain is unit-testable without the native module.
+ * Pure cold-start reconciliation (U6) over manifest records, live native tasks,
+ * and on-disk files. A partial is NEVER presented as complete. Pure (no native
+ * import) so the reattach brain is unit-testable.
  */
 
 export type ReconcileInput = {

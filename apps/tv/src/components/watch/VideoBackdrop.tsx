@@ -1,16 +1,6 @@
-// Muted, non-interactive cinematic backdrop for the video-details screen.
-//
-// Uses a poster-hold → video-fade-in media layer (poster held until the
-// stream is ready, then crossfade — no black flash). A single layer (one
-// video, not a focus-driven crossfade between heroes) plus the
-// overlay-visibility pause (R6): when the fullscreen overlay player is open,
-// this preview pauses; it resumes on close.
-//
-// NON-INTERACTIVE (KTD4/KTD8): the VideoView is wrapped in a
-// `pointerEvents="none"` View, marked `focusable={false}`, and the gradient/text
-// layers use `collapsable={false}` on Android so the SurfaceView z-order
-// punch-through doesn't swallow them. The backdrop holds zero focusables — the
-// page's first focusable (the Play button) owns initial focus.
+// Muted, non-interactive cinematic backdrop: poster-hold → video-fade-in (no
+// black flash), paused while the overlay player is open (R6). Zero focusables
+// (KTD4/KTD8); collapsable={false} on Android vs VideoView SurfaceView z-order.
 
 import { useEffect, useRef, useState } from "react"
 import { AccessibilityInfo, Animated, StyleSheet, View } from "react-native"
@@ -34,18 +24,14 @@ type VideoBackdropProps = {
   /** Cinematic still shown under the video / as the fallback when no stream. */
   posterUrl: string | null
   /**
-   * True while the fullscreen overlay player is visible. The preview pauses
-   * while open (R6) and resumes on close — only one of the two players should
-   * be decoding at a time.
+   * True while the fullscreen overlay player is visible. Preview pauses while
+   * open and resumes on close (R6) — only one player decodes at a time.
    */
   overlayVisible: boolean
   /**
-   * When set, paints a bottom-edge fade to this color (e.g. WATCH_THEME.below)
-   * so the hero blends into the section below it. Rendered as the LAST layer
-   * with collapsable={false} so it composites OVER the Android VideoView
-   * SurfaceView (a regular sibling view in the parent would be punched through —
-   * see apps/tv/CLAUDE.md "Android TV VideoView z-order"). Anchored to the
-   * backdrop's own bottom, so the backdrop must be sized to the visible hero.
+   * Optional bottom-edge fade color blending the hero into the section below.
+   * Rendered LAST with collapsable={false} so it composites over the Android
+   * VideoView SurfaceView (see apps/tv/CLAUDE.md "Android TV VideoView z-order").
    */
   bottomFadeColor?: string | null
 }
@@ -78,11 +64,9 @@ export function VideoBackdrop({
       : null
   const hasValidStream = validStream !== null
 
-  // Freeze the source passed to useVideoPlayer. Its source argument RELEASES and
-  // recreates the player whenever it changes (black/stuck frame). A dub switch
-  // from the Language panel mutates streamingUrl in place, so we seed the player
-  // with the first source and route every later swap through replaceAsync on the
-  // SAME instance — mirrors VideoPlayer.tsx's frozen-creationSource pattern.
+  // Freeze the useVideoPlayer source: a changing source RELEASES + recreates the
+  // player (black/stuck frame). Seed with the first source and route later swaps
+  // (e.g. dub switches) through replaceAsync — mirrors VideoPlayer.tsx.
   const creationSource = useRef(validStream).current
   const player = useVideoPlayer(creationSource, (p) => {
     p.muted = true
@@ -116,9 +100,8 @@ export function VideoBackdrop({
     if (player.status === "readyToPlay") setVideoReady(true)
     const sub = player.addListener("statusChange", ({ status }) => {
       // Latch true once ready and KEEP it through `idle`: a transient idle blip
-      // while the video loops must not unmount the VideoView — remounting
-      // re-initialises HLS from scratch, which (plus the poster-hold → fade
-      // re-run) was the long black pause at the loop point.
+      // at the loop seam must not unmount the VideoView, since remounting
+      // re-inits HLS — that was the long black pause at the loop point.
       if (status === "readyToPlay") setVideoReady(true)
       // A genuine `error` is never a loop-seam blip — fall back to the poster so
       // a permanent failure (expired HLS token, CDN outage, decode error) doesn't
@@ -128,11 +111,9 @@ export function VideoBackdrop({
     return () => sub.remove()
   }, [player, hasValidStream])
 
-  // Immediate loop: the moment playback reaches the end, seek to the start and
-  // play again. Driving this ourselves (loop=false above) restarts instantly —
-  // the player stays mounted, so replay() is a fast in-player seek, not a full
-  // HLS re-init. Only fires while playing, so it naturally respects the
-  // overlay-pause (a paused backdrop never reaches the end).
+  // Immediate loop: replay at end. Driving it ourselves (loop=false above) keeps
+  // the player mounted so replay() is a fast in-player seek, not an HLS re-init.
+  // Only fires while playing, so it respects the overlay-pause for free.
   useEffect(() => {
     if (!hasValidStream) return
     const sub = player.addListener("playToEnd", () => {
@@ -209,20 +190,9 @@ export function VideoBackdrop({
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
 
-      {/* Video — mounted only once ready, held invisible over the poster for
-          POSTER_HOLD_MS then crossfaded in. Wrapped in pointerEvents="none"
-          (KTD4) so it can never steal D-pad focus from the action row below.
-
-          Unmount (not just pause) while the overlay is open: on tvOS a mounted
-          VideoView holds an AVPlayerLayer/decode slot even when its player is
-          paused, so leaving it mounted starves the fullscreen overlay player —
-          it starts then stalls on black at 0:00. R6's pause() alone is not
-          enough; the slot is only freed by detaching the view. Since the
-          backdrop sits entirely behind the overlay (zIndex 1000) while it
-          plays, unmounting it here is invisible. The videoReady latch (kept for
-          the loop seam) means it never reset on its own, so this gate is the
-          piece that releases the decoder for the overlay. On close it remounts
-          with videoReady still latched true (no poster re-fade) and R6 resumes. */}
+      {/* Video — crossfaded in over the poster once ready; KTD4 pointerEvents.
+          UNMOUNTED (not paused) while overlay is open: a mounted tvOS VideoView
+          holds a decode slot even paused, starving the overlay (black at 0:00). */}
       {hasValidStream && videoReady && !overlayVisible ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
@@ -238,12 +208,9 @@ export function VideoBackdrop({
         </Animated.View>
       ) : null}
 
-      {/* Ambient scrims (ported from the design's .ambient-scrim) so the
-          bottom-left hero content reads cleanly over the cinematic backdrop:
-          a left→right darken, a bottom→up darken, and a faint top fade. Each is
-          a separate LinearGradient (RN paints one gradient per layer).
-          `collapsable={false}` forces native views on Android TV so they aren't
-          folded under the VideoView SurfaceView. */}
+      {/* Ambient scrims so bottom-left hero content reads over the backdrop:
+          left→right + bottom→up darken + faint top fade, one LinearGradient each.
+          collapsable={false} keeps them above the Android VideoView SurfaceView. */}
       <LinearGradient
         colors={[
           WATCH_THEME.scrim(0.92),
@@ -280,12 +247,9 @@ export function VideoBackdrop({
         collapsable={false}
       />
 
-      {/* Bottom-edge fade into the section below the hero (opt-in via
-          bottomFadeColor). MUST live here, inside the backdrop, AFTER the
-          VideoView and with collapsable={false} — same reason the scrims above
-          do: on Android TV the VideoView is a SurfaceView that renders over
-          sibling RN views, so a fade placed in the parent hero would be punched
-          through. Anchored to this container's bottom = the visible hero edge. */}
+      {/* Bottom-edge fade into the section below (opt-in via bottomFadeColor).
+          MUST live here, AFTER the VideoView, collapsable={false}: the Android
+          SurfaceView punches through a parent-hero fade. Anchored to hero edge. */}
       {bottomFadeColor != null ? (
         <LinearGradient
           colors={[

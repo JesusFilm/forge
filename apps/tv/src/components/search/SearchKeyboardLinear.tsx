@@ -18,30 +18,17 @@ type Props = {
   onChange: (next: string) => void
   onSubmit: () => void
   /**
-   * Receives the FIRST key's native node so the stacked (Apple TV) layout can
-   * wire the results grid's top row back up to it as a D-pad `nextFocusUp`
-   * target — giving the focus engine a deterministic destination for the
-   * up-escape out of the scrolling grid. Unused in the two-pane layout.
+   * Receives the FIRST key's native node so the stacked (Apple TV) layout wires
+   * the results grid's top row back up to it as a D-pad `nextFocusUp` target —
+   * a deterministic up-escape out of the grid. Unused in the two-pane layout.
    */
   onLandingNodeChange?: (node: ViewType | null) => void
 }
 
 /**
- * Single-line search keyboard for Apple TV — the 26 letters then
- * shift · space · delete · ⏎, laid out in one horizontal row inside a
- * ScrollView so tvOS auto-scrolls to the focused key (the native
- * "swipe along the line" feel) if the row exceeds the visible width.
- *
- * Shares the key model + reducer with the grid keyboard (keyGrid): shift
- * toggles the keyboard's case (component state, no value change), submit fires
- * onSubmit (bypassing the search debounce), and every value-mutating action
- * forwards applyKey's non-null result to onChange. The parent sanitizes at the
- * onChange write site.
- *
- * Focus: trapped left/right (single row — don't fall off the ends). Down is
- * intentionally NOT trapped so D-pad-down drops focus into the results grid
- * stacked below. Up needs no trap — QueryDisplay above is non-focusable
- * (View/Text/Animated.View only, verified), so D-pad-up is already a no-op.
+ * Single-line Apple TV search keyboard — 26 letters then shift · space · delete
+ * · ⏎ in one auto-scrolling ScrollView row; shares the key model + reducer with
+ * keyGrid. Focus trapped left/right but not down (drops into the results grid).
  */
 export function SearchKeyboardLinear({
   value,
@@ -95,12 +82,9 @@ export function SearchKeyboardLinear({
 }
 
 const styles = StyleSheet.create({
-  // contentContainerStyle of the horizontal ScrollView. flexGrow:1 makes the
-  // container fill the screen's content width (the keys fit in one row at
-  // 1080p), and space-between pins the first key to the left edge and the last
-  // key to the right edge so the right padding (last key → screen edge) equals
-  // the left. If the row ever overflows a narrower device there's no free space
-  // to distribute, so it falls back to gap spacing and scrolls as before.
+  // contentContainerStyle of the horizontal ScrollView. flexGrow:1 fills the
+  // content width (keys fit one row at 1080p); space-between pins first/last
+  // keys to the edges. On narrower devices it falls back to gap + scroll.
   row: {
     flexGrow: 1,
     flexDirection: "row",

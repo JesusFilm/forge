@@ -19,11 +19,9 @@ describe("buildAuthHeaders", () => {
   })
 })
 
-// The bearer must ride ONLY on the gated Search operation. A bearer'd request
-// rate-limit-buckets as consumer:<key> on admin — one shared bucket for every
-// install carrying the same baked-in key — while anonymous requests bucket
-// per device IP. Attaching the header to public queries would collapse the
-// whole fleet's Home/watch/experience traffic into that single bucket.
+// The bearer must ride ONLY on the gated Search operation: it buckets as
+// consumer:<key> (one shared bucket for the whole fleet's baked-in key), so
+// attaching it to public queries would collapse all traffic into that bucket.
 describe("authHeadersForOperation", () => {
   it("attaches the bearer for the Search operation", () => {
     expect(authHeadersForOperation("Search", "abc123")).toEqual({

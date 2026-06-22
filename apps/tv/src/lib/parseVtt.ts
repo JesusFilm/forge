@@ -1,8 +1,6 @@
-// SYNC: ported from apps/mobile/src/lib/parseVtt.ts, with two TV additions —
-// SMPTE-offset normalization (broadcast VTTs that start at 01:00:00 → 0:00)
-// and an exported findActiveCue() binary search (the overlay component owns
-// the playhead poll, but the lookup is a pure function so it can be tested
-// in isolation under jest-expo).
+// SYNC: ported from apps/mobile/src/lib/parseVtt.ts, plus two TV additions —
+// SMPTE-offset normalization (broadcast VTTs starting at 01:00:00 → 0:00) and an
+// exported findActiveCue() binary search (pure, so it's testable in isolation).
 
 export type VttCue = {
   start: number
@@ -28,11 +26,9 @@ function parseTimestamp(ts: string): number {
 }
 
 function stripVttTags(text: string): string {
-  // VTT cues can carry inline tags (<b>, <i>, <u>, <v Speaker>, <c.classname>,
-  // timing tags like <00:00:01.000>, etc.). Strip them for plain-text rendering.
-  // Loop until the string stabilises so a crafted nested tag (e.g.
-  // "<scr<script>ipt>") can't survive a single pass — a complete strip, not the
-  // one-shot replace CodeQL flags as incomplete multi-character sanitization.
+  // Strip VTT inline tags (<b>, <v Speaker>, timing tags, etc.) for plain text.
+  // Loop until stable so a nested tag ("<scr<script>ipt>") can't survive one pass
+  // — a complete strip, not the one-shot replace CodeQL flags as incomplete.
   let out = text
   let prev: string
   do {
@@ -42,13 +38,9 @@ function stripVttTags(text: string): string {
   return out
 }
 
-// Broadcast/SMPTE VTT files often start their first cue at the one-hour mark
-// (01:00:00.000) — an authoring convention where 01:00:00 is "program start".
-// Our playhead is media-relative (0:00 is the first frame), so without
-// normalization every cue lands an hour late and nothing ever shows. If the
-// earliest cue starts at or after one hour, subtract a whole number of hours so
-// the first cue lands near zero — only shifting by exact-hour multiples avoids
-// corrupting a genuinely long film whose subtitles legitimately pass 01:00:00.
+// Broadcast/SMPTE VTTs start the first cue at 01:00:00 ("program start"); our
+// playhead is media-relative, so unshifted cues land an hour late. Subtract
+// whole hours only — exact-hour multiples avoid corrupting a genuinely long film.
 const ONE_HOUR = 3600
 
 function normalizeSmpteOffset(cues: VttCue[]): VttCue[] {
@@ -106,10 +98,9 @@ export function parseVtt(content: string): VttCue[] {
   return normalizeSmpteOffset(cues)
 }
 
-// Cues are sorted by start time. Binary-search the last cue whose start is <= t,
-// then check t is still before its (exclusive) end — keeping the poll cheap even
-// for a feature-length VTT with hundreds of cues. Exported as a pure function so
-// the playhead lookup is unit-testable without a player.
+// Cues are sorted by start. Binary-search the last cue with start <= t, then
+// check t < its exclusive end — keeps the poll cheap on long VTTs. Pure/exported
+// so the playhead lookup is unit-testable without a player.
 export function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
   let lo = 0
   let hi = cues.length - 1
@@ -123,11 +114,9 @@ export function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
       hi = mid - 1
     }
   }
-  // `ans` is the last cue that started at or before t — usually the active one.
-  // But cues can overlap (a short cue nested in a longer one): the most-recent
-  // may have already ended while an earlier, longer cue is still active. Walk
-  // back a BOUNDED number of steps to find it. The bound keeps a gap in a long,
-  // non-overlapping VTT O(1) instead of scanning to the start of the list.
+  // `ans` is the last cue started <= t — usually active, but overlapping cues
+  // mean it may have ended while an earlier longer cue is still active. Walk back
+  // a BOUNDED number of steps so a gap in a long non-overlapping VTT stays O(1).
   for (
     let i = ans, steps = 0;
     i >= 0 && steps < 16 && cues[i].start <= t;

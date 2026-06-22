@@ -5,10 +5,9 @@ import { TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 
-// The series action row is Language + Share only. A series has no single asset
-// to download or caption, so the video page's Download/Subtitles buttons don't
-// carry over (ActionButtonRow is a fixed four-button row, hence a separate
-// component rather than a prop on it).
+// Language + Share only: a series has no single asset to download or caption,
+// so the video page's Download/Subtitles don't carry over. Separate component
+// because ActionButtonRow is a fixed four-button row.
 export type SeriesActionRowProps = {
   onLanguage: () => void
   onShare: () => void

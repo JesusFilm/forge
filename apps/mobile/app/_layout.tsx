@@ -177,10 +177,9 @@ export default function RootLayout() {
     void lockPortrait()
   }, [])
 
-  // Opt-in cache persistence: when enabled, restore the persisted snapshot into
-  // the cache BEFORE ApolloProvider mounts (so no query races the restore),
-  // bounded by a timeout inside restoreApolloCache. When disabled, hydrated
-  // starts true and this is fully inert — the default path renders immediately.
+  // Opt-in cache persistence: restore snapshot BEFORE ApolloProvider mounts so no
+  // query races the restore (timeout-bounded in restoreApolloCache). When disabled,
+  // hydrated starts true and this is inert — default path renders immediately.
   const [hydrated, setHydrated] = useState(() => !isCachePersistenceEnabled())
   useEffect(() => {
     if (hydrated) return

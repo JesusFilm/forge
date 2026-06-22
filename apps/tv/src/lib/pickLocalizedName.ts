@@ -1,7 +1,6 @@
 // SYNC: keep in sync with apps/mobile/src/lib/pickLocalizedName.ts
-//
-// Admin stores localized name columns as jsonb locale maps: { "en": "...", "es": "..." }.
-// gql.tada types JSON fields as `unknown`, so TypeScript won't catch misuse.
+// Admin stores localized names as jsonb locale maps { "en": "...", "es": "..." };
+// gql.tada types JSON as `unknown`, so TS won't catch misuse.
 const LOCALE_FALLBACK_ORDER = [
   "en",
   "es",

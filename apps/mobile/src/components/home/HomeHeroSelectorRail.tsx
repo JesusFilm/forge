@@ -24,18 +24,9 @@ export type HomeHeroSelectorRailProps = {
 }
 
 /**
- * Mini video-card rail mirroring the hero pager queue: thumbnail + title per
- * slide, with an accent ring marking the slide the hero is showing. Renders
- * as a SIBLING below the pager: its own bounds own its touches (a horizontal
- * list inside its own frame), so no special gesture coordination with the
- * pager or the vertical feed is needed.
- *
- * Deliberately half the size of the content shelves' cards (0.3 vs 0.6 screen
- * width) with the title BELOW the thumbnail instead of overlaid — the rail
- * must read as a hero selector, not another content shelf.
- *
- * Hidden for single-slide queues, matching the reducer's showsPagerChrome
- * rule (AE2).
+ * Mini video-card rail mirroring the hero pager queue (thumb + title, accent ring on the active
+ * slide). Renders as a sibling below the pager so it owns its own touches. Half the shelf-card size,
+ * title below; hidden for 1 slide (reducer's showsPagerChrome rule, AE2).
  */
 export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
   slides,
@@ -151,9 +142,8 @@ const CARD_WIDTH_RATIO = 0.3
 const CARD_GAP = 10
 
 /**
- * Mux insert cards show the insert's CONFIGURED title (not the time-of-day
- * overlay or date-prefixed display title), falling back to "Featured"; video
- * cards show the video title.
+ * Mux insert cards show the insert's CONFIGURED title (not the overlay/display
+ * title), falling back to "Featured"; video cards show the video title.
  */
 function cardLabel(slide: WatchHomeSlide): string {
   if (slide.kind === "mux") {

@@ -1,16 +1,6 @@
-// External content for the watch experience: decorative Bible-quote card
-// backgrounds, the Bible-study promo card, and the answer-fallback CTA links.
-// One TV-side source of truth so the consumers (detailsAdapters'
-// buildBibleQuotesBlock + RelatedQuestionsRenderer's AnswerFallback) can't
-// drift from each other.
-//
-// SYNC: the values mirror apps/mobile/src/hooks/useBibleVerses.ts and
-// apps/mobile/src/components/sections/RelatedQuestionsRenderer.tsx (and
-// originally core/apps/watch via apps/web/src/components/watch/
-// BibleQuotesSection.tsx + WatchStudyQuestions.tsx). Web's BIBLE_IMAGES
-// carries extra Unsplash sizing params (ixlib/ixid, larger widths) — the
-// photos are the same; mobile/TV use the stripped w=800 variants. If any
-// image or URL is rotated, update all three apps.
+// TV-side single source of truth for watch-experience external content so consumers can't drift.
+// SYNC: mirror apps/mobile useBibleVerses.ts + RelatedQuestionsRenderer.tsx (web uses same
+// photos at larger widths); rotate any image/URL across all three apps.
 
 /** Decorative wallpapers cycled by citation index — not curated per verse. */
 export const BIBLE_IMAGES = [

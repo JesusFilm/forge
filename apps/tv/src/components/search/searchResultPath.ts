@@ -7,14 +7,9 @@ import { type SearchResult } from "../../lib/queries"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 
 /**
- * Series-shaped video results (label or childCount) open /series/[slug]
- * directly — no /watch hop-and-redirect. Leaf video results open the
- * /watch/[slug] details page. Both carry a seed for instant first paint; the
- * series seed's playbackId is nulled (the series screen mounts no video, and
- * a stream must never be derived from its seed). Everything else
- * (experiences) keeps the existing /experience route. `encodeWatchSeed`
- * already URL-encodes its return value, so the seed is appended without
- * further encoding.
+ * Series-shaped videos open /series/[slug], leaf videos /watch/[slug], else
+ * /experience. Seed gives first paint; series seed playbackId is nulled (never
+ * derive a stream from it). encodeWatchSeed already URL-encodes (don't re-encode).
  */
 export function searchResultPath(result: SearchResult): string {
   const slug = encodeURIComponent(result.slug)

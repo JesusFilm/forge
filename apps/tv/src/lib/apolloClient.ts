@@ -23,10 +23,8 @@ const fetchWithTimeout = (
 
 let _client: ApolloClient | undefined
 
-/**
- * Lazy singleton Apollo Client.
- * Never instantiate at module scope — crashes imports when env vars are missing in CI.
- */
+/** Lazy singleton Apollo Client. Never instantiate at module scope — crashes
+ * imports when env vars are missing in CI. */
 export function getApolloClient(): ApolloClient {
   if (_client) return _client
 

@@ -23,15 +23,9 @@ type Props = {
 }
 
 /**
- * One focusable, animated keyboard key, shared by the grid (Android) and
- * single-line (Apple TV) keyboards. Sizing comes entirely from `dims` so the
- * two keyboards differ only in numbers, not behavior:
- *
- *   - focus pop via useFocusAnimation → focusTransform (lift 0, magnify 1.1);
- *     the timing stops the prior animation before the next so a rapid D-pad
- *     sweep can't orphan animations;
- *   - white-fill focus (SEARCH_THEME.keyFocusBg) + near-black ink;
- *   - the backspace key renders an Ionicons glyph instead of a text label.
+ * One focusable, animated keyboard key shared by the grid (Android) and
+ * single-line (Apple TV) keyboards; sizing comes from `dims`. Focus pop via
+ * useFocusAnimation, white-fill focus (SEARCH_THEME.keyFocusBg), Ionicons backspace.
  */
 export function KeyButton({
   cell,

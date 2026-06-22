@@ -1,16 +1,11 @@
-// Grid keyboard model for /search — a 6-column A–Z letter grid plus an action
-// row (shift toggle · space · delete · search). Pure module (no JSX) so the
-// edit semantics are unit-testable without loading the component's React/JSX
-// module graph under jest-expo. SearchKeyboard is the thin caller.
-//
-// Replaces the single-row letter strip (keyStrip.ts) with the grid layout the
-// app shipped before the redesign — letters laid out as a focusable block
-// rather than one long row — restyled in the redesign's SEARCH_THEME look.
+// Grid keyboard model for /search: 6-column A–Z grid plus action row (shift ·
+// space · delete · search). Pure module (no JSX) so edit semantics are testable
+// under jest-expo. Replaces keyStrip.ts's single row with a SEARCH_THEME block.
 
 /**
- * Action a key performs when pressed. The dispatcher contract between a key
- * cell and the keyboard's onChange / onSubmit props. `shift` is a keyboard
- * case toggle (component state), not a query mutation — see applyKey.
+ * Action a key performs when pressed — the contract between a key cell and the
+ * keyboard's onChange/onSubmit. `shift` toggles keyboard case (component state),
+ * not a query mutation; see applyKey.
  */
 export type KeyAction =
   | { kind: "char"; char: string }
@@ -22,8 +17,8 @@ export type KeyAction =
 export type KeyCell = {
   /**
    * Stable React key. Letters use POSITION-based ids (`letter-<index>`) so a
-   * shift toggle — which changes a cell's label in place — does not remount
-   * the cell and lose its focus state. Action keys use fixed ids.
+   * shift toggle (changes label in place) doesn't remount the cell and lose
+   * focus state. Action keys use fixed ids.
    */
   id: string
   /** Visible glyph. Empty for icon-rendered keys (delete). */
@@ -83,14 +78,9 @@ export const LINEAR_KEY_DIMS: KeyDims = {
 const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("")
 
 /**
- * Build the letter grid in the active case. Lowercase by default — search is
- * case-insensitive on the backend, and lowercase reads less shouty in the
- * QueryDisplay above. A shift toggle (buildActionRow) flips to uppercase;
- * each letter cell dispatches the character in whatever case is showing, so
- * the typed query preserves the user's case.
- *
- * 26 letters at 6 columns → rows of 6, 6, 6, 6, 2. Letter ids are
- * position-based so toggling case never remounts a cell.
+ * Build the letter grid in the active case (lowercase default; shift flips to
+ * uppercase and each cell dispatches the shown case, preserving it). 26 letters
+ * at 6 columns → rows of 6,6,6,6,2; ids are position-based so case never remounts.
  */
 export function buildLetterRows(
   isShifted: boolean,
@@ -111,13 +101,9 @@ export function buildLetterRows(
 }
 
 /**
- * The action row: shift toggle · space (wide) · delete · search.
- *
- * The shift key shows the case it switches TO when pressed (iOS/tvOS
- * convention) and is a persistent caps-lock-style toggle, not momentary —
- * easier on a D-pad than a transient shift. The submit (⏎) key is
- * load-bearing: it fires useSemanticSearch.submit(), bypassing the 600ms
- * debounce.
+ * The action row: shift toggle · space (wide) · delete · search. Shift shows the
+ * case it switches TO (iOS/tvOS convention) and is a persistent caps-lock toggle,
+ * easier on a D-pad. Submit (⏎) fires useSemanticSearch.submit(), skipping debounce.
  */
 export function buildActionRow(isShifted: boolean): KeyCell[] {
   return [
@@ -153,27 +139,18 @@ export function buildActionRow(isShifted: boolean): KeyCell[] {
 }
 
 /**
- * Flat key list for the single-line (Apple TV) keyboard: the 26 letters in the
- * active case, then the action keys (shift · space · delete · submit). Reuses
- * buildLetterRows + buildActionRow so the linear and grid keyboards stay in
- * lockstep — same cells, same ids, same reducer (applyKey).
+ * Flat key list for the single-line (Apple TV) keyboard: 26 letters in the
+ * active case, then action keys (shift · space · delete · submit). Reuses
+ * buildLetterRows + buildActionRow so linear/grid stay in lockstep (applyKey).
  */
 export function buildLinearKeys(isShifted: boolean): KeyCell[] {
   return [...buildLetterRows(isShifted).flat(), ...buildActionRow(isShifted)]
 }
 
 /**
- * Pure reducer for a key press over the current query string. Returns the
- * NEXT query value for value-mutating actions, or `null` when the action
- * doesn't change the value (submit, shift, or a guarded no-op).
- *
- *   - char:      appends action.char (already cased by buildLetterRows)
- *   - space:     appends " " ONLY when the query is non-empty (no leading
- *                space — a whitespace-only query would flip the results
- *                region to the idle browse grid); no-op (null) on empty
- *   - backspace: drops the last char; no-op (null) on empty
- *   - submit:    no value change (null) — caller fires onSubmit
- *   - shift:     no value change (null) — caller toggles keyboard case state
+ * Pure reducer for a key press over the query string. Returns the NEXT value
+ * (char appends; space appends only when non-empty so a whitespace-only query
+ * doesn't flip to browse; backspace drops last), or `null` for no-ops.
  */
 export function applyKey(value: string, action: KeyAction): string | null {
   switch (action.kind) {

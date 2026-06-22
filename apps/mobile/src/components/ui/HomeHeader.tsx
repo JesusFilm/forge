@@ -18,9 +18,8 @@ type HomeHeaderProps = {
   title: string | null
   titleOpacity: number
   /**
-   * Home-tab variant: search + profile grouped on the right, left slot
-   * empty. Default (Experience screens) keeps the original layout —
-   * search left, profile right.
+   * Home-tab variant: search + profile grouped right, left slot empty. Default
+   * (Experience screens) keeps the original layout — search left, profile right.
    */
   homeVariant?: boolean
 }

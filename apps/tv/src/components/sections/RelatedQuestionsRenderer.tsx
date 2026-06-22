@@ -43,11 +43,9 @@ type QuestionItem = {
 
 // ── No-answer fallback ──────────────────────────────────────────────────────
 //
-// The studyQuestions data carries no inline answers, so an expanded row with
-// no answer text shows the same fallback mobile/web render: a "private
-// discussion" line plus two white pill CTAs (Chat / Ask a Bible question).
-// On TV the links open the QR LinkModal — the phone is the continuation
-// surface — instead of Linking.openURL. URLs + copy live in lib/bibleContent.
+// Answer-less expanded rows show the mobile/web fallback: a "private discussion"
+// line + two pill CTAs. On TV the links open the QR LinkModal (phone is the
+// continuation surface), not Linking.openURL. URLs + copy in lib/bibleContent.
 
 const PILL_ICON_SIZE = Math.round(scale(18))
 
@@ -147,9 +145,8 @@ export function RelatedQuestionsRenderer({
 }: {
   section: NormalizedBlock
   /**
-   * Horizontal screen gutter. Defaults to the SDUI full-bleed gutter
-   * (scale(80)); the watch page passes 0 when the section sits inside an
-   * already-padded column.
+   * Horizontal screen gutter; defaults to the SDUI full-bleed gutter (scale(80)).
+   * The watch page passes 0 when the section sits in an already-padded column.
    */
   inset?: number
 }) {

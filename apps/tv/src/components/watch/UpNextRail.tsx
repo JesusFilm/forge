@@ -1,14 +1,6 @@
-// Up Next rail for the video-details screen — sibling videos under the same
-// parent; selecting a card opens THAT video's details screen (R15), it does NOT
-// start playback. Renders nothing when there are no siblings.
-//
-// Styled to the Claude Design handoff ("match the mockup exactly"): a prominent
-// section head + larger episode-style cards (360×202 poster, label eyebrow in
-// the red accent, 2-line title) that lift with a white focus ring and reveal a
-// centred play overlay on focus. Built inline (its own FlatList + focus guide)
-// rather than via the shared ContentRail so Home / Search keep their look. We
-// only render real sibling data — no invented day numbers or progress bars (the
-// JFP model has no per-episode progress).
+// Up Next rail — siblings under the same parent; a card opens THAT video's details
+// (R15), it does NOT play; renders nothing without siblings. Built inline (own
+// FlatList) not via shared ContentRail so Home/Search keep their look.
 
 import { useMemo } from "react"
 import {

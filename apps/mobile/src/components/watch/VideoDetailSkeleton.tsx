@@ -6,17 +6,15 @@ import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 
 type VideoDetailSkeletonProps = {
   /**
-   * "full" includes the player block + title (cold deep link with no seed).
-   * "sections" omits them because the real player + seed title render above
-   * this skeleton (seeded navigation) — keeps the layout from shifting when
-   * canonical data lands.
+   * "full" includes player block + title (cold deep link, no seed). "sections"
+   * omits them because the real player + seed title already render above (seeded
+   * nav) — keeps layout from shifting when canonical data lands.
    */
   variant?: "full" | "sections"
   /**
-   * Top inset for the player block. The watch screen (headerless) places the
-   * real player at the safe-area top, so its cold-load skeleton passes
-   * insets.top here to avoid a downward jump when data lands. Default 0
-   * (e.g. series, which still has a native header). Only affects "full".
+   * Top inset for the player block, so a headerless watch screen passes
+   * insets.top to avoid a downward jump when data lands. Default 0 (e.g. series,
+   * which has a native header). Only affects "full".
    */
   playerTopInset?: number
   /**

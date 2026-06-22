@@ -11,11 +11,9 @@ type SeriesEpisodesGridProps = {
   onSelect: (episode: WatchEpisode) => void
 }
 
-// The series screen's scroll container: a 2-column grid of episode cards with
-// the hero-adjacent content (metadata, actions, description) in the list header.
-// Using the grid AS the scroll container avoids a vertical FlatList nested in a
-// ScrollView (the nested-VirtualizedList warning). With no episodes the header
-// still renders and no grid or placeholder shows.
+// Series scroll container: 2-column episode grid with hero-adjacent content in
+// the list header. The grid IS the scroll container to avoid a FlatList nested
+// in a ScrollView (nested-VirtualizedList warning). No episodes → header only.
 export function SeriesEpisodesGrid({
   episodes,
   header,

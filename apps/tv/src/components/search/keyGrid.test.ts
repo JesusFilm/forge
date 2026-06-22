@@ -161,10 +161,9 @@ describe("buildLinearKeys", () => {
 })
 
 describe("key dimension tokens", () => {
-  // Pin the exact values: GRID_KEY_DIMS reproduces SearchKeyboard's current
-  // pixel values, so a stray edit here would silently shift the Android grid.
-  // This converts the "byte-identical Android" guarantee from a one-time
-  // simulator check into a CI-enforced contract.
+  // Pin the exact values: GRID_KEY_DIMS reproduces SearchKeyboard's pixel
+  // values, so a stray edit would silently shift the Android grid. Converts
+  // the "byte-identical Android" guarantee from a one-time check into a CI contract.
   it("GRID_KEY_DIMS reproduces the grid's pixel values", () => {
     expect(GRID_KEY_DIMS).toEqual({
       size: 72,
