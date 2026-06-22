@@ -5,7 +5,7 @@ import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
 import { CATEGORIES, type SearchCategory } from "./categories"
-import { SEARCH_THEME } from "./searchTheme"
+import { SEARCH_PAGE_GUTTER, SEARCH_THEME } from "./searchTheme"
 
 type Props = {
   recents: string[]
@@ -15,6 +15,16 @@ type Props = {
   onRunQuery: (query: string) => void
   /** Called when the user presses the "Clear" chip in the Recent rail. */
   onClearHistory: () => void
+  /**
+   * Break out of the parent's horizontal page padding so this view is
+   * full-bleed. The rail title / chip / grid gutters below already encode the
+   * 80dp page gutter, so once full-bleed the content lands exactly on the page
+   * edges. The Apple TV stacked layout sets this (the browse view sits inside
+   * the screen's scale(80) padding, which would otherwise double-inset it
+   * relative to the full-width keyboard). The two-pane layout leaves it off —
+   * there the browse view lives inside the narrower right pane.
+   */
+  fullBleed?: boolean
 }
 
 // The search-empty browse view: Recent searches + Browse-topics categories.
@@ -24,12 +34,17 @@ type Props = {
 // experiences" rail backed by the editor-gated Query.experiences, which 401'd
 // for the public TV app and silently rendered empty — removed with the home's
 // migration off that gated query.)
-export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
+export function SearchBrowse({
+  recents,
+  onRunQuery,
+  onClearHistory,
+  fullBleed,
+}: Props) {
   const showRecent = recents.length > 0
 
   return (
     <ScrollView
-      style={styles.scroll}
+      style={[styles.scroll, fullBleed === true && styles.fullBleed]}
       contentContainerStyle={styles.scrollContent}
     >
       {showRecent ? (
@@ -154,6 +169,14 @@ function CategoryCard({
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
+  },
+  // Cancels the parent screen's page padding so the view is full-bleed. Shares
+  // SEARCH_PAGE_GUTTER with app/search.tsx styles.screen.paddingHorizontal so
+  // the cancellation can't silently drift. The rail/chip/grid gutters then
+  // place content on the page edges, matching the full-width keyboard above it
+  // in the stacked (Apple TV) layout.
+  fullBleed: {
+    marginHorizontal: -scale(SEARCH_PAGE_GUTTER),
   },
   scrollContent: {
     paddingVertical: scale(8),

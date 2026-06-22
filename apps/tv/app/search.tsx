@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Platform, StyleSheet, Text, View } from "react-native"
+import type { View as ViewType } from "react-native"
 
 import { QueryDisplay } from "../src/components/search/QueryDisplay"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
@@ -7,7 +8,10 @@ import { resolveSearchMeta } from "../src/components/search/searchDisplay"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchKeyboardLinear } from "../src/components/search/SearchKeyboardLinear"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
-import { SEARCH_THEME } from "../src/components/search/searchTheme"
+import {
+  SEARCH_PAGE_GUTTER,
+  SEARCH_THEME,
+} from "../src/components/search/searchTheme"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import { scale } from "../src/lib/scale"
 import type { SearchResult } from "../src/lib/queries"
@@ -149,7 +153,13 @@ function SearchResultsPane({
   onClearHistory,
   onRetry,
   columns,
-}: SearchBodyProps & { columns?: number }) {
+  topRowFocusUp,
+  browseFullBleed,
+}: SearchBodyProps & {
+  columns?: number
+  topRowFocusUp?: ViewType | null
+  browseFullBleed?: boolean
+}) {
   return (
     <>
       <View style={styles.metaLine}>
@@ -163,12 +173,14 @@ function SearchResultsPane({
             query={query}
             columns={columns}
             onRetry={onRetry}
+            topRowFocusUp={topRowFocusUp}
           />
         ) : (
           <SearchBrowse
             recents={recents}
             onRunQuery={onRunQuery}
             onClearHistory={onClearHistory}
+            fullBleed={browseFullBleed}
           />
         )}
       </TVFocusGuideView>
@@ -207,6 +219,14 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
  * the results region (the keyboard does not trap focus downward).
  */
 function SearchBodyStacked(props: SearchBodyProps) {
+  // The keyboard sits ABOVE a vertically-scrolling results grid here, so
+  // D-pad-up out of the grid's top row must reach the keyboard. tvOS swallows
+  // that along-scroll-axis exit while the grid is still decelerating, so we
+  // give the grid's top row an explicit `nextFocusUp` target: the keyboard's
+  // first key node, captured ref-as-state. (The two-pane body needs none of
+  // this — there the keyboard is to the LEFT, a cross-axis escape.)
+  const [keyboardLandingNode, setKeyboardLandingNode] =
+    useState<ViewType | null>(null)
   return (
     <View style={styles.stackedBody}>
       {/* Like SearchKeyboard in the two-pane body, SearchKeyboardLinear is not
@@ -216,8 +236,13 @@ function SearchBodyStacked(props: SearchBodyProps) {
         value={props.query}
         onChange={props.onChangeQuery}
         onSubmit={props.onSubmit}
+        onLandingNodeChange={setKeyboardLandingNode}
       />
-      <SearchResultsPane {...props} />
+      <SearchResultsPane
+        {...props}
+        topRowFocusUp={keyboardLandingNode}
+        browseFullBleed
+      />
     </View>
   )
 }
@@ -233,18 +258,20 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: SEARCH_THEME.bg,
-    paddingHorizontal: scale(80),
+    paddingHorizontal: scale(SEARCH_PAGE_GUTTER),
   },
   // Design .s-query: padding 78px 0 (horizontal comes from screen).
   queryLine: {
     paddingTop: scale(78),
   },
   // Android: keyboard (left) + results (right) fill the height side by side.
+  // Tight gap + no top inset so the results sit close to the keyboard's right
+  // edge and near the top, just under the query line.
   twoPaneBody: {
     flex: 1,
     flexDirection: "row",
-    gap: scale(56),
-    paddingTop: scale(14),
+    gap: scale(24),
+    paddingTop: 0,
   },
   // Apple TV: single-line keyboard on top, results filling the space below.
   stackedBody: {

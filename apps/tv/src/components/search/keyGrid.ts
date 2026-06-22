@@ -64,9 +64,13 @@ export const GRID_KEY_DIMS: KeyDims = {
   iconSize: 28,
 }
 
-/** Single-line keyboard (Apple TV) — compact so ~30 keys fit one row. */
-export const LINEAR_KEY_SIZE = 48
-export const LINEAR_KEY_WIDTH_WIDE = 72
+/**
+ * Single-line keyboard (Apple TV) — compact so ~30 keys fit one row. The size
+ * tokens feed LINEAR_KEY_DIMS only (unexported); LINEAR_KEY_GAP is the row
+ * style's inter-key gap, consumed by SearchKeyboardLinear.
+ */
+const LINEAR_KEY_SIZE = 48
+const LINEAR_KEY_WIDTH_WIDE = 72
 export const LINEAR_KEY_GAP = 8
 export const LINEAR_KEY_DIMS: KeyDims = {
   size: LINEAR_KEY_SIZE,

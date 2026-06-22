@@ -50,8 +50,22 @@ export function QueryDisplay({ value }: Props) {
     [blink],
   )
 
+  // The caret marks the insertion point: LEADING (left of the placeholder)
+  // while the query is empty, TRAILING (after the typed text) once the user
+  // starts typing — so it always blinks where the next character will land.
+  const caret = (
+    <Animated.View
+      style={[
+        styles.caret,
+        isPlaceholder ? styles.caretLeading : styles.caretTrailing,
+        { opacity: caretOpacity },
+      ]}
+    />
+  )
+
   return (
     <View style={styles.container}>
+      {isPlaceholder && caret}
       <Text
         style={[styles.text, isPlaceholder && styles.placeholder]}
         numberOfLines={1}
@@ -61,7 +75,7 @@ export function QueryDisplay({ value }: Props) {
       >
         {isPlaceholder ? "Titles, series, topics" : value}
       </Text>
-      <Animated.View style={[styles.caret, { opacity: caretOpacity }]} />
+      {!isPlaceholder && caret}
     </View>
   )
 }
@@ -93,7 +107,13 @@ const styles = StyleSheet.create({
     height: scale(56),
     borderRadius: scale(2),
     backgroundColor: WATCH_THEME.accent,
-    // Sits just after the last glyph — a hairline gap, not a full space.
+  },
+  // Trailing: a hairline gap after the last typed glyph. Leading: a hairline
+  // gap before the placeholder text when the query is empty.
+  caretTrailing: {
     marginLeft: scale(3),
+  },
+  caretLeading: {
+    marginRight: scale(3),
   },
 })

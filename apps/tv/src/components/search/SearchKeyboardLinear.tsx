@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { ScrollView, StyleSheet } from "react-native"
+import type { View as ViewType } from "react-native"
 
 import { scale } from "../../lib/scale"
 import { TVFocusGuideView } from "../TVFocusGuideView"
@@ -16,6 +17,13 @@ type Props = {
   value: string
   onChange: (next: string) => void
   onSubmit: () => void
+  /**
+   * Receives the FIRST key's native node so the stacked (Apple TV) layout can
+   * wire the results grid's top row back up to it as a D-pad `nextFocusUp`
+   * target — giving the focus engine a deterministic destination for the
+   * up-escape out of the scrolling grid. Unused in the two-pane layout.
+   */
+  onLandingNodeChange?: (node: ViewType | null) => void
 }
 
 /**
@@ -35,7 +43,12 @@ type Props = {
  * stacked below. Up needs no trap — QueryDisplay above is non-focusable
  * (View/Text/Animated.View only, verified), so D-pad-up is already a no-op.
  */
-export function SearchKeyboardLinear({ value, onChange, onSubmit }: Props) {
+export function SearchKeyboardLinear({
+  value,
+  onChange,
+  onSubmit,
+  onLandingNodeChange,
+}: Props) {
   // Lowercase default; persistent caps-lock-style toggle. Only future presses
   // are affected — already-typed characters in `value` stay as they were.
   const [isShifted, setIsShifted] = useState(false)
@@ -70,6 +83,10 @@ export function SearchKeyboardLinear({ value, onChange, onSubmit }: Props) {
             hasTVPreferredFocus={index === 0}
             onPress={() => dispatch(cell.action)}
             dims={LINEAR_KEY_DIMS}
+            // Expose only the first key's node — the results grid's top row
+            // targets it for D-pad-up, landing back on the same key the
+            // keyboard claims on entry (symmetric up/down).
+            nodeRef={index === 0 ? onLandingNodeChange : undefined}
           />
         ))}
       </ScrollView>
@@ -78,9 +95,17 @@ export function SearchKeyboardLinear({ value, onChange, onSubmit }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // contentContainerStyle of the horizontal ScrollView. flexGrow:1 makes the
+  // container fill the screen's content width (the keys fit in one row at
+  // 1080p), and space-between pins the first key to the left edge and the last
+  // key to the right edge so the right padding (last key → screen edge) equals
+  // the left. If the row ever overflows a narrower device there's no free space
+  // to distribute, so it falls back to gap spacing and scrolls as before.
   row: {
+    flexGrow: 1,
     flexDirection: "row",
     gap: scale(LINEAR_KEY_GAP),
     alignItems: "center",
+    justifyContent: "space-between",
   },
 })
