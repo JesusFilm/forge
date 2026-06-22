@@ -42,6 +42,44 @@ export const KEY_WIDTH_WIDE = KEY_SIZE * 2 + 10 // space ≈ two columns + one g
 export const KEY_GAP = 10
 export const KEY_RADIUS = 12
 
+/**
+ * Per-keyboard size tokens (raw 1920-canvas units; consumers pass through
+ * scale()). The grid and the single-line (Apple TV) keyboard differ only in
+ * these numbers — the focus/animation logic is shared in KeyButton.
+ */
+export type KeyDims = {
+  size: number
+  wideWidth: number
+  radius: number
+  labelFontSize: number
+  iconSize: number
+}
+
+/** Grid keyboard (Android) — reproduces SearchKeyboard's current pixel values. */
+export const GRID_KEY_DIMS: KeyDims = {
+  size: KEY_SIZE,
+  wideWidth: KEY_WIDTH_WIDE,
+  radius: KEY_RADIUS,
+  labelFontSize: 26,
+  iconSize: 28,
+}
+
+/**
+ * Single-line keyboard (Apple TV) — compact so ~30 keys fit one row. The size
+ * tokens feed LINEAR_KEY_DIMS only (unexported); LINEAR_KEY_GAP is the row
+ * style's inter-key gap, consumed by SearchKeyboardLinear.
+ */
+const LINEAR_KEY_SIZE = 48
+const LINEAR_KEY_WIDTH_WIDE = 72
+export const LINEAR_KEY_GAP = 8
+export const LINEAR_KEY_DIMS: KeyDims = {
+  size: LINEAR_KEY_SIZE,
+  wideWidth: LINEAR_KEY_WIDTH_WIDE,
+  radius: 10,
+  labelFontSize: 20,
+  iconSize: 24,
+}
+
 const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("")
 
 /**
@@ -112,6 +150,16 @@ export function buildActionRow(isShifted: boolean): KeyCell[] {
       accessibilityLabel: "Search",
     },
   ]
+}
+
+/**
+ * Flat key list for the single-line (Apple TV) keyboard: the 26 letters in the
+ * active case, then the action keys (shift · space · delete · submit). Reuses
+ * buildLetterRows + buildActionRow so the linear and grid keyboards stay in
+ * lockstep — same cells, same ids, same reducer (applyKey).
+ */
+export function buildLinearKeys(isShifted: boolean): KeyCell[] {
+  return [...buildLetterRows(isShifted).flat(), ...buildActionRow(isShifted)]
 }
 
 /**
