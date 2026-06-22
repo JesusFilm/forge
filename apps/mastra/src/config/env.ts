@@ -113,6 +113,38 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT),
+  // --- Chat / draft-authoring providers (consolidated from admin, U2) ---
+  // All optional: chat/draft generation is opt-in and flag-gated; the
+  // default provider (openrouter) needs none of these. New cross-service
+  // scaffolding env vars stay optional so an unprovisioned Railway env boots.
+  AI_GATEWAY_CHAT_API_KEY: z.string().min(1).optional(),
+  AI_GATEWAY_CHAT_BASE_URL: z.string().url().optional(),
+  AI_GATEWAY_CHAT_ENABLED: z.string().optional(),
+  AI_GATEWAY_CHAT_MODEL: z.string().min(1).optional(),
+  AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false"),
+  EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(5)
+    .optional()
+    .default(2),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
+  MASTRA_DEFAULT_PROVIDER: z
+    .enum([
+      "openrouter",
+      "ollama",
+      "openai",
+      "anthropic",
+      "google",
+      "jesusfilm",
+    ])
+    .optional(),
+  OLLAMA_BASE_URL: z.string().url().optional(),
+  OPENAI_BASE_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url().optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
@@ -311,6 +343,30 @@ export const env = envSchema.parse({
   AI_GATEWAY_EMBEDDINGS_USER_AGENT: emptyToUndefined(
     process.env.AI_GATEWAY_EMBEDDINGS_USER_AGENT,
   ),
+  AI_GATEWAY_CHAT_API_KEY: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_API_KEY,
+  ),
+  AI_GATEWAY_CHAT_BASE_URL: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_BASE_URL,
+  ),
+  AI_GATEWAY_CHAT_ENABLED: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_ENABLED,
+  ),
+  AI_GATEWAY_CHAT_MODEL: emptyToUndefined(process.env.AI_GATEWAY_CHAT_MODEL),
+  AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED: emptyToUndefined(
+    process.env.AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED,
+  ),
+  EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: emptyToUndefined(
+    process.env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS,
+  ),
+  GOOGLE_GENERATIVE_AI_API_KEY: emptyToUndefined(
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  ),
+  MASTRA_DEFAULT_PROVIDER: emptyToUndefined(
+    process.env.MASTRA_DEFAULT_PROVIDER,
+  ),
+  OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
+  OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
   DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
