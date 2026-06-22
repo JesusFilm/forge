@@ -61,6 +61,26 @@ describe("searchVideosViaAdmin", () => {
     })
   })
 
+  it("returns ssrf_blocked (no fetch) when the base host is not in the allowlist", async () => {
+    const fetchImpl = vi.fn()
+    const result = await searchVideosViaAdmin(
+      { q: "easter", locale: "en" },
+      { config: { ...CONFIG, allowedHosts: "trusted.example" }, fetchImpl },
+    )
+    expect(result).toMatchObject({ ok: false, reason: "ssrf_blocked" })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("proceeds when the base host IS in the allowlist", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, VIDEOS_BODY))
+    const result = await searchVideosViaAdmin(
+      { q: "easter", locale: "en" },
+      { config: { ...CONFIG, allowedHosts: "admin.example" }, fetchImpl },
+    )
+    expect(result).toMatchObject({ ok: true })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
   it("posts to the search-videos endpoint with a Bearer and returns the parsed data", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, VIDEOS_BODY))
     const result = await searchVideosViaAdmin(

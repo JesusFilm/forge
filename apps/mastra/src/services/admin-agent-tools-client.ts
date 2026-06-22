@@ -6,9 +6,11 @@
  *
  * Mirrors the embedding-ingest + RAG clients: discriminated
  * `{ ok:true, data } | { ok:false, reason, retryable }` envelope, `Bearer` auth,
- * `AbortSignal.timeout`, `redirect:"error"` (no off-host redirect-follow), and a
- * no-throw surface so a misconfigured/unreachable admin degrades the agent's
- * tool to an empty result rather than crashing the turn.
+ * `AbortSignal.timeout`, an SSRF host allowlist (`ADMIN_AGENT_TOOLS_ALLOWED_HOSTS`,
+ * checked before any fetch) + `redirect:"error"` (no off-host redirect-follow) so
+ * the bearer never bleeds to an unvetted host, and a no-throw surface so a
+ * misconfigured/unreachable admin degrades the agent's tool to an empty result
+ * rather than crashing the turn.
  */
 
 import { z } from "zod"
@@ -22,6 +24,7 @@ export type { AdminAgentToolsConfig } from "../config/env"
 
 export type AdminAgentToolFailureReason =
   | "config_missing"
+  | "ssrf_blocked"
   | "auth_failed"
   | "timeout"
   | "network_error"
@@ -45,6 +48,32 @@ export type AdminAgentToolResult<T> =
 function endpoint(baseUrl: string, path: string): URL {
   const normalized = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`
   return new URL(path, normalized)
+}
+
+/**
+ * SSRF guard: when `allowedHostsCsv` is set, the base URL host must be in it
+ * before any fetch, so the bearer never bleeds to an unvetted host. Unset → the
+ * operator-set base host is trusted (`redirect:"error"` still blocks off-host
+ * hops). Mirrors `hostAllowed` in admin's `mastra-experience-chat-client.ts`.
+ */
+function hostAllowed(
+  baseUrl: string,
+  allowedHostsCsv: string | undefined,
+): boolean {
+  if (!allowedHostsCsv) return true
+  let host: string
+  try {
+    host = new URL(baseUrl).hostname.toLowerCase()
+  } catch {
+    return false
+  }
+  const allowed = new Set(
+    allowedHostsCsv
+      .split(",")
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+  )
+  return allowed.has(host)
 }
 
 function failureForStatus(status: number): AdminAgentToolFailure {
@@ -92,6 +121,10 @@ async function callAdminAgentTool<T>(args: {
       retryable: false,
       detail: "api_key_missing",
     }
+  }
+  // SSRF guard — fail closed before the bearer is attached to a request.
+  if (!hostAllowed(config.baseUrl, config.allowedHosts)) {
+    return { ok: false, reason: "ssrf_blocked", retryable: false }
   }
 
   let response: Response

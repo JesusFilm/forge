@@ -498,15 +498,16 @@ the wire, and persists/re-validates the result; Mastra is the LLM generator.
   Prisma). `ADMIN_AGENT_TOOLS_URL` + `ADMIN_AGENT_TOOLS_API_KEY` (optional;
   unset → the tool degrades to an empty result, never a boot/turn failure).
 
-| Variable                                  | Purpose                                                                             |
-| ----------------------------------------- | ----------------------------------------------------------------------------------- |
-| `AI_GATEWAY_CHAT_*`                       | JesusFilm gateway chat-model factory (opt-in via `AI_GATEWAY_CHAT_ENABLED="true"`). |
-| `GOOGLE_GENERATIVE_AI_API_KEY`            | Default structured-chat provider (Gemini 3.5 Flash) when set.                       |
-| `MASTRA_DEFAULT_PROVIDER`                 | Default provider id (`openrouter` fallback).                                        |
-| `AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED` | Gates per-phase schema-constrained decoding (default `"false"`).                    |
-| `ADMIN_AGENT_TOOLS_URL`                   | Admin base URL for the chat agent's tool callbacks. Optional.                       |
-| `ADMIN_AGENT_TOOLS_API_KEY`               | Bearer admin holds in its `ADMIN_AGENT_TOOLS_API_KEYS` receiver CSV. Optional.      |
-| `ADMIN_AGENT_TOOLS_TIMEOUT_MS`            | Per-tool single-attempt timeout (default 10s, cap 30s — fits the 90s chatTurn).     |
+| Variable                                  | Purpose                                                                                                                                                                                   |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AI_GATEWAY_CHAT_*`                       | JesusFilm gateway chat-model factory (opt-in via `AI_GATEWAY_CHAT_ENABLED="true"`).                                                                                                       |
+| `GOOGLE_GENERATIVE_AI_API_KEY`            | Default structured-chat provider (Gemini 3.5 Flash) when set.                                                                                                                             |
+| `MASTRA_DEFAULT_PROVIDER`                 | Default provider id (`openrouter` fallback).                                                                                                                                              |
+| `AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED` | Gates per-phase schema-constrained decoding (default `"false"`).                                                                                                                          |
+| `ADMIN_AGENT_TOOLS_URL`                   | Admin base URL for the chat agent's tool callbacks. Optional.                                                                                                                             |
+| `ADMIN_AGENT_TOOLS_API_KEY`               | Bearer admin holds in its `ADMIN_AGENT_TOOLS_API_KEYS` receiver CSV. Optional.                                                                                                            |
+| `ADMIN_AGENT_TOOLS_TIMEOUT_MS`            | Per-tool single-attempt timeout (default 10s, cap 30s — fits the 90s chatTurn).                                                                                                           |
+| `ADMIN_AGENT_TOOLS_ALLOWED_HOSTS`         | Optional SSRF allowlist (CSV) for the admin base host, checked before any call. Unset → operator-set host trusted (`redirect:"error"` still guards); set → enforced, else `ssrf_blocked`. |
 
 ## Search eval baseline portability
 

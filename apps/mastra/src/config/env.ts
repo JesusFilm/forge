@@ -105,6 +105,12 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default("forge-mastra-agent-tools/1.0"),
+  // SSRF guard: when set, the admin base host must be in this CSV allowlist
+  // before any agent-tool call, so the bearer never bleeds to an unvetted host.
+  // Unset → the operator-set ADMIN_AGENT_TOOLS_URL host is trusted and
+  // `redirect:"error"` still blocks off-host hops. Mirrors the chat relay's
+  // MASTRA_CHAT_ALLOWED_HOSTS.
+  ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: z.string().min(1).optional(),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -350,6 +356,9 @@ export const env = envSchema.parse({
   ),
   ADMIN_AGENT_TOOLS_USER_AGENT: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_USER_AGENT,
+  ),
+  ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS,
   ),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: emptyToUndefined(
     process.env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS,
@@ -694,6 +703,7 @@ export type AdminAgentToolsConfig = {
   apiKey?: string
   timeoutMs: number
   userAgent: string
+  allowedHosts?: string
 }
 
 /**
@@ -707,6 +717,7 @@ export function getAdminAgentToolsConfig(): AdminAgentToolsConfig {
     apiKey: env.ADMIN_AGENT_TOOLS_API_KEY,
     timeoutMs: env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
     userAgent: env.ADMIN_AGENT_TOOLS_USER_AGENT,
+    allowedHosts: env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS,
   }
 }
 
