@@ -128,6 +128,7 @@ need the hotfixed path.
 
 ## Related
 
+- [Budget durable workflow steps by projected runtime](budget-durable-workflow-steps-by-projected-runtime.md)
 - [Transcript embedding backfills need cancellable resume batches](transcript-embedding-backfill-cancel-and-resume-operations.md)
 - [useworkflow group fanout must run inside one durable step](../runtime-errors/useworkflow-nested-group-step-event-log-corruption.md)
 - [Mastra transcript launch network error diagnostics](../runtime-errors/mastra-transcript-launch-network-error-diagnostics.md)

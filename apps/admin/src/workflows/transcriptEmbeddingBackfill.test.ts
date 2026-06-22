@@ -83,6 +83,10 @@ const {
   runTranscriptEmbeddingBackfill,
   _internals,
 } = await import("./transcriptEmbeddingBackfill")
+const {
+  shouldDeferNextTranscriptEmbeddingWave,
+  stepProcessTranscriptEmbeddingGroups,
+} = await import("./_steps/process-transcript-embedding-group")
 
 type PrismaStub = { $queryRaw: ReturnType<typeof vi.fn> }
 
@@ -984,6 +988,88 @@ Subtitle transcript text.
     })
 
     expect(observedMaxInFlight).toBe(2)
+  })
+
+  it("defers later process waves when the projected launch timeout would exceed the step budget", async () => {
+    vi.useFakeTimers()
+    vi.mocked(launchMastraTranscriptEmbedding).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50_000))
+      return {
+        ok: true,
+        status: "created",
+        chunks: 1,
+        totalTokens: 4,
+        model: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+        mastraRunId: "run-1",
+        sourceContentHash: "sha256:test",
+      }
+    })
+
+    try {
+      const groups = ["en", "es", "fr", "de"].map((language) => ({
+        videoId: `v-${language}`,
+        videoEditionId: `e-${language}`,
+        coreId: "core-a",
+        cmsVideoId: 1,
+        targets: [
+          target(`v-${language}`, `e-${language}`, "core-a", 1, language),
+        ],
+      }))
+
+      const resultPromise = stepProcessTranscriptEmbeddingGroups(
+        groups,
+        "idempotent",
+        2,
+        100_000,
+        40_000,
+      )
+
+      await vi.advanceTimersByTimeAsync(50_000)
+      const result = await resultPromise
+
+      expect(result.outcomes).toHaveLength(2)
+      expect(result.pendingConfirmations).toEqual([])
+      expect(
+        result.unprocessedGroups.flatMap((group) =>
+          group.targets.map((target) => target.language),
+        ),
+      ).toEqual(["fr", "de"])
+      expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps the first process wave eligible even when the configured budget is tight", () => {
+    expect(
+      shouldDeferNextTranscriptEmbeddingWave({
+        wavesStarted: 0,
+        elapsedMs: 90_000,
+        stepMaxDurationMs: 100_000,
+        launchTimeoutMs: 120_000,
+        safetyBufferMs: 10_000,
+      }),
+    ).toBe(false)
+    expect(
+      shouldDeferNextTranscriptEmbeddingWave({
+        wavesStarted: 1,
+        elapsedMs: 50_000,
+        stepMaxDurationMs: 100_000,
+        launchTimeoutMs: 40_000,
+        safetyBufferMs: 10_000,
+      }),
+    ).toBe(true)
+    expect(
+      shouldDeferNextTranscriptEmbeddingWave({
+        wavesStarted: 1,
+        elapsedMs: 49_999,
+        stepMaxDurationMs: 100_000,
+        launchTimeoutMs: 40_000,
+        safetyBufferMs: 10_000,
+      }),
+    ).toBe(false)
   })
 
   it("accepts raw string concurrency from the workflow runtime env", async () => {
