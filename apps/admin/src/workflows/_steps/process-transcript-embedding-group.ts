@@ -64,6 +64,17 @@ export type TranscriptIngestConfirmationBatchResult = {
   pendingConfirmations: PendingTranscriptIngestConfirmation[]
 }
 
+type TranscriptEmbeddingGroupResult =
+  TranscriptIngestConfirmationBatchResult & {
+    unprocessedGroup?: BackfillGroup
+  }
+
+type TranscriptEmbeddingDeferralBudget = {
+  elapsedMs: number
+  stepMaxDurationMs: number
+  launchTimeoutMs: number
+}
+
 type TranscriptIngestConfirmationRow = {
   total_chunks: number | bigint
   total_tokens: number | bigint
@@ -480,6 +491,34 @@ function logPendingConfirmation(
   }
 }
 
+function logTargetDeferral(
+  group: BackfillGroup,
+  targetIndex: number,
+  budget: TranscriptEmbeddingDeferralBudget,
+): void {
+  try {
+    console.log(
+      JSON.stringify({
+        workflow: "transcript-embedding-backfill",
+        event: "transcript_index_target_deferred",
+        coreId: group.coreId,
+        videoEditionId: group.videoEditionId,
+        processedTargets: targetIndex,
+        remainingTargets: group.targets.length - targetIndex,
+        elapsedMs: budget.elapsedMs,
+        stepMaxDurationMs: budget.stepMaxDurationMs,
+        launchTimeoutMs: budget.launchTimeoutMs,
+      }),
+    )
+  } catch (logErr) {
+    console.error(
+      `[transcript-embedding-backfill] logTargetDeferral failed: ${
+        logErr instanceof Error ? logErr.message : String(logErr)
+      }`,
+    )
+  }
+}
+
 /**
  * Plain per-group worker. This deliberately is NOT a `"use step"` function:
  * production useworkflow gives every call to the same step function the same
@@ -491,12 +530,43 @@ async function processTranscriptEmbeddingGroup(
   loadManagerSource: ManagerSourceLoader,
   launchTimeoutMs: number,
   healthyResumeTargets: ReadonlySet<string>,
-): Promise<TranscriptIngestConfirmationBatchResult> {
+  batchStartedAt: number,
+  stepMaxDurationMs: number,
+): Promise<TranscriptEmbeddingGroupResult> {
   const groupStartedAt = Date.now()
 
   const outcomes: BackfillOutcome[] = []
   const pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
-  for (const target of group.targets) {
+  const deferFrom = (
+    targetIndex: number,
+    budget: TranscriptEmbeddingDeferralBudget,
+  ): TranscriptEmbeddingGroupResult => {
+    logTargetDeferral(group, targetIndex, budget)
+    return {
+      outcomes,
+      pendingConfirmations,
+      unprocessedGroup: {
+        ...group,
+        targets: group.targets.slice(targetIndex),
+      },
+    }
+  }
+
+  for (const [targetIndex, target] of group.targets.entries()) {
+    const preResolutionBudget = {
+      elapsedMs: Date.now() - batchStartedAt,
+      stepMaxDurationMs,
+      launchTimeoutMs,
+    }
+    if (
+      shouldDeferNextTranscriptEmbeddingLaunch({
+        launchesStarted: targetIndex,
+        ...preResolutionBudget,
+      })
+    ) {
+      return deferFrom(targetIndex, preResolutionBudget)
+    }
+
     const targetStartedAt = Date.now()
     if (
       mode === "model-upgrade" &&
@@ -561,6 +631,20 @@ async function processTranscriptEmbeddingGroup(
       )
     }
 
+    const preLaunchBudget = {
+      elapsedMs: Date.now() - batchStartedAt,
+      stepMaxDurationMs,
+      launchTimeoutMs,
+    }
+    if (
+      shouldDeferNextTranscriptEmbeddingLaunch({
+        launchesStarted: targetIndex,
+        ...preLaunchBudget,
+      })
+    ) {
+      return deferFrom(targetIndex, preLaunchBudget)
+    }
+
     const outcome = await launchTranscriptEmbedding(
       target,
       source,
@@ -613,8 +697,8 @@ export async function stepProcessTranscriptEmbeddingGroups(
 
   for (let i = 0; i < groups.length; i += safeConcurrency) {
     if (
-      shouldDeferNextTranscriptEmbeddingWave({
-        wavesStarted,
+      shouldDeferNextTranscriptEmbeddingLaunch({
+        launchesStarted: wavesStarted,
         elapsedMs: Date.now() - batchStartedAt,
         stepMaxDurationMs: safeStepMaxDurationMs,
         launchTimeoutMs,
@@ -634,6 +718,8 @@ export async function stepProcessTranscriptEmbeddingGroups(
           loadManagerSource,
           launchTimeoutMs,
           healthyResumeTargets,
+          batchStartedAt,
+          safeStepMaxDurationMs,
         ),
       ),
     )
@@ -643,6 +729,9 @@ export async function stepProcessTranscriptEmbeddingGroups(
       if (result.status === "fulfilled") {
         outcomes.push(...result.value.outcomes)
         pendingConfirmations.push(...result.value.pendingConfirmations)
+        if (result.value.unprocessedGroup) {
+          unprocessedGroups.push(result.value.unprocessedGroup)
+        }
         continue
       }
 
@@ -669,20 +758,20 @@ export async function stepProcessTranscriptEmbeddingGroups(
   return { outcomes, pendingConfirmations, unprocessedGroups }
 }
 
-export function shouldDeferNextTranscriptEmbeddingWave({
-  wavesStarted,
+export function shouldDeferNextTranscriptEmbeddingLaunch({
+  launchesStarted,
   elapsedMs,
   stepMaxDurationMs,
   launchTimeoutMs,
   safetyBufferMs = TRANSCRIPT_EMBEDDING_PROCESS_WAVE_SAFETY_BUFFER_MS,
 }: {
-  wavesStarted: number
+  launchesStarted: number
   elapsedMs: number
   stepMaxDurationMs: number
   launchTimeoutMs: number
   safetyBufferMs?: number
 }): boolean {
-  if (wavesStarted <= 0) return false
+  if (launchesStarted <= 0) return false
 
   const safeElapsedMs =
     Number.isFinite(elapsedMs) && elapsedMs > 0 ? elapsedMs : 0
