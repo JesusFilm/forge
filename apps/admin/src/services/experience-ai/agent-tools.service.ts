@@ -25,6 +25,7 @@ import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
 import { HybridSearchService } from "@/services/hybrid-search.service"
+import { pickLocalisedName } from "./citation-reference"
 
 // ---------------------------------------------------------------------------
 // search-videos
@@ -110,24 +111,6 @@ export type AgentBibleBookResult = {
   displayName: string
   testament: string | null
   order: number | null
-}
-
-function isNameMap(value: unknown): value is Record<string, string> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function pickLocalisedName(
-  name: unknown,
-  locale: string,
-  fallback: string,
-): string {
-  if (!isNameMap(name)) return fallback
-  if (typeof name[locale] === "string" && name[locale]) return name[locale]
-  // Strip BCP-47 region tail and try the language base (e.g. "fr-CA" → "fr").
-  const base = locale.split("-")[0]
-  if (base && typeof name[base] === "string" && name[base]) return name[base]
-  if (typeof name.en === "string" && name.en) return name.en
-  return fallback
 }
 
 export async function lookupBibleVerseForAgent(
