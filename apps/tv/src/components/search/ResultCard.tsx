@@ -1,6 +1,7 @@
 import { Image } from "expo-image"
 import { useMemo } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import type { View as ViewType } from "react-native"
 
 import { type SearchResult } from "../../lib/queries"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -16,6 +17,13 @@ type Props = {
   /** When true, this card claims focus on mount. The SearchResultsGrid
    *  assigns this to the first result after results land. */
   hasTVPreferredFocus?: boolean
+  /**
+   * Forced D-pad-up destination. The stacked (Apple TV) layout wires the
+   * grid's TOP ROW to the keyboard's first key so up-escape out of the
+   * vertically-scrolling grid lands deterministically on the keyboard.
+   * Undefined elsewhere (and in the two-pane layout) → default geometry.
+   */
+  nextFocusUp?: ViewType | null
 }
 
 /**
@@ -28,6 +36,7 @@ export function ResultCard({
   onPress,
   onFocus,
   hasTVPreferredFocus,
+  nextFocusUp,
 }: Props) {
   const imageUrl = resolveImageUrl(result.imageUrl)
   const chip = resultChipLabel(result)
@@ -61,6 +70,7 @@ export function ResultCard({
       }}
       onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
+      nextFocusUp={nextFocusUp}
       accessibilityRole="button"
       accessibilityLabel={result.title}
       accessibilityHint="Opens this experience"

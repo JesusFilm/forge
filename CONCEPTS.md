@@ -121,6 +121,12 @@ A visible search-bar suggestion produced when the typed query appears to be in a
 
 A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
 
+### Semantic-Only Search
+
+A diagnostic Search Pipeline Mode for eval runs that isolates semantic/vector retrieval by excluding keyword, title, and full-text candidate retrieval.
+
+Semantic-Only Search is for measuring whether Content Embeddings can find relevant content without lexical retrieval helping the result set. It is not a public Watch search behavior unless a separate product decision makes it one.
+
 ### Search Degradation Signal
 
 The response-side state that says whether semantic retrieval actually contributed to a search response. It reflects runtime embedding availability, not the requested Search Pipeline Mode.
@@ -168,6 +174,11 @@ and a correction report highlights applied and flagged findings for review.
 ### Embedding Backfill
 
 A controlled batch process that generates or regenerates vectors for existing content without changing the underlying source content.
+
+For large corpora, an Embedding Backfill's completion state should be judged
+from stored embedding provenance and healthy vector rows, not from the lifetime
+of the trigger request that started it. Resume flows should preserve already
+healthy embeddings and continue from missing, legacy, or incomplete rows.
 
 ## Known-caller auth
 

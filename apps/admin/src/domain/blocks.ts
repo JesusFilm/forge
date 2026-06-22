@@ -551,7 +551,7 @@ export type Block = z.infer<typeof BlockSchema>
  * Deliberately has NO global `.min()`: this schema governs ALL persistence,
  * including legitimate manual experiences that may have a single block. The
  * AI-generation minimum-block-count rule is single-sourced as
- * `GENERATION_MIN_BLOCKS` in `services/experience-ai/experience-ai.schemas.ts`
+ * `GENERATION_MIN_BLOCKS` in `@forge/experience-schema`
  * and enforced only on the generation path (the workflow's
  * `DraftExperienceSchema` gate + the post-normalize check in
  * `experience-ai-normalize.ts`). Adding a minimum here would reject valid

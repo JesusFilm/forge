@@ -92,6 +92,66 @@ survives the full post-normalize `BlocksSchema` boundary — not just
 assertion is intrinsic to `smoke:draft-workflow` (same harness, same run, no
 opt-in path), so there is no separate `smoke:draft-structural` script.
 
+## Experience draft/chat — standalone Mastra consolidation
+
+The AI draft-authoring + chat **generation** is being moved out of admin's
+in-process `src/mastra` singleton into the standalone `@forge/mastra` Railway
+service, reached over authenticated HTTP (plan
+`docs/plans/2026-06-19-001-feat-mastra-admin-to-standalone-consolidation-plan.md`).
+Admin stays the caller/proxy and keeps data ownership; Mastra is the generator.
+
+**Flag-gated, in-process fallback retained.** Two independent flags flip admin
+from the in-process agents/workflows to the remote service; both default off, so
+the in-process path under `src/mastra` is still the live fallback and is NOT
+deleted until both flags are stable in prod:
+
+- `EXPERIENCE_AI_REMOTE_DRAFT` (`"true"`/`"false"`, default `"false"`) — the
+  one-shot "Generate full page"/"Quick draft" path. When on,
+  `runGenerateDraftAction` calls `mastra-experience-draft-client.ts`
+  (`POST /forge-experience-draft`, reusing `MASTRA_BASE_URL` +
+  `MASTRA_SERVICE_API_KEY`); candidates + exemplar are still computed admin-side
+  and shipped keyed on `videoId`; `config_missing` degrades to in-process; other
+  remote failures map to the editor error surface (no retry storm).
+  `MASTRA_DRAFT_TIMEOUT_MS` (default 200s) stays strictly larger than mastra's
+  internal 180s workflow budget.
+- `EXPERIENCE_AI_REMOTE_CHAT` (`"true"`/`"false"`, default `"false"`) — the
+  streaming chat turn. When on, `runMastraChat` relays the token stream from
+  `POST /forge-experience-chat` via `mastra-experience-chat-client.ts` (admin =
+  SSE proxy); SSRF host allowlist (`MASTRA_CHAT_ALLOWED_HOSTS`) checked before
+  fetch, `redirect:"error"`, `MASTRA_CHAT_TIMEOUT_MS` (default 95s, > mastra's
+  90s `chatTurn`) composed with `request.signal` so a closed tab cancels the
+  upstream run. A remote `timeout` stays `timeout`; the `done` event keeps
+  `producedBy` so 👍/👎 ratings still attach. `config_missing` degrades to
+  in-process; `MASTRA_CHAT_BASE_URL` + `MASTRA_CHAT_API_KEY` reuse mastra's
+  `MASTRA_SERVICE_API_KEYS`.
+
+**Stays admin (data ownership):** video-candidate retrieval, exemplar selection
+(pgvector + embeddings), draft re-validation/normalization (`@/domain/blocks`
+`BlocksSchema` + `normalizeExperienceDraft` + the repair loop), persistence +
+ContentRevision + ABAC, chat history, the `chat-thumb-rating` scorer + Mastra
+scores store + rating routes, and the editor SSE route + the 4-variant
+`ChatStreamEvent` union (in `experience-ai-chat.service.ts`). The dead
+7-variant `chat-stream-event.ts` + `streaming-bridge.ts` were removed in U10.
+
+**Agent-tool receiver (mastra → admin).** The remote chat agent's tools call
+admin back over HTTP — bearer-gated `POST /api/internal/agent-tools/{search-videos,
+lookup-bible-verse,fetch-video-image}` (`src/app/api/internal/agent-tools/`,
+`isValidAgentToolsBearer`). Every load-bearing filter/cap is enforced
+server-side (the mastra caller is untrusted): search `contentTypes:["video"]` +
+`playbackId !== null`; bible OR-match + locale-fallback `displayName`; image
+`VARIANT_PRIORITY`. The new receiver CSV `ADMIN_AGENT_TOOLS_API_KEYS` joins the
+boot-time `assertBearerCsvsDisjoint` invariant.
+
+**Deploy ordering (keyring-first).** For the agent-tool direction, deploy
+admin's `ADMIN_AGENT_TOOLS_API_KEYS` + endpoints (receiver) BEFORE mastra's
+`ADMIN_AGENT_TOOLS_URL`/`_API_KEY` (caller); verify `503/401 → 200`. For the
+draft/chat triggers, `MASTRA_SERVICE_API_KEYS` already exists on mastra — deploy
+the `/forge-experience-*` routes before flipping admin's flag.
+
+**Shared generation contract.** The LLM draft schema is single-sourced in
+`@forge/experience-schema` (pure zod) and consumed by both admin's re-validator
+and the standalone generator so they cannot drift.
+
 ## Folder structure
 
 ```
@@ -1150,15 +1210,36 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   anywhere, it produces no targets (a data-quality signal, not a
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
-  Safe to re-run. The workflow loads the Manager transcript source once
-  per `(video, edition)` group and launches Mastra once per target.
-- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
-  enumerated `(video, edition, language)` targets by
-  `(video, edition)` and parallelises over GROUPS via
-  `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
-Promise.allSettled` — never bare `Promise.all`. Per-language work
-  inside a group runs sequentially with the source artifact in scope. Same
-  shape / same rule as R1.
+  Safe to re-run at the storage identity level. The workflow first groups
+  enumerated targets by `(video, edition)` for stable reporting and source
+  gap aggregation, then shards each `(video, edition, language)` target into
+  target-bounded batches so no single Workflow step owns the full
+  all-language corpus.
+- **Bounded parallelism (Stage 2 — feat-116, updated for feat-192 hotfix):**
+  the workflow calls `stepProcessTranscriptEmbeddingGroups` sequentially per
+  target-bounded batch. Parallelism stays inside each batch via
+  `TRANSCRIPT_EMBEDDING_CONCURRENCY`; do not use parallel dynamic workflow
+  step fanout. The default step target limit is 50, each durable step stops
+  launching new work after a 220s budget and returns remaining groups for the
+  next step, and each Mastra launch has a 120s Admin-side timeout. The start
+  log includes `groupBatchCount`, `stepTargetLimit`, `stepMaxDurationMs`, and
+  `launchTimeoutMs` for production verification. Runtime knobs are resolved in
+  a step before batching so workflow replay keeps the same partitioning even if
+  Railway env changes mid-run.
+- **Manager transcript fallback tradeoff:** target sharding means Manager
+  fallback artifacts may be read once per durable step per `cmsVideoId`, not
+  once for the whole run. The step-local source loader caches artifact reads
+  while that batch is active, but later batches may reread the same Manager
+  artifact. That is intentional for all-language backfills: bounded step
+  duration is more important than whole-run S3 memoization until a first-class
+  backfill ledger exists.
+- **Timed-out Mastra launch confirmation:** if Admin receives a retryable
+  Mastra launch network error that still has a `mastraRunId`, the batch step
+  returns a pending confirmation. The workflow checks pending confirmations
+  opportunistically between launch batches, then drains any remaining pending
+  runs through short `stepConfirmTranscriptEmbeddingIngests` calls separated by
+  workflow-level `sleep()`. Unresolved confirmations are marked failed only
+  after the 20 minute confirmation window. Do not sleep inside the worker step.
 - Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. Admin
   backfill is now network-bound on Mastra plus DB-bound inside the
   ingest callback; default `5` leaves headroom on admin's

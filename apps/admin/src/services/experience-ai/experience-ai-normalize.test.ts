@@ -8,7 +8,7 @@ import {
   GENERATION_MIN_BLOCKS,
   type DraftExperience,
   type VideoCandidate,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 
 const candidates: VideoCandidate[] = [
   {

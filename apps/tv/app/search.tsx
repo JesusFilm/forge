@@ -1,24 +1,45 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { Platform, StyleSheet, Text, View } from "react-native"
+import type { View as ViewType } from "react-native"
 
 import { QueryDisplay } from "../src/components/search/QueryDisplay"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { resolveSearchMeta } from "../src/components/search/searchDisplay"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
+import { SearchKeyboardLinear } from "../src/components/search/SearchKeyboardLinear"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
-import { SEARCH_THEME } from "../src/components/search/searchTheme"
+import {
+  SEARCH_PAGE_GUTTER,
+  SEARCH_THEME,
+} from "../src/components/search/searchTheme"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import { scale } from "../src/lib/scale"
+import type { SearchResult } from "../src/lib/queries"
+import type { SearchState } from "../src/lib/search"
 import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
- * /search route — TV search surface (query line → letter strip → meta line →
- * results region; SearchResultsGrid when query non-empty, else SearchBrowse).
- * Owns `query`, routing all writes through sanitizeQuery so the backend never
- * sees control chars / RTL overrides / >256 chars. useSemanticSearch handles
- * debounce, stale-guard, and the state machine.
- * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5.
+ * /search route — TV search surface, redesigned to the "Forge TV Home"
+ * search-layer mockup. The layout varies by TV platform:
+ *
+ *   - Apple TV (Platform.OS === "ios"): a single-line keyboard at the top
+ *     (SearchKeyboardLinear) with results stacked full-width below it — the
+ *     native tvOS "swipe along the line" search idiom.
+ *   - Android TV (Platform.OS === "android"): the grid keyboard on the left
+ *     (SearchKeyboard) with results in a narrower pane on the right.
+ *
+ * Both share the query line (big type + blinking caret) at the top and the
+ * results region (SearchResultsGrid when the query is non-empty, SearchBrowse —
+ * Recent + Categories — when it's empty).
+ *
+ * SearchScreen owns `query` state and routes all writes through sanitizeQuery so
+ * the backend never sees control chars, RTL overrides, or anything beyond 256
+ * chars. useSemanticSearch handles debounce, stale-guard, and the state machine.
+ *
+ * The native tvOS UISearchController is intentionally NOT used: a real-device
+ * spike (2026-06-22) proved react-native-screens headerSearchBarOptions crashes
+ * on tvOS at mount. See docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -61,64 +82,164 @@ export default function SearchScreen() {
   // pane — matching useSemanticSearch's trimmed-length fetch gate (keeps the two
   // gates in lockstep; defensive for future input sources).
   const hasQuery = query.trim().length > 0
-  const showResultsGrid = hasQuery
   const meta = resolveSearchMeta(state, results.length)
+
+  const bodyProps: SearchBodyProps = {
+    query,
+    state,
+    results,
+    meta,
+    hasQuery,
+    onChangeQuery: setSanitizedQuery,
+    onSubmit: submit,
+    onRunQuery: runQueryImmediate,
+    onClearHistory: clearAll,
+    recents,
+    onRetry: retry,
+  }
 
   return (
     <View style={styles.screen}>
       <View style={styles.queryLine}>
         <QueryDisplay value={query} />
       </View>
-      {/* Two-pane body: keyboard on the left, results/browse filling the
-          space to its right (rather than stacked below it, which left the
-          right ~60% of the screen blank). */}
-      <View style={styles.body}>
-        {/* No dynamic key on SearchKeyboard: remounting it on state change kills
-            focus on the pressed letter, and tvOS then visibly hops through a
-            fallback before any new preferred-focus claim lands. Keep it mounted. */}
-        <View style={styles.keyboardPane}>
-          <SearchKeyboard
-            value={query}
-            onChange={setSanitizedQuery}
-            onSubmit={submit}
+      {Platform.OS === "ios" ? (
+        <SearchBodyStacked {...bodyProps} />
+      ) : (
+        <SearchBodyTwoPane {...bodyProps} />
+      )}
+    </View>
+  )
+}
+
+type SearchBodyProps = {
+  query: string
+  state: SearchState
+  results: SearchResult[]
+  meta: string
+  hasQuery: boolean
+  onChangeQuery: (next: string) => void
+  onSubmit: () => void
+  onRunQuery: (next: string) => void
+  onClearHistory: () => void
+  recents: string[]
+  onRetry: () => void
+}
+
+/**
+ * Meta line + results region, shared by both bodies. Renders the results grid
+ * when there is a query, else the idle browse grid. `columns` is forwarded to
+ * SearchResultsGrid (the two-pane layout passes a fixed count for its narrower
+ * pane; the stacked layout omits it to use the responsive full-width default).
+ */
+function SearchResultsPane({
+  state,
+  results,
+  query,
+  meta,
+  hasQuery,
+  recents,
+  onRunQuery,
+  onClearHistory,
+  onRetry,
+  columns,
+  topRowFocusUp,
+  browseFullBleed,
+}: SearchBodyProps & {
+  columns?: number
+  topRowFocusUp?: ViewType | null
+  browseFullBleed?: boolean
+}) {
+  return (
+    <>
+      <View style={styles.metaLine}>
+        <Text style={styles.metaText}>{meta}</Text>
+      </View>
+      <TVFocusGuideView style={styles.resultsRegion}>
+        {hasQuery ? (
+          <SearchResultsGrid
+            state={state}
+            results={results}
+            query={query}
+            columns={columns}
+            onRetry={onRetry}
+            topRowFocusUp={topRowFocusUp}
           />
-        </View>
-        {/* Right pane: meta line + results. D-pad-left from the grid's
-            leftmost column reaches the keyboard (to its left) by geometry;
-            no focus traps needed. */}
-        <View style={styles.resultsPane}>
-          {/* Fixed-height meta line (design .s-meta) so flipping between
-              silence (browsing) and N RESULTS never shifts the grid below. */}
-          <View style={styles.metaLine}>
-            <Text style={styles.metaText}>{meta}</Text>
-          </View>
-          <TVFocusGuideView style={styles.resultsRegion}>
-            {showResultsGrid ? (
-              <SearchResultsGrid
-                state={state}
-                results={results}
-                query={query}
-                columns={RESULTS_COLUMNS}
-                onRetry={retry}
-              />
-            ) : (
-              <SearchBrowse
-                recents={recents}
-                onRunQuery={runQueryImmediate}
-                onClearHistory={clearAll}
-              />
-            )}
-          </TVFocusGuideView>
-        </View>
+        ) : (
+          <SearchBrowse
+            recents={recents}
+            onRunQuery={onRunQuery}
+            onClearHistory={onClearHistory}
+            fullBleed={browseFullBleed}
+          />
+        )}
+      </TVFocusGuideView>
+    </>
+  )
+}
+
+/**
+ * Android TV body: grid keyboard on the left, results pane on the right.
+ * D-pad-left from the grid's leftmost column reaches the keyboard by geometry.
+ */
+function SearchBodyTwoPane(props: SearchBodyProps) {
+  return (
+    <View style={styles.twoPaneBody}>
+      {/* SearchKeyboard intentionally is not remounted on state changes:
+          unmounting it kills focus on the currently-pressed letter and the
+          tvOS focus engine then hops through a fallback. Keep it mounted. */}
+      <View style={styles.keyboardPane}>
+        <SearchKeyboard
+          value={props.query}
+          onChange={props.onChangeQuery}
+          onSubmit={props.onSubmit}
+        />
+      </View>
+      <View style={styles.resultsPane}>
+        <SearchResultsPane {...props} columns={TWO_PANE_RESULTS_COLUMNS} />
       </View>
     </View>
   )
 }
 
-// The results pane is narrower than the full screen (the keyboard takes the
-// left third), so 3 columns keeps result cards a comfortable 10-foot size
-// rather than the 4 a full-width grid would pack in.
-const RESULTS_COLUMNS = 3
+/**
+ * Apple TV body: single-line keyboard on top, results stacked full-width below.
+ * `columns` is omitted so SearchResultsGrid uses its responsive full-width
+ * default (4 columns at ≤2880dp, 6 above). Down from the keyboard drops into
+ * the results region (the keyboard does not trap focus downward).
+ */
+function SearchBodyStacked(props: SearchBodyProps) {
+  // The keyboard sits ABOVE a vertically-scrolling results grid here, so
+  // D-pad-up out of the grid's top row must reach the keyboard. tvOS swallows
+  // that along-scroll-axis exit while the grid is still decelerating, so we
+  // give the grid's top row an explicit `nextFocusUp` target: the keyboard's
+  // first key node, captured ref-as-state. (The two-pane body needs none of
+  // this — there the keyboard is to the LEFT, a cross-axis escape.)
+  const [keyboardLandingNode, setKeyboardLandingNode] =
+    useState<ViewType | null>(null)
+  return (
+    <View style={styles.stackedBody}>
+      {/* Like SearchKeyboard in the two-pane body, SearchKeyboardLinear is not
+          given a dynamic React key: remounting it on a query/state change kills
+          focus on the currently-pressed key. Keep it mounted. */}
+      <SearchKeyboardLinear
+        value={props.query}
+        onChange={props.onChangeQuery}
+        onSubmit={props.onSubmit}
+        onLandingNodeChange={setKeyboardLandingNode}
+      />
+      <SearchResultsPane
+        {...props}
+        topRowFocusUp={keyboardLandingNode}
+        browseFullBleed
+      />
+    </View>
+  )
+}
+
+// Android two-pane: the keyboard takes the left third, so 3 columns keeps
+// result cards a comfortable 10-foot size in the narrower right pane.
+const TWO_PANE_RESULTS_COLUMNS = 3
 
 const styles = StyleSheet.create({
   // Full-bleed near-black surface — solid stand-in for the design's
@@ -127,18 +248,26 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: SEARCH_THEME.bg,
-    paddingHorizontal: scale(80),
+    paddingHorizontal: scale(SEARCH_PAGE_GUTTER),
   },
   // Design .s-query: padding 78px 0 (horizontal comes from screen).
   queryLine: {
     paddingTop: scale(78),
   },
-  // Keyboard (left) + results (right) fill the remaining height side by side.
-  body: {
+  // Android: keyboard (left) + results (right) fill the height side by side.
+  // Tight gap + no top inset so the results sit close to the keyboard's right
+  // edge and near the top, just under the query line.
+  twoPaneBody: {
     flex: 1,
     flexDirection: "row",
-    gap: scale(56),
+    gap: scale(24),
+    paddingTop: 0,
+  },
+  // Apple TV: single-line keyboard on top, results filling the space below.
+  stackedBody: {
+    flex: 1,
     paddingTop: scale(14),
+    gap: scale(14),
   },
   // Left column sized to the keyboard's intrinsic width (it is
   // alignItems:flex-start internally).

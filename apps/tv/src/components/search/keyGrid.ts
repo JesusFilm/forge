@@ -37,6 +37,44 @@ export const KEY_WIDTH_WIDE = KEY_SIZE * 2 + 10 // space ≈ two columns + one g
 export const KEY_GAP = 10
 export const KEY_RADIUS = 12
 
+/**
+ * Per-keyboard size tokens (raw 1920-canvas units; consumers pass through
+ * scale()). The grid and the single-line (Apple TV) keyboard differ only in
+ * these numbers — the focus/animation logic is shared in KeyButton.
+ */
+export type KeyDims = {
+  size: number
+  wideWidth: number
+  radius: number
+  labelFontSize: number
+  iconSize: number
+}
+
+/** Grid keyboard (Android) — reproduces SearchKeyboard's current pixel values. */
+export const GRID_KEY_DIMS: KeyDims = {
+  size: KEY_SIZE,
+  wideWidth: KEY_WIDTH_WIDE,
+  radius: KEY_RADIUS,
+  labelFontSize: 26,
+  iconSize: 28,
+}
+
+/**
+ * Single-line keyboard (Apple TV) — compact so ~30 keys fit one row. The size
+ * tokens feed LINEAR_KEY_DIMS only (unexported); LINEAR_KEY_GAP is the row
+ * style's inter-key gap, consumed by SearchKeyboardLinear.
+ */
+const LINEAR_KEY_SIZE = 48
+const LINEAR_KEY_WIDTH_WIDE = 72
+export const LINEAR_KEY_GAP = 8
+export const LINEAR_KEY_DIMS: KeyDims = {
+  size: LINEAR_KEY_SIZE,
+  wideWidth: LINEAR_KEY_WIDTH_WIDE,
+  radius: 10,
+  labelFontSize: 20,
+  iconSize: 24,
+}
+
 const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("")
 
 /**
@@ -101,10 +139,27 @@ export function buildActionRow(isShifted: boolean): KeyCell[] {
 }
 
 /**
- * Pure reducer for a key press: returns the NEXT query value, or null when the
- * action doesn't change it (submit/shift/guarded no-op). char appends; backspace
- * drops last; space appends " " only on non-empty (a whitespace-only query would
- * flip results to the idle browse grid); submit/shift are null (caller handles).
+ * Flat key list for the single-line (Apple TV) keyboard: the 26 letters in the
+ * active case, then the action keys (shift · space · delete · submit). Reuses
+ * buildLetterRows + buildActionRow so the linear and grid keyboards stay in
+ * lockstep — same cells, same ids, same reducer (applyKey).
+ */
+export function buildLinearKeys(isShifted: boolean): KeyCell[] {
+  return [...buildLetterRows(isShifted).flat(), ...buildActionRow(isShifted)]
+}
+
+/**
+ * Pure reducer for a key press over the current query string. Returns the
+ * NEXT query value for value-mutating actions, or `null` when the action
+ * doesn't change the value (submit, shift, or a guarded no-op).
+ *
+ *   - char:      appends action.char (already cased by buildLetterRows)
+ *   - space:     appends " " ONLY when the query is non-empty (no leading
+ *                space — a whitespace-only query would flip the results
+ *                region to the idle browse grid); no-op (null) on empty
+ *   - backspace: drops the last char; no-op (null) on empty
+ *   - submit:    no value change (null) — caller fires onSubmit
+ *   - shift:     no value change (null) — caller toggles keyboard case state
  */
 export function applyKey(value: string, action: KeyAction): string | null {
   switch (action.kind) {

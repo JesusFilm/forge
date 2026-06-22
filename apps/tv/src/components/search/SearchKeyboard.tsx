@@ -1,22 +1,17 @@
-import Ionicons from "@expo/vector-icons/Ionicons"
 import { useMemo, useState } from "react"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, View } from "react-native"
 
 import { scale } from "../../lib/scale"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { KeyButton } from "./KeyButton"
 import {
   applyKey,
   buildActionRow,
   buildLetterRows,
+  GRID_KEY_DIMS,
   type KeyAction,
-  type KeyCell,
   KEY_GAP,
-  KEY_RADIUS,
-  KEY_SIZE,
-  KEY_WIDTH_WIDE,
 } from "./keyGrid"
-import { SEARCH_THEME } from "./searchTheme"
 
 type Props = {
   value: string
@@ -73,6 +68,7 @@ export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
               // leaves focus on the last-pressed key.
               hasTVPreferredFocus={rowIdx === 0 && colIdx === 0}
               onPress={() => dispatch(cell.action)}
+              dims={GRID_KEY_DIMS}
             />
           ))}
         </View>
@@ -85,64 +81,11 @@ export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
             cell={cell}
             hasTVPreferredFocus={false}
             onPress={() => dispatch(cell.action)}
+            dims={GRID_KEY_DIMS}
           />
         ))}
       </View>
     </TVFocusGuideView>
-  )
-}
-
-function KeyButton({
-  cell,
-  hasTVPreferredFocus,
-  onPress,
-}: {
-  cell: KeyCell
-  hasTVPreferredFocus: boolean
-  onPress: () => void
-}) {
-  // Focus pop via shared useFocusAnimation (like HomeCard): 0→1 progress feeds
-  // focusTransform, stopping prior timing so a rapid sweep can't orphan it.
-  // `focused` gates the static styles (white fill, ink). Keys only magnify, lift: 0.
-  const { focused, setFocused, progress } = useFocusAnimation()
-
-  const keyTransform = useMemo(
-    () => focusTransform(progress, { lift: 0, magnify: 1.1 }),
-    [progress],
-  )
-
-  const inkColor = focused ? SEARCH_THEME.keyFocusText : SEARCH_THEME.keyText
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      hasTVPreferredFocus={hasTVPreferredFocus}
-      accessibilityRole="button"
-      accessibilityLabel={cell.accessibilityLabel ?? cell.label}
-    >
-      <Animated.View
-        style={[
-          styles.key,
-          cell.wide === true && styles.keyWide,
-          focused && styles.keyFocused,
-          { transform: keyTransform },
-        ]}
-      >
-        {cell.action.kind === "backspace" ? (
-          <Ionicons
-            name="backspace-outline"
-            size={scale(28)}
-            color={inkColor}
-          />
-        ) : (
-          <Text style={[styles.keyLabel, { color: inkColor }]}>
-            {cell.label}
-          </Text>
-        )}
-      </Animated.View>
-    </Pressable>
   )
 }
 
@@ -156,30 +99,5 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     gap: scale(KEY_GAP),
-  },
-  key: {
-    width: scale(KEY_SIZE),
-    height: scale(KEY_SIZE),
-    borderRadius: scale(KEY_RADIUS),
-    backgroundColor: SEARCH_THEME.keyBg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  keyWide: {
-    width: scale(KEY_WIDTH_WIDE),
-  },
-  keyFocused: {
-    backgroundColor: SEARCH_THEME.keyFocusBg,
-    // Design: 0 12px 28px -10px rgba(0,0,0,.7).
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: scale(12) },
-    shadowRadius: scale(14),
-    shadowOpacity: 0.7,
-    elevation: 8,
-  },
-  keyLabel: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(26)),
-    fontWeight: "600",
   },
 })

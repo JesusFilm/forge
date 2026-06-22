@@ -255,6 +255,27 @@ describe("env", () => {
       )
     })
 
+    it("throws when ADMIN_AGENT_TOOLS shares a value with experience ingest (U7)", () => {
+      // The new agent-tools receiver CSV joins the disjointness invariant — an
+      // operator who pastes the same value into two CSVs hits a fail-fast boot.
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          ADMIN_AGENT_TOOLS_API_KEYS: "shared-key",
+          MASTRA_EXPERIENCE_INGEST_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/ADMIN_AGENT_TOOLS_API_KEYS|MASTRA_EXPERIENCE_INGEST_API_KEYS/)
+    })
+
+    it("does not throw when ADMIN_AGENT_TOOLS is disjoint from the other CSVs (U7)", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "wf-a",
+          MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a",
+          ADMIN_AGENT_TOOLS_API_KEYS: "agent-tools-a,agent-tools-b",
+        }),
+      ).not.toThrow()
+    })
+
     it("throws when WORKFLOW and BACKUP_DOWNLOAD share a value", () => {
       expect(() =>
         assertBearerCsvsDisjoint({

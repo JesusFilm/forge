@@ -238,6 +238,81 @@ describe("native search eval projection", () => {
     expect(result.reason).toContain("judge-disagreement")
   })
 
+  it("preserves semantic-only mode and source-key identity in native records", async () => {
+    const mastra = createFakeMastra()
+    const sample = createSampleSearchEvalReport({
+      runId: "sample-run-1",
+      now: new Date("2026-05-28T00:00:00.000Z"),
+    })
+    const report = {
+      ...sample,
+      metadata: {
+        ...sample.metadata,
+        search: {
+          ...sample.metadata.search,
+          mode: "semantic-only",
+        },
+      },
+    }
+
+    await syncSearchEvalReportToNativeEvaluation({
+      mastra,
+      report,
+      environmentLabel: "local",
+    })
+
+    const item = mastra.datasetsById.get("dataset-1")?.items[0]
+    expect(item?.input).toMatchObject({
+      searchOptions: { mode: "semantic-only" },
+    })
+    expect(item?.metadata).toMatchObject({
+      forgeSearchEval: {
+        sourceKey: expect.stringContaining("mode:semantic-only"),
+      },
+    })
+  })
+
+  it("keeps different requested modes in separate native datasets", async () => {
+    const mastra = createFakeMastra()
+    const hybridReport = createSampleSearchEvalReport({
+      runId: "sample-run-hybrid",
+      now: new Date("2026-05-28T00:00:00.000Z"),
+    })
+    const semanticOnlyReport = {
+      ...createSampleSearchEvalReport({
+        runId: "sample-run-semantic",
+        now: new Date("2026-05-28T00:01:00.000Z"),
+      }),
+      metadata: {
+        ...hybridReport.metadata,
+        mastraRunId: "sample-run-semantic",
+        search: {
+          ...hybridReport.metadata.search,
+          mode: "semantic-only",
+        },
+      },
+    }
+
+    const first = await syncSearchEvalReportToNativeEvaluation({
+      mastra,
+      report: hybridReport,
+      environmentLabel: "local",
+    })
+    const second = await syncSearchEvalReportToNativeEvaluation({
+      mastra,
+      report: semanticOnlyReport,
+      environmentLabel: "local",
+    })
+
+    expect(first.dataset.nativeKey).toContain("mode:hybrid")
+    expect(second.dataset.nativeKey).toContain("mode:semantic-only")
+    expect(second.dataset.datasetId).not.toBe(first.dataset.datasetId)
+    expect(mastra.records.map((record) => record.name)).toEqual([
+      "search-eval:local:local-smoke:hybrid",
+      "search-eval:local:local-smoke:semantic-only",
+    ])
+  })
+
   it("syncs a report into native records idempotently", async () => {
     const mastra = createFakeMastra()
     const report = createSampleSearchEvalReport({

@@ -13,8 +13,8 @@
  *
  * Time budgets are AbortSignal-friendly — call sites wrap their
  * invocations with `AbortSignal.timeout(budgetMs)` so the upstream
- * route can classify the eventual rejection as `timeout` via the
- * streaming bridge (see classifyError in streaming-bridge.ts).
+ * route can classify the eventual rejection as `timeout` (the chat
+ * service's `runMastraChat` and the draft action do this directly).
  */
 
 /**

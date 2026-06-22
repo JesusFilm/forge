@@ -5,7 +5,7 @@ import type {
   SectionContentBlock,
 } from "@/domain/blocks"
 import { BlocksSchema } from "@/domain/blocks"
-import { GENERATION_MIN_BLOCKS } from "./experience-ai.schemas"
+import { GENERATION_MIN_BLOCKS } from "@forge/experience-schema"
 import type {
   DraftAnyBlock,
   DraftBlock,
@@ -15,7 +15,7 @@ import type {
   DraftSectionBlock,
   DraftSectionContentBlock,
   VideoCandidate,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 
 const HERO_DEFAULTS = {
   clipStartSeconds: 0,

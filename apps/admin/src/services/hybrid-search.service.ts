@@ -104,6 +104,13 @@ export type SearchParams = {
    */
   mode?: string | null
   /**
+   * Internal eval-only escape hatch for diagnostic retrieval modes.
+   * Public REST and GraphQL must not set this; keeping the flag private
+   * lets those boundaries continue forwarding raw `mode` strings while
+   * unknown values safely fall back to hybrid.
+   */
+  allowInternalEvalModes?: boolean
+  /**
    * When true, the orchestrator attaches per-result internal scoring
    * detail under `result.debug` (per-retriever ranks, fused score,
    * dilution-cap state). The boundary is responsible for origin-gating
@@ -134,7 +141,7 @@ export type SearchResultDebug = {
  * stays a nullable string so `normalizeMode` can warn-and-fall-back on
  * unknown values without breaking clients on rollouts of new modes.
  */
-export type SearchPipelineMode = "hybrid" | "keyword-first"
+export type SearchPipelineMode = "hybrid" | "keyword-first" | "semantic-only"
 
 /**
  * Sanitizer for user-supplied values that get interpolated into
@@ -164,9 +171,13 @@ export function sanitizeForLog(raw: unknown): string {
 export function normalizeMode(
   raw: string | null | undefined,
   logger: { warn: (message: string) => void },
+  options: { allowInternalEvalModes?: boolean } = {},
 ): SearchPipelineMode {
   if (raw == null || raw === "" || raw === "hybrid") return "hybrid"
   if (raw === "keyword-first") return "keyword-first"
+  if (raw === "semantic-only" && options.allowInternalEvalModes === true) {
+    return "semantic-only"
+  }
   logger.warn(
     `[search] event=search_unknown_mode mode=${sanitizeForLog(raw)} falling_back=hybrid`,
   )
@@ -220,7 +231,7 @@ export type SearchResult = {
  * Describes which retrieval paths actually contributed to a response.
  *
  * - `"hybrid"`: the query embedding was generated successfully and
- *   semantic retrieval ran alongside keyword. Steady state.
+ *   semantic retrieval ran. Steady state.
  * - `"keyword-only"`: the query embedding call failed (provider outage,
  *   missing/invalid API key, network egress blocked) and the response
  *   was assembled from keyword retrieval alone. Response is still
@@ -611,7 +622,10 @@ export class HybridSearchService {
     // to "hybrid" without throwing — same contract REST + GraphQL
     // surface to clients. Computed once per call so the warn log fires
     // at most once.
-    const pipelineMode = normalizeMode(params.mode, this.logger)
+    const pipelineMode = normalizeMode(params.mode, this.logger, {
+      allowInternalEvalModes: params.allowInternalEvalModes,
+    })
+    const semanticOnly = pipelineMode === "semantic-only"
     const limit = Math.min(
       Math.max(1, params.limit ?? DEFAULT_LIMIT),
       MAX_LIMIT,
@@ -661,8 +675,7 @@ export class HybridSearchService {
     const retrievals: Retrieval[] = []
 
     if (wantsVideos) {
-      // Semantic-video is shared between hybrid and keyword-first —
-      // both pipelines benefit from scene-level vector matches.
+      // Semantic-video is shared by every embedding-backed pipeline.
       retrievals.push({
         label: "semantic-video",
         promise:
@@ -705,7 +718,7 @@ export class HybridSearchService {
             limit: overfetchLimit,
           }) as Promise<RankedItem[]>,
         })
-      } else {
+      } else if (!semanticOnly) {
         // Hybrid path — UNCHANGED from R4. Byte-identity locked in by
         // hybrid-search.regression.test.ts.
         retrievals.push({
@@ -731,14 +744,16 @@ export class HybridSearchService {
               }) as Promise<RankedItem[]>)
             : Promise.resolve([]),
       })
-      retrievals.push({
-        label: "keyword-experience",
-        promise: searchExperienceKeyword(this.prisma, {
-          query,
-          locale,
-          limit: overfetchLimit,
-        }) as Promise<RankedItem[]>,
-      })
+      if (!semanticOnly) {
+        retrievals.push({
+          label: "keyword-experience",
+          promise: searchExperienceKeyword(this.prisma, {
+            query,
+            locale,
+            limit: overfetchLimit,
+          }) as Promise<RankedItem[]>,
+        })
+      }
     }
 
     const outcomes = await Promise.allSettled(retrievals.map((r) => r.promise))
@@ -837,8 +852,9 @@ export class HybridSearchService {
       hasMore,
       query,
       // queryEmbeddingText is non-null iff the embedding call succeeded
-      // and both semantic retrievals were dispatched. If null, the
-      // response is assembled from keyword retrieval alone.
+      // and semantic retrieval could run. If null, public modes assemble
+      // from keyword retrieval alone; internal semantic-only returns an
+      // empty degraded response without lexical fallback.
       searchMode,
     }
 

@@ -3,12 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native"
+
+import type { View as ViewType } from "react-native"
 
 import { type SearchResult } from "../../lib/queries"
 import { type SearchState } from "../../lib/search"
@@ -30,6 +33,13 @@ type Props = {
   columns?: number
   /** Retry handler for the error state; parent wires useSemanticSearch.retry(). */
   onRetry?: () => void
+  /**
+   * D-pad-up destination for the grid's TOP ROW only. The stacked (Apple TV)
+   * layout passes the keyboard's first-key node so up-escape out of the
+   * vertically-scrolling grid lands on the keyboard. Omitted in the two-pane
+   * layout, where up scrolls between rows and left exits to the keyboard.
+   */
+  topRowFocusUp?: ViewType | null
 }
 
 /**
@@ -45,6 +55,7 @@ export function SearchResultsGrid({
   query,
   columns,
   onRetry,
+  topRowFocusUp,
 }: Props) {
   const router = useRouter()
   const openResult = useCallback(
@@ -87,7 +98,12 @@ export function SearchResultsGrid({
 
   if (state === "ready") {
     return (
-      <ResultsList results={results} onPress={openResult} columns={columns} />
+      <ResultsList
+        results={results}
+        onPress={openResult}
+        columns={columns}
+        topRowFocusUp={topRowFocusUp}
+      />
     )
   }
 
@@ -101,10 +117,12 @@ function ResultsList({
   results,
   onPress,
   columns,
+  topRowFocusUp,
 }: {
   results: SearchResult[]
   onPress: (result: SearchResult) => void
   columns?: number
+  topRowFocusUp?: ViewType | null
 }) {
   // Explicit `columns` wins (two-pane results pane); else width heuristic:
   // 6 columns on 4K-class panels, 4 elsewhere. numColumns is a static
@@ -141,6 +159,20 @@ function ResultsList({
         numColumns={numColumns}
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.row}
+        // Trim the scroll-momentum tail on APPLE TV ONLY. On tvOS the focus
+        // engine SWALLOWS a directional move that exits a scroll view ALONG its
+        // scroll axis while the list is still decelerating — so in the stacked
+        // (Apple TV) layout, D-pad-up out of the top row can't reach the
+        // keyboard above until the scroll settles. A shorter deceleration
+        // shrinks that window; `topRowFocusUp` (below) then guarantees where the
+        // up-move lands. Gated to ios so the Android two-pane grid keeps its
+        // default deceleration — Android has no along-axis up-escape (its
+        // keyboard is to the LEFT) and a different momentum model, so this is
+        // the "Android path unchanged" invariant. Verify the feel on real Apple
+        // TV hardware — simulator momentum differs; if a tail remains, escalate
+        // to snapToInterval + disableIntervalMomentum. See
+        // docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
+        decelerationRate={Platform.OS === "ios" ? "fast" : "normal"}
         renderItem={({ item, index }) => (
           // Per-cell wrapper gives the focus lift (translateY −8 + 1.06x)
           // breathing room; without it contentContainer clips the lifted card
@@ -158,6 +190,14 @@ function ResultsList({
               // later renders (debounced refresh, virtualization re-mount)
               // pass false to preserve the user's focus position.
               hasTVPreferredFocus={index === 0 && shouldClaimFirstCell}
+              // TOP ROW only (index < numColumns): forces D-pad-up to the
+              // keyboard node in the stacked layout. Coalesce null -> undefined
+              // so a not-yet-captured node falls back to geometry. Undefined
+              // for every other row and for the two-pane layout (no node
+              // passed), so intra-grid up-navigation and left-exit are intact.
+              nextFocusUp={
+                index < numColumns ? (topRowFocusUp ?? undefined) : undefined
+              }
             />
           </View>
         )}
