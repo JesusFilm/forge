@@ -49,10 +49,9 @@ export default function DownloadSheetRoute() {
       />
     )
 
-  // The bundled subtitle is inherited from the watch session, not picked in the
-  // sheet: it's the dub's active subtitle (whatever the user set on the Video
-  // Details subtitle sheet), regardless of whether subtitles are toggled on.
-  // null when no subtitle is active or the active language has no track here.
+  // The bundled subtitle is inherited from the watch session, not picked here:
+  // the dub's active subtitle (set on the Video Details sheet), regardless of the
+  // toggle. null when none is active or the active language has no track here.
   const activeSubtitle = resolveActiveSubtitle(
     activeSubtitleSlug,
     activeVariantMedia?.subtitles ?? [],

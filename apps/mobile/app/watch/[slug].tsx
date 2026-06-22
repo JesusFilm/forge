@@ -282,11 +282,9 @@ export default function WatchVideoPage() {
     activeVariantMedia,
   ])
 
-  // The Language / Subtitles action buttons surface the current selection.
-  // "Off" when subtitles are disabled; otherwise the active subtitle's name.
-  // While the lazy dub media is in flight the name isn't resolvable yet, so we
-  // fall back to the persisted preferred-subtitle name — painting it on a cold
-  // load instead of flashing the static "Subtitles" placeholder.
+  // Action-button labels surface the current selection. The subtitle label is
+  // "Off"/the active name, falling back to the persisted preferred name while the
+  // lazy media loads — so a cold load paints it, not a "Subtitles" placeholder.
   const languageActionLabel = activeVariant?.languageName ?? null
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,

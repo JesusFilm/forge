@@ -287,15 +287,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     preferredSubtitleSlug,
   ])
 
-  // Cache the preferred subtitle's display NAME once a dub's media (which
-  // carries names) has landed, so the next cold load can paint the Subtitles
-  // pill immediately instead of flashing the static "Subtitles" label while the
-  // lazy media is in flight. Reads the persisted PREFERRED slug (not the
-  // per-video auto-resolved activeSubtitleSlug) so a video that lacks the
-  // preferred language can never overwrite the cached name. Gated on
-  // preferencesReady so it can't fire before hydration and clobber the stored
-  // blob. subtitleNameToCache returns null (no-op) once the name is current, so
-  // the effect self-terminates.
+  // Cache the preferred subtitle's display NAME once a dub's media lands, so the
+  // next cold load paints the pill instead of flashing "Subtitles". Keyed on the
+  // PREFERRED slug (a video lacking it can't overwrite) and gated on hydration.
   useEffect(() => {
     if (!preferencesReady || !preferredSubtitleSlug || !activeVariantMedia)
       return

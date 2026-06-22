@@ -10,9 +10,8 @@ export type WatchPreferences = {
   subtitleLanguageSlug: string | null
   /**
    * Display name of the preferred subtitle language (e.g. "French"), cached so
-   * the Subtitles pill can paint immediately on a cold load — the per-dub media
-   * that carries subtitle names is fetched lazily, so the slug alone can't be
-   * mapped to a name without a network round-trip. Mirrors the slug above.
+   * the Subtitles pill paints on a cold load — subtitle names come from per-dub
+   * media fetched lazily, so the slug alone can't be mapped without a fetch.
    */
   subtitleLanguageName: string | null
   /** Whether subtitles are turned on app-wide. */

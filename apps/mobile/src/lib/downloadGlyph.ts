@@ -28,10 +28,9 @@ export type DownloadGlyphInfo = {
 }
 
 /**
- * Map the offline lifecycle to the Download button's icon-only presentation:
- * a determinate ring while transferring, a green tick once saved, a retry glyph
- * on failure, else the idle download glyph. `canceled` falls through to idle by
- * design (matches the watch screen's `state !== "canceled"` re-download branch).
+ * The Download button's icon-only presentation for the offline lifecycle: a ring
+ * while transferring, green tick when saved, retry glyph on failure, else idle.
+ * `canceled` falls through to idle by design.
  */
 export function downloadGlyphInfo(
   state: OfflineDownloadState | null | undefined,

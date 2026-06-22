@@ -1,11 +1,9 @@
 import type { WatchSubtitle } from "./normalizeVideo"
 
 /**
- * The subtitle track to use for the active dub, resolved by stable language
- * slug. Returns null when no slug is selected, or when the selected language
- * has no track in this dub's media — e.g. a cross-dub slug whose language this
- * dub lacks, or media that hasn't loaded yet. Keyed on `languageSlug` because
- * bcp47 tags are not unique (ko vs ko-kmr).
+ * The active dub's subtitle track for `slug`, keyed on stable `languageSlug`
+ * (bcp47 is not unique). Returns null when no slug is set or the dub lacks that
+ * track (cross-dub slug, or media not loaded yet).
  */
 export function resolveActiveSubtitle(
   slug: string | null | undefined,
@@ -16,10 +14,9 @@ export function resolveActiveSubtitle(
 }
 
 /**
- * The label shown under the Subtitles control. "Off" when subtitles are
- * disabled (regardless of the selected language); otherwise the active
- * subtitle's language name, or null while the dub's media is still loading
- * (the caller falls back to a static "Subtitles" label).
+ * Subtitles-control label: "Off" when disabled, else the active subtitle's
+ * language name, or null while the dub's media is still loading (the caller
+ * then shows a static "Subtitles" label).
  */
 export function deriveSubtitleLabel(
   enabled: boolean,
@@ -31,11 +28,9 @@ export function deriveSubtitleLabel(
 }
 
 /**
- * The full label for the Subtitles control: "Off" when disabled, the active
- * subtitle's name when resolved, otherwise the persisted preferred name as a
- * cold-load fallback (painted while the dub's media is still loading, instead of
- * a static placeholder). Returns null only when enabled with no resolvable name
- * and no cached fallback — the caller then shows its own "Subtitles" default.
+ * Full Subtitles-control label: the resolved name, else the persisted preferred
+ * name as a cold-load fallback (painted while media loads, vs a placeholder),
+ * else null (enabled but nothing to show → caller's "Subtitles" default).
  */
 export function resolveSubtitleActionLabel(
   enabled: boolean,
@@ -50,10 +45,9 @@ export function resolveSubtitleActionLabel(
 }
 
 /**
- * The subtitle display name that should be written to the persisted cache, or
- * null for a no-op. Returns the preferred slug's name (looked up in the loaded
- * media) only when it differs from what's already cached — so the caching
- * effect self-terminates and never overwrites with an absent/unchanged value.
+ * The display name to write to the persisted cache, or null for a no-op: the
+ * preferred slug's name from the loaded media, only when it differs from what's
+ * cached — so the caching effect self-terminates.
  */
 export function subtitleNameToCache(
   slug: string | null | undefined,

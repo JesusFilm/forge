@@ -290,9 +290,8 @@ export type DownloadSheetProps = {
   subtitleLanguageName: string | null
   /**
    * Enqueue the chosen rendition for offline download. The active subtitle is
-   * inherited from the watch session (not picked here), so the route builds the
-   * full request (identity + fresh URLs) and dismisses the sheet; the download
-   * runs in the background via DownloadsProvider.
+   * inherited from the watch session (not picked here); the route builds the
+   * full request, dismisses the sheet, and downloads via DownloadsProvider.
    */
   onStartDownload: (rendition: WatchDownload) => void
 }
