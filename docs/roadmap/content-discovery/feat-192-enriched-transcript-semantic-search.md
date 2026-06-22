@@ -9,6 +9,7 @@ duration: 5
 depends_on: []
 blocks:
   - "feat-193"
+  - "feat-198"
 tags:
   - "admin"
   - "mastra"

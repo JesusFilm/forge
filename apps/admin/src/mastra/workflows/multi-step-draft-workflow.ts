@@ -30,18 +30,18 @@ import { z } from "zod"
 import { env } from "@/config/env"
 import { TOKEN_CAPS } from "../budgets"
 import {
+  coerceDraftEnvelope,
   DraftExperienceSchema,
+  extractJsonObject,
   getFillSchemaForType,
   SkeletonSchema,
   validateSkeleton,
-} from "@/services/experience-ai/experience-ai.schemas"
+} from "@forge/experience-schema"
 import type {
   DraftExperience,
   Skeleton,
   SkeletonNode,
-} from "@/services/experience-ai/experience-ai.schemas"
-import { extractJsonObject } from "@/services/experience-ai/extract-json-object"
-import { coerceDraftEnvelope } from "@/services/experience-ai/coerce-draft"
+} from "@forge/experience-schema"
 
 // ---------------------------------------------------------------------------
 // Typed step boundary error
@@ -391,7 +391,7 @@ export function liftToDraftExperienceShape(parsed: unknown): unknown {
 }
 
 // `extractJsonObject` is now the shared balanced-brace scanner in
-// `@/services/experience-ai/extract-json-object` — imported above so the
+// `@forge/experience-schema` — imported above so the
 // workflow's first-pass parse handles the SAME envelope shapes the chat
 // path tolerates (free-tier models wrap structured output in prose or
 // ```json fences even when the prompt says JSON-only).

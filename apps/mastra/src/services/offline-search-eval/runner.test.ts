@@ -153,6 +153,7 @@ describe("runOfflineSearchEval", () => {
         mode: "capture-baseline",
         baselineName: "default",
         locales: ["en"],
+        searchMode: "semantic-only",
         includeGeneratedCandidates: true,
       },
       {
@@ -190,12 +191,18 @@ describe("runOfflineSearchEval", () => {
     expect(searchClient).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: expect.objectContaining({
-          query: "Bible Project",
+          query: "bible project",
           locale: "en",
           languageSlug: "english",
+          mode: "semantic-only",
         }),
       }),
     )
+    expect(
+      searchClient.mock.calls.every(
+        (call) => call[0]?.payload.mode === "semantic-only",
+      ),
+    ).toBe(true)
     for (const call of searchClient.mock.calls) {
       expect(call[0]?.payload).not.toHaveProperty("websiteLocale")
     }

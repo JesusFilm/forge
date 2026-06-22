@@ -392,10 +392,9 @@ describe("constants", () => {
 })
 
 describe("watchHome modules are Hermes-safe (no storage access)", () => {
-  // On Hermes `window` exists but the storage globals throw on access. Install
-  // throwing storage globals and exercise the full module surface — any
-  // reintroduced storage call (web's localStorage-backed played-id tracking)
-  // fails this test before it can crash the app.
+  // On Hermes `window` exists but storage globals throw on access. Install
+  // throwing globals and exercise the full surface so any reintroduced storage
+  // call (web's localStorage played-id tracking) fails here before it crashes the app.
   type GlobalWithStorage = typeof globalThis & {
     localStorage?: unknown
     sessionStorage?: unknown

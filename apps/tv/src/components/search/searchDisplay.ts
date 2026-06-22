@@ -1,18 +1,14 @@
-// Display-text resolution for the redesigned search screen — the s-meta
-// line and the result-card chip / kind labels. Pure module (no React, no
-// component imports) so jest-expo can unit-test it without loading the
-// .tsx module graph. The SearchState import is type-only and erased at
-// compile time.
+// Display-text resolution for the search screen (s-meta line, result-card chip /
+// kind labels). Pure module — no React/component imports — so jest-expo can
+// unit-test it without loading the .tsx module graph.
 
 import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { type SearchState } from "../../lib/search"
 
 /**
- * The uppercase meta line between the letter strip and the results region
- * (design: .s-meta). Only the ready state with results speaks ("N RESULTS");
- * the browse state is unlabelled (the browse panel below is self-evident), and
- * transient states (idle / loading / error / empty) stay quiet — their region
- * below carries the message.
+ * Uppercase meta line above the results (design: .s-meta). Only the ready state
+ * with results speaks ("N RESULTS"); browse and transient states (idle/loading/
+ * error/empty) stay quiet since their region below carries the message.
  */
 export function resolveSearchMeta(
   state: SearchState,
@@ -44,9 +40,8 @@ type ChipSource = {
 }
 
 /**
- * Top-right thumb chip (design: .chip). The only quantity a SearchResult
- * carries today is childCount — startSeconds is a match offset, not a
- * duration — so the chip is the episode count or nothing.
+ * Top-right thumb chip (design: .chip). childCount is the only usable quantity
+ * (startSeconds is a match offset, not a duration), so it's the episode count or nothing.
  */
 export function resultChipLabel(result: ChipSource): string | null {
   const count = result.childCount ?? 0
@@ -70,10 +65,9 @@ function humanizeLabel(label: string): string {
 }
 
 /**
- * Secondary line under the result title (design: .card-meta p — the
- * "kind" line). Derived from the wire label when present; series-shaped
- * unlabeled results (childCount > 0) read as "Series" so the kind line
- * agrees with where searchResultPath routes them.
+ * Secondary "kind" line under the result title (design: .card-meta p). Uses the
+ * wire label when present; unlabeled series-shaped results (childCount > 0) read
+ * as "Series" so the line agrees with where searchResultPath routes them.
  */
 export function resultKindLabel(result: KindSource): string {
   if (result.type === "EXPERIENCE") return "Experience"

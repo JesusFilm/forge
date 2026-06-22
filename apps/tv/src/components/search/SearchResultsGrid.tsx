@@ -3,12 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native"
+
+import type { View as ViewType } from "react-native"
 
 import { type SearchResult } from "../../lib/queries"
 import { type SearchState } from "../../lib/search"
@@ -24,26 +27,24 @@ type Props = {
   results: SearchResult[]
   query: string
   /**
-   * Fixed column count override. The two-pane layout (keyboard left,
-   * results right) uses fewer columns than the full-width default since
-   * the results pane is narrower than the whole screen.
+   * Fixed column count override; the narrower two-pane results pane
+   * uses fewer columns than the full-width default.
    */
   columns?: number
-  /**
-   * Called when the user presses the Retry button in the error state.
-   * Parent wires this to useSemanticSearch.retry().
-   */
+  /** Retry handler for the error state; parent wires useSemanticSearch.retry(). */
   onRetry?: () => void
+  /**
+   * D-pad-up destination for the grid's TOP ROW only. Stacked (Apple TV) layout
+   * passes the keyboard's first-key node so up-escape lands on the keyboard. Omitted
+   * in the two-pane layout, where up scrolls rows and left exits to the keyboard.
+   */
+  topRowFocusUp?: ViewType | null
 }
 
 /**
- * Window-width threshold (in dp) above which we render a 6-column
- * grid. Apple TV at 1080p reports ~1920dp logical window width and
- * 4K hardware reports the same logical width via UIKit's points API,
- * so this threshold is most reliable on Android TV (whose logical
- * width scales more closely with native pixels). On Apple TV, both
- * 1080p and 4K typically pin at 4 columns; verify on real 4K
- * hardware before tuning.
+ * Window-width (dp) threshold for a 6-column grid. Reliable on Android TV
+ * (logical width tracks pixels); Apple TV pins both 1080p and 4K at 4
+ * columns via UIKit points, so verify on real 4K hardware before tuning.
  */
 const SIX_COLUMN_THRESHOLD_DP = 2880
 
@@ -53,6 +54,7 @@ export function SearchResultsGrid({
   query,
   columns,
   onRetry,
+  topRowFocusUp,
 }: Props) {
   const router = useRouter()
   const openResult = useCallback(
@@ -95,7 +97,12 @@ export function SearchResultsGrid({
 
   if (state === "ready") {
     return (
-      <ResultsList results={results} onPress={openResult} columns={columns} />
+      <ResultsList
+        results={results}
+        onPress={openResult}
+        columns={columns}
+        topRowFocusUp={topRowFocusUp}
+      />
     )
   }
 
@@ -109,24 +116,22 @@ function ResultsList({
   results,
   onPress,
   columns,
+  topRowFocusUp,
 }: {
   results: SearchResult[]
   onPress: (result: SearchResult) => void
   columns?: number
+  topRowFocusUp?: ViewType | null
 }) {
-  // Explicit `columns` wins (the two-pane layout passes a fixed count for
-  // the narrower results pane). Otherwise fall back to the width heuristic:
-  // 6 columns on wide panels (4K-class hardware), 4 elsewhere. numColumns
-  // is a static FlatList layout hint — switching it forces a remount, so we
-  // read the value once per render and let React handle it.
+  // Explicit `columns` wins (two-pane results pane); else width heuristic:
+  // 6 columns on 4K-class panels, 4 elsewhere. numColumns is a static
+  // FlatList hint — switching it forces a remount.
   const { width } = useWindowDimensions()
   const numColumns = columns ?? (width >= SIX_COLUMN_THRESHOLD_DP ? 6 : 4)
 
-  // First-cell focus claim: only on the FIRST render that exposes a
-  // given results set, not on every subsequent re-render. Without
-  // this guard, a debounced response refresh while the user has
-  // navigated to (say) result #5 would re-pass hasTVPreferredFocus
-  // on cell 0 and yank focus back per rn-tvos #839.
+  // Claim first-cell focus only on the FIRST render of a given results set:
+  // without this guard a debounced refresh re-passes hasTVPreferredFocus on
+  // cell 0 and yanks focus back from wherever the user navigated (rn-tvos #839).
   const firstResultKey =
     results.length > 0 ? `${results[0].type}-${results[0].id}` : null
   const claimedForKeyRef = useRef<string | null>(null)
@@ -138,10 +143,9 @@ function ResultsList({
   const shouldClaimFirstCell =
     firstResultKey != null && claimedForKeyRef.current !== firstResultKey
 
-  // No focus traps: D-pad-left from the leftmost column must reach
-  // the keyboard so the user can refine the query without re-entering
-  // the screen. D-pad-right at the rightmost column simply has nothing
-  // to land on; the focus engine leaves focus put without a trap.
+  // No focus traps: D-pad-left from the leftmost column must reach the
+  // keyboard to refine the query. D-pad-right at the rightmost column has
+  // nothing to land on; the focus engine leaves focus put without a trap.
   return (
     <TVFocusGuideView style={styles.listWrapper}>
       <FlatList
@@ -154,12 +158,14 @@ function ResultsList({
         numColumns={numColumns}
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.row}
+        // Trim scroll-momentum tail on APPLE TV ONLY: tvOS swallows an along-axis move out
+        // of a decelerating scroll view, so top-row D-pad-up can't reach the keyboard until
+        // scroll settles (`topRowFocusUp` below guarantees it). Gated to ios. See docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
+        decelerationRate={Platform.OS === "ios" ? "fast" : "normal"}
         renderItem={({ item, index }) => (
-          // Per-cell wrapper provides the breathing room the focus
-          // lift needs (translateY −8 + 1.06x scale on the ResultCard).
-          // Without this, the FlatList's contentContainer clips the
-          // lifted card at its outer edges. Same pattern as SearchBrowse
-          // and home's ContentRail itemWrapper.
+          // Per-cell wrapper gives the focus lift (translateY −8 + 1.06x)
+          // breathing room; without it contentContainer clips the lifted card
+          // at its edges. Same pattern as SearchBrowse / home's ContentRail.
           <View
             style={[
               styles.resultCellWrapper,
@@ -169,12 +175,16 @@ function ResultsList({
             <ResultCard
               result={item}
               onPress={onPress}
-              // First result claims focus only on the FIRST render
-              // that exposes this results set; subsequent renders
-              // (debounced response refresh, virtualization re-mount)
-              // pass false so the user's current focus position is
-              // preserved.
+              // Claim focus only on the FIRST render of this results set;
+              // later renders (debounced refresh, virtualization re-mount)
+              // pass false to preserve the user's focus position.
               hasTVPreferredFocus={index === 0 && shouldClaimFirstCell}
+              // TOP ROW only (index < numColumns): forces D-pad-up to the keyboard node
+              // in the stacked layout. Coalesce null -> undefined so a not-yet-captured node
+              // falls back to geometry; undefined elsewhere keeps intra-grid nav + left-exit.
+              nextFocusUp={
+                index < numColumns ? (topRowFocusUp ?? undefined) : undefined
+              }
             />
           </View>
         )}
@@ -184,12 +194,9 @@ function ResultsList({
 }
 
 /**
- * Retry button for the error state. Uses the
- * onFocus / onBlur + state pattern (matching the home screen's retry
- * button) rather than the `({ focused }) => [...]` style callback —
- * `focused` is exposed at runtime by react-native-tvos but not by
- * the upstream PressableStateCallbackType, so the callback form
- * fails CI's strict tsc check.
+ * Retry button for the error state. Uses onFocus/onBlur + state, not the
+ * `({ focused }) => [...]` callback: rn-tvos exposes `focused` at runtime but
+ * upstream PressableStateCallbackType omits it, so the callback form fails tsc.
  */
 function RetryButton({
   onPress,
@@ -215,12 +222,9 @@ function RetryButton({
 }
 
 function EmptyState({ query }: { query: string }) {
-  // Pure presentation (design: .s-empty — top-left aligned, not
-  // centered). The earlier auto-focus-return-to-⏎ behavior was removed
-  // because it actively fought typing — the keyboard remount it required
-  // killed focus on the currently-pressed letter every time a debounced
-  // search came back empty. Users keep typing on the keyboard; if they
-  // want to navigate away, they D-pad explicitly.
+  // Pure presentation (design .s-empty, top-left aligned). No auto-focus-
+  // return-to-⏎: its keyboard remount killed focus on the pressed letter on
+  // every empty debounced result. Users keep typing; D-pad to leave.
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyTitle}>
@@ -289,12 +293,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    // The grid lives in the right pane of the two-pane layout, so the page
-    // gutter comes from the screen padding + the body gap between keyboard
-    // and pane. Here we only need a small inset so the leftmost/rightmost
-    // cards' focus-lift rings aren't clipped at the pane edges (the per-cell
-    // wrapper carries scale(14) more). Top is small — the meta line above
-    // sets the vertical rhythm — and the bottom is the run-out.
+    // Page gutter comes from screen padding + keyboard/pane gap, so this only
+    // needs a small inset so edge cards' focus-lift rings aren't clipped (the
+    // per-cell wrapper adds scale(14) more). Bottom is the run-out.
     paddingHorizontal: scale(14),
     paddingTop: scale(12),
     paddingBottom: scale(80),
@@ -305,12 +306,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   resultCellWrapper: {
-    // `width` is set inline at render time as `${100/numColumns}%` so
-    // 4-column or 6-column layouts both fill the row edge-to-edge
-    // with equal left/right gutters. Using a percentage (rather than
-    // `flex: 1`) keeps a partial last row's lone card from stretching
-    // — it stays at 1/N width regardless of how many siblings exist.
-    // Design gaps: 38px vertical / 28px horizontal → half on each side.
+    // `width` is set inline as `${100/numColumns}%` (not flex:1) so a partial
+    // last row's lone card stays 1/N width instead of stretching. Design gaps
+    // 38px vertical / 28px horizontal → half on each side.
     paddingVertical: scale(19),
     paddingHorizontal: scale(14),
   },

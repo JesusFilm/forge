@@ -1069,3 +1069,150 @@ describe("runGenerateDraftAction (U5 — workflow-backed)", () => {
     expect(deps.writeSpies.chatMessageCreate).not.toHaveBeenCalled()
   })
 })
+
+describe("runGenerateDraftAction (U6 — remote draft cutover)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    primeHappyPath()
+  })
+
+  // Helpers keep the launch-mock argument a single short call so prettier
+  // never breaks the `vi.fn().mockResolvedValue(...)` chain.
+  const remoteOk = () => ({ ok: true as const, draft: VALID_DRAFT })
+  const remoteFail = (reason: string, retryable: boolean) => ({
+    ok: false as const,
+    reason,
+    retryable,
+  })
+
+  it("remote ok → returns the draft via the standalone route, NOT the in-process workflow", async () => {
+    const launch = vi.fn(async (_input: unknown) => remoteOk())
+    const deps = mockDeps()
+    const result = await runGenerateDraftAction(
+      deps,
+      { localeId: "locale-1", locale: "en", prompt: "hope" },
+      { remoteEnabled: true, launchRemoteDraft: launch as never },
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("unreachable")
+    expect(result.draft.title).toBe(VALID_DRAFT.title)
+    // The in-process workflow was never created.
+    expect(getWorkflowByIdMock).not.toHaveBeenCalled()
+    // The remote client got the admin-computed candidates keyed on videoId.
+    expect(launch).toHaveBeenCalledTimes(1)
+    const body = launch.mock.calls[0][0]
+    expect(body).toMatchObject({
+      prompt: expect.stringContaining("hope"),
+      locale: "en",
+      candidates: [{ videoId: "v1", title: "Hope Story", slug: "hope" }],
+      mode: "multi",
+    })
+  })
+
+  it('remote ok with mode "quick" forwards mode:"quick"', async () => {
+    const launch = vi.fn(async (_input: unknown) => remoteOk())
+    await runGenerateDraftAction(
+      mockDeps(),
+      { localeId: "locale-1", locale: "en", prompt: "hope", mode: "quick" },
+      { remoteEnabled: true, launchRemoteDraft: launch as never },
+    )
+    expect(launch.mock.calls[0][0]).toMatchObject({ mode: "quick" })
+  })
+
+  it("remote ok persists a rateable ASSISTANT message with producedBy when threadId supplied", async () => {
+    const launch = vi.fn(async (_input: unknown) => remoteOk())
+    const deps = mockDeps()
+    const result = await runGenerateDraftAction(
+      deps,
+      {
+        localeId: "locale-1",
+        locale: "en",
+        prompt: "hope",
+        threadId: "thread-abc",
+      },
+      { remoteEnabled: true, launchRemoteDraft: launch as never },
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("unreachable")
+    expect(result.messageId).toBe("msg-persisted-1")
+    expect(result.producedBy).toBe("multi-step-draft")
+    expect(deps.writeSpies.chatMessageCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('remote { reason:"timeout" } → UPSTREAM_ERROR, single call (no retry storm), no persistence', async () => {
+    const launch = vi.fn(async (_input: unknown) => remoteFail("timeout", true))
+    const deps = mockDeps()
+    const result = await runGenerateDraftAction(
+      deps,
+      {
+        localeId: "locale-1",
+        locale: "en",
+        prompt: "hope",
+        threadId: "thread-abc",
+      },
+      { remoteEnabled: true, launchRemoteDraft: launch as never },
+    )
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("unreachable")
+    expect(result.code).toBe("UPSTREAM_ERROR")
+    expect(launch).toHaveBeenCalledTimes(1)
+    expect(getWorkflowByIdMock).not.toHaveBeenCalled()
+    expect(deps.writeSpies.chatMessageCreate).not.toHaveBeenCalled()
+  })
+
+  it('remote { reason:"config_missing" } → falls back to the in-process workflow', async () => {
+    const launch = vi.fn(async (_input: unknown) =>
+      remoteFail("config_missing", false),
+    )
+    const deps = mockDeps()
+    const result = await runGenerateDraftAction(
+      deps,
+      { localeId: "locale-1", locale: "en", prompt: "hope" },
+      { remoteEnabled: true, launchRemoteDraft: launch as never },
+    )
+    expect(result.ok).toBe(true)
+    // Fell back: the in-process workflow WAS created.
+    expect(getWorkflowByIdMock).toHaveBeenCalled()
+  })
+
+  it('remote { reason:"generation_failed", retryable:false } → SCHEMA_MISMATCH', async () => {
+    const launch = vi.fn(async (_input: unknown) =>
+      remoteFail("generation_failed", false),
+    )
+    const result = await runGenerateDraftAction(
+      mockDeps(),
+      { localeId: "locale-1", locale: "en", prompt: "hope" },
+      { remoteEnabled: true, launchRemoteDraft: launch as never },
+    )
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("unreachable")
+    expect(result.code).toBe("SCHEMA_MISMATCH")
+  })
+
+  it('remote { reason:"auth_failed" } → NOT_CONFIGURED', async () => {
+    const launch = vi.fn(async (_input: unknown) =>
+      remoteFail("auth_failed", false),
+    )
+    const result = await runGenerateDraftAction(
+      mockDeps(),
+      { localeId: "locale-1", locale: "en", prompt: "hope" },
+      { remoteEnabled: true, launchRemoteDraft: launch as never },
+    )
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("unreachable")
+    expect(result.code).toBe("NOT_CONFIGURED")
+  })
+
+  it("flag off → uses the in-process workflow and NEVER calls the remote client", async () => {
+    const launch = vi.fn()
+    const deps = mockDeps()
+    const result = await runGenerateDraftAction(
+      deps,
+      { localeId: "locale-1", locale: "en", prompt: "hope" },
+      { remoteEnabled: false, launchRemoteDraft: launch as never },
+    )
+    expect(result.ok).toBe(true)
+    expect(launch).not.toHaveBeenCalled()
+    expect(getWorkflowByIdMock).toHaveBeenCalled()
+  })
+})

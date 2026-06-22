@@ -1,16 +1,6 @@
-// ── Watch Home bulk query (card-lean by design) ─────────────────────
-//
-// Kept field-for-field in sync with apps/mobile/src/lib/queries.ts
-// (`watchHomeVideoFragment` / GET_WATCH_HOME_VIDEOS). The home query fetches
-// ~30 core IDs in one round trip, and the set includes the JESUS film whose
-// ~2,259 dubs re-create the 9.5MB payload incident if projected in bulk.
-// Cards need only ids/slug/label/duration/images/locales; playable streams
-// resolve lazily at selection time (GET_VIDEO_BY_SLUG, see videoQueries.ts).
-// NEVER add `dubs` here — homeQueries.test.ts guards it. The shape must
-// satisfy WatchHomeVideoInput in ./model.ts.
-//
-// Defined here in apps/tv/ per convention:
-// "Operations are defined in apps using graphql() from this package."
+// Watch Home bulk query (card-lean); keep in sync with mobile's GET_WATCH_HOME_VIDEOS.
+// NEVER add `dubs` — JESUS's ~2,259 dubs = the 9.5MB payload incident; homeQueries.test.ts
+// guards it. Streams resolve lazily per slug (GET_VIDEO_BY_SLUG, videoQueries.ts).
 import {
   adminGraphql as graphql,
   type AdminResultOf as ResultOf,

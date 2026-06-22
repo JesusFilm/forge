@@ -139,6 +139,20 @@ export type ExperienceChatPanelProps = {
     | { ok: false; code: string; error: string }
   >
   /**
+   * Optional video-anchored section generator. When present, the panel
+   * exposes an anchor-video input + "Generate section from video" button.
+   * On success the grounded section is STAGED (append mode) for the editor
+   * to review/edit/apply — it is appended to the canvas, not replaced.
+   */
+  generateSectionAction?: (input: { anchorVideoId: string }) => Promise<
+    | {
+        ok: true
+        draft: { title: string; metaDescription: string; blocks: unknown[] }
+        review: QualityDraftReview
+      }
+    | { ok: false; code: string; error: string }
+  >
+  /**
    * Test seam — defaults to the real `openChatStream`. Tests inject a
    * deterministic async iterable.
    */
@@ -174,6 +188,13 @@ type StagedDraftPreview = {
   blocksJson: string
   error: string | null
   review?: QualityDraftReview
+  /**
+   * How Apply commits the staged blocks. `"replace"` (default) swaps the whole
+   * canvas (full-page draft). `"append"` adds the staged blocks AFTER the
+   * existing canvas blocks and leaves title/metaDescription untouched
+   * (video-anchored section).
+   */
+  mode?: "replace" | "append"
 }
 
 // -----------------------------------------------------------------------------
@@ -187,6 +208,7 @@ export function ExperienceChatPanel({
   actions,
   suggestedPrompts = [],
   generateDraftAction,
+  generateSectionAction,
   streamFactory = openChatStream,
 }: ExperienceChatPanelProps) {
   const [draftWorkflowStatus, setDraftWorkflowStatus] = useState<
@@ -206,6 +228,8 @@ export function ExperienceChatPanel({
   const [stagedDraft, setStagedDraft] = useState<StagedDraftPreview | null>(
     null,
   )
+  /** Anchor-video id/slug for video-anchored section generation. */
+  const [anchorVideoId, setAnchorVideoId] = useState("")
   // Active user's ratings keyed by messageId. Seeded from
   // GET /threads/{threadId}/ratings on mount / thread switch so the
   // 👍/👎 widget reflects prior state without per-message fetches.
@@ -708,18 +732,27 @@ export function ExperienceChatPanel({
     }
 
     const current = canvasController.getState()
+    const isAppend = stagedDraft.mode === "append"
+    // Append mode (video-anchored section): add the staged blocks AFTER the
+    // existing canvas blocks and leave title/metaDescription untouched. Replace
+    // mode (full-page draft): swap the whole canvas.
+    const appliedBlocks = isAppend ? [...current.blocks, ...blocks] : blocks
     const next: EditableLocaleState = {
-      title: stagedDraft.title,
-      metaDescription: stagedDraft.metaDescription.trim()
-        ? stagedDraft.metaDescription
-        : null,
-      ogImageUrl: stagedDraft.initial.ogImageUrl,
-      blocks,
+      title: isAppend ? current.title : stagedDraft.title,
+      metaDescription: isAppend
+        ? current.metaDescription
+        : stagedDraft.metaDescription.trim()
+          ? stagedDraft.metaDescription
+          : null,
+      ogImageUrl: isAppend
+        ? current.ogImageUrl
+        : stagedDraft.initial.ogImageUrl,
+      blocks: appliedBlocks,
     }
     const diff = computeDiff(current, next)
     canvasController.applyDiff({
       scalars: diff.scalars,
-      blocks,
+      blocks: appliedBlocks,
     })
     setMessages((prev) => [
       ...prev,
@@ -739,6 +772,41 @@ export function ExperienceChatPanel({
     ])
     setStagedDraft(null)
   }, [canvasController, stagedDraft])
+
+  const handleGenerateSection = useCallback(async () => {
+    if (!generateSectionAction) return
+    const anchor = anchorVideoId.trim()
+    if (!anchor) return
+    setDraftWorkflowStatus("generating")
+    setDraftWorkflowError(null)
+    try {
+      const result = await generateSectionAction({ anchorVideoId: anchor })
+      if (!result.ok) {
+        setDraftWorkflowStatus("error")
+        setDraftWorkflowError(result.error)
+        return
+      }
+      // Stage the grounded section for review (append mode) — the editor
+      // reviews/edits, then Apply appends it to the canvas.
+      setStagedDraft({
+        messageId: `section-${Date.now()}`,
+        initial: canvasController.getState(),
+        title: result.draft.title,
+        metaDescription: result.draft.metaDescription,
+        blocksJson: JSON.stringify(result.draft.blocks, null, 2),
+        error: null,
+        review: result.review,
+        mode: "append",
+      })
+      setDraftWorkflowStatus("idle")
+      setAnchorVideoId("")
+    } catch (err) {
+      setDraftWorkflowStatus("error")
+      setDraftWorkflowError(
+        err instanceof Error ? err.message : "Section generation failed.",
+      )
+    }
+  }, [generateSectionAction, anchorVideoId, canvasController])
 
   // -- Render -------------------------------------------------------------
   const inFlightAssistantTokens =
@@ -951,6 +1019,36 @@ export function ExperienceChatPanel({
           </div>
         ) : null}
 
+        {generateSectionAction ? (
+          <div
+            className="mt-2 flex items-center gap-2"
+            data-testid="experience-chat-section-row"
+          >
+            <input
+              type="text"
+              value={anchorVideoId}
+              onChange={(e) => setAnchorVideoId(e.target.value)}
+              placeholder="Anchor video id or slug…"
+              data-testid="experience-chat-anchor-input"
+              className="h-9 flex-1 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-disabled)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand)]"
+            />
+            <button
+              type="button"
+              data-testid="experience-chat-generate-section"
+              disabled={
+                draftWorkflowStatus === "generating" ||
+                anchorVideoId.trim().length === 0
+              }
+              onClick={() => void handleGenerateSection()}
+              title="Generate one grounded section from this video (its study questions + scripture). Staged to append; verse text resolves at render."
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {draftWorkflowStatus === "generating"
+                ? "Working…"
+                : "Generate section from video"}
+            </button>
+          </div>
+        ) : null}
         <div className="mt-2 flex items-center justify-end gap-2">
           {generateDraftAction
             ? (() => {

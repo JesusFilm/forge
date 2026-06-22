@@ -34,23 +34,9 @@ const TRACK_HEIGHT = 3
 const HIT_HEIGHT = 44
 
 /**
- * Draggable seek bar (built-in PanResponder — react-native-gesture-handler is
- * forbidden under Expo Go).
- *
- * Position is driven by an `Animated.Value` (0..1), NOT React state: the fill
- * uses `scaleX` (anchored left via `transformOrigin`) and the thumb uses
- * `translateX`, both updated with `setValue` on every pan move. `setValue`
- * pushes straight to the native view without a React re-render, so a drag never
- * re-renders this component or its parent — the previous setState-per-frame
- * approach re-rendered both on every touch sample, which janks on the low-end
- * Android devices this app targets. The parent's preview-time callback (which
- * does setState) is throttled to whole-second changes for the same reason.
- *
- * The fraction is computed from the gesture's ABSOLUTE screen X minus the
- * track's measured left edge — NOT `nativeEvent.locationX`, which is relative
- * to whichever child view is under the finger and under-reports as the thumb
- * moves. `measureInWindow` keeps the track origin/width current across layout +
- * rotation changes.
+ * Draggable seek bar (built-in PanResponder — gesture-handler is forbidden under Expo Go). Position uses an
+ * `Animated.Value` (0..1) via `setValue`, NOT state, so a drag pushes straight to native without re-rendering
+ * (setState-per-frame janked low-end Android); fraction is absolute screen X minus the track's left edge.
  */
 export function Scrubber({
   currentTime,
@@ -182,19 +168,15 @@ export function Scrubber({
         measure()
         setTrackWidth(e.nativeEvent.layout.width)
       }}
-      // accessible MUST be set explicitly: a plain View with an
-      // accessibilityRole is NOT promoted to an accessibility element on iOS
-      // (unlike Pressable), so without this the adjustable role + the
-      // increment/decrement actions below never reach VoiceOver/Switch Control
-      // — the seek bar was silently unreachable to assistive tech.
+      // accessible MUST be explicit: iOS doesn't promote a plain View with an
+      // accessibilityRole (unlike Pressable), so without it the adjustable role
+      // + actions never reach VoiceOver/Switch Control — bar silently unreachable.
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel="Seek bar"
-      // The seek bar is drag-only by touch; expose increment/decrement so
-      // VoiceOver/Switch Control (and idb automation) can operate it without a
-      // drag gesture. Swipe up/down → ±10s, matching the skip buttons. `now`
-      // reads the playback position (props), which is what a screen-reader user
-      // tracks — they use the actions above rather than dragging.
+      // Drag-only by touch; expose increment/decrement (swipe up/down → ±10s,
+      // matching skip buttons) so VoiceOver/Switch Control/idb can operate it.
+      // `now` reads playback position (props), what a screen-reader user tracks.
       accessibilityValue={{
         min: 0,
         max: 100,
@@ -218,11 +200,9 @@ export function Scrubber({
           style={[styles.fill, { transform: [{ scaleX: progress }] }]}
         />
       </View>
-      {/* Render the thumb only once the track is measured. With trackWidth 0
-          (every chrome reveal remounts the Scrubber), the translateX
-          interpolation collapses to [0, 0] and the thumb would sit at the left
-          edge while the fill already shows the real position — a one-frame
-          desync. The fill is immune (scaleX needs no width). */}
+      {/* Render thumb only once measured: at trackWidth 0 (every chrome reveal
+          remounts the Scrubber) translateX collapses to [0,0], so the thumb sits
+          left while the fill shows the real position — a one-frame desync. */}
       {trackWidth > 0 && (
         <Animated.View
           style={[

@@ -1,9 +1,6 @@
-// Thin React shell over seriesLanguageState's pure ops (U4): holds the
-// per-series language selections + the active (top-of-stack) series screen.
-// Mounted ABOVE WatchSessionProvider (app/_layout.tsx) so the watch session
-// can feed the carried slug into its default-dub resolution when an episode
-// opens. All transitions live in seriesLanguageState.ts — unit-tested there;
-// jest-expo can't load this .tsx.
+// Thin React shell over seriesLanguageState's pure ops (U4). Mounted ABOVE
+// WatchSessionProvider so the session feeds the carried slug into default-dub
+// resolution. Transitions live (and are unit-tested) in seriesLanguageState.ts.
 
 import {
   createContext,
@@ -29,9 +26,9 @@ type SeriesLanguageContextValue = {
   /** documentId of the focused (top-of-stack) series screen, or null. */
   activeSeriesId: string | null
   /**
-   * The ACTIVE series' selection — the dub an opened episode should start in.
-   * Null when no series screen is in the stack's lineage (or the active one
-   * has no selection); the watch session then falls through its default chain.
+   * The ACTIVE series' selection — the dub an opened episode starts in. Null
+   * when no series screen is in the stack lineage (or it has no selection);
+   * the watch session then falls through its default chain.
    */
   carriedSlug: string | null
   /** Record a selection for one series (slug-keyed, never bcp47). */
@@ -94,11 +91,9 @@ export function useSeriesLanguage(): SeriesLanguageContextValue {
 }
 
 /**
- * Optional-safe read of the carried slug for consumers that must not
- * hard-depend on this provider (WatchSessionProvider feeds it into
- * resolveDefaultVariantIndex's preferred arg). Null when no provider is
- * mounted — indistinguishable from "no series screen in the lineage", which
- * is exactly the fallthrough the default chain handles.
+ * Optional-safe carried-slug read for consumers that must not hard-depend on
+ * this provider (WatchSessionProvider's resolveDefaultVariantIndex preferred arg).
+ * Null when unmounted — same as "no series in lineage", which the chain handles.
  */
 export function useCarriedLanguageSlug(): string | null {
   return useContext(SeriesLanguageContext)?.carriedSlug ?? null

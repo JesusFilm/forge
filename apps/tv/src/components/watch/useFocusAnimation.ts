@@ -3,15 +3,9 @@ import { Animated, Easing } from "react-native"
 
 import { scale } from "../../lib/scale"
 
-// Drives a 0→1 "focus progress" value so focus highlights glide in instead of
-// snapping ("just a blink"). Timing + easing match the design mockup's focus
-// transition (`transition: … .18s cubic-bezier(.22,.61,.36,1)`).
-//
-// JS-driven (useNativeDriver: false) on purpose: callers interpolate it into
-// backgroundColor / borderColor / shadowOpacity, none of which the native
-// animation driver can animate. Focus transitions are brief and infrequent, so
-// the JS-thread cost is negligible. Re-firing mid-animation eases from the
-// current value (no jump), so rapid D-pad navigation stays smooth.
+// 0→1 "focus progress" so highlights glide in (timing/easing match the mockup's
+// .18s cubic-bezier). JS-driven on purpose: callers interpolate it into
+// backgroundColor/borderColor/shadowOpacity, which the native driver can't animate.
 const FOCUS_DURATION_MS = 180
 
 export function useFocusAnimation() {
@@ -32,10 +26,9 @@ export function useFocusAnimation() {
   return { focused, setFocused, progress }
 }
 
-// Shared tvOS-magnify transform (lift + scale) driven by focus progress. Pills
-// and Up Next cards use the same shape with different magnitudes. Memoize the
-// result at the call site (keyed on the stable `progress`) so the interpolations
-// aren't reallocated on every focus/blur re-render.
+// Shared tvOS-magnify transform (lift + scale) from focus progress; pills and Up
+// Next cards reuse it with different magnitudes. Memoize at the call site (keyed on
+// stable `progress`) so interpolations aren't reallocated per focus/blur re-render.
 export function focusTransform(
   progress: Animated.Value,
   opts?: { lift?: number; magnify?: number },

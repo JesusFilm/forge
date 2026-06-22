@@ -13,24 +13,17 @@ import {
 } from "./downloadOutcome"
 
 /**
- * Thin adapter over the native background-download module (KTD1). Isolating the
- * module here keeps it swappable and confines the native surface to one file.
- * The engine's decisions live in the pure, unit-tested core (downloadOutcome /
- * downloadReconciliation / downloadErrors); this wrapper only translates native
- * events into those and exposes typed operations to DownloadsProvider.
- *
- * Runtime behavior (background continuation, reattach, the Android foreground
- * notification, iOS background-session completion) is verified on real devices —
- * it cannot be exercised in unit tests.
+ * Thin swappable adapter over the native background-download module (KTD1),
+ * confining the native surface to one file; decisions live in the pure core.
+ * Runtime behavior (background, reattach, notifications) is device-verified only.
  */
 
 export type EngineTask = ReturnType<typeof createDownloadTask>
 
 /**
- * Apply global engine config. iOS wifi-only is global (NSURLSession
- * `allowsCellularAccess`); the Android per-task metered flag is set per download
- * in {@link startMediaDownload}. The persistent Android notification is required
- * by the foreground service and is enabled here.
+ * Apply global engine config. iOS wifi-only is global (`allowsCellularAccess`);
+ * Android's metered flag is per-download in {@link startMediaDownload}. The
+ * persistent Android notification is required by the foreground service.
  */
 export function configureDownloadEngine(opts: { wifiOnly: boolean }): void {
   setConfig({
@@ -49,10 +42,9 @@ export type MediaDownloadHandlers = {
 }
 
 /**
- * Bind the native task events to our handlers. Shared by {@link
- * startMediaDownload} (fresh task) and {@link wireExistingTask} (a task that
- * survived a prior session): a reattached task object carries NO callbacks, so
- * its events would fire into the void until they are re-bound here.
+ * Bind native task events to our handlers. Shared by {@link startMediaDownload}
+ * and {@link wireExistingTask}: a reattached task carries NO callbacks, so its
+ * events fire into the void until re-bound here.
  */
 function attachHandlers(
   task: EngineTask,
@@ -82,9 +74,9 @@ export type MediaDownloadSpec = {
 }
 
 /**
- * Start a media download and wire its native events to the pure core: progress
- * and completion pass through; an error is mapped to a TransferInterruption and
- * classified into paused/failed/canceled before reaching the caller.
+ * Start a media download, wiring native events to the pure core: progress and
+ * completion pass through; errors are mapped + classified into
+ * paused/failed/canceled before reaching the caller.
  */
 export function startMediaDownload(
   spec: MediaDownloadSpec,
@@ -102,20 +94,17 @@ export function startMediaDownload(
   })
 
   attachHandlers(task, handlers)
-  // createDownloadTask only CREATES the task + sets its params; the native
-  // transfer doesn't begin until start() invokes the native download(). Without
-  // it, no begin/progress/done event ever fires and the record stays
-  // "downloading" at 0 bytes. Reattached tasks are already running, so
-  // wireExistingTask must NOT call start() (it would error "already started").
+  // start() begins the native transfer; without it no event fires and the
+  // record stays "downloading" at 0 bytes. Reattached tasks are already running,
+  // so wireExistingTask must NOT call start() (errors "already started").
   task.start()
   return task
 }
 
 /**
  * Re-bind handlers onto a task recovered via {@link listExistingDownloadTasks}
- * after an app restart. Without this, a transfer that completes post-relaunch
- * dispatches its done event into a task with no callbacks and can never reach
- * the committed state.
+ * after an app restart. Without it, a post-relaunch completion fires done into a
+ * callback-less task and never reaches the committed state.
  */
 export function wireExistingTask(
   task: EngineTask,

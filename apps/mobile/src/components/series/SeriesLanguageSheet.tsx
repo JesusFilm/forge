@@ -17,13 +17,9 @@ import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import type { WatchChildLanguage } from "../../lib/normalizeVideo"
 
-// Series language sheet. A near-twin of the watch LanguageSheetContent, but over
-// the series' childDubLanguages (the episode language union) instead of the
-// trailer's own dubs. Two reasons it's a separate component, not a reuse:
-//   - identity is the unique `slug` (keyExtractor + selection), never bcp47
-//     (`ko` collides with `ko-kmr`);
-//   - there's no `hls`/`documentId` to guard on — every listed language is a
-//     real, selectable episode language.
+// Series language sheet over childDubLanguages (episode language union); separate
+// from watch LanguageSheetContent because identity is the unique `slug` not bcp47
+// (`ko` collides with `ko-kmr`) and there's no `hls`/`documentId` to guard.
 function displayName(lang: WatchChildLanguage): string {
   return lang.name ?? lang.slug
 }

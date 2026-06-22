@@ -4,9 +4,8 @@ import { SURFACE_COLOR } from "../../lib/color"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 
 /**
- * Fade-in/out placeholder rows for a formSheet whose data is still arriving
- * (e.g. variants/subtitles not yet enriched into the session). Signals
- * "loading", not "empty".
+ * Shimmering placeholder rows for a formSheet whose data is still arriving
+ * (e.g. variants/subtitles not yet enriched). Signals "loading", not "empty".
  */
 export function SheetLoading({ rows = 4 }: { rows?: number }) {
   const opacity = useShimmerOpacity()

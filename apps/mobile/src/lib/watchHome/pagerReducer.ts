@@ -1,32 +1,7 @@
 /**
- * Pure state machine for the Home hero pager (plan U4, HTD "Hero pager
- * advance rules"). The component (HomeHeroPager) owns the platform pieces —
- * the FlatList, the single expo-video player, and the actual setTimeout
- * timers — and drives them from this reducer's state plus the derived
- * selectors below. Encoded rules:
- *
- *   - advance: video slide on PLAY_TO_END; image/mux slide on the 7s image
- *     timer; STREAM_ERROR or MAX_DWELL_ELAPSED skips a stuck slide so one bad
- *     stream can't freeze the pager (AE5)
- *   - end of queue wraps to index 0 (wrapCount lets the caller reset its
- *     played set / rebuild the queue)
- *   - chip tap on the current index is a no-op; taps during an in-flight
- *     replaceAsync are dropped entirely (serialized swaps, AE3)
- *   - videoReady latches true once and never un-latches on transient idle
- *     (see docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop)
- *   - SUSPEND stops timers (timersRunning selector) and records an
- *     interrupted swap as pendingSwap; RESUME restores the current slide and
- *     shouldReissueSwap tells the component to re-issue it (AE6)
- *   - mute is a CONTROLLED prop owned by the screen, not reducer state: the
- *     session rules (unmute persists across advances, reset to muted on tab
- *     blur) are implemented in HomeScreen
- *   - single-slide queue: no auto-advance, chips/dots hidden
- *     (showsPagerChrome, AE2)
- *
- * No-op transitions return the SAME state reference so useReducer bails out
- * of re-renders and component effects keyed on state identity stay quiet.
- *
- * Pure TypeScript only — no React/React Native imports.
+ * Pure state machine for the Home hero pager (plan U4); HomeHeroPager drives the platform pieces from its state +
+ * selectors. No-op transitions return the SAME state reference. Pure TS. Rules: advance/skip (AE5), wrap, serialized swaps (AE3),
+ * videoReady latch (docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop), suspend/resume (AE6), controlled mute, single-slide chrome (AE2).
  */
 
 import type { WatchHomeSlide } from "./carouselSequence"
@@ -35,18 +10,17 @@ import type { WatchHomeSlide } from "./carouselSequence"
 export const WATCH_HOME_IMAGE_SLIDE_DWELL_MS = 7000
 
 /**
- * Stuck-slide guard: a video slide that has not reached "playing" within this
- * budget is skipped. Playing slides are exempt — PLAY_TO_END advances them.
+ * Stuck-slide guard: a video slide not "playing" within this budget is skipped.
+ * Playing slides are exempt — PLAY_TO_END advances them.
  */
 export const WATCH_HOME_MAX_DWELL_MS = 20000
 
 export type PagerSuspendReason = "blur" | "scroll"
 
 /**
- * Reveal state for the ACTIVE slide. "poster" paints immediately on every
- * slide change; "playing" is what hides the poster over the VideoView (the
- * handoff rule: the incoming slide's poster stays visible during
- * replaceAsync).
+ * Reveal state for the ACTIVE slide. "poster" paints on every slide change;
+ * "playing" hides the poster over the VideoView. Handoff rule: the incoming
+ * slide's poster stays visible during replaceAsync.
  */
 export type PagerPlaybackPhase = "poster" | "resolving" | "playing"
 
@@ -59,17 +33,15 @@ export type PagerState = {
   /** A replaceAsync swap is running on the native player. */
   swapInFlight: boolean
   /**
-   * A swap was interrupted (slide changed mid-swap, or suspended with one in
-   * flight, or a stream resolved while suspended). The component re-issues it
-   * when shouldReissueSwap turns true.
+   * A swap was interrupted (slide changed mid-swap, suspended with one in flight,
+   * or a stream resolved while suspended). Component re-issues it when
+   * shouldReissueSwap turns true.
    */
   pendingSwap: boolean
   /**
-   * A skip (STREAM_ERROR or MAX_DWELL_ELAPSED) arrived while suspended and
-   * was deferred. RESUME executes the advance and clears this flag (AE5).
-   * Cleared early by SLIDES_SET, or by an explicit move (CHIP_TAPPED /
-   * SLIDE_SHOWN / SWIPED) to a DIFFERENT index — moveTo bails before
-   * clearing when the index is unchanged.
+   * A skip (STREAM_ERROR / MAX_DWELL_ELAPSED) arrived while suspended and was
+   * deferred; RESUME executes the advance and clears it (AE5). Cleared early by
+   * SLIDES_SET or by an explicit move to a DIFFERENT index (moveTo).
    */
   pendingSkip: boolean
   suspended: PagerSuspendReason | null
@@ -84,8 +56,8 @@ export type PagerEvent =
   /** Swipe momentum settled on an index. */
   | { type: "SLIDE_SHOWN"; index: number }
   /**
-   * User swipe gesture committed. Unlike CHIP_TAPPED it is NOT dropped during
-   * an in-flight swap — moveTo records the interrupted swap as pendingSwap.
+   * User swipe committed. Unlike CHIP_TAPPED it is NOT dropped during an
+   * in-flight swap — moveTo records the interrupted swap as pendingSwap.
    */
   | { type: "SWIPED"; index: number }
   | { type: "CHIP_TAPPED"; index: number }
@@ -127,8 +99,8 @@ export function showsPagerChrome(state: PagerState): boolean {
 }
 
 /**
- * Whether the component should keep its auto-advance timers (image dwell,
- * max dwell) armed. Suspension and single-slide queues stop them.
+ * Whether to keep auto-advance timers (image dwell, max dwell) armed.
+ * Suspension and single-slide queues stop them.
  */
 export function timersRunning(state: PagerState): boolean {
   return state.suspended === null && state.slides.length > 1

@@ -1,7 +1,6 @@
-// Pure, React-free decision helpers for the /series/[slug] screen. Extracted
-// (like panelState.ts / detailsHelpers.ts) so the bug-prone branches — trailer
-// pick, leaf bounce, state selection — are unit-testable under jest-expo,
-// which cannot load .tsx.
+// Pure, React-free decision helpers for /series/[slug]. Extracted (like
+// panelState.ts) so the bug-prone branches (trailer pick, leaf bounce, state
+// selection) are unit-testable under jest-expo, which cannot load .tsx.
 
 import { isSeriesRecord } from "../../lib/isSeriesRecord"
 import { resolveDefaultSlug } from "../../lib/resolveDefaultLanguage"
@@ -9,9 +8,9 @@ import { resolveDefaultSlug } from "../../lib/resolveDefaultLanguage"
 // ── Playable trailer (R4) ──────────────────────────────────────────
 
 /**
- * The series' own playable dub — what Play Trailer plays. Same rule as
- * normalizeVideo's pickFirstPlayableVariant: `published` AND a non-empty
- * `hls`. Null when no dub qualifies, so the caller renders no dead action.
+ * The series' own playable dub (what Play Trailer plays). Same rule as
+ * pickFirstPlayableVariant: `published` AND non-empty `hls`. Null when none
+ * qualifies, so the caller renders no dead action.
  */
 export function pickPlayableTrailer<
   V extends { published: boolean; hls: string | null },
@@ -26,9 +25,8 @@ export function pickPlayableTrailer<
 
 /**
  * The dub Play Trailer starts in before any selection: the default-language
- * chain (device locale → video primary → English → first) restricted to
- * PLAYABLE dubs — the watch screen's resolveDefaultVariantIndex rule, not
- * "first dub in array order", which starts trailers in arbitrary languages.
+ * chain (device locale → primary → English → first) over PLAYABLE dubs only
+ * (resolveDefaultVariantIndex rule), not array order, which picks arbitrary languages.
  */
 export function pickDefaultTrailer<
   V extends {
@@ -66,27 +64,9 @@ export function pickDefaultTrailer<
 export type LeafBounceDecision = "render" | "bounce" | "pending"
 
 /**
- * Should a record deep-linked to /series bounce to /watch? Evaluates the same
- * isSeriesRecord predicate as the watch route's series redirect (U5), and both
- * sides replace — so the two seams can never disagree and loop.
- *
- * `hasSeriesSelection` is the completeness signal: whether the RAW videoBySlug
- * object carries the series-only `childDubLanguages` key — present (even as
- * []) only once the series query itself has answered. It is the one reliable
- * discriminator here: a warm partial cached by the watch screen's lean
- * fragment carries `label` and reads back with loading=false (cache-first +
- * returnPartialData), so neither a present label nor `!loading` proves the
- * record's own children have arrived — a labeled-with-children series (e.g.
- * FEATURE_FILM with 49 episodes) looks leaf-shaped on that partial, and the
- * once-guarded replace would eject it to /watch unrecoverably.
- *
- * - "render": series-shaped (label or episodes). Shape can only be gained as
- *   partial data fills in, never lost, so this wins regardless of completeness.
- * - "bounce": a non-series-shaped record once the series query has answered —
- *   only then is "no series label, no episodes" a real leaf rather than a
- *   series whose children simply haven't arrived yet.
- * - "pending": no record yet, or a watch-fragment partial that may still gain
- *   episodes (or a series label) from the in-flight series query.
+ * Should a /series deep-link bounce to /watch? Same isSeriesRecord predicate as the watch redirect (U5),
+ * both replace so seams can't loop. "render": series-shaped; "bounce": leaf once `hasSeriesSelection` (the
+ * completeness signal that avoids ejecting a warm-cache partial reading leaf-shaped but still gaining children); else "pending".
  */
 export function resolveLeafBounce(
   record:
@@ -103,11 +83,9 @@ export function resolveLeafBounce(
 // ── Screen state (R16) ─────────────────────────────────────────────
 
 /**
- * Which of the three screen states renders. Mirrors the watch screen's
- * showErrorState rule: error ONLY when the query failed AND nothing is
- * renderable — a stale/partial record (or a seed to paint the hero from)
- * always beats an error screen. A failed query that is already retrying
- * (`loading` again) shows the spinner, not a flash of the error state.
+ * Which of the three screen states renders. Mirrors showErrorState: error ONLY
+ * when the query failed AND nothing renderable — a stale/partial record or seed
+ * beats it, and a retrying query (`loading`) shows the spinner, not an error flash.
  */
 export function resolveScreenState(input: {
   record: { documentId: string } | null

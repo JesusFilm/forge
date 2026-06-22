@@ -18,10 +18,9 @@ export interface BrowseTopicsProps {
   onSelect: (searchTerm: string) => void
 }
 
-// The Discover empty state: a "Browse Categories" heading over a 2-column grid
-// of gradient category cards, scrollable so it never clips on short screens.
-// Replaces the old dead-end placeholder line. Tapping a card routes through
-// onSelect (wired to the screen's stale-guarded search).
+// Discover empty state: "Browse Categories" heading over a scrollable 2-column
+// grid of gradient cards. Tapping a card routes through onSelect (wired to the
+// screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
   const thumbnails = useCategoryThumbnails()
   const { width } = useWindowDimensions()

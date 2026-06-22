@@ -1,19 +1,14 @@
-// SYNC: keep in sync with apps/mobile/src/lib/resolveDefaultLanguage.ts
-//
-// Resolves the default audio dub for the watch session. TV v1 has no persisted
-// cross-restart preference (mobile's WatchPreferencesProvider is deferred), but
-// the `preferredLanguageSlug` parameter is kept so the slug-keyed match is wired
-// for when persistence lands — and so the priority chain matches mobile's.
+// SYNC: keep in sync with apps/mobile/src/lib/resolveDefaultLanguage.ts.
+// Resolves the default audio dub; TV v1 has no persisted preference yet, but
+// `preferredLanguageSlug` stays wired for when persistence lands, matching mobile's priority chain.
 
 type LanguageOption = {
   slug: string
   bcp47: string | null
   /**
-   * Unique, stable language-entity slug (e.g. "korean", "english-north-american-
-   * indigenous"). Used for EXACT preference matching — unlike bcp47, it never
-   * collides across distinct languages. Required (nullable) so a caller that
-   * passes a `preferredLanguageSlug` can't silently forget to populate it and
-   * get a never-matching preference.
+   * Unique, stable language-entity slug (e.g. "korean"). Used for EXACT
+   * preference matching — unlike bcp47 it never collides across languages.
+   * Required (nullable) so callers can't forget it and get a non-matching pref.
    */
   languageSlug: string | null
 }
@@ -38,17 +33,9 @@ function matchByBcp47Prefix(
 }
 
 /**
- * Resolve the best default language from a list of options.
- *
- * Priority: persisted preference → device locale → video primary language →
- * English → first option.
- *
- * `preferredLanguageSlug` is matched EXACTLY against each option's
- * `languageSlug`, never by bcp47 prefix — bcp47 prefixes collide across distinct
- * languages (Korean "ko" vs Kurmanji "ko-kmr"; English "en" vs the indigenous
- * "en-nai"), so a prefix match would re-select the wrong sibling. It is a soft
- * preference: when no option matches it, resolution falls through to the
- * locale/primary/English chain so a video that lacks it still defaults sanely.
+ * Resolve the best default language: preference → device locale → video primary
+ * → English → first. `preferredLanguageSlug` matches EXACTLY on `languageSlug`,
+ * never bcp47 prefix (prefixes collide: ko vs ko-kmr, en vs en-nai); soft fall-through.
  */
 export function resolveDefaultSlug(
   options: LanguageOption[],

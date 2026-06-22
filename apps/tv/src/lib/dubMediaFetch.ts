@@ -11,19 +11,9 @@ export type DubMediaCallbacks = {
   onSettled: (id: string) => void
 }
 
-// Fire a deduplicated, retry-on-error fetch for one dub's media. `requested` is
-// the dedupe ledger: an id present in it already has a fetch in flight (or done
-// successfully), so repeat calls are no-ops; a FAILED fetch removes its id so
-// the next call retries. `onStart`/`onSettled` bracket the request for loading
-// state; `onError` flags a failure distinct from "loaded, empty".
-//
-// The whole dispatch is wrapped so ANY synchronous failure — from onStart,
-// from fetchMedia itself, or from attaching the promise chain (a non-thenable
-// return value, or a `.then` that throws) — is treated as a failed attempt.
-// The catch releases the ledger slot and fires onError/onSettled
-// unconditionally; if the synchronous path got far enough to hand control to
-// the async chain, that chain (not the catch) owns release/onError on rejection,
-// so there is exactly one release per outcome and no double-fire.
+// Deduplicated, retry-on-error fetch for one dub's media; `requested` is the
+// ledger (in-flight/done = no-op, failed removes its id to allow retry). ANY
+// sync failure counts as failed; exactly one release per outcome, no double-fire.
 export function ensureDubMedia(
   id: string | null | undefined,
   requested: Set<string>,

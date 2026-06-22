@@ -5,10 +5,9 @@ import {
 } from "./normalizeVideo"
 
 // ── Builders ────────────────────────────────────────────────────────
-//
 // makeChild builds one parent.children[] entry (a { child } relation wrapper).
-// The whole makeRawVideo return is cast to the normalizer's param type, so this
-// stays as an inferred object literal whose concrete field types overlap it.
+// makeRawVideo's return is cast to the normalizer's param type, so builders stay
+// inferred object literals whose concrete field types overlap it.
 function makeChild(documentId: string, slug: string, title: string) {
   return {
     child: {
@@ -478,11 +477,9 @@ describe("normalizeSeries — base record + trailer", () => {
     expect(result.variants).toHaveLength(2)
   })
 
-  // Contract guard (mocked-shape vs real-contract): SeriesWatchVideo selects
-  // dubs WITHOUT the player-only duration/muxVideo, so the lean shape has those
-  // keys ABSENT (undefined), not null. The shared builder must still produce a
-  // playable trailer from hls alone; deleting the `?? null` coalescing in
-  // buildWatchVideoRecord should fail here.
+  // Contract guard: SeriesWatchVideo selects dubs WITHOUT player-only
+  // duration/muxVideo, so those keys are ABSENT (undefined), not null. Builder
+  // must still play a trailer from hls; deleting `?? null` in buildWatchVideoRecord fails here.
   it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
     const result = normalizeSeries(
       makeRawSeries({

@@ -8,7 +8,7 @@ import {
   GENERATION_MIN_BLOCKS,
   type DraftExperience,
   type VideoCandidate,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 
 const candidates: VideoCandidate[] = [
   {
@@ -34,6 +34,47 @@ const candidates: VideoCandidate[] = [
 ]
 
 describe("normalizeExperienceDraft", () => {
+  it("round-trips a reference-first quote: text-less + structured ids survive into a valid canonical block", () => {
+    // Video-anchored generation emits a citation reference + structured identity and NO
+    // verse text (apps/web resolves text at render). The assembled draft must still pass
+    // the canonical persistence boundary, and the structured ids must survive normalize.
+    const draft: DraftExperience = {
+      title: "The Resurrection",
+      metaDescription: "Grounded scripture, no LLM-authored verse text.",
+      blocks: [
+        {
+          t: "videoHero",
+          sectionRef: "s01",
+          candidateRef: "v01",
+          heading: "Watch",
+        },
+        {
+          t: "bibleQuotesCarousel",
+          sectionRef: "s02",
+          heading: "Scripture",
+          quotes: [
+            {
+              reference: "John 20:19-29",
+              osisId: "John.20.19",
+              chapterStart: 20,
+              verseStart: 19,
+              verseEnd: 29,
+            },
+          ],
+        },
+      ],
+    }
+    const normalized = normalizeExperienceDraft(draft, candidates)
+    const parsed = BlocksSchema.parse(normalized.blocks)
+    const carousel = parsed.find((b) => b.t === "bibleQuotesCarousel")
+    expect(carousel?.t).toBe("bibleQuotesCarousel")
+    if (carousel?.t === "bibleQuotesCarousel") {
+      expect(carousel.quotes[0].text).toBeUndefined()
+      expect(carousel.quotes[0].osisId).toBe("John.20.19")
+      expect(carousel.quotes[0].verseEnd).toBe(29)
+    }
+  })
+
   it("normalizes candidate refs and section refs into admin blocks", () => {
     const draft: DraftExperience = {
       title: "Forgiven and Free",

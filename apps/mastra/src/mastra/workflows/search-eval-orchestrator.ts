@@ -31,6 +31,11 @@ const DEFAULT_BASELINE_NAME = "seed-baseline"
 const DEFAULT_SEARCH_MODE = "hybrid"
 const DEFAULT_CONTENT_TYPE = "all"
 const DEFAULT_MODE = "seed-baseline"
+const SEARCH_PIPELINE_MODES = [
+  "hybrid",
+  "keyword-first",
+  "semantic-only",
+] as const
 
 const SafeNameSchema = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/)
 
@@ -61,9 +66,11 @@ export const SearchEvalOrchestratorWorkflowInputSchema = z
       .default(20)
       .describe("Admin search result limit per prompt."),
     searchMode: z
-      .enum(["hybrid", "keyword-first"])
+      .enum(SEARCH_PIPELINE_MODES)
       .default(DEFAULT_SEARCH_MODE)
-      .describe("Admin search pipeline to evaluate."),
+      .describe(
+        "Admin search pipeline to evaluate. semantic-only is an internal diagnostic eval mode.",
+      ),
     contentType: z
       .enum(["all", "video", "experience"])
       .default(DEFAULT_CONTENT_TYPE)

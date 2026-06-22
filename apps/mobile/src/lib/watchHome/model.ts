@@ -1,20 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home.ts (the pure model builder
- * only — web's fetch/cache wrappers do not port) — sync obligation in
- * ./config.ts. Mobile adaptations:
- *
- *   - No hrefs: cards carry slug/coreId/parent identifiers and components
- *     decide routes (web's `buildHref` is dropped).
- *   - Lean input (KTD-2): bulk videos carry no dubs/variants, so cards have
- *     no `hls` and `playbackId` stays null until a later unit resolves
- *     streams lazily per slide (`selectPlayableVariant` is dropped).
- *   - Carousel slide eligibility is a poster image + slug (KTD-4), not a
- *     playable stream.
- *   - heroSlides intentionally not ported — mobile's hero queue is the
- *     carousel sequence (HomeScreen builds it via buildWatchHomeHeroQueue
- *     from model.carousel, not a pre-built model field).
- *
- * Pure TypeScript only — no React/React Native imports.
+ * ADAPTED COPY of apps/web/src/lib/watch-home.ts (pure model builder; sync obligation
+ * in ./config.ts). Mobile diffs: no hrefs; lean input (KTD-2, playbackId null for lazy
+ * resolve); carousel eligibility poster + slug (KTD-4); heroSlides not ported (HomeScreen builds the queue via buildWatchHomeHeroQueue).
  */
 
 import {
@@ -36,8 +23,7 @@ import {
 
 /**
  * Lean bulk-video input shape (KTD-2): card fields only, no dubs/variants.
- * Mirrors the `watchHomeVideos` fragment mobile sends (U3), using the
- * codebase-wide `documentId: id` alias convention.
+ * Mirrors the `watchHomeVideos` fragment (U3) with the `documentId: id` alias.
  */
 export type WatchHomeImageInput = {
   url?: string | null
@@ -158,10 +144,7 @@ export function pickAdminImage(
   return null
 }
 
-/**
- * Copy of apps/web/src/lib/format-duration.ts: `m:ss` sub-hour, `h:mm:ss`
- * hour-plus, `""` for invalid input.
- */
+/** Copy of web's format-duration: `m:ss` sub-hour, `h:mm:ss` hour-plus, `""` if invalid. */
 function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return ""
   const h = Math.floor(seconds / 3600)

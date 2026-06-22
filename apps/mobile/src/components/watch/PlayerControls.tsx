@@ -72,10 +72,9 @@ export function PlayerControls({
     }
   }, [isPlaying, player])
 
-  // Reflect an external seek (double-tap-the-sides) in the label/scrubber at
-  // once — the poll is idle while paused, so without this the time would lag.
-  // Clear `ended` when the seek lands before the end (mirrors skip/handleSeek),
-  // else a double-tap-rewind from the end leaves the center stuck on Replay.
+  // Reflect an external seek (double-tap-sides) at once — the poll is idle while
+  // paused. Clear `ended` when it lands before the end (mirrors skip/handleSeek),
+  // else a rewind from the end leaves the center stuck on Replay.
   useEffect(() => {
     if (!seekSignal) return
     setCurrentTime(seekSignal.time)
@@ -99,15 +98,13 @@ export function PlayerControls({
     if (isPlaying) setEnded(false)
   }, [isPlaying])
 
-  // Seed from the live player on (re)mount. The controls unmount when the
-  // chrome hides; without this, re-showing them resets to 0:00 / play because
-  // the fresh component starts at 0 and the poll only runs while playing — so a
-  // paused or ended video would lose its position and the replay state.
+  // Seed from the live player on (re)mount. Controls unmount when chrome hides;
+  // without this, re-showing resets to 0:00/play, losing a paused or ended
+  // video's position and replay state (poll only runs while playing).
   useEffect(() => {
-    // Mute is read first and unconditionally: it persists on the player across
-    // a chrome hide/show, but this fresh mount's useState(false) would otherwise
-    // show an un-muted icon while audio stays muted. (Duration may still be 0
-    // here on HLS, so the time/ended seed stays behind the guard below.)
+    // Mute is read first, unconditionally: it persists across chrome hide/show,
+    // but this mount's useState(false) would show an un-muted icon over muted
+    // audio. (HLS duration may be 0 here, so time/ended seed stays guarded below.)
     setIsMuted(player.muted)
     const d = player.duration
     if (!Number.isFinite(d) || d <= 0) return
@@ -119,11 +116,9 @@ export function PlayerControls({
 
   const togglePlayPause = useCallback(() => {
     onInteract?.()
-    // Read the live player state, NOT the React `isPlaying` snapshot. A source
-    // swap (e.g. switching language mid-play) can leave expo-video paused
-    // without emitting a playingChange, so the snapshot goes stale-true.
-    // Trusting it would call pause() on an already-paused player every press —
-    // wedging the controls so the video can never be resumed without a remount.
+    // Read live player state, NOT the React `isPlaying` snapshot: a source swap
+    // (e.g. mid-play language switch) can pause expo-video without a
+    // playingChange, so the stale-true snapshot would wedge controls until remount.
     if (player.playing) {
       player.pause()
       return
@@ -318,10 +313,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // The center cluster sits above the bottom scrim, so over a bright frame the
-  // white glyphs need their own contrast. The play button carries a backplate;
-  // the skip glyphs lean on this shadow halo (same technique as the captions)
-  // to clear the WCAG 1.4.11 3:1 bar against any footage.
+  // The center cluster sits above the scrim, so white glyphs need own contrast
+  // over bright frames. Skip glyphs lean on this shadow halo (like the captions)
+  // to clear WCAG 1.4.11's 3:1 bar against any footage; the play button has a backplate.
   centerIcon: {
     textShadowColor: hexToRgba(BLACK, 0.6),
     textShadowOffset: { width: 0, height: 1 },

@@ -13,6 +13,7 @@ import {
 import {
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   EmbeddingProviderError,
+  requestModelForEndpoint,
   requestEmbeddingVectors,
   validateEmbeddingProviderResult,
   type EmbeddingProviderResult,
@@ -25,6 +26,8 @@ const DEFAULT_OVERLAP_TOKENS = 100
 const DEFAULT_MAX_BATCH_CHUNKS = 8
 const DEFAULT_MAX_BATCH_TOKENS = 20_000
 const CHUNKING_VERSION = "enriched-transcript-v2"
+const DEFAULT_PROVIDER_BATCH_MAX_ATTEMPTS = 3
+const DEFAULT_PROVIDER_BATCH_RETRY_DELAY_MS = 1_000
 
 type CanonicalFeltNeed =
   | "Acceptance"
@@ -376,6 +379,8 @@ export type TranscriptEmbeddingWorkflowOptions = {
       itemLabel: string
     },
   ) => Promise<EmbeddingProviderResult>
+  providerRetryMaxAttempts?: number
+  providerRetryDelayMs?: number
   adminIngestClient?: (
     payload: AdminTranscriptEmbeddingIngestPayload,
   ) => Promise<AdminTranscriptIngestClientResult>
@@ -396,6 +401,28 @@ const embeddedRunByMastraRunId = new Map<string, EmbeddedRun>()
 export type TranscriptEmbeddingRouteOutcome = {
   status: number
   body: { result?: TranscriptEmbeddingWorkflowResult; error?: string }
+}
+
+function routeRequestEnvelope(body: unknown): {
+  runId: string
+  input: unknown
+} {
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    "runId" in body &&
+    "input" in body
+  ) {
+    const record = body as { runId?: unknown; input?: unknown }
+    const runId =
+      typeof record.runId === "string" && record.runId.trim()
+        ? record.runId.trim()
+        : randomUUID()
+    return { runId, input: record.input }
+  }
+
+  return { runId: randomUUID(), input: body }
 }
 
 function normalizeTranscriptText(
@@ -775,6 +802,239 @@ function createBatches(
   return batches
 }
 
+function isRecoverableGatewayProviderError(
+  error: unknown,
+): error is EmbeddingProviderError {
+  return (
+    error instanceof EmbeddingProviderError &&
+    (error.code === "upstream_failed" || error.code === "invalid_response")
+  )
+}
+
+function shouldSplitProviderBatch(error: unknown, batchSize: number): boolean {
+  return (
+    batchSize > 1 &&
+    isRecoverableGatewayProviderError(error) &&
+    !error.retryable
+  )
+}
+
+function shouldRetryProviderBatch(
+  error: unknown,
+  options: { batchSize: number; attempt: number; maxAttempts: number },
+): boolean {
+  if (options.attempt >= options.maxAttempts) return false
+  if (!isRecoverableGatewayProviderError(error)) return false
+
+  return error.retryable || options.batchSize === 1
+}
+
+function retryDelayMs(options: {
+  baseDelayMs: number
+  attempt: number
+}): number {
+  if (options.baseDelayMs <= 0) return 0
+  return options.baseDelayMs * 2 ** Math.max(0, options.attempt - 1)
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve()
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function combineEmbeddingProviderResults(
+  left: EmbeddingProviderResult,
+  right: EmbeddingProviderResult,
+  options: {
+    context: string
+    itemLabel: string
+    expectedDimensions: number
+    expectedCount: number
+  },
+): EmbeddingProviderResult {
+  const mismatch =
+    left.dimensions !== right.dimensions ||
+    left.model !== right.model ||
+    left.provider !== right.provider ||
+    left.requestModel !== right.requestModel ||
+    left.nativeDimensions !== right.nativeDimensions ||
+    left.transformVersion !== right.transformVersion
+
+  if (mismatch) {
+    throw new EmbeddingProviderError(
+      "dimension_mismatch",
+      `${options.context} split embedding responses were inconsistent`,
+    )
+  }
+
+  return validateEmbeddingProviderResult(
+    {
+      embeddings: [...left.embeddings, ...right.embeddings],
+      dimensions: left.dimensions,
+      nativeDimensions: left.nativeDimensions ?? right.nativeDimensions,
+      transformVersion: left.transformVersion ?? right.transformVersion,
+      tokenCount: left.tokenCount + right.tokenCount,
+      model: left.model,
+      provider: left.provider,
+      requestModel: left.requestModel,
+    },
+    options.expectedCount,
+    {
+      expectedDimensions: options.expectedDimensions,
+      context: options.context,
+      itemLabel: options.itemLabel,
+    },
+  )
+}
+
+async function requestEmbeddingBatchWithFallback(
+  batch: PlannedChunk[],
+  options: TranscriptEmbeddingWorkflowOptions & {
+    planned: PlannedRun
+    providerConfig: ReturnType<typeof getTranscriptEmbeddingProviderConfig>
+    context: string
+    splitDepth?: number
+    splitPath?: string
+  },
+): Promise<EmbeddingProviderResult> {
+  const batchInput = batch.map(
+    (chunk) => chunk.embeddingInputText ?? chunk.text,
+  )
+  const maxAttempts =
+    options.providerRetryMaxAttempts ?? DEFAULT_PROVIDER_BATCH_MAX_ATTEMPTS
+  const retryBaseDelayMs =
+    options.providerRetryDelayMs ?? DEFAULT_PROVIDER_BATCH_RETRY_DELAY_MS
+
+  for (let attempt = 1; ; attempt += 1) {
+    let rawResult: EmbeddingProviderResult
+    try {
+      rawResult = options.embeddingRequester
+        ? await options.embeddingRequester(batchInput, {
+            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+            context: options.context,
+            itemLabel: "chunks",
+          })
+        : await requestEmbeddingVectors(batchInput, {
+            apiKey: options.apiKey ?? options.providerConfig.apiKey,
+            baseUrl:
+              options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+            model: options.planned.model.name,
+            provider: options.planned.model.provider,
+            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+            expectedNativeDimensions:
+              options.providerConfig.expectedNativeDimensions,
+            truncateToDimensions: options.providerConfig.truncateToDimensions,
+            transformVersion: options.providerConfig.transformVersion,
+            userAgent: options.providerConfig.userAgent,
+            context: options.context,
+            itemLabel: "chunks",
+            timeoutMs: options.timeoutMs ?? options.providerConfig.timeoutMs,
+            fetchImpl: options.fetchImpl,
+          })
+    } catch (error) {
+      if (
+        shouldRetryProviderBatch(error, {
+          batchSize: batch.length,
+          attempt,
+          maxAttempts,
+        })
+      ) {
+        const delayMs = retryDelayMs({
+          baseDelayMs: retryBaseDelayMs,
+          attempt,
+        })
+        console.warn(
+          JSON.stringify({
+            event: "transcript_embedding_batch_provider_retry",
+            context: options.context,
+            mastraRunId: options.planned.generation.mastraRunId,
+            target: options.planned.target,
+            language: options.planned.language,
+            model: options.planned.model.name,
+            provider: options.planned.model.provider,
+            requestModel: requestModelForEndpoint(
+              options.planned.model.name,
+              options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+            ),
+            errorCode:
+              error instanceof EmbeddingProviderError ? error.code : "unknown",
+            retryable:
+              error instanceof EmbeddingProviderError ? error.retryable : null,
+            attempt,
+            maxAttempts,
+            delayMs,
+            chunkCount: batch.length,
+            tokenCount: batch.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
+          }),
+        )
+        await sleep(delayMs)
+        continue
+      }
+
+      if (!shouldSplitProviderBatch(error, batch.length)) throw error
+
+      const splitDepth = options.splitDepth ?? 0
+      const splitPath = options.splitPath ?? "root"
+      console.warn(
+        JSON.stringify({
+          event: "transcript_embedding_batch_split_retry",
+          context: options.context,
+          mastraRunId: options.planned.generation.mastraRunId,
+          target: options.planned.target,
+          language: options.planned.language,
+          model: options.planned.model.name,
+          provider: options.planned.model.provider,
+          requestModel: requestModelForEndpoint(
+            options.planned.model.name,
+            options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+          ),
+          errorCode:
+            error instanceof EmbeddingProviderError ? error.code : "unknown",
+          retryable:
+            error instanceof EmbeddingProviderError ? error.retryable : null,
+          splitDepth,
+          splitPath,
+          chunkCount: batch.length,
+          tokenCount: batch.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
+        }),
+      )
+
+      const splitIndex = Math.ceil(batch.length / 2)
+      const left = await requestEmbeddingBatchWithFallback(
+        batch.slice(0, splitIndex),
+        {
+          ...options,
+          context: `${options.context} split 1/2`,
+          splitDepth: splitDepth + 1,
+          splitPath: `${splitPath}.1`,
+        },
+      )
+      const right = await requestEmbeddingBatchWithFallback(
+        batch.slice(splitIndex),
+        {
+          ...options,
+          context: `${options.context} split 2/2`,
+          splitDepth: splitDepth + 1,
+          splitPath: `${splitPath}.2`,
+        },
+      )
+
+      return combineEmbeddingProviderResults(left, right, {
+        context: options.context,
+        itemLabel: "chunks",
+        expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+        expectedCount: batch.length,
+      })
+    }
+
+    return validateEmbeddingProviderResult(rawResult, batch.length, {
+      expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+      context: options.context,
+      itemLabel: "chunks",
+    })
+  }
+}
+
 function sha256Json(value: unknown): string {
   return `sha256:${createHash("sha256")
     .update(JSON.stringify(value))
@@ -1118,40 +1378,18 @@ export async function embedPlannedTranscript(
   for (let index = 0; index < batches.length; index += 1) {
     const batch = batches[index]!
     const providerConfig = getTranscriptEmbeddingProviderConfig()
-    const batchInput = batch.map(
-      (chunk) => chunk.embeddingInputText ?? chunk.text,
-    )
     const requestContext = `Transcript embedding batch ${index + 1}/${batches.length}`
-    const rawResult = options.embeddingRequester
-      ? await options.embeddingRequester(batchInput, {
-          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-          context: requestContext,
-          itemLabel: "chunks",
-        })
-      : await requestEmbeddingVectors(batchInput, {
-          apiKey: options.apiKey ?? providerConfig.apiKey,
-          baseUrl: options.embeddingsBaseUrl ?? providerConfig.baseUrl,
-          model: planned.model.name,
-          provider: planned.model.provider,
-          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-          expectedNativeDimensions: providerConfig.expectedNativeDimensions,
-          truncateToDimensions: providerConfig.truncateToDimensions,
-          transformVersion: providerConfig.transformVersion,
-          userAgent: providerConfig.userAgent,
-          context: requestContext,
-          itemLabel: "chunks",
-          timeoutMs: options.timeoutMs ?? providerConfig.timeoutMs,
-          fetchImpl: options.fetchImpl,
-        })
-    const result = validateEmbeddingProviderResult(
-      rawResult,
-      batchInput.length,
-      {
-        expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-        context: requestContext,
-        itemLabel: "chunks",
-      },
-    )
+    const rawResult = await requestEmbeddingBatchWithFallback(batch, {
+      ...options,
+      planned,
+      providerConfig,
+      context: requestContext,
+    })
+    const result = validateEmbeddingProviderResult(rawResult, batch.length, {
+      expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+      context: requestContext,
+      itemLabel: "chunks",
+    })
 
     tokenCount += result.tokenCount
     transformVersion ??= result.transformVersion
@@ -1527,12 +1765,15 @@ export async function handleTranscriptEmbeddingRouteRequest({
     }
   }
 
-  const runId = randomUUID()
   const body = await readJson().catch(() => undefined)
+  const envelope = routeRequestEnvelope(body)
   const result =
     body === undefined
-      ? failure("invalid_input", { mastraRunId: runId, retryable: false })
-      : await launch(body, { runId })
+      ? failure("invalid_input", {
+          mastraRunId: envelope.runId,
+          retryable: false,
+        })
+      : await launch(envelope.input, { runId: envelope.runId })
 
   return {
     status: routeStatusForResult(result),
@@ -1550,4 +1791,5 @@ export const _internals = {
   toAdminPayload,
   CHUNKING_VERSION,
   workflowFailureFromRunResult,
+  routeRequestEnvelope,
 }

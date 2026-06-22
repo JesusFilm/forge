@@ -22,12 +22,9 @@ import { subtitleNameToCache } from "../lib/subtitleSelection"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
- * Shared selection state for the watch screen and its formSheet routes.
- *
- * The sheets (Language/Subtitle/Download) are separate navigation routes, so
- * they cannot receive callback props from the player screen. Instead the player
- * publishes the normalized video here and all routes read/write the active
- * variant + subtitle selection through this context.
+ * Shared selection state across the watch screen and its formSheet routes
+ * (Language/Subtitle/Download). Sheets are separate routes so can't take props;
+ * the player publishes the video here and all routes read/write selection.
  */
 type WatchSessionContextValue = {
   video: WatchVideoRecord | null
@@ -47,27 +44,27 @@ type WatchSessionContextValue = {
   /** Convenience: the variant currently selected, or null. */
   activeVariant: WatchVideoRecord["variants"][number] | null
   /**
-   * The active variant's downloads + subtitles, fetched lazily (one dub at a
-   * time) via {@link ensureActiveVariantMedia}. `null` until that dub's media
-   * has loaded — distinct from "loaded, empty" (`{ downloads: [], subtitles: [] }`).
+   * Active variant's downloads + subtitles, fetched lazily per dub via
+   * {@link ensureActiveVariantMedia}. `null` until loaded — distinct from
+   * "loaded, empty" (`{ downloads: [], subtitles: [] }`).
    */
   activeVariantMedia: VariantMedia | null
   /** True while the active variant's media request is in flight. */
   activeVariantMediaLoading: boolean
   /**
-   * True when the active variant's media fetch failed (vs. loaded-but-empty).
-   * Lets sheets show a retry affordance instead of a misleading empty list.
+   * True when the media fetch failed (vs. loaded-but-empty), so sheets can show
+   * a retry affordance instead of a misleading empty list.
    */
   activeVariantMediaError: boolean
   /**
-   * Fetch the active variant's downloads + subtitles if not already loaded /
-   * in flight. Call when the Download/Subtitle sheet opens or captions turn on.
+   * Fetch the active variant's downloads + subtitles unless already loaded/in
+   * flight; call when the Download/Subtitle sheet opens or captions turn on.
    * Deduped per dub id; a failed fetch is retried on the next call.
    */
   ensureActiveVariantMedia: () => void
   /**
-   * Cross-route snackbar signal. The download sheet route sets this on
-   * completion and dismisses itself; the player screen renders the snackbar.
+   * Cross-route snackbar signal: the download sheet sets it on completion and
+   * dismisses itself; the player screen renders the snackbar.
    */
   snackbarMessage: string | null
   setSnackbarMessage: (message: string | null) => void
@@ -99,10 +96,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // straight from the persisted store so it carries across videos and restarts.
   const subtitleEnabled = subtitlesEnabled
 
-  // Latest-render snapshot of the video so the persisting audio setter can read
-  // the chosen variant's language slug without taking `video` as a dep (which
-  // would re-create the setter — and the context memo — every render). Read only
-  // inside the event handler, so the latest value is always in hand.
+  // Latest-render video snapshot so the audio setter reads the chosen variant's
+  // language slug without taking `video` as a dep (which would re-create the
+  // setter and context memo every render). Read only inside the event handler.
   const videoRef = useRef<WatchVideoRecord | null>(null)
   videoRef.current = video
 
@@ -117,10 +113,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const resolvedVariantForRef = useRef<string | null>(null)
   const resolvedSubtitleForRef = useRef<string | null>(null)
 
-  // Exposed setters mark explicit user intent (so the resolution effects below,
-  // which call the raw state setters, never trip these guards) AND persist the
-  // choice app-wide by unique language slug. A new video re-resolves to a
-  // concrete variant/subtitle from that slug via resolveDefaultSlug.
+  // Exposed setters mark explicit user intent (the resolution effects call the
+  // raw setters, so never trip these guards) AND persist the choice app-wide by
+  // language slug; a new video re-resolves that slug via resolveDefaultSlug.
   const setActiveVariantIndex = useCallback(
     (index: number) => {
       userChoseVariantRef.current = true
@@ -149,10 +144,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     [setPreferredSubtitleLanguage],
   )
 
-  // Clamp against the active index: when navigating to a different video, the
-  // index from the previous one can briefly exceed the new variant list before
-  // the default-resolution effect re-runs. Clamping avoids a one-frame
-  // undefined variant.
+  // Clamp the active index: on navigating to a new video, the previous index
+  // can briefly exceed the new variant list before the resolution effect
+  // re-runs. Clamping avoids a one-frame undefined variant.
   const activeVariant =
     video && video.variants.length > 0
       ? (video.variants[
@@ -160,10 +154,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         ] ?? null)
       : null
 
-  // Lazily-fetched per-dub media (downloads + subtitles), keyed by dub id so a
-  // language the user already opened stays warm across switches and re-entry.
-  // `requestedRef` dedupes in-flight + completed fetches; a failed one is
-  // dropped from it so the next ensure() retries.
+  // Lazily-fetched per-dub media keyed by dub id so an already-opened language
+  // stays warm across switches/re-entry. `requestedRef` dedupes in-flight +
+  // completed fetches; a failed one is dropped so the next ensure() retries.
   const client = useApolloClient()
   const [mediaById, setMediaById] = useState<Record<string, VariantMedia>>({})
   const [loadingIds, setLoadingIds] = useState<Record<string, true>>({})
@@ -237,11 +230,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     requestedRef.current.clear()
   }, [video?.documentId])
 
-  // Default the dubbing language once per video, as soon as variants are
-  // available (they may arrive after the documentId via partial data), unless
-  // the user already chose. Gated on preferencesReady so the persisted choice is
-  // applied on the first resolution (avoids a default→preferred snap on cold
-  // start). Persisted preference → device locale → video primary → English → first.
+  // Default the dubbing language once per video as variants arrive (may land
+  // after documentId via partial data), unless the user chose. Gated on
+  // preferencesReady so the persisted choice applies first (no cold-start snap).
   useEffect(() => {
     if (!preferencesReady) return
     if (!video || video.variants.length === 0) return
@@ -268,12 +259,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     preferredAudioSlug,
   ])
 
-  // Pre-select the subtitle language for the active variant once, unless the
-  // user already chose. Honors the persisted subtitle preference first so it
-  // tracks the user's app-wide choice across videos; whether subtitles actually
-  // show is the separate subtitleEnabled pref. Subtitles arrive lazily, so this
-  // runs when the active dub's media lands (keyed on the dub id), not at load.
-  // Persisted preference → device locale → video primary → English → first.
+  // Pre-select the subtitle language once per variant unless the user chose,
+  // honoring the persisted pref first (visibility is the separate subtitleEnabled
+  // pref). Subtitles arrive lazily, so this runs when the dub's media lands.
   useEffect(() => {
     if (!preferencesReady) return
     const subtitles = activeVariantMedia?.subtitles

@@ -1,12 +1,6 @@
-// Visual tokens for the /search redesign, ported from the Claude Design
-// handoff ("Forge TV Home" — .search-layer / .s-* / .card CSS blocks). Like
-// watchDetailTheme.ts this deliberately diverges from the app-wide Crimson
-// Gallery system (near-black surface, white-fill key focus, white card ring)
-// and is SCOPED to the search components — Home and the rest of the TV app
-// keep COLORS from lib/colors.ts.
-//
-// The design layers the search UI as a blur over home; as a standalone route
-// we use a solid deep background instead (no backdrop blur on TV).
+// Search-scoped tokens (Claude Design "Forge TV Home"). Like watchDetailTheme,
+// deliberately diverges from Crimson Gallery (near-black, white-fill focus) and
+// is scoped here — rest of the app keeps COLORS. Solid bg, not blur (no TV blur).
 
 import { NEAR_BLACK } from "../watch/watchDetailTheme"
 
@@ -33,3 +27,10 @@ export const SEARCH_THEME = {
   /** Focused-card ring (design: 0 0 0 5px rgba(255,255,255,.88)). */
   ring: "rgba(255,255,255,0.88)",
 } as const
+
+/**
+ * Horizontal page gutter for the /search screen, in 1920-canvas units (pass
+ * through scale()). The screen applies it as `paddingHorizontal`; SearchBrowse
+ * cancels it with a negative margin to go full-bleed in the Apple TV stacked layout.
+ */
+export const SEARCH_PAGE_GUTTER = 80

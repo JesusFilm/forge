@@ -13,15 +13,9 @@ export type RoutableHomeCard = Pick<
 >
 
 /**
- * Series-shaped cards open /series/[slug] directly; leaves open /watch/[slug].
- * Same predicate as search (isSeriesSearchResult: label or childCount), fed
- * the RAW wire enum `rawLabel` — never the display-text `label`, which the
- * strict-uppercase predicate would silently reject. Both targets carry a seed
- * for instant first paint with playbackId null: home cards are lean (no
- * stream fields — the 9.5MB rule), and a series seed must never yield a
- * stream. String href, like searchResultPath — object-form router.push would
- * percent-encode the already-encoded seed a second time. Returns null when
- * the card has no slug (unroutable; the press is a no-op).
+ * Series cards → /series/[slug], leaves → /watch/[slug] (predicate fed the RAW
+ * `rawLabel`; display `label` is silently rejected). Carries a seed for instant
+ * first paint; string href, not object (object double-encodes the seed). Null when no slug.
  */
 export function resolveHomeCardPath(card: RoutableHomeCard): string | null {
   if (!card.slug) return null

@@ -1,10 +1,8 @@
 import { shouldArmHideTimer, type AutoHideGate } from "../autoHide"
 
-// The useControlsVisibility hook wires Animated, AppState, AccessibilityInfo,
-// and expo-video listeners together — that orchestration is verified in the
-// simulator (R19). Here we test the pure gating predicate that decides whether
-// the inactivity timer may arm: the core of AE1 (auto-hide only while playing)
-// plus the buffering / ended / screen-reader gates.
+// Tests the pure predicate deciding whether the inactivity timer may arm: the
+// core of AE1 (auto-hide only while playing) plus the buffering/ended/screen-reader
+// gates. The hook's Animated/AppState/listener orchestration is sim-verified (R19).
 
 describe("shouldArmHideTimer", () => {
   const playing: AutoHideGate = {

@@ -1,10 +1,9 @@
 import { resolveDefaultSlug } from "./resolveDefaultLanguage"
 
 /**
- * Pure-function tests for default-language resolution used by the watch session.
- * Device locale is read from Intl.DateTimeFormat; we override it per-test to
- * exercise each branch of the priority chain:
- * persisted preference (slug) → device locale → video primary → English → first.
+ * Default-language resolution tests. Device locale (from Intl.DateTimeFormat) is
+ * overridden per-test to exercise each branch of the priority chain:
+ * persisted slug → device locale → video primary → English → first.
  */
 
 const realDateTimeFormat = Intl.DateTimeFormat

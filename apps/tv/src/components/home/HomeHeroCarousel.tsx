@@ -1,18 +1,6 @@
-// The Home hero controls (Apple-TV top-shelf pattern). The slide ARTWORK + COPY
-// are paged by HeroPager (a screen-level layer that slides the next slide in
-// from the right); this component owns the hero's pinned, focusable action row
-// + the page-indicator dots, and tells the screen WHEN to advance.
-//
-// Action row (left → right): a crimson "See more" CTA (opens the active slide)
-// and a white next-slide chevron. They are real focus neighbours, so the focus
-// engine moves See more ↔ chevron with D-pad L/R natively.
-//
-// Advancing: Select on the chevron, OR D-pad RIGHT while the chevron is focused
-// (captured since the chevron self-targets nextFocusRight and has no real right
-// neighbour), calls onRequestAdvance — the screen bumps the hero index and
-// HeroPager runs the slide. Auto-advance every AUTO_ADVANCE_MS while the hero
-// is focused, re-armed on each slide, paused when focus leaves the hero (so the
-// index can't drift while the pager is faded out behind a rail).
+// Home hero controls (Apple-TV top-shelf); HeroPager owns slide artwork + copy.
+// This owns the pinned action row (See more CTA ↔ next chevron) + dots and signals
+// onRequestAdvance. Auto-advance runs only while focused so the index can't drift.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -56,11 +44,9 @@ type HomeHeroCarouselProps = {
   /** Exposes the See more CTA's node so the first section rail can wire it as
    *  the D-pad-up destination for ALL its cards. */
   onCtaNode?: (node: ViewType | null) => void
-  /** The top bar's Search tab node — the D-pad-up destination for BOTH hero
-   *  buttons. The centered tab bar has no horizontal overlap with the
-   *  left-anchored action row, so the focus engine finds nothing directly above;
-   *  this explicit destination bridges Up from the hero to the top bar (the
-   *  mirror of how the section rail wires its cards' Up to the CTA). */
+  /** Top bar's Search tab node — the D-pad-up destination for BOTH hero buttons.
+   *  Centered tabs don't overlap the left-anchored row, so geometry dead-ends Up;
+   *  this explicit destination bridges Up from the hero to the top bar. */
   upFocusTarget?: ViewType | null
 }
 
@@ -84,11 +70,9 @@ export function HomeHeroCarousel({
   const [chevronFocused, setChevronFocused] = useState(false)
   const seeMoreFocusedRef = useRef(false)
   const chevronFocusedRef = useRef(false)
-  // A directional key that MOVES focus (between the buttons, or in/out of the
-  // hero) ALSO fires the global key handler. Any focus change flags this; the
-  // handler skips the key that caused it and clears the flag, so ONLY a key with
-  // focus already settled pages. Robust to whichever path focus arrived by
-  // (See more↔chevron, Down from the top bar, Up from a rail).
+  // A directional key that moves focus also fires the global handler. Any focus
+  // change flags this so the handler skips the causing key and clears the flag —
+  // only a key with focus already settled pages, regardless of how focus arrived.
   const focusMovedRef = useRef(false)
   const heroFocused = seeMoreFocused || chevronFocused
 
@@ -124,14 +108,9 @@ export function HomeHeroCarousel({
       // Android so a non-zero action value on tvOS can't suppress a real key.
       if (Platform.OS === "android" && event.eventKeyAction === 1) return
 
-      // A directional key that just changed focus also fires here. On iOS the
-      // button's onFocus runs BEFORE this handler (so the key reads as focused),
-      // so focusMovedRef suppresses that focus-move press; synthetic focus/blur
-      // events flow through too and clear the flag, which is what lets the FIRST
-      // real key after focus settles page (and the self-target re-focus on the
-      // end buttons keep working). On Android the key arrives BEFORE the focus
-      // move, so the focus-ref gate below already blocks a focus-move and the
-      // flag would be stale — ignore it there.
+      // On iOS onFocus runs BEFORE this handler, so focusMovedRef suppresses the
+      // focus-move press (letting the first settled key page). On Android the key
+      // arrives BEFORE the focus move (focus-ref gate handles it) so the flag is ignored.
       const moved = focusMovedRef.current
       focusMovedRef.current = false
       if (Platform.OS !== "android" && moved) return

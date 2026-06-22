@@ -18,6 +18,11 @@ const WORKFLOW_FAILURE_ERROR_PREFIX = "OFFLINE_SEARCH_EVAL_WORKFLOW_FAILED:"
 const DEFAULT_BASELINE_NAME = "seed-baseline"
 const DEFAULT_SEARCH_MODE = "hybrid"
 const DEFAULT_CONTENT_TYPE = "all"
+const SEARCH_PIPELINE_MODES = [
+  "hybrid",
+  "keyword-first",
+  "semantic-only",
+] as const
 
 const OfflineSearchEvalInputSchema = z
   .object({
@@ -48,10 +53,10 @@ const OfflineSearchEvalInputSchema = z
       .default(20)
       .describe("Admin search results to collect per prompt."),
     searchMode: z
-      .enum(["hybrid", "keyword-first"])
+      .enum(SEARCH_PIPELINE_MODES)
       .default(DEFAULT_SEARCH_MODE)
       .describe(
-        "Search pipeline. Use hybrid for normal search; keyword-first tests the lexical-first candidate strategy.",
+        "Search pipeline. Use hybrid for normal search; keyword-first tests the lexical-first candidate strategy; semantic-only is an internal diagnostic eval mode.",
       ),
     contentType: z
       .enum(["all", "video", "experience"])

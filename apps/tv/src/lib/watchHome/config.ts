@@ -1,18 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (mirrored via
- * apps/mobile/src/lib/watchHome/config.ts) — do not edit without syncing the
- * web source. Any curation change on web (sections, hero sources, blacklist)
- * must be mirrored here until the curation moves to a shared package or admin
- * (roadmap feat-160) and this copy is deleted.
- *
- * TV cuts vs the web/mobile config:
- *   - WATCH_HOME_PLAYLIST_SEQUENCE and WATCH_HOME_MUX_INSERTS do not port —
- *     TV's showcase is image-only (no autoplay hero playlist, no Mux insert
- *     slides; tvOS decode slots are scarce).
- *   - WATCH_HOME_FEATURED_RAIL is TV-only: the hero pool renders as the first
- *     rail, and its `titleVariants` carry the time-of-day greeting copy
- *     adapted from web's Mux-insert conditionalOverlays — TV's only
- *     time-of-day surface.
+ * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile's config.ts) — mirror
+ * any web curation change here until feat-160 moves it to admin. TV cuts WATCH_HOME_PLAYLIST_SEQUENCE
+ * + WATCH_HOME_MUX_INSERTS (scarce decode slots); WATCH_HOME_FEATURED_RAIL is TV-only (titleVariants carry web's Mux conditionalOverlays greetings).
  */
 
 // The hardcoded home locale pair: query locale + language identity, keyed on
@@ -47,9 +36,9 @@ export type WatchHomeFeaturedRailConfig = {
 }
 
 /**
- * TV-only: the hero pool's rail definition. Base copy is web's Mux-insert
- * base overlay ("Faith & Scripture" / "Today's Video Picks"); the variants are
- * web's time-range conditionalOverlays titles.
+ * TV-only hero-pool rail. Base copy is web's Mux-insert base overlay
+ * ("Faith & Scripture" / "Today's Video Picks"); variants are web's
+ * time-range conditionalOverlays titles.
  */
 export const WATCH_HOME_FEATURED_RAIL: WatchHomeFeaturedRailConfig = {
   id: "home-featured",

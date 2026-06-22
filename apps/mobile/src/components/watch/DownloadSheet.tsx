@@ -157,16 +157,12 @@ type DropdownOption = {
   trailing?: string
 }
 
-/**
- * Cap the open panel at ~5 rows so a long option list (e.g. dozens of subtitle
- * languages) scrolls INSIDE the dropdown instead of growing the sheet.
- */
+/** Cap the open panel at ~5 rows so long lists scroll inside the dropdown, not grow the sheet. */
 const DROPDOWN_MAX_HEIGHT = 240
 
 /**
- * A collapsed select that shows the current choice and, when tapped, expands a
- * bounded, internally-scrollable list. Keeps the whole sheet compact on first
- * present regardless of how many options a video has.
+ * Collapsed select expanding to a bounded, internally-scrollable list, so the
+ * sheet stays compact on first present regardless of option count.
  */
 function Dropdown({
   sectionLabel,
@@ -318,10 +314,9 @@ export function DownloadSheetContent({
   const [termsVisible, setTermsVisible] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
 
-  // Key by tier-array index, not documentId: tierDownloads yields a stable
-  // ordered list, whereas normalizeVideo defaults documentId to "" and does not
-  // dedupe downloads — non-unique ids would collide React keys and break
-  // selection (findIndex would always resolve to the first match).
+  // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
+  // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
+  // and break selection (findIndex always resolving to the first match).
   const qualityOptions = useMemo<DropdownOption[]>(
     () =>
       tiered.map((t, index) => ({

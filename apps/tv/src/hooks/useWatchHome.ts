@@ -23,9 +23,9 @@ const RETRYABLE_ERROR_MESSAGE = "Couldn't load videos. Please try again."
 export type WatchHomeState = {
   model: WatchHomeModel | null
   /**
-   * True while a fetch is in flight. The screen only shows a spinner when
-   * `model` is still null (initial load, or a retry from the error state);
-   * once a model exists, content renders through background refreshes.
+   * True while a fetch is in flight. Spinner shows only when `model` is null
+   * (initial load / retry); once a model exists, content renders through
+   * background refreshes.
    */
   loading: boolean
   error: string | null
@@ -34,11 +34,9 @@ export type WatchHomeState = {
 }
 
 /**
- * One lean bulk fetch (GET_WATCH_HOME_VIDEOS over getWatchHomeCoreIds())
- * built into the home model. Imperative getApolloClient().query — lazy
- * getter, never module scope — with the stale-response guard: an
- * incrementing requestId ref invalidates any in-flight fetch a newer one
- * supersedes.
+ * One lean bulk fetch (GET_WATCH_HOME_VIDEOS over getWatchHomeCoreIds()) built
+ * into the home model. Imperative getApolloClient().query (lazy getter, never
+ * module scope); an incrementing requestId ref discards stale responses.
  */
 export function useWatchHome(): WatchHomeState {
   const [model, setModel] = useState<WatchHomeModel | null>(null)

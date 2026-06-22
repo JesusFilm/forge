@@ -5,10 +5,9 @@ import { TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 
-// The series action row is Language + Share only. A series has no single asset
-// to download or caption, so the video page's Download/Subtitles actions don't
-// carry over. It stays a separate component from ActionButtonRow (a pill row +
-// icon cluster) because the two surfaces have genuinely different affordances.
+// Language + Share only: a series has no single asset to download or caption,
+// so the video page's Download/Subtitles actions don't carry over. Separate
+// from ActionButtonRow (a pill row + icon cluster) — different affordances.
 export type SeriesActionRowProps = {
   onLanguage: () => void
   onShare: () => void

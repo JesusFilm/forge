@@ -5,19 +5,9 @@ import type { ApolloClient, NormalizedCacheObject } from "@apollo/client"
 import { env } from "../env"
 
 /**
- * Hand-rolled, opt-in Apollo cache persistence.
- *
- * apollo3-cache-persist targets Apollo v3 and crashed this app on launch, so
- * this is a small best-effort implementation against v4's cache.extract() /
- * cache.restore(). Everything is guarded so the worst case is "boot cold",
- * never a crash. Gated behind EXPO_PUBLIC_FORGE_CACHE_PERSIST (default off) so
- * it ships dark until verified on a real (low-end Android) device via EAS —
- * the startup-restructure risk this carries must not reach users untested.
- *
- * What is persisted: a stripped snapshot of the normalized cache, excluding
- * volatile signed URLs (stream hls, download urls, subtitle vttSrc) which would
- * 404 after expiry — those are always re-fetched. The snapshot is version- and
- * TTL-gated and discarded on any mismatch.
+ * Hand-rolled, opt-in Apollo cache persistence — apollo3-cache-persist crashed on launch (targets v3),
+ * so this is best-effort against v4, fully guarded. Gated behind EXPO_PUBLIC_FORGE_CACHE_PERSIST (default
+ * off, ships dark until EAS-verified); snapshot excludes signed URLs (hls, download urls, vttSrc).
  */
 
 const STORAGE_KEY = "forge.apollo.cache"
@@ -45,11 +35,9 @@ function raceTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
 }
 
 /**
- * Restore the persisted snapshot into the cache on cold start. MUST run before
- * ApolloProvider mounts / before any query, or a network write races and this
- * restore would clobber fresh data. Bounded by a timeout: on a slow read the
- * app boots cold and any late-arriving read is discarded (we never restore
- * after returning).
+ * Restore the persisted snapshot on cold start. MUST run before ApolloProvider
+ * mounts / any query, else a network write races and this clobbers fresh data.
+ * Timeout-bounded: on a slow read the app boots cold and late reads are dropped.
  */
 export async function restoreApolloCache(cache: {
   restore: (data: NormalizedCacheObject) => unknown
@@ -118,10 +106,9 @@ async function writeSnapshot(client: ApolloClient): Promise<void> {
 }
 
 /**
- * Deep-strip volatile signed URLs from the extracted cache before persisting:
- * stream `hls` and subtitle `vttSrc` are nulled and `downloads` arrays emptied,
- * because signed/expiring URLs would 404 after the snapshot's TTL. Stable image
- * `url`s are preserved. Re-fetched fresh on the next cache-and-network read.
+ * Deep-strip volatile signed URLs before persisting: `hls`/`vttSrc` nulled and
+ * `downloads` emptied (they 404 after the snapshot's TTL). Stable image `url`s
+ * are kept; the stripped fields re-fetch on the next cache-and-network read.
  */
 function stripVolatile(data: NormalizedCacheObject): NormalizedCacheObject {
   return deepStrip(data) as NormalizedCacheObject

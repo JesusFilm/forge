@@ -1,14 +1,6 @@
-// The Home billboard hero region — now just the bottom-anchored layout slot for
-// the hero's pinned action row (the carousel's "See more" CTA + the white
-// next-slide chevron). The slide ARTWORK and COPY moved to HeroPager, a
-// screen-level layer that pages them with an Apple-TV slide; the action row
-// stays here in the ScrollView flow so the buttons remain focusable and paint
-// ON TOP of the sliding pager (tvOS skips absolute focusables anyway).
-//
-// This component still owns the hero region's HEIGHT so the first carousel rail
-// peeks below it at scroll 0, and pins the action row at the bottom-left via
-// flexbox (justifyContent flex-end) — the exact geometry HeroPager's copy
-// reserves space for (see heroLayout.ts).
+// Home hero region: layout slot for the pinned action row (artwork/copy moved to
+// HeroPager). Row stays in ScrollView flow so buttons stay focusable and paint over
+// the pager (tvOS skips absolute focusables). Owns hero HEIGHT so the first rail peeks at scroll 0; geometry matches heroLayout.ts.
 
 import { memo, type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"

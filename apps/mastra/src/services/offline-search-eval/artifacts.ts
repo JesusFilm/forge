@@ -322,20 +322,43 @@ export const SearchEvalReportSchema = z
       report.mastraEvaluation.integrationStatus === "native_synced"
         ? report.mastraEvaluation.dataset.environmentLabel
         : null
-    const expectedDatasetName =
+    const pipelineMode =
+      report.metadata.search.mode === "semantic-only"
+        ? "semantic-only"
+        : report.metadata.search.mode === "keyword-first"
+          ? "keyword-first"
+          : "hybrid"
+    const legacyDatasetName =
       environmentLabel == null
         ? `search-eval:${report.metadata.baselineName}`
         : `search-eval:${environmentLabel}:${report.metadata.baselineName}`
-    const expectedExperimentName =
+    const modeAwareDatasetName = `${legacyDatasetName}:${pipelineMode}`
+    const expectedDatasetNames = [
+      legacyDatasetName,
+      modeAwareDatasetName,
+    ] as const
+    const legacyExperimentName =
       environmentLabel == null
         ? `search-eval-${expectedExperimentVerb}:${report.metadata.baselineName}:${report.reportId}`
         : `search-eval-${expectedExperimentVerb}:${environmentLabel}:${report.metadata.baselineName}:${report.reportId}`
+    const modeAwareExperimentName =
+      environmentLabel == null
+        ? `search-eval-${expectedExperimentVerb}:${report.metadata.baselineName}:${pipelineMode}:${report.reportId}`
+        : `search-eval-${expectedExperimentVerb}:${environmentLabel}:${report.metadata.baselineName}:${pipelineMode}:${report.reportId}`
+    const expectedExperimentNames = [
+      legacyExperimentName,
+      modeAwareExperimentName,
+    ] as const
 
-    if (report.mastraEvaluation.dataset.name !== expectedDatasetName) {
+    if (
+      !(expectedDatasetNames as readonly string[]).includes(
+        report.mastraEvaluation.dataset.name,
+      )
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["mastraEvaluation", "dataset", "name"],
-        message: "dataset name must match the report baseline name",
+        message: "dataset name must match the report baseline name and mode",
       })
     }
     if (
@@ -355,11 +378,15 @@ export const SearchEvalReportSchema = z
         message: "dataset item count must match report outcome count",
       })
     }
-    if (report.mastraEvaluation.experiment.name !== expectedExperimentName) {
+    if (
+      !(expectedExperimentNames as readonly string[]).includes(
+        report.mastraEvaluation.experiment.name,
+      )
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["mastraEvaluation", "experiment", "name"],
-        message: "experiment name must match the report kind and id",
+        message: "experiment name must match the report kind, mode, and id",
       })
     }
     if (report.mastraEvaluation.experiment.mode !== expectedExperimentMode) {

@@ -1,14 +1,6 @@
-// Episode rail for the series screen — the series' children as a horizontal,
-// D-pad-navigable rail in the below-fold (U3). Selection routes by shape
-// (episodeRouting): leaf episodes open /watch, nested collections open
-// /series, both carrying a seed for instant first paint. Renders nothing when
-// the series has no children — no empty focus container.
-//
-// Same anatomy as UpNextRail (the watch screen's sibling rail): section head +
-// 360×202 poster cards that lift with a white glow on focus, inside a
-// TVFocusGuideView. Adds getItemLayout — card dims are fixed and a collection
-// can carry far more children than an Up Next rail, so the list virtualizes
-// without measuring every card.
+// Below-fold horizontal D-pad rail of the series' children (U3). Routes by shape
+// (episodeRouting): leaf → /watch, nested collection → /series, both seeded. Nothing
+// when childless. Mirrors UpNextRail + getItemLayout (fixed dims) to virtualize.
 
 import { memo, useCallback, useMemo } from "react"
 import {
@@ -55,10 +47,7 @@ const getItemLayout = (
 
 type EpisodeRailProps = {
   episodes: WatchEpisode[]
-  /**
-   * The series screen's selected language slug, threaded into the pushed
-   * route's `lang` param (U4 wires the provider that supplies + consumes it).
-   */
+  /** Selected language slug, threaded into the pushed route's `lang` param (U4 provider supplies + consumes it). */
   languageSlug?: string | null
   /** Replaces the default push-by-shape routing when provided. */
   onEpisodePress?: (episode: WatchEpisode) => void

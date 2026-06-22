@@ -4,6 +4,7 @@
 // Read methods: (1) tier check, (2) role-based WHERE filtering, (3) Prisma call.
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
+import { after } from "next/server"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
@@ -42,6 +43,33 @@ function snapshotEnvelope(
   data: Prisma.InputJsonObject,
 ): Prisma.InputJsonObject {
   return { v: 1, data }
+}
+
+/**
+ * Refresh the watch-route manifest snapshot reliably without blocking the
+ * editor response.
+ *
+ * The refresh regenerates AND persists the snapshot apps/web reads to admit
+ * `/watch` routes, so it MUST run to completion — but the editor must not wait
+ * on it. A bare `void` is dropped when a Next standalone Server Action / route
+ * handler returns before the detached promise settles, which left freshly
+ * published experiences absent from the snapshot and their watch preview 404'd
+ * until the next refresh happened to land. We start the refresh immediately and
+ * hand the in-flight promise to `after()`, which keeps the runtime alive until
+ * it settles after the response is flushed. Outside a request scope (unit
+ * tests, CLIs) `after()` throws, so we fall back to the detached promise.
+ * `refreshWatchRouteManifest` never rejects (it returns a typed outcome), so
+ * neither path risks an unhandled rejection.
+ */
+function refreshManifestAfterResponse(
+  args: Parameters<typeof refreshWatchRouteManifest>[0],
+): void {
+  const refresh = refreshWatchRouteManifest(args)
+  try {
+    after(() => refresh)
+  } catch {
+    void refresh
+  }
 }
 
 function snapshotExperienceLocale(locale: {
@@ -319,7 +347,7 @@ export class ExperienceService {
           locale: updated.locale,
         })
       }
-      void refreshWatchRouteManifest({
+      refreshManifestAfterResponse({
         prisma: this.prisma,
         reason: "experience.update",
       })
@@ -400,7 +428,7 @@ export class ExperienceService {
         locale: published.locale,
       })
     }
-    void refreshWatchRouteManifest({
+    refreshManifestAfterResponse({
       prisma: this.prisma,
       reason: "experience.publish",
     })
@@ -558,7 +586,7 @@ export class ExperienceService {
       slug: null,
       locale: null,
     })
-    void refreshWatchRouteManifest({
+    refreshManifestAfterResponse({
       prisma: this.prisma,
       reason: "experience.archive",
     })

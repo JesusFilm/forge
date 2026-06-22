@@ -1,16 +1,9 @@
 import type { VariantMedia, WatchDownload } from "./normalizeVideo"
 
 /**
- * Offline-download URL re-resolution: given a fetched dub's media
- * ({@link VariantMedia}) and the stable identity stored in the manifest, pick
- * the fresh media + subtitle URLs to (re)start a download or resume against.
- *
- * The manifest deliberately stores IDENTITY (rendition documentId, quality
- * label, subtitle language slug) rather than the volatile signed URLs, which
- * expire — so the engine re-resolves through `videoDub(id)` immediately before
- * each enqueue/resume. This module is the PURE selection over already-fetched
- * media; the Apollo fetch wiring and the offline (needs-network) typed error are
- * part of the engine layer.
+ * Pure URL re-resolution: pick fresh media + subtitle URLs from a fetched dub's
+ * media ({@link VariantMedia}) keyed by the manifest's stable IDENTITY (it stores
+ * identity not signed URLs, which expire), so the engine re-resolves via `videoDub(id)`.
  */
 
 export type DesiredDownload = {
@@ -32,9 +25,8 @@ export type DownloadResolution =
       qualityLabel: string
       subtitleUrl: string | null
       /**
-       * True when a subtitle was requested by slug but is not in the fetched
-       * media. The engine degrades to no-subtitle and reports it, rather than
-       * failing the whole download.
+       * Subtitle requested by slug but absent from fetched media; engine
+       * degrades to no-subtitle and reports it rather than failing the download.
        */
       subtitleMissing: boolean
     }
@@ -42,10 +34,9 @@ export type DownloadResolution =
   | { kind: "empty" }
 
 /**
- * Pick the rendition matching the stored identity, with graceful fallback:
- * exact documentId → quality label → nearest size. Returns null only when there
- * are no downloads at all. Copies before sorting (the Apollo cache freezes
- * arrays, so an in-place sort would throw on a warm cache).
+ * Pick the rendition by stored identity with fallback: documentId → quality
+ * label → nearest size. Null only when no downloads exist. Copies before sorting
+ * (Apollo freezes cached arrays; an in-place sort throws on a warm cache).
  */
 export function selectRendition(
   downloads: readonly WatchDownload[],
@@ -70,9 +61,9 @@ export function selectRendition(
 }
 
 /**
- * Pick the chosen subtitle by language SLUG (not bcp47 — bcp47 prefixes collide
- * across distinct languages). A null slug means "No subtitles". A slug that is
- * set but not present in the media resolves to no URL with `missing: true`.
+ * Pick subtitle by language SLUG, not bcp47 (bcp47 prefixes collide across
+ * distinct languages). Null slug = "No subtitles"; a set-but-absent slug
+ * resolves to no URL with `missing: true`.
  */
 export function selectSubtitle(
   media: VariantMedia,

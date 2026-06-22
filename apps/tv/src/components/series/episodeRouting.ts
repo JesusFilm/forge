@@ -1,18 +1,6 @@
-// Pure routing decision for an episode-rail card press. Kept React-free (like
-// searchResultPath.ts / seriesScreenState.ts) so it is unit-testable under
-// jest-expo, which cannot load .tsx.
-//
-// Shape-based routing (R5): a series-shaped child opens the nested /series
-// screen; everything else opens /watch. Episode cards carry `label` but NOT
-// `childCount`, so detection here is label-only (isSeriesLabel) — an unlabeled
-// nested collection routes to /watch and relies on the watch route's series
-// redirect (U5) to land correctly.
-//
-// Both targets carry an encoded seed (title + artwork, playbackId null — a
-// rail card knows no playable stream) for instant first paint, and the
-// caller's selected language slug when one exists. U4 wires the provider that
-// consumes `lang` on the watch screen; it is accepted-and-threaded now so the
-// param contract is already in place.
+// Pure (jest-testable) shape-based routing for an episode-rail card press (R5):
+// series-shaped → /series, else /watch. Label-only (cards lack childCount), so an unlabeled
+// collection routes to /watch + leans on the watch series redirect (U5). Both carry a seed (U4).
 
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { encodeWatchSeed } from "../../lib/watchSeed"
@@ -59,11 +47,9 @@ export function resolveEpisodePath(
 }
 
 /**
- * Build the string href the app's routing convention pushes (string hrefs
- * with a manually-encoded slug — see searchResultPath and the series leaf
- * bounce). Object-form router.push would percent-encode the already-encoded
- * seed a second time, breaking decodeWatchSeed's decode-once contract on the
- * receiving screen.
+ * Build the string href the routing convention pushes (manually-encoded slug).
+ * Object-form router.push would double-encode the already-encoded seed, breaking
+ * decodeWatchSeed's decode-once contract on the receiving screen.
  */
 export function episodeHref(route: EpisodeRoute): string {
   const base = route.pathname.replace(

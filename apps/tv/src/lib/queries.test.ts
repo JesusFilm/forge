@@ -32,12 +32,9 @@ describe("GET_WATCH_SETTING (public homepage resolution)", () => {
     expect(settingSdl).toContain("$locale: String!")
   })
 
-  // Regression guard: the home MUST NOT fetch the editor-gated top-level
-  // Query.experiences (authScopes hasPermission "read:experiences") — doing so
-  // 401s for the unauthenticated public TV app ("Not authorized to resolve
-  // Query.experiences"). The home resolves the homepage via the PUBLIC
-  // watchSetting query instead. If this assertion ever fails, the home has
-  // regressed back onto the gated list query.
+  // Regression guard: the editor-gated Query.experiences 401s for the public TV
+  // app; the home must resolve the homepage via the PUBLIC watchSetting query. A
+  // failure here means the home regressed onto the gated list query.
   it("does NOT touch the editor-gated Query.experiences", () => {
     expect(settingSdl).not.toMatch(/\bexperiences\b/)
   })
