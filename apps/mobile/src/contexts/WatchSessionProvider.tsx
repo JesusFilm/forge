@@ -18,6 +18,7 @@ import {
 import { ensureDubMedia } from "../lib/dubMediaFetch"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import { resolveDefaultSlug } from "../lib/resolveDefaultLanguage"
+import { subtitleNameToCache } from "../lib/subtitleSelection"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -34,6 +35,12 @@ type WatchSessionContextValue = {
   setSubtitleEnabled: (enabled: boolean) => void
   activeSubtitleSlug: string | null
   setActiveSubtitleSlug: (slug: string | null) => void
+  /**
+   * The persisted display name of the preferred subtitle language, available
+   * immediately on mount (before the lazy per-dub media lands). Lets the
+   * Subtitles control show the name on a cold load instead of a placeholder.
+   */
+  preferredSubtitleName: string | null
   /** Convenience: the variant currently selected, or null. */
   activeVariant: WatchVideoRecord["variants"][number] | null
   /**
@@ -69,10 +76,12 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const {
     audioLanguageSlug: preferredAudioSlug,
     subtitleLanguageSlug: preferredSubtitleSlug,
+    subtitleLanguageName: preferredSubtitleName,
     subtitlesEnabled,
     isReady: preferencesReady,
     setPreferredAudioLanguage,
     setPreferredSubtitleLanguage,
+    setPreferredSubtitleName,
     setSubtitlesEnabled,
   } = useWatchPreferences()
 
@@ -278,6 +287,26 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     preferredSubtitleSlug,
   ])
 
+  // Cache the preferred subtitle's display NAME once a dub's media lands, so the
+  // next cold load paints the pill instead of flashing "Subtitles". Keyed on the
+  // PREFERRED slug (a video lacking it can't overwrite) and gated on hydration.
+  useEffect(() => {
+    if (!preferencesReady || !preferredSubtitleSlug || !activeVariantMedia)
+      return
+    const next = subtitleNameToCache(
+      preferredSubtitleSlug,
+      activeVariantMedia.subtitles,
+      preferredSubtitleName,
+    )
+    if (next != null) setPreferredSubtitleName(next)
+  }, [
+    preferencesReady,
+    preferredSubtitleSlug,
+    preferredSubtitleName,
+    activeVariantMedia,
+    setPreferredSubtitleName,
+  ])
+
   const value = useMemo<WatchSessionContextValue>(
     () => ({
       video,
@@ -288,6 +317,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       setSubtitleEnabled,
       activeSubtitleSlug,
       setActiveSubtitleSlug,
+      preferredSubtitleName,
       activeVariant,
       activeVariantMedia,
       activeVariantMediaLoading,
@@ -304,6 +334,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       setSubtitleEnabled,
       activeSubtitleSlug,
       setActiveSubtitleSlug,
+      preferredSubtitleName,
       activeVariant,
       activeVariantMedia,
       activeVariantMediaLoading,

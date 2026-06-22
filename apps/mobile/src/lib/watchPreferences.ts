@@ -8,6 +8,12 @@ export type WatchPreferences = {
   audioLanguageSlug: string | null
   /** Preferred subtitle language slug, or null to use the fallback. */
   subtitleLanguageSlug: string | null
+  /**
+   * Display name of the preferred subtitle language (e.g. "French"), cached so
+   * the Subtitles pill paints on a cold load — subtitle names come from per-dub
+   * media fetched lazily, so the slug alone can't be mapped without a fetch.
+   */
+  subtitleLanguageName: string | null
   /** Whether subtitles are turned on app-wide. */
   subtitlesEnabled: boolean
   /**
@@ -23,13 +29,15 @@ export const WATCH_PREFERENCES_STORAGE_KEY = "watchPreferences"
 export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   audioLanguageSlug: null,
   subtitleLanguageSlug: null,
+  subtitleLanguageName: null,
   subtitlesEnabled: false,
   wifiOnly: false,
 }
 
-function normalizeSlug(value: unknown): string | null {
-  // Treat anything non-string or empty as "unset" so a corrupt/partial blob
-  // degrades to the resolution fallback rather than poisoning matching.
+function normalizeNonEmptyString(value: unknown): string | null {
+  // Shared by the language slugs and the cached subtitle display name: treat
+  // anything non-string or empty as "unset" so a corrupt/partial blob degrades
+  // to the resolution fallback rather than poisoning matching or the label.
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
@@ -51,8 +59,9 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
   }
   const obj = parsed as Record<string, unknown>
   return {
-    audioLanguageSlug: normalizeSlug(obj.audioLanguageSlug),
-    subtitleLanguageSlug: normalizeSlug(obj.subtitleLanguageSlug),
+    audioLanguageSlug: normalizeNonEmptyString(obj.audioLanguageSlug),
+    subtitleLanguageSlug: normalizeNonEmptyString(obj.subtitleLanguageSlug),
+    subtitleLanguageName: normalizeNonEmptyString(obj.subtitleLanguageName),
     subtitlesEnabled: obj.subtitlesEnabled === true,
     wifiOnly: obj.wifiOnly === true,
   }
