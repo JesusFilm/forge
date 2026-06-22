@@ -23,6 +23,13 @@ import {
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
+import { buildDefaultChatAgent } from "./agents/default-chat-agent"
+import { buildSpecializedAgents } from "./agents/specialized-agents"
+import { buildAutoEnrichAgent } from "./agents/auto-enrich-agent"
+import {
+  multiStepDraftWorkflow,
+  quickDraftWorkflow,
+} from "./workflows/multi-step-draft"
 import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
@@ -128,8 +135,23 @@ const redactPromptBodies: SpanOutputProcessor = {
   shutdown: async () => {},
 }
 
+// Draft/chat agents ported from admin (consolidation U4). Built once here so
+// the experience-chat Memory singleton is shared and the workflow agents are
+// registered by id for the workflow's `getAgentById(...)` lookups. The
+// planner/critic/reviser/skeleton/fill agents are workflow-only (memory-less);
+// experience-default-chat / draft-experience / add-section / rewrite-copy /
+// auto-enrich carry the chat memory.
+const experienceDraftSpecializedAgents = buildSpecializedAgents()
+
 export const mastra = new Mastra({
-  agents: { smokeAgent, seekerAgent, webResearchAgent },
+  agents: {
+    smokeAgent,
+    seekerAgent,
+    webResearchAgent,
+    "experience-default-chat": buildDefaultChatAgent(),
+    ...experienceDraftSpecializedAgents,
+    "auto-enrich": buildAutoEnrichAgent(),
+  },
   workflows: {
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
@@ -148,6 +170,13 @@ export const mastra = new Mastra({
     instagramAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
+    // Ported draft-authoring workflows (consolidation U4). Registered by their
+    // workflow id so the U5 route can drive them via
+    // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which
+    // injects this Mastra instance so each step's `getAgentById(...)` resolves
+    // the planner/skeleton/fill/critic/reviser agents registered above.
+    "multi-step-draft": multiStepDraftWorkflow,
+    "quick-draft": quickDraftWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
