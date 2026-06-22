@@ -1150,11 +1150,11 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   anywhere, it produces no targets (a data-quality signal, not a
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
-	  Safe to re-run at the storage identity level. The workflow first groups
-	  enumerated targets by `(video, edition)` for stable reporting and source
-	  gap aggregation, then shards each `(video, edition, language)` target into
-	  target-bounded batches so no single Workflow step owns the full
-	  all-language corpus.
+  Safe to re-run at the storage identity level. The workflow first groups
+  enumerated targets by `(video, edition)` for stable reporting and source
+  gap aggregation, then shards each `(video, edition, language)` target into
+  target-bounded batches so no single Workflow step owns the full
+  all-language corpus.
 - **Bounded parallelism (Stage 2 — feat-116, updated for feat-192 hotfix):**
   the workflow calls `stepProcessTranscriptEmbeddingGroups` sequentially per
   target-bounded batch. Parallelism stays inside each batch via

@@ -594,7 +594,7 @@ The June 22 hotfix changed the transcript backfill runner in two places:
    `already_enriched_healthy` only when the existing row has the current
    model-upgrade provenance: `generation_mode = 'model-upgrade'`, the accepted
    transcript embedding model stamp, `embedding_provider =
-   'jesus-film-ai-gateway'`, expected dimensions, a non-null source kind, every
+'jesus-film-ai-gateway'`, expected dimensions, a non-null source kind, every
    chunk has an embedding, and every chunk has non-empty
    `embedding_input_text`. Legacy, incomplete, missing, stale `force`, stale
    provider/model, or v1 rows remain eligible.
@@ -606,10 +606,7 @@ filter:
 
 ```graphql
 mutation ResumeTranscriptEmbeddingBackfill {
-  triggerTranscriptEmbeddingBackfill(
-    mode: MODEL_UPGRADE
-    coreIds: ["1_jf-0-0"]
-  )
+  triggerTranscriptEmbeddingBackfill(mode: MODEL_UPGRADE, coreIds: ["1_jf-0-0"])
 }
 ```
 
