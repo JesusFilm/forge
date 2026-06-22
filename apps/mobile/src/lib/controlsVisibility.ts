@@ -1,7 +1,7 @@
 /**
- * Pure fade-race transition table for the auto-hiding video chrome, unit-testable
- * without the RN runtime (hook `useControlsVisibility` runs side effects; R19).
- * Invariants (ce-code-review #7): `mounted` keeps chrome mid-fade so taps reveal, `hideDone` unmounts only if still hidden, `reveal` always re-mounts.
+ * Pure fade-race transition table for the auto-hiding video chrome, unit-testable without the RN runtime
+ * (hook `useControlsVisibility` runs side effects; R19). Invariants (ce-code-review #7): `mounted` keeps
+ * chrome mid-fade so taps reveal, `hideDone` unmounts only if still hidden, `reveal` always re-mounts.
  */
 export type ControlsState = { visible: boolean; mounted: boolean }
 

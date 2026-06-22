@@ -5,9 +5,9 @@ import type { ApolloClient, NormalizedCacheObject } from "@apollo/client"
 import { env } from "../env"
 
 /**
- * Hand-rolled, opt-in Apollo cache persistence — apollo3-cache-persist crashed on
- * launch (targets v3), so this is best-effort against v4, fully guarded. Gated
- * behind EXPO_PUBLIC_FORGE_CACHE_PERSIST (default off, ships dark until EAS-verified); snapshot excludes signed URLs (hls, download urls, vttSrc).
+ * Hand-rolled, opt-in Apollo cache persistence — apollo3-cache-persist crashed on launch (targets v3),
+ * so this is best-effort against v4, fully guarded. Gated behind EXPO_PUBLIC_FORGE_CACHE_PERSIST (default
+ * off, ships dark until EAS-verified); snapshot excludes signed URLs (hls, download urls, vttSrc).
  */
 
 const STORAGE_KEY = "forge.apollo.cache"

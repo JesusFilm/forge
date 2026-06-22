@@ -64,9 +64,9 @@ export function pickDefaultTrailer<
 export type LeafBounceDecision = "render" | "bounce" | "pending"
 
 /**
- * Should a /series deep-link bounce to /watch? Same isSeriesRecord predicate as the
- * watch redirect (U5), both replace, so seams can't loop. "render": series-shaped;
- * "bounce": leaf once `hasSeriesSelection` (the completeness signal that avoids ejecting a warm-cache partial reading leaf-shaped but still gaining children); else "pending".
+ * Should a /series deep-link bounce to /watch? Same isSeriesRecord predicate as the watch redirect (U5),
+ * both replace so seams can't loop. "render": series-shaped; "bounce": leaf once `hasSeriesSelection` (the
+ * completeness signal that avoids ejecting a warm-cache partial reading leaf-shaped but still gaining children); else "pending".
  */
 export function resolveLeafBounce(
   record:

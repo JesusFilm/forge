@@ -1,6 +1,6 @@
-// SYNC: structural rewrite (NOT a copy) of apps/mobile's WatchSessionProvider. TV v1
-// has no persistence (subtitleEnabled local, no preferencesReady gate, setters don't persist,
-// defaults use carried series slug U4, no snackbar). Single source of truth for active dub + subtitle; INERT when video == null.
+// SYNC: structural rewrite (NOT a copy) of apps/mobile's WatchSessionProvider. TV v1 has no persistence
+// (subtitleEnabled local, no preferencesReady gate, setters don't persist, defaults use carried series slug U4,
+// no snackbar). Single source of truth for active dub + subtitle; INERT when video == null.
 
 import {
   createContext,

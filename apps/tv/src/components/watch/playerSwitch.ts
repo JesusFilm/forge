@@ -1,6 +1,6 @@
-// Pure, React-free logic for the overlay player's dub-switch + in-player menu
-// gating (U7), in .ts so source-swap/stale-session decisions stay testable.
-// INVARIANT (no-session contract): experience-card playVideo() has no session, so inPlayerMenuVisible MUST be false and no dub-switch engages.
+// Pure, React-free logic for the overlay player's dub-switch + in-player menu gating (U7), in .ts so
+// source-swap/stale-session decisions stay testable. INVARIANT (no-session contract): experience-card
+// playVideo() has no session, so inPlayerMenuVisible MUST be false and no dub-switch engages.
 
 import { extractMuxPlaybackId } from "../../lib/muxUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"

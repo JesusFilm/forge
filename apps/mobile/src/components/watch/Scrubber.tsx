@@ -34,9 +34,9 @@ const TRACK_HEIGHT = 3
 const HIT_HEIGHT = 44
 
 /**
- * Draggable seek bar (built-in PanResponder — gesture-handler is forbidden under Expo Go).
- * Position uses an `Animated.Value` (0..1) via `setValue`, NOT state, so a drag pushes straight
- * to native without re-rendering (setState-per-frame janked low-end Android); fraction is absolute screen X minus the track's left edge.
+ * Draggable seek bar (built-in PanResponder — gesture-handler is forbidden under Expo Go). Position uses an
+ * `Animated.Value` (0..1) via `setValue`, NOT state, so a drag pushes straight to native without re-rendering
+ * (setState-per-frame janked low-end Android); fraction is absolute screen X minus the track's left edge.
  */
 export function Scrubber({
   currentTime,

@@ -1,6 +1,7 @@
 /**
- * Pure state machine for the Home hero pager (plan U4); HomeHeroPager drives the platform pieces from its state + selectors. No-op transitions return the SAME state reference. Pure TS — no React imports.
- * Rules: advance/skip (AE5), wrap, serialized swaps (AE3), videoReady latch (docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop), suspend/resume (AE6), controlled mute, single-slide chrome (AE2).
+ * Pure state machine for the Home hero pager (plan U4); HomeHeroPager drives the platform pieces from its state +
+ * selectors. No-op transitions return the SAME state reference. Pure TS. Rules: advance/skip (AE5), wrap, serialized swaps (AE3),
+ * videoReady latch (docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop), suspend/resume (AE6), controlled mute, single-slide chrome (AE2).
  */
 
 import type { WatchHomeSlide } from "./carouselSequence"

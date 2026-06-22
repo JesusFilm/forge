@@ -1,6 +1,6 @@
-// In-player dub/subtitle menu for the FULLSCREEN overlay (R10/R11), mounted when the active dub plays
-// (inPlayerMenuVisible gate in playerSwitch.ts); U8 renders one `section`, trapped in the overlay TVFocusGuideView.
-// Dub list VIRTUALIZED (JESUS ~2,259 dubs froze it); rows via panelState.ts (annotateVariantRows/deriveSubtitlePanelState); Close stays focusable so the viewer is never trapped.
+// In-player dub/subtitle menu for the FULLSCREEN overlay (R10/R11), mounted when the active dub plays (inPlayerMenuVisible
+// gate in playerSwitch.ts); U8 renders one `section`, trapped in the overlay TVFocusGuideView. Dub list VIRTUALIZED (JESUS
+// ~2,259 dubs froze it); rows via panelState.ts (annotateVariantRows/deriveSubtitlePanelState); Close stays focusable so the viewer is never trapped.
 
 import { useEffect, useMemo } from "react"
 import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native"

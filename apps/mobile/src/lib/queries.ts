@@ -209,9 +209,9 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
 
 // ── Lean series-screen video fragment ──────────────────────────────
-// SYNC: mirrors apps/tv/src/lib/videoQueries.ts `seriesWatchVideoFragment`. Leaner sibling of
-// watchVideoFragment; OMITS the `parents→parent→children` sibling chain (grid uses OWN `children`)
-// + each dub's `duration`/`muxVideo.playbackId`. childDubLanguages: slow admin resolver pending a composite index (hand-off note in docs/).
+// SYNC: mirrors apps/tv/src/lib/videoQueries.ts `seriesWatchVideoFragment`. Leaner sibling of watchVideoFragment;
+// OMITS the `parents→parent→children` sibling chain (grid uses OWN `children`) + each dub's `duration`/`muxVideo.playbackId`.
+// childDubLanguages: slow admin resolver pending a composite index (hand-off note in docs/).
 export const seriesWatchVideoFragment = adminGraphql(`
   fragment SeriesWatchVideo on Video @_unmask {
     documentId: id
@@ -355,9 +355,9 @@ export const GET_VIDEO_DUB = adminGraphql(
 export type WatchDubData = AdminResultOf<typeof GET_VIDEO_DUB>
 
 // ── Watch Home bulk query (card-lean by design) ─────────────────────
-// Web's WatchHomeVideo fragment MINUS `variants: dubs`: the ~30-id bulk fetch includes the
-// JESUS film whose ~2,259 dubs re-create the 9.5MB incident (KTD-2). Hero resolves HLS lazily
-// (useHeroStream). NEVER add `dubs` — watchHomeQueries.test.ts guards it; shape must satisfy WatchHomeVideoInput in src/lib/watchHome/model.ts.
+// Web's WatchHomeVideo fragment MINUS `variants: dubs`: the ~30-id bulk fetch includes the JESUS film whose
+// ~2,259 dubs re-create the 9.5MB incident (KTD-2). Hero resolves HLS lazily (useHeroStream). NEVER add `dubs`
+// — watchHomeQueries.test.ts guards it; shape must satisfy WatchHomeVideoInput in src/lib/watchHome/model.ts.
 export const watchHomeVideoFragment = adminGraphql(`
   fragment WatchHomeVideo on Video @_unmask {
     documentId: id

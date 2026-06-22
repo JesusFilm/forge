@@ -123,9 +123,9 @@ export function HomeScreen() {
       sessionSeed: sessionSeedRef.current,
     })
     if (queue.wrapped && queue.videos.length > 0) {
-      // wrapped=true means every eligible slide was already played and the queue
-      // was rebuilt ignoring the set; reset it so the next rebuild starts fresh.
-      // videos.length guard stops a content outage (no eligible videos) from wiping persisted memory.
+      // wrapped=true means every eligible slide was already played and the queue was rebuilt
+      // ignoring the set; reset it so the next rebuild starts fresh. The videos.length guard stops
+      // a content outage (no eligible videos) from wiping persisted memory.
       resetPlayedIds()
     }
     return queue.slides
@@ -216,9 +216,9 @@ export function HomeScreen() {
   const heroPanResponder = useMemo(
     () =>
       PanResponder.create({
-        // Claim ONLY horizontal-dominant moves over the VISIBLE hero, before
-        // the FlashList takes them; vertical drags and taps return false so feed
-        // scroll + Pressables stay untouched. Never claims when hero is hidden or has <2 slides (nothing to swipe to).
+        // Claim ONLY horizontal-dominant moves over the VISIBLE hero, before the FlashList takes
+        // them; vertical drags and taps return false so feed scroll + Pressables stay untouched.
+        // Never claims when the hero is hidden or has <2 slides (nothing to swipe to).
         onMoveShouldSetPanResponderCapture: (evt, gesture) => {
           const { scrollY, slideCount, heroHeight: h } = swipeStateRef.current
           if (slideCount < 2) return false

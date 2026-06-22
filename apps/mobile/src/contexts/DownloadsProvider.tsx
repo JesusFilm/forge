@@ -298,9 +298,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
       const finalize = async (location: string) => {
         try {
-          // `location` already equals our pendingPath, so the "move" is a
-          // pending -> committed rename. Guard the benign cases (already
-          // committed, or source missing from a prior move) so they don't force `failed`.
+          // `location` already equals our pendingPath, so the "move" is a pending -> committed
+          // rename. Guard the benign cases (already committed, or the source already moved by a
+          // prior attempt) so they don't force `failed`.
           const source = (await fileExists(location)) ? location : pendingPath
           if (source !== committedPath) {
             if (await fileExists(source)) {

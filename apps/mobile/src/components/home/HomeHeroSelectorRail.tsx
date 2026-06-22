@@ -24,9 +24,9 @@ export type HomeHeroSelectorRailProps = {
 }
 
 /**
- * Mini video-card rail mirroring the hero pager queue (thumb + title, accent
- * ring on the active slide). Renders as a sibling below the pager so it owns its
- * own touches. Half the shelf-card size, title below; hidden for 1 slide (reducer's showsPagerChrome rule, AE2).
+ * Mini video-card rail mirroring the hero pager queue (thumb + title, accent ring on the active
+ * slide). Renders as a sibling below the pager so it owns its own touches. Half the shelf-card size,
+ * title below; hidden for 1 slide (reducer's showsPagerChrome rule, AE2).
  */
 export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
   slides,
