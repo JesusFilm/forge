@@ -54,7 +54,8 @@ export default function SeriesScreen() {
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
   const typography = useTypography()
 
-  const { series, setSeries, selectedLanguageSlug } = useSeriesSession()
+  const { series, setSeries, languages, selectedLanguageSlug } =
+    useSeriesSession()
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
@@ -244,6 +245,10 @@ export default function SeriesScreen() {
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
                   onShare={handleShare}
+                  languageLabel={
+                    languages.find((l) => l.slug === selectedLanguageSlug)
+                      ?.name ?? null
+                  }
                 />
                 <VideoDescription description={series.description} />
                 {series.episodes.length > 0 && (

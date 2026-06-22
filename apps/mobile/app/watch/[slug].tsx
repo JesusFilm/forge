@@ -59,6 +59,10 @@ import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../src/lib/offlineFileSystem"
 import { buildSubtitlePath } from "../../src/lib/offlineFiles"
+import {
+  resolveActiveSubtitle,
+  resolveSubtitleActionLabel,
+} from "../../src/lib/subtitleSelection"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 // Inline player is inset this far on each side; the back button floats just
@@ -168,6 +172,7 @@ export default function WatchVideoPage() {
     ensureActiveVariantMedia,
     subtitleEnabled,
     activeSubtitleSlug,
+    preferredSubtitleName,
     snackbarMessage,
     setSnackbarMessage,
   } = useWatchSession()
@@ -278,14 +283,15 @@ export default function WatchVideoPage() {
       : null
 
   const subtitleVttSrc = useMemo(() => {
-    // Offline playback shows only the locally-saved subtitle (read from disk).
-    if (offlineSource) return offlineSubtitle
+    // Offline playback reads the locally-saved subtitle from disk, but still
+    // honors the subtitles toggle: the track is always bundled at download
+    // time, yet only shown when captions are on — matching online playback.
+    if (offlineSource) return subtitleEnabled ? offlineSubtitle : null
     if (!subtitleEnabled || !activeSubtitleSlug || !activeVariantMedia)
       return null
     return (
-      activeVariantMedia.subtitles.find(
-        (s) => s.languageSlug === activeSubtitleSlug,
-      )?.vttSrc ?? null
+      resolveActiveSubtitle(activeSubtitleSlug, activeVariantMedia.subtitles)
+        ?.vttSrc ?? null
     )
   }, [
     offlineSource,
@@ -294,6 +300,19 @@ export default function WatchVideoPage() {
     activeSubtitleSlug,
     activeVariantMedia,
   ])
+
+  // The Language / Subtitles action buttons surface the current selection.
+  // "Off" when subtitles are disabled; otherwise the active subtitle's name.
+  // While the lazy dub media is in flight the name isn't resolvable yet, so we
+  // fall back to the persisted preferred-subtitle name — painting it on a cold
+  // load instead of flashing the static "Subtitles" placeholder.
+  const languageActionLabel = activeVariant?.languageName ?? null
+  const subtitleActionLabel = resolveSubtitleActionLabel(
+    subtitleEnabled,
+    activeSubtitleSlug,
+    activeVariantMedia?.subtitles ?? [],
+    preferredSubtitleName,
+  )
 
   // Prefer the resolved video; fall back to the seed so first paint has
   // content. The player source resolves to the active variant, then the
@@ -518,6 +537,9 @@ export default function WatchVideoPage() {
               onLanguage={() => router.push("/watch/language")}
               onSubtitles={() => router.push("/watch/subtitle")}
               onShare={handleShare}
+              languageLabel={languageActionLabel}
+              subtitleLabel={subtitleActionLabel}
+              subtitleActive={subtitleEnabled}
             />
 
             <VideoDescription description={video.description} />

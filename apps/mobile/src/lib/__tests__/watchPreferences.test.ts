@@ -26,12 +26,14 @@ describe("parseStoredPreferences", () => {
     const raw = JSON.stringify({
       audioLanguageSlug: "spanish",
       subtitleLanguageSlug: "english",
+      subtitleLanguageName: "English",
       subtitlesEnabled: true,
       wifiOnly: true,
     })
     expect(parseStoredPreferences(raw)).toEqual({
       audioLanguageSlug: "spanish",
       subtitleLanguageSlug: "english",
+      subtitleLanguageName: "English",
       subtitlesEnabled: true,
       wifiOnly: true,
     })
@@ -43,6 +45,7 @@ describe("parseStoredPreferences", () => {
     ).toEqual({
       audioLanguageSlug: "french",
       subtitleLanguageSlug: null,
+      subtitleLanguageName: null,
       subtitlesEnabled: false,
       wifiOnly: false,
     })
@@ -59,19 +62,34 @@ describe("parseStoredPreferences", () => {
     expect(parseStoredPreferences(legacy)).toEqual({
       audioLanguageSlug: null,
       subtitleLanguageSlug: null,
+      subtitleLanguageName: null,
       subtitlesEnabled: true,
       wifiOnly: false,
     })
+  })
+
+  it("preserves the cached subtitle display name, dropping an empty one", () => {
+    expect(
+      parseStoredPreferences(
+        JSON.stringify({ subtitleLanguageName: "Arabic, Modern Standard" }),
+      ).subtitleLanguageName,
+    ).toBe("Arabic, Modern Standard")
+    expect(
+      parseStoredPreferences(JSON.stringify({ subtitleLanguageName: "" }))
+        .subtitleLanguageName,
+    ).toBeNull()
   })
 
   it("coerces wrong-typed fields to safe values", () => {
     const raw = JSON.stringify({
       audioLanguageSlug: 123,
       subtitleLanguageSlug: "",
+      subtitleLanguageName: 42,
       subtitlesEnabled: "yes",
     })
-    // numeric/empty languages → null; non-boolean enabled → false (only
-    // strict `true` enables, so a truthy string never silently turns subs on).
+    // numeric/empty languages + numeric display name → null; non-boolean enabled
+    // → false (only strict `true` enables, so a truthy string never silently
+    // turns subs on).
     expect(parseStoredPreferences(raw)).toEqual(DEFAULT_WATCH_PREFERENCES)
   })
 
@@ -79,6 +97,7 @@ describe("parseStoredPreferences", () => {
     const prefs: WatchPreferences = {
       audioLanguageSlug: "portuguese",
       subtitleLanguageSlug: "spanish",
+      subtitleLanguageName: "Spanish",
       subtitlesEnabled: true,
       wifiOnly: true,
     }

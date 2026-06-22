@@ -7,7 +7,8 @@ import { SheetError } from "../../src/components/watch/SheetError"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
-import type { WatchDownload, WatchSubtitle } from "../../src/lib/normalizeVideo"
+import type { WatchDownload } from "../../src/lib/normalizeVideo"
+import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
 export default function DownloadSheetRoute() {
   const router = useRouter()
@@ -18,6 +19,7 @@ export default function DownloadSheetRoute() {
     activeVariantMediaLoading,
     activeVariantMediaError,
     ensureActiveVariantMedia,
+    activeSubtitleSlug,
     setSnackbarMessage,
   } = useWatchSession()
   const { startDownload, swapDownload } = useDownloads()
@@ -47,13 +49,19 @@ export default function DownloadSheetRoute() {
       />
     )
 
-  const onStartDownload = async (
-    rendition: WatchDownload,
-    subtitle: WatchSubtitle | null,
-  ) => {
+  // The bundled subtitle is inherited from the watch session, not picked in the
+  // sheet: it's the dub's active subtitle (whatever the user set on the Video
+  // Details subtitle sheet), regardless of whether subtitles are toggled on.
+  // null when no subtitle is active or the active language has no track here.
+  const activeSubtitle = resolveActiveSubtitle(
+    activeSubtitleSlug,
+    activeVariantMedia?.subtitles ?? [],
+  )
+
+  const onStartDownload = async (rendition: WatchDownload) => {
     if (!activeVariant) return
-    // Audio = active dub; the optional subtitle is the user's pick. Identity
-    // (dub + rendition documentId, subtitle slug) is stored so the engine can
+    // Audio = active dub; subtitle = the dub's active subtitle. Identity (dub +
+    // rendition documentId, subtitle slug) is stored so the engine can
     // re-resolve fresh URLs before each (re)start. Title + poster feed the
     // offline library (My Downloads).
     const enqueue = isSwap ? swapDownload : startDownload
@@ -62,8 +70,8 @@ export default function DownloadSheetRoute() {
       title: video.title ?? "",
       dubDocumentId: activeVariant.documentId,
       rendition,
-      subtitleLanguageSlug: subtitle?.languageSlug ?? null,
-      subtitleUrl: subtitle?.vttSrc ?? null,
+      subtitleLanguageSlug: activeSubtitle?.languageSlug ?? null,
+      subtitleUrl: activeSubtitle?.vttSrc ?? null,
       posterUrl: video.posterUrl,
       allowCellular: !wifiOnly,
     })
@@ -82,7 +90,7 @@ export default function DownloadSheetRoute() {
       duration={video.duration}
       languageName={activeVariant?.languageName ?? null}
       downloads={activeVariantMedia?.downloads ?? []}
-      subtitles={activeVariantMedia?.subtitles ?? []}
+      subtitleLanguageName={activeSubtitle?.languageName ?? null}
       onStartDownload={onStartDownload}
     />
   )

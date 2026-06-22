@@ -31,6 +31,7 @@ import {
 type WatchPreferencesContextValue = WatchPreferences & {
   setPreferredAudioLanguage: (slug: string | null) => void
   setPreferredSubtitleLanguage: (slug: string | null) => void
+  setPreferredSubtitleName: (name: string | null) => void
   setSubtitlesEnabled: (enabled: boolean) => void
   /** False until the persisted blob has been read from AsyncStorage. */
   isReady: boolean
@@ -101,6 +102,10 @@ export function WatchPreferencesProvider({
     (slug: string | null) => persist({ subtitleLanguageSlug: slug }),
     [persist],
   )
+  const setPreferredSubtitleName = useCallback(
+    (name: string | null) => persist({ subtitleLanguageName: name }),
+    [persist],
+  )
   const setSubtitlesEnabled = useCallback(
     (enabled: boolean) => persist({ subtitlesEnabled: enabled }),
     [persist],
@@ -112,6 +117,7 @@ export function WatchPreferencesProvider({
         ...prefs,
         setPreferredAudioLanguage,
         setPreferredSubtitleLanguage,
+        setPreferredSubtitleName,
         setSubtitlesEnabled,
         isReady,
       }}
