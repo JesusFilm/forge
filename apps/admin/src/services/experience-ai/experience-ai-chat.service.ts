@@ -42,7 +42,7 @@ import {
   type ChatHistoryTurn,
   type EditableLocaleSummary,
 } from "./experience-ai-chat-prompts"
-import { extractJsonObject } from "./extract-json-object"
+import { extractJsonObject } from "@forge/experience-schema"
 
 // -----------------------------------------------------------------------------
 // Public types

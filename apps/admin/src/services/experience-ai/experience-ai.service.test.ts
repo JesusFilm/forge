@@ -21,7 +21,7 @@ import { loadExperienceAiVideoCandidates } from "./experience-ai.service"
 import {
   buildDraftExperienceJsonSchema,
   DraftExperienceSchema,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 
 type MockPrisma = PrismaClient & {
   experienceLocale: {

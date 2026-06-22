@@ -7,10 +7,7 @@ import { TIME_BUDGET_MS } from "@/mastra/budgets"
 import { WorkflowStepError } from "@/mastra/workflows/multi-step-draft-workflow"
 import { buildExemplarOutline } from "@/services/experience-ai/experience-ai-exemplar-outline"
 import { selectExperienceExemplar } from "@/services/experience-ai/experience-ai-exemplar.service"
-import type {
-  DraftExperience,
-  VideoCandidate,
-} from "@/services/experience-ai/experience-ai.schemas"
+import type { DraftExperience, VideoCandidate } from "@forge/experience-schema"
 import {
   ExperienceAiNormalizationError,
   loadExperienceAiVideoCandidates,
