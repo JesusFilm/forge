@@ -69,7 +69,8 @@ void getMastraMemory
 export function buildMastraInstance(): Mastra {
   // Registry populated by U6 / U7 / U8 / U9.
   //
-  // Agent ids surface to the streaming-bridge dispatch:
+  // Agent ids the chat service dispatches by (in-process fallback path;
+  // the standalone @forge/mastra service owns the remote path):
   //   - "experience-default-chat" — the default editor agent.
   //   - "draft-experience" / "add-section" / "rewrite-copy" — the
   //     specialized agents picked via the composer agent-picker.
@@ -151,9 +152,9 @@ let cached: Mastra | null = null
 /**
  * Return the shared Mastra runtime instance. Builds on first access.
  *
- * Route handlers import this and call `mastra.getAgent(agentId).stream(...)`
- * (or the streaming-bridge wrapper from U3). Tests should call
- * `__resetMastraForTesting()` between cases to avoid leaking state.
+ * The chat service / draft action import this for the in-process fallback
+ * (`getAgentById` / `getWorkflowById`) when the remote-flag is off. Tests
+ * should call `__resetMastraForTesting()` between cases to avoid leaking state.
  */
 export function getMastra(): Mastra {
   if (cached === null) {

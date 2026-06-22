@@ -77,7 +77,20 @@ Origin documents:
   result. Manager owns deterministic exact-match application, raw artifact
   preservation, canonical source artifact writes, and operator display.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
-  contracts are HTTP payloads plus local Zod schemas.
+  contracts are HTTP payloads plus local Zod schemas. **Exception (consolidation
+  U1):** the LLM experience-draft _generation contract_ is single-sourced from
+  the shared `@forge/experience-schema` package (pure zod — `DraftExperienceSchema`,
+  `SkeletonSchema`, fill schemas, `coerce-draft`, `extract-json-object`), consumed
+  by BOTH the draft/chat generator here and admin's re-validator so the two sides
+  cannot drift. This is a _shared generation contract_, not a per-service _wire_
+  schema — the "local Zod schemas" rule still governs every `/forge-*` route's
+  request/response shape.
+- Experience draft-authoring + chat agents are Mastra-owned (consolidation
+  U3–U9): the draft/chat agents + `multi-step-draft`/`quick-draft` workflows +
+  repair run here; admin is a thin caller/proxy over authenticated HTTP. Admin
+  keeps candidate retrieval, exemplar selection, draft re-validation,
+  persistence/ABAC, chat history, and the 👍/👎 ratings store. See "Experience
+  draft & chat generation" below.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
   validates explicit `/forge-*` service routes against
   `MASTRA_SERVICE_API_KEYS`; Studio's built-in `/api/workflows` routes must
@@ -444,6 +457,56 @@ access decision.
   stays in-memory.
 - **Agent evals** — faithfulness/groundedness once RAG lands; safety scoring
   tied to the guardrail gate.
+
+## Experience draft & chat generation
+
+Mastra owns the AI experience **draft-authoring** + **chat** generation
+(consolidation plan
+`docs/plans/2026-06-19-001-feat-mastra-admin-to-standalone-consolidation-plan.md`).
+Admin computes candidates + exemplar (its pgvector/embeddings), ships them over
+the wire, and persists/re-validates the result; Mastra is the LLM generator.
+
+- **Agents** (`src/mastra/agents/`): `experience-default-chat` (chat) +
+  `draft-experience` / `add-section` / `rewrite-copy` (chat-facing specialized)
+  - `experience-planner` / `experience-skeleton` / `experience-fill` /
+    `experience-critic` / `experience-reviser` (workflow-only, memory-less) +
+    `auto-enrich` (registered/Studio-invocable; no live dispatch). The chat-facing
+    agents carry HTTP-backed tool callbacks; the workflow agents stay TOOL-LESS
+    (candidates arrive pre-loaded in the workflow input, so they never tool-call).
+- **Workflows** (`src/mastra/workflows/multi-step-draft.ts`): `multi-step-draft`
+  (plan → skeleton → fill → critique → revise) and `quick-draft` (no revise) +
+  `repair-draft.ts` (re-runs `experience-reviser` on a normalize-shaped error,
+  decoupled from admin's normalize class via a local `NormalizationErrorLike`
+  shape).
+- **Memory**: `experience-chat` Postgres memory in `src/mastra/memory.ts`
+  (alongside the seeker's in-memory store), gated on the gateway EMBEDDINGS key
+  for semantic recall.
+- **Service routes** (all `MASTRA_SERVICE_API_KEYS`-gated):
+  - `POST /forge-experience-draft` — buffered; runs a draft workflow and
+    returns `{ ok:true, draft } | { ok:false, reason, retryable }`. Internal
+    `AbortSignal.timeout(TIME_BUDGET_MS.multiStepWorkflow)` (180s); admin's
+    caller budget is strictly larger.
+  - `POST /forge-experience-chat` — **streaming** (the only streaming `/forge-*`
+    route): `experience-default-chat.stream()` → SSE `token_delta` frames + a
+    terminal `result { text, producedBy }` (or `error { reason }`). An internal
+    `AbortSignal.timeout(chatTurn)` (90s) composed with the inbound request
+    signal + `reader.cancel()` on disconnect cancels the agent run, so a closed
+    editor tab stops generation through both legs.
+- **Agent tool callbacks** (`src/services/admin-agent-tools-client.ts`): the
+  chat agent's `searchVideos` / `lookupBibleVerse` / `fetchVideoImage` tools call
+  admin's bearer-gated `/api/internal/agent-tools/*` over HTTP (never admin
+  Prisma). `ADMIN_AGENT_TOOLS_URL` + `ADMIN_AGENT_TOOLS_API_KEY` (optional;
+  unset → the tool degrades to an empty result, never a boot/turn failure).
+
+| Variable                                  | Purpose                                                                             |
+| ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| `AI_GATEWAY_CHAT_*`                       | JesusFilm gateway chat-model factory (opt-in via `AI_GATEWAY_CHAT_ENABLED="true"`). |
+| `GOOGLE_GENERATIVE_AI_API_KEY`            | Default structured-chat provider (Gemini 3.5 Flash) when set.                       |
+| `MASTRA_DEFAULT_PROVIDER`                 | Default provider id (`openrouter` fallback).                                        |
+| `AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED` | Gates per-phase schema-constrained decoding (default `"false"`).                    |
+| `ADMIN_AGENT_TOOLS_URL`                   | Admin base URL for the chat agent's tool callbacks. Optional.                       |
+| `ADMIN_AGENT_TOOLS_API_KEY`               | Bearer admin holds in its `ADMIN_AGENT_TOOLS_API_KEYS` receiver CSV. Optional.      |
+| `ADMIN_AGENT_TOOLS_TIMEOUT_MS`            | Per-tool single-attempt timeout (default 10s, cap 30s — fits the 90s chatTurn).     |
 
 ## Search eval baseline portability
 
