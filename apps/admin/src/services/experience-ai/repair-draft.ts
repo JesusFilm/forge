@@ -35,12 +35,12 @@ import { z } from "zod"
 import { ExperienceAiNormalizationError } from "./experience-ai-normalize"
 import type { ExperienceAiNormalizationErrorCode } from "./experience-ai-normalize"
 import {
+  coerceDraftEnvelope,
   DraftExperienceSchema,
+  extractJsonObject,
   type DraftExperience,
   type VideoCandidate,
-} from "./experience-ai.schemas"
-import { coerceDraftEnvelope } from "./coerce-draft"
-import { extractJsonObject } from "./extract-json-object"
+} from "@forge/experience-schema"
 
 // ---------------------------------------------------------------------------
 // Repair taxonomy

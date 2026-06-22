@@ -168,6 +168,12 @@ export const env = createEnv({
     // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
     // Kept separate from transcript/scene ingest and workflow launch credentials.
     MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for the standalone Mastra chat agent's tool
+    // callbacks (consolidation U7): search-videos / lookup-bible-verse /
+    // fetch-video-image. A DIFFERENT capability than vector ingest or workflow
+    // launch (read-only catalog reads), so it gets its own CSV and joins the
+    // disjointness invariant below. Optional so an unprovisioned env still boots.
+    ADMIN_AGENT_TOOLS_API_KEYS: z.string().min(1).optional(),
     // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
@@ -341,6 +347,49 @@ export const env = createEnv({
     // Cap on the U5 validate→repair loop (default 2). See
     // experienceAiMaxRepairAttemptsEnvSchema above.
     EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: experienceAiMaxRepairAttemptsEnvSchema,
+    // Flag-gated one-shot draft cutover (consolidation U6). When "true",
+    // `runGenerateDraftAction` runs the draft via the standalone
+    // `/forge-experience-draft` route (reusing MASTRA_BASE_URL +
+    // MASTRA_SERVICE_API_KEY) instead of the in-process workflow; the
+    // in-process path stays the fallback (unset/"false", or when those caller
+    // vars are unset → the client returns config_missing → in-process).
+    // Enum-of-strings + `.optional().default("false")` so an unprovisioned
+    // Railway env still boots (opt-in scaffolding env var).
+    EXPERIENCE_AI_REMOTE_DRAFT: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Outbound HTTP budget for the remote draft call. MUST stay strictly
+    // LARGER than mastra's internal multi-step-workflow budget (180s) so the
+    // mastra-side timeout wins the race and returns a clean { reason:"timeout" }
+    // envelope rather than admin's fetch aborting as a generic network_error
+    // and triggering a retry storm (cf.
+    // docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md).
+    MASTRA_DRAFT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200_000),
+    // Flag-gated streaming chat cutover (consolidation U9). When "true",
+    // `runMastraChat` relays the token stream from the standalone
+    // `/forge-experience-chat` route instead of running the agent in-process;
+    // the in-process path stays the fallback. All optional so an unprovisioned
+    // env still boots.
+    EXPERIENCE_AI_REMOTE_CHAT: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    MASTRA_CHAT_BASE_URL: z.string().url().optional(),
+    MASTRA_CHAT_API_KEY: z.string().min(1).optional(),
+    // SSRF allowlist for the chat base URL host. When set, the base URL host
+    // MUST be listed (else the relay is rejected before fetch). Unset → the
+    // operator-configured base host is implicitly trusted (redirect:"error"
+    // still blocks off-host hops).
+    MASTRA_CHAT_ALLOWED_HOSTS: z.string().min(1).optional(),
+    // Outbound budget for the chat relay. Strictly LARGER than mastra's
+    // internal chatTurn budget (90s) so the mastra-side timeout wins; under the
+    // ~100s Cloudflare 524 ceiling fronting admin.
+    MASTRA_CHAT_TIMEOUT_MS: z.coerce.number().int().positive().default(95_000),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
     AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
@@ -430,6 +479,9 @@ export const env = createEnv({
     ),
     MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
+    ADMIN_AGENT_TOOLS_API_KEYS: emptyToUndefined(
+      process.env.ADMIN_AGENT_TOOLS_API_KEYS,
     ),
     EXPERIENCE_EXEMPLAR_MAX_DISTANCE: emptyToUndefined(
       process.env.EXPERIENCE_EXEMPLAR_MAX_DISTANCE,
@@ -547,6 +599,23 @@ export const env = createEnv({
     EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: emptyToUndefined(
       process.env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS,
     ),
+    EXPERIENCE_AI_REMOTE_DRAFT: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_DRAFT,
+    ),
+    MASTRA_DRAFT_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_DRAFT_TIMEOUT_MS,
+    ),
+    EXPERIENCE_AI_REMOTE_CHAT: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_CHAT,
+    ),
+    MASTRA_CHAT_BASE_URL: emptyToUndefined(process.env.MASTRA_CHAT_BASE_URL),
+    MASTRA_CHAT_API_KEY: emptyToUndefined(process.env.MASTRA_CHAT_API_KEY),
+    MASTRA_CHAT_ALLOWED_HOSTS: emptyToUndefined(
+      process.env.MASTRA_CHAT_ALLOWED_HOSTS,
+    ),
+    MASTRA_CHAT_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_CHAT_TIMEOUT_MS,
+    ),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: emptyToUndefined(
       process.env.AI_GATEWAY_EMBEDDINGS_BASE_URL,
     ),
@@ -607,6 +676,7 @@ const BEARER_CSV_KEYS = [
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
   "MASTRA_SCENE_INGEST_API_KEYS",
   "MASTRA_EXPERIENCE_INGEST_API_KEYS",
+  "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
@@ -684,6 +754,7 @@ assertBearerCsvsDisjoint({
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
   MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+  ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,

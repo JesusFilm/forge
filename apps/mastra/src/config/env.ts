@@ -86,6 +86,31 @@ const envSchema = z.object({
   ADMIN_SEARCH_TRACE_SAMPLE_URL: z.string().url().optional(),
   ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
+  // Standalone chat agent tool callbacks → admin (consolidation U8). Base URL
+  // of admin; the client appends `/api/internal/agent-tools/{tool}`. Bearer is
+  // the value admin holds in its `ADMIN_AGENT_TOOLS_API_KEYS` receiver CSV. Both
+  // optional: unset → the tool degrades to an empty result, never a boot fail.
+  ADMIN_AGENT_TOOLS_URL: z.string().url().optional(),
+  ADMIN_AGENT_TOOLS_API_KEY: z.string().min(1).optional(),
+  // Single-attempt per-tool timeout. Must fit the 90s chatTurn budget with
+  // maxSteps:8 — keep it small so several tool round-trips can complete in one
+  // turn. Capped at 30s; default 10s.
+  ADMIN_AGENT_TOOLS_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(30_000)
+    .default(10_000),
+  ADMIN_AGENT_TOOLS_USER_AGENT: z
+    .string()
+    .min(1)
+    .default("forge-mastra-agent-tools/1.0"),
+  // SSRF guard: when set, the admin base host must be in this CSV allowlist
+  // before any agent-tool call, so the bearer never bleeds to an unvetted host.
+  // Unset → the operator-set ADMIN_AGENT_TOOLS_URL host is trusted and
+  // `redirect:"error"` still blocks off-host hops. Mirrors the chat relay's
+  // MASTRA_CHAT_ALLOWED_HOSTS.
+  ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: z.string().min(1).optional(),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -113,6 +138,38 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT),
+  // --- Chat / draft-authoring providers (consolidated from admin, U2) ---
+  // All optional: chat/draft generation is opt-in and flag-gated; the
+  // default provider (openrouter) needs none of these. New cross-service
+  // scaffolding env vars stay optional so an unprovisioned Railway env boots.
+  AI_GATEWAY_CHAT_API_KEY: z.string().min(1).optional(),
+  AI_GATEWAY_CHAT_BASE_URL: z.string().url().optional(),
+  AI_GATEWAY_CHAT_ENABLED: z.string().optional(),
+  AI_GATEWAY_CHAT_MODEL: z.string().min(1).optional(),
+  AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false"),
+  EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(5)
+    .optional()
+    .default(2),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
+  MASTRA_DEFAULT_PROVIDER: z
+    .enum([
+      "openrouter",
+      "ollama",
+      "openai",
+      "anthropic",
+      "google",
+      "jesusfilm",
+    ])
+    .optional(),
+  OLLAMA_BASE_URL: z.string().url().optional(),
+  OPENAI_BASE_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url().optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
@@ -290,6 +347,19 @@ export const env = envSchema.parse({
   ADMIN_TRANSCRIPT_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_TRANSCRIPT_INGEST_URL,
   ),
+  ADMIN_AGENT_TOOLS_URL: emptyToUndefined(process.env.ADMIN_AGENT_TOOLS_URL),
+  ADMIN_AGENT_TOOLS_API_KEY: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_API_KEY,
+  ),
+  ADMIN_AGENT_TOOLS_TIMEOUT_MS: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
+  ),
+  ADMIN_AGENT_TOOLS_USER_AGENT: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_USER_AGENT,
+  ),
+  ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS,
+  ),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: emptyToUndefined(
     process.env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS,
   ),
@@ -311,6 +381,30 @@ export const env = envSchema.parse({
   AI_GATEWAY_EMBEDDINGS_USER_AGENT: emptyToUndefined(
     process.env.AI_GATEWAY_EMBEDDINGS_USER_AGENT,
   ),
+  AI_GATEWAY_CHAT_API_KEY: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_API_KEY,
+  ),
+  AI_GATEWAY_CHAT_BASE_URL: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_BASE_URL,
+  ),
+  AI_GATEWAY_CHAT_ENABLED: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_ENABLED,
+  ),
+  AI_GATEWAY_CHAT_MODEL: emptyToUndefined(process.env.AI_GATEWAY_CHAT_MODEL),
+  AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED: emptyToUndefined(
+    process.env.AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED,
+  ),
+  EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: emptyToUndefined(
+    process.env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS,
+  ),
+  GOOGLE_GENERATIVE_AI_API_KEY: emptyToUndefined(
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  ),
+  MASTRA_DEFAULT_PROVIDER: emptyToUndefined(
+    process.env.MASTRA_DEFAULT_PROVIDER,
+  ),
+  OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
+  OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
   DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
@@ -601,6 +695,29 @@ export function getJesusfilmRagConfig(): JesusfilmRagConfig {
     apiKey: env.JESUSFILM_RAG_API_KEY,
     timeoutMs: env.JESUSFILM_RAG_TIMEOUT_MS,
     userAgent: env.JESUSFILM_RAG_USER_AGENT,
+  }
+}
+
+export type AdminAgentToolsConfig = {
+  baseUrl?: string
+  apiKey?: string
+  timeoutMs: number
+  userAgent: string
+  allowedHosts?: string
+}
+
+/**
+ * Config for the standalone chat agent's tool callbacks to admin
+ * (consolidation U8). `baseUrl`/`apiKey` are optional — absent means the tool
+ * degrades to an empty result at runtime, never a boot failure.
+ */
+export function getAdminAgentToolsConfig(): AdminAgentToolsConfig {
+  return {
+    baseUrl: env.ADMIN_AGENT_TOOLS_URL,
+    apiKey: env.ADMIN_AGENT_TOOLS_API_KEY,
+    timeoutMs: env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
+    userAgent: env.ADMIN_AGENT_TOOLS_USER_AGENT,
+    allowedHosts: env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS,
   }
 }
 

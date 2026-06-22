@@ -37,7 +37,7 @@ import {
   getFillSchemaForType,
   SkeletonSchema,
   type DraftExperience,
-} from "@/services/experience-ai/experience-ai.schemas"
+} from "@forge/experience-schema"
 
 /**
  * Mocked-agent execute tests (U4) — exercise each step's body against
