@@ -341,6 +341,29 @@ export const env = createEnv({
     // Cap on the U5 validate→repair loop (default 2). See
     // experienceAiMaxRepairAttemptsEnvSchema above.
     EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: experienceAiMaxRepairAttemptsEnvSchema,
+    // Flag-gated one-shot draft cutover (consolidation U6). When "true",
+    // `runGenerateDraftAction` runs the draft via the standalone
+    // `/forge-experience-draft` route (reusing MASTRA_BASE_URL +
+    // MASTRA_SERVICE_API_KEY) instead of the in-process workflow; the
+    // in-process path stays the fallback (unset/"false", or when those caller
+    // vars are unset → the client returns config_missing → in-process).
+    // Enum-of-strings + `.optional().default("false")` so an unprovisioned
+    // Railway env still boots (opt-in scaffolding env var).
+    EXPERIENCE_AI_REMOTE_DRAFT: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Outbound HTTP budget for the remote draft call. MUST stay strictly
+    // LARGER than mastra's internal multi-step-workflow budget (180s) so the
+    // mastra-side timeout wins the race and returns a clean { reason:"timeout" }
+    // envelope rather than admin's fetch aborting as a generic network_error
+    // and triggering a retry storm (cf.
+    // docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md).
+    MASTRA_DRAFT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200_000),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
     AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
@@ -546,6 +569,12 @@ export const env = createEnv({
     ),
     EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: emptyToUndefined(
       process.env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS,
+    ),
+    EXPERIENCE_AI_REMOTE_DRAFT: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_DRAFT,
+    ),
+    MASTRA_DRAFT_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_DRAFT_TIMEOUT_MS,
     ),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: emptyToUndefined(
       process.env.AI_GATEWAY_EMBEDDINGS_BASE_URL,

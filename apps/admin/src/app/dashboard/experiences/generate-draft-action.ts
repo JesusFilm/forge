@@ -20,6 +20,10 @@ import {
   repairDraft,
   RepairDraftError,
 } from "@/services/experience-ai/repair-draft"
+import {
+  launchMastraExperienceDraft,
+  type MastraExperienceDraftFailureReason,
+} from "@/services/mastra-experience-draft-client"
 
 export type GenerateDraftActionInput = {
   localeId: string
@@ -231,7 +235,54 @@ function classifyNormalizationError(
   }
 }
 
+/**
+ * Map a remote draft-route `{ ok:false }` reason onto the action's editor-safe
+ * error-code union (consolidation U6). `config_missing` never reaches here — it
+ * degrades to the in-process path at the call site. Exhaustive `switch` +
+ * `never` so a new client reason is a compile-time forcing function.
+ *  - `auth_failed` → `NOT_CONFIGURED` (admin's bearer doesn't match mastra's
+ *    allowlist — a deploy/config gap, not a transient outage).
+ *  - `timeout` / `network_error` / `parse_error` / `invalid_input` /
+ *    `internal_error` → `UPSTREAM_ERROR` (the editor sees "try again shortly";
+ *    timeout is NOT retried here so there is no retry storm).
+ *  - `generation_failed` → `SCHEMA_MISMATCH` when non-retryable (the workflow's
+ *    schema_mismatch / truncated), else `UPSTREAM_ERROR` (transient agent error).
+ */
+function mapRemoteDraftFailure(
+  reason: MastraExperienceDraftFailureReason,
+  retryable: boolean,
+): GenerateDraftActionErrorCode {
+  switch (reason) {
+    case "auth_failed":
+      return "NOT_CONFIGURED"
+    case "generation_failed":
+      return retryable ? "UPSTREAM_ERROR" : "SCHEMA_MISMATCH"
+    case "config_missing":
+    case "timeout":
+    case "network_error":
+    case "parse_error":
+    case "invalid_input":
+    case "internal_error":
+      return "UPSTREAM_ERROR"
+    default: {
+      const exhaustive: never = reason
+      void exhaustive
+      return "UPSTREAM_ERROR"
+    }
+  }
+}
+
 const ACTION_BUDGET_MS = TIME_BUDGET_MS.multiStepWorkflow
+
+/**
+ * Repair-phase wall-clock budget for the REMOTE draft path (consolidation U6).
+ * The remote leg is bounded separately by `MASTRA_DRAFT_TIMEOUT_MS`; once a
+ * draft arrives, the validate→repair loop gets this fresh window (room for the
+ * default 2 × `REPAIR_CALL_TIMEOUT_MS` repair calls) rather than whatever is
+ * left of `ACTION_BUDGET_MS` after a possibly-long remote generation. The
+ * in-process path keeps the single shared `ACTION_BUDGET_MS` deadline.
+ */
+const REMOTE_REPAIR_BUDGET_MS = 60_000
 
 class ActionTimeoutError extends Error {
   readonly name = "ActionTimeoutError"
@@ -365,9 +416,20 @@ async function normalizeWithRepair(args: {
   }
 }
 
+/**
+ * Test/wiring seams for the flag-gated remote draft cutover (consolidation U6).
+ * Production passes nothing — `remoteEnabled` resolves from
+ * `EXPERIENCE_AI_REMOTE_DRAFT` and `launchRemoteDraft` is the real client.
+ */
+export type GenerateDraftActionOverrides = {
+  remoteEnabled?: boolean
+  launchRemoteDraft?: typeof launchMastraExperienceDraft
+}
+
 export async function runGenerateDraftAction(
   deps: GenerateDraftActionDeps,
   input: GenerateDraftActionInput,
+  overrides: GenerateDraftActionOverrides = {},
 ): Promise<GenerateDraftActionResult> {
   const prompt = input.prompt.trim()
   if (!prompt) {
@@ -476,7 +538,17 @@ export async function runGenerateDraftAction(
   // per-call timeout under the budget remaining until this deadline so a
   // repair re-prompt never out-races the action ceiling.
   const actionDeadline = Date.now() + ACTION_BUDGET_MS
-  try {
+  const fullPrompt = buildPrompt(input)
+  const remoteEnabled =
+    overrides.remoteEnabled ?? env.EXPERIENCE_AI_REMOTE_DRAFT === "true"
+  const launchRemoteDraft =
+    overrides.launchRemoteDraft ?? launchMastraExperienceDraft
+
+  // In-process workflow leg (the flag-off path AND the config_missing
+  // fallback). Captures `activeRun` so the timeout/error path can best-effort
+  // cancel it; returns the produced (DraftExperienceSchema-valid) draft, or
+  // throws WorkflowStepError / ActionTimeoutError into the catch ladder below.
+  const runInProcessWorkflow = async (): Promise<DraftExperience> => {
     const mastra = getMastra()
     const workflowId =
       input.mode === "quick" ? "quick-draft" : "multi-step-draft"
@@ -486,7 +558,7 @@ export async function runGenerateDraftAction(
     const workflowResult = await withTimeout(
       run.start({
         inputData: {
-          prompt: buildPrompt(input),
+          prompt: fullPrompt,
           locale: input.locale,
           candidates,
           exemplar,
@@ -507,11 +579,54 @@ export async function runGenerateDraftAction(
       throw failureError
     }
 
-    // The workflow output is Zod-parsed inside its revise step against
-    // DraftExperienceSchema, so the cast here reflects the runtime
-    // contract — not a guess. If that contract drifts, the revise step
-    // throws WorkflowStepError(schema_mismatch) before we get here.
-    const draft = (workflowResult.result as { draft: DraftExperience }).draft
+    // The workflow output is Zod-parsed inside its fill/revise step against
+    // DraftExperienceSchema, so the cast here reflects the runtime contract —
+    // not a guess. If that contract drifts, the step throws
+    // WorkflowStepError(schema_mismatch) before we get here.
+    return (workflowResult.result as { draft: DraftExperience }).draft
+  }
+
+  try {
+    // Flag-gated cutover (U6): run the draft remotely via the standalone
+    // `/forge-experience-draft` route when enabled, else in-process. The
+    // remote leg is bounded by its own client timeout
+    // (`MASTRA_DRAFT_TIMEOUT_MS` > mastra's internal budget); `config_missing`
+    // (caller vars unset) degrades to the in-process path so a flag flip
+    // without deployed caller vars never breaks generation. Other remote
+    // failures map to the editor-safe error surface (no retry storm).
+    let draft: DraftExperience
+    // Repair-loop deadline: the shared `ACTION_BUDGET_MS` for the in-process
+    // path (workflow + repair under one budget); a fresh window AFTER the
+    // separately-bounded remote leg returns.
+    let repairDeadline = actionDeadline
+    if (remoteEnabled) {
+      const remote = await launchRemoteDraft({
+        prompt: fullPrompt,
+        locale: input.locale,
+        candidates,
+        exemplar,
+        mode: input.mode === "quick" ? "quick" : "multi",
+      })
+      if (remote.ok) {
+        draft = remote.draft
+        repairDeadline = Date.now() + REMOTE_REPAIR_BUDGET_MS
+      } else if (remote.reason === "config_missing") {
+        console.warn(
+          "[runGenerateDraftAction] event=remote_draft_config_missing falling_back=in_process",
+        )
+        draft = await runInProcessWorkflow()
+      } else {
+        console.warn(
+          "[runGenerateDraftAction] event=remote_draft_failed reason=" +
+            remote.reason +
+            " retryable=" +
+            remote.retryable,
+        )
+        return fail(mapRemoteDraftFailure(remote.reason, remote.retryable))
+      }
+    } else {
+      draft = await runInProcessWorkflow()
+    }
 
     // U5 — fail-closed boundary loop. Normalize + validate against
     // BlocksSchema; on a repair-eligible (schema_violation) failure with
@@ -527,7 +642,7 @@ export async function runGenerateDraftAction(
       candidates,
       maxAttempts:
         env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS ?? DEFAULT_MAX_REPAIR_ATTEMPTS,
-      deadline: actionDeadline,
+      deadline: repairDeadline,
     })
 
     // Persist a thin assistant message linked to the active thread so
@@ -540,7 +655,11 @@ export async function runGenerateDraftAction(
     // log so a missing rateable id is debuggable, but never fail the
     // whole action because the rating widget couldn't be wired up.
     let messageId: string | undefined
-    const runId = (run as { runId?: string } | undefined)?.runId
+    // `runId` comes from the in-process run handle (captured on `activeRun`).
+    // The remote path leaves `activeRun` undefined — its run lives in the
+    // mastra service's storage — so `runId` is undefined there (the field is
+    // optional and only surfaces for Studio run→score navigation).
+    const runId = activeRun?.runId
     if (input.threadId) {
       // Cross-check the thread belongs to the authorized locale before
       // persisting under it (mirrors loadThreadForAuth's select). The
