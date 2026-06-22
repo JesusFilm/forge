@@ -35,6 +35,10 @@ import {
   type DraftWorkflowMastra,
 } from "./workflows/experience-draft-route"
 import {
+  handleExperienceChatRouteRequest,
+  type ExperienceChatRouteMastra,
+} from "./agents/experience-chat-route"
+import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
@@ -322,6 +326,17 @@ export const mastra = new Mastra({
             headers: { "content-type": "application/json" },
           })
         },
+      }),
+      registerApiRoute("/forge-experience-chat", {
+        method: "POST",
+        handler: async (c) =>
+          handleExperienceChatRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            getMastra: () => mastra as unknown as ExperienceChatRouteMastra,
+            requestSignal: c.req.raw.signal,
+          }),
       }),
       registerApiRoute("/forge-eval-query-generation", {
         method: "POST",

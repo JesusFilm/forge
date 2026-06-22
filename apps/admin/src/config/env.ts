@@ -370,6 +370,26 @@ export const env = createEnv({
       .int()
       .positive()
       .default(200_000),
+    // Flag-gated streaming chat cutover (consolidation U9). When "true",
+    // `runMastraChat` relays the token stream from the standalone
+    // `/forge-experience-chat` route instead of running the agent in-process;
+    // the in-process path stays the fallback. All optional so an unprovisioned
+    // env still boots.
+    EXPERIENCE_AI_REMOTE_CHAT: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    MASTRA_CHAT_BASE_URL: z.string().url().optional(),
+    MASTRA_CHAT_API_KEY: z.string().min(1).optional(),
+    // SSRF allowlist for the chat base URL host. When set, the base URL host
+    // MUST be listed (else the relay is rejected before fetch). Unset → the
+    // operator-configured base host is implicitly trusted (redirect:"error"
+    // still blocks off-host hops).
+    MASTRA_CHAT_ALLOWED_HOSTS: z.string().min(1).optional(),
+    // Outbound budget for the chat relay. Strictly LARGER than mastra's
+    // internal chatTurn budget (90s) so the mastra-side timeout wins; under the
+    // ~100s Cloudflare 524 ceiling fronting admin.
+    MASTRA_CHAT_TIMEOUT_MS: z.coerce.number().int().positive().default(95_000),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
     AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
@@ -584,6 +604,17 @@ export const env = createEnv({
     ),
     MASTRA_DRAFT_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_DRAFT_TIMEOUT_MS,
+    ),
+    EXPERIENCE_AI_REMOTE_CHAT: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_CHAT,
+    ),
+    MASTRA_CHAT_BASE_URL: emptyToUndefined(process.env.MASTRA_CHAT_BASE_URL),
+    MASTRA_CHAT_API_KEY: emptyToUndefined(process.env.MASTRA_CHAT_API_KEY),
+    MASTRA_CHAT_ALLOWED_HOSTS: emptyToUndefined(
+      process.env.MASTRA_CHAT_ALLOWED_HOSTS,
+    ),
+    MASTRA_CHAT_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_CHAT_TIMEOUT_MS,
     ),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: emptyToUndefined(
       process.env.AI_GATEWAY_EMBEDDINGS_BASE_URL,
