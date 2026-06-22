@@ -109,6 +109,18 @@ function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
   })
 }
 
+function setInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set
+  act(() => {
+    setter?.call(input, value)
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+  })
+}
+
 // -----------------------------------------------------------------------------
 // Tests
 // -----------------------------------------------------------------------------
@@ -141,6 +153,100 @@ describe("ExperienceChatPanel", () => {
       '[data-testid="experience-chat-empty-state"]',
     )
     expect(empty).not.toBeNull()
+  })
+
+  it("video-anchored section: stages an append-mode draft and Apply appends to existing canvas blocks", async () => {
+    const existingBlock = {
+      t: "text",
+      heading: "Existing",
+      contentParagraphs: ["x"],
+    }
+    const state: EditableLocaleState = {
+      title: "Existing Title",
+      metaDescription: "Existing meta",
+      ogImageUrl: null,
+      blocks: [existingBlock],
+    }
+    const canvas: ExperienceCanvasController & {
+      applyDiff: ReturnType<typeof vi.fn>
+      revertDiff: ReturnType<typeof vi.fn>
+    } = {
+      getState: () => state,
+      applyDiff: vi.fn(),
+      revertDiff: vi.fn(),
+    }
+    const sectionBlocks = [
+      { t: "videoHero", videoId: "vid1", heading: "The Resurrection" },
+      {
+        t: "relatedQuestions",
+        questions: [{ question: "Why?", answer: "Because." }],
+      },
+    ]
+    const generateSectionAction = vi.fn().mockResolvedValue({
+      ok: true,
+      draft: {
+        title: "The Resurrection",
+        metaDescription: "meta",
+        blocks: sectionBlocks,
+      },
+      review: {
+        scriptureNotes: ["note"],
+        researchNotes: [],
+        theologyReview: { status: "passed", notes: [] },
+        referenceLedger: [
+          {
+            sourceKind: "video_candidate",
+            claim: "Anchor",
+            reference: "The Resurrection",
+            candidateRef: "v01",
+          },
+        ],
+      },
+    })
+
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={canvas}
+        actions={makeActions()}
+        generateSectionAction={generateSectionAction}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const input = view.container.querySelector(
+      '[data-testid="experience-chat-anchor-input"]',
+    ) as HTMLInputElement
+    setInputValue(input, "vid1")
+    const genBtn = view.container.querySelector(
+      '[data-testid="experience-chat-generate-section"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      genBtn.click()
+    })
+    await flush()
+
+    expect(generateSectionAction).toHaveBeenCalledWith({
+      anchorVideoId: "vid1",
+    })
+
+    const applyBtn = view.container.querySelector(
+      '[data-testid="experience-chat-draft-apply"]',
+    ) as HTMLButtonElement
+    expect(applyBtn).not.toBeNull()
+    await act(async () => {
+      applyBtn.click()
+    })
+    await flush()
+
+    expect(canvas.applyDiff).toHaveBeenCalledTimes(1)
+    const arg = canvas.applyDiff.mock.calls[0][0] as { blocks: unknown[] }
+    // Append: existing block preserved + section blocks added (not replaced).
+    expect(arg.blocks).toHaveLength(1 + sectionBlocks.length)
+    expect(arg.blocks[0]).toMatchObject({ heading: "Existing" })
+    expect(arg.blocks[1]).toMatchObject({ t: "videoHero" })
   })
 
   it("keeps the rail viewport-bound with an independently scrollable message list", async () => {
