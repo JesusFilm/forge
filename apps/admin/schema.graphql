@@ -55,13 +55,18 @@ type BibleQuoteItem {
   backgroundColor: String
   backgroundImageAssetId: String
   backgroundImageUrl: String
+  chapterEnd: Int
+  chapterStart: Int
   ctaEnabled: Boolean
   ctaLabel: String
   ctaLink: String
   imageAssetId: String
   imageUrl: String
+  osisId: String
   reference: String
   text: String
+  verseEnd: Int
+  verseStart: Int
 }
 
 """Carousel of Bible quote items."""

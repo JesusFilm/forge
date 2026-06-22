@@ -21,7 +21,7 @@ const VECTOR_SEARCH_EF_SEARCH = 80
 // AI candidates must carry at least one playable dub — published with a
 // non-empty HLS URL, mirroring web's isPlayableWatchVariant — and must not be
 // container entries (collections/series have nothing to play).
-const PLAYABLE_CANDIDATE_VIDEO_WHERE = {
+export const PLAYABLE_CANDIDATE_VIDEO_WHERE = {
   deletedAt: null,
   OR: [
     { label: null },

@@ -35,6 +35,7 @@ import {
   REVISE_EXPERIENCE_PROMPT,
   SKELETON_EXPERIENCE_PROMPT,
   FILL_EXPERIENCE_PROMPT,
+  GENERATE_VIDEO_SECTION_PROMPT,
 } from "../prompts"
 import { searchVideosTool } from "../tools/search-videos"
 import { lookupBibleVerseTool } from "../tools/lookup-bible-verse"
@@ -120,6 +121,7 @@ export type SpecializedAgentId =
   | "experience-reviser"
   | "experience-skeleton"
   | "experience-fill"
+  | "generate-video-section"
 
 /**
  * Draft-experience agent — full first-draft generation, used as a chat-facing
@@ -282,11 +284,32 @@ export function buildFillAgent(): Agent {
 }
 
 /**
+ * Video-section agent — composes ONE grounded experience section from a single
+ * anchor video's curated data (study questions, citations, scene/transcript),
+ * shipped in the prompt. Single-pass, TOOL-LESS (the grounding arrives
+ * pre-loaded, so no HTTP tool round-trip is needed and the gateway path runs
+ * toolChoice:"none"), and memory-less (one logical generation, no chat history).
+ */
+export function buildVideoSectionAgent(): Agent {
+  return new Agent({
+    id: "generate-video-section",
+    name: "Video Section Agent",
+    description:
+      "Composes one grounded experience section from a single anchor video's study questions, Bible citations, and scene/transcript context.",
+    instructions: GENERATE_VIDEO_SECTION_PROMPT,
+    model: resolveAgentModel(),
+    // No tools — grounding arrives in the prompt; reference-first scripture must
+    // never be fetched or invented.
+    // No memory — single logical generation, see factory-group JSDoc above.
+  })
+}
+
+/**
  * Build all specialized agents at once. Used by the Mastra runtime wiring to
  * register agents by id. Includes the three editor-facing agents (draft /
  * add-section / rewrite-copy) plus the multi-step draft workflow agents
- * (planner / critic / reviser) and the two-phase draft workflow agents
- * (skeleton / fill).
+ * (planner / critic / reviser), the two-phase draft workflow agents
+ * (skeleton / fill), and the video-section generator.
  */
 export function buildSpecializedAgents(): Record<SpecializedAgentId, Agent> {
   return {
@@ -298,5 +321,6 @@ export function buildSpecializedAgents(): Record<SpecializedAgentId, Agent> {
     "experience-reviser": buildReviserAgent(),
     "experience-skeleton": buildSkeletonAgent(),
     "experience-fill": buildFillAgent(),
+    "generate-video-section": buildVideoSectionAgent(),
   }
 }

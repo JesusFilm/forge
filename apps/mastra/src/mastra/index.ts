@@ -35,6 +35,10 @@ import {
   type DraftWorkflowMastra,
 } from "./workflows/experience-draft-route"
 import {
+  handleExperienceSectionRouteRequest,
+  type SectionAgentMastra,
+} from "./workflows/experience-section-route"
+import {
   handleExperienceChatRouteRequest,
   type ExperienceChatRouteMastra,
 } from "./agents/experience-chat-route"
@@ -319,6 +323,23 @@ export const mastra = new Mastra({
             // narrower id-union param than `(id: string)`, so the structural
             // types don't unify. Tests inject a fully-typed fake.
             getMastra: () => mastra as unknown as DraftWorkflowMastra,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-section", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceSectionRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Thunk resolves at request time so the agent registry is built.
+            getMastra: () => mastra as unknown as SectionAgentMastra,
           })
 
           return new Response(JSON.stringify(outcome.body), {

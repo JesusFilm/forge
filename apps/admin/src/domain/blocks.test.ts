@@ -218,6 +218,25 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it("accepts a reference-first quote: structured citation identity and NO verse text", () => {
+    // Video-anchored generation stores reference + structured ids; apps/web resolves
+    // the verse text at render. The canonical schema must accept a text-less quote.
+    const result = BibleQuotesCarouselBlockSchema.safeParse({
+      t: "bibleQuotesCarousel",
+      heading: "Featured Scripture",
+      quotes: [
+        {
+          reference: "John 20:19-29",
+          osisId: "John.20.19",
+          chapterStart: 20,
+          verseStart: 19,
+          verseEnd: 29,
+        },
+      ],
+    })
+    expect(result.success).toBe(true)
+  })
 })
 
 // -----------------------------------------------------------------------------
