@@ -23,6 +23,21 @@ import {
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
+import { buildDefaultChatAgent } from "./agents/default-chat-agent"
+import { buildSpecializedAgents } from "./agents/specialized-agents"
+import { buildAutoEnrichAgent } from "./agents/auto-enrich-agent"
+import {
+  multiStepDraftWorkflow,
+  quickDraftWorkflow,
+} from "./workflows/multi-step-draft"
+import {
+  handleExperienceDraftRouteRequest,
+  type DraftWorkflowMastra,
+} from "./workflows/experience-draft-route"
+import {
+  handleExperienceChatRouteRequest,
+  type ExperienceChatRouteMastra,
+} from "./agents/experience-chat-route"
 import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
@@ -128,8 +143,23 @@ const redactPromptBodies: SpanOutputProcessor = {
   shutdown: async () => {},
 }
 
+// Draft/chat agents ported from admin (consolidation U4). Built once here so
+// the experience-chat Memory singleton is shared and the workflow agents are
+// registered by id for the workflow's `getAgentById(...)` lookups. The
+// planner/critic/reviser/skeleton/fill agents are workflow-only (memory-less);
+// experience-default-chat / draft-experience / add-section / rewrite-copy /
+// auto-enrich carry the chat memory.
+const experienceDraftSpecializedAgents = buildSpecializedAgents()
+
 export const mastra = new Mastra({
-  agents: { smokeAgent, seekerAgent, webResearchAgent },
+  agents: {
+    smokeAgent,
+    seekerAgent,
+    webResearchAgent,
+    "experience-default-chat": buildDefaultChatAgent(),
+    ...experienceDraftSpecializedAgents,
+    "auto-enrich": buildAutoEnrichAgent(),
+  },
   workflows: {
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
@@ -148,6 +178,13 @@ export const mastra = new Mastra({
     instagramAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
+    // Ported draft-authoring workflows (consolidation U4). Registered by their
+    // workflow id so the U5 route can drive them via
+    // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which
+    // injects this Mastra instance so each step's `getAgentById(...)` resolves
+    // the planner/skeleton/fill/critic/reviser agents registered above.
+    "multi-step-draft": multiStepDraftWorkflow,
+    "quick-draft": quickDraftWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -265,6 +302,41 @@ export const mastra = new Mastra({
             headers: { "content-type": "application/json" },
           })
         },
+      }),
+      registerApiRoute("/forge-experience-draft", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceDraftRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Thunk resolves at request time, after `mastra` is constructed —
+            // so the workflow steps' `getAgentById(...)` lookups resolve the
+            // registered planner/skeleton/fill/critic/reviser agents. Boundary
+            // cast: the route's `DraftWorkflowMastra` is a deliberately narrow
+            // structural surface (getWorkflowById → createRun → start/cancel),
+            // all present at runtime; the real Mastra's `getWorkflowById` has a
+            // narrower id-union param than `(id: string)`, so the structural
+            // types don't unify. Tests inject a fully-typed fake.
+            getMastra: () => mastra as unknown as DraftWorkflowMastra,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-chat", {
+        method: "POST",
+        handler: async (c) =>
+          handleExperienceChatRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            getMastra: () => mastra as unknown as ExperienceChatRouteMastra,
+            requestSignal: c.req.raw.signal,
+          }),
       }),
       registerApiRoute("/forge-eval-query-generation", {
         method: "POST",

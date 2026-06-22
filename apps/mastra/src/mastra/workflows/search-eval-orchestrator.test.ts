@@ -287,6 +287,19 @@ describe("search eval orchestrator workflow", () => {
     )
   })
 
+  it("accepts semantic-only but rejects Algolia-backed search modes", () => {
+    expect(
+      _internal.SearchEvalOrchestratorWorkflowInputSchema.parse({
+        searchMode: "semantic-only",
+      }).searchMode,
+    ).toBe("semantic-only")
+    expect(
+      _internal.SearchEvalOrchestratorWorkflowInputSchema.safeParse({
+        searchMode: "algolia-backed",
+      }).success,
+    ).toBe(false)
+  })
+
   it("runs seed-baseline mode as offline baseline capture plus native report sync", async () => {
     const outputReport = report()
     const launchOffline = vi.fn(async (input) =>

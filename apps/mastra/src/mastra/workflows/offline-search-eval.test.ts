@@ -44,6 +44,19 @@ describe("offline search eval workflow route", () => {
     ).toBe("experience")
   })
 
+  it("accepts semantic-only as an internal diagnostic search mode", () => {
+    expect(
+      _internal.OfflineSearchEvalInputSchema.parse({
+        searchMode: "semantic-only",
+      }).searchMode,
+    ).toBe("semantic-only")
+    expect(
+      _internal.OfflineSearchEvalInputSchema.safeParse({
+        searchMode: "algolia-backed",
+      }).success,
+    ).toBe(false)
+  })
+
   it("exposes the structured input schema to Studio workflow metadata", () => {
     expect(offlineSearchEvalWorkflow.inputSchema).toBe(
       _internal.OfflineSearchEvalInputSchema,

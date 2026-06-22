@@ -25,7 +25,12 @@ import type { PrismaClient } from "@prisma/client"
 
 import { canEditExperienceLocale } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
+import { env } from "@/config/env"
 import { STEP_CAPS, TIME_BUDGET_MS } from "@/mastra/budgets"
+import {
+  streamMastraExperienceChat,
+  type MastraChatRelayReason,
+} from "./mastra-experience-chat-client"
 import { ExperienceService } from "@/services/experience.service"
 import {
   computeDiff,
@@ -42,7 +47,7 @@ import {
   type ChatHistoryTurn,
   type EditableLocaleSummary,
 } from "./experience-ai-chat-prompts"
-import { extractJsonObject } from "./extract-json-object"
+import { extractJsonObject } from "@forge/experience-schema"
 
 // -----------------------------------------------------------------------------
 // Public types
@@ -162,6 +167,27 @@ async function runMastraChat({
   abortSignal?: AbortSignal
   onToken: (text: string) => void
 }): Promise<ChatTurnRunResult> {
+  // Flag-gated streaming cutover (U9): relay the token stream from the
+  // standalone /forge-experience-chat route (admin = proxy). config_missing
+  // degrades to the in-process path below — it is a pre-fetch short-circuit so
+  // NO tokens were relayed, making the fallback re-run clean. Every other relay
+  // failure returns its mapped error WITHOUT falling back (tokens may already
+  // have been relayed, so an in-process re-run would duplicate them).
+  if (env.EXPERIENCE_AI_REMOTE_CHAT === "true") {
+    const relay = await streamMastraExperienceChat({
+      prompt,
+      onToken,
+      abortSignal,
+    })
+    if (relay.ok) return finalizeChatBuffer(relay.text)
+    if (relay.reason !== "config_missing") {
+      return mapRelayReason(relay.reason, relay.message)
+    }
+    console.warn(
+      "[mastra-chat] event=remote_chat_config_missing falling_back=in_process",
+    )
+  }
+
   // Wall-clock ceiling on the agent call. Without this, a hung provider
   // (gateway 5xx that never responds, Ollama stall) keeps streamChatTurn
   // — and the SSE connection behind it — open indefinitely. Compose the
@@ -233,63 +259,7 @@ async function runMastraChat({
     console.warn(
       "[mastra-chat] event=stream_done buffer_length=" + buffer.length,
     )
-    const extracted = extractJsonObject(buffer)
-    if (extracted === null) {
-      console.warn(
-        "[mastra-chat] event=no_json_object head=" +
-          JSON.stringify(buffer.slice(0, 200)) +
-          " tail=" +
-          JSON.stringify(buffer.slice(-200)),
-      )
-      return {
-        kind: "error",
-        code: "provider_validation_failed",
-        message:
-          "Mastra agent returned text without a JSON object. (See server log.)",
-      }
-    }
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(extracted)
-    } catch (err) {
-      // Small local models (gemma4:e4b) occasionally produce
-      // not-quite-valid JSON — unescaped quotes, trailing commas,
-      // missing braces. Try jsonrepair before giving up.
-      try {
-        const { jsonrepair } = await import("jsonrepair")
-        const repaired = jsonrepair(extracted)
-        parsed = JSON.parse(repaired)
-        console.warn(
-          "[mastra-chat] event=json_repaired original_err=" +
-            (err instanceof Error ? err.message : String(err)),
-        )
-      } catch (repairErr) {
-        console.warn(
-          "[mastra-chat] event=json_parse_failed err=" +
-            (err instanceof Error ? err.message : String(err)) +
-            " repair_err=" +
-            (repairErr instanceof Error
-              ? repairErr.message
-              : String(repairErr)) +
-            " head=" +
-            JSON.stringify(extracted.slice(0, 200)) +
-            " tail=" +
-            JSON.stringify(extracted.slice(-200)),
-        )
-        return {
-          kind: "error",
-          code: "provider_validation_failed",
-          message: "Mastra agent returned malformed JSON. (See server log.)",
-        }
-      }
-    }
-    const translated = translateMastraEnvelopeToLegacy(parsed)
-    normalizeBlockFieldAliases(translated)
-    console.warn(
-      "[mastra-chat] event=envelope_parsed translated_keys=" +
-        Object.keys(translated as object).join(","),
-    )
-    return { kind: "envelope", raw: translated }
+    return finalizeChatBuffer(buffer)
   } catch (error) {
     if (error instanceof Error && error.name === "ProviderNotConfiguredError") {
       return {
@@ -336,6 +306,128 @@ async function runMastraChat({
       kind: "error",
       code: "unknown",
       message: error instanceof Error ? error.message : "Mastra chat failed",
+    }
+  }
+}
+
+/**
+ * Parse a chat-turn buffer (full agent text — from the in-process generate() or
+ * the relayed remote stream) into the legacy envelope. Shared by both paths so
+ * the parse → jsonrepair → translate ladder cannot drift. Does NOT call
+ * `onToken` (the in-process path streams the buffer; the remote path streams
+ * per chunk before this runs).
+ */
+async function finalizeChatBuffer(buffer: string): Promise<ChatTurnRunResult> {
+  const extracted = extractJsonObject(buffer)
+  if (extracted === null) {
+    console.warn(
+      "[mastra-chat] event=no_json_object head=" +
+        JSON.stringify(buffer.slice(0, 200)) +
+        " tail=" +
+        JSON.stringify(buffer.slice(-200)),
+    )
+    return {
+      kind: "error",
+      code: "provider_validation_failed",
+      message:
+        "Mastra agent returned text without a JSON object. (See server log.)",
+    }
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(extracted)
+  } catch (err) {
+    // Small local models (gemma4:e4b) occasionally produce not-quite-valid
+    // JSON — unescaped quotes, trailing commas, missing braces. Try jsonrepair
+    // before giving up.
+    try {
+      const { jsonrepair } = await import("jsonrepair")
+      const repaired = jsonrepair(extracted)
+      parsed = JSON.parse(repaired)
+      console.warn(
+        "[mastra-chat] event=json_repaired original_err=" +
+          (err instanceof Error ? err.message : String(err)),
+      )
+    } catch (repairErr) {
+      console.warn(
+        "[mastra-chat] event=json_parse_failed err=" +
+          (err instanceof Error ? err.message : String(err)) +
+          " repair_err=" +
+          (repairErr instanceof Error ? repairErr.message : String(repairErr)) +
+          " head=" +
+          JSON.stringify(extracted.slice(0, 200)) +
+          " tail=" +
+          JSON.stringify(extracted.slice(-200)),
+      )
+      return {
+        kind: "error",
+        code: "provider_validation_failed",
+        message: "Mastra agent returned malformed JSON. (See server log.)",
+      }
+    }
+  }
+  const translated = translateMastraEnvelopeToLegacy(parsed)
+  normalizeBlockFieldAliases(translated)
+  console.warn(
+    "[mastra-chat] event=envelope_parsed translated_keys=" +
+      Object.keys(translated as object).join(","),
+  )
+  return { kind: "envelope", raw: translated }
+}
+
+/**
+ * Map a remote chat-relay failure reason onto the chat error-code union (U9).
+ * `config_missing` is handled at the call site (in-process fallback) and never
+ * reaches here. A remote `timeout` stays a `timeout` (not a generic retryable
+ * network error) per the outbound-timeout-classification learning.
+ */
+function mapRelayReason(
+  reason: Exclude<MastraChatRelayReason, "config_missing">,
+  message: string | undefined,
+): ChatTurnRunResult {
+  switch (reason) {
+    case "timeout":
+      return {
+        kind: "error",
+        code: "timeout",
+        message:
+          message ??
+          "The AI took too long to respond and the request timed out.",
+      }
+    case "cancelled":
+      return {
+        kind: "error",
+        code: "cancelled",
+        message: message ?? "The request was cancelled.",
+      }
+    case "auth_failed":
+      return {
+        kind: "error",
+        code: "provider_not_configured",
+        message: "The AI chat service rejected admin's credentials.",
+      }
+    case "generation_failed":
+    case "parse_error":
+      return {
+        kind: "error",
+        code: "provider_validation_failed",
+        message: message ?? "The AI chat service returned an unusable result.",
+      }
+    case "ssrf_blocked":
+    case "network_error":
+      return {
+        kind: "error",
+        code: "unknown",
+        message: "The AI chat service is unavailable right now.",
+      }
+    default: {
+      const exhaustive: never = reason
+      void exhaustive
+      return {
+        kind: "error",
+        code: "unknown",
+        message: "The AI chat service is unavailable right now.",
+      }
     }
   }
 }

@@ -539,6 +539,52 @@ describe("ingestTranscriptEmbeddings", () => {
     expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 
+  it("retries serializable transcript writes before surfacing write_failed", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const prisma = buildPrisma()
+    const serializationFailure = Object.assign(
+      new Error("Transaction failed due to a write conflict or a deadlock"),
+      {
+        name: "PrismaClientKnownRequestError",
+        code: "P2034",
+      },
+    )
+    writeTranscriptEmbeddingPayloadMock
+      .mockRejectedValueOnce(serializationFailure)
+      .mockResolvedValueOnce(undefined)
+
+    const result = await ingestTranscriptEmbeddings(prisma as never, payload())
+
+    expect(result.status).toBe("created")
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+    expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledTimes(2)
+    expect(
+      warnSpy.mock.calls.some(([message]) =>
+        String(message).includes(
+          "transcript_embedding_ingest_transaction_retry",
+        ),
+      ),
+    ).toBe(true)
+    warnSpy.mockRestore()
+  })
+
+  it("detects retryable Prisma transaction codes before nested causes", () => {
+    const retryableWithCause = Object.assign(
+      new Error("Transaction failed due to a write conflict or a deadlock"),
+      {
+        name: "PrismaClientKnownRequestError",
+        code: "P2034",
+        cause: new Error("nested non-retryable wrapper"),
+      },
+    )
+
+    expect(
+      _internals.isRetryableTranscriptIngestTransactionError(
+        retryableWithCause,
+      ),
+    ).toBe(true)
+  })
+
   it("force mode rewrites even when existing provenance and chunks are healthy", async () => {
     const prisma = buildPrisma()
     const base = payload()

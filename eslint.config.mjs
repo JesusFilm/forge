@@ -83,7 +83,7 @@ export default defineConfig(
     },
   },
   {
-    files: ["apps/roadmap/scripts/**/*.js"],
+    files: ["apps/roadmap/scripts/**/*.js", "apps/mobile/plugins/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
@@ -100,6 +100,16 @@ export default defineConfig(
     rules: {
       "@typescript-eslint/no-require-imports": "off",
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    },
+  },
+  {
+    files: ["apps/mobile/plugins/**/*.test.js"],
+    languageOptions: {
+      globals: {
+        describe: "readonly",
+        it: "readonly",
+        expect: "readonly",
+      },
     },
   },
   eslintPluginPrettierRecommended,

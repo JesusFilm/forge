@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -14,8 +11,6 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { cacheDirectory, downloadAsync } from "expo-file-system/src/legacy"
-import * as Sharing from "expo-sharing"
 
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -25,7 +20,7 @@ import {
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
-import type { WatchDownload } from "../../lib/normalizeVideo"
+import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
 function formatDuration(seconds: number | null): string {
@@ -154,12 +149,156 @@ function TermsModal({
   )
 }
 
+type DropdownOption = {
+  key: string
+  label: string
+  /** Optional trailing text shown on the right (e.g. a file size). */
+  trailing?: string
+}
+
+/** Sentinel key for the "No subtitles" option (a real null selection). */
+const NO_SUBTITLE_KEY = "__none__"
+
+/**
+ * Cap the open panel at ~5 rows so a long option list (e.g. dozens of subtitle
+ * languages) scrolls INSIDE the dropdown instead of growing the sheet.
+ */
+const DROPDOWN_MAX_HEIGHT = 240
+
+/**
+ * A collapsed select that shows the current choice and, when tapped, expands a
+ * bounded, internally-scrollable list. Keeps the whole sheet compact on first
+ * present regardless of how many options a video has.
+ */
+function Dropdown({
+  sectionLabel,
+  options,
+  selectedKey,
+  open,
+  onToggle,
+  onSelect,
+}: {
+  sectionLabel: string
+  options: DropdownOption[]
+  selectedKey: string
+  open: boolean
+  onToggle: () => void
+  onSelect: (key: string) => void
+}) {
+  const typography = useTypography()
+  const selected = options.find((o) => o.key === selectedKey) ?? options[0]
+
+  return (
+    <View style={styles.dropdownSection}>
+      <Text style={[styles.dropdownSectionLabel, typography.bodySmall]}>
+        {sectionLabel}
+      </Text>
+      <Pressable
+        style={({ pressed }) => [
+          styles.dropdownTrigger,
+          open && styles.dropdownTriggerOpen,
+          pressed && feedback.pressed,
+        ]}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={
+          selected != null ? `${sectionLabel}, ${selected.label}` : sectionLabel
+        }
+      >
+        <Text style={[styles.dropdownValue, typography.body]} numberOfLines={1}>
+          {selected?.label}
+        </Text>
+        <View style={styles.dropdownRight}>
+          {selected?.trailing != null && (
+            <Text style={[styles.dropdownTrailing, typography.bodySmall]}>
+              {selected.trailing}
+            </Text>
+          )}
+          <Ionicons
+            name={open ? "chevron-up" : "chevron-down"}
+            size={18}
+            color={TEXT_SECONDARY}
+          />
+        </View>
+      </Pressable>
+      {open && (
+        <View style={styles.dropdownPanel}>
+          <ScrollView
+            style={styles.dropdownPanelScroll}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            accessibilityLabel={`${sectionLabel} options`}
+          >
+            <View accessibilityRole="radiogroup">
+              {options.map((opt) => {
+                const isSelected = opt.key === selectedKey
+                return (
+                  <Pressable
+                    key={opt.key}
+                    style={({ pressed }) => [
+                      styles.dropdownOption,
+                      isSelected && styles.dropdownOptionSelected,
+                      pressed && feedback.pressed,
+                    ]}
+                    onPress={() => onSelect(opt.key)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={opt.label}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionLabel,
+                        typography.body,
+                        isSelected && styles.dropdownOptionLabelSelected,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {opt.label}
+                    </Text>
+                    <View style={styles.dropdownRight}>
+                      {opt.trailing != null && (
+                        <Text
+                          style={[
+                            styles.dropdownOptionTrailing,
+                            typography.bodySmall,
+                            isSelected && styles.dropdownOptionLabelSelected,
+                          ]}
+                        >
+                          {opt.trailing}
+                        </Text>
+                      )}
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={18} color="#ffffff" />
+                      )}
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  )
+}
+
 export type DownloadSheetProps = {
   videoTitle: string | null
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
-  onDownloadComplete?: () => void
+  /** Available subtitle tracks for the active dub (empty if none). */
+  subtitles: WatchSubtitle[]
+  /**
+   * Enqueue the chosen rendition + optional subtitle for offline download. The
+   * parent builds the full request (identity + fresh URLs) and dismisses the
+   * sheet; the download runs in the background via DownloadsProvider.
+   */
+  onStartDownload: (
+    rendition: WatchDownload,
+    subtitle: WatchSubtitle | null,
+  ) => void
 }
 
 export function DownloadSheetContent({
@@ -167,103 +306,75 @@ export function DownloadSheetContent({
   duration,
   languageName,
   downloads,
-  onDownloadComplete,
+  subtitles,
+  onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
-  const downloadInFlight = useRef(false)
-  // The download outlives the sheet if the user swipes it closed mid-flight.
-  // Guard post-await side effects so we don't setState, Alert, or navigate on
-  // an unmounted route (which would pop the watch screen underneath).
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
+  // null = "No subtitles" (the default); otherwise a subtitle languageSlug.
+  const [selectedSubtitleSlug, setSelectedSubtitleSlug] = useState<
+    string | null
+  >(null)
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
+  // Only one dropdown is open at a time so the sheet never shows two expansions.
+  const [openDropdown, setOpenDropdown] = useState<
+    "quality" | "subtitle" | null
+  >(null)
 
-  const [downloading, setDownloading] = useState(false)
+  // Key by tier-array index, not documentId: tierDownloads yields a stable
+  // ordered list, whereas normalizeVideo defaults documentId to "" and does not
+  // dedupe downloads — non-unique ids would collide React keys and break
+  // selection (findIndex would always resolve to the first match).
+  const qualityOptions = useMemo<DropdownOption[]>(
+    () =>
+      tiered.map((t, index) => ({
+        key: String(index),
+        label: t.tier,
+        trailing: formatFileSize(t.size),
+      })),
+    [tiered],
+  )
+  const subtitleOptions = useMemo<DropdownOption[]>(
+    () => [
+      { key: NO_SUBTITLE_KEY, label: "No subtitles" },
+      ...subtitles.map((s) => ({ key: s.languageSlug, label: s.languageName })),
+    ],
+    [subtitles],
+  )
+  const selectedQualityKey = String(selectedIndex)
+  const selectedSubtitleKey = selectedSubtitleSlug ?? NO_SUBTITLE_KEY
 
-  const handleDownload = useCallback(async () => {
-    if (downloadInFlight.current) return
+  // Keep selectedIndex in range if the renditions list changes out from under
+  // it — otherwise the trigger shows a stale tier while Download silently
+  // no-ops (handleDownload reads tiered[selectedIndex]).
+  useEffect(() => {
+    if (selectedIndex >= tiered.length) setSelectedIndex(0)
+  }, [tiered.length, selectedIndex])
+
+  const handleDownload = useCallback(() => {
     if (!touAccepted || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
-    downloadInFlight.current = true
-    setDownloading(true)
-
-    try {
-      if (!cacheDirectory) throw new Error("Cache directory unavailable")
-      const rawName =
-        selected.url.split("/").pop()?.split("?")[0] ?? "video.mp4"
-      const filename = `${selected.documentId}-${rawName}`
-      const localUri = `${cacheDirectory}${filename}`
-      const { uri } = await downloadAsync(selected.url, localUri)
-      try {
-        await Sharing.shareAsync(uri, {
-          mimeType: "video/mp4",
-          UTI: "public.mpeg-4",
-        })
-      } catch {
-        // User dismissed the share sheet — not an error
-      }
-      if (mountedRef.current) onDownloadComplete?.()
-    } catch {
-      if (mountedRef.current) {
-        Alert.alert(
-          "Download failed",
-          "Could not download the video. Please try again.",
-        )
-      }
-    } finally {
-      downloadInFlight.current = false
-      if (mountedRef.current) setDownloading(false)
-    }
-  }, [touAccepted, tiered, selectedIndex, onDownloadComplete])
-
-  const renderQualityRow = useCallback(
-    ({ item, index }: { item: TieredDownload; index: number }) => {
-      const isSelected = index === selectedIndex
-      return (
-        <Pressable
-          style={({ pressed }) => [
-            styles.qualityRow,
-            isSelected ? styles.qualityRowSelected : styles.qualityRowDefault,
-            pressed && feedback.pressed,
-          ]}
-          onPress={() => setSelectedIndex(index)}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: isSelected }}
-          accessibilityLabel={`${item.tier} quality, ${formatFileSize(item.size)}`}
-        >
-          <Text
-            style={[
-              styles.qualityLabel,
-              typography.body,
-              isSelected && styles.qualityLabelSelected,
-            ]}
-          >
-            {item.tier}
-          </Text>
-          <Text
-            style={[
-              styles.qualitySize,
-              typography.bodySmall,
-              isSelected && styles.qualitySizeSelected,
-            ]}
-          >
-            {formatFileSize(item.size)}
-          </Text>
-        </Pressable>
-      )
-    },
-    [selectedIndex, typography],
-  )
+    const selectedSubtitle =
+      selectedSubtitleSlug == null
+        ? null
+        : (subtitles.find((s) => s.languageSlug === selectedSubtitleSlug) ??
+          null)
+    // Enqueue and hand off to the background engine; the parent dismisses the
+    // sheet. One copy per video is enforced by DownloadsProvider.
+    onStartDownload(selected, selectedSubtitle)
+  }, [
+    touAccepted,
+    tiered,
+    selectedIndex,
+    selectedSubtitleSlug,
+    subtitles,
+    onStartDownload,
+  ])
 
   if (downloads.length === 0) {
     return (
@@ -288,6 +399,7 @@ export function DownloadSheetContent({
           { paddingBottom: insets.bottom + 24 },
         ]}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
       >
         <View style={styles.header}>
           {videoTitle != null && (
@@ -326,18 +438,35 @@ export function DownloadSheetContent({
           </View>
         </View>
 
-        <View style={styles.qualitySection}>
-          <Text style={[styles.qualitySectionLabel, typography.bodySmall]}>
-            Select a file size
-          </Text>
-          <FlatList
-            data={tiered}
-            keyExtractor={(item) => item.documentId}
-            renderItem={renderQualityRow}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.qualityGap} />}
+        <Dropdown
+          sectionLabel="Select a file size"
+          options={qualityOptions}
+          selectedKey={selectedQualityKey}
+          open={openDropdown === "quality"}
+          onToggle={() =>
+            setOpenDropdown((o) => (o === "quality" ? null : "quality"))
+          }
+          onSelect={(key) => {
+            setSelectedIndex(Number(key))
+            setOpenDropdown(null)
+          }}
+        />
+
+        {subtitles.length > 0 && (
+          <Dropdown
+            sectionLabel="Subtitles"
+            options={subtitleOptions}
+            selectedKey={selectedSubtitleKey}
+            open={openDropdown === "subtitle"}
+            onToggle={() =>
+              setOpenDropdown((o) => (o === "subtitle" ? null : "subtitle"))
+            }
+            onSelect={(key) => {
+              setSelectedSubtitleSlug(key === NO_SUBTITLE_KEY ? null : key)
+              setOpenDropdown(null)
+            }}
           />
-        </View>
+        )}
 
         <View style={styles.touRow}>
           <Pressable
@@ -374,24 +503,18 @@ export function DownloadSheetContent({
         <Pressable
           style={({ pressed }) => [
             styles.downloadButton,
-            (!touAccepted || downloading) && styles.downloadButtonDisabled,
-            pressed && touAccepted && !downloading && feedback.pressed,
+            !touAccepted && styles.downloadButtonDisabled,
+            pressed && touAccepted && feedback.pressed,
           ]}
           onPress={handleDownload}
-          disabled={!touAccepted || downloading}
+          disabled={!touAccepted}
           accessibilityRole="button"
-          accessibilityLabel={
-            downloading ? "Downloading video" : "Download video"
-          }
-          accessibilityState={{ disabled: !touAccepted || downloading }}
+          accessibilityLabel="Download video"
+          accessibilityState={{ disabled: !touAccepted }}
         >
-          {downloading ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Ionicons name="download-outline" size={20} color="#ffffff" />
-          )}
+          <Ionicons name="download-outline" size={20} color="#ffffff" />
           <Text style={[styles.downloadButtonText, typography.body]}>
-            {downloading ? "Downloading..." : "Download"}
+            Download
           </Text>
         </Pressable>
       </ScrollView>
@@ -452,15 +575,18 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontFamily: "System",
   },
-  qualitySection: {
+  dropdownSection: {
     marginBottom: 24,
   },
-  qualitySectionLabel: {
+  dropdownSectionLabel: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
     marginBottom: 12,
   },
-  qualityRow: {
+  dropdownPanelScroll: {
+    maxHeight: DROPDOWN_MAX_HEIGHT,
+  },
+  dropdownTrigger: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -468,30 +594,60 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     minHeight: 48,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
-  qualityRowDefault: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+  dropdownTriggerOpen: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
-  qualityRowSelected: {
-    backgroundColor: ACCENT,
-  },
-  qualityGap: {
-    height: 8,
-  },
-  qualityLabel: {
+  dropdownValue: {
     color: TEXT_PRIMARY,
     fontWeight: "600",
     fontFamily: "System",
+    flexShrink: 1,
+    marginRight: 8,
   },
-  qualityLabelSelected: {
-    color: "#ffffff",
+  dropdownRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  qualitySize: {
+  dropdownTrailing: {
     color: TEXT_BODY,
     fontFamily: "System",
   },
-  qualitySizeSelected: {
+  dropdownPanel: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    overflow: "hidden",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255, 255, 255, 0.08)",
+  },
+  dropdownOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 44,
+  },
+  dropdownOptionSelected: {
+    backgroundColor: ACCENT,
+  },
+  dropdownOptionLabel: {
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  dropdownOptionLabelSelected: {
     color: "#ffffff",
+    fontWeight: "600",
+  },
+  dropdownOptionTrailing: {
+    color: TEXT_BODY,
+    fontFamily: "System",
   },
   touRow: {
     flexDirection: "row",

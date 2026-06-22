@@ -4,7 +4,7 @@ import { toPgVector } from "@/db/pgvector"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { generateOllamaEmbedding } from "@/services/ollama-embedding.service"
 
-import type { VideoCandidate } from "./experience-ai.schemas"
+import type { VideoCandidate } from "@forge/experience-schema"
 export {
   normalizeExperienceDraft,
   ExperienceAiNormalizationError,
