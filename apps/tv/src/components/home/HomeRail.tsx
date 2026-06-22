@@ -1,15 +1,6 @@
-// One curated Home section as a horizontal, D-pad-navigable rail (R11/R12):
-// eyebrow + title header over a FlatList of HomeCards inside a
-// TVFocusGuideView. Grid-configured sections render as rails too — TV's
-// density choice — and section descriptions are not rendered (mobile parity).
-//
-// Fixed card dims → getItemLayout, so a long section virtualizes without a
-// measuring pass. Renders nothing for an empty section: the model already
-// drops them (R12), this is defensive — no empty focus container.
-//
-// Redesign: the rail also reports WHICH row gained focus (onRowFocus) so the
-// screen can drive its row-anchored scroll + deep/browse chrome state. The
-// onCardFocus(card) contract is unchanged.
+// One curated Home section as a horizontal D-pad rail (R11/R12): eyebrow +
+// title over a FlatList of HomeCards. Fixed card dims → getItemLayout; empty
+// sections render nothing; onRowFocus reports the focused row for scroll anchoring.
 
 import { memo, useCallback, useMemo, useState } from "react"
 import {
@@ -34,11 +25,9 @@ const ITEM_GAP = scale(28)
 const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 const RAIL_PADDING_LEFT = scale(80)
 
-// How many card columns span the visible width. A rail with fewer cards than
-// this leaves empty columns on the right, which the tvOS focus engine treats
-// as "nothing there" — a vertical move from an over-hanging column SKIPS the
-// rail to a longer one below/above. We pad such rails up to this many columns
-// with invisible focusable cards so every visible column has a focus target.
+// Card columns spanning the visible width. tvOS treats empty right-hand
+// columns as "nothing there", so a vertical move from an over-hanging column
+// SKIPS short rails; we pad up to this count with invisible focusable cards.
 const VISIBLE_COLUMNS = Math.ceil(
   (Dimensions.get("window").width - RAIL_PADDING_LEFT) / COLUMN_WIDTH,
 )
@@ -48,10 +37,9 @@ const keyExtractor = (item: RailItem, index: number) =>
     ? `home-card-${item.card.id}-${index}`
     : `home-pad-${index}`
 
-// Fixed card dims → no measuring pass. The last item has no trailing gap, so
-// its length is overstated by ITEM_GAP — harmless for virtualization and
-// scrollToIndex (same note as EpisodeRail). Module-scope: pure function of
-// module constants.
+// Fixed card dims → no measuring pass. Last item's length is overstated by
+// ITEM_GAP (no trailing gap) — harmless for virtualization/scrollToIndex
+// (see EpisodeRail). Module-scope: pure function of module constants.
 const getItemLayout = (
   _: ArrayLike<RailItem> | null | undefined,
   index: number,
@@ -69,14 +57,10 @@ function requestTVFocus(node: ViewType | null): void {
 }
 
 /**
- * Invisible over-hang catcher: a focusable, transparent, accessibility-hidden
- * cell in the rail's empty right columns. When a vertical D-pad move lands here
- * (because the source column over-hangs this shorter rail), it instantly
- * bounces focus to the rail's last REAL card via requestTVFocus() — a
- * same-rail move, which works where cross-FlatList nextFocus does not. It is
- * inert: dispatches no card/row focus, so the showcase/scroll only react to the
- * real card it redirects to. Non-focusable until the target node is known, so
- * focus is never stranded on an invisible cell.
+ * Invisible over-hang catcher in the rail's empty right columns. A vertical
+ * move landing here bounces focus to the last REAL card via requestTVFocus()
+ * (same-rail move works where cross-FlatList nextFocus doesn't). Inert (emits
+ * no card/row focus) and non-focusable until the target node is known.
  */
 const RailPad = memo(function RailPad({
   targetNode,
@@ -113,16 +97,14 @@ type HomeRailProps = {
   onCardPress: (card: WatchHomeCard) => void
   /**
    * D-pad-up destination for this rail's cards. The featured rail passes the
-   * Search tab's node so its edge cards (no focusable directly above the
-   * centered tab bar) can still reach the top bar; section rails leave it
-   * undefined and rely on the full-width rail above them.
+   * Search tab's node so its edge cards reach the top bar; section rails leave
+   * it undefined and rely on the full-width rail above them.
    */
   upFocusTarget?: ViewType | null
   /**
-   * When true, this rail's TVFocusGuideView restores its LAST-focused card when
-   * focus re-enters. The topmost rail enables it ONLY while the source focus is
-   * NOT a rail below it (the parent gates this), so Down off the hero CTA
-   * restores the last card, while Up from a rail below stays column-preserving.
+   * When true, restores this rail's LAST-focused card on re-entry. Parent gates
+   * it on for the topmost rail only when source focus is NOT a rail below, so
+   * Down off the hero CTA restores while Up from below stays column-preserving.
    */
   restoreLastFocus?: boolean
 }
@@ -205,15 +187,10 @@ export const HomeRail = memo(function HomeRail({
         </Text>
       </View>
 
-      {/* autoFocus restores this rail's LAST-focused card when focus re-enters
-          (the topmost rail uses it for Down off the hero CTA). The parent gates
-          it OFF whenever the source focus is a rail BELOW, so Up-from-below
-          keeps the focus engine's column-preserving geometry instead. Other
-          rails leave it off entirely. The skip into shorter rails is handled by
-          the invisible RailPad cards (see `items`), not the guide.
-          extraData={lastCardNode}: FlatList re-renders rows on data/extraData
-          change only — the pads need to re-render once the bounce target is
-          captured. */}
+      {/* autoFocus restores the LAST-focused card on re-entry; parent gates it
+          off when source focus is a rail below (keeps column-preserving geometry).
+          Short-rail skips are handled by RailPad cards, not the guide. extraData
+          forces the pads to re-render once the bounce target is captured. */}
       <TVFocusGuideView autoFocus={restoreLastFocus}>
         <FlatList
           data={items}
@@ -266,11 +243,9 @@ const styles = StyleSheet.create({
   itemGap: {
     marginRight: ITEM_GAP,
   },
-  // Invisible over-hang catcher: a card-sized focusable in the rail's empty
-  // right columns. Transparent (no background/content) rather than opacity:0 —
-  // the tvOS focus engine skips alpha-0 views, so opacity:0 made the pad
-  // unfocusable. Matches the thumb height so its focus frame lines up with the
-  // real cards' band for vertical (up/down) geometry.
+  // Over-hang catcher: card-sized focusable in empty right columns. Transparent
+  // (not opacity:0 — tvOS skips alpha-0 views, making them unfocusable); matches
+  // thumb height so its focus frame aligns with real cards for vertical geometry.
   pad: {
     width: HOME_CARD_WIDTH,
     height: HOME_CARD_THUMB_HEIGHT,

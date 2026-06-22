@@ -1,26 +1,16 @@
-// Pure, React-free redirect decision for the /watch/[slug] screen — the
-// mirror seam of seriesScreenState's resolveLeafBounce. Watch redirects
-// label-series records to /series; series bounces leaves back to /watch.
-// Both sides replace, and the predicates partition (isSeriesLabel here is a
-// strict subset of the series screen's isSeriesRecord), so the seams can
-// never disagree and loop.
+// Pure, React-free redirect for /watch/[slug] — mirror seam of seriesScreenState's
+// resolveLeafBounce (watch → /series for label-series, series → /watch for leaves).
+// Predicates partition (isSeriesLabel ⊂ isSeriesRecord) so the seams can't loop.
 
 import { isSeriesLabel } from "./isSeriesRecord"
 
 export type WatchRedirectDecision = "stay" | "redirect" | "pending"
 
 /**
- * Should a record that landed on /watch redirect to /series?
- *
- * - "redirect": complete data with a SERIES/COLLECTION label. Detection is
- *   label-ONLY at this seam — the lean watch fragment doesn't fetch the
- *   video's own children, so there is no episodes signal here.
- * - "stay": complete data without a series label. This includes the accepted
- *   gap (mirrors mobile): an UNLABELED record with children stays on the
- *   watch screen.
- * - "pending": no record yet, or the query is still in flight — a partial
- *   cache read (cache-first + returnPartialData) may be missing its label,
- *   so neither branch is decidable. Never redirect off partial cache data.
+ * Should a /watch record redirect to /series? "redirect": SERIES/COLLECTION
+ * label (label-ONLY here — lean fragment has no children signal). "stay": no
+ * series label (accepted gap, mirrors mobile: unlabeled-with-children stays).
+ * "pending": no record or in-flight — never redirect off partial cache data.
  */
 export function resolveWatchRedirect(
   record: { label: string | null } | null | undefined,

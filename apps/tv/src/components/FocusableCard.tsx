@@ -47,24 +47,20 @@ type FocusableCardProps = {
   focusScale?: number
   /**
    * Where the focus scale grows from. "center" (default) scales symmetrically;
-   * "left" pins the left edge so the card grows rightward only — use it for the
-   * first item in a left-aligned rail so a focused first card stays flush with
-   * the rail inset instead of bleeding toward the screen edge.
+   * "left" pins the left edge (grows rightward only) so a rail's first card stays
+   * flush with the inset instead of bleeding toward the screen edge.
    */
   focusAnchor?: "center" | "left"
   /**
-   * Focus highlight style. "crimson" (default) is the app-wide Crimson Gallery
-   * glow — keep it on SDUI / series / legacy surfaces. "white" draws the
-   * WATCH_THEME white ring (a white border + neutral shadow) used by Home, the
-   * watch detail page, and Search; pass it on those surfaces so the focus
-   * treatment stays consistent. Matches ResultCard / HomeCard's white ring.
+   * Focus highlight. "crimson" (default) = Crimson Gallery glow for SDUI/series/
+   * legacy. "white" = WATCH_THEME white ring (border + neutral shadow) for Home,
+   * watch detail, and Search; matches ResultCard/HomeCard.
    */
   focusRing?: "crimson" | "white"
   accessibilityLabel?: string
-  /** VoiceOver / TalkBack reads this after the label, on a short pause,
-   *  to describe what activating the card does (e.g., "Opens this
-   *  experience"). Optional — labels alone are sufficient when the
-   *  action is self-evident (single-letter keyboard cells). */
+  /** VoiceOver/TalkBack reads this after the label to describe what activating
+   *  the card does (e.g. "Opens this experience"). Optional when the action is
+   *  self-evident (single-letter keyboard cells). */
   accessibilityHint?: string
   style?: ViewStyle
   children: ReactNode
@@ -159,10 +155,9 @@ export function FocusableCard({
         >
           {children}
         </View>
-        {/* White focus ring — an inset border overlay on the non-clipping
-            outer (matches ResultCard / HomeCard). Mounted only while focused;
-            its constant geometry means toggling it never reflows the content
-            underneath. */}
+        {/* White focus ring — inset border overlay on the non-clipping outer
+            (matches ResultCard/HomeCard). Mounted only while focused; constant
+            geometry means toggling it never reflows content underneath. */}
         {whiteRing && isFocused ? (
           <View style={styles.whiteRing} pointerEvents="none" />
         ) : null}

@@ -1,21 +1,9 @@
 /**
- * Offline-download manifest: the pure, I/O-free shape and (de)serialization for
- * one offline-download record, plus the index of which videos are downloaded.
- *
- * Follows the `watchPreferences.ts` split: this module owns the record type, the
- * storage key scheme, a tolerant `parse`, and `serialize` — and does NO
- * AsyncStorage I/O. `DownloadsProvider` performs the reads/writes (sim-verified,
- * a separate unit).
- *
- * Storage is SHARDED: one key per download (`offline.download.<videoSlug>`) plus
- * a single index key listing the downloaded video slugs, so no single blob
- * approaches the ~2MB AsyncStorage per-item cap as the library grows. The bulky
- * native task state lives in the download module's own store, not here, so a
- * record stays small.
- *
- * The manifest stores STABLE IDENTITY, never volatile URLs: a record carries the
- * dub + rendition `documentId` and the subtitle language slug, and fresh URLs
- * are re-resolved through `videoDub(id)` before each download/resume.
+ * Pure, I/O-free shape + (de)serialization for one offline-download record and
+ * the downloaded-videos index (`DownloadsProvider` does the AsyncStorage I/O).
+ * SHARDED storage (one key per download + an index key) keeps each blob under the
+ * ~2MB per-item cap. Records store STABLE IDENTITY (dub/rendition documentId,
+ * subtitle slug), never volatile URLs, re-resolved via `videoDub(id)` per resume.
  */
 
 export const OFFLINE_MANIFEST_VERSION = 1
@@ -47,10 +35,9 @@ const VALID_STATES: ReadonlySet<string> = new Set<OfflineDownloadState>([
 ])
 
 /**
- * Snapshot of the previous downloaded copy, kept on a record DURING a
- * non-destructive quality/language swap (U8): the old file stays playable until
- * the new download verifies, then the old is deleted; on failure the record
- * reverts to this snapshot. Absent on normal records.
+ * Snapshot of the prior copy kept during a non-destructive quality/language swap
+ * (U8): old file stays playable until the new download verifies, then is deleted;
+ * on failure the record reverts to this snapshot. Absent on normal records.
  */
 export type SwapFrom = {
   committedPath: string
@@ -114,12 +101,10 @@ function parseSwapFrom(value: unknown): SwapFrom | null {
 }
 
 /**
- * Parse a stored record blob. Tolerant by design but STRICT about identity: a
- * record missing its stable identity (videoSlug / dubDocumentId /
- * renditionDocumentId), carrying an unknown state, or from a different schema
- * version returns null — meaning "no usable record". The caller treats null as
- * absent and lets launch reconciliation clean up any orphaned on-disk bytes.
- * A malformed blob can never throw on read.
+ * Parse a stored record blob — tolerant (never throws) but STRICT about identity:
+ * null when missing stable identity (videoSlug/dubDocumentId/renditionDocumentId),
+ * an unknown state, or a stale schema version. Caller treats null as absent and
+ * lets launch reconciliation clean up orphaned on-disk bytes.
  */
 export function parseOfflineRecord(
   raw: string | null,
@@ -167,9 +152,8 @@ export function serializeOfflineRecord(record: OfflineDownloadRecord): string {
 }
 
 /**
- * Parse the index of downloaded video slugs. Tolerant: a missing/malformed blob
- * or any non-string entries degrade to a clean string array rather than
- * throwing, and duplicates are removed.
+ * Parse the downloaded-slugs index. Tolerant: a missing/malformed blob or any
+ * non-string entries degrade to a clean string array (never throws); dupes dropped.
  */
 export function parseOfflineIndex(raw: string | null): string[] {
   if (!raw) return []

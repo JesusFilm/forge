@@ -1,8 +1,6 @@
-// The hero copy text — eyebrow + title + description + meta for one slide.
-// Purely presentational (no animation, no focus): HeroPager renders one of
-// these per slide cell. Extracted from the old in-billboard copy so the styling
-// is a single source of truth. The description (subtitle) is clamped to 3 lines
-// with a tail ellipsis so long CMS blurbs can't overrun the hero.
+// Hero copy (eyebrow + title + description + meta) for one slide; purely
+// presentational, one per slide cell in HeroPager. Description clamped to 3 lines
+// with tail ellipsis so long CMS blurbs can't overrun the hero.
 
 import { memo } from "react"
 import { StyleSheet, Text, View } from "react-native"

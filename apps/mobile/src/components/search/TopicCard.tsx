@@ -28,10 +28,9 @@ export interface TopicCardProps {
   cardWidth: number
 }
 
-// A browse-category grid card. A vivid two-stop gradient fills the card, a
-// bottom scrim keeps the label legible, a white outline glyph sits top-left, and
-// the label sits bottom-left — mirroring the "Discover Categories Grid Card"
-// design. The Pressable owns touch + a11y; the glyph is decorative.
+// Browse-category grid card mirroring the "Discover Categories Grid Card"
+// design: gradient fill, bottom scrim for legibility, glyph top-left, label
+// bottom-left. The Pressable owns touch + a11y; the glyph is decorative.
 export function TopicCard({
   topic,
   onSelect,

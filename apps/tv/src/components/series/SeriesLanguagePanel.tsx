@@ -1,17 +1,9 @@
-// Language picker for the series screen (U4) — mirrors LanguagePanel's
-// modal / focus-trap / virtualized-list anatomy, but lists the series'
-// child-dub language UNION (record.languages), not the series' own dubs: the
-// selection decides the dub an opened EPISODE starts in (carried through
-// SeriesLanguageProvider), and the trailer swap is best-effort. Rows are
-// therefore NEVER disabled by trailer playability (AE9) — a language with no
-// trailer dub is still a valid episode language.
-//
-// Same virtualization rules as LanguagePanel: fixed-height WatchOptionRows so
-// getItemLayout + initialScrollIndex open the sheet AT the active row with it
-// mounted (tvOS ignores preferred focus on unmounted rows), plus the one-shot
-// focusArmed pattern so a remounting active row can't yank focus back
-// mid-browse. Selection is reported via onSelect; the SCREEN owns closing —
-// one close path, one refocusKey increment for the action row.
+// Series-screen language picker (U4): lists the child-dub language UNION
+// (record.languages), not the series' own dubs — the choice sets the dub an
+// opened episode starts in. Rows are NEVER trailer-playability-disabled (AE9):
+// a language with no trailer dub is still a valid episode language. Same
+// virtualization as LanguagePanel (fixed-height rows + one-shot focusArmed,
+// since tvOS ignores preferred focus on unmounted rows); SCREEN owns closing.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FlatList, Modal, Text, View } from "react-native"
@@ -38,9 +30,9 @@ export function SeriesLanguagePanel({
   /** The series' language union (normalizeSeries' record.languages). */
   languages: WatchChildLanguage[]
   /**
-   * Slug marked active (check + initial scroll/focus target). The screen
-   * passes its selection, falling back to the trailer dub's language so the
-   * first open lands on what currently plays.
+   * Slug marked active (check + initial scroll/focus target). Screen passes
+   * its selection, falling back to the trailer dub's language so first open
+   * lands on what currently plays.
    */
   activeSlug: string | null
   /** Reports the chosen slug; the screen persists it and closes the panel. */
@@ -58,10 +50,9 @@ export function SeriesLanguagePanel({
 
   const listRef = useRef<FlatList<SeriesLanguageRow>>(null)
 
-  // One-shot preferred focus + scroll-to-active on every open — useVariantList's
-  // two virtualization behaviors, re-implemented here because that hook is
-  // typed to dub rows (AnnotatedVariantRow). The Modal keeps this subtree
-  // mounted across opens, so reopening must re-arm + re-scroll itself.
+  // One-shot preferred focus + scroll-to-active per open — useVariantList's two
+  // virtualization behaviors, re-implemented here since that hook is typed to
+  // dub rows. Modal keeps this subtree mounted, so reopening must re-arm.
   const [focusArmed, setFocusArmed] = useState(true)
   const disarmFocus = useCallback(() => {
     setFocusArmed((armed) => (armed ? false : armed))

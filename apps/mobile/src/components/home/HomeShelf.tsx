@@ -1,16 +1,9 @@
 /**
- * One curated Home section rendered as a horizontal shelf.
- *
- * Layout mapping: the ported config's `layout: "rail" | "grid"` BOTH render
- * as horizontal shelves on mobile — a grid doesn't fit the vertical Home
- * feed. `orientation === "vertical"` selects portrait (3:4) cards; anything
- * else gets landscape (16:9).
- *
- * Header is eyebrow + title only — `section.description` is intentionally
- * skipped on mobile to keep shelves tight (web renders it; mobile doesn't).
- *
- * Background: none. The Home feed's renderItem wrapper owns the translucent
- * per-item background (CuratedHomeLayout's feedItemBackground convention).
+ * One curated Home section as a horizontal shelf. Both `layout: "rail" | "grid"`
+ * render as shelves (grid doesn't fit the vertical feed); `orientation ===
+ * "vertical"` selects portrait (3:4) cards, else landscape (16:9). Header is
+ * eyebrow + title only (description skipped to keep shelves tight). No
+ * background — the renderItem wrapper owns the translucent per-item background.
  */
 import { memo, useCallback } from "react"
 import {

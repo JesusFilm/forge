@@ -1,15 +1,6 @@
-// Shared chrome for the on-page Audio Language / Subtitles sheets, ported from
-// the Claude Design handoff ("Forge TV Video Page" → `.menu` / `.menu-scrim` /
-// `.mhead`). Both panels share this so the sheet container, header, and status
-// rows stay byte-identical instead of drifting between two copies.
-//
-// Design → scale() is 1:1 for the watch-detail components (the action pills are
-// already ported at this ratio: design `.btn-pill .cap` 23px == scale(23)), so
-// the CSS px below map straight onto scale().
-//
-// No expo-blur on TV, so the design's translucent `backdrop-filter: blur(40px)`
-// panel is approximated with a near-opaque dark fill over the dimmed backdrop —
-// the same trade-off WATCH_THEME already documents for the frosted pills.
+// Shared chrome for the Audio Language / Subtitles sheets so both stay
+// byte-identical. Design px map 1:1 onto scale(); no expo-blur on TV, so the
+// frosted panel is approximated with a near-opaque dark fill (per WATCH_THEME).
 
 import { StyleSheet } from "react-native"
 
@@ -29,10 +20,9 @@ export const watchMenuStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Design `.menu`: translucent dark, 24px radius, 1px hairline border, hugging
-  // padding (14px), and a deep drop shadow. overflow hidden: the row list can
-  // exceed maxHeight, and without clipping the overflowing rows paint past the
-  // rounded panel edge (rows + Close rendering outside the dialog).
+  // Design `.menu`: translucent dark, 24px radius, hairline border, deep shadow.
+  // overflow hidden clips the row list when it exceeds maxHeight, else rows +
+  // Close paint past the rounded panel edge.
   panel: {
     width: scale(600),
     maxHeight: scale(820),
@@ -48,12 +38,9 @@ export const watchMenuStyles = StyleSheet.create({
     shadowRadius: scale(45),
     shadowOpacity: 0.85,
   },
-  // The scrolling row list is capped by ITS OWN maxHeight (exactly 9 rows) so
-  // the header above and the Close footer below always keep their space inside
-  // the panel. Capping via the panel's maxHeight + flexShrink does NOT work:
-  // Yoga doesn't shrink children against a parent max-constraint, so the list
-  // takes its full content height and pushes the footer out (clipped by the
-  // panel's overflow hidden). A node's own maxHeight is always honored.
+  // List capped by ITS OWN maxHeight (9 rows) so header + Close keep their space.
+  // Panel maxHeight + flexShrink fails: Yoga won't shrink children against a
+  // parent max-constraint, so the list pushes the footer out; own maxHeight is honored.
   list: {
     flexGrow: 0,
     maxHeight: MENU_LIST_VISIBLE_ROWS * WATCH_OPTION_ROW_HEIGHT,

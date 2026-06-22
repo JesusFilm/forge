@@ -1,9 +1,6 @@
-// Focusable "Try again" control for full-screen error states (the watch and
-// series screens). Uses the onFocus / onBlur + state pattern (matching
-// SearchResultsGrid's RetryButton) rather than the `({ focused }) => [...]`
-// callback — `focused` is exposed at runtime by react-native-tvos but not by
-// the upstream PressableStateCallbackType, so the callback form fails the
-// strict tsc check.
+// Focusable "Try again" control for full-screen error states. Uses onFocus/onBlur
+// + state, not the `({ focused }) =>` callback: `focused` exists at runtime in
+// react-native-tvos but not in upstream PressableStateCallbackType (fails strict tsc).
 
 import { useState } from "react"
 import { Pressable, StyleSheet, Text } from "react-native"

@@ -5,20 +5,16 @@ import { SEMANTIC_SEARCH, type SearchResult } from "./queries"
 import { sanitizeQuery as sanitizeQueryImpl } from "./sanitizeQuery"
 
 /** Debounce window from last query change to auto-submit. Longer than
- *  web's 300 ms because TV input is slower and we want fewer round trips. */
+ *  web's 300 ms because TV input is slower; fewer round trips. */
 const DEFAULT_DEBOUNCE_MS = 600
 
-/** Hard cap on how long the UI stays in 'loading' state before falling
- *  to 'error'. The Apollo HttpLink has a 15 s fetch timeout, but if
- *  anything in the link / cache pipeline drops the response without
- *  resolving the promise, the UI would hang forever otherwise. 12 s
- *  triggers slightly before the Apollo timeout so the user sees the
- *  client-side error message rather than waiting for two timeouts. */
+/** Force the UI out of 'loading' if the Apollo link/cache pipeline drops
+ *  the response without resolving. Set below Apollo's 15 s fetch timeout
+ *  so the user sees a client-side error, not two stacked timeouts. */
 const SEARCH_SAFETY_TIMEOUT_MS = 12_000
 
-// Re-export the sanitizer so apps/tv/app/search.tsx can import from the
-// familiar ../src/lib/search path. The implementation lives in a
-// React-free module so the jest-expo preset can load the unit tests
+// Re-export so search.tsx imports from the familiar ../src/lib/search path.
+// Impl lives in a React-free module so jest-expo loads the unit tests
 // without pulling React's ESM type declarations through babel.
 export const sanitizeQuery = sanitizeQueryImpl
 
@@ -28,24 +24,18 @@ type UseSemanticSearchResult = {
   state: SearchState
   results: SearchResult[]
   /**
-   * The trimmed query string the LATEST returned results are for —
-   * may differ from the consumer's live `query` state when the user
-   * has typed past the most-recent debounce-fired search. Used by
-   * the recent-history caller to record the query that actually
-   * produced the visible results, not the in-progress new query.
+   * Trimmed query the LATEST returned results are for; may lag the live
+   * `query` when the user types past the last debounce-fired search. Lets
+   * recent-history record the query that produced the visible results.
    */
   lastSubmittedQuery: string
-  /** Force an immediate search for the current query, bypassing the
-   *  debounce timer. */
+  /** Force an immediate search for the current query, bypassing debounce. */
   submit: () => void
-  /** Run an explicit query immediately, bypassing both React state
-   *  flush and the debounce. The caller passes the exact query to fire,
-   *  avoiding the stale-closure trap where setQuery() + submit() would
-   *  capture the prior `query` value because submit's useCallback hasn't
-   *  re-baked with the new state yet. */
+  /** Run an explicit query immediately, bypassing React state flush and
+   *  debounce. Caller passes the exact query, dodging the stale-closure
+   *  trap where setQuery()+submit() capture the prior `query` value. */
   runQuery: (q: string) => void
-  /** Re-run the last non-empty query. Used by the Retry button in the
-   *  error state. */
+  /** Re-run the last non-empty query (error-state Retry button). */
   retry: () => void
 }
 
@@ -56,21 +46,12 @@ type UseSemanticSearchOptions = {
 }
 
 /**
- * Debounced semantic search hook. Uses getApolloClient().query with
- * fetchPolicy: 'no-cache' (NOT useLazyQuery — fetchMore silently drops
- * page 1 per mobile-search-ui-patterns learning). Guards:
- *
- *  - requestIdRef: discard stale responses when a newer query fires
- *    mid-flight.
- *  - isSubmittingRef: ignore submit() calls while a prior search is
- *    still in-flight (prevents rapid-⏎ duplicate calls — adversarial
- *    finding from doc review).
- *  - Empty query is a no-op: state returns to 'idle' and no network
- *    call fires.
- *
- * When the backend serves keyword-only results (semantic retrieval
- * unavailable), they flow through as a normal 'ready'/'empty' response —
- * the TV app does not surface a separate degraded-mode message.
+ * Debounced semantic search hook via getApolloClient().query, fetchPolicy
+ * 'no-cache' (NOT useLazyQuery — fetchMore drops page 1, mobile-search-ui-
+ * patterns). Guards: requestIdRef drops stale responses; isSubmittingRef
+ * blocks rapid-⏎ duplicate calls; empty query is a no-op (state → 'idle').
+ * Keyword-only fallback flows through as normal 'ready'/'empty' — no
+ * separate degraded-mode message.
  */
 export function useSemanticSearch(
   query: string,
@@ -84,12 +65,9 @@ export function useSemanticSearch(
 
   const [state, setState] = useState<SearchState>("idle")
   const [results, setResults] = useState<SearchResult[]>([])
-  // Public lastSubmittedQuery state: the trimmed query the *current
-  // visible results* correspond to. Driven from runSearch on
-  // resolution; surfaced so consumers (e.g., recent-history record
-  // effect) can record the query that produced the visible results
-  // rather than the user's live keyboard state, which can drift
-  // ahead during the debounce window.
+  // Trimmed query the current visible results correspond to. Set by
+  // runSearch on resolution so consumers record the query that produced
+  // the results, not the live keyboard state that drifts ahead.
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState<string>("")
 
   const requestIdRef = useRef(0)
@@ -98,20 +76,14 @@ export function useSemanticSearch(
   const isSubmittingRef = useRef(false)
   const lastSubmittedQueryRef = useRef<string>("")
   const mountedRef = useRef(true)
-  // One-shot flag: set true by runQuery() to tell the next debounce
-  // useEffect run to skip scheduling its 600ms timer. Without this,
-  // a chip click → setQuery → runQuery flow leaves a queued debounce
-  // that fires a duplicate Apollo request 600ms later (caught only
-  // by the in-flight guard if the original is still pending; on fast
-  // networks the duplicate fires for real).
+  // One-shot: runQuery() sets this so the next debounce useEffect skips
+  // its timer. Otherwise a chip-click setQuery→runQuery flow leaves a
+  // queued debounce that fires a duplicate Apollo request 600ms later.
   const skipNextDebounceRef = useRef(false)
 
-  // isSubmittingRef is the sole source of truth for in-flight state.
-  // An earlier version mirrored a React isSubmitting state via a
-  // useEffect — the mirror lagged by one render, letting two ⏎
-  // presses in the same tick both observe `false` and both fire
-  // runSearch. The React state has been removed; consumers that
-  // need a render-time signal should derive from `state === "loading"`.
+  // isSubmittingRef is the sole source of truth for in-flight state. A
+  // prior React-state mirror lagged a render, letting two ⏎ in one tick
+  // both fire runSearch. Render-time signal: derive from state==="loading".
 
   // Track mount state so in-flight promises don't set state after
   // the hook unmounts (e.g., user navigates away during search).
@@ -140,11 +112,9 @@ export function useSemanticSearch(
         if (__DEV__) console.log("[search] skipped — already submitting:", q)
         return
       }
-      // Trim at the firing site (not the write site). sanitizeQuery
-      // preserves leading/internal/trailing whitespace so the user can
-      // type "hello world" without the space being eaten mid-typing;
-      // we only suppress the network call when the trimmed query is
-      // empty (whitespace-only input or empty string).
+      // Trim at the firing site, not the write site: sanitizeQuery keeps
+      // whitespace so typing "hello world" isn't eaten mid-stroke. Only
+      // suppress the call when the trimmed query is empty.
       const trimmed = q.trim()
       if (trimmed.length === 0) return
 
@@ -161,11 +131,9 @@ export function useSemanticSearch(
         console.log("[search] firing query:", { q, thisRequest, locale, limit })
       }
 
-      // Safety net: if Apollo's promise neither resolves nor rejects
-      // within SEARCH_SAFETY_TIMEOUT_MS, force the UI out of 'loading'
-      // so the user gets feedback instead of staring at the spinner.
-      // Cleared in the finally block below when the request resolves
-      // normally.
+      // Safety net: if Apollo never settles within SEARCH_SAFETY_TIMEOUT_MS,
+      // force the UI out of 'loading' so the user gets feedback. Cleared in
+      // the finally block when the request resolves normally.
       if (safetyTimerRef.current != null) {
         clearTimeout(safetyTimerRef.current)
       }
@@ -192,19 +160,16 @@ export function useSemanticSearch(
         const client = getApolloClient()
         const response = await client.query({
           query: SEMANTIC_SEARCH,
-          // Send the trimmed value to the backend — sanitizeQuery
-          // intentionally preserves whitespace at the write site, so
-          // we strip it once here at the firing site rather than
-          // shipping "hello " or "  hello world  " to the embedding
-          // service.
+          // Send the trimmed value: sanitizeQuery keeps whitespace at the
+          // write site, so we strip once here rather than shipping
+          // "  hello world  " to the embedding service.
           variables: { query: trimmed, locale, limit },
           fetchPolicy: "no-cache",
         })
 
-        // Apollo + gql.tada infer this as the SearchResponse derived
-        // from SEMANTIC_SEARCH; no manual cast needed. Letting the
-        // schema flow through means a future field-type tightening trips
-        // tsc here instead of silently passing.
+        // Apollo + gql.tada infer this from SEMANTIC_SEARCH, no cast
+        // needed. Letting the schema flow through trips tsc here on a
+        // future field-type tightening instead of passing silently.
         const payload = response.data?.semanticSearch
         const items = payload?.results ?? []
 
@@ -244,22 +209,18 @@ export function useSemanticSearch(
         setResults([])
         setState("error")
       } finally {
-        // Both timer-clear and in-flight release are guarded by the
-        // same staleness check: a late-arriving response from a
-        // superseded request must NOT clear the *active* request's
-        // safety timer (which was overwritten into safetyTimerRef when
-        // the newer request started), and must NOT release the
-        // in-flight guard.
+        // Staleness-guard timer-clear and in-flight release: a superseded
+        // response must NOT clear the active request's safety timer (now in
+        // safetyTimerRef) nor release the in-flight guard.
         if (requestIdRef.current === thisRequest && mountedRef.current) {
           if (safetyTimerRef.current != null) {
             clearTimeout(safetyTimerRef.current)
             safetyTimerRef.current = null
           }
           isSubmittingRef.current = false
-          // Surface the trimmed query that drove these results so
-          // recent-history records the correct value (not the live
-          // keyboard state, which may have advanced past `trimmed`
-          // during the network round-trip).
+          // Surface the trimmed query that drove these results so recent-
+          // history records the right value, not the live keyboard state
+          // that may have advanced past `trimmed` during the round-trip.
           setLastSubmittedQuery(trimmed)
         }
       }
@@ -276,19 +237,13 @@ export function useSemanticSearch(
     }
 
     if (query.trim().length === 0) {
-      // Whitespace-only input is treated the same as empty: stay in
-      // idle, don't fire a network call. sanitizeQuery preserves
-      // whitespace at the write site, so the in-memory `query` may
-      // be a non-empty whitespace string after the keyboard's space
-      // key fires; checking `trim().length` here gates that case
-      // without losing the user's typed-but-not-yet-followed-up space.
+      // Whitespace-only input is treated as empty: stay idle, no call.
+      // sanitizeQuery keeps whitespace at the write site, so gate on
+      // trim().length without losing the user's typed-but-unfollowed space.
       requestIdRef.current += 1
-      // Bumping requestIdRef invalidates any in-flight request — its
-      // finally block is gated on requestIdRef.current === thisRequest
-      // and will skip the isSubmittingRef reset. Without releasing
-      // the in-flight guards here, a subsequent search would be
-      // permanently dropped at the line-143 early-return. Reset
-      // synchronously so the hook is usable again immediately.
+      // Bumping requestIdRef invalidates the in-flight request, whose
+      // finally then skips the isSubmittingRef reset. Release the guards
+      // here too, else the next search is dropped at the in-flight early-return.
       isSubmittingRef.current = false
       if (safetyTimerRef.current != null) {
         clearTimeout(safetyTimerRef.current)
@@ -331,21 +286,18 @@ export function useSemanticSearch(
     void runSearch(query)
   }, [query, runSearch])
 
-  // Run an explicit query immediately. Callers that just set state to a
-  // new query value (recent chip / category card) cannot use submit()
-  // because submit() closes over the prior `query` until React commits
-  // the next render. Threading the value directly avoids that one-render
-  // staleness window.
+  // Run an explicit query immediately. Callers that just setQuery (chip /
+  // category card) can't use submit() — it closes over the prior `query`
+  // until React commits. Threading the value dodges that staleness window.
   const runQuery = useCallback(
     (q: string) => {
       if (timerRef.current != null) {
         clearTimeout(timerRef.current)
         timerRef.current = null
       }
-      // Tell the next debounce useEffect run to skip — the caller
-      // typically does setQuery(q) before runQuery(q) and we don't
-      // want the resulting query-change to schedule a duplicate
-      // 600ms-later runSearch for the same value.
+      // Tell the next debounce useEffect to skip: callers do setQuery(q)
+      // before runQuery(q), and we don't want that query-change to
+      // schedule a duplicate 600ms-later runSearch for the same value.
       skipNextDebounceRef.current = true
       void runSearch(q)
     },

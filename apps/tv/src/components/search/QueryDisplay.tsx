@@ -10,22 +10,16 @@ type Props = {
 }
 
 /**
- * The big query line at the top of the search layer (design: .s-query).
- * Read-only — the user modifies the query via the letter strip below.
- * Typed text renders white at display weight; the placeholder ("Titles,
- * series, topics") sits at 25% white so it reads as a prompt, not a value.
- * A blinking accent caret trails the text.
- *
- * Fixed minHeight so the line doesn't shift the strip below when the
- * query transitions between empty and non-empty.
+ * Read-only query line atop the search layer (design: .s-query); edited via the
+ * letter strip below. Placeholder at 25% white reads as a prompt; a blinking
+ * accent caret trails. Fixed minHeight so empty↔non-empty doesn't shift the strip.
  */
 export function QueryDisplay({ value }: Props) {
   const isPlaceholder = value.length === 0
 
-  // Caret blink. Fabric gotcha: a looped Animated.sequence runs once and
-  // a JS-driver loop never updates views — use a single looped timing on
-  // the native driver and step the opacity via interpolation (mirrors the
-  // design's `steps(2)` keyframe: visible first half, hidden second half).
+  // Caret blink. Fabric gotcha: looped Animated.sequence runs once and a JS-driver
+  // loop never updates views — use one looped native-driver timing, stepping opacity
+  // via interpolation (mirrors the design `steps(2)`: visible then hidden).
   const blink = useRef(new Animated.Value(0)).current
   useEffect(() => {
     const loop = Animated.loop(

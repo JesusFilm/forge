@@ -6,12 +6,10 @@ import { COLORS } from "../lib/colors"
 import { scale } from "../lib/scale"
 
 /**
- * Hooks passed into each rail item's renderItem so the consumer can
- * wire focus events directly into the interactive child (e.g., a
- * FocusableCard's `onFocus` prop). Needed because the wrapper `View`'s
- * `onFocus` does NOT reliably fire when a nested `Pressable` inside a
- * `FocusableCard` gains focus on tvOS — the event doesn't bubble up
- * consistently across react-native-tvos versions.
+ * Hooks passed into each item's renderItem so the consumer wires focus directly
+ * into the interactive child (e.g. FocusableCard's `onFocus`). The wrapper View's
+ * `onFocus` doesn't fire reliably for a nested Pressable on tvOS — focus events
+ * don't bubble consistently across react-native-tvos versions.
  */
 export type ContentRailItemHooks = {
   onFocus: () => void
@@ -24,9 +22,8 @@ type ContentRailProps<T> = {
   railId: string
   keyExtractor: (item: T) => string
   /**
-   * Fires whenever a rail item becomes focused. Used by the home
-   * screen to drive the focus-driven hero swap. Optional — rails
-   * that don't consume focus events leave it unset.
+   * Fires when a rail item gains focus; the home screen uses it to drive the
+   * hero swap. Optional — rails that don't consume focus leave it unset.
    */
   onItemFocus?: (index: number, item: T) => void
 }
@@ -38,11 +35,9 @@ export function ContentRail<T>({
   keyExtractor,
   onItemFocus,
 }: ContentRailProps<T>) {
-  // `handleItemFocus` closes over `item` rather than indexing back into
-  // `data`: FlatList fires focus callbacks asynchronously, and the
-  // Apollo cache can deliver a shorter `data` array before a queued
-  // callback fires. `data[index]` would then be `undefined` and
-  // consumers that read `item.documentId` would throw.
+  // Closes over `item` rather than indexing `data`: FlatList fires focus
+  // callbacks async, and Apollo can swap in a shorter `data` first, so
+  // `data[index]` would be undefined and `item.documentId` reads would throw.
   const handleItemFocus = useCallback(
     (index: number, item: T) => {
       onItemFocus?.(index, item)

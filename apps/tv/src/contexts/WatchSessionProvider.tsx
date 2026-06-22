@@ -1,22 +1,8 @@
-// SYNC: structural rewrite of apps/mobile/src/contexts/WatchSessionProvider.tsx
-// — NOT a copy. Mobile is woven through useWatchPreferences (subtitleEnabled is
-// sourced from it, both default-resolution effects gate on its preferencesReady,
-// and the setters persist through it). TV v1 has no cross-restart persistence
-// (WatchPreferencesProvider is deferred), so this port:
-//   - holds `subtitleEnabled` as LOCAL useState,
-//   - replaces the `preferencesReady` gate with `true` (no readiness gate),
-//   - strips all persist calls from the setters,
-//   - fills resolveDefaultSlug's preferred arg with the carried series-language
-//     selection (U4) instead of mobile's persisted preference — null outside a
-//     series lineage, so the default chain is unchanged there,
-//   - drops mobile's snackbarMessage (Download is a QR handoff, no consumer).
-//
-// It is the single source of truth for the active dub + subtitle selection,
-// shared by the details screen's pickers and the overlay's in-player menu
-// across the screen ↔ fullscreen round trip (KTD2). It is INERT when
-// `video == null`: the default-resolution effects and Apollo usage early-return,
-// so screens that never call `setVideo` (experience-card playback) register zero
-// effects/queries.
+// SYNC: structural rewrite (NOT a copy) of apps/mobile's WatchSessionProvider.
+// TV v1 has no persistence: subtitleEnabled is local, no preferencesReady gate,
+// setters don't persist, defaults use the carried series slug (U4), no snackbar.
+// Single source of truth for the active dub + subtitle selection; INERT when
+// video == null (effects + Apollo early-return).
 
 import {
   createContext,
@@ -70,48 +56,43 @@ type WatchSessionContextValue = {
   /** Convenience: the variant currently selected (clamped), or null. */
   activeVariant: WatchVideoRecord["variants"][number] | null
   /**
-   * The active variant's downloads + subtitles, fetched lazily (one dub at a
-   * time) via {@link ensureActiveVariantMedia}. `null` until that dub's media
-   * has loaded — distinct from "loaded, empty" (`{ downloads: [], subtitles: [] }`).
+   * Active variant's downloads + subtitles, lazily fetched via
+   * {@link ensureActiveVariantMedia}. `null` until loaded — distinct from
+   * "loaded, empty" (`{ downloads: [], subtitles: [] }`).
    */
   activeVariantMedia: VariantMedia | null
   /** True while the active variant's media request is in flight. */
   activeVariantMediaLoading: boolean
   /**
-   * True when the active variant's media fetch failed (vs. loaded-but-empty).
-   * Lets panels show a retry affordance instead of a misleading empty list.
+   * True when the active variant's media fetch failed (vs. loaded-but-empty),
+   * so panels can show a retry affordance instead of a misleading empty list.
    */
   activeVariantMediaError: boolean
   /**
-   * The active dub's media as a single `{ media, loading, error }` struct —
-   * the same value the flat fields above are destructured from. Panels feed
-   * this straight into `deriveSubtitlePanelState` instead of rebuilding the
-   * struct; the flat fields stay for the player hook that reads them.
+   * Active dub's media as one `{ media, loading, error }` struct (the source of
+   * the flat fields above). Panels feed it straight into
+   * `deriveSubtitlePanelState`; flat fields stay for the player hook.
    */
   activeVariantMediaState: DubMediaState
   /**
-   * Fetch the active variant's downloads + subtitles if not already loaded /
-   * in flight. Call when the Subtitle panel / in-player menu opens or captions
-   * turn on. Deduped per dub id; a failed fetch is retried on the next call.
+   * Fetch the active variant's media if not already loaded / in flight (on
+   * panel/menu open or captions-on). Deduped per dub id; a failed fetch retries
+   * on the next call.
    */
   ensureActiveVariantMedia: () => void
 }
 
 const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
 
-// Hard cap on the GET_VIDEO_DUB request so a hung admin can't wedge the loading
-// state (and the dedupe-ledger slot) forever. Matches the 8 s VTT-fetch budget
-// in SubtitleOverlay; per CLAUDE.md the outbound timeout must be shorter than
-// the upstream caller's budget (Apollo's HttpLink fetch timeout). On expiry the
-// race REJECTS so ensureDubMedia's onError path fires — releasing the slot and
-// surfacing the error state instead of hanging.
+// Hard cap on GET_VIDEO_DUB so a hung admin can't wedge the loading state +
+// dedupe slot forever. Must stay shorter than the caller's budget (CLAUDE.md);
+// on expiry the race REJECTS so ensureDubMedia's onError fires (slot released).
 const DUB_MEDIA_FETCH_TIMEOUT_MS = 8000
 
 export function WatchSessionProvider({ children }: { children: ReactNode }) {
-  // The active series screen's language selection (U4) — null when no series
-  // screen is in the stack's lineage (or the provider isn't mounted, e.g. in
-  // isolation). Feeds resolveDefaultVariantIndex's preferred-slug arg below so
-  // an episode opened from a series starts in the language picked there.
+  // Active series screen's language selection (U4; null outside a series lineage)
+  // → feeds resolveDefaultVariantIndex's preferred-slug arg so an episode opened
+  // from a series starts in the language picked there.
   const carriedLanguageSlug = useCarriedLanguageSlug()
 
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
@@ -151,23 +132,18 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
 
   const activeVariant = selectActiveVariant(video, activeVariantIndex)
 
-  // Lazily-fetched per-dub media (downloads + subtitles), keyed by dub id so a
-  // language the user already opened stays warm across switches and re-entry.
-  // `requestedRef` dedupes in-flight + completed fetches; a failed one is
-  // dropped from it so the next ensure() retries.
+  // Lazily-fetched per-dub media keyed by dub id so an opened language stays
+  // warm across switches/re-entry. requestedRef dedupes in-flight + completed
+  // fetches; a failed one is dropped so the next ensure() retries.
   const [mediaById, setMediaById] = useState<Record<string, VariantMedia>>({})
   const [loadingIds, setLoadingIds] = useState<Record<string, true>>({})
   const [errorIds, setErrorIds] = useState<Record<string, true>>({})
   const requestedRef = useRef<Set<string>>(new Set())
 
   const activeVariantId = activeVariant?.documentId ?? null
-  // The active dub's media as a single struct. Exposed directly on the context
-  // (`activeVariantMediaState`) for panels that feed it to deriveSubtitlePanelState,
-  // and destructured into the flat fields the player hook still reads.
-  // Memoized: selectDubMediaState returns a fresh object literal every call, and
-  // this value feeds the context-value useMemo below — without a stable reference
-  // here the context value changes on every provider render, re-rendering every
-  // useWatchSession consumer even when the active dub's media is unchanged.
+  // Active dub's media as one struct (also destructured into the flat fields).
+  // Memoized because selectDubMediaState returns a fresh literal each call —
+  // without a stable ref it re-renders every consumer on every provider render.
   const activeVariantMediaState = useMemo(
     () => selectDubMediaState(activeVariantId, mediaById, loadingIds, errorIds),
     [activeVariantId, mediaById, loadingIds, errorIds],
@@ -193,10 +169,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
           // switching back to this language) reads the warm cache, no refetch.
           fetchPolicy: "cache-first",
         })
-        // Apollo's query() doesn't honor a per-call deadline, so race it against
-        // a timeout that REJECTS — a hung admin then surfaces as an error (slot
-        // released) instead of an indefinite spinner. The timer is unref-free
-        // (RN has no unref) but the race settling lets it be GC'd.
+        // Apollo's query() honors no per-call deadline, so race it against a
+        // timeout that REJECTS — a hung admin surfaces as an error (slot
+        // released), not an indefinite spinner. No unref on RN; race-settle GCs it.
         let timeoutId: ReturnType<typeof setTimeout> | undefined
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(
@@ -234,11 +209,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     )
   }, [activeVariant?.documentId])
 
-  // New video identity → reset choice tracking + per-video subtitle state and
-  // drop the previous video's per-dub media + ledger. Declared before the
-  // resolution effects so their guards see a clean slate. Dub ids are
-  // per-video, so nothing is reused across videos — keeping the maps only grows
-  // memory and lets a stale requestedRef entry wedge a dub into a no-op.
+  // New video identity → reset choice tracking + subtitle state, drop the prior
+  // video's per-dub media + ledger (before resolution effects, for a clean slate).
+  // Dub ids are per-video: stale entries waste memory + can wedge a dub into a no-op.
   useEffect(() => {
     userChoseVariantRef.current = false
     userChoseSubtitleRef.current = false
@@ -251,13 +224,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     requestedRef.current.clear()
   }, [video?.documentId])
 
-  // Default the dubbing language once per video, as soon as variants are
-  // available (they may arrive after the documentId via partial data), unless
-  // the user already chose. INERT when no video. No readiness gate on TV (mobile
-  // gated on preferencesReady; TV has no persisted store). Carried series
-  // selection (U4 — null outside a series lineage) → device locale → video
-  // primary → English → first; a carried slug with no matching dub falls
-  // through the chain (soft preference, see resolveDefaultSlug).
+  // Default the dub language once per video as variants arrive (after documentId),
+  // unless the user chose. INERT/no readiness gate on TV. Chain: carried slug (U4,
+  // soft — no match falls through) → device → primary → English → first.
   useEffect(() => {
     if (!video || video.variants.length === 0) return
     if (userChoseVariantRef.current) return
@@ -275,11 +244,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     carriedLanguageSlug,
   ])
 
-  // Pre-select the subtitle language for the active variant once, unless the
-  // user already chose. Subtitles arrive lazily, so this runs when the active
-  // dub's media lands (keyed on the dub id), not at load. INERT when no video /
-  // no active dub. Persisted preference (null on TV) → device → primary →
-  // English → first.
+  // Pre-select the subtitle language once per active variant, unless the user
+  // chose. Runs when the dub's media lands (lazy; keyed on dub id). INERT when no
+  // video/dub. Chain: persisted (null on TV) → device → primary → English → first.
   useEffect(() => {
     if (!video || !activeVariant) return
     const subtitles = activeVariantMedia?.subtitles

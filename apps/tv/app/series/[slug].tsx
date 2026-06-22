@@ -1,32 +1,9 @@
-// Series-details screen — /series/[slug].
-//
-// The series counterpart of /watch/[slug]: paints from an (untrusted,
-// sanitized) seed for instant first paint, then fills in from
-// GET_SERIES_BY_SLUG (cache-first + returnPartialData so re-entry reads the
-// warm cache without a blocking refetch). No watch-session publish — trailer
-// playback uses the overlay's no-session path (see SeriesActionRow).
-//
-// Language (U4): the screen's selection lives in SeriesLanguageProvider,
-// keyed by this series' documentId, so it survives episode push/pop and
-// nested series stacking. The screen registers itself ACTIVE on focus (the
-// watch session carries the active series' selection into opened episodes)
-// and deletes its entry on unmount. Selecting a language best-effort swaps
-// the trailer dub (resolveTrailerSwap) and threads the slug to the episode
-// rail's `lang` param.
-//
-// Layout (WATCH_THEME for visual continuity with the watch screen): a
-// full-height STATIC artwork hero — expo-image + the watch backdrop's ambient
-// gradient scrims, never a VideoBackdrop. No video mounts on this screen:
-// tvOS decode slots are scarce, and the fullscreen overlay must own the only
-// decoder (see tv-backdrop-videoview-decoder-starvation). Hero content sits
-// bottom-left: SERIES badge + meta kicker (episodes · languages), large
-// title, 3-line teaser, and the Play Trailer / Language action row. Below the
-// fold (opaque): the episode rail (U3).
-//
-// Routing (R1): when the resolved record turns out to be a leaf,
-// router.replace ONCE to /watch/[slug] carrying the original seed through —
-// resolveLeafBounce evaluates the same isSeriesRecord predicate as the watch
-// route's series redirect (U5), so the two seams can never disagree and loop.
+// Series-details screen (/series/[slug]), counterpart of /watch/[slug]: sanitized
+// seed paint + GET_SERIES_BY_SLUG (cache-first/returnPartialData); language (U4)
+// in SeriesLanguageProvider keyed by documentId, ACTIVE on focus; static
+// WATCH_THEME hero, no VideoView (tvOS decode slots — see
+// tv-backdrop-videoview-decoder-starvation). R1: a resolved leaf replace-bounces
+// ONCE to /watch via resolveLeafBounce (shares watch's isSeriesRecord predicate, U5).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -70,11 +47,9 @@ import { scale } from "../../src/lib/scale"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
-// HERO_PEEK / HERO_BOTTOM_FADE_HEIGHT are shared with the watch screen (see
-// watchDetailTheme). The series backdrop is a static expo-image, so — unlike the
-// watch screen's VideoView — it renders at full SCREEN_HEIGHT and the hero's
-// overflow:hidden clips its bottom HERO_PEEK (thumbnail framing stays full, top
-// not trimmed); the rail peeks through there.
+// HERO_PEEK / HERO_BOTTOM_FADE_HEIGHT shared with the watch screen. The static
+// backdrop renders at full SCREEN_HEIGHT; the hero's overflow:hidden clips its
+// bottom HERO_PEEK (top untrimmed) where the rail peeks through.
 
 // Stable fallback for the language panel while no record is resolved — a
 // fresh [] each render would re-run the panel's rows memo (the watch screen's
@@ -114,13 +89,9 @@ export default function SeriesScreen() {
   // surface. Sanitized — a crafted deep link can't reach the image loader.
   const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
 
-  // Leaf bounce (R1): replace (not push) so Menu pops to the pre-series
-  // origin, once-guarded so a partial→full re-evaluation can't fire twice.
-  // The original seed param carries through as-is (it arrives still-encoded).
-  // Completeness signal: the series-only childDubLanguages key exists on the
-  // raw object (even as []) only once THIS query has answered — the watch
-  // screen's warm partial reads back with loading=false under cache-first +
-  // returnPartialData, so `!loading` cannot tell partial from complete.
+  // Leaf bounce (R1): replace (not push) so Menu pops to pre-series origin,
+  // once-guarded; seed carries through encoded. Completeness = series-only
+  // childDubLanguages key present (`!loading` can't tell partial from complete).
   const bounce = resolveLeafBounce(
     record,
     data?.videoBySlug?.childDubLanguages !== undefined,
@@ -143,11 +114,9 @@ export default function SeriesScreen() {
     useSeriesLanguage()
   const seriesId = record?.documentId ?? null
 
-  // Register as the ACTIVE series screen on focus (and again when the record's
-  // identity resolves while focused). Deliberately NO blur cleanup: pushing an
-  // episode blurs this screen but must keep it active so the watch session
-  // carries its selection; a nested series screen takes over by registering
-  // itself on its own focus.
+  // Register ACTIVE on focus (and when identity resolves while focused).
+  // Deliberately NO blur cleanup: a pushed episode must keep this active so the
+  // watch session carries its selection; a nested series takes over on its focus.
   useFocusEffect(
     useCallback(() => {
       if (seriesId != null) setActive(seriesId)
@@ -185,13 +154,9 @@ export default function SeriesScreen() {
     setActionRowRefocusKey((key) => key + 1)
   }, [])
 
-  // Trailer (R4 / AE9): default = the playable dub the default-language
-  // chain picks (device → primary → English → first playable, matching the
-  // watch screen); a selection swaps it ONLY when that language has a
-  // playable dub on the series record. `trailerSlug` remembers the last
-  // selection that DID swap, so a later no-trailer selection keeps the
-  // PREVIOUS trailer (not the default) and the Play Trailer action never
-  // disappears under focus. On re-entry the surviving selection seeds it.
+  // Trailer (R4 / AE9): default = default-language chain's playable dub; a
+  // selection swaps it ONLY if playable. `trailerSlug` remembers the last
+  // swapping pick so a no-trailer pick keeps the PREVIOUS trailer under focus.
   const [trailerSlug, setTrailerSlug] = useState<string | null>(null)
   const defaultTrailer = useMemo(() => pickDefaultTrailer(record), [record])
   const trailer = useMemo(
@@ -226,22 +191,18 @@ export default function SeriesScreen() {
       ? (selectedLanguage.name ?? selectedLanguage.slug)
       : (trailer?.languageName ?? "English")
 
-  // First paint prefers resolved data, falling back to the seed. CMS posterUrl
-  // is untrusted — sanitize before it reaches expo-image (the seed.imageUrl
-  // branch is already resolveImageUrl-sanitized in decodeWatchSeed). The
-  // normalizer's posterUrl already applies the image precedence chain
-  // (mobileCinematicHigh → url → thumbnail), same as the watch screen.
+  // First paint prefers resolved data, falls back to seed. CMS posterUrl is
+  // untrusted — sanitize before expo-image (seed.imageUrl is already
+  // resolveImageUrl-sanitized in decodeWatchSeed; normalizer applies the chain).
   const displayTitle = record?.title ?? seed?.title ?? null
   const displayPoster =
     (record?.posterUrl != null ? resolveImageUrl(record.posterUrl) : null) ??
     seed?.imageUrl ??
     null
 
-  // Hero kicker: the badge reads SERIES/COLLECTION — never the raw wire enum.
-  // Records routed here by childCount alone carry leaf labels (FEATURE_FILM),
-  // which would render underscores verbatim; this IS the series screen, so
-  // anything rendering here presents as a series (R3). buildMetadataLine is a
-  // joined-segments builder: first slot episode count, third language count.
+  // Hero kicker: badge reads SERIES/COLLECTION, never the raw wire enum —
+  // childCount-routed records carry leaf labels (FEATURE_FILM) but this IS the
+  // series screen, so all present as series (R3). buildMetadataLine joins slots.
   const badgeLabel = isSeriesLabel(record?.label ?? null)
     ? (record?.label ?? "SERIES")
     : "SERIES"
@@ -308,11 +269,9 @@ export default function SeriesScreen() {
               />
             )}
 
-            {/* Ambient scrims (VideoBackdrop's left→right + bottom→up pair) so
-                the hero content reads over the artwork. scrim(0) is an rgba
-                stop — never the "transparent" keyword (dark banding). The
-                gradient/image layers use collapsable={false} so Android TV
-                can't fold them away. */}
+            {/* Ambient scrims (left→right + bottom→up) so hero content reads
+                over artwork. scrim(0) is an rgba stop, never "transparent"
+                (dark banding). collapsable={false} stops Android TV folding. */}
             <LinearGradient
               colors={[
                 WATCH_THEME.scrim(0.92),
@@ -341,11 +300,9 @@ export default function SeriesScreen() {
             />
           </View>
 
-          {/* Soft fade at the hero's VISIBLE bottom edge → blends the artwork
-              into the episode rail's background (WATCH_THEME.below) instead of a
-              hard cut. Anchored to the hero (not the full-height backdrop) so it
-              sits exactly at the clipped bottom edge; rendered before heroContent
-              so the title/buttons stay crisp on top. */}
+          {/* Soft fade at the hero's VISIBLE bottom edge blends artwork into the
+              rail background (WATCH_THEME.below). Anchored to the hero (not full
+              backdrop) for the clipped edge; before heroContent to stay crisp. */}
           <LinearGradient
             colors={[
               hexToRgba(WATCH_THEME.below, 0),
@@ -394,18 +351,9 @@ export default function SeriesScreen() {
           </View>
         </View>
 
-        {/* Below the fold — opaque so it covers the artwork as the user
-            scrolls. The rail's TVFocusGuideView sits vertically adjacent to
-            the action row's inside this same ScrollView and they overlap
-            horizontally (both start at the scale(80) gutter), so default
-            D-pad traversal crosses between them in both directions — the
-            same structure the watch screen ships (DetailsActionRow ↔
-            UpNextRail), no explicit destinations needed. Initial focus stays
-            with the action row even when no trailer exists (the Language
-            pill): a first-episode initial-focus branch is intentionally
-            unwired — arming hasTVPreferredFocus inside the rail would fight
-            the action row's one-shot, and landing focus below the fold
-            would scroll past the hero on entry. */}
+        {/* Below the fold — opaque to cover artwork on scroll. Rail/action row
+            share the scale(80) gutter and are adjacent, so default D-pad crosses
+            both ways. Initial focus stays on the action row (no episode-focus). */}
         <View style={styles.below}>
           {record != null ? (
             <EpisodeRail
@@ -416,11 +364,9 @@ export default function SeriesScreen() {
         </View>
       </ScrollView>
 
-      {/* activeSlug falls back to the trailer dub's language so the first
-          open lands on (and scrolls to) what currently plays. The screen owns
-          closing: handleLanguageSelect persists the pick, swaps the trailer
-          when playable, and funnels into closeLanguagePanel — one close path,
-          one refocusKey increment. */}
+      {/* activeSlug falls back to the trailer dub's language so the first open
+          lands on what currently plays. The screen owns closing: every path
+          funnels through closeLanguagePanel — one close, one refocusKey bump. */}
       <SeriesLanguagePanel
         visible={languagePanelVisible}
         languages={record?.languages ?? NO_LANGUAGES}

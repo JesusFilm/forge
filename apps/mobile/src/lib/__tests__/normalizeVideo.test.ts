@@ -412,10 +412,9 @@ describe("normalizeVideo", () => {
   })
 
   it("sorts a frozen bibleCitations array without mutating it", () => {
-    // Apollo's InMemoryCache hands back frozen arrays; Array.sort mutates in
-    // place, so normalizeVideo must copy before sorting or it throws "Cannot
-    // assign to read-only property". Order is inverted so the sort MUST swap
-    // (touch the frozen array) — without the copy this whole call throws.
+    // Apollo's InMemoryCache returns frozen arrays and Array.sort mutates in
+    // place, so normalizeVideo must copy before sorting (else "Cannot assign to
+    // read-only property"). Inverted order forces a swap, so no copy = throw.
     const frozenCitations = Object.freeze([
       {
         documentId: "bc-2",
@@ -693,11 +692,9 @@ describe("normalizeSeries", () => {
     expect(result.variants).toHaveLength(1)
   })
 
-  // Contract guard (mocked-shape vs real-contract): SeriesWatchVideo selects
-  // dubs WITHOUT the player-only duration/muxVideo, so the lean shape has those
-  // keys ABSENT (undefined), not null. The shared builder must still produce a
-  // playable trailer from hls alone; deleting the `?? null` coalescing in
-  // buildWatchVideoRecord should fail here.
+  // Contract guard (mocked-shape vs real-contract): SeriesWatchVideo omits the
+  // player-only duration/muxVideo, so those keys are absent (undefined), not null.
+  // Builder must still make a trailer from hls; dropping `?? null` should fail here.
   it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
     const result = normalizeSeries(
       makeRawSeries({

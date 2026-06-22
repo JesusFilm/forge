@@ -1,21 +1,9 @@
-// Action row for the series screen — the DetailsActionRow template trimmed to
-// the series action set (R7): [Play Trailer] [Language], one left-aligned,
-// remote-navigable TVFocusGuideView (autoFocus) row under the title.
-//
-// Play Trailer (R4): rendered ONLY when the screen resolved a playable trailer
-// dub — no dead action. Pressing it validates the hls then hands it to the
-// fullscreen overlay via playVideo(hls, title) with NO setVideo and NO watch
-// session — the documented no-session invariant (useSessionPlayback.ts):
-// without a published session the overlay player stays clean (no in-player
-// language/subtitle menu); language changes happen here on the series screen.
-// Menu dismisses the overlay back to this screen (existing behavior).
-//
-// Focus: one-shot hasTVPreferredFocus on the FIRST pill — Play Trailer, or
-// Language when no trailer exists — armed on mount, re-armed when the overlay
-// dismisses (DetailsActionRow's isVisible-transition pattern), and re-armed
-// whenever `refocusKey` increments (U4 uses it to restore focus after the
-// language panel closes). Cleared the render after it applies so it doesn't
-// fight subsequent user navigation.
+// Series action row (R7): [Play Trailer] [Language] in a left-aligned autoFocus
+// TVFocusGuideView. Play Trailer renders only when a playable trailer dub
+// resolved, and plays via playVideo with NO setVideo/session — the no-session
+// invariant (useSessionPlayback.ts) keeps the overlay player chrome-free;
+// language changes happen here. Focus: one-shot hasTVPreferredFocus on the first
+// pill, re-armed on mount, on overlay dismiss, and on refocusKey bump (U4).
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text } from "react-native"
@@ -31,24 +19,22 @@ import { SecondaryPill } from "../watch/DetailsActionRow"
 
 type SeriesActionRowProps = {
   /**
-   * The playable trailer's HLS URL (pickPlayableTrailer's pick), or null when
-   * the series has none — in which case the Play Trailer pill is not rendered
-   * and Language becomes the first/only pill.
+   * Playable trailer HLS (pickPlayableTrailer), or null when the series has
+   * none — then Play Trailer is hidden and Language is the only pill.
    */
   trailerHls: string | null
   /** Series title, handed to the fullscreen overlay player's chrome. */
   title: string | null
   /**
-   * Sub-caption on the Language pill — the currently selected language's
-   * display name. Until U4 wires the series-language provider, the caller
-   * passes the trailer dub's language (or "English").
+   * Language pill sub-caption: the selected language's display name. Until U4
+   * wires the provider, the caller passes the trailer dub's language (or "English").
    */
   languageName: string
   /** Opens the language selection panel. Optional until U4 wires the panel. */
   onLanguagePress?: () => void
   /**
-   * Re-arm hook for U4: incrementing this number re-arms the first pill's
-   * one-shot preferred focus (panel-close focus restore).
+   * Re-arm hook for U4: incrementing re-arms the first pill's one-shot
+   * preferred focus (panel-close focus restore).
    */
   refocusKey?: number
 }
@@ -118,11 +104,9 @@ export function SeriesActionRow({
 }
 
 // ── Pills ───────────────────────────────────────────────────────────
-//
-// TrailerPill mirrors DetailsActionRow's PlayPill (not exported there): focus
-// eases in via useFocusAnimation's 0→1 `progress` — lift + magnify, and the
-// white-ring highlight cross-fades. The Language pill is the shared
-// SecondaryPill imported from DetailsActionRow.
+// TrailerPill mirrors DetailsActionRow's (non-exported) PlayPill: focus eases
+// in via useFocusAnimation progress (lift + magnify + white-ring cross-fade).
+// The Language pill is the shared SecondaryPill from DetailsActionRow.
 
 const ICON_SIZE = Math.round(scale(30))
 

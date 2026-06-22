@@ -1,8 +1,6 @@
-// Loaded defensively: under pnpm's strict layout @expo/config-plugins is only
-// resolvable here when it's a direct dependency of apps/mobile (it is, via
-// devDependencies). If resolution ever fails, no-op rather than crash the native
-// build's "generate app.config" phase — the prebuilt ios/ AppDelegate is already
-// patched, so skipping here is safe.
+// Loaded defensively: @expo/config-plugins is only resolvable when it's a direct
+// dep of apps/mobile (it is, via devDeps). On resolution failure, no-op rather
+// than crash prebuild — the prebuilt ios/ AppDelegate is already patched.
 let withAppDelegate = null
 try {
   ;({ withAppDelegate } = require("@expo/config-plugins"))
@@ -11,17 +9,11 @@ try {
 }
 
 /**
- * react-native-background-downloader's own config plugin injects
- * `application(_:handleEventsForBackgroundURLSession:completionHandler:)` before
- * the AppDelegate file's LAST closing brace — which lands it inside the
- * `ReactNativeDelegate` class, NOT the real `@UIApplicationMain AppDelegate`.
- * iOS only delivers that selector to the app delegate, so a download that
- * completes while the app is backgrounded never notifies JS and stays stuck on
- * "downloading".
- *
- * This plugin relocates the method onto `AppDelegate` as a `public override
- * func` (ExpoAppDelegate declares it `open`). Register it AFTER the package
- * plugin in app.json so it runs on the already-injected file.
+ * The package's own plugin injects handleEventsForBackgroundURLSession before
+ * the file's last brace, landing it in ReactNativeDelegate not the real
+ * AppDelegate — so backgrounded downloads never notify JS and stick on
+ * "downloading". This relocates it onto AppDelegate as a public override func.
+ * Register AFTER the package plugin in app.json so it runs on the injected file.
  */
 
 const METHOD = `

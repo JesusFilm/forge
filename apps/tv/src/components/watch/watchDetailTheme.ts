@@ -1,14 +1,8 @@
-// Visual tokens originally ported for the /watch/[slug] detail page from the
-// Claude Design handoff ("Forge TV Video Page"), then adopted as the shared look
-// for the Home and Search screens via the "Forge TV Home" redesign. WATCH_THEME
-// now governs watch detail, Home, and Search — it deliberately diverges from the
-// app-wide Crimson Gallery system (brighter red accent, frosted-glass pills,
-// white-fill focus, near-black scrims). The SDUI experience renderer, series, and
-// the remaining legacy surfaces keep their Crimson Gallery look (COLORS in
-// lib/colors.ts).
-//
-// No expo-blur dependency on TV, so the "frosted glass" pills are approximated
-// with a translucent white fill over the dark scrim — no actual backdrop blur.
+// Visual tokens (Claude Design handoff) now governing watch detail, Home, and
+// Search. Deliberately diverges from app-wide Crimson Gallery (brighter accent,
+// frosted-glass pills, white-fill focus, near-black scrims); SDUI/series/legacy
+// keep Crimson Gallery (COLORS in lib/colors.ts). No expo-blur on TV, so "frosted
+// glass" is a translucent white fill over the scrim — no real backdrop blur.
 
 import { scale } from "../../lib/scale"
 
@@ -45,11 +39,9 @@ export const WATCH_THEME = {
 } as const
 
 // ── Hero layout (shared by the watch + series detail screens) ──────
-// The hero's LAYOUT slot stops short of full height by HERO_PEEK so the next
-// section (Up Next / Episodes rail) peeks above the fold — the TV next-row-peek
-// affordance (we deliberately don't ship a scroll-hint chevron).
-// HERO_BOTTOM_FADE_HEIGHT is the height of the gradient that fades the hero's
-// bottom edge into the rail background (WATCH_THEME.below), killing the hard seam.
+// Hero LAYOUT stops short of full height by HERO_PEEK so the next rail peeks above
+// the fold (TV next-row-peek affordance; we deliberately ship no scroll chevron).
+// HERO_BOTTOM_FADE_HEIGHT is the gradient fading the hero into the rail bg, killing the seam.
 export const HERO_PEEK = scale(170)
 export const HERO_BOTTOM_FADE_HEIGHT = scale(220)
 

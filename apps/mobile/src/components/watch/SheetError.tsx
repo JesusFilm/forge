@@ -3,9 +3,9 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import { ACCENT } from "../../lib/color"
 
 /**
- * Shown in a formSheet when the dub's media fetch FAILED (distinct from a dub
- * that legitimately has no downloads/subtitles, which renders an empty list).
- * Offers a retry instead of a misleading "nothing here" empty state.
+ * formSheet shown when the dub's media fetch FAILED (distinct from a dub with
+ * legitimately no downloads/subtitles, which renders empty). Offers retry
+ * instead of a misleading "nothing here" state.
  */
 export function SheetError({
   message = "Couldn't load. Check your connection and try again.",

@@ -15,10 +15,9 @@ import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionPr
 import { TEXT_SECONDARY } from "../../src/lib/color"
 import { button, layout, text } from "../../src/styles/shared"
 
-// Experience detail screen. Points the root ExperienceProvider at this slug
-// via selectExperience, then renders the SDUI layout from that provider — so
-// /video/[sectionKey] and /collection/[sectionKey] (which read the same root
-// provider) keep working when pushed from here.
+// Experience detail screen. Points the root ExperienceProvider at this slug, then
+// renders its SDUI layout — so /video/[sectionKey] and /collection/[sectionKey],
+// which read the same root provider, keep working when pushed from here.
 export default function ExperienceScreen() {
   const { slug, source } = useLocalSearchParams<{
     slug: string

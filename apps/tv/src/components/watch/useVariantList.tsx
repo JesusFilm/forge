@@ -1,20 +1,8 @@
-// Shared FlatList wiring for the virtualized dub lists (LanguagePanel + the
-// in-player menu). One implementation of renderRow / keyExtractor /
-// getItemLayout / scroll-to-active so the two surfaces can't drift, plus the
-// two focus behaviors the virtualization made necessary:
-//
-//   ONE-SHOT PREFERRED FOCUS — react-native-tvos re-fires requestFocusSelf
-//   whenever a view with hasTVPreferredFocus is (re)created, so a virtualized
-//   active row that unmounts and remounts while the user browses would yank
-//   focus back to itself mid-scroll. `focusArmed` state arms the prop for the
-//   initial claim on each open and disarms on the first row-focus event (the
-//   same one-shot pattern DetailsActionRow uses for focus restore).
-//
-//   SCROLL-ON-OPEN — initialScrollIndex is consumed exactly once at FlatList
-//   mount, and LanguagePanel's Modal keeps its subtree mounted across opens,
-//   so reopening would otherwise show the previous scroll position. The
-//   `visible` effect re-arms focus and scrolls back to the active row on
-//   every open (getItemLayout makes scrollToIndex a synchronous offset jump).
+// Shared virtualized-dub-list wiring (LanguagePanel + in-player menu) so they can't
+// drift, plus two virtualization-forced focus fixes: ONE-SHOT focus — `focusArmed`
+// arms hasTVPreferredFocus once per open, else a remounting active row yanks focus
+// mid-scroll; SCROLL-ON-OPEN — `visible` effect re-arms + scrolls to active each open
+// since the Modal subtree stays mounted (would otherwise reuse stale scroll pos).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { FlatList } from "react-native"

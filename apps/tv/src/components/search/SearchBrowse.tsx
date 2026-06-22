@@ -17,13 +17,9 @@ type Props = {
   onClearHistory: () => void
 }
 
-// The search-empty browse view: Recent searches + Browse-topics categories.
-// Both are sourced locally / statically (recents from history, categories from
-// the static CATEGORIES list), so this view needs no GraphQL query and works
-// for the unauthenticated public app. (It previously showed a "Popular
-// experiences" rail backed by the editor-gated Query.experiences, which 401'd
-// for the public TV app and silently rendered empty — removed with the home's
-// migration off that gated query.)
+// Search-empty browse view: Recent searches + Browse-topics, both local/static
+// so it needs no GraphQL and works for the public app. A prior "Popular" rail
+// was dropped — its editor-gated Query.experiences 401'd for the public TV app.
 export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
   const showRecent = recents.length > 0
 
@@ -49,11 +45,9 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
         <Text style={styles.railTitle} accessibilityRole="header">
           Browse topics
         </Text>
-        {/* 3-column grid (not a horizontal carousel that ran off-screen): the
-            categories wrap to rows of three, each card filling a third of the
-            results pane. tvOS spatial navigation handles row/column D-pad moves
-            by geometry; each cell's padding gives the focus glow + 1.05x lift
-            room so the grid never clips it. */}
+        {/* 3-column wrapping grid (not a carousel that ran off-screen). tvOS
+            handles D-pad moves by geometry; each cell's padding gives the focus
+            glow + 1.05x lift room so the grid never clips it. */}
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
             <View
@@ -174,11 +168,9 @@ const styles = StyleSheet.create({
     marginLeft: scale(80),
   },
   chipRowContent: {
-    // Start/end gutter so the leftmost / rightmost chip has room for
-    // its focus glow inside the ScrollView's clip region. Inter-chip
-    // spacing comes from chipCellWrapper.paddingHorizontal — see
-    // categoryCellWrapper for the same pattern's rationale. Sized so
-    // the first chip's edge lands at the 80px page gutter (68 + 12).
+    // Start/end gutter for the edge chips' focus glow inside the clip region;
+    // inter-chip spacing is chipCellWrapper.paddingHorizontal. Sized so the
+    // first chip's edge lands at the 80px page gutter (68 + 12).
     paddingHorizontal: scale(68),
   },
   chipCellWrapper: {
@@ -220,18 +212,15 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     paddingHorizontal: scale(64),
   },
-  // One third of the grid per cell → three columns. The padding is the
-  // inter-card gap AND the focus-glow / 1.05x-lift breathing room
-  // (shadowRadius scale(16)); RN's border-box width keeps three cells at
-  // exactly 100%.
+  // One third per cell → three columns. Padding is the inter-card gap AND the
+  // focus-glow / 1.05x-lift room; RN's border-box width keeps three cells at 100%.
   categoryCellWrapper: {
     width: "33.333%",
     padding: scale(16),
   },
-  // Fills its cell — roughly a third of the results pane, far larger than the
-  // old fixed 220dp carousel card. A definite height (not aspectRatio) is what
-  // sizes it: FocusableCard routes width/height to its outer layout box but
-  // aspectRatio only to the inner, which can't size the box.
+  // Fills its cell. Needs a definite height (not aspectRatio): FocusableCard
+  // routes width/height to its outer layout box but aspectRatio only to the
+  // inner, which can't size the box.
   categoryCard: {
     width: "100%",
     height: scale(210),

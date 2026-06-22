@@ -1,12 +1,6 @@
-// Visual tokens for the /search redesign, ported from the Claude Design
-// handoff ("Forge TV Home" — .search-layer / .s-* / .card CSS blocks). Like
-// watchDetailTheme.ts this deliberately diverges from the app-wide Crimson
-// Gallery system (near-black surface, white-fill key focus, white card ring)
-// and is SCOPED to the search components — Home and the rest of the TV app
-// keep COLORS from lib/colors.ts.
-//
-// The design layers the search UI as a blur over home; as a standalone route
-// we use a solid deep background instead (no backdrop blur on TV).
+// Search-scoped tokens (Claude Design "Forge TV Home"). Like watchDetailTheme,
+// deliberately diverges from Crimson Gallery (near-black, white-fill focus) and
+// is scoped here — rest of the app keeps COLORS. Solid bg, not blur (no TV blur).
 
 import { NEAR_BLACK } from "../watch/watchDetailTheme"
 

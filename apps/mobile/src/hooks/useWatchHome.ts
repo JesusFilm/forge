@@ -43,20 +43,11 @@ function persistHomeSnapshot(videosJson: string): void {
 }
 
 /**
- * One lean bulk fetch (GET_WATCH_HOME_VIDEOS over getWatchHomeCoreIds())
- * built into the home model. Imperative getApolloClient().query — lazy
- * getter, never module scope — with the watch.tsx stale-response guard: an
- * incrementing requestId ref invalidates any in-flight fetch a newer one
- * supersedes.
- *
- * Stale-while-revalidate: the previous launch's response is painted from
- * AsyncStorage immediately (admin's watchHomeVideos resolver costs 2.5-6s of
- * TTFB, the dominant launch cost) while the live fetch revalidates in the
- * background. An unchanged response keeps the snapshot-built model — swapping
- * model identity rebuilds the hero queue and resets the pager mid-viewing, so
- * it is reserved for actually-changed content. Pull-to-refresh keeps its
- * always-swap contract (a rebuilt queue leading with unseen content is the
- * point of the gesture).
+ * Lean bulk home fetch with a requestId-ref stale-response guard (newer fetch
+ * invalidates older). Stale-while-revalidate: paint the prior launch's snapshot
+ * immediately (admin TTFB 2.5-6s dominates launch), revalidate in background.
+ * Unchanged response keeps the snapshot model — swapping identity rebuilds the
+ * hero queue and resets the pager mid-viewing. Pull-to-refresh always swaps.
  */
 export function useWatchHome(): WatchHomeState {
   const [model, setModel] = useState<WatchHomeModel | null>(null)
@@ -91,9 +82,8 @@ export function useWatchHome(): WatchHomeState {
       if (requestIdRef.current !== thisRequest) return
       networkLandedRef.current = true
       const videos = result.data?.watchHomeVideos ?? []
-      // An empty-but-successful initial response over a painted snapshot
-      // degrades like a failed fetch (stale content + retry) — never paint
-      // the full-empty "No content available" state over good content. Same
+      // Empty-but-successful initial response over a painted snapshot degrades
+      // like a failed fetch — never paint full-empty over good content. Same
       // rule persistHomeSnapshot applies at the storage layer.
       if (
         mode === "initial" &&

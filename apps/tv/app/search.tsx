@@ -13,23 +13,12 @@ import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
- * /search route — TV search surface, redesigned to the "Forge TV Home"
- * search-layer mockup.
- *
- * Vertical stack on a near-black full-bleed surface:
- *   Query line (big type + blinking caret)
- *   → horizontal letter strip (A–Z + space + delete + ⏎)
- *   → meta line (N RESULTS once a search returns; unlabelled while browsing)
- *   → results region (SearchResultsGrid when the query is non-empty,
- *     SearchBrowse — Recent + Categories — when it's empty).
- *
- * Owns `query` state and routes all writes through sanitizeQuery so
- * the backend never sees control chars, RTL overrides, or anything
- * beyond 256 chars. useSemanticSearch handles debounce, stale-guard,
- * and the state machine.
- *
- * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5 for
- * the data flow; the layout follows the Claude Design handoff.
+ * /search route — TV search surface (query line → letter strip → meta line →
+ * results region; SearchResultsGrid when query non-empty, else SearchBrowse).
+ * Owns `query`, routing all writes through sanitizeQuery so the backend never
+ * sees control chars / RTL overrides / >256 chars. useSemanticSearch handles
+ * debounce, stale-guard, and the state machine.
+ * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5.
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -37,20 +26,15 @@ export default function SearchScreen() {
     useSemanticSearch(query)
   const { recents, addRecent, clearAll } = useSearchHistory()
 
-  // Sanitize at the write site so downstream consumers never see raw
-  // input. For the on-screen keyboard this is a no-op today (discrete
-  // printable keys), but defense-in-depth for future input sources.
+  // Sanitize at the write site so downstream consumers never see raw input.
+  // No-op for the on-screen keyboard today; defense-in-depth for future sources.
   const setSanitizedQuery = useCallback((next: string) => {
     setQuery(sanitizeQuery(next))
   }, [])
 
-  // Record successful non-empty searches in recent history once, when
-  // the state first transitions to 'ready' with a non-empty result set
-  // for the lastSubmittedQuery. Reading lastSubmittedQuery (the query
-  // that drove these results) instead of the live `query` state means
-  // the recorded entry matches what the user actually saw — typing
-  // past the most-recent debounce-fired search no longer causes the
-  // in-progress query to be persisted as if it had returned results.
+  // Record a successful non-empty search in recents once, on first 'ready' with
+  // results. Keying on lastSubmittedQuery (not live `query`) matches what the user
+  // saw — typing past the last debounced search won't persist the in-progress query.
   const lastRecordedQueryRef = useRef<string>("")
   useEffect(() => {
     if (state !== "ready") return
@@ -61,13 +45,9 @@ export default function SearchScreen() {
     addRecent(lastSubmittedQuery)
   }, [state, results.length, lastSubmittedQuery, addRecent])
 
-  // Recent / Category click runs a fresh search immediately, bypassing
-  // the 600 ms debounce. Category search terms are hardcoded constants;
-  // recent queries were already sanitized when first submitted. We
-  // thread the sanitized value through runQuery directly because
-  // submit() closes over the previous `query` state until React
-  // commits the next render — the one-tick lag would otherwise fire a
-  // search for the prior query, not the one the user just clicked.
+  // Recent / Category click runs a fresh search immediately, bypassing the 600ms
+  // debounce. Thread the sanitized value through runQuery directly: submit() closes
+  // over stale `query` until the next render, so the lag would search the prior one.
   const runQueryImmediate = useCallback(
     (next: string) => {
       const sanitized = sanitizeQuery(next)
@@ -77,10 +57,9 @@ export default function SearchScreen() {
     [runQuery],
   )
 
-  // Trim so a whitespace-only query falls back to SearchBrowse rather than an
-  // empty results pane — matching useSemanticSearch, which gates its fetch on
-  // the trimmed length. (Not reachable via the on-screen keyboard today, but
-  // defensive for future input sources and keeps the two gates in lockstep.)
+  // Trim so a whitespace-only query falls back to SearchBrowse, not an empty
+  // pane — matching useSemanticSearch's trimmed-length fetch gate (keeps the two
+  // gates in lockstep; defensive for future input sources).
   const hasQuery = query.trim().length > 0
   const showResultsGrid = hasQuery
   const meta = resolveSearchMeta(state, results.length)
@@ -94,12 +73,9 @@ export default function SearchScreen() {
           space to its right (rather than stacked below it, which left the
           right ~60% of the screen blank). */}
       <View style={styles.body}>
-        {/* SearchKeyboard intentionally does not get a dynamic key:
-            unmounting it on a state change kills focus on the
-            currently-pressed letter, and the tvOS focus engine then
-            visibly hops through a fallback before any new preferred-focus
-            claim lands. Keep the keyboard mounted; let the user type
-            without the rug being pulled. */}
+        {/* No dynamic key on SearchKeyboard: remounting it on state change kills
+            focus on the pressed letter, and tvOS then visibly hops through a
+            fallback before any new preferred-focus claim lands. Keep it mounted. */}
         <View style={styles.keyboardPane}>
           <SearchKeyboard
             value={query}
@@ -173,10 +149,9 @@ const styles = StyleSheet.create({
   resultsPane: {
     flex: 1,
   },
-  // Holds the one-line meta text at a stable height so the grid below
-  // doesn't shift as the label changes (N RESULTS / empty while browsing).
-  // Just tall enough for the 18px line — no extra reserved space, which
-  // had opened a visible gap above the results.
+  // Stable height for the one-line meta text so the grid doesn't shift as the
+  // label changes (N RESULTS / empty). Just tall enough for the 18px line —
+  // extra reserved space had opened a visible gap above the results.
   metaLine: {
     minHeight: scale(30),
   },

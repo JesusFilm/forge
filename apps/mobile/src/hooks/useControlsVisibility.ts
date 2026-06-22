@@ -31,16 +31,10 @@ export type ControlsVisibility = {
 }
 
 /**
- * Auto-hiding controls ("chrome") state machine, ported from
- * apps/tv/src/components/VideoPlayer.tsx (minus the TV focus machinery).
- *
- * Correctness contract (see
- * docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md):
- * gating values are mirrored into refs and synced BEFORE the guard runs so
- * native callbacks read ground truth; the in-flight hide animation handle is
- * captured and `.stop()`-ed at every force-reveal; the completion callback is
- * `finished`-guarded; every external-emitter callback is `isMountedRef`-guarded;
- * reduce-motion snaps instead of animating.
+ * Auto-hiding controls ("chrome") state machine, ported from apps/tv's
+ * VideoPlayer (minus TV focus). Correctness contract: gating refs synced before
+ * guards, hide anim .stop()-ed on reveal, callbacks finished/isMountedRef-guarded.
+ * @see docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md
  */
 export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   const [controlsVisible, setControlsVisible] = useState(true)
@@ -71,10 +65,9 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
 
   const hideNow = useCallback(() => {
     clearTimer()
-    // hideStart: logically hidden NOW, before the fade resolves. The
-    // timer-driven path calls hideNow directly, so without this the ref would
-    // stay "visible" through the fade — making revealIfHidden() a no-op and
-    // letting a mid-fade tap complete the hide instead of bringing chrome back.
+    // hideStart: mark logically hidden NOW, before the fade resolves. The
+    // timer-driven path calls hideNow directly; without this the ref stays
+    // "visible" through the fade, making revealIfHidden() a no-op mid-fade.
     controlsVisibleRef.current = nextControlsState(
       { visible: controlsVisibleRef.current, mounted: true },
       "hideStart",

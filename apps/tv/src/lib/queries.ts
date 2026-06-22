@@ -1,12 +1,9 @@
 // Fragments here are kept structurally in sync with apps/mobile/src/lib/queries.ts.
 
 /**
- * gql.tada typed GraphQL query and fragments for Experience blocks.
- *
- * Defined here in apps/tv/ per convention:
- * "Operations are defined in apps using graphql() from this package."
- *
- * Uses @_unmask to make fragment fields directly accessible on parent results.
+ * gql.tada typed Experience-block query and fragments. Defined here in apps/tv
+ * per convention (operations live in apps, not the package). @_unmask exposes
+ * fragment fields directly on parent results.
  */
 import {
   adminGraphql as graphql,
@@ -170,10 +167,9 @@ export const QuizButtonFragment = graphql(`
 
 // ── Composite fragments (nested content) ────────────────────────────
 
-// ContainerSlotContentDynamicZone members (from schema.graphql):
-// AdventCountdown, BibleQuotesCarousel, Card, Cta, EasterDates,
-// MediaCollection, RelatedQuestions, Text, Video
-// NOTE: Container, NavigationCarousel, VideoCarousel, QuizButton are NOT in this union
+// ContainerSlotContentDynamicZone members: AdventCountdown, BibleQuotesCarousel,
+// Card, Cta, EasterDates, MediaCollection, RelatedQuestions, Text, Video.
+// NOT in this union: Container, NavigationCarousel, VideoCarousel, QuizButton.
 export const ContainerFragment = graphql(
   `
     fragment ContainerFields on ContainerBlock @_unmask {
@@ -219,10 +215,9 @@ export const ContainerFragment = graphql(
   ],
 )
 
-// SectionContentDynamicZone members (from schema.graphql):
-// BibleQuotesCarousel, Card, Container, Cta, InfoBlocks, MediaCollection,
-// NavigationCarousel, PromoBanner, QuizButton, RelatedQuestions, Text, Video, VideoCarousel
-// NOTE: EasterDates and AdventCountdown are NOT in this union (only in ContainerSlotContentDynamicZone)
+// SectionContentDynamicZone members: BibleQuotesCarousel, Card, Container, Cta,
+// InfoBlocks, MediaCollection, NavigationCarousel, PromoBanner, QuizButton,
+// RelatedQuestions, Text, Video, VideoCarousel. NOT here: EasterDates, AdventCountdown.
 export const SectionFragment = graphql(
   `
     fragment SectionFields on SectionBlock @_unmask {
@@ -354,21 +349,10 @@ export const GET_WATCH_EXPERIENCE = graphql(
 )
 
 // ── Watch setting (public homepage resolution) ──────────────────────
-//
-// Mirrors apps/mobile/src/lib/queries.ts GET_WATCH_SETTING. Resolves the
-// configured homepage Experience's slug via the PUBLIC watchSetting query so
-// the TV home can then render it through experienceBySlug (also PUBLIC) — the
-// same pattern mobile and web use for the watch home.
-//
-// This replaced the former LIST_EXPERIENCES home query, which fetched the
-// editor-gated top-level Query.experiences (authScopes hasPermission
-// "read:experiences", VIEWER tier minimum) and so failed with "Not authorized
-// to resolve Query.experiences" for the unauthenticated public TV app. There
-// is no PUBLIC list-all-experiences query by design; the home is a single
-// curated homepage Experience, not a launcher over every experience.
-//
-// We select only `slug` here; the home loads the full experience via
-// GET_WATCH_EXPERIENCE (PUBLIC, Apollo-cached).
+// Mirrors mobile GET_WATCH_SETTING: resolves the homepage Experience slug via the
+// PUBLIC watchSetting query (home then renders it via PUBLIC experienceBySlug).
+// Replaced LIST_EXPERIENCES, which hit editor-gated Query.experiences and 403'd
+// for the unauthenticated TV app; there is no PUBLIC list-all by design.
 export const GET_WATCH_SETTING = graphql(`
   query GetWatchSetting($locale: String!) {
     watchSetting(locale: $locale) {
@@ -380,14 +364,9 @@ export const GET_WATCH_SETTING = graphql(`
 `)
 
 // ── Semantic search query ─────────────────────────────────────────
-//
-// Mirrors apps/mobile/src/lib/queries.ts SEMANTIC_SEARCH. The backend
-// may serve keyword-only results when semantic retrieval is unavailable;
-// TV renders those the same as any other results (no degraded-mode UX),
-// so we don't select `searchMode`.
-//
-// $locale is String! because admin's search resolver accepts a plain
-// locale string rather than a schema-specific locale enum.
+// Mirrors mobile SEMANTIC_SEARCH. We omit `searchMode` since TV renders
+// keyword-fallback results identically (no degraded-mode UX). $locale is String!
+// because admin's search resolver takes a plain string, not a locale enum.
 
 export const SEMANTIC_SEARCH = graphql(`
   query SemanticSearch(

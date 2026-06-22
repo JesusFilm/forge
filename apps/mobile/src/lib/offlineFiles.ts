@@ -1,23 +1,15 @@
 /**
- * Offline-download file-path construction.
- *
- * This module owns the SAFE construction of local paths for offline media,
- * subtitles, and posters. The video slug and rendition documentId that feed
- * these paths originate from admin data, so every dynamic segment is sanitized
- * (path separators, `..`, and control bytes removed) BEFORE it is concatenated
- * into a filesystem path — a downloaded file can never escape the offline root.
- *
- * Only the pure path helpers live here. The filesystem I/O they support (atomic
- * tmp-then-rename writes, free-disk-space checks, the iOS no-backup attribute)
- * is added with the native download engine and verified on a device; it is not
- * part of this pure, unit-tested layer.
+ * SAFE construction of local paths for offline media/subtitles/posters. Slug and
+ * rendition documentId come from admin data, so every dynamic segment is
+ * sanitized (separators, `..`, control bytes) BEFORE concatenation — a file can
+ * never escape the offline root. Pure path helpers only; the filesystem I/O they
+ * support ships with the native download engine, not this unit-tested layer.
  */
 
 /**
  * Reduce one dynamic path segment to a filesystem-safe token: only
- * `[A-Za-z0-9._-]` survive, anything else becomes `_`, and the dot-only results
- * `""`, `"."`, and `".."` collapse to `_` so a segment can never act as a path
- * separator or a parent-directory traversal.
+ * `[A-Za-z0-9._-]` survive (else `_`), and `""`/`"."`/`".."` collapse to `_` so a
+ * segment can never act as a separator or parent-directory traversal.
  */
 export function sanitizeSegment(raw: string): string {
   let safe = ""
@@ -53,9 +45,8 @@ export function buildCommittedPath(
 
 /**
  * In-progress media path. The per-attempt `nonce` keeps a pending download from
- * ever sharing a path with the committed copy (so a same-rendition swap cannot
- * clobber the original), and the leading dot marks it as a partial for launch
- * reconciliation to recognise and clean up.
+ * sharing a path with the committed copy (so a same-rendition swap can't clobber
+ * the original); the leading dot marks it a partial for launch reconciliation.
  */
 export function buildPendingPath(
   root: string,

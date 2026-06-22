@@ -1,16 +1,13 @@
-// Pure, React-free helpers for the Bible-verse fetch (useBibleVerses). Split
-// from the hook so they're unit-testable — jest-expo can't load React-importing
-// modules (the @types/react csstype import trips the transform), same reason
-// panelState.ts exists. SYNC: logic matches apps/mobile/src/hooks/useBibleVerses.ts
-// and apps/web/src/components/watch/BibleQuotesSection.tsx.
+// Pure, React-free helpers for the Bible-verse fetch (useBibleVerses), split out
+// so they're unit-testable — jest-expo can't load React-importing modules (same
+// reason panelState.ts exists). SYNC: apps/mobile useBibleVerses + web BibleQuotesSection.
 
 const BOOK_SLUG_PATTERN = /^[a-z0-9-]+$/
 
 /**
- * Sanitize a CMS-supplied book name into a jsdelivr-API-safe path segment.
- * Lowercasing alone keeps whitespace ("1 Corinthians" → "1 corinthians"),
- * which URL-encodes to a path the API repo doesn't contain. Strip whitespace
- * and reject anything that could escape the intended path.
+ * Sanitize a CMS book name into a jsdelivr-API-safe path segment. Lowercasing
+ * alone keeps whitespace ("1 Corinthians"), which URL-encodes to a path the API
+ * repo lacks; strip whitespace and reject anything that could escape the path.
  */
 export function bookSlugForApi(rawBookName: string): string | null {
   const slug = rawBookName.toLowerCase().replace(/\s+/g, "")

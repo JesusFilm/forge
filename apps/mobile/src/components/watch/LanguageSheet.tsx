@@ -49,9 +49,8 @@ export function LanguageSheetContent({
   // the native detent index — see useSheetListHeight.
   const listHeight = useSheetListHeight(windowHeight)
   // Debounce selection so a fast double-tap can't call router.back() twice and
-  // pop the watch screen. A timestamp (not a latched boolean) auto-expires, so
-  // an interrupted dismiss that leaves the sheet mounted can't permanently
-  // dead-lock row taps.
+  // pop the watch screen. A timestamp auto-expires (vs a latched boolean), so an
+  // interrupted dismiss leaving the sheet mounted can't dead-lock row taps.
   const lastSelectRef = useRef(0)
 
   const sorted = useMemo(() => sortByName(variants), [variants])
@@ -181,10 +180,9 @@ export function LanguageSheetContent({
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
-          // Off by intent: FlashList v2 enables maintainVisibleContentPosition by
-          // default (for chat-like prepend/append lists). Here the data swaps
-          // wholesale as the user types/clears the search, so anchoring makes the
-          // list jump (scroll up, then settle) when the X clears the query.
+          // Off by intent: FlashList v2's default maintainVisibleContentPosition
+          // (for chat-like lists) makes our list jump when the search swaps data
+          // wholesale (e.g. the X clearing the query scrolls up then settles).
           maintainVisibleContentPosition={{ disabled: true }}
           ListHeaderComponent={header}
           contentContainerStyle={{

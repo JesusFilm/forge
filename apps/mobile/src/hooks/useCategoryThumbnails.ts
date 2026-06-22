@@ -10,12 +10,9 @@ import { pickThumbnailUrl } from "../lib/categoryThumbnail"
 const thumbnailCache = new Map<string, string | null>()
 
 /**
- * Fetches the first search result's thumbnail for each browse category once and
- * caches it for the session. Returns a `searchTerm -> URL` map; cards render the
- * URL faintly over their gradient so each shows a real video frame as context.
- *
- * Uses `limit: 1` to keep each lookup tiny, and reuses the screen's existing
- * `search` query — no new GraphQL surface, anonymous like every other search.
+ * Per-session `searchTerm -> URL` map of each browse category's first result
+ * thumbnail, rendered faintly over cards as a real-frame context cue. Uses
+ * `limit: 1` and reuses the existing anonymous `search` query (no new surface).
  */
 export function useCategoryThumbnails(): Record<string, string | null> {
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>(

@@ -2,16 +2,13 @@ import { type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
 
 /**
- * Determinate circular progress ring, drawn WITHOUT react-native-svg so it
- * hot-reloads on the existing dev build (adding svg would force a native
- * rebuild). The ring is two solid half-disc "pie" layers, each clipped to a
- * vertical half and pivoted on the centre via `transformOrigin`, with an opaque
- * centre disc punched out to leave a stroke-width band. Because it is a solid
- * pie (not bordered arcs) there are no corner seams.
+ * Determinate progress ring drawn WITHOUT react-native-svg so it hot-reloads on
+ * the existing dev build (svg would force a native rebuild). Two solid half-disc
+ * "pie" layers pivoted via `transformOrigin` with a punched centre disc.
  *
- * Geometry: the right half covers 0–50% sweeping clockwise from 12 o'clock; the
- * left half covers 50–100%. `cutoutColor` MUST match the surface behind the ring
- * (the watch screen is `BG_COLOR`) so the punched centre reads as transparent.
+ * Geometry: right half 0–50% clockwise from 12 o'clock, left half 50–100%.
+ * `cutoutColor` MUST match the surface behind the ring (`BG_COLOR`) so the
+ * punched centre reads as transparent.
  */
 export type DownloadProgressRingProps = {
   size: number

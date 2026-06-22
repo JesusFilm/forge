@@ -52,10 +52,9 @@ export default function DownloadSheetRoute() {
     subtitle: WatchSubtitle | null,
   ) => {
     if (!activeVariant) return
-    // Audio = active dub; the optional subtitle is the user's pick. Identity
-    // (dub + rendition documentId, subtitle slug) is stored so the engine can
-    // re-resolve fresh URLs before each (re)start. Title + poster feed the
-    // offline library (My Downloads).
+    // Audio = active dub, subtitle = user's pick. Store identity (dub+rendition
+    // documentId, subtitle slug) so the engine re-resolves fresh URLs before each
+    // (re)start; title + poster feed the offline library (My Downloads).
     const enqueue = isSwap ? swapDownload : startDownload
     const result = await enqueue({
       videoSlug: video.slug,

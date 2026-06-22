@@ -6,17 +6,10 @@ const DIM = 0.35
 const BRIGHT = 1
 
 /**
- * A continuously looping opacity value that fades a loading skeleton in and out,
- * so it reads as "still loading" rather than "loading failed".
- *
- * Implementation notes (New Architecture / Fabric):
- * - Loop a single 0→1 timing and interpolate it into a dim→bright→dim triangle,
- *   NOT a looped Animated.sequence — a looped sequence stops after one iteration
- *   (pulses once then freezes); a looped single timing repeats reliably.
- * - useNativeDriver: true — the JS driver does not reliably update views here,
- *   and the native driver supports interpolated opacity.
- * The loop is unconditional: a loading pulse is functional feedback, not
- * decorative motion, so it is not reduce-motion gated.
+ * Looping opacity that fades a skeleton in/out ("still loading", not "failed").
+ * Fabric gotchas: loop a single 0→1 timing + interpolate (a looped
+ * Animated.sequence freezes after one pulse); useNativeDriver (JS driver won't
+ * update views here). Unconditional — functional feedback, not reduce-motion gated.
  */
 export function useShimmerOpacity(): Animated.AnimatedInterpolation<number> {
   const progress = useRef(new Animated.Value(0)).current

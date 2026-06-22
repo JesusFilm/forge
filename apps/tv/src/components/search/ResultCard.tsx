@@ -19,14 +19,9 @@ type Props = {
 }
 
 /**
- * Single search-result tile (design: .card in the s-grid). 16:9 art with
- * a 1px outline and an episode-count chip, labels below the art (title +
- * kind line). Focus lifts the card (translateY −8, scale 1.06), swaps the
- * title to full white, and draws a 5px white ring + deep shadow on the
- * thumb.
- *
- * onFocus and hasTVPreferredFocus pass through so SearchResultsGrid can
- * orchestrate focus claims without this component knowing the grid layout.
+ * Single search-result tile: 16:9 art + episode-count chip + title/kind labels.
+ * Focus lifts/whitens it; onFocus + hasTVPreferredFocus pass through so
+ * SearchResultsGrid orchestrates focus claims without knowing the grid layout.
  */
 export function ResultCard({
   result,
@@ -38,17 +33,14 @@ export function ResultCard({
   const chip = resultChipLabel(result)
   const kind = resultKindLabel(result)
 
-  // Close over `result` rather than re-indexing by id in onFocus /
-  // onPress — Apollo cache changes can shrink the results array
-  // between render and callback invocation. See
+  // Close over `result`, not re-index by id: Apollo cache changes can shrink the
+  // results array between render and callback. See
   // docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md.
   const handlePress = () => onPress(result)
 
-  // Focus lift driven by the shared useFocusAnimation hook (same as
-  // HomeCard): one 0→1 `progress` feeds focusTransform (native-driver
-  // translateY + scale), and it stops the prior timing before starting
-  // the next so a rapid D-pad sweep can't orphan animations. `focused`
-  // gates the non-animated focus styles (shadow, ring, title color).
+  // Shared useFocusAnimation hook: 0→1 `progress` drives focusTransform and
+  // stops the prior timing first so a rapid D-pad sweep can't orphan animations.
+  // `focused` gates the non-animated focus styles (shadow, ring, title color).
   const { focused, setFocused, progress } = useFocusAnimation()
 
   // Memoized: progress is a stable ref, so the interpolations are built
@@ -77,10 +69,9 @@ export function ResultCard({
       {/* Width comes from the grid cell wrapper via cross-axis stretch;
           height is content-driven (16:9 art + two text lines). */}
       <Animated.View style={liftStyle}>
-        {/* Outer/inner split (same pattern as FocusableCard): iOS sets
-            masksToBounds for overflow:"hidden", which would clip the
-            focused layer's own shadow — so the shadow lives on this
-            non-clipping wrapper and the art clips inside. */}
+        {/* Outer/inner split: iOS overflow:"hidden" (masksToBounds) would clip
+            the focused shadow, so the shadow lives on this non-clipping wrapper
+            and the art clips inside. */}
         <View style={[styles.thumbShadow, focused && styles.thumbFocused]}>
           <View style={styles.thumb}>
             {imageUrl != null ? (
@@ -99,10 +90,9 @@ export function ResultCard({
               </View>
             ) : null}
           </View>
-          {/* Focus ring — decorative overlay, NOT a focusable. Drawn as
-              an absolute inset border so toggling it never reflows the
-              image underneath (a borderWidth change on the thumb itself
-              would shrink the art by 2×ring while focused). */}
+          {/* Focus ring: decorative absolute inset border so toggling it never
+              reflows the art (a borderWidth change on the thumb would shrink it
+              by 2×ring while focused). */}
           {focused ? <View style={styles.ring} pointerEvents="none" /> : null}
         </View>
         <View style={styles.meta}>

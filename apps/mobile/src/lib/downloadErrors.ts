@@ -1,20 +1,10 @@
 import type { TransferInterruption } from "./downloadOutcome"
 
 /**
- * Map the background-download module's native error report
- * ({ error, errorCode }) onto our {@link TransferInterruption} taxonomy, which
- * the classifier then turns into a paused/failed/canceled outcome.
- *
- * Pure (no native import) so it is unit-testable. The exact native error codes
- * vary per platform; this mapping is intentionally conservative and should be
- * tuned from real device logs during verification:
- *  - an HTTP status (4xx/5xx) is a terminal httpError;
- *  - an out-of-space message is storageFull (terminal);
- *  - an integrity/corruption message is terminal;
- *  - an explicit cancel is userCancel;
- *  - anything else defaults to a transient connectivity blip (→ paused +
- *    auto-resume), which is the field-friendly default — a genuinely terminal
- *    failure surfaces its HTTP code and is caught above.
+ * Map the native error report onto our {@link TransferInterruption} taxonomy.
+ * Pure (no native import) so it is unit-testable. Native codes vary per platform,
+ * so this is intentionally conservative: unknowns default to a transient blip
+ * (→ paused + auto-resume); genuinely terminal failures surface their HTTP code.
  */
 export function mapNativeError(params: {
   error: string

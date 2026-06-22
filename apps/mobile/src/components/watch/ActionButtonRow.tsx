@@ -36,9 +36,8 @@ const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
   new Set<OfflineDownloadState>(["downloading", "queued", "paused"])
 
 /**
- * The Download button while a transfer is live: a circular progress ring around
- * a small glyph, labelled with the percentage so the user can see how much has
- * downloaded. Falls back to {@link downloadAction} for downloaded/failed/idle.
+ * Download button during a live transfer: progress ring + percentage label.
+ * Falls back to {@link downloadAction} for downloaded/failed/idle.
  */
 function downloadingAction(
   state: OfflineDownloadState,

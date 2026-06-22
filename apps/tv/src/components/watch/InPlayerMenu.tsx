@@ -1,34 +1,19 @@
-// In-player language (audio dub) / subtitle menu for the FULLSCREEN overlay
-// player (R10, R11). Shown ONLY when the overlay's currently-playing URL is the
-// watch session's active dub (the inPlayerMenuVisible gate in playerSwitch.ts) —
-// so experience-card playback, which has no session, never mounts it.
+// In-player dub/subtitle menu for the FULLSCREEN overlay player (R10/R11). Shown
+// ONLY when the playing URL is the session's active dub (inPlayerMenuVisible gate
+// in playerSwitch.ts), so session-less experience-card playback never mounts it.
+// U8 split: renders ONE section at a time via the `section` prop (dub OR
+// subtitle, never stacked).
 //
-// U8 split: the overlay has separate Language / Subtitles pills (mirroring the
-// details page's two pickers), so this menu renders ONE section at a time via
-// the `section` prop — the dub list OR the subtitle list, never both stacked.
+// Renders inside the overlay's TVFocusGuideView as its own trapFocus* overlay,
+// so D-pad stays in the menu; on close the parent restores play/pause focus
+// (we signal via onClose). Dub section is a VIRTUALIZED fixed-height FlatList (a
+// video like JESUS carries ~2,259 dubs — mounting all froze the menu); subtitle
+// section is a plain ScrollView.
 //
-// Unlike the on-page LanguagePanel/SubtitlePanel (which are React-Native Modals),
-// this menu renders INSIDE the overlay's existing TVFocusGuideView focus trap as
-// an absolutely-positioned overlay. It is itself a trapFocus* TVFocusGuideView
-// while open, so D-pad stays within the menu and can't reach the chrome behind
-// it. On close, the parent overlay restores focus to play/pause via a one-shot
-// hasTVPreferredFocus (we don't own that flag — we signal close via onClose).
-//
-// Rows are the same WatchOptionRow the on-page sheets use (white-fill focus,
-// red check, disabled "Unavailable"), and the chrome is watchMenuStyles — one
-// design language across every watch menu. The dub section is a VIRTUALIZED
-// FlatList (a video like the JESUS film carries ~2,259 dubs; mounting them all
-// froze the menu open). Headings and rows are fixed-height, so getItemLayout +
-// initialScrollIndex open the menu AT the active dub. The subtitle section is
-// a plain ScrollView (typically tens of rows) mirroring SubtitlePanel's body.
-//
-// Rows reuse the SAME pure helpers as U6's on-page panels (panelState.ts):
-//   - language rows: annotateVariantRows (hls==null → disabled, non-selectable),
-//   - subtitle rows: deriveSubtitlePanelState (loading/error/empty/list).
-// Writes go to the session (setActiveVariantIndex / setSubtitleEnabled /
-// setActiveSubtitleSlug), which the overlay observes for live dub-switch +
-// subtitle rendering. The Close affordance stays focusable in every state so the
-// viewer is never trapped in a loading/error/empty menu.
+// Rows reuse U6's pure helpers (panelState.ts): annotateVariantRows (hls==null →
+// disabled) for language, deriveSubtitlePanelState for subtitles. Writes go to
+// the session, which the overlay observes for live switching. Close stays
+// focusable in every state so the viewer is never trapped.
 
 import { useEffect, useMemo } from "react"
 import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native"
@@ -81,10 +66,9 @@ export function InPlayerMenu({
 
   const subtitleState = deriveSubtitlePanelState(activeVariantMediaState)
 
-  // Shared virtualized-list wiring (one-shot preferred focus, scroll-to-active,
-  // fixed-height offsets). The menu unmounts on close, so each open is a fresh
-  // mount and `visible` can stay at its default. headerHeight shifts the row
-  // offsets below the in-list "Audio Language" heading.
+  // Shared virtualized-list wiring (preferred focus, scroll-to-active, offsets).
+  // Menu unmounts on close, so each open is a fresh mount (`visible` stays
+  // default); headerHeight shifts row offsets below the "Audio Language" heading.
   const {
     listRef,
     renderRow,
@@ -99,10 +83,9 @@ export function InPlayerMenu({
   })
 
   return (
-    // Absolute-fill scrim INSIDE the overlay's content layer. Its own
-    // trapFocus* TVFocusGuideView keeps D-pad within the menu while open; the
-    // overlay's chrome (play/pause etc.) is non-focusable behind it because the
-    // parent suppresses auto-hide and the menu owns focus.
+    // Absolute-fill scrim inside the overlay's content layer; its trapFocus*
+    // TVFocusGuideView keeps D-pad in the menu. Chrome behind is non-focusable
+    // because the parent suppresses auto-hide and the menu owns focus.
     <View style={styles.scrim}>
       <TVFocusGuideView
         autoFocus

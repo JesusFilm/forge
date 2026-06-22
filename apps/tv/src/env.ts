@@ -1,10 +1,9 @@
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 
-// Metro only reliably inlines process.env.EXPO_PUBLIC_* at module scope.
-// References nested inside createEnv() arguments are not consistently
-// replaced during eas update bundling. These top-level reads ensure the
-// values are inlined and the error message surfaces them if validation fails.
+// Metro only reliably inlines process.env.EXPO_PUBLIC_* at module scope; reads
+// nested in createEnv() args aren't consistently replaced during eas update
+// bundling. These top-level reads force inlining so validation can surface them.
 const _inlined = {
   url: process.env.EXPO_PUBLIC_GRAPHQL_URL,
   token: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,

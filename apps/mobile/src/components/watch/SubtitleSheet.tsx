@@ -53,10 +53,9 @@ export function SubtitleSheetContent({
   // unbounded). Derived from the native detent index — see useSheetListHeight.
   const listHeight = useSheetListHeight(windowHeight)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Debounce selection so a fast double-tap (first arms the 300ms deferred
-  // close, second takes the immediate-close branch) can't fire router.back()
-  // twice and pop the watch screen. A timestamp auto-expires, so an interrupted
-  // dismiss can't permanently dead-lock row taps.
+  // Debounce selection so a fast double-tap (first arms the 300ms deferred close,
+  // second takes the immediate-close branch) can't fire router.back() twice and
+  // pop the watch screen. A timestamp auto-expires so it can't dead-lock taps.
   const lastSelectRef = useRef(0)
 
   // Cancel the deferred close on unmount so it can't fire router.back() after
@@ -215,10 +214,9 @@ export function SubtitleSheetContent({
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
-          // Off by intent: FlashList v2 enables maintainVisibleContentPosition by
-          // default (for chat-like prepend/append lists). Here the data swaps
-          // wholesale as the user types/clears the search, so anchoring makes the
-          // list jump (scroll up, then settle) when the X clears the query.
+          // Off by intent: FlashList v2's default maintainVisibleContentPosition
+          // (for chat-like lists) makes our list jump when the search swaps data
+          // wholesale (e.g. the X clearing the query scrolls up then settles).
           maintainVisibleContentPosition={{ disabled: true }}
           ListHeaderComponent={header}
           contentContainerStyle={{

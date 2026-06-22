@@ -1,7 +1,7 @@
 /**
- * Pure auto-hide gating logic for the video controls ("chrome"). Kept free of
- * react-native / expo imports so it is unit-testable without the RN runtime
- * (the hook that consumes it, useControlsVisibility, is verified in-simulator).
+ * Pure auto-hide gating for the video controls ("chrome"). No react-native /
+ * expo imports so it is unit-testable without the RN runtime (consuming hook
+ * useControlsVisibility is verified in-simulator).
  */
 
 // Type-only import: erased at compile time, so this stays free of the
@@ -17,11 +17,9 @@ export type AutoHideGate = {
 }
 
 /**
- * May the inactivity timer arm right now?
- *
- * Chrome stays pinned (timer never arms) while paused or ended (both surface as
- * not-playing → isPaused), while buffering/loading/error/idle, and while a
- * screen reader is active. It only auto-hides during steady playback.
+ * May the inactivity timer arm right now? Stays pinned (never arms) while
+ * paused/ended (both surface as isPaused), buffering/loading/error/idle, or a
+ * screen reader is active. Only auto-hides during steady playback.
  */
 export function shouldArmHideTimer({
   isPaused,

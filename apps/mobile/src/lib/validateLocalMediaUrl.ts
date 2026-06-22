@@ -1,16 +1,10 @@
 /**
- * Validate a local `file://` media URI before handing it to the player or the
- * subtitle reader for offline playback. The streaming guards in
- * {@link ./validateUrl} deliberately block `file:` (they only allow Mux HTTPS),
- * so offline media needs its own narrow allow-path rather than loosening those.
- *
- * The predicate is pure and takes the allowed root explicitly (dependency
- * injection), so it is trivially unit-testable without the native filesystem.
- * Callers pass the app's offline-download root (derived from
- * `expo-file-system` `documentDirectory` at runtime). It accepts ONLY a local
- * `file:` URI whose fully-normalized path resolves to a location inside that
- * root — defeating `..`, percent-encoded `..`, sibling-prefix, UNC-host, and
- * null-byte tricks.
+ * Validate a local `file://` media URI for offline playback. {@link ./validateUrl}
+ * deliberately blocks `file:` (Mux HTTPS only), so offline media needs its own
+ * narrow allow-path. Pure: the allowed root is injected (callers pass the
+ * offline-download root) so it's testable without the filesystem. Accepts ONLY a
+ * `file:` URI normalizing to inside that root — defeating `..`, percent-encoded
+ * `..`, sibling-prefix, UNC-host, and null-byte tricks.
  */
 
 /** Resolve `.`/`..` segments in a POSIX-style path. */
@@ -37,10 +31,9 @@ function hasControlChar(value: string): boolean {
 }
 
 /**
- * Reduce a `file:` URI or a plain path to a normalized absolute path:
- * percent-decoded and with all dot segments resolved. Returns null if the
- * input is not a usable local path (wrong scheme, non-empty host, bad encoding,
- * or a null/control byte).
+ * Reduce a `file:` URI or plain path to a normalized absolute path
+ * (percent-decoded, dot segments resolved). Null if not a usable local path:
+ * wrong scheme, non-empty host, bad encoding, or a null/control byte.
  */
 function normalizeLocalPath(value: string): string | null {
   let rawPath: string

@@ -1,24 +1,14 @@
-// The hero pager — a screen-level layer that pages the hero slides. The ARTWORK
-// slides (Apple-TV page-flip: the incoming image slides in over the current,
-// from the right on "next" / from the left on "previous"); the COPY
-// crossfades (a separate dissolve layer), so text and image transition with
-// distinct motions.
+// Screen-level hero pager: artwork page-flips (slides in from the entering side)
+// while copy crossfades in a separate layer. Sits above HomeBackdrop and below
+// the ScrollView so the pinned action row stays on top; fades out (`visible`)
+// when a rail is focused so the backdrop's rail-card art shows.
 //
-// Layered ABOVE the ambient HomeBackdrop and BELOW the ScrollView, so the hero
-// action row (See more + chevron, in the ScrollView flow) stays pinned on top
-// while only the art + copy animate. HomeBackdrop is untouched and keeps
-// driving rail-browse art; this layer fades out (`visible=false`) when a rail is
-// focused so the backdrop's rail-card art shows, and fades back in on return.
-//
-// Artwork = a two-cell ring. The front cell rests at translateX 0; the back
-// cell parks off-screen on the side the incoming slide will enter from. An
-// advance paints the incoming card into the back cell, waits for its image to
-// load (or a short fallback), slides it to 0 over the front, then in the SAME
-// frame flips the front face and reparks the old front off-screen — so no frame
-// ever shows old art. Advances are SERIALIZED: a press arriving mid-slide
-// records the new target and the slide chains to the latest index on commit
-// (coalescing skipped slides), so rapid paging never snaps a cell mid-travel. A
-// generation counter guards stale commits; everything is cancelled on unmount.
+// Artwork is a two-cell ring: front rests at translateX 0, back parks off-screen
+// on the entering side, then paints/loads/slides over and flips front in the
+// same frame so no frame shows old art. Advances are SERIALIZED — a mid-slide
+// press chains to the latest index on commit (coalescing skipped slides) so
+// rapid paging never snaps mid-travel; a generation counter guards stale commits
+// and everything is cancelled on unmount.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Image } from "expo-image"
@@ -333,15 +323,11 @@ function HeroArtworkCell({
   )
 }
 
-// The hero copy (eyebrow/title/description/meta) as a TRUE crossfade layer: two
-// stacked cells whose opacities swap — the incoming fades IN while the outgoing
-// fades OUT, so the copy is NEVER fully blank. (A through-blank dissolve reads
-// as the text disappearing, and THRASHES toward 0 under rapid paging because
-// each page restarts the fade-out.) Serialized like the artwork: a change
-// mid-crossfade only updates the target and the in-flight crossfade chains to
-// the latest on completion, so fast scrubbing coalesces onto the final copy
-// instead of flickering. Sits above the artwork cells at the hero copy
-// geometry, so it lands where the pinned action row expects it.
+// Hero copy as a TRUE crossfade: two stacked cells swap opacities so copy is
+// never blank (a through-blank dissolve reads as vanishing text and thrashes to
+// 0 under rapid paging). Serialized like the artwork — a mid-crossfade change
+// chains to the latest on completion, coalescing fast scrubs. Sits above the
+// artwork at hero-copy geometry where the pinned action row expects it.
 function HeroCopyLayer({ card }: { card: Slot }) {
   const [slots, setSlots] = useState<[Slot, Slot]>([card, null])
   const slotsRef = useRef<[Slot, Slot]>([card, null])
