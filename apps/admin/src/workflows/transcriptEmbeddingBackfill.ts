@@ -79,6 +79,7 @@ export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 5
 export const DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT = 50
 export const DEFAULT_TRANSCRIPT_EMBEDDING_STEP_MAX_DURATION_MS = 220_000
 export const DEFAULT_TRANSCRIPT_EMBEDDING_LAUNCH_TIMEOUT_MS = 120_000
+export const DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT = 25
 export const TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS = 20 * 60 * 1_000
 export const TIMED_OUT_LAUNCH_CONFIRM_POLL_MS = 5_000
 
@@ -87,6 +88,7 @@ type TranscriptEmbeddingRuntimeConfig = {
   stepTargetLimit: number
   stepMaxDurationMs: number
   launchTimeoutMs: number
+  confirmationBatchLimit: number
 }
 
 function transcriptEmbeddingConcurrency(): number {
@@ -106,6 +108,8 @@ function transcriptEmbeddingRuntimeConfig(): TranscriptEmbeddingRuntimeConfig {
     stepTargetLimit: DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT,
     stepMaxDurationMs: DEFAULT_TRANSCRIPT_EMBEDDING_STEP_MAX_DURATION_MS,
     launchTimeoutMs: DEFAULT_TRANSCRIPT_EMBEDDING_LAUNCH_TIMEOUT_MS,
+    confirmationBatchLimit:
+      DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT,
   }
 }
 
@@ -304,6 +308,7 @@ export async function runTranscriptEmbeddingBackfill(
       stepTargetLimit: runtimeConfig.stepTargetLimit,
       stepMaxDurationMs: runtimeConfig.stepMaxDurationMs,
       launchTimeoutMs: runtimeConfig.launchTimeoutMs,
+      confirmationBatchLimit: runtimeConfig.confirmationBatchLimit,
       concurrency: runtimeConfig.concurrency,
       languageFilter:
         input.languages && input.languages.length > 0 ? input.languages : null,
@@ -325,8 +330,10 @@ export async function runTranscriptEmbeddingBackfill(
       outcomes.push(...batchResult.outcomes)
       pendingConfirmations.push(...batchResult.pendingConfirmations)
 
-      const confirmation =
-        await confirmPendingTranscriptIngestsOnce(pendingConfirmations)
+      const confirmation = await confirmPendingTranscriptIngestsOnce(
+        pendingConfirmations,
+        runtimeConfig.confirmationBatchLimit,
+      )
       outcomes.push(...confirmation.outcomes)
       pendingConfirmations = confirmation.pendingConfirmations
       remainingBatch = batchResult.unprocessedGroups
@@ -335,6 +342,7 @@ export async function runTranscriptEmbeddingBackfill(
   outcomes.push(
     ...(await waitForPendingTranscriptIngestConfirmations(
       pendingConfirmations,
+      runtimeConfig.confirmationBatchLimit,
     )),
   )
 
@@ -359,35 +367,132 @@ async function stepResolveTranscriptEmbeddingRuntimeConfig(): Promise<Transcript
 
 async function confirmPendingTranscriptIngestsOnce(
   pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
 ) {
   if (pendingConfirmations.length === 0) {
-    return { outcomes: [], pendingConfirmations: [] }
+    return { outcomes: [], pendingConfirmations: [], checkedCount: 0 }
   }
-  return stepConfirmTranscriptEmbeddingIngests(pendingConfirmations)
+  const { batch, rest } = splitPendingConfirmations(
+    pendingConfirmations,
+    batchLimit,
+  )
+  const result = await stepConfirmTranscriptEmbeddingIngests(batch)
+  return {
+    outcomes: result.outcomes,
+    pendingConfirmations: [...rest, ...result.pendingConfirmations],
+    checkedCount: batch.length,
+  }
 }
 
 async function waitForPendingTranscriptIngestConfirmations(
   pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
 ): Promise<BackfillOutcome[]> {
   let pending = Array.from(pendingConfirmations)
   const outcomes: BackfillOutcome[] = []
   const maxPolls = Math.ceil(
     TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS / TIMED_OUT_LAUNCH_CONFIRM_POLL_MS,
   )
+  const maxConfirmationSlices = confirmationSliceBudget(
+    pending.length,
+    batchLimit,
+    maxPolls,
+  )
+  let uncheckedThisPollCycle = pending.length
 
-  for (let poll = 0; pending.length > 0 && poll <= maxPolls; poll += 1) {
-    const confirmation = await stepConfirmTranscriptEmbeddingIngests(pending)
+  for (
+    let poll = 0, confirmationSlices = 0;
+    pending.length > 0 && confirmationSlices < maxConfirmationSlices;
+  ) {
+    const confirmation = await confirmPendingTranscriptIngestsOnce(
+      pending,
+      batchLimit,
+    )
+    confirmationSlices += 1
     outcomes.push(...confirmation.outcomes)
     pending = confirmation.pendingConfirmations
+    uncheckedThisPollCycle -= confirmation.checkedCount
 
-    if (pending.length === 0 || poll === maxPolls) break
+    if (pending.length === 0) break
+    if (uncheckedThisPollCycle > 0) continue
+
+    poll += 1
+    if (poll > maxPolls) break
     await sleepForPendingConfirmation(TIMED_OUT_LAUNCH_CONFIRM_POLL_MS)
+    uncheckedThisPollCycle = pending.length
   }
 
   if (pending.length === 0) return outcomes
 
-  outcomes.push(...(await stepFailPendingTranscriptEmbeddingIngests(pending)))
+  outcomes.push(
+    ...(await failPendingTranscriptEmbeddingIngestsInBatches(
+      pending,
+      batchLimit,
+    )),
+  )
   return outcomes
+}
+
+async function failPendingTranscriptEmbeddingIngestsInBatches(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+): Promise<BackfillOutcome[]> {
+  const outcomes: BackfillOutcome[] = []
+  for (const batch of batchPendingConfirmations(
+    pendingConfirmations,
+    batchLimit,
+  )) {
+    outcomes.push(...(await stepFailPendingTranscriptEmbeddingIngests(batch)))
+  }
+  return outcomes
+}
+
+function batchPendingConfirmations(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+): PendingTranscriptIngestConfirmation[][] {
+  const batches: PendingTranscriptIngestConfirmation[][] = []
+  let pending = Array.from(pendingConfirmations)
+  while (pending.length > 0) {
+    const { batch, rest } = splitPendingConfirmations(pending, batchLimit)
+    batches.push(batch)
+    pending = rest
+  }
+  return batches
+}
+
+function confirmationSliceBudget(
+  pendingCount: number,
+  batchLimit: number,
+  maxPolls: number,
+): number {
+  const safePendingCount =
+    Number.isInteger(pendingCount) && pendingCount > 0 ? pendingCount : 0
+  if (safePendingCount === 0) return 0
+  const safeBatchLimit = safePendingConfirmationBatchLimit(batchLimit)
+  const slicesPerPollCycle = Math.ceil(safePendingCount / safeBatchLimit)
+  return slicesPerPollCycle * (maxPolls + 1)
+}
+
+function splitPendingConfirmations(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+): {
+  batch: PendingTranscriptIngestConfirmation[]
+  rest: PendingTranscriptIngestConfirmation[]
+} {
+  const safeLimit = safePendingConfirmationBatchLimit(batchLimit)
+
+  return {
+    batch: pendingConfirmations.slice(0, safeLimit),
+    rest: pendingConfirmations.slice(safeLimit),
+  }
+}
+
+function safePendingConfirmationBatchLimit(batchLimit: number): number {
+  return Number.isInteger(batchLimit) && batchLimit > 0
+    ? batchLimit
+    : DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT
 }
 
 async function sleepForPendingConfirmation(ms: number): Promise<void> {
@@ -706,4 +811,10 @@ export const _internals = {
   stepReport,
   groupTargetsByVideoEdition,
   batchGroupsByTargetLimit,
+  batchPendingConfirmations,
+  confirmationSliceBudget,
+  splitPendingConfirmations,
+  confirmPendingTranscriptIngestsOnce,
+  waitForPendingTranscriptIngestConfirmations,
+  failPendingTranscriptEmbeddingIngestsInBatches,
 }

@@ -1,7 +1,7 @@
 ---
 title: "Transcript embedding backfills need cancellable resume batches"
 date: "2026-06-19"
-last_updated: "2026-06-20"
+last_updated: "2026-06-22"
 category: workflow-issues
 module: apps/admin transcript embedding backfill
 problem_type: workflow_issue
@@ -478,6 +478,151 @@ Deploy both `@forge/admin` and `@forge/admin/worker` before retrying this
 class of hotfix. The GraphQL surface starts the run, but the worker service is
 the process executing the target-sharded steps.
 
+### Monitor checkpoint: 2026-06-21 paused live babysitting
+
+After the target-sharded hotfix was deployed, a fresh production all-language
+run `wrun_01KVJ5MSF2V6EEMG7FDQQKFF84` was started through the existing Admin
+GraphQL trigger with no `coreIds` and no `languages` filters. The start log
+reported `totalTargets=208073`, `groupCount=1452`, `groupBatchCount=4162`,
+`stepTargetLimit=50`, `stepMaxDurationMs=220000`, `launchTimeoutMs=120000`,
+`concurrency=5`, and `languageFilter=null`.
+
+Live monitoring through 2026-06-21 08:23 UTC showed the parent Workflow run
+still `running`, with 516 completed durable steps and one running step. The
+latest step had no error. Admin storage showed 4,992 transcript rows touched
+since the run start, spanning 303 languages and 121 videos. The current
+`1_jf-0-0` section had written 39 transcript rows in this run window. The
+latest observed write was `1_jf-0-0` language `mxj` at
+2026-06-21 08:02:16 UTC from `manager-transcript` using
+`jesus-film-ai-gateway`.
+
+Many completed steps did not increase the transcript-row counter. Do not call
+those "skipped embeddings" without stronger evidence. In this monitor window,
+that phrase only meant "Workflow step completed without a new
+`video_transcript.updated_at >= run.started_at` row becoming the latest write."
+It can represent target batches with no usable subtitle/transcript source,
+already-satisfied rows, or other no-write outcomes; it is not by itself proof
+that valid embeddings were dropped or failed.
+
+At the operator's request, live babysitting was stopped after this checkpoint.
+The rough ETA from 516 of 4,162 reported group batches was June 27-28 UTC, but
+the estimate is sensitive to write-heavy versus no-write batches. Resume the
+status check around June 28, 2026 UTC by querying the Workflow row for
+`wrun_01KVJ5MSF2V6EEMG7FDQQKFF84`; do not start a new backfill unless the
+operator explicitly asks.
+
+### Terminal checkpoint: 2026-06-21 morning follow-up
+
+At 2026-06-21 20:46 UTC, production storage showed
+`wrun_01KVJ5MSF2V6EEMG7FDQQKFF84` as `failed`. The run started at
+2026-06-20 09:26:33 UTC and failed at 2026-06-21 12:20:19 UTC. The Workflow
+row had no JSON `error` or `output`, but Admin worker logs around the failure
+window showed the runtime cause:
+
+```text
+[Workflow] Workflow run failed with 1 uncommitted operation(s): step
+"step//./src/workflows/_steps/process-transcript-embedding-group//stepProcessTranscriptEmbeddingGroups".
+Did you forget to `await` a step, hook, or sleep call?
+
+WorkflowRuntimeError: Unconsumed event in event log:
+eventType=step_started,
+correlationId=step_01KVJ5MWKPA0TW759HW4VPBSAR,
+eventId=wevt_01KVN1Z8DSY297DP8T4C7RMWF3.
+```
+
+Immediately before that, Graphile worker logs showed confirm-ingest tasks
+hitting the roughly five-minute task boundary with `fetch failed`. The
+Workflow ledger showed all recorded step rows as `completed`, but the event log
+had more `step_started` events than consumable step completions:
+
+- 567 completed step rows.
+- 314 completed `stepProcessTranscriptEmbeddingGroups` rows.
+- 250 completed `stepConfirmTranscriptEmbeddingIngests` rows.
+- 570 `step_started` events, 568 `step_created` events, 567
+  `step_completed` events, and one `run_failed` event.
+- Three step ids had duplicate `step_started` events.
+
+This means the target-sharded run still hit the useworkflow/Graphile event-log
+corruption shape once confirm-ingest steps crossed the worker task boundary.
+It was not a clean all-language completion.
+
+Admin transcript storage nevertheless continued receiving late Mastra ingests
+after the parent Workflow failed. Since this run started, Admin showed 5,167
+transcript rows touched across 451 languages, 121 videos, and 177 video
+editions. The latest observed transcript write was 2026-06-21 17:18:58 UTC,
+and there were zero transcript writes in the following three hours as of the
+20:46 UTC check.
+
+Touched rows were mostly Manager transcript fallback writes:
+
+- 5,139 `manager-transcript` / `model-upgrade` rows.
+- 28 `subtitle` / `model-upgrade` rows.
+- 214 touched rows for `1_jf-0-0` across 211 languages.
+
+Global transcript health at that checkpoint was:
+
+- 9,311 enriched-healthy transcript rows.
+- 42,634 legacy or incomplete transcript rows.
+- 51,945 total transcript rows.
+- 5,463 transcript rows whose chunks all had demographics.
+- 4,897 transcript rows whose chunks all had felt-needs.
+
+Mastra workflow snapshots since the Admin run start showed 6,721
+`transcript-embedding` snapshots: 5,249 succeeded and 1,472 failed. The failed
+snapshots were all for `1_jf-0-0` with `provider_failed`: 1,383 marked
+non-retryable and 89 marked retryable. This confirms the earlier long-Jesus
+Film payload/provider-failure concentration persisted, even though some
+`1_jf-0-0` languages later succeeded and ingested.
+
+Do not call the production all-language backfill complete from this run. The
+next operational move needs another bounded-runner fix or a different resume
+surface before retrying the remaining all-language work. A plain rerun with the
+same confirm-ingest step shape risks recreating the same event-log corruption.
+
+### Hotfix checkpoint: 2026-06-22 bounded confirm and resume skip
+
+The June 22 hotfix changed the transcript backfill runner in two places:
+
+1. `stepConfirmTranscriptEmbeddingIngests` and
+   `stepFailPendingTranscriptEmbeddingIngests` are now called with bounded
+   pending-confirmation slices. The workflow caller slices before entering the
+   durable step, so Workflow storage no longer persists the full 600 KB+
+   pending list as one step input/output pair. Unresolved confirmations rotate
+   to the tail so long Mastra runs cannot starve later pending runs.
+2. `MODEL_UPGRADE` backfill processing now checks Admin transcript storage
+   before launching Mastra. A target is skipped with
+   `already_enriched_healthy` only when the existing row has the current
+   model-upgrade provenance: `generation_mode = 'model-upgrade'`, the accepted
+   transcript embedding model stamp, `embedding_provider =
+   'jesus-film-ai-gateway'`, expected dimensions, a non-null source kind, every
+   chunk has an embedding, and every chunk has non-empty
+   `embedding_input_text`. Legacy, incomplete, missing, stale `force`, stale
+   provider/model, or v1 rows remain eligible.
+
+Use the existing Admin GraphQL trigger for recovery. Do not start Mastra
+directly. To prove the fix at the latest known failure point without replaying
+already-upgraded rows, resume with the known failing core id and no language
+filter:
+
+```graphql
+mutation ResumeTranscriptEmbeddingBackfill {
+  triggerTranscriptEmbeddingBackfill(
+    mode: MODEL_UPGRADE
+    coreIds: ["1_jf-0-0"]
+  )
+}
+```
+
+The expected early signals are:
+
+- The start log includes `confirmationBatchLimit`.
+- Confirm-ingest step inputs stay bounded by that limit.
+- Healthy enriched `1_jf-0-0` language rows log
+  `reason=already_enriched_healthy` instead of launching provider work again.
+- Legacy or incomplete `1_jf-0-0` language rows still launch through Mastra and
+  ingest normally.
+- No confirm-ingest Graphile task runs near the 300 second boundary.
+
 ## Cleanup and Versioning Strategy
 
 Successful enriched transcript writes are upserts on the transcript identity
@@ -556,7 +701,8 @@ process needs to be restarted.
 
 ### Sizing resume work
 
-Count enriched versus legacy transcript rows before resuming:
+Count rows that the `MODEL_UPGRADE` resume guard will skip versus rows that
+still need processing before resuming:
 
 ```sql
 with transcript_health as (
@@ -564,6 +710,9 @@ with transcript_health as (
     vt.id,
     vt.source_kind,
     vt.generation_mode,
+    vt.model,
+    vt.dimensions,
+    vt.embedding_provider,
     vt.total_chunks,
     count(vtc.*) filter (
       where vtc.embedding is not null
@@ -578,28 +727,44 @@ with transcript_health as (
 )
 select
   count(*) filter (
-    where generation_mode in ('force', 'model-upgrade')
+    where generation_mode = 'model-upgrade'
+      and model in (
+        'openai/text-embedding-3-small',
+        'text-embedding-3-small',
+        'embeddings'
+      )
+      and dimensions = 1536
+      and embedding_provider = 'jesus-film-ai-gateway'
       and source_kind is not null
       and chunks_with_embedding_input_text = total_chunks
       and chunks_with_embedding = total_chunks
-  ) as enriched_healthy,
+  ) as resume_skip_eligible,
   count(*) filter (
     where not (
-      generation_mode in ('force', 'model-upgrade')
+      generation_mode = 'model-upgrade'
+      and model in (
+        'openai/text-embedding-3-small',
+        'text-embedding-3-small',
+        'embeddings'
+      )
+      and dimensions = 1536
+      and embedding_provider = 'jesus-film-ai-gateway'
       and source_kind is not null
       and chunks_with_embedding_input_text = total_chunks
       and chunks_with_embedding = total_chunks
     )
-  ) as legacy_or_incomplete
+  ) as needs_resume_processing
 from transcript_health;
 ```
 
-In the June 2026 recovery, this showed 2,228 enriched healthy transcript rows
-and 49,111 legacy-but-vector-healthy rows. The correct continuation was to
-resume the legacy set, not restart the full 208,073-target catalog.
+Earlier June 2026 recovery counts used a broader "enriched healthy" predicate
+that included `force` rows. That is useful for storage health, but it is not
+the resume-skip predicate. For resume sizing, use `resume_skip_eligible` above
+so operators and agents do not overestimate how much work will be skipped.
 
 ## Related
 
+- [Bound durable workflow step payloads before persistence](bound-durable-workflow-step-payloads-before-persistence.md)
 - [useworkflow group fanout must run inside one durable step](../runtime-errors/useworkflow-nested-group-step-event-log-corruption.md)
 - [Mastra transcript launch network error diagnostics](../runtime-errors/mastra-transcript-launch-network-error-diagnostics.md)
 - [Admin Postgres workflow operations pattern](../best-practices/admin-postgres-workflow-operations-pattern-20260501.md)

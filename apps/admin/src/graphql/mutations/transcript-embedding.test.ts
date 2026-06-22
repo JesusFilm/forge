@@ -74,6 +74,24 @@ describe("dispatchTranscriptEmbeddingBackfill", () => {
     ])
   })
 
+  it("preserves the production resume shape for the latest failure point", async () => {
+    dispatch.mockReturnValue(BASE_REPORT)
+
+    await dispatchTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      coreIds: ["1_jf-0-0"],
+      mode: "model-upgrade",
+    })
+
+    dispatch.expectDispatched(runTranscriptEmbeddingBackfill, [
+      {
+        mappingS3Key: "admin-migrations/core-id-mapping.json",
+        coreIds: ["1_jf-0-0"],
+        mode: "model-upgrade",
+      },
+    ])
+  })
+
   it("propagates workflow rejections as thrown errors", async () => {
     const boom = new Error("mapping not found")
     dispatch.mockRejection(boom)

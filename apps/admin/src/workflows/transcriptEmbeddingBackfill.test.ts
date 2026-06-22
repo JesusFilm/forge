@@ -78,8 +78,11 @@ const { ManagerArtifactError, readTranscriptSourceArtifact } =
   await import("@/services/manager-artifacts.service")
 const { launchMastraTranscriptEmbedding } =
   await import("@/services/mastra-transcript-embedding-client")
-const { runTranscriptEmbeddingBackfill, _internals } =
-  await import("./transcriptEmbeddingBackfill")
+const {
+  DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT,
+  runTranscriptEmbeddingBackfill,
+  _internals,
+} = await import("./transcriptEmbeddingBackfill")
 
 type PrismaStub = { $queryRaw: ReturnType<typeof vi.fn> }
 
@@ -127,6 +130,69 @@ function target(
     hasSubtitle: false,
     hasDub: false,
     isPrimaryLanguage: true,
+  }
+}
+
+function pendingConfirmation(
+  language: string,
+  overrides: Partial<{
+    videoId: string
+    editionId: string
+    coreId: string
+    cmsVideoId: number
+    sourceKind: "manager-transcript" | "subtitle"
+    mastraRunId: string
+    startedAtEpochMs: number
+  }> = {},
+) {
+  return {
+    status: "pending-ingest-confirmation" as const,
+    target: target(
+      overrides.videoId ?? `v-${language}`,
+      overrides.editionId ?? `e-${language}`,
+      overrides.coreId ?? "core-a",
+      overrides.cmsVideoId ?? 1,
+      language,
+    ),
+    language,
+    sourceKind: overrides.sourceKind ?? ("manager-transcript" as const),
+    mastraRunId: overrides.mastraRunId ?? `run-${language}`,
+    startedAtEpochMs: overrides.startedAtEpochMs ?? Date.now(),
+  }
+}
+
+function transcriptHealthRow(
+  overrides: Partial<{
+    videoEditionId: string
+    language: string
+    totalChunks: number
+    model: string
+    dimensions: number
+    embeddingProvider: string | null
+    generationMode: string | null
+    sourceKind: string | null
+    chunksWithEmbedding: number
+    chunksWithEmbeddingInputText: number
+  }> = {},
+) {
+  return {
+    video_edition_id: overrides.videoEditionId ?? "e-a",
+    language: overrides.language ?? "en",
+    total_chunks: overrides.totalChunks ?? 2,
+    model: overrides.model ?? "embeddings",
+    dimensions: overrides.dimensions ?? 1536,
+    embedding_provider: Object.hasOwn(overrides, "embeddingProvider")
+      ? (overrides.embeddingProvider ?? null)
+      : "jesus-film-ai-gateway",
+    generation_mode: Object.hasOwn(overrides, "generationMode")
+      ? (overrides.generationMode ?? null)
+      : "model-upgrade",
+    source_kind: Object.hasOwn(overrides, "sourceKind")
+      ? (overrides.sourceKind ?? null)
+      : "subtitle",
+    chunks_with_embedding: overrides.chunksWithEmbedding ?? 2,
+    chunks_with_embedding_input_text:
+      overrides.chunksWithEmbeddingInputText ?? 2,
   }
 }
 
@@ -323,6 +389,195 @@ Subtitle transcript text.
       expect(call[0].mode).toBe("force")
       expect(call[0].language).toBe("en")
     }
+  })
+
+  it("skips already healthy enriched transcript rows during model-upgrade resumes", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw
+      .mockResolvedValueOnce([row("v-a", "e-a", "core-a", "en")])
+      .mockResolvedValueOnce([transcriptHealthRow()])
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      mode: "model-upgrade",
+    })
+
+    expect(report.succeeded).toBe(0)
+    expect(report.skipped).toBe(1)
+    expect(report.failed).toBe(0)
+    expect(report.outcomes[0]).toMatchObject({
+      status: "skipped",
+      language: "en",
+      reason: "already_enriched_healthy",
+    })
+    expect(readTranscriptSourceArtifact).not.toHaveBeenCalled()
+    expect(launchMastraTranscriptEmbedding).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      label: "legacy transcript rows",
+      healthRows: [
+        transcriptHealthRow({
+          generationMode: null,
+          sourceKind: null,
+          chunksWithEmbeddingInputText: 0,
+        }),
+      ],
+    },
+    {
+      label: "incomplete chunk rows",
+      healthRows: [
+        transcriptHealthRow({
+          chunksWithEmbedding: 1,
+          chunksWithEmbeddingInputText: 1,
+        }),
+      ],
+    },
+    {
+      label: "rows missing embedding input text",
+      healthRows: [
+        transcriptHealthRow({
+          chunksWithEmbeddingInputText: 1,
+        }),
+      ],
+    },
+    {
+      label: "missing transcript rows",
+      healthRows: [],
+    },
+    {
+      label: "force-generated rows",
+      healthRows: [
+        transcriptHealthRow({
+          generationMode: "force",
+        }),
+      ],
+    },
+    {
+      label: "idempotent generation rows",
+      healthRows: [
+        transcriptHealthRow({
+          generationMode: "idempotent",
+        }),
+      ],
+    },
+    {
+      label: "rows with null source kind",
+      healthRows: [
+        transcriptHealthRow({
+          sourceKind: null,
+        }),
+      ],
+    },
+    {
+      label: "rows with empty source kind",
+      healthRows: [
+        transcriptHealthRow({
+          sourceKind: "",
+        }),
+      ],
+    },
+    {
+      label: "zero-chunk rows",
+      healthRows: [
+        transcriptHealthRow({
+          totalChunks: 0,
+          chunksWithEmbedding: 0,
+          chunksWithEmbeddingInputText: 0,
+        }),
+      ],
+    },
+    {
+      label: "rows with stale model stamps",
+      healthRows: [
+        transcriptHealthRow({
+          model: "openai/text-embedding-future-model",
+        }),
+      ],
+    },
+    {
+      label: "rows with stale providers",
+      healthRows: [
+        transcriptHealthRow({
+          embeddingProvider: "openai",
+        }),
+      ],
+    },
+    {
+      label: "rows with null providers",
+      healthRows: [
+        transcriptHealthRow({
+          embeddingProvider: null,
+        }),
+      ],
+    },
+    {
+      label: "rows with stale dimensions",
+      healthRows: [
+        transcriptHealthRow({
+          dimensions: 3072,
+        }),
+      ],
+    },
+  ])(
+    "keeps $label eligible in model-upgrade resumes",
+    async ({ healthRows }) => {
+      ;(prisma as unknown as PrismaStub).$queryRaw
+        .mockResolvedValueOnce([row("v-a", "e-a", "core-a", "en")])
+        .mockResolvedValueOnce(healthRows)
+
+      const report = await runTranscriptEmbeddingBackfill({
+        mappingS3Key: "admin-migrations/core-id-mapping.json",
+        mode: "model-upgrade",
+      })
+
+      expect(report.succeeded).toBe(1)
+      expect(report.skipped).toBe(0)
+      expect(report.failed).toBe(0)
+      expect(readTranscriptSourceArtifact).toHaveBeenCalledWith("1")
+      expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(1)
+      expect(
+        vi.mocked(launchMastraTranscriptEmbedding).mock.calls[0]?.[0].mode,
+      ).toBe("model-upgrade")
+    },
+  )
+
+  it("batches model-upgrade resume health checks per durable process step", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw
+      .mockResolvedValueOnce([
+        row("v-a", "e-a", "core-a", "en"),
+        row("v-b", "e-b", "core-b", "es"),
+        row("v-c", "e-c", "core-c", "fr"),
+      ])
+      .mockResolvedValueOnce([
+        transcriptHealthRow({
+          videoEditionId: "e-a",
+          language: "en",
+        }),
+        transcriptHealthRow({
+          videoEditionId: "e-b",
+          language: "es",
+        }),
+      ])
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      mode: "model-upgrade",
+    })
+
+    expect(report.skipped).toBe(2)
+    expect(report.succeeded).toBe(1)
+    expect((prisma as unknown as PrismaStub).$queryRaw).toHaveBeenCalledTimes(2)
+    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(1)
+    expect(
+      vi.mocked(launchMastraTranscriptEmbedding).mock.calls[0]?.[0],
+    ).toMatchObject({
+      target: {
+        videoEditionId: "e-c",
+      },
+      language: "fr",
+      mode: "model-upgrade",
+    })
   })
 
   it("skips every language in a group when transcript source is missing and emits missingArtifacts once", async () => {
@@ -522,6 +777,132 @@ Subtitle transcript text.
     expect(sleep).toHaveBeenCalledTimes(240)
   })
 
+  it("checks timed-out Mastra ingest confirmations in bounded rotating slices", async () => {
+    const pending = [
+      pendingConfirmation("en"),
+      pendingConfirmation("es"),
+      pendingConfirmation("fr"),
+    ]
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValue([])
+
+    const result = await _internals.confirmPendingTranscriptIngestsOnce(
+      pending,
+      2,
+    )
+
+    expect((prisma as unknown as PrismaStub).$queryRaw).toHaveBeenCalledTimes(2)
+    expect(result.checkedCount).toBe(2)
+    expect(result.outcomes).toEqual([])
+    expect(result.pendingConfirmations.map((item) => item.language)).toEqual([
+      "fr",
+      "en",
+      "es",
+    ])
+  })
+
+  it("removes confirmed Mastra ingests from the bounded pending slice", async () => {
+    const pending = [
+      pendingConfirmation("en"),
+      pendingConfirmation("es"),
+      pendingConfirmation("fr"),
+    ]
+    ;(prisma as unknown as PrismaStub).$queryRaw
+      .mockResolvedValueOnce([
+        {
+          total_chunks: 2,
+          total_tokens: 24,
+          model: "embeddings",
+          dimensions: 1536,
+          embedding_provider: "jesus-film-ai-gateway",
+          source_content_hash: "sha256:confirmed",
+          healthy_chunks: 2,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    const result = await _internals.confirmPendingTranscriptIngestsOnce(
+      pending,
+      2,
+    )
+
+    expect(result.checkedCount).toBe(2)
+    expect(result.outcomes).toHaveLength(1)
+    expect(result.outcomes[0]).toMatchObject({
+      status: "succeeded",
+      language: "en",
+      chunksIndexed: 2,
+    })
+    expect(result.pendingConfirmations.map((item) => item.language)).toEqual([
+      "fr",
+      "es",
+    ])
+  })
+
+  it("fails final pending confirmations through bounded batches", async () => {
+    const pending = Array.from({ length: 3 }, (_, i) =>
+      pendingConfirmation(`l${i}`, {
+        videoId: `v-${i}`,
+        editionId: `e-${i}`,
+        mastraRunId: `run-${i}`,
+      }),
+    )
+
+    const outcomes =
+      await _internals.failPendingTranscriptEmbeddingIngestsInBatches(
+        pending,
+        2,
+      )
+
+    expect(outcomes).toHaveLength(3)
+    expect(outcomes.map((outcome) => outcome.status)).toEqual([
+      "failed",
+      "failed",
+      "failed",
+    ])
+    expect(outcomes.map((outcome) => outcome.language)).toEqual([
+      "l0",
+      "l1",
+      "l2",
+    ])
+    expect(
+      _internals
+        .batchPendingConfirmations(pending, 2)
+        .map((batch) => batch.length),
+    ).toEqual([2, 1])
+  })
+
+  it("budgets final confirmation slices by full poll cycles", () => {
+    expect(_internals.confirmationSliceBudget(3, 2, 240)).toBe(482)
+    expect(_internals.confirmationSliceBudget(25, 25, 240)).toBe(241)
+    expect(_internals.confirmationSliceBudget(26, 25, 240)).toBe(482)
+  })
+
+  it("checks multiple final confirmation slices before the first sleep", async () => {
+    const pending = [
+      pendingConfirmation("en"),
+      pendingConfirmation("es"),
+      pendingConfirmation("fr"),
+    ]
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValue([
+      {
+        total_chunks: 2,
+        total_tokens: 24,
+        model: "embeddings",
+        dimensions: 1536,
+        embedding_provider: "jesus-film-ai-gateway",
+        source_content_hash: "sha256:confirmed",
+        healthy_chunks: 2,
+      },
+    ])
+
+    const outcomes =
+      await _internals.waitForPendingTranscriptIngestConfirmations(pending, 2)
+
+    expect(outcomes).toHaveLength(3)
+    expect((prisma as unknown as PrismaStub).$queryRaw).toHaveBeenCalledTimes(3)
+    expect(sleep).not.toHaveBeenCalled()
+  })
+
   it("reports target-bounded batch sizing through the workflow dispatch path", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce(
       Array.from({ length: 51 }, (_, i) =>
@@ -546,6 +927,8 @@ Subtitle transcript text.
         groupCount: 51,
         groupBatchCount: 2,
         stepTargetLimit: 50,
+        confirmationBatchLimit:
+          DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT,
         concurrency: 2,
       })
     } finally {

@@ -56,15 +56,18 @@ export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS = 1536
  * the payload here; intentional model replacement must use the ingest
  * service's explicit generation modes.
  */
-const ACCEPTED_MODEL_STAMPS = new Set<string>([
-  "openai/text-embedding-3-small",
-  "text-embedding-3-small",
-  "embeddings",
-])
+export const ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS: ReadonlySet<string> =
+  new Set<string>([
+    "openai/text-embedding-3-small",
+    "text-embedding-3-small",
+    "embeddings",
+  ])
 
 // Precomputed list form for the drift-warning log payload. Avoids
 // re-serializing the Set on every mismatch.
-const ACCEPTED_MODEL_STAMPS_LIST = Array.from(ACCEPTED_MODEL_STAMPS)
+const ACCEPTED_MODEL_STAMPS_LIST = Array.from(
+  ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS,
+)
 
 /**
  * Prisma's default interactive-transaction timeout is 5s. Stage 3
@@ -255,7 +258,7 @@ function assertNonEmptyText(chunks: EmbeddingsResult["chunks"]): void {
 }
 
 function logModelStampDriftIfAny(artifactModel: string): void {
-  if (ACCEPTED_MODEL_STAMPS.has(artifactModel)) return
+  if (ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS.has(artifactModel)) return
   console.warn(
     JSON.stringify({
       event: "transcript_model_mismatch",

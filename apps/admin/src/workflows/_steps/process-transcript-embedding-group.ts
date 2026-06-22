@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/db/client"
 import {
   ManagerArtifactError,
@@ -9,6 +10,10 @@ import {
   type MastraTranscriptEmbeddingLaunchResult,
   type MastraTranscriptEmbeddingMode,
 } from "@/services/mastra-transcript-embedding-client"
+import {
+  ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS,
+  EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+} from "@/services/transcript-embedding.service"
 import {
   resolveSubtitleTranscriptSource,
   type ResolvedTranscriptEmbeddingSource,
@@ -67,6 +72,27 @@ type TranscriptIngestConfirmationRow = {
   embedding_provider: string | null
   source_content_hash: string | null
   healthy_chunks: number | bigint
+}
+
+type ExistingTranscriptBackfillHealthRow = {
+  video_edition_id: string
+  language: string
+  total_chunks: number | bigint
+  model: string
+  dimensions: number
+  embedding_provider: string | null
+  generation_mode: string | null
+  source_kind: string | null
+  chunks_with_embedding: number | bigint
+  chunks_with_embedding_input_text: number | bigint
+}
+
+function resumeTargetKey(videoEditionId: string, language: string): string {
+  return `${videoEditionId}::${language}`
+}
+
+function targetResumeKey(target: BackfillTarget): string {
+  return resumeTargetKey(target.videoEditionId, target.language)
 }
 
 function managerTranscriptSourceFromArtifact(
@@ -278,6 +304,80 @@ async function readTranscriptIngestConfirmation(
   }
 }
 
+function isHealthyEnrichedTranscriptForResume(
+  row: ExistingTranscriptBackfillHealthRow,
+): boolean {
+  const totalChunks = Number(row.total_chunks)
+  const chunksWithEmbedding = Number(row.chunks_with_embedding)
+  const chunksWithEmbeddingInputText = Number(
+    row.chunks_with_embedding_input_text,
+  )
+
+  return (
+    Number.isFinite(totalChunks) &&
+    totalChunks > 0 &&
+    row.generation_mode === "model-upgrade" &&
+    row.source_kind != null &&
+    row.source_kind.length > 0 &&
+    ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS.has(row.model) &&
+    row.dimensions === EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS &&
+    row.embedding_provider === "jesus-film-ai-gateway" &&
+    chunksWithEmbedding === totalChunks &&
+    chunksWithEmbeddingInputText === totalChunks
+  )
+}
+
+async function readHealthyEnrichedTranscriptResumeKeys(
+  targets: readonly BackfillTarget[],
+): Promise<ReadonlySet<string>> {
+  if (targets.length === 0) return new Set()
+
+  const uniqueTargets = Array.from(
+    new Map(
+      targets.map((target) => [targetResumeKey(target), target]),
+    ).values(),
+  )
+  const rows = await prisma.$queryRaw<ExistingTranscriptBackfillHealthRow[]>`
+    WITH target(video_edition_id, language) AS (
+      VALUES ${Prisma.join(
+        uniqueTargets.map(
+          (target) =>
+            Prisma.sql`(${target.videoEditionId}, ${target.language})`,
+        ),
+      )}
+    )
+    SELECT
+      vt.video_edition_id,
+      vt.language,
+      vt.total_chunks,
+      vt.model,
+      vt.dimensions,
+      vt.embedding_provider,
+      vt.generation_mode,
+      vt.source_kind,
+      COUNT(vtc.id) FILTER (
+        WHERE vtc.embedding IS NOT NULL
+      ) AS chunks_with_embedding,
+      COUNT(vtc.id) FILTER (
+        WHERE vtc.embedding_input_text IS NOT NULL
+          AND length(vtc.embedding_input_text) > 0
+      ) AS chunks_with_embedding_input_text
+    FROM video_transcript vt
+    JOIN target t
+      ON t.video_edition_id = vt.video_edition_id
+      AND t.language = vt.language
+    LEFT JOIN video_transcript_chunk vtc
+      ON vtc.transcript_id = vt.id
+    GROUP BY vt.id
+  `
+
+  return new Set(
+    rows
+      .filter(isHealthyEnrichedTranscriptForResume)
+      .map((row) => resumeTargetKey(row.video_edition_id, row.language)),
+  )
+}
+
 async function launchTranscriptEmbedding(
   target: BackfillTarget,
   transcriptSource: ResolvedTranscriptEmbeddingSource,
@@ -388,12 +488,30 @@ async function processTranscriptEmbeddingGroup(
   mode: MastraTranscriptEmbeddingMode,
   loadManagerSource: ManagerSourceLoader,
   launchTimeoutMs: number,
+  healthyResumeTargets: ReadonlySet<string>,
 ): Promise<TranscriptIngestConfirmationBatchResult> {
   const groupStartedAt = Date.now()
 
   const outcomes: BackfillOutcome[] = []
   const pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
   for (const target of group.targets) {
+    const targetStartedAt = Date.now()
+    if (
+      mode === "model-upgrade" &&
+      healthyResumeTargets.has(targetResumeKey(target))
+    ) {
+      const outcome: BackfillOutcome = {
+        status: "skipped",
+        target,
+        language: target.language,
+        reason: "already_enriched_healthy",
+        durationMs: Date.now() - targetStartedAt,
+      }
+      logOutcome(outcome)
+      outcomes.push(outcome)
+      continue
+    }
+
     const subtitleResolution = await resolveSubtitleTranscriptSource(
       prisma,
       target,
@@ -479,6 +597,12 @@ export async function stepProcessTranscriptEmbeddingGroups(
       : 220_000
   const batchStartedAt = Date.now()
   const loadManagerSource = createManagerSourceLoader()
+  const healthyResumeTargets =
+    mode === "model-upgrade"
+      ? await readHealthyEnrichedTranscriptResumeKeys(
+          groups.flatMap((group) => group.targets),
+        )
+      : new Set<string>()
 
   const outcomes: BackfillOutcome[] = []
   const pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
@@ -498,6 +622,7 @@ export async function stepProcessTranscriptEmbeddingGroups(
           mode,
           loadManagerSource,
           launchTimeoutMs,
+          healthyResumeTargets,
         ),
       ),
     )
