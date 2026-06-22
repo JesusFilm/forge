@@ -7,9 +7,8 @@
  * the consolidation base (registered + Studio-invocable only); it comes along
  * as config so the standalone runtime owns the full draft/chat agent set.
  *
- * Tools note (U4): the chat tools (searchVideos / fetchVideoImage) are re-homed
- * as HTTP callbacks to admin in U8; this agent registers WITHOUT tools until
- * then.
+ * Tools (U8): searchVideos + fetchVideoImage as HTTP callbacks to admin's
+ * bearer-gated /api/internal/agent-tools/* (no scripture lookup).
  */
 
 import { createRequire } from "node:module"
@@ -20,6 +19,8 @@ import { env } from "../../config/env"
 
 import { getExperienceChatMemory } from "../memory"
 import { AUTO_ENRICH_PROMPT } from "../prompts"
+import { searchVideosTool } from "../tools/search-videos"
+import { fetchVideoImageTool } from "../tools/fetch-video-image"
 
 // ESM-compatible `require` shim — see ./default-chat-agent.ts header comment for
 // the underlying Mastra CLI Rollup-bundle constraint that forces this pattern
@@ -52,6 +53,12 @@ export function buildAutoEnrichAgent(): Agent {
       "Background agent that fills missing imageUrl/videoId references on Experience blocks. Output written as a ContentRevision DRAFT.",
     instructions: AUTO_ENRICH_PROMPT,
     model: resolveAgentModel(),
+    // searchVideos + fetchVideoImage only (U8) — auto-enrich fills missing
+    // videoId/imageUrl references; it does not cite scripture.
+    tools: {
+      searchVideosTool,
+      fetchVideoImageTool,
+    },
     memory: getExperienceChatMemory(),
   })
 }

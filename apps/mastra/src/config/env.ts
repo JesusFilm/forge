@@ -86,6 +86,25 @@ const envSchema = z.object({
   ADMIN_SEARCH_TRACE_SAMPLE_URL: z.string().url().optional(),
   ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
+  // Standalone chat agent tool callbacks → admin (consolidation U8). Base URL
+  // of admin; the client appends `/api/internal/agent-tools/{tool}`. Bearer is
+  // the value admin holds in its `ADMIN_AGENT_TOOLS_API_KEYS` receiver CSV. Both
+  // optional: unset → the tool degrades to an empty result, never a boot fail.
+  ADMIN_AGENT_TOOLS_URL: z.string().url().optional(),
+  ADMIN_AGENT_TOOLS_API_KEY: z.string().min(1).optional(),
+  // Single-attempt per-tool timeout. Must fit the 90s chatTurn budget with
+  // maxSteps:8 — keep it small so several tool round-trips can complete in one
+  // turn. Capped at 30s; default 10s.
+  ADMIN_AGENT_TOOLS_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(30_000)
+    .default(10_000),
+  ADMIN_AGENT_TOOLS_USER_AGENT: z
+    .string()
+    .min(1)
+    .default("forge-mastra-agent-tools/1.0"),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -321,6 +340,16 @@ export const env = envSchema.parse({
   ADMIN_SCENE_INGEST_URL: emptyToUndefined(process.env.ADMIN_SCENE_INGEST_URL),
   ADMIN_TRANSCRIPT_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_TRANSCRIPT_INGEST_URL,
+  ),
+  ADMIN_AGENT_TOOLS_URL: emptyToUndefined(process.env.ADMIN_AGENT_TOOLS_URL),
+  ADMIN_AGENT_TOOLS_API_KEY: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_API_KEY,
+  ),
+  ADMIN_AGENT_TOOLS_TIMEOUT_MS: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
+  ),
+  ADMIN_AGENT_TOOLS_USER_AGENT: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_USER_AGENT,
   ),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: emptyToUndefined(
     process.env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS,
@@ -657,6 +686,27 @@ export function getJesusfilmRagConfig(): JesusfilmRagConfig {
     apiKey: env.JESUSFILM_RAG_API_KEY,
     timeoutMs: env.JESUSFILM_RAG_TIMEOUT_MS,
     userAgent: env.JESUSFILM_RAG_USER_AGENT,
+  }
+}
+
+export type AdminAgentToolsConfig = {
+  baseUrl?: string
+  apiKey?: string
+  timeoutMs: number
+  userAgent: string
+}
+
+/**
+ * Config for the standalone chat agent's tool callbacks to admin
+ * (consolidation U8). `baseUrl`/`apiKey` are optional — absent means the tool
+ * degrades to an empty result at runtime, never a boot failure.
+ */
+export function getAdminAgentToolsConfig(): AdminAgentToolsConfig {
+  return {
+    baseUrl: env.ADMIN_AGENT_TOOLS_URL,
+    apiKey: env.ADMIN_AGENT_TOOLS_API_KEY,
+    timeoutMs: env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
+    userAgent: env.ADMIN_AGENT_TOOLS_USER_AGENT,
   }
 }
 

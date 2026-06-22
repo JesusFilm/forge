@@ -8,11 +8,11 @@
  * `Agent.network()`. The caller (chat service / route) picks the agent and
  * invokes it. No routing-agent middle layer.
  *
- * Tools note (U4): the chat tools (searchVideos / lookupBibleVerse /
- * fetchVideoImage) are re-homed as HTTP callbacks to admin in U8; these agents
- * register WITHOUT tools until then. The draft/quick-draft workflows do not
- * tool-call (candidates arrive pre-loaded in the workflow input), so the
- * generation path is unaffected.
+ * Tools (U8): the chat-facing agents (draft-experience, add-section) carry the
+ * HTTP-backed tool callbacks to admin; the workflow-only agents
+ * (planner/critic/reviser/skeleton/fill) stay TOOL-LESS — the draft/quick-draft
+ * workflows do not tool-call (candidates arrive pre-loaded in the workflow
+ * input), so the generation path is unaffected.
  */
 
 import { createRequire } from "node:module"
@@ -36,6 +36,9 @@ import {
   SKELETON_EXPERIENCE_PROMPT,
   FILL_EXPERIENCE_PROMPT,
 } from "../prompts"
+import { searchVideosTool } from "../tools/search-videos"
+import { lookupBibleVerseTool } from "../tools/lookup-bible-verse"
+import { fetchVideoImageTool } from "../tools/fetch-video-image"
 
 // ESM-compatible `require` for the @ai-sdk/* provider loads below. A static
 // `import` here gets transformed into a bare `require()` by Mastra's CLI Rollup
@@ -119,9 +122,10 @@ export type SpecializedAgentId =
   | "experience-fill"
 
 /**
- * Draft-experience agent — full first-draft generation. The multi-step workflow
- * is opt-in via a separate path, not baked into this agent's definition. Tools
- * land in U8.
+ * Draft-experience agent — full first-draft generation, used as a chat-facing
+ * specialized agent (the candidate-preloaded workflow path uses the separate
+ * planner/skeleton/fill/critic/reviser agents). Full HTTP-backed tool catalog
+ * (U8).
  */
 export function buildDraftExperienceAgent(): Agent {
   return new Agent({
@@ -131,13 +135,19 @@ export function buildDraftExperienceAgent(): Agent {
       "Produces a full Experience draft (title + meta + blocks) from a prompt.",
     instructions: DRAFT_EXPERIENCE_PROMPT,
     model: resolveAgentModel(),
+    tools: {
+      searchVideosTool,
+      lookupBibleVerseTool,
+      fetchVideoImageTool,
+    },
     memory: getExperienceChatMemory(),
   })
 }
 
 /**
  * Add-section agent — inserts exactly one new top-level block while preserving
- * every existing block. Tools land in U8.
+ * every existing block. Limited to searchVideos (U8) — the narrow job doesn't
+ * need bible lookup or image fetch.
  */
 export function buildAddSectionAgent(): Agent {
   return new Agent({
@@ -147,6 +157,9 @@ export function buildAddSectionAgent(): Agent {
       "Adds exactly one new top-level block to an existing Experience canvas, preserving all other blocks.",
     instructions: ADD_SECTION_PROMPT,
     model: resolveAgentModel(),
+    tools: {
+      searchVideosTool,
+    },
     memory: getExperienceChatMemory(),
   })
 }
@@ -216,8 +229,10 @@ export function buildCriticAgent(): Agent {
 /**
  * Reviser agent — applies critique notes to a draft and re-emits the same
  * Experience envelope JSON shape. Also the repair agent (REPAIR_AGENT_ID).
- * Tools land in U8 (the workflow path does not tool-call — candidates arrive
- * pre-loaded).
+ * Stays TOOL-LESS in the standalone service: the workflow path does not
+ * tool-call (candidates arrive pre-loaded in the prompt, and repair re-prompts
+ * carry the offending draft + candidate refs), so no HTTP tool round-trip is
+ * needed per step.
  */
 export function buildReviserAgent(): Agent {
   return new Agent({
@@ -251,7 +266,8 @@ export function buildSkeletonAgent(): Agent {
 
 /**
  * Fill agent — fills ONE block's content at a time for the two-phase draft
- * workflow's sequential fill step. Tools land in U8. No memory — workflow-only.
+ * workflow's sequential fill step. Stays TOOL-LESS (candidates arrive
+ * pre-loaded in the fill prompt). No memory — workflow-only.
  */
 export function buildFillAgent(): Agent {
   return new Agent({

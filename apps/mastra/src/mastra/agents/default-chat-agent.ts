@@ -8,11 +8,10 @@
  * draft-experience system prompt and (from U8) the HTTP-backed tool catalog.
  * Suitable for both "draft a whole experience" and "add a section" requests.
  *
- * Tools note (U4): the three chat tools (searchVideos / lookupBibleVerse /
- * fetchVideoImage) are re-homed as HTTP callbacks to admin in U8; this agent
- * registers WITHOUT tools until then. The draft/quick-draft workflows do not
- * tool-call (candidates arrive pre-loaded in the workflow input), so the
- * generation path is unaffected.
+ * Tools (U8): the three chat tools (searchVideos / lookupBibleVerse /
+ * fetchVideoImage) are HTTP callbacks to admin's bearer-gated
+ * /api/internal/agent-tools/* (R2: no admin import). They degrade to empty
+ * results on failure so a tool outage never crashes the turn.
  */
 
 import { createRequire } from "node:module"
@@ -28,6 +27,9 @@ import {
 } from "../gateway-constants"
 import { getExperienceChatMemory } from "../memory"
 import { DRAFT_EXPERIENCE_PROMPT } from "../prompts"
+import { searchVideosTool } from "../tools/search-videos"
+import { lookupBibleVerseTool } from "../tools/lookup-bible-verse"
+import { fetchVideoImageTool } from "../tools/fetch-video-image"
 
 // ESM-compatible `require` for the provider SDK loads below. The provider SDK
 // requires survive the Mastra CLI Rollup bundle because they target real
@@ -144,8 +146,14 @@ export function buildDefaultChatAgent(): Agent {
     // ranges. Runtime contract is fine.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     model: model as any,
-    // Tools land in U8 (HTTP-backed callbacks to admin). Until then the chat
-    // agent has no tool catalog; no live route invokes it before U9.
+    // HTTP-backed tool callbacks to admin (U8). Each tool calls admin's
+    // bearer-gated /api/internal/agent-tools/* and degrades to an empty result
+    // on failure, so a tool outage never crashes the chat turn.
+    tools: {
+      searchVideosTool,
+      lookupBibleVerseTool,
+      fetchVideoImageTool,
+    },
     memory: getExperienceChatMemory(),
   })
 }
