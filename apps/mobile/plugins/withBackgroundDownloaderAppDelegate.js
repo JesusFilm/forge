@@ -10,8 +10,8 @@ try {
 
 /**
  * The package's own plugin injects handleEventsForBackgroundURLSession into
- * ReactNativeDelegate not the real AppDelegate — so backgrounded downloads stick
- * on "downloading". This relocates it; register AFTER the package plugin in app.json.
+ * ReactNativeDelegate, but iOS only calls it on the real UIApplicationDelegate, so
+ * backgrounded downloads stick on "downloading". Relocates it; register AFTER the package plugin (app.json).
  */
 
 const METHOD = `

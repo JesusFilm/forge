@@ -9,9 +9,9 @@ import { LIST_SHEET_DETENTS } from "../styles/shared"
 type SheetDetentChangeEvent = { data?: { index?: number } }
 
 /**
- * Concrete FlashList height for a formSheet. Unbounded content makes onLayout
- * circular, so derive LIST_SHEET_DETENTS[index] * windowHeight from the native
- * detent index. Listener registers once on [navigation]; height is derived not stored.
+ * Concrete FlashList height for a formSheet: unbounded content makes onLayout circular, so
+ * derive LIST_SHEET_DETENTS[index] * windowHeight from the detent index. Listener is on
+ * [navigation] (rotation-safe, not torn down mid-drag); unchanged-index bails to avoid per-frame thrash.
  */
 export function useSheetListHeight(windowHeight: number): number {
   const [detentIndex, setDetentIndex] = useState(0)
