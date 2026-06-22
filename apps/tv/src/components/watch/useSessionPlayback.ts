@@ -1,8 +1,7 @@
 // ── Session-driven playback hook (U7) ────────────────────────────────────────
-// Owns overlay logic that activates only when a watch session drives the
-// fullscreen player. NON-NEGOTIABLE: no-session experience-card playback (session.video
-// == null) is unchanged — menuActive false, no menu/subtitle/dub-switch, only the
-// idempotent Mux auto-subtitle disable runs. Decision logic lives in playerSwitch.ts.
+// Overlay logic active only when a watch session drives the fullscreen player.
+// NON-NEGOTIABLE: no-session card playback (session.video == null) is unchanged
+// (menuActive false, only the idempotent Mux auto-subtitle disable). See playerSwitch.ts.
 
 import {
   useCallback,
@@ -117,10 +116,9 @@ export function useSessionPlayback({
   const session = useWatchSession()
   const sessionActiveHls = session.activeVariant?.hls ?? null
 
-  // Gate evaluated against the OPENED url (streamingUrl, fixed per playVideo). A
-  // mid-play dub switch changes activeVariant.hls to a new asset != streamingUrl,
-  // which would flip the raw gate false and tear down the menu/subtitles. So we
-  // LATCH: stay session-driven while a session video is present; reset on clear.
+  // Gate is on the OPENED url (streamingUrl, fixed per playVideo). A mid-play dub
+  // switch makes activeVariant.hls != streamingUrl, flipping the raw gate false and
+  // tearing down menu/subtitles. So LATCH: session-driven while video present; reset on clear.
   const rawGateMatch = inPlayerMenuVisible({
     sessionVideo: session.video,
     activeVariantHls: sessionActiveHls,
@@ -153,10 +151,9 @@ export function useSessionPlayback({
   const switchTokenRef = useRef(0)
 
   // ── Live dub-switch (U7) ────────────────────────────────────────────
-  // Desired source is the active dub HLS when menuActive, else the streamingUrl
-  // prop (no-session path short-circuits on loadedUrlRef equality → unchanged).
-  // Swap-vs-noop is decided by Mux playback id (shouldReplaceSource) so the same
-  // asset under two URLs doesn't rebuffer; a switch token guards overlap.
+  // Desired source = active dub HLS when menuActive, else streamingUrl (no-session
+  // path no-ops on loadedUrlRef equality). Swap-vs-noop is by Mux playback id
+  // (shouldReplaceSource) so same asset under two URLs doesn't rebuffer; token guards overlap.
   const desiredSource = menuActive ? sessionActiveHls : streamingUrl
   useEffect(() => {
     if (!desiredSource || desiredSource === loadedUrlRef.current) return
@@ -273,10 +270,9 @@ export function useSessionPlayback({
     : null
 
   // ── In-player menu open/close (U7) ──────────────────────────────────
-  // Opening cancels any pending hide so the chrome can't fade under the menu;
-  // closing re-arms auto-hide and restores focus via revealFocusPending. Both are
-  // useCallback-stable (closeMenu feeds InPlayerMenu renderRow deps, host re-renders
-  // ~1Hz); latest-ref pattern for the host callback mirrors scheduleHideRef.
+  // Opening cancels any pending hide so chrome can't fade under the menu; closing
+  // re-arms auto-hide and restores focus via revealFocusPending. Both useCallback-stable
+  // (closeMenu feeds InPlayerMenu renderRow deps); latest-ref for host callback mirrors scheduleHideRef.
   const onRequestRevealFocusRef = useRef(onRequestRevealFocus)
   onRequestRevealFocusRef.current = onRequestRevealFocus
   const openMenu = useCallback(

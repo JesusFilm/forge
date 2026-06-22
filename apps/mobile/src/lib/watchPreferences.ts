@@ -1,9 +1,7 @@
 /**
  * App-wide watch preferences (dub/subtitle language + subtitles on/off),
- * persisted so choices carry across videos and restarts. Stored by unique
- * language SLUG, not bcp47 — bcp47 prefixes collide (Korean "ko" vs Kurmanji
- * "ko-kmr") and re-select the wrong sibling; {@link resolveDefaultSlug} matches
- * the slug exactly per video.
+ * persisted across videos and restarts. Stored by unique language SLUG, not
+ * bcp47 — prefixes collide ("ko" vs "ko-kmr"); {@link resolveDefaultSlug} matches exactly.
  */
 export type WatchPreferences = {
   /** Preferred dub language slug, or null to use the resolution fallback. */
@@ -38,8 +36,7 @@ function normalizeSlug(value: unknown): string | null {
 /**
  * Parse a persisted preferences blob into a type-safe object. Tolerant: any
  * null/malformed/partial payload yields defaults so a bad write or schema change
- * never throws or wedges the watch screen. An older bcp47-keyed blob reads back
- * as defaults — the user re-picks once.
+ * never throws. An older bcp47-keyed blob reads back as defaults; user re-picks once.
  */
 export function parseStoredPreferences(raw: string | null): WatchPreferences {
   if (!raw) return { ...DEFAULT_WATCH_PREFERENCES }

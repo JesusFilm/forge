@@ -325,10 +325,9 @@ export default function HomeScreen() {
     )
   }
 
-  // ── Content ── Non-focusable backdrop sits behind ONE ScrollView whose sticky
-  // first child is the top bar: tvOS focus can't cross a parent-View boundary, so
-  // tab↔rail traversal needs them as siblings in one scroll container (R14/AE6).
-  // Fallback if flaky: TVFocusGuideView destinations (tv-focus-driven-hero-patterns-20260420.md §3).
+  // ── Content ── Non-focusable backdrop behind ONE ScrollView whose sticky first child is
+  // the top bar: tvOS focus can't cross a parent-View boundary, so tab↔rail traversal needs
+  // them as siblings in one scroll container (R14/AE6). Fallback if flaky: TVFocusGuideView destinations (tv-focus-driven-hero-patterns-20260420.md §3).
   return (
     <View style={styles.screen}>
       <HomeBackdrop card={showcase.current} browseState={browseState} />
@@ -355,11 +354,9 @@ export default function HomeScreen() {
       >
         <View>{topBar}</View>
 
-        {/* Focusable hero carousel; section rails stay at rowIndex 1..n. The guide
-            bridges D-pad DOWN from the centered top bar tabs into the left-anchored
-            hero CTA — geometry falls through to the first rail otherwise, and
-            nextFocusDown can't fix it (sticky-header children drop nextFocus hints;
-            see MissionSection's offset-focus bridge). */}
+        {/* Focusable hero carousel; section rails stay at rowIndex 1..n. The guide bridges
+            D-pad DOWN from the centered top bar tabs into the left-anchored hero CTA — geometry
+            falls through to the first rail otherwise, and nextFocusDown can't fix it (sticky-header children drop nextFocus hints; see MissionSection's offset-focus bridge). */}
         <View onLayout={rowLayoutHandlers[0]}>
           <TVFocusGuideView
             autoFocus

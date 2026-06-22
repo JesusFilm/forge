@@ -1,13 +1,6 @@
-// Video-details "Inline pills" row (Claude Design handoff): Play + secondary
-// actions in ONE left-aligned row under the title so the D-pad travels left→right
-// — [Play] [Language] [Subtitles] [Share] [Download]. WATCH_THEME styling; the row
-// is a TVFocusGuideView (autoFocus) so focus returns here from the Up Next rail.
-//
-// Focus (R7): Play gets one-shot hasTVPreferredFocus on mount AND re-arms as the
-// restore target when the fullscreen overlay dismisses (visible → not-visible).
-// Play (R5): validate variant hls via validateStreamingUrl, then playVideo.
-// Share/Download (R18/R19): build + validate the URL, render only when valid;
-// pressing opens the QR LinkModal (the phone is the continuation surface).
+// Video-details inline pills row (Claude Design handoff): [Play] [Language] [Subtitles]
+// [Share] [Download] left-aligned under the title; WATCH_THEME, a TVFocusGuideView (autoFocus).
+// Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share/Download R18/R19 open the QR LinkModal.
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"

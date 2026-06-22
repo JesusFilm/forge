@@ -209,13 +209,9 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
 
 // ── Lean series-screen video fragment ──────────────────────────────
-// SYNC: mirrors apps/tv/src/lib/videoQueries.ts `seriesWatchVideoFragment`.
-// Leaner sibling of watchVideoFragment; DELIBERATELY OMITS two heavy selections
-// the series screen never reads: (1) the `parents→parent→children` sibling chain
-// (renders its grid from its OWN `children`; ~208 nodes/~190KB/~1.6s); (2) each
-// dub's `duration` + `muxVideo.playbackId` player fields (~2,270 dubs multiply).
-// childDubLanguages aggregation is a known-slow admin resolver pending a
-// composite index — see the hand-off note in docs/.
+// SYNC: mirrors apps/tv/src/lib/videoQueries.ts `seriesWatchVideoFragment`. Leaner sibling of
+// watchVideoFragment; OMITS the `parents→parent→children` sibling chain (grid uses OWN `children`)
+// + each dub's `duration`/`muxVideo.playbackId`. childDubLanguages: slow admin resolver pending a composite index (hand-off note in docs/).
 export const seriesWatchVideoFragment = adminGraphql(`
   fragment SeriesWatchVideo on Video @_unmask {
     documentId: id
@@ -275,11 +271,9 @@ export const seriesWatchVideoFragment = adminGraphql(`
 `)
 
 // ── Series detail query ─────────────────────────────────────────────
-// Adds two things the single-video query lacks: (1) the series' OWN `children`
-// (episode grid; distinct from `parents.parent.children` siblings); (2)
-// `childDubLanguages`, the aggregated episode-language union driving the sheet.
-// Uses the lean `seriesWatchVideoFragment`, NOT `watchVideoFragment`. These
-// operation-level selections need no admin schema change (gql.tada infers types).
+// Adds over the single-video query: the series' OWN `children` (episode grid, distinct
+// from `parents.parent.children` siblings) + `childDubLanguages` (aggregated episode-language
+// union driving the sheet). Uses lean `seriesWatchVideoFragment`, NOT `watchVideoFragment`.
 export const GET_SERIES_BY_SLUG = adminGraphql(
   `
     query GetSeriesBySlug($locale: String!, $slug: String!) {
@@ -361,11 +355,9 @@ export const GET_VIDEO_DUB = adminGraphql(
 export type WatchDubData = AdminResultOf<typeof GET_VIDEO_DUB>
 
 // ── Watch Home bulk query (card-lean by design) ─────────────────────
-// Web's WatchHomeVideo fragment MINUS `variants: dubs`: the ~30-id bulk fetch
-// includes the JESUS film whose ~2,259 dubs re-create the 9.5MB incident (KTD-2).
-// Hero resolves HLS lazily per slide (useHeroStream). NEVER add `dubs` here —
-// watchHomeQueries.test.ts guards it. Shape must satisfy WatchHomeVideoInput in
-// src/lib/watchHome/model.ts.
+// Web's WatchHomeVideo fragment MINUS `variants: dubs`: the ~30-id bulk fetch includes the
+// JESUS film whose ~2,259 dubs re-create the 9.5MB incident (KTD-2). Hero resolves HLS lazily
+// (useHeroStream). NEVER add `dubs` — watchHomeQueries.test.ts guards it; shape must satisfy WatchHomeVideoInput in src/lib/watchHome/model.ts.
 export const watchHomeVideoFragment = adminGraphql(`
   fragment WatchHomeVideo on Video @_unmask {
     documentId: id

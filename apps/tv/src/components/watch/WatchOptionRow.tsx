@@ -1,8 +1,6 @@
-// One row in the Audio Language / Subtitles sheets: leading glyph, label (+
-// optional native-name note), trailing red check on the active row; focus inverts
-// to white fill / near-black ink via useFocusAnimation (same as the pills).
-// States: selected (red check), disabled (inert muted "Unavailable", D-pad skips
-// it), default (focusable, white-fill-on-focus).
+// One row in the Audio Language / Subtitles sheets: leading glyph, label (+ optional
+// native-name note), trailing red check on the active row; focus inverts to white fill /
+// near-black ink via useFocusAnimation. States: selected, disabled (inert), default.
 
 import { useMemo } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"

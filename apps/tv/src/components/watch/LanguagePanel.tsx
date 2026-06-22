@@ -1,7 +1,6 @@
-// On-page dub picker (R8, R13). VIRTUALIZED: JESUS has ~2,259 Animated rows, so
-// getItemLayout + initialScrollIndex open AT the active dub (lets hasTVPreferredFocus
-// land — tvOS ignores it on unmounted rows). Unplayable dubs (`hls` null/empty) render
-// DISABLED + non-focusable (panelState.ts); Close stays focusable so nobody's trapped.
+// On-page dub picker (R8, R13). VIRTUALIZED: JESUS's ~2,259 Animated rows, so
+// getItemLayout + initialScrollIndex open AT the active dub (lets hasTVPreferredFocus land
+// — tvOS ignores it on unmounted rows). Unplayable dubs render DISABLED (panelState.ts).
 
 import { useMemo } from "react"
 import { FlatList, Modal, Text, View } from "react-native"

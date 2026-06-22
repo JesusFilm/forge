@@ -19,8 +19,7 @@ import { useWatchPreferences } from "./WatchPreferencesProvider"
 /**
  * Shared selection state for the series detail screen and its language sheet.
  * The sheet is a separate formSheet route (no props), so both read/write the
- * language through context — not nav params, which have bitten watch before.
- * Lightweight vs WatchSessionProvider: no per-dub downloads/subtitles/snackbar.
+ * language through context, not nav params. Lighter than WatchSessionProvider.
  */
 type SeriesSessionContextValue = {
   series: WatchVideoRecord | null
@@ -32,8 +31,7 @@ type SeriesSessionContextValue = {
   /**
    * Set the selected language; persists it as the app-wide audio preference so
    * it carries into a grid-opened episode (watch resolves its default dub from
-   * the same WatchPreferences slug). Deliberate trade-off: this changes default
-   * audio for later videos until changed again.
+   * the same WatchPreferences slug). Trade-off: changes default audio for later videos.
    */
   setSelectedLanguageSlug: (slug: string) => void
 }

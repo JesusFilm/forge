@@ -1,9 +1,6 @@
-// Home's top chrome (brandmark · centered Search/Home tabs · clock); replaces
-// HomeHeader/SearchChip on Home only. Sticky first child of the ScrollView in
-// normal flex flow — never position:absolute on focusables (tvOS focus engine
-// skips them). Hides (opacity 0, translateY -18, ~400ms, tabs unfocusable) while
-// focus is deep in the feed.
-// TODO: add Collections / Saved tabs when those screens ship.
+// Home's top chrome (brandmark · centered Search/Home tabs · clock); replaces HomeHeader/SearchChip on Home only.
+// Sticky first child of the ScrollView in normal flex flow — never position:absolute on focusables (tvOS focus engine skips them).
+// Hides (opacity 0, translateY -18, ~400ms) while deep in the feed. TODO: add Collections / Saved tabs when those screens ship.
 
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
@@ -43,12 +40,9 @@ type HomeTopBarProps = {
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
   /**
-   * Receives the Search tab's native node so the hero/featured rail can wire it
-   * as `nextFocusUp` (the centered bar doesn't overlap the left-anchored hero
-   * buttons, so D-pad up needs an explicit destination). The reverse (Down to
-   * hero) is NOT wired here: `nextFocusDown` on these tabs is dropped because
-   * they live in the sticky header (re-parented children lose nextFocus hints);
-   * the hero owns that bridge via TVFocusGuideView — see app/index.tsx.
+   * Receives the Search tab's native node so the hero/featured rail can wire it as `nextFocusUp`
+   * (centered bar doesn't overlap the left-anchored hero buttons). The reverse (Down to hero) is NOT
+   * wired here: `nextFocusDown` on sticky-header tabs is dropped; the hero owns that bridge via TVFocusGuideView — see app/index.tsx.
    */
   onSearchTabNode?: (node: ViewType | null) => void
 }

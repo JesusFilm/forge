@@ -1,9 +1,7 @@
 /**
- * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (ported from
- * apps/web/src/lib/watch-home.ts) — sync obligation in ./config.ts. TV cuts on
- * top of mobile's: no carousel/pager (hero pool surfaces as `model.featured`),
- * no playbackId on cards (streams resolve lazily; 9.5MB lean-bulk rule),
- * time-of-day title from an INJECTED Date. Pure TS — no React imports.
+ * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (ported from apps/web/src/lib/watch-home.ts)
+ * — sync obligation in ./config.ts. TV cuts: no carousel/pager (hero → `model.featured`), no
+ * playbackId on cards (lazy streams; 9.5MB lean-bulk), time-of-day title from an INJECTED Date. Pure TS.
  */
 
 import {
@@ -170,8 +168,7 @@ function buildMetaLabel(args: {
 /**
  * Featured rail title for an injected clock (ALWAYS a param — consumers
  * re-evaluate on focus; model never reads Date.now()). Boundaries: morning
- * <12:00, afternoon <17:00, evening otherwise — TV totalizes (rail always
- * needs a label) where web only pins the 17:00 afternoon→evening edge.
+ * <12:00, afternoon <17:00, evening otherwise (web only pins the 17:00 edge).
  */
 export function resolveFeaturedTitle(
   config: Pick<WatchHomeFeaturedRailConfig, "title" | "titleVariants">,

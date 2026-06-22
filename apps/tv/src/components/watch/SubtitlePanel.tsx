@@ -1,7 +1,6 @@
 // On-page subtitle picker (R9, R13). Fetches the active dub's lazy media on open
-// (GET_VIDEO_DUB) and renders loading/error/empty/list states; "Subtitles off"
-// and Close stay focusable in EVERY state so the viewer is never trapped. The
-// media-state → UI-state mapping lives in panelState.ts (jest-expo can't load .tsx).
+// (GET_VIDEO_DUB), renders loading/error/empty/list states; "Subtitles off" and
+// Close stay focusable in EVERY state. Media→UI mapping lives in panelState.ts (jest-expo can't load .tsx).
 
 import { useEffect } from "react"
 import { Modal, ScrollView, Text, View } from "react-native"

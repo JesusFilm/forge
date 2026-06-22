@@ -139,27 +139,18 @@ export function buildActionRow(isShifted: boolean): KeyCell[] {
 }
 
 /**
- * Flat key list for the single-line (Apple TV) keyboard: the 26 letters in the
- * active case, then the action keys (shift · space · delete · submit). Reuses
- * buildLetterRows + buildActionRow so the linear and grid keyboards stay in
- * lockstep — same cells, same ids, same reducer (applyKey).
+ * Flat key list for the single-line (Apple TV) keyboard: 26 letters in the
+ * active case, then action keys (shift · space · delete · submit). Reuses
+ * buildLetterRows + buildActionRow so linear/grid stay in lockstep (applyKey).
  */
 export function buildLinearKeys(isShifted: boolean): KeyCell[] {
   return [...buildLetterRows(isShifted).flat(), ...buildActionRow(isShifted)]
 }
 
 /**
- * Pure reducer for a key press over the current query string. Returns the
- * NEXT query value for value-mutating actions, or `null` when the action
- * doesn't change the value (submit, shift, or a guarded no-op).
- *
- *   - char:      appends action.char (already cased by buildLetterRows)
- *   - space:     appends " " ONLY when the query is non-empty (no leading
- *                space — a whitespace-only query would flip the results
- *                region to the idle browse grid); no-op (null) on empty
- *   - backspace: drops the last char; no-op (null) on empty
- *   - submit:    no value change (null) — caller fires onSubmit
- *   - shift:     no value change (null) — caller toggles keyboard case state
+ * Pure reducer for a key press over the query string. Returns the NEXT value
+ * (char appends; space appends only when non-empty so a whitespace-only query
+ * doesn't flip to browse; backspace drops last), or `null` for no-ops.
  */
 export function applyKey(value: string, action: KeyAction): string | null {
   switch (action.kind) {

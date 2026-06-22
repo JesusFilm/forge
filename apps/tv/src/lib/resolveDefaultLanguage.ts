@@ -1,8 +1,6 @@
-// SYNC: keep in sync with apps/mobile/src/lib/resolveDefaultLanguage.ts
-//
-// Resolves the default audio dub. TV v1 has no persisted preference yet, but
-// `preferredLanguageSlug` stays wired for when persistence lands and to keep the
-// priority chain matching mobile's.
+// SYNC: keep in sync with apps/mobile/src/lib/resolveDefaultLanguage.ts.
+// Resolves the default audio dub; TV v1 has no persisted preference yet, but
+// `preferredLanguageSlug` stays wired for when persistence lands, matching mobile's priority chain.
 
 type LanguageOption = {
   slug: string
@@ -35,10 +33,9 @@ function matchByBcp47Prefix(
 }
 
 /**
- * Resolve the best default language. Priority: preference → device locale →
- * video primary → English → first option. `preferredLanguageSlug` matches EXACTLY
- * on `languageSlug`, never bcp47 prefix (prefixes collide: ko vs ko-kmr, en vs
- * en-nai). Soft: no match falls through the chain so videos lacking it still default.
+ * Resolve the best default language: preference → device locale → video primary
+ * → English → first. `preferredLanguageSlug` matches EXACTLY on `languageSlug`,
+ * never bcp47 prefix (prefixes collide: ko vs ko-kmr, en vs en-nai); soft fall-through.
  */
 export function resolveDefaultSlug(
   options: LanguageOption[],

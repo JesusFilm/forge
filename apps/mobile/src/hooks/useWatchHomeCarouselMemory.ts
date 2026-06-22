@@ -37,12 +37,8 @@ export type WatchHomeCarouselMemory = {
 
 /**
  * Cross-restart memory for the Home hero carousel — AsyncStorage replacement for
- * web's browser-storage layer (closes KTD-3): played ids (reset monthly) exclude
- * seen videos; the active slide's pool position is the resume point (expires 24h).
- *
- * Keeps the pure sequencing module storage-free (it takes playedIds/startPoolIndex
- * as caller inputs; this hook owns them). Storage failures degrade to empty state
- * — the carousel still rotates, just repeats sooner.
+ * web's browser-storage (closes KTD-3): played ids (reset monthly) exclude seen
+ * videos; the active slide's pool position is the resume point (expires 24h).
  */
 export function useWatchHomeCarouselMemory(): WatchHomeCarouselMemory {
   const playedIdsRef = useRef<Set<string>>(new Set())

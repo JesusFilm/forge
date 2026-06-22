@@ -1,14 +1,6 @@
-// Screen-level hero pager: artwork page-flips (slides in from the entering side)
-// while copy crossfades in a separate layer. Sits above HomeBackdrop and below
-// the ScrollView so the pinned action row stays on top; fades out (`visible`)
-// when a rail is focused so the backdrop's rail-card art shows.
-//
-// Artwork is a two-cell ring: front rests at translateX 0, back parks off-screen
-// on the entering side, then paints/loads/slides over and flips front in the
-// same frame so no frame shows old art. Advances are SERIALIZED — a mid-slide
-// press chains to the latest index on commit (coalescing skipped slides) so
-// rapid paging never snaps mid-travel; a generation counter guards stale commits
-// and everything is cancelled on unmount.
+// Screen-level hero pager: artwork page-flips while copy crossfades separately.
+// Sits above HomeBackdrop, below the ScrollView; fades out (`visible`) when a
+// rail is focused. Two-cell ring; advances SERIALIZED + generation-guarded.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Image } from "expo-image"
@@ -324,10 +316,8 @@ function HeroArtworkCell({
 }
 
 // Hero copy as a TRUE crossfade: two stacked cells swap opacities so copy is
-// never blank (a through-blank dissolve reads as vanishing text and thrashes to
-// 0 under rapid paging). Serialized like the artwork — a mid-crossfade change
-// chains to the latest on completion, coalescing fast scrubs. Sits above the
-// artwork at hero-copy geometry where the pinned action row expects it.
+// never blank (a through-blank dissolve reads as vanishing text). Serialized
+// like the artwork — a mid-crossfade change chains to the latest on completion.
 function HeroCopyLayer({ card }: { card: Slot }) {
   const [slots, setSlots] = useState<[Slot, Slot]>([card, null])
   const slotsRef = useRef<[Slot, Slot]>([card, null])

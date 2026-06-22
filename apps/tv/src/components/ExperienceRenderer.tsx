@@ -30,10 +30,9 @@ type Props = {
   /** Experience slug to load via the public experienceBySlug query. */
   slug: string
   /**
-   * Optional STICKY first child of the ScrollView (home's nav header). Must
-   * stay inside the same ScrollView: tvOS focus can't cross a parent-View
-   * boundary, so a sibling header makes D-pad-up a no-op (proven empirically;
-   * see docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md).
+   * Optional STICKY first child of the ScrollView (home's nav header). Must stay
+   * inside the same ScrollView: tvOS focus can't cross a parent-View boundary, so
+   * a sibling header makes D-pad-up a no-op (docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md).
    */
   header?: ReactNode
 }

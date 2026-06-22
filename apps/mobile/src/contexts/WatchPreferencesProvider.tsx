@@ -18,13 +18,9 @@ import {
 } from "../lib/watchPreferences"
 
 /**
- * App-wide watch preferences (dub language, subtitle language, subtitles on/off).
- * Lives at root layout (not the watch route) so a choice survives leaving watch
- * (which unmounts WatchSessionProvider) and app restart; WatchSessionProvider
- * reads these as top-priority default and writes them back on pick.
- *
- * Mirrors {@link ExperienceSelectionProvider}: async read on mount gated by
- * `isReady`, best-effort writes that never block the UI.
+ * App-wide watch preferences (dub/subtitle language, subtitles on/off). Lives at
+ * root layout so a choice survives leaving watch (unmounts WatchSessionProvider)
+ * + app restart. Mirrors {@link ExperienceSelectionProvider}: best-effort async.
  */
 type WatchPreferencesContextValue = WatchPreferences & {
   setPreferredAudioLanguage: (slug: string | null) => void

@@ -1,9 +1,7 @@
 /**
  * SAFE construction of local paths for offline media/subtitles/posters. Slug and
- * rendition documentId come from admin data, so every dynamic segment is
- * sanitized (separators, `..`, control bytes) BEFORE concatenation — a file can
- * never escape the offline root. Pure path helpers only; the filesystem I/O they
- * support ships with the native download engine, not this unit-tested layer.
+ * rendition documentId come from admin data, so every dynamic segment is sanitized
+ * (separators, `..`, control bytes) BEFORE concatenation — never escapes the root.
  */
 
 /**

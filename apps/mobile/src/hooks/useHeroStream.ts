@@ -6,9 +6,8 @@ import { HOME_LOCALE } from "../lib/watchHome/config"
 import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
 
 // Stream-resolution path (KTD-2 lazy half): the bulk home query is card-lean,
-// so hero slides carry no stream. GET_VIDEO_BY_SLUG still projects the dub list
-// (lean trim only dropped downloads + subtitles), so one cache-first per-video
-// query yields a playable HLS — the same source /watch plays, warming its cache.
+// so hero slides carry no stream. GET_VIDEO_BY_SLUG still projects the dub list,
+// so one cache-first per-video query yields a playable HLS (the source /watch plays).
 
 export type HeroStreamState = {
   streamUrl: string | null

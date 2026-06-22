@@ -1,15 +1,9 @@
 import { NativeModules, TurboModuleRegistry } from "react-native"
 
 /**
- * AsyncStorage wrapper with an in-memory fallback for when the native module
- * isn't linked (dev client built before the package was added). A static import
- * would crash the whole bundle; the fallback keeps the app working (recents just
- * don't persist) and transparently returns real AsyncStorage post-rebuild.
- *
- * The require is gated behind a NativeModules pre-check (not just try/catch):
- * Metro dispatches the package's synchronous top-level throw to RN's global error
- * handler BEFORE the JS catch runs, so the require must be avoided entirely to
- * keep the dev red-box overlay quiet.
+ * AsyncStorage wrapper with an in-memory fallback when the native module isn't
+ * linked. The require is gated behind a NativeModules pre-check (not just try/catch):
+ * Metro dispatches the top-level throw to RN's global error handler before JS catch.
  */
 
 export type StorageBackend = {

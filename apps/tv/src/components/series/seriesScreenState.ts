@@ -64,19 +64,9 @@ export function pickDefaultTrailer<
 export type LeafBounceDecision = "render" | "bounce" | "pending"
 
 /**
- * Should a /series deep-link bounce to /watch? Uses the same isSeriesRecord
- * predicate as the watch route's redirect (U5), both replace, so the seams
- * can't disagree and loop. `hasSeriesSelection` is the completeness signal:
- * the RAW object's series-only `childDubLanguages` key, present only once the
- * series query answered. Needed because a warm watch-fragment partial reads
- * back with a label and loading=false (cache-first + returnPartialData), so a
- * labeled-with-children series (e.g. FEATURE_FILM, 49 episodes) looks
- * leaf-shaped and the once-guarded replace would eject it unrecoverably.
- * - "render": series-shaped (label or episodes); shape is only gained, never
- *   lost, so this wins regardless of completeness.
- * - "bounce": non-series-shaped once the series query answered — only then is
- *   "no label, no episodes" a real leaf, not pending children.
- * - "pending": no record, or a partial that may still gain episodes/label.
+ * Should a /series deep-link bounce to /watch? Same isSeriesRecord predicate as the
+ * watch redirect (U5), both replace, so seams can't loop. "render": series-shaped;
+ * "bounce": leaf once `hasSeriesSelection` (the completeness signal that avoids ejecting a warm-cache partial reading leaf-shaped but still gaining children); else "pending".
  */
 export function resolveLeafBounce(
   record:

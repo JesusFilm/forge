@@ -1,8 +1,7 @@
 /**
- * Pure seek/scrubber math, no react-native imports so it's unit-testable
- * (the component's gesture handling is verified in-simulator). Every helper
- * guards on usable duration: expo-video HLS reports 0/NaN until `sourceLoad`,
- * so an unguarded seek would snap to 0 and progress math would render NaN.
+ * Pure seek/scrubber math, no react-native imports so it's unit-testable. Every
+ * helper guards on usable duration: expo-video HLS reports 0/NaN until
+ * `sourceLoad`, so an unguarded seek would snap to 0 and progress render NaN.
  */
 
 export function clamp(value: number, min: number, max: number): number {

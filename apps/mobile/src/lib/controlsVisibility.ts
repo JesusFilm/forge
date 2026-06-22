@@ -1,20 +1,7 @@
 /**
- * Pure transition table for the auto-hiding video chrome, so the fade-race
- * invariants are unit-testable without the RN runtime (the imperative hook
- * `useControlsVisibility` runs the side effects; verified in simulator, R19).
- *
- * `visible` is logical ground truth; `mounted` keeps the chrome in the tree.
- * They diverge during a fade: hidden the instant hide starts, still mounted
- * until the fade finishes.
- *
- * Invariants (bugs ce-code-review #7 fixed):
- *  - `hideStart`: logically hidden NOW, still mounted for the fade, so a tap
- *    mid-fade reads "hidden" → `reveal` instead of falling into a hide it
- *    should have cancelled.
- *  - `hideDone`: unmount ONLY if still hidden — a mid-fade `reveal` flips
- *    `visible` true, making completion stale (must leave chrome mounted).
- *  - `reveal` (tap-while-hidden, interaction, buffering, screen-reader, resume):
- *    always visible + mounted, cancelling any pending hide.
+ * Pure fade-race transition table for the auto-hiding video chrome, unit-testable
+ * without the RN runtime (hook `useControlsVisibility` runs side effects; R19).
+ * Invariants (ce-code-review #7): `mounted` keeps chrome mid-fade so taps reveal, `hideDone` unmounts only if still hidden, `reveal` always re-mounts.
  */
 export type ControlsState = { visible: boolean; mounted: boolean }
 

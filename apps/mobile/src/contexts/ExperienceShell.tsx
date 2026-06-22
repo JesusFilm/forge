@@ -1,9 +1,7 @@
 /**
- * ExperienceShell — wraps the root layout to provide Experience data to routes
- * that read it. Never blocks rendering: children + ExperienceProvider always
- * mount; with no selected slug the context is empty (Home/tabs don't depend on
- * it). First launch best-effort resolves the homepage via watchSetting; a null
- * or failed resolve is silent.
+ * ExperienceShell — wraps the root layout to provide Experience data to routes.
+ * Never blocks rendering: children + ExperienceProvider always mount; no slug ->
+ * empty context. First launch best-effort resolves the homepage via watchSetting.
  */
 import { useEffect, useRef, type ReactNode } from "react"
 import { useQuery } from "@apollo/client/react"

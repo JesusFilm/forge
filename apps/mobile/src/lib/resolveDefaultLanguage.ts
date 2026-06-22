@@ -29,12 +29,9 @@ function matchByBcp47Prefix(
 }
 
 /**
- * Resolve the best default language. Priority: user preference → device locale →
- * video primary language → English → first option. `preferredLanguageSlug` (last
- * chosen, persisted in {@link WatchPreferencesProvider}) matches EXACTLY on
- * `languageSlug`, never bcp47 prefix — prefixes collide across languages (ko vs
- * ko-kmr, en vs en-nai). It outranks the locale but is soft: no match falls
- * through the chain so a video lacking it still defaults sanely.
+ * Resolve the best default language: preference (persisted in {@link WatchPreferencesProvider})
+ * → device locale → video primary → English → first option. `preferredLanguageSlug` matches
+ * EXACTLY on `languageSlug`, never bcp47 prefix (ko/ko-kmr, en/en-nai collide); soft.
  */
 export function resolveDefaultSlug(
   options: LanguageOption[],

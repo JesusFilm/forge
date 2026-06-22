@@ -1,8 +1,7 @@
 /**
  * Empty-query category cards for SearchBrowse. Titles/searchTerms ported verbatim
  * from apps/web/src/lib/search-categories.ts — keep in sync. RN can't parse CSS
- * gradients, so colors are 2-stop arrays (rendered via expo-linear-gradient);
- * hex must match the web gradient stops exactly.
+ * gradients, so colors are 2-stop arrays; hex must match the web gradient stops.
  */
 
 export type SearchCategory = {

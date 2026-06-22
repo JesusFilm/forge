@@ -7,10 +7,9 @@ import { isSeriesLabel } from "./isSeriesRecord"
 export type WatchRedirectDecision = "stay" | "redirect" | "pending"
 
 /**
- * Should a /watch record redirect to /series? "redirect": SERIES/COLLECTION
- * label (label-ONLY here — lean fragment has no children signal). "stay": no
- * series label (accepted gap, mirrors mobile: unlabeled-with-children stays).
- * "pending": no record or in-flight — never redirect off partial cache data.
+ * Should a /watch record redirect to /series? "redirect": SERIES/COLLECTION label
+ * (label-ONLY — lean fragment has no children signal). "stay": no series label
+ * (mirrors mobile). "pending": no record or in-flight — never redirect off cache.
  */
 export function resolveWatchRedirect(
   record: { label: string | null } | null | undefined,

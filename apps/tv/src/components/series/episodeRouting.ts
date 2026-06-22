@@ -1,7 +1,6 @@
-// Pure (React-free, jest-testable) shape-based routing for an episode-rail card press (R5):
-// series-shaped → /series, else /watch. Label-only detection (cards lack childCount), so an
-// unlabeled nested collection routes to /watch and leans on the watch route's series redirect (U5).
-// Both targets carry an encoded seed (title+artwork, playbackId null) + selected lang slug (U4).
+// Pure (jest-testable) shape-based routing for an episode-rail card press (R5):
+// series-shaped → /series, else /watch. Label-only (cards lack childCount), so an unlabeled
+// collection routes to /watch + leans on the watch series redirect (U5). Both carry a seed (U4).
 
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { encodeWatchSeed } from "../../lib/watchSeed"

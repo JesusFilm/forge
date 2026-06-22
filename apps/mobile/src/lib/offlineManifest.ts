@@ -1,9 +1,7 @@
 /**
- * Pure, I/O-free shape + (de)serialization for one offline-download record and
- * the downloaded-videos index (`DownloadsProvider` does the AsyncStorage I/O).
- * SHARDED storage (one key per download + an index key) keeps each blob under the
- * ~2MB per-item cap. Records store STABLE IDENTITY (dub/rendition documentId,
- * subtitle slug), never volatile URLs, re-resolved via `videoDub(id)` per resume.
+ * Pure, I/O-free shape + (de)serialization for one offline-download record + the
+ * downloaded-videos index (`DownloadsProvider` does AsyncStorage I/O). SHARDED storage
+ * (one key per download + index) stays under the ~2MB cap; records store STABLE IDENTITY, never URLs, re-resolved via `videoDub(id)`.
  */
 
 export const OFFLINE_MANIFEST_VERSION = 1
@@ -103,8 +101,7 @@ function parseSwapFrom(value: unknown): SwapFrom | null {
 /**
  * Parse a stored record blob — tolerant (never throws) but STRICT about identity:
  * null when missing stable identity (videoSlug/dubDocumentId/renditionDocumentId),
- * an unknown state, or a stale schema version. Caller treats null as absent and
- * lets launch reconciliation clean up orphaned on-disk bytes.
+ * an unknown state, or a stale schema version. Caller treats null as absent.
  */
 export function parseOfflineRecord(
   raw: string | null,

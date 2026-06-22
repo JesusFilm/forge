@@ -1,7 +1,6 @@
-// Mux HLS URL helpers — playback id ↔ canonical HLS URL.
-// SYNC: mirrors apps/mobile/src/lib/muxThumbnail.ts. Split here (TV thumbnail
-// derivation lives in resolveImageUrl.ts) so a SearchResult.playbackId seed can
-// start playback before the full video query resolves.
+// Mux HLS URL helpers — playback id ↔ canonical HLS URL. SYNC: mirrors
+// apps/mobile/src/lib/muxThumbnail.ts (TV thumbnail lives in resolveImageUrl.ts), so a
+// SearchResult.playbackId seed can start playback before the full video query resolves.
 
 // Mux HLS URLs: https://stream.mux.com/{playbackId}.m3u8
 const MUX_STREAM_HOST = "stream.mux.com"

@@ -1,24 +1,14 @@
-// Pure, React-free decision logic for the overlay player's live dub-switch +
-// in-player menu gating (U7). Extracted to .ts so the source-swap/stale-session
-// decisions are unit-testable (jest-expo can't load .tsx); VideoPlayer.tsx is a
-// thin shell over these.
-//
-// NON-NEGOTIABLE INVARIANT — the no-session contract: experience-card playback
-// calls playVideo(url) with no watch session (video == null). In that path
-// inPlayerMenuVisible MUST be false, the desired source is the streamingUrl PROP
-// (no session activeVariant), and no subtitle/dub-switch logic engages. Every
-// new behavior is gated on inPlayerMenuVisible — true only when a session video
-// with variants exists AND the playing URL IS that session's active dub.
+// Pure, React-free logic for the overlay player's dub-switch + in-player menu
+// gating (U7), in .ts so source-swap/stale-session decisions stay testable.
+// INVARIANT (no-session contract): experience-card playVideo() has no session, so inPlayerMenuVisible MUST be false and no dub-switch engages.
 
 import { extractMuxPlaybackId } from "../../lib/muxUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 
 /**
- * Decide whether a source swap should reload the player: "noop" = same Mux
- * asset already loaded (keep playing), "replace" = different/unmatchable asset
- * (call replaceAsync). Compared by Mux playback id, not URL string, since the
- * same asset can have two URL strings (seed URL vs stored `hls`). `nextUrl`
- * must pass validateStreamingUrl — a tainted/non-Mux source returns "noop".
+ * Decide whether a source swap reloads the player: "noop" = same Mux asset, else
+ * "replace". Compared by Mux playback id (one asset can have two URLs: seed vs
+ * stored `hls`); `nextUrl` must pass validateStreamingUrl or returns "noop".
  */
 export function shouldReplaceSource(
   currentLoadedUrl: string | null | undefined,
@@ -38,11 +28,9 @@ export function shouldReplaceSource(
 }
 
 /**
- * Stale-session-safe gate for every session-driven overlay behavior (menu, live
- * dub-switch, subtitle layer). True ONLY when (1) sessionVideo is non-null, (2)
- * it has ≥1 variant, AND (3) currentUrl matches activeVariantHls by Mux playback
- * id. (3) is the stale-safety: a leftover session must NOT attach to an
- * experience-card play of an unrelated URL. No session → false.
+ * Stale-session-safe gate for session-driven overlay behavior (menu, dub-switch,
+ * subtitle). True ONLY when (1) sessionVideo non-null, (2) ≥1 variant, (3) currentUrl
+ * matches activeVariantHls by Mux id — (3) stops a leftover session attaching to an unrelated card play. No session → false.
  */
 export function inPlayerMenuVisible({
   sessionVideo,

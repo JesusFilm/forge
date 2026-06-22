@@ -1,9 +1,6 @@
-// Series-details screen (/series/[slug]), counterpart of /watch/[slug]: sanitized
-// seed paint + GET_SERIES_BY_SLUG (cache-first/returnPartialData); language (U4)
-// in SeriesLanguageProvider keyed by documentId, ACTIVE on focus; static
-// WATCH_THEME hero, no VideoView (tvOS decode slots — see
-// tv-backdrop-videoview-decoder-starvation). R1: a resolved leaf replace-bounces
-// ONCE to /watch via resolveLeafBounce (shares watch's isSeriesRecord predicate, U5).
+// Series-details screen (/series/[slug]), counterpart of /watch/[slug]: seed paint + GET_SERIES_BY_SLUG (cache-first/returnPartialData); language (U4) in SeriesLanguageProvider.
+// Static WATCH_THEME hero, no VideoView (tvOS decode slots, tv-backdrop-videoview-decoder-starvation).
+// R1: resolved leaf replace-bounces ONCE to /watch via resolveLeafBounce (shares watch's isSeriesRecord predicate, U5).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {

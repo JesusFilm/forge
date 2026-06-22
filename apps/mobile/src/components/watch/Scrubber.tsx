@@ -35,15 +35,8 @@ const HIT_HEIGHT = 44
 
 /**
  * Draggable seek bar (built-in PanResponder — gesture-handler is forbidden under Expo Go).
- *
- * Position uses an `Animated.Value` (0..1) updated via `setValue`, NOT state, so
- * a drag pushes straight to native without re-rendering this or the parent —
- * setState-per-frame janked the low-end Android targets (parent's preview
- * callback is throttled to whole seconds for the same reason).
- *
- * Fraction is gesture ABSOLUTE screen X minus the track's measured left edge,
- * not `nativeEvent.locationX` (relative to the child under the finger, so it
- * under-reports as the thumb moves); `measureInWindow` tracks origin/width across layout/rotation.
+ * Position uses an `Animated.Value` (0..1) via `setValue`, NOT state, so a drag pushes straight
+ * to native without re-rendering (setState-per-frame janked low-end Android); fraction is absolute screen X minus the track's left edge.
  */
 export function Scrubber({
   currentTime,

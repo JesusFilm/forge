@@ -132,11 +132,9 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
         />
       </View>
 
-      {/* Silent-focus target: full-bleed invisible Pressable catching D-pad UP
-          so the ScrollView scrolls the hero into view. Intentional deviation
-          from CLAUDE.md's "visible focus ring" rule — the hero stays static when
-          focused. `onPress` is a no-op (not undefined) so Select doesn't flash;
-          `android_ripple={null}` suppresses Android TV's press ripple. */}
+      {/* Silent-focus target: full-bleed invisible Pressable catching D-pad UP so the
+          ScrollView scrolls the hero into view. Intentional deviation from CLAUDE.md's
+          "visible focus ring" rule. `onPress` no-op (not undefined) so Select doesn't flash; `android_ripple={null}` kills Android TV ripple. */}
       <Pressable
         style={StyleSheet.absoluteFill}
         accessibilityLabel={heading ?? "Video hero"}

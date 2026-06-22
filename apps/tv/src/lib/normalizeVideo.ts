@@ -1,7 +1,6 @@
-// SYNC: ported from apps/mobile/src/lib/normalizeVideo.ts
-// Normalizes videoBySlug into a TV consumer record, WeakMap-memoized on the raw
-// ref so cache-first re-entry skips re-walking thousands of dubs. Siblings are
-// self-filtered + deduped so the rail is correct once KTD5's inverted admin relation is fixed.
+// SYNC: ported from apps/mobile/src/lib/normalizeVideo.ts. Normalizes videoBySlug into a
+// TV consumer record, WeakMap-memoized on the raw ref so cache-first re-entry skips re-walking
+// thousands of dubs. Siblings self-filtered + deduped, correct once KTD5's inverted admin relation is fixed.
 
 import type {
   WatchVideoData,

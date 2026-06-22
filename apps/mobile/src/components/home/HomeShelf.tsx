@@ -1,9 +1,7 @@
 /**
  * One curated Home section as a horizontal shelf. Both `layout: "rail" | "grid"`
- * render as shelves (grid doesn't fit the vertical feed); `orientation ===
- * "vertical"` selects portrait (3:4) cards, else landscape (16:9). Header is
- * eyebrow + title only (description skipped to keep shelves tight). No
- * background — the renderItem wrapper owns the translucent per-item background.
+ * render as shelves; `orientation === "vertical"` selects portrait (3:4) cards,
+ * else landscape (16:9). Header is eyebrow + title only.
  */
 import { memo, useCallback } from "react"
 import {

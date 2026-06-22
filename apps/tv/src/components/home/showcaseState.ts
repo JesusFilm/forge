@@ -1,8 +1,6 @@
-// Pure state for the Home screen's Focus-Driven Showcase (R10/R11). React-free
-// .ts so it's unit-testable under jest-expo (can't load .tsx). The ~150ms
-// trailing debounce on focus commits lives component-side via
-// createShowcaseFocusDebouncer (committing per micro-focus event thrashes
-// during fast D-pad traversal — tv-focus-driven-hero-patterns-20260420.md §4).
+// Pure state for the Home screen's Focus-Driven Showcase (R10/R11). React-free .ts
+// so it's unit-testable under jest-expo. The ~150ms trailing focus-commit debounce
+// lives component-side via createShowcaseFocusDebouncer (per-micro-focus thrashes during fast D-pad traversal — tv-focus-driven-hero-patterns-20260420.md §4).
 
 import type { WatchHomeCard, WatchHomeModel } from "../../lib/watchHome/model"
 

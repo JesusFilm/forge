@@ -9,11 +9,9 @@ try {
 }
 
 /**
- * The package's own plugin injects handleEventsForBackgroundURLSession before
- * the file's last brace, landing it in ReactNativeDelegate not the real
- * AppDelegate — so backgrounded downloads never notify JS and stick on
- * "downloading". This relocates it onto AppDelegate as a public override func.
- * Register AFTER the package plugin in app.json so it runs on the injected file.
+ * The package's own plugin injects handleEventsForBackgroundURLSession into
+ * ReactNativeDelegate not the real AppDelegate — so backgrounded downloads stick
+ * on "downloading". This relocates it; register AFTER the package plugin in app.json.
  */
 
 const METHOD = `

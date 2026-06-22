@@ -6,11 +6,8 @@ export type HomeScreenState = "loading" | "error" | "empty" | "content"
 
 /**
  * Which of the four states renders. Mirrors series resolveScreenState (R16):
- * error ONLY when fetch failed AND nothing renderable, so a stale model beats
- * error and a retrying fetch shows the spinner, not "No content available".
- * Branch order: a model wins once it exists (>=1 card -> content, 0 -> empty);
- * with no model, loading (fetch in flight) beats error (failed, not retrying)
- * beats empty (idle).
+ * a model wins once it exists (>=1 card -> content, 0 -> empty); with no model,
+ * loading (fetch in flight) beats error (failed) beats empty (idle).
  */
 export function resolveHomeScreenState(input: {
   model: {

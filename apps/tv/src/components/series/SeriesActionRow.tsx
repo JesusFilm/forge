@@ -1,9 +1,6 @@
-// Series action row (R7): [Play Trailer] [Language] in a left-aligned autoFocus
-// TVFocusGuideView. Play Trailer renders only when a playable trailer dub
-// resolved, and plays via playVideo with NO setVideo/session — the no-session
-// invariant (useSessionPlayback.ts) keeps the overlay player chrome-free;
-// language changes happen here. Focus: one-shot hasTVPreferredFocus on the first
-// pill, re-armed on mount, on overlay dismiss, and on refocusKey bump (U4).
+// Series action row (R7): [Play Trailer] [Language] in an autoFocus TVFocusGuideView.
+// Play Trailer shows only when a trailer dub resolved, plays via playVideo with NO
+// setVideo/session (no-session invariant in useSessionPlayback.ts); focus re-arms on refocusKey (U4).
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text } from "react-native"

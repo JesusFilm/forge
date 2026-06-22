@@ -13,9 +13,7 @@ import { sanitizeSegment } from "./offlineFiles"
 /**
  * Filesystem I/O for offline downloads (expo-file-system legacy). Split from the
  * pure `offlineFiles` path builders so those stay unit-testable; all ops here are
- * best-effort and never throw (a failure must not crash boot or the UI). Offline
- * root lives under the persistent document directory; OS-backup exclusion is the
- * download module's config plugin on media files, not this layer.
+ * best-effort and never throw. Root lives under the persistent document directory.
  */
 
 /** Persistent offline-download root (document directory ends with a slash). */

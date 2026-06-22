@@ -57,10 +57,9 @@ function requestTVFocus(node: ViewType | null): void {
 }
 
 /**
- * Invisible over-hang catcher in the rail's empty right columns. A vertical
- * move landing here bounces focus to the last REAL card via requestTVFocus()
- * (same-rail move works where cross-FlatList nextFocus doesn't). Inert (emits
- * no card/row focus) and non-focusable until the target node is known.
+ * Invisible over-hang catcher in the rail's empty right columns. A vertical move landing here bounces
+ * focus to the last REAL card via requestTVFocus() (same-rail move works where cross-FlatList nextFocus
+ * doesn't). Inert (emits no card/row focus) and non-focusable until the target node is known.
  */
 const RailPad = memo(function RailPad({
   targetNode,
@@ -187,10 +186,9 @@ export const HomeRail = memo(function HomeRail({
         </Text>
       </View>
 
-      {/* autoFocus restores the LAST-focused card on re-entry; parent gates it
-          off when source focus is a rail below (keeps column-preserving geometry).
-          Short-rail skips are handled by RailPad cards, not the guide. extraData
-          forces the pads to re-render once the bounce target is captured. */}
+      {/* autoFocus restores the LAST-focused card on re-entry; parent gates it off when source focus
+          is a rail below (keeps column-preserving geometry). Short-rail skips are handled by RailPad
+          cards, not the guide. extraData forces the pads to re-render once the bounce target is captured. */}
       <TVFocusGuideView autoFocus={restoreLastFocus}>
         <FlatList
           data={items}

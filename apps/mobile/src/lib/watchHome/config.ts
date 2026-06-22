@@ -1,9 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts — mirror any web
- * curation change (sections, playlist sequence, hero sources, mux inserts,
- * blacklist) here until feat-160 moves curation into admin and deletes this.
- * Siblings: watch-home.ts -> ./model.ts; watch-home-carousel-sequence.ts ->
- * ./carouselSequence.ts.
+ * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts — mirror any web curation
+ * change (sections, playlist sequence, hero sources, mux inserts, blacklist) here
+ * until feat-160 moves curation into admin. Siblings: watch-home.ts -> ./model.ts; watch-home-carousel-sequence.ts -> ./carouselSequence.ts.
  */
 
 // The hardcoded home locale pair (KTD-7): query locale + language identity, keyed on languageSlug, never bcp47.

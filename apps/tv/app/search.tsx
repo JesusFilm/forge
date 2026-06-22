@@ -20,26 +20,9 @@ import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
- * /search route — TV search surface, redesigned to the "Forge TV Home"
- * search-layer mockup. The layout varies by TV platform:
- *
- *   - Apple TV (Platform.OS === "ios"): a single-line keyboard at the top
- *     (SearchKeyboardLinear) with results stacked full-width below it — the
- *     native tvOS "swipe along the line" search idiom.
- *   - Android TV (Platform.OS === "android"): the grid keyboard on the left
- *     (SearchKeyboard) with results in a narrower pane on the right.
- *
- * Both share the query line (big type + blinking caret) at the top and the
- * results region (SearchResultsGrid when the query is non-empty, SearchBrowse —
- * Recent + Categories — when it's empty).
- *
- * SearchScreen owns `query` state and routes all writes through sanitizeQuery so
- * the backend never sees control chars, RTL overrides, or anything beyond 256
- * chars. useSemanticSearch handles debounce, stale-guard, and the state machine.
- *
- * The native tvOS UISearchController is intentionally NOT used: a real-device
- * spike (2026-06-22) proved react-native-screens headerSearchBarOptions crashes
- * on tvOS at mount. See docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
+ * /search route — Apple TV (Platform.OS "ios") = top linear keyboard + full-width
+ * results; Android TV = left grid keyboard + right pane. Native tvOS UISearchController
+ * NOT used (2026-06-22 spike: crashes at mount). See docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -129,8 +112,7 @@ type SearchBodyProps = {
 /**
  * Meta line + results region, shared by both bodies. Renders the results grid
  * when there is a query, else the idle browse grid. `columns` is forwarded to
- * SearchResultsGrid (the two-pane layout passes a fixed count for its narrower
- * pane; the stacked layout omits it to use the responsive full-width default).
+ * SearchResultsGrid (two-pane passes a fixed count; stacked omits it for full-width).
  */
 function SearchResultsPane({
   state,
@@ -204,17 +186,13 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
 
 /**
  * Apple TV body: single-line keyboard on top, results stacked full-width below.
- * `columns` is omitted so SearchResultsGrid uses its responsive full-width
- * default (4 columns at ≤2880dp, 6 above). Down from the keyboard drops into
- * the results region (the keyboard does not trap focus downward).
+ * `columns` omitted so SearchResultsGrid uses its responsive default (4 cols at
+ * ≤2880dp, 6 above). Down from the keyboard drops into results (no focus trap).
  */
 function SearchBodyStacked(props: SearchBodyProps) {
-  // The keyboard sits ABOVE a vertically-scrolling results grid here, so
-  // D-pad-up out of the grid's top row must reach the keyboard. tvOS swallows
-  // that along-scroll-axis exit while the grid is still decelerating, so we
-  // give the grid's top row an explicit `nextFocusUp` target: the keyboard's
-  // first key node, captured ref-as-state. (The two-pane body needs none of
-  // this — there the keyboard is to the LEFT, a cross-axis escape.)
+  // Keyboard sits ABOVE a scrolling results grid, but tvOS swallows D-pad-up out
+  // of the top row while the grid decelerates. So give the top row an explicit
+  // `nextFocusUp`: the keyboard's first key node (two-pane needs none — keyboard is LEFT).
   const [keyboardLandingNode, setKeyboardLandingNode] =
     useState<ViewType | null>(null)
   return (

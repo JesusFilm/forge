@@ -8,8 +8,7 @@ const BRIGHT = 1
 /**
  * Looping opacity that fades a skeleton in/out ("still loading", not "failed").
  * Fabric gotchas: loop a single 0→1 timing + interpolate (a looped
- * Animated.sequence freezes after one pulse); useNativeDriver (JS driver won't
- * update views here). Unconditional — functional feedback, not reduce-motion gated.
+ * Animated.sequence freezes after one pulse); useNativeDriver (JS driver won't update).
  */
 export function useShimmerOpacity(): Animated.AnimatedInterpolation<number> {
   const progress = useRef(new Animated.Value(0)).current

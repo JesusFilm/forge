@@ -1,7 +1,6 @@
 // Below-fold horizontal D-pad rail of the series' children (U3). Routes by shape
-// (episodeRouting): leaf → /watch, nested collection → /series, both seeded for
-// instant first paint. Renders nothing when childless. Mirrors UpNextRail but
-// adds getItemLayout (fixed dims, many children) to virtualize without measuring.
+// (episodeRouting): leaf → /watch, nested collection → /series, both seeded. Nothing
+// when childless. Mirrors UpNextRail + getItemLayout (fixed dims) to virtualize.
 
 import { memo, useCallback, useMemo } from "react"
 import {

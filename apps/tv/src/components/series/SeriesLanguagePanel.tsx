@@ -1,9 +1,6 @@
 // Series-screen language picker (U4): lists the child-dub language UNION
-// (record.languages), not the series' own dubs — the choice sets the dub an
-// opened episode starts in. Rows are NEVER trailer-playability-disabled (AE9):
-// a language with no trailer dub is still a valid episode language. Same
-// virtualization as LanguagePanel (fixed-height rows + one-shot focusArmed,
-// since tvOS ignores preferred focus on unmounted rows); SCREEN owns closing.
+// (record.languages), setting the dub an opened episode starts in. Rows are NEVER
+// trailer-disabled (AE9). Same virtualization as LanguagePanel; SCREEN owns closing.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FlatList, Modal, Text, View } from "react-native"

@@ -890,12 +890,9 @@ export function VideoPlayer({
   }, [])
 
   // ── Frozen creation source (U7 — load-bearing) ──────────────────────
-  // useVideoPlayer recreates+RELEASES the player when its source changes. Live
-  // dub-switching would recreate it mid-play (black/stuck frame), so FREEZE the
-  // source to the first value and route later swaps through replaceAsync (effect
-  // below) — instance identity stays stable across a dub switch.
-  // Fix #6: seed duration synchronously from the initializer — sourceLoad can
-  // fire before the subscription mounts, else duration stays 0 / end shows "--:--".
+  // useVideoPlayer recreates+RELEASES the player on source change, so live dub-switching
+  // would kill it mid-play (black frame): FREEZE source to first value, route swaps through
+  // replaceAsync. Fix #6: seed duration in the initializer — sourceLoad can fire pre-subscription.
   const creationSource = useRef(streamingUrl).current
   const player = useVideoPlayer(creationSource, (p) => {
     p.timeUpdateEventInterval = 1
@@ -1262,10 +1259,9 @@ export function VideoPlayer({
     })
   }
 
-  // scheduleHide: idempotent timer arm — clears any in-flight timer, then arms a
-  // new 3.5s only if state supports auto-hide (D3/D15 + D9/D10/D13 gates). Reads
-  // refs (not render state) so native callbacks can drive it synchronously before
-  // commit — else resume-from-pause / buffering→ready bail and stay disarmed.
+  // scheduleHide: idempotent timer arm — clears any in-flight timer, then arms a new
+  // 3.5s only if state supports auto-hide (D3/D15 + D9/D10/D13 gates). Reads refs (not render
+  // state) so native callbacks drive it pre-commit, else resume/buffering→ready stay disarmed.
   const scheduleHide = () => {
     if (inactivityTimerRef.current != null) {
       clearTimeout(inactivityTimerRef.current)
@@ -1287,10 +1283,9 @@ export function VideoPlayer({
     inactivityTimerRef.current = setTimeout(hideControls, 3500)
   }
 
-  // revealControls: early-return when already visible to neutralize the catcher
-  // vs TV-event double-dispatch race (U3). Doesn't reset opacityAnim first, so an
-  // interrupted hide animates from mid-fade (no black flash). .stop()s any in-flight
-  // hide so its completion can't clobber the reveal with setControlsVisible(false) (P1.2).
+  // revealControls: early-return when already visible to neutralize the catcher vs
+  // TV-event double-dispatch race (U3). Skips opacityAnim reset (interrupted hide animates
+  // from mid-fade, no black flash); .stop()s in-flight hide so it can't clobber the reveal (P1.2).
   const revealControls = () => {
     if (controlsVisibleRef.current) return
     if (hideAnimRef.current != null) {
@@ -1335,10 +1330,9 @@ export function VideoPlayer({
       />
 
       {/* ── VTT subtitle layer (U7) ─────────────────────────────────────
-          Passive cue renderer above VideoView, below chrome; mounts only when a
-          session drives this overlay + captions on + activeVttSrc resolves.
-          MUST NOT touch the auto-hide state machine — it only FOLLOWS
-          controlsVisible (slides above the panel when chrome is up, back down when hidden). */}
+          Passive cue renderer above VideoView, below chrome; mounts only when a session drives
+          this overlay + captions on + activeVttSrc resolves. MUST NOT touch the auto-hide state
+          machine — only FOLLOWS controlsVisible (rises above the panel when chrome is up). */}
       {menuActive && activeVttSrc != null && (
         <SubtitleOverlay
           player={player}

@@ -3,8 +3,7 @@ import type { OfflineDownloadState } from "./offlineManifest"
 /**
  * Pure decision logic for the offline download engine (no native module): how an
  * interruption maps to a state + byte retention, and whether a bundle (media +
- * subtitle + poster) is complete enough for Downloaded. Kept pure so the
- * engine's brain is unit-testable without a device.
+ * subtitle + poster) is complete enough for Downloaded. Unit-testable off-device.
  */
 
 /** Why a transfer stopped, as the adapter observes it. */
@@ -62,9 +61,8 @@ export type BundleResolution =
 
 /**
  * Decide whether the bundle is complete enough to mark Downloaded (KTD4/KTD7).
- * Media must verify. A requested subtitle: verified → included, terminally
- * failed → auto-degrade to no-subtitle (don't strand the item), still pending →
- * incomplete. Poster is a non-blocking sidecar and never gates completion.
+ * Media must verify. Requested subtitle: verified → included, terminally failed →
+ * auto-degrade to no-subtitle, pending → incomplete. Poster never gates.
  */
 export function resolveBundle(parts: BundleParts): BundleResolution {
   if (!parts.mediaVerified) return { kind: "incomplete" }

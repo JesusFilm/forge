@@ -1,10 +1,7 @@
 /**
- * Validate a local `file://` media URI for offline playback. {@link ./validateUrl}
- * deliberately blocks `file:` (Mux HTTPS only), so offline media needs its own
- * narrow allow-path. Pure: the allowed root is injected (callers pass the
- * offline-download root) so it's testable without the filesystem. Accepts ONLY a
- * `file:` URI normalizing to inside that root — defeating `..`, percent-encoded
- * `..`, sibling-prefix, UNC-host, and null-byte tricks.
+ * Validate a local `file://` media URI for offline playback ({@link ./validateUrl}
+ * blocks `file:`, Mux HTTPS only). Pure (root injected); accepts ONLY a `file:`
+ * URI normalizing inside that root — defeats `..`, percent-encoded, UNC, null-byte.
  */
 
 /** Resolve `.`/`..` segments in a POSIX-style path. */

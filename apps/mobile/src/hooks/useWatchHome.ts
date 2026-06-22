@@ -43,11 +43,9 @@ function persistHomeSnapshot(videosJson: string): void {
 }
 
 /**
- * Lean bulk home fetch with a requestId-ref stale-response guard (newer fetch
- * invalidates older). Stale-while-revalidate: paint the prior launch's snapshot
- * immediately (admin TTFB 2.5-6s dominates launch), revalidate in background.
- * Unchanged response keeps the snapshot model — swapping identity rebuilds the
- * hero queue and resets the pager mid-viewing. Pull-to-refresh always swaps.
+ * Lean bulk home fetch with a requestId-ref stale-response guard. Stale-while-
+ * revalidate: paint the prior launch's snapshot immediately (admin TTFB 2.5-6s),
+ * revalidate in background. Unchanged response keeps the model (pager intact).
  */
 export function useWatchHome(): WatchHomeState {
   const [model, setModel] = useState<WatchHomeModel | null>(null)

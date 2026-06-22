@@ -1,7 +1,6 @@
-// LOAD-BEARING layout tokens for the watch menus' lists: getItemLayout computes
-// scroll offsets from them, so drift vs the rendered row/heading styles silently
-// mispositions initialScrollIndex over a 2,259-dub list. React-free so the
-// arithmetic is unit-testable and styles/component depend on tokens, not each other.
+// LOAD-BEARING layout tokens for the watch menus' lists: getItemLayout computes scroll
+// offsets from them, so drift vs the rendered row/heading styles silently mispositions
+// initialScrollIndex over a 2,259-dub list. React-free so the arithmetic is unit-testable.
 
 import { scale } from "../../lib/scale"
 

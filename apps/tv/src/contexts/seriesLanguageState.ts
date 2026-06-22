@@ -45,9 +45,8 @@ export function setActive(
 
 /**
  * Unmount teardown: deletes ONLY this series' selection and releases
- * `activeSeriesId` only when it still points here — a popped nested series must
- * not clear the parent's entry, and focus-vs-unmount order isn't guaranteed
- * (both orders converge since the parent may re-register before this runs).
+ * `activeSeriesId` only when it still points here — a popped nested series must not
+ * clear the parent's entry, and focus-vs-unmount order isn't guaranteed (orders converge).
  */
 export function clearSeries(
   state: SeriesLanguageState,
@@ -76,10 +75,9 @@ export function carriedSlug(state: SeriesLanguageState): string | null {
 // ── Trailer swap (R4 / AE9) ────────────────────────────────────────
 
 /**
- * The dub Play Trailer plays after a language selection: the series' own dub
- * matching `selectedSlug` when PLAYABLE (published + non-empty hls), else
- * `currentDub` unchanged so the trailer never disappears just because the chosen
- * language has none. Exact languageSlug match; pass `currentDub: null` to probe.
+ * The dub Play Trailer plays after a language selection: the series' own dub matching
+ * `selectedSlug` when PLAYABLE (published + non-empty hls), else `currentDub` unchanged so
+ * the trailer survives. Exact languageSlug match; pass `currentDub: null` to probe.
  */
 export function resolveTrailerSwap<
   V extends {
@@ -125,10 +123,9 @@ export function languageDisplayName(language: SeriesLanguageOption): string {
 }
 
 /**
- * Annotate + order the language union for the panel: A→Z by display name (stable
- * for ties), active by exact slug match. Rows are NEVER disabled by trailer
- * playability — the list selects the language EPISODES open in (carry-through);
- * the trailer swap is best-effort (resolveTrailerSwap).
+ * Annotate + order the language union for the panel: A→Z by display name (stable for
+ * ties), active by exact slug match. Rows are NEVER disabled by trailer playability —
+ * the list selects the language EPISODES open in; trailer swap is best-effort (resolveTrailerSwap).
  */
 export function buildLanguageRows(
   languages: readonly SeriesLanguageOption[],

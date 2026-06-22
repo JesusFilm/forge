@@ -1,10 +1,6 @@
-// KTD7: pure builders feeding the existing section renderers via adapter objects
-// that reproduce TV's ALIASED block keys (rqHeading/textHeading/bqcHeading + per-
-// item arrays) — see RelatedQuestions/Text/BibleQuotesCarousel renderers.
-//
-// Study questions have no inline answers (empty strings); bible verse text comes
-// via the useBibleVerses fetch map with stock Unsplash backgrounds cycled by
-// index. Returning null omits the whole section (heading + body) — U5 contract.
+// KTD7: pure builders feeding section renderers via adapter objects that
+// reproduce TV's ALIASED block keys (rqHeading/textHeading/bqcHeading + per-item
+// arrays). Returning null omits the whole section (heading + body) — U5 contract.
 
 import {
   BIBLE_IMAGES,
@@ -97,9 +93,8 @@ type BibleQuoteCard = {
 
 /**
  * BibleQuotesCarouselRenderer input from bible citations, or null when none have
- * a usable reference. Verse text comes from the `verses` map (by documentId,
- * empty while loading) over stock bgs cycled by index; a "Join Our Bible Study"
- * promo card closes the rail — same card set mobile/web render here.
+ * a usable reference. Verse text comes from the `verses` map (by documentId);
+ * a "Join Our Bible Study" promo card closes the rail — same set mobile/web use.
  */
 export function buildBibleQuotesBlock(
   bibleCitations: readonly WatchBibleCitation[] | null | undefined,

@@ -8,8 +8,7 @@ import { scale } from "../lib/scale"
 /**
  * Hooks passed into each item's renderItem so the consumer wires focus directly
  * into the interactive child (e.g. FocusableCard's `onFocus`). The wrapper View's
- * `onFocus` doesn't fire reliably for a nested Pressable on tvOS — focus events
- * don't bubble consistently across react-native-tvos versions.
+ * `onFocus` is unreliable for a nested Pressable across react-native-tvos versions.
  */
 export type ContentRailItemHooks = {
   onFocus: () => void

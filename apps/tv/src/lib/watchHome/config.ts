@@ -1,12 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (mirrored via mobile's
- * config.ts) — mirror any web curation change here until feat-160 moves it to
- * admin and this copy dies.
- *
- * TV cuts vs web/mobile: WATCH_HOME_PLAYLIST_SEQUENCE + WATCH_HOME_MUX_INSERTS
- * don't port (TV showcase is image-only; tvOS decode slots are scarce).
- * WATCH_HOME_FEATURED_RAIL is TV-only: the hero pool as first rail, its
- * titleVariants carry the time-of-day greetings from web's Mux conditionalOverlays.
+ * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile's config.ts) — mirror
+ * any web curation change here until feat-160 moves it to admin. TV cuts WATCH_HOME_PLAYLIST_SEQUENCE
+ * + WATCH_HOME_MUX_INSERTS (scarce decode slots); WATCH_HOME_FEATURED_RAIL is TV-only (titleVariants carry web's Mux conditionalOverlays greetings).
  */
 
 // The hardcoded home locale pair: query locale + language identity, keyed on

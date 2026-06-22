@@ -14,10 +14,9 @@ export function buildAuthHeaders(
 export const SEARCH_OPERATION_NAME = "Search"
 
 /**
- * Bearer scoped to the gated Search operation only. The consumer bearer is
- * admin's rate-limit identity (`consumer:<key>`, one shared 60/min bucket); since
- * every install ships the same key, attaching it to public queries would funnel
- * the whole fleet into that one bucket — only Search (rejected anonymously) gets it.
+ * Bearer scoped to the gated Search operation only. The consumer bearer is admin's
+ * rate-limit identity (`consumer:<key>`, one shared 60/min bucket); since every
+ * install ships the same key, only Search (rejected anonymously) gets it.
  */
 export function authHeadersForOperation(
   operationName: string | undefined,

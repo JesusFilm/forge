@@ -349,10 +349,9 @@ export const GET_WATCH_EXPERIENCE = graphql(
 )
 
 // ── Watch setting (public homepage resolution) ──────────────────────
-// Mirrors mobile GET_WATCH_SETTING: resolves the homepage Experience slug via the
-// PUBLIC watchSetting query (home then renders it via PUBLIC experienceBySlug).
-// Replaced LIST_EXPERIENCES, which hit editor-gated Query.experiences and 403'd
-// for the unauthenticated TV app; there is no PUBLIC list-all by design.
+// Mirrors mobile GET_WATCH_SETTING: resolves the homepage Experience slug via
+// PUBLIC watchSetting (home renders it via PUBLIC experienceBySlug). Replaced
+// LIST_EXPERIENCES, which hit editor-gated Query.experiences and 403'd for TV.
 export const GET_WATCH_SETTING = graphql(`
   query GetWatchSetting($locale: String!) {
     watchSetting(locale: $locale) {

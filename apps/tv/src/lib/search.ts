@@ -46,12 +46,9 @@ type UseSemanticSearchOptions = {
 }
 
 /**
- * Debounced semantic search hook via getApolloClient().query, fetchPolicy
- * 'no-cache' (NOT useLazyQuery — fetchMore drops page 1, mobile-search-ui-
- * patterns). Guards: requestIdRef drops stale responses; isSubmittingRef
- * blocks rapid-⏎ duplicate calls; empty query is a no-op (state → 'idle').
- * Keyword-only fallback flows through as normal 'ready'/'empty' — no
- * separate degraded-mode message.
+ * Debounced semantic search via getApolloClient().query, fetchPolicy 'no-cache'
+ * (NOT useLazyQuery — fetchMore drops page 1, mobile-search-ui-patterns). Guards:
+ * requestIdRef drops stale responses, isSubmittingRef blocks rapid-⏎ dups.
  */
 export function useSemanticSearch(
   query: string,

@@ -1,9 +1,6 @@
-// One Home rail card: 16:9 thumb + metaLabel chip, labels below; fixed width
-// (exported for HomeRail's getItemLayout). Focus = white ring (absolute overlay,
-// pointerEvents "none") + shadow on a separate overflow-visible wrapper (iOS
-// clips shadows on overflow:hidden). onFocus/onPress re-emit the `card` PROP the
-// component closed over — never re-indexed from the rail's data array, which can
-// shrink between a queued focus event and its handler (patterns doc §7).
+// One Home rail card: 16:9 thumb + metaLabel chip, fixed width (exported for
+// HomeRail's getItemLayout). Focus = white ring overlay + shadow on a separate
+// overflow-visible wrapper. onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
 
 import { memo, useMemo } from "react"
 import { Image } from "expo-image"

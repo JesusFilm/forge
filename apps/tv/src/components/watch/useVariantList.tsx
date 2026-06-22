@@ -1,8 +1,6 @@
-// Shared virtualized-dub-list wiring (LanguagePanel + in-player menu) so they can't
-// drift, plus two virtualization-forced focus fixes: ONE-SHOT focus — `focusArmed`
-// arms hasTVPreferredFocus once per open, else a remounting active row yanks focus
-// mid-scroll; SCROLL-ON-OPEN — `visible` effect re-arms + scrolls to active each open
-// since the Modal subtree stays mounted (would otherwise reuse stale scroll pos).
+// Shared virtualized-dub-list wiring (LanguagePanel + in-player menu) plus two focus fixes:
+// ONE-SHOT — `focusArmed` arms hasTVPreferredFocus once per open (else a remounting active
+// row yanks focus); SCROLL-ON-OPEN — `visible` effect re-arms + scrolls to active each open.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { FlatList } from "react-native"

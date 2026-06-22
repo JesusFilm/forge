@@ -1,8 +1,7 @@
 /**
  * Curated Home tab (config via useWatchHome, not an Experience). Z-order:
  * heroLayer(0) → FlashList → heroInteractiveLayer(2, box-none chrome) →
- * HomeHeader(10). Chrome lives in the overlay since the FlashList swallows
- * taps aimed at the hero; hero swipes ride a capture-phase root PanResponder.
+ * HomeHeader(10). Chrome lives in the overlay (FlashList swallows hero taps).
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {

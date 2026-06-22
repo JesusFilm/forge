@@ -5,13 +5,9 @@ import type { ApolloClient, NormalizedCacheObject } from "@apollo/client"
 import { env } from "../env"
 
 /**
- * Hand-rolled, opt-in Apollo cache persistence. apollo3-cache-persist crashed
- * on launch (it targets v3), so this is best-effort against v4's extract/restore,
- * fully guarded (worst case "boot cold", never a crash). Gated behind
- * EXPO_PUBLIC_FORGE_CACHE_PERSIST (default off) so it ships dark until verified
- * on a real low-end Android device via EAS — its startup-restructure risk must
- * not reach users untested. Persists a stripped, version- and TTL-gated snapshot
- * excluding volatile signed URLs (hls, download urls, vttSrc) that 404 on expiry.
+ * Hand-rolled, opt-in Apollo cache persistence — apollo3-cache-persist crashed on
+ * launch (targets v3), so this is best-effort against v4, fully guarded. Gated
+ * behind EXPO_PUBLIC_FORGE_CACHE_PERSIST (default off, ships dark until EAS-verified); snapshot excludes signed URLs (hls, download urls, vttSrc).
  */
 
 const STORAGE_KEY = "forge.apollo.cache"

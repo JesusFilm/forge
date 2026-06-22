@@ -168,11 +168,9 @@ export default function WatchVideoPage() {
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
-    // cache-first, NOT cache-and-network: payload is huge (birth-of-jesus ~9.5MB
-    // / 2,259 dubs); cache-and-network re-parsed + re-normalized it on every
-    // re-entry, freezing the JS thread. cache-first reads warm cache, no refetch.
-    // NOTE: if cache persistence (U7) is enabled, revisit — restored snapshots
-    // strip volatile URLs, so cache-first needs a cold-start revalidation there.
+    // cache-first, NOT cache-and-network: payload is huge (~9.5MB / 2,259 dubs)
+    // and cache-and-network re-parsed it per re-entry, freezing JS. NOTE: if cache
+    // persistence (U7) lands, revisit — restored snapshots need cold-start revalidation.
     fetchPolicy: "cache-first",
     // Render whatever the cache holds (prefetch) the moment it exists.
     returnPartialData: true,

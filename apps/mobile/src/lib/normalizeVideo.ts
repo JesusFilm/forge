@@ -229,10 +229,9 @@ export function normalizeDubMedia(
 
 // ── Normalizer ─────────────────────────────────────────────────────
 
-// Memoize by raw object reference: Apollo's referentially-stable cache reads let
-// re-entry reuse the prior record instead of re-walking every dub (birth-of-jesus
-// = 2,259 dubs = multi-second freeze). WeakMap can't leak/serve stale: new data is
-// a new reference; entries die with the cached object.
+// Memoize by raw object reference: Apollo's stable cache reads let re-entry reuse
+// the prior record vs re-walking every dub (birth-of-jesus = 2,259 dubs =
+// multi-second freeze). WeakMap can't serve stale: new data is a new reference.
 const normalizeCache = new WeakMap<object, WatchVideoRecord | null>()
 
 export function normalizeVideo(
@@ -404,8 +403,7 @@ export function normalizeSeries(
   if (cached !== undefined) return cached
   // RawSeriesVideo is the lean SeriesWatchVideo subset of WatchVideo (no parents
   // chain; per-dub duration/muxVideo dropped). Shared builder maps common fields;
-  // dropped fields resolve to siblings=[]/duration=null/muxPlaybackId=null (unused
-  // here). episodes + languages attach on top.
+  // dropped fields resolve to siblings=[]/duration=null/muxPlaybackId=null.
   const result: WatchVideoRecord = {
     ...buildWatchVideoRecord(raw),
     episodes: buildEpisodes(raw),

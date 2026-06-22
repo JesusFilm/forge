@@ -1,20 +1,6 @@
 /**
- * Pure state machine for the Home hero pager (plan U4). HomeHeroPager owns the
- * platform pieces (FlatList, expo-video player, timers) and drives them from
- * this reducer's state + selectors. No-op transitions return the SAME state
- * reference so useReducer bails out. Pure TS — no React imports. Encoded rules:
- *
- *   - advance: video slide on PLAY_TO_END; image/mux on the 7s image timer;
- *     STREAM_ERROR / MAX_DWELL_ELAPSED skips a stuck slide (AE5)
- *   - end of queue wraps to index 0 (wrapCount lets the caller rebuild the queue)
- *   - chip tap on current index is a no-op; taps mid-swap are dropped (serialized
- *     swaps, AE3)
- *   - videoReady latches once, never un-latches on transient idle
- *     (see docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop)
- *   - SUSPEND stops timers + records an interrupted swap as pendingSwap; RESUME
- *     restores the slide, shouldReissueSwap tells the component to re-issue (AE6)
- *   - mute is a CONTROLLED prop owned by HomeScreen, not reducer state
- *   - single-slide queue: no auto-advance, chips/dots hidden (showsPagerChrome, AE2)
+ * Pure state machine for the Home hero pager (plan U4); HomeHeroPager drives the platform pieces from its state + selectors. No-op transitions return the SAME state reference. Pure TS — no React imports.
+ * Rules: advance/skip (AE5), wrap, serialized swaps (AE3), videoReady latch (docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop), suspend/resume (AE6), controlled mute, single-slide chrome (AE2).
  */
 
 import type { WatchHomeSlide } from "./carouselSequence"
@@ -54,8 +40,7 @@ export type PagerState = {
   /**
    * A skip (STREAM_ERROR / MAX_DWELL_ELAPSED) arrived while suspended and was
    * deferred; RESUME executes the advance and clears it (AE5). Cleared early by
-   * SLIDES_SET or by an explicit move to a DIFFERENT index (moveTo bails when
-   * the index is unchanged).
+   * SLIDES_SET or by an explicit move to a DIFFERENT index (moveTo).
    */
   pendingSkip: boolean
   suspended: PagerSuspendReason | null

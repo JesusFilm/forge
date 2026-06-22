@@ -1,10 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home.ts (pure model builder only; sync
- * obligation in ./config.ts). Mobile diffs: no hrefs (cards carry identifiers,
- * components route); lean input (KTD-2, no dubs/variants, playbackId stays null
- * for lazy per-slide resolve); carousel eligibility is poster + slug (KTD-4);
- * heroSlides not ported (HomeScreen builds the queue via buildWatchHomeHeroQueue
- * from model.carousel). Pure TypeScript only — no React/React Native imports.
+ * ADAPTED COPY of apps/web/src/lib/watch-home.ts (pure model builder; sync obligation
+ * in ./config.ts). Mobile diffs: no hrefs; lean input (KTD-2, playbackId null for lazy
+ * resolve); carousel eligibility poster + slug (KTD-4); heroSlides not ported (HomeScreen builds the queue via buildWatchHomeHeroQueue).
  */
 
 import {

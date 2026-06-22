@@ -31,8 +31,6 @@ export const SEARCH_THEME = {
 /**
  * Horizontal page gutter for the /search screen, in 1920-canvas units (pass
  * through scale()). The screen applies it as `paddingHorizontal`; SearchBrowse
- * cancels it with an equal-and-opposite negative margin to go full-bleed in the
- * Apple TV stacked layout. Sharing the constant makes that cancellation a
- * compile-time guarantee instead of a "keep these in sync" comment.
+ * cancels it with a negative margin to go full-bleed in the Apple TV stacked layout.
  */
 export const SEARCH_PAGE_GUTTER = 80

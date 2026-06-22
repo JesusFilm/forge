@@ -1,8 +1,6 @@
-// TV-side video-detail GraphQL operations. Kept field-for-field in sync with
-// apps/mobile/src/lib/queries.ts. The split (lean bulk video + dub list, lazy
-// per-dub media) is the proven mobile pattern; do NOT inline downloads/subtitles
-// into the bulk fragment (see the payload note below). @_unmask exposes fragment
-// fields directly on parent results.
+// TV-side video-detail GraphQL operations, kept field-for-field in sync with
+// apps/mobile/src/lib/queries.ts. Split (lean bulk video + dub list, lazy per-dub
+// media) is the proven mobile pattern; do NOT inline downloads/subtitles.
 import {
   adminGraphql as graphql,
   type AdminResultOf as ResultOf,
@@ -126,12 +124,9 @@ export const GET_VIDEO_BY_SLUG = graphql(
 export type WatchVideoData = ResultOf<typeof GET_VIDEO_BY_SLUG>
 
 // ── Lean series-screen video fragment ──────────────────────────────
-// SYNC: mirrors apps/mobile/src/lib/queries.ts `seriesWatchVideoFragment`. Leaner
-// than watchVideoFragment: OMITS the `parents → parent → children` sibling chain
-// (~208 nodes/~1.6s; series uses its OWN `children`) and each dub's `duration` +
-// `muxVideo.playbackId` (player-only, multiplied across ~2,270 dubs). The bulk
-// childDubLanguages aggregation is a known-slow admin resolver pending a
-// composite index — see the hand-off note in docs/.
+// SYNC: mirrors apps/mobile/src/lib/queries.ts `seriesWatchVideoFragment`. Omits vs
+// watchVideoFragment the `parents → parent → children` chain (~208 nodes/~1.6s) + each
+// dub's `duration`/`muxVideo.playbackId`; childDubLanguages awaits a composite index (docs/).
 export const seriesWatchVideoFragment = graphql(`
   fragment SeriesWatchVideo on Video @_unmask {
     documentId: id
@@ -191,11 +186,9 @@ export const seriesWatchVideoFragment = graphql(`
 `)
 
 // ── Series detail query ─────────────────────────────────────────────
-// SYNC: mirrors apps/mobile/src/lib/queries.ts GET_SERIES_BY_SLUG. Adds two
-// series-only selections atop the lean fragment (NOT watchVideoFragment): the
-// series' OWN `children` (episode rail) and `childDubLanguages` (language panel).
-// Children select card fields only, never dubs/variants — a 61-chapter ×
-// ~2,200-dub collection is the 9.5MB incident again.
+// SYNC: mirrors apps/mobile/src/lib/queries.ts GET_SERIES_BY_SLUG. Adds two series-only
+// selections atop the lean fragment: OWN `children` (episode rail) + `childDubLanguages`
+// (panel). Children select card fields only, never dubs/variants (else 9.5MB again).
 export const GET_SERIES_BY_SLUG = graphql(
   `
     query GetSeriesBySlug($locale: String!, $slug: String!) {
@@ -238,9 +231,8 @@ export type SeriesVideoData = ResultOf<typeof GET_SERIES_BY_SLUG>
 
 // ── Per-dub media (lazy) ────────────────────────────────────────────
 // The downloads + subtitles left out of WatchVideo, fetched per dub on demand
-// (active language only) so switching language fetches just that dub, never all
-// ~2,200. MUST mirror the fields trimmed from WatchVideo's `dubs` so
-// normalizeDubMedia maps the same shape.
+// (active language only) so switching fetches just that dub, never all ~2,200. MUST
+// mirror the fields trimmed from WatchVideo's `dubs` so normalizeDubMedia maps it.
 export const watchDubMediaFragment = graphql(`
   fragment WatchDubMedia on VideoDub @_unmask {
     documentId: id

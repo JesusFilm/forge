@@ -1,8 +1,6 @@
-// Visual tokens (Claude Design handoff) now governing watch detail, Home, and
-// Search. Deliberately diverges from app-wide Crimson Gallery (brighter accent,
-// frosted-glass pills, white-fill focus, near-black scrims); SDUI/series/legacy
-// keep Crimson Gallery (COLORS in lib/colors.ts). No expo-blur on TV, so "frosted
-// glass" is a translucent white fill over the scrim — no real backdrop blur.
+// Visual tokens (Claude Design handoff) governing watch detail, Home, and Search.
+// Diverges from Crimson Gallery (brighter accent, white-fill focus, near-black
+// scrims); SDUI/series/legacy keep COLORS in lib/colors.ts. No expo-blur on TV.
 
 import { scale } from "../../lib/scale"
 

@@ -2,9 +2,8 @@ import type { VariantMedia, WatchDownload } from "./normalizeVideo"
 
 /**
  * Pure URL re-resolution: pick fresh media + subtitle URLs from a fetched dub's
- * media ({@link VariantMedia}) keyed by the manifest's stable IDENTITY. Manifest
- * stores identity, not the signed URLs (they expire), so the engine re-resolves
- * via `videoDub(id)` before each enqueue/resume. Fetch wiring lives in the engine.
+ * media ({@link VariantMedia}) keyed by the manifest's stable IDENTITY (it stores
+ * identity not signed URLs, which expire), so the engine re-resolves via `videoDub(id)`.
  */
 
 export type DesiredDownload = {

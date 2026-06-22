@@ -1,9 +1,7 @@
 /**
- * Storage schema for the Home tab's cross-restart memory: played ids (monthly
- * rotation exclusions, reset on UTC month change), carousel session (resume
- * pool position, 24h expiry), and Home snapshot (last response, painted on
- * launch while the slow 2.5-6s live fetch revalidates). Pure parse/serialize
- * (watchPreferences.ts pattern); AsyncStorage I/O lives in the hooks below.
+ * Storage schema (pure parse/serialize, watchPreferences.ts pattern) for the Home tab's
+ * cross-restart memory: played ids (monthly rotation, reset on UTC month change), carousel
+ * session (resume position, 24h expiry), Home snapshot (painted on launch while live fetch revalidates).
  * @see useWatchHomeCarouselMemory
  * @see useWatchHome
  */

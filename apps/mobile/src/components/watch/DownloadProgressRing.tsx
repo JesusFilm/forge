@@ -3,12 +3,8 @@ import { StyleSheet, View } from "react-native"
 
 /**
  * Determinate progress ring drawn WITHOUT react-native-svg so it hot-reloads on
- * the existing dev build (svg would force a native rebuild). Two solid half-disc
- * "pie" layers pivoted via `transformOrigin` with a punched centre disc.
- *
- * Geometry: right half 0–50% clockwise from 12 o'clock, left half 50–100%.
- * `cutoutColor` MUST match the surface behind the ring (`BG_COLOR`) so the
- * punched centre reads as transparent.
+ * the existing dev build (svg would force a native rebuild). Two half-disc "pie"
+ * layers pivoted via `transformOrigin`; `cutoutColor` MUST match `BG_COLOR`.
  */
 export type DownloadProgressRingProps = {
   size: number

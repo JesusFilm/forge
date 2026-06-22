@@ -19,8 +19,7 @@ type Props = {
   hasTVPreferredFocus?: boolean
   /**
    * Forced D-pad-up destination. The stacked (Apple TV) layout wires the
-   * grid's TOP ROW to the keyboard's first key so up-escape out of the
-   * vertically-scrolling grid lands deterministically on the keyboard.
+   * grid's TOP ROW to the keyboard's first key so up-escape lands there.
    * Undefined elsewhere (and in the two-pane layout) → default geometry.
    */
   nextFocusUp?: ViewType | null
