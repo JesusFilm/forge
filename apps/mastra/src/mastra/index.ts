@@ -31,6 +31,10 @@ import {
   quickDraftWorkflow,
 } from "./workflows/multi-step-draft"
 import {
+  handleExperienceDraftRouteRequest,
+  type DraftWorkflowMastra,
+} from "./workflows/experience-draft-route"
+import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
@@ -287,6 +291,30 @@ export const mastra = new Mastra({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-draft", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceDraftRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Thunk resolves at request time, after `mastra` is constructed —
+            // so the workflow steps' `getAgentById(...)` lookups resolve the
+            // registered planner/skeleton/fill/critic/reviser agents. Boundary
+            // cast: the route's `DraftWorkflowMastra` is a deliberately narrow
+            // structural surface (getWorkflowById → createRun → start/cancel),
+            // all present at runtime; the real Mastra's `getWorkflowById` has a
+            // narrower id-union param than `(id: string)`, so the structural
+            // types don't unify. Tests inject a fully-typed fake.
+            getMastra: () => mastra as unknown as DraftWorkflowMastra,
           })
 
           return new Response(JSON.stringify(outcome.body), {
