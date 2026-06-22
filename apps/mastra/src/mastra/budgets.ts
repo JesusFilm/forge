@@ -89,6 +89,14 @@ export const TOKEN_CAPS = {
    * body via `agent.generate({ maxOutputTokens })`.
    */
   multiStepDraftRevise: 4_000,
+  /**
+   * Video-section step (`generate-video-section` agent). One single-pass
+   * call emitting a small grounded section (a video hero + optional prose +
+   * FAQ + a reference-first scripture carousel). Larger than addSection
+   * because a video section can carry several FAQ items and scripture
+   * references, but far below a full multi-section draft.
+   */
+  generateVideoSection: 2_500,
 } as const
 
 /**
@@ -154,6 +162,16 @@ export const TIME_BUDGET_MS = {
    * structural completeness is the point of two-phase.
    */
   multiStepWorkflow: 180_000,
+  /**
+   * Video-section generation — one single-pass `generate-video-section`
+   * agent call (no workflow chain, no tool round-trips). The mastra section
+   * route (`/forge-experience-section`) wraps the call with
+   * `AbortSignal.timeout(TIME_BUDGET_MS.section)`; the admin section client's
+   * own timeout MUST be strictly greater than this so admin's classifier does
+   * not win the race and trigger a retry storm. Well under the Cloudflare 524
+   * ceiling for a single grounded emission.
+   */
+  section: 60_000,
   /** Background auto-enrich agent's full run on one experience locale. */
   backgroundAutoEnrich: 300_000,
 } as const
