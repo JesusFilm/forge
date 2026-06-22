@@ -1,7 +1,7 @@
 ---
 title: "Mocked-shape-vs-real-contract testing discipline — mocks prove BRANCH SHAPE; real fixtures prove PRODUCTION CONTRACT"
 date: 2026-05-06
-last_updated: 2026-05-28
+last_updated: 2026-06-23
 problem_type: best_practice
 component: testing_framework
 root_cause: inadequate_documentation
@@ -23,6 +23,7 @@ related:
   - "docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md"
   - "docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md"
   - "docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md"
+  - "docs/solutions/best-practices/llm-comment-mass-edit-deterministic-verification-20260623.md"
 ---
 
 # Mocked-shape-vs-real-contract testing discipline
@@ -118,8 +119,9 @@ The same trap, ten different surfaces:
 | **Idempotence property test on state-machine canonicalizer** | [idempotence-property-test-vacuous-on-malformed-fixed-point-20260528.md](idempotence-property-test-vacuous-on-malformed-fixed-point-20260528.md) (forge#1049 `/ce:review`) | The `/watch` URL canonicalizer guards convergence with `canonicalize(canonicalize(x).pathname) === { kind: "canonical" }`. For `/series.html/ep.html/lang.html` (3-segment shape with `.html` on the bare-by-contract episode segment), NO rule's precondition matched — the malformed shape was its OWN fixed point. The property held vacuously while the production contract (episode segment MUST be bare) was silently violated. Same shape as the regex-backstop trap: self-referential properties prove BRANCH SHAPE / convergence; output-invariant properties prove PRODUCTION CONTRACT / validity. Recovery: add Rule 4.5 + an output-shape contract property test that inspects both `kind: "redirect"` and `kind: "canonical"` outputs against the contract invariant. |
 | **Typed model catalog vs live provider API**                 | [mastra-conversational-agent-memory-and-model-router-wiring.md](../integration-issues/mastra-conversational-agent-memory-and-model-router-wiring.md)                       | Mastra's generated `provider-types.generated.d.ts` lists model ids at package-build time, so membership makes a string compile but is NOT a guarantee the live provider serves it. `tsc` green proves BRANCH SHAPE (catalog membership); only a live call proves PRODUCTION CONTRACT. In the feat-198 smoke a catalog-listed model failed at runtime with an opaque provider error while a sibling worked — that specific failure was not root-caused from logs (could have been availability, rate limit, or transient), but the compile-time-catalog-vs-live-availability gap is the durable, structural lesson regardless.                                                                                                                                                      |
 | **Source-text route-isolation parser**                       | [mastra-studio-api-auth-guard.md](../integration-issues/mastra-studio-api-auth-guard.md) (feat-198 seeker test)                                                            | A string-unaware bracket-matching slice of the `apiRoutes` region truncates early on an unbalanced bracket inside a future route string literal, so the negative assertion ("region does not contain the agent symbol") can pass vacuously even when a custom route wires the agent — and the anti-vacuous guards (region non-empty, contains `registerApiRoute`) still pass. Fixed with a parser-independent backstop: the agent symbol must appear exactly twice in `index.ts` (import + registration), so any third reference fails the test regardless of the parser.                                                                                                                                                                                                          |
+| **LLM-agent comment-only mass edit**                         | [llm-comment-mass-edit-deterministic-verification-20260623.md](llm-comment-mass-edit-deterministic-verification-20260623.md) (forge#1337 comment-trim)                     | An LLM agent's self-reported residual count AND a naive comment scanner are both PROXIES that satisfice: a verify-agent reported 4 over-limit comments in `VideoPlayer.tsx` where a deterministic re-scan found 17, and raw-span scanning flagged 382 phantom violations vs 137 real (prose-count with `@`-tag/`/** */`-delimiter/`// -- heading --`-decorator exemptions). Only a deterministic comment-stripper proving code byte-identity (same strip over HEAD vs working, diff the outputs) + a prose re-scan prove the contract. NEW dimension beyond the other rows: LLM condensation also _fabricates_ specifics — it invented an HTTP `403` absent from the source, contradicting both the `queries.test.ts` regression guard and a sibling comment that said `401`.      |
 
-These ten are the same rule ten times. If you find an eleventh
+These eleven are the same rule eleven times. If you find a twelfth
 instance, add it here — that's the META home.
 
 ## Why the rule keeps recurring
