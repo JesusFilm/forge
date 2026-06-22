@@ -276,6 +276,16 @@ Rules:
   })
 
   describe("GENERATE_VIDEO_SECTION_PROMPT", () => {
+    it("tailors framing to the audience/locale without changing grounded facts", () => {
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain("AUDIENCE & PERSONA")
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "TAILOR THE FRAMING, NOT THE FACTS",
+      )
+      expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
+        "MUST NOT change which study questions you use",
+      )
+    })
+
     it("forbids the model from authoring verse text (reference-first scripture)", () => {
       expect(GENERATE_VIDEO_SECTION_PROMPT).toContain(
         "REFERENCE ONLY, NEVER VERSE TEXT",
