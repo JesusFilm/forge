@@ -49,6 +49,7 @@ import {
   type ChatThreadDTO,
 } from "@/app/dashboard/experiences/experience-chat-actions"
 
+import type { VideoLibraryItem } from "./block-helpers"
 import { ExperienceChatCrossLocaleModal } from "./experience-chat-cross-locale-modal"
 import {
   presentChatError,
@@ -102,6 +103,12 @@ export type ExperienceChatPanelProps = {
    * populate these context-aware; v1 wiring may pass an empty array.
    */
   suggestedPrompts?: ReadonlyArray<string>
+  /**
+   * Video library used by the anchor-video picker behind the "Generate
+   * section from video" control. Threaded from the same already-loaded
+   * `loadVideoRows` result the editor canvas uses — no extra fetch.
+   */
+  videoLibrary?: VideoLibraryItem[]
   /**
    * Optional multi-step draft workflow trigger. When present, the
    * chat panel exposes a "Generate full page" button that runs the
