@@ -619,7 +619,7 @@ export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
   seedPrompt({
     id: "seed-chinese-vegetable-animation",
     locale: "zh",
-    languageSlug: "chinese-mandarin-simplified",
+    languageSlug: "mandarin-china",
     websiteLocale: "en",
     queryText: "蔬菜总动员",
     tags: [

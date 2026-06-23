@@ -216,6 +216,11 @@ describe("search eval seed prompt set", () => {
           locale: "ar",
           languageSlug: "arabic-modern-standard",
         }),
+        expect.objectContaining({
+          id: "seed-chinese-vegetable-animation",
+          locale: "zh",
+          languageSlug: "mandarin-china",
+        }),
       ]),
     )
   })
