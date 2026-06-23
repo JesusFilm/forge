@@ -115,7 +115,7 @@ export function TermsModal({
   )
 }
 
-type DropdownOption = {
+export type DropdownOption = {
   key: string
   label: string
   /** Optional trailing text shown on the right (e.g. a file size). */
@@ -127,9 +127,10 @@ const DROPDOWN_MAX_HEIGHT = 240
 
 /**
  * Collapsed select expanding to a bounded, internally-scrollable list, so the
- * sheet stays compact on first present regardless of option count.
+ * sheet stays compact on first present regardless of option count. Exported so
+ * the series download sheet reuses one dropdown implementation (no style drift).
  */
-function Dropdown({
+export function Dropdown({
   sectionLabel,
   options,
   selectedKey,

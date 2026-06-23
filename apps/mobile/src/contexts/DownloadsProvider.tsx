@@ -95,14 +95,27 @@ type DownloadsContextValue = {
   startDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /** Swap a downloaded video to a new quality/language, non-destructively. */
   swapDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
+  /**
+   * Durable batch pre-persist (series download-all): write a `queued` record per
+   * request synchronously, BEFORE any network await, so a backgrounding mid-batch
+   * still completes via the launch reattach (`requeue` re-resolves the URL and
+   * restarts). Skips slugs that already carry a live record — those are handled
+   * by start/swap/switch — so it never clobbers a swap snapshot. The capped
+   * enqueue loop then drives each to `downloading`. Best-effort, never throws.
+   */
+  queueBatchRecords: (requests: StartDownloadRequest[]) => Promise<void>
   /** Remove an offline copy: its files and its manifest entry. */
   deleteDownload: (videoSlug: string) => Promise<void>
 }
 
 const DownloadsContext = createContext<DownloadsContextValue | null>(null)
 
-/** Keep this much storage free; refuse a download that would breach it (U12). */
-const STORAGE_RESERVE_BYTES = 250 * 1024 * 1024
+/**
+ * Keep this much storage free; refuse a download that would breach it (U12).
+ * Exported so the series download sheet can run the same aggregate pre-check
+ * the per-call guard applies, before driving the batch (KTD6).
+ */
+export const STORAGE_RESERVE_BYTES = 250 * 1024 * 1024
 
 /**
  * Re-resolve a fresh media URL from a record's stable identity (U4): the manifest
@@ -235,6 +248,41 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       // Best-effort; the in-memory removal already took effect this session.
     }
   }, [])
+
+  const queueBatchRecords = useCallback(
+    async (requests: StartDownloadRequest[]) => {
+      for (const request of requests) {
+        const existing = recordsRef.current[request.videoSlug]
+        // A live record (downloaded / in-progress) is already durable and is
+        // driven by start/swap/switch; re-writing a `queued` record over it
+        // would discard its committedPath / swapFrom snapshot. Only fresh or
+        // previously-terminal slugs need a synchronous queued placeholder.
+        if (
+          existing &&
+          existing.state !== "failed" &&
+          existing.state !== "canceled"
+        ) {
+          continue
+        }
+        await writeRecord({
+          version: OFFLINE_MANIFEST_VERSION,
+          videoSlug: request.videoSlug,
+          dubDocumentId: request.dubDocumentId,
+          renditionDocumentId: request.rendition.documentId,
+          qualityLabel: request.rendition.quality,
+          title: request.title,
+          subtitleLanguageSlug: request.subtitleLanguageSlug,
+          state: "queued",
+          committedPath: null,
+          pendingPath: null,
+          posterPath: null,
+          bytesWritten: 0,
+          totalBytes: Number(request.rendition.size) || 0,
+        })
+      }
+    },
+    [writeRecord],
+  )
 
   // Apply the global engine config once hydrated and whenever wifi-only changes.
   useEffect(() => {
@@ -597,11 +645,20 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
       const { videoSlug, rendition } = request
       const existing = recordsRef.current[videoSlug]
+      // A bare `queued` placeholder (no pending/committed file) is this batch's
+      // own durable pre-persist from queueBatchRecords — drive it to downloading
+      // rather than reporting `exists`. Per-video starts never write this shape.
+      const isOwnPlaceholder =
+        existing != null &&
+        existing.state === "queued" &&
+        existing.pendingPath == null &&
+        existing.committedPath == null
       // One copy per video: ignore if a live copy/queue entry already exists.
       if (
         existing &&
         existing.state !== "failed" &&
-        existing.state !== "canceled"
+        existing.state !== "canceled" &&
+        !isOwnPlaceholder
       ) {
         return { ok: false, reason: "exists" }
       }
@@ -817,9 +874,17 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       ),
       startDownload,
       swapDownload,
+      queueBatchRecords,
       deleteDownload,
     }),
-    [records, isReady, startDownload, swapDownload, deleteDownload],
+    [
+      records,
+      isReady,
+      startDownload,
+      swapDownload,
+      queueBatchRecords,
+      deleteDownload,
+    ],
   )
 
   return (

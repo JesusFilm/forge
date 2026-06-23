@@ -1,0 +1,786 @@
+import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useRouter } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
+
+import {
+  Dropdown,
+  TermsModal,
+  type DropdownOption,
+} from "../../src/components/watch/DownloadSheet"
+import { SheetError } from "../../src/components/watch/SheetError"
+import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
+import {
+  STORAGE_RESERVE_BYTES,
+  useDownloads,
+} from "../../src/contexts/DownloadsProvider"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
+import { useTypography } from "../../src/hooks/useTypography"
+import {
+  ACCENT,
+  TEXT_BODY,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+} from "../../src/lib/color"
+import { feedback, HORIZONTAL_PADDING } from "../../src/styles/shared"
+import { getApolloClient } from "../../src/lib/apolloClient"
+import { GET_VIDEO_BY_SLUG, GET_VIDEO_DUB } from "../../src/lib/queries"
+import { normalizeDubMedia, normalizeVideo } from "../../src/lib/normalizeVideo"
+import { formatFileSize, type QualityTier } from "../../src/lib/downloadTiers"
+import {
+  resolveSeriesDownload,
+  type SeriesDownloadResolution,
+  type SeriesEpisodeResolution,
+} from "../../src/lib/seriesDownloadResolver"
+import {
+  buildEpisodeRequest,
+  enqueueResolvedEpisodes,
+  evaluateStorageGate,
+  formatEnqueueSummary,
+  type EnqueueSummary,
+} from "../../src/lib/seriesDownloadEnqueue"
+import { freeDiskBytes } from "../../src/lib/offlineFileSystem"
+
+// Series locale matches the series detail query (app/series/[slug].tsx).
+const LOCALE = "en"
+
+const QUALITY_TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
+const NO_SUBTITLE_KEY = "__none__"
+
+type SheetPhase =
+  | { kind: "resolving"; settled: number }
+  | { kind: "error"; offline: boolean }
+  | { kind: "ready"; resolution: SeriesDownloadResolution }
+  | { kind: "enqueuing" }
+  | { kind: "done"; summary: EnqueueSummary }
+
+export default function SeriesDownloadRoute() {
+  const router = useRouter()
+  const { series, selectedLanguageSlug, languages } = useSeriesSession()
+  const {
+    getRecord,
+    startDownload,
+    swapDownload,
+    deleteDownload,
+    queueBatchRecords,
+  } = useDownloads()
+  const { wifiOnly } = useWatchPreferences()
+  const typography = useTypography()
+  const insets = useSafeAreaInsets()
+
+  const [qualityTier, setQualityTier] = useState<QualityTier>("Highest")
+  const [qualityOpen, setQualityOpen] = useState(false)
+  const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
+  const [subtitleOpen, setSubtitleOpen] = useState(false)
+  const [touAccepted, setTouAccepted] = useState(false)
+  const [termsVisible, setTermsVisible] = useState(false)
+
+  const [phase, setPhase] = useState<SheetPhase>({
+    kind: "resolving",
+    settled: 0,
+  })
+  const [storageError, setStorageError] = useState<string | null>(null)
+  // Union of subtitle language { slug → name } seen across the resolved set's dub
+  // media — collected as a byproduct of the resolution fan-out (the resolver only
+  // returns the chosen track, so the union is gathered here from the same fetch).
+  const [subtitleUnion, setSubtitleUnion] = useState<Map<string, string>>(
+    () => new Map(),
+  )
+
+  const episodes = series?.episodes ?? null
+  const languageSlug = selectedLanguageSlug
+  const languageName =
+    languages.find((l) => l.slug === languageSlug)?.name ?? languageSlug ?? ""
+
+  // Resolve (or re-resolve) the whole set for the current quality/language/
+  // subtitle choice. Aborted on unmount and on each re-run so a stale fan-out
+  // never writes into the new phase. `onlyFailedFrom` re-runs just the
+  // failed-resolve episodes (Retry failed), merging back onto the resolved set.
+  const runResolution = useCallback(
+    async (
+      controller: AbortController,
+      onlyFailedFrom?: SeriesDownloadResolution,
+    ) => {
+      if (!episodes || !languageSlug) return
+      const target = onlyFailedFrom
+        ? episodes.filter((e) =>
+            onlyFailedFrom.episodes.some(
+              (r) => r.slug === e.slug && r.status === "failed-resolve",
+            ),
+          )
+        : episodes
+
+      setPhase({ kind: "resolving", settled: 0 })
+      const client = getApolloClient()
+      const subtitleSeen = new Map<string, string>()
+      let settled = 0
+
+      const resolution = await resolveSeriesDownload(
+        target,
+        { qualityTier, languageSlug, subtitleLanguageSlug: subtitleSlug },
+        {
+          // First hop fires once per episode → a monotonic "X of N" proxy.
+          getEpisodeVariants: async (slug: string) => {
+            const res = await client.query({
+              query: GET_VIDEO_BY_SLUG,
+              variables: { slug, locale: LOCALE },
+              fetchPolicy: "cache-first" as const,
+            })
+            settled += 1
+            if (!controller.signal.aborted) {
+              setPhase({ kind: "resolving", settled })
+            }
+            return normalizeVideo(res.data?.videoBySlug ?? null)?.variants ?? []
+          },
+          getDubMedia: async (dubDocumentId: string) => {
+            const res = await client.query({
+              query: GET_VIDEO_DUB,
+              variables: { id: dubDocumentId },
+              fetchPolicy: "cache-first" as const,
+            })
+            const media = normalizeDubMedia(res.data?.videoDub ?? null)
+            for (const sub of media.subtitles) {
+              if (sub.languageSlug) {
+                subtitleSeen.set(
+                  sub.languageSlug,
+                  sub.languageName || sub.languageSlug,
+                )
+              }
+            }
+            return media
+          },
+        },
+        controller.signal,
+      )
+      // Post-unmount guard: never write state after the sheet aborts (R10).
+      if (controller.signal.aborted) return
+
+      const merged = onlyFailedFrom
+        ? mergeResolution(onlyFailedFrom, resolution)
+        : resolution
+
+      setSubtitleUnion((prev) =>
+        onlyFailedFrom ? new Map([...prev, ...subtitleSeen]) : subtitleSeen,
+      )
+
+      // A total failure (every episode failed-resolve) is distinct from an
+      // all-skipped set: it offers retry, not a disabled Confirm.
+      const allFailed =
+        merged.episodes.length > 0 &&
+        merged.failedCount === merged.episodes.length
+      if (allFailed) {
+        setPhase({ kind: "error", offline: isOffline(resolution) })
+        return
+      }
+      setPhase({ kind: "ready", resolution: merged })
+    },
+    [episodes, languageSlug, qualityTier, subtitleSlug],
+  )
+
+  // Mount / choice-change resolution. New controller per run; aborted on cleanup.
+  useEffect(() => {
+    const controller = new AbortController()
+    void runResolution(controller)
+    return () => controller.abort()
+  }, [runResolution])
+
+  const resolution = phase.kind === "ready" ? phase.resolution : null
+
+  const onConfirm = useCallback(async () => {
+    if (!resolution || resolution.resolvedCount === 0 || !touAccepted) return
+    setStorageError(null)
+
+    const free = await freeDiskBytes()
+    const gate = evaluateStorageGate({
+      resolution,
+      getRecord,
+      freeBytes: free,
+      reserveBytes: STORAGE_RESERVE_BYTES,
+    })
+    if (gate.kind === "unverifiable-total") {
+      setStorageError(
+        "Some sizes are unverified, so the total can't be checked. Try again on a faster connection.",
+      )
+      return
+    }
+    if (gate.kind === "unreadable-free") {
+      setStorageError("Couldn't check storage. Try again.")
+      return
+    }
+    if (gate.kind === "insufficient") {
+      const shortfall = gate.requiredBytes - gate.freeBytes
+      setStorageError(
+        `Not enough storage. You need about ${formatBytes(shortfall)} more free space.`,
+      )
+      return
+    }
+
+    setPhase({ kind: "enqueuing" })
+    const ctx = {
+      subtitleLanguageSlug: subtitleSlug,
+      allowCellular: !wifiOnly,
+    }
+    // Snapshot each episode's record BEFORE pre-queuing: queueBatchRecords writes
+    // a `queued` placeholder carrying the chosen dub, which would otherwise make
+    // decideEpisodeAction read "same dub → skip" and never start the download.
+    // The loop decides actions from this pre-batch snapshot.
+    const preBatch = new Map(
+      resolution.resolved.map((e) => [e.slug, getRecord(e.slug)] as const),
+    )
+
+    // Persist a durable `queued` placeholder for each resolved episode BEFORE any
+    // network, so a backgrounding mid-batch still completes via launch reattach.
+    const requests = resolution.resolved
+      .map((e) => buildEpisodeRequest(e, ctx))
+      .filter((r): r is NonNullable<typeof r> => r != null)
+    await queueBatchRecords(requests)
+
+    const summary = await enqueueResolvedEpisodes(resolution.resolved, ctx, {
+      getRecord: (slug) => preBatch.get(slug) ?? null,
+      startDownload,
+      swapDownload,
+      deleteDownload,
+    })
+    // An all-ok batch dismisses straight away; otherwise show the summary panel.
+    if (summary.allOk) {
+      router.back()
+      return
+    }
+    setPhase({ kind: "done", summary })
+  }, [
+    resolution,
+    touAccepted,
+    subtitleSlug,
+    wifiOnly,
+    getRecord,
+    startDownload,
+    swapDownload,
+    deleteDownload,
+    queueBatchRecords,
+    router,
+  ])
+
+  const onRetry = useCallback(() => {
+    const controller = new AbortController()
+    void runResolution(controller)
+  }, [runResolution])
+
+  const onRetryFailed = useCallback(() => {
+    if (!resolution) return
+    const controller = new AbortController()
+    void runResolution(controller, resolution)
+  }, [resolution, runResolution])
+
+  if (!series || !episodes || !languageSlug) return null
+
+  // ── Render per phase ──────────────────────────────────────────────
+  if (phase.kind === "error") {
+    return (
+      <SheetError
+        message={
+          phase.offline
+            ? "You appear to be offline. Reconnect and try again."
+            : "Couldn't load these episodes. Check your connection and try again."
+        }
+        onRetry={onRetry}
+      />
+    )
+  }
+
+  return (
+    <ScrollView
+      contentContainerStyle={[
+        styles.scrollContent,
+        { paddingBottom: insets.bottom + 24 },
+      ]}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
+      <Text style={[styles.title, typography.titleLarge]} numberOfLines={2}>
+        {series.title ?? "Download all"}
+      </Text>
+      <Text style={[styles.subtitle, typography.bodySmall]}>
+        {episodes.length} {episodes.length === 1 ? "episode" : "episodes"} ·{" "}
+        {languageName}
+      </Text>
+
+      {/* Audio language — tappable, opens the series language sheet. */}
+      <Pressable
+        style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
+        onPress={() => router.push("/series/language")}
+        accessibilityRole="button"
+        accessibilityLabel={`Audio language, ${languageName}`}
+      >
+        <View style={styles.langRowLeft}>
+          <Text style={[styles.rowLabel, typography.bodySmall]}>Audio</Text>
+          <Text style={[styles.rowValue, typography.body]} numberOfLines={1}>
+            {languageName}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
+      </Pressable>
+
+      <Dropdown
+        sectionLabel="Quality"
+        options={QUALITY_TIERS.map((t) => ({ key: t, label: t }))}
+        selectedKey={qualityTier}
+        open={qualityOpen}
+        onToggle={() => setQualityOpen((o) => !o)}
+        onSelect={(key) => {
+          setQualityTier(key as QualityTier)
+          setQualityOpen(false)
+        }}
+      />
+
+      <SubtitlePicker
+        union={subtitleUnion}
+        selectedSlug={subtitleSlug}
+        open={subtitleOpen}
+        onToggle={() => setSubtitleOpen((o) => !o)}
+        onSelect={(slug) => {
+          setSubtitleSlug(slug)
+          setSubtitleOpen(false)
+        }}
+      />
+
+      {/* Status panel — resolving / size / partial / all-skipped / summary. */}
+      <StatusPanel
+        phase={phase}
+        languageName={languageName}
+        episodeCount={episodes.length}
+        onRetryFailed={onRetryFailed}
+        typography={typography}
+      />
+
+      {storageError != null && (
+        <Text style={[styles.storageError, typography.bodySmall]}>
+          {storageError}
+        </Text>
+      )}
+
+      {phase.kind === "done" ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.confirmButton,
+            pressed && feedback.pressed,
+          ]}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Done"
+        >
+          <Text style={[styles.confirmButtonText, typography.body]}>Done</Text>
+        </Pressable>
+      ) : (
+        <>
+          <View style={styles.touRow}>
+            <Pressable
+              onPress={() => setTouAccepted((v) => !v)}
+              hitSlop={8}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: touAccepted }}
+              accessibilityLabel="I agree to the Terms of Use"
+              style={({ pressed }) => pressed && feedback.pressed}
+            >
+              <View
+                style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+              >
+                {touAccepted && (
+                  <Ionicons name="checkmark" size={16} color="#ffffff" />
+                )}
+              </View>
+            </Pressable>
+            <Text style={[styles.touText, typography.bodySmall]}>
+              I agree to the{" "}
+            </Text>
+            <Pressable
+              onPress={() => setTermsVisible(true)}
+              hitSlop={4}
+              accessibilityRole="link"
+              accessibilityLabel="Read Terms of Use"
+            >
+              <Text style={[styles.touLink, typography.bodySmall]}>
+                Terms of Use
+              </Text>
+            </Pressable>
+          </View>
+
+          <ConfirmButton
+            phase={phase}
+            resolution={resolution}
+            touAccepted={touAccepted}
+            onConfirm={onConfirm}
+            typography={typography}
+          />
+        </>
+      )}
+
+      <TermsModal
+        visible={termsVisible}
+        onAccept={() => {
+          setTouAccepted(true)
+          setTermsVisible(false)
+        }}
+        onCancel={() => setTermsVisible(false)}
+      />
+    </ScrollView>
+  )
+}
+
+// ── Subcomponents ───────────────────────────────────────────────────
+
+function SubtitlePicker({
+  union,
+  selectedSlug,
+  open,
+  onToggle,
+  onSelect,
+}: {
+  /** slug → display name, the union of subtitle tracks across resolved episodes. */
+  union: Map<string, string>
+  selectedSlug: string | null
+  open: boolean
+  onToggle: () => void
+  onSelect: (slug: string | null) => void
+}) {
+  const options = useMemo<DropdownOption[]>(() => {
+    const base: DropdownOption[] = [
+      { key: NO_SUBTITLE_KEY, label: "No subtitles" },
+    ]
+    const sorted = [...union.entries()].sort((a, b) =>
+      a[1].toLowerCase().localeCompare(b[1].toLowerCase()),
+    )
+    for (const [slug, name] of sorted) base.push({ key: slug, label: name })
+    return base
+  }, [union])
+
+  return (
+    <Dropdown
+      sectionLabel="Subtitles"
+      options={options}
+      selectedKey={selectedSlug ?? NO_SUBTITLE_KEY}
+      open={open}
+      onToggle={onToggle}
+      onSelect={(key) => onSelect(key === NO_SUBTITLE_KEY ? null : key)}
+    />
+  )
+}
+
+function StatusPanel({
+  phase,
+  languageName,
+  episodeCount,
+  onRetryFailed,
+  typography,
+}: {
+  phase: SheetPhase
+  languageName: string
+  episodeCount: number
+  onRetryFailed: () => void
+  typography: ReturnType<typeof useTypography>
+}) {
+  if (phase.kind === "resolving") {
+    return (
+      <View style={styles.statusPanel}>
+        {phase.settled === 0 ? <ActivityIndicator color={ACCENT} /> : null}
+        <Text style={[styles.statusText, typography.body]}>
+          {`Resolving ${phase.settled} of ${episodeCount}…`}
+        </Text>
+      </View>
+    )
+  }
+
+  if (phase.kind === "enqueuing") {
+    return (
+      <View style={styles.statusPanel}>
+        <ActivityIndicator color={ACCENT} />
+        <Text style={[styles.statusText, typography.body]}>
+          Starting downloads…
+        </Text>
+      </View>
+    )
+  }
+
+  if (phase.kind === "done") {
+    const line = formatEnqueueSummary(phase.summary)
+    return (
+      <View style={styles.statusPanel}>
+        <Text style={[styles.statusText, typography.body]}>
+          {line || "Nothing to download."}
+        </Text>
+      </View>
+    )
+  }
+
+  if (phase.kind === "ready") {
+    const r = phase.resolution
+    if (r.resolvedCount === 0) {
+      return (
+        <View style={styles.statusPanel}>
+          <Text style={[styles.statusText, typography.body]}>
+            {`None of the episodes are available in ${languageName}.`}
+          </Text>
+        </View>
+      )
+    }
+    const skipped = r.skippedLanguageCount + r.skippedNoRenditionCount
+    return (
+      <View style={styles.statusPanel}>
+        <Text style={[styles.sizeText, typography.body]}>
+          {`${r.resolvedCount} ${r.resolvedCount === 1 ? "segment" : "segments"} · ${formatFileSize(String(r.totalBytes))} total`}
+        </Text>
+        {skipped > 0 && (
+          <Text style={[styles.skippedText, typography.bodySmall]}>
+            {`${skipped} skipped (unavailable in ${languageName})`}
+          </Text>
+        )}
+        {r.failedCount > 0 && (
+          <View style={styles.failedRow}>
+            <Text style={[styles.skippedText, typography.bodySmall]}>
+              {`${r.failedCount} couldn't be checked`}
+            </Text>
+            <Pressable
+              onPress={onRetryFailed}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Retry failed episodes"
+            >
+              <Text style={[styles.retryFailedText, typography.bodySmall]}>
+                Retry failed
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+    )
+  }
+
+  return null
+}
+
+function ConfirmButton({
+  phase,
+  resolution,
+  touAccepted,
+  onConfirm,
+  typography,
+}: {
+  phase: SheetPhase
+  resolution: SeriesDownloadResolution | null
+  touAccepted: boolean
+  onConfirm: () => void
+  typography: ReturnType<typeof useTypography>
+}) {
+  const disabled =
+    phase.kind !== "ready" ||
+    !resolution ||
+    resolution.resolvedCount === 0 ||
+    !touAccepted
+
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.confirmButton,
+        disabled && styles.confirmButtonDisabled,
+        pressed && !disabled && feedback.pressed,
+      ]}
+      onPress={onConfirm}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel="Download all episodes"
+      accessibilityState={{ disabled }}
+    >
+      <Ionicons name="download-outline" size={20} color="#ffffff" />
+      <Text style={[styles.confirmButtonText, typography.body]}>
+        Download all
+      </Text>
+    </Pressable>
+  )
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+// Merge a failed-only re-resolution back onto the prior set by slug.
+function mergeResolution(
+  prior: SeriesDownloadResolution,
+  retry: SeriesDownloadResolution,
+): SeriesDownloadResolution {
+  const bySlug = new Map<string, SeriesEpisodeResolution>()
+  for (const ep of retry.episodes) bySlug.set(ep.slug, ep)
+  const episodes = prior.episodes.map((ep) => bySlug.get(ep.slug) ?? ep)
+  return recomputeResolution(episodes)
+}
+
+function recomputeResolution(
+  episodes: SeriesEpisodeResolution[],
+): SeriesDownloadResolution {
+  const resolved = episodes.filter((e) => e.status === "resolved")
+  return {
+    episodes,
+    resolved,
+    resolvedCount: resolved.length,
+    skippedLanguageCount: episodes.filter(
+      (e) => e.status === "skipped-language-absent",
+    ).length,
+    skippedNoRenditionCount: episodes.filter(
+      (e) => e.status === "skipped-no-rendition",
+    ).length,
+    failedCount: episodes.filter((e) => e.status === "failed-resolve").length,
+    totalBytes: resolved.reduce((sum, e) => sum + (e.sizeBytes ?? 0), 0),
+    totalIsLowerBound: resolved.some((e) => e.sizeUnknown === true),
+  }
+}
+
+// A fully-failed resolution is "offline" when nothing resolved AND nothing was
+// even classified as language-absent/no-rendition — every episode's fetch threw.
+function isOffline(resolution: SeriesDownloadResolution): boolean {
+  return (
+    resolution.resolvedCount === 0 &&
+    resolution.skippedLanguageCount === 0 &&
+    resolution.skippedNoRenditionCount === 0 &&
+    resolution.failedCount > 0
+  )
+}
+
+function formatBytes(bytes: number): string {
+  return formatFileSize(String(Math.max(0, Math.round(bytes))))
+}
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 36,
+  },
+  title: {
+    color: TEXT_PRIMARY,
+    fontWeight: "700",
+    fontFamily: "System",
+    marginBottom: 4,
+  },
+  subtitle: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    marginBottom: 24,
+  },
+  langRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minHeight: 56,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    marginBottom: 24,
+  },
+  langRowLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  rowLabel: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    marginBottom: 2,
+  },
+  rowValue: {
+    color: TEXT_PRIMARY,
+    fontWeight: "600",
+    fontFamily: "System",
+  },
+  statusPanel: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255, 255, 255, 0.08)",
+    marginBottom: 8,
+  },
+  statusText: {
+    color: TEXT_BODY,
+    fontFamily: "System",
+  },
+  sizeText: {
+    color: TEXT_PRIMARY,
+    fontWeight: "600",
+    fontFamily: "System",
+    width: "100%",
+  },
+  skippedText: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+  },
+  failedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+  },
+  retryFailedText: {
+    color: ACCENT,
+    fontWeight: "600",
+    fontFamily: "System",
+    textDecorationLine: "underline",
+  },
+  storageError: {
+    color: ACCENT,
+    fontFamily: "System",
+    marginBottom: 16,
+  },
+  touRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  checkboxChecked: {
+    backgroundColor: ACCENT,
+    borderColor: ACCENT,
+  },
+  touText: {
+    color: TEXT_BODY,
+    fontFamily: "System",
+  },
+  touLink: {
+    color: ACCENT,
+    fontWeight: "600",
+    fontFamily: "System",
+    textDecorationLine: "underline",
+  },
+  confirmButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: ACCENT,
+    borderRadius: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    minHeight: 48,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.5,
+  },
+  confirmButtonText: {
+    color: "#ffffff",
+    fontWeight: "600",
+    fontFamily: "System",
+  },
+})
