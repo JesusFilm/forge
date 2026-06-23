@@ -397,7 +397,6 @@ indexing state.
 - `apps/yt-video-mapper-backend/railway.toml`
 - `apps/yt-video-mapper-backend/.env.example`
 - `apps/yt-video-mapper-backend/AGENTS.md`
-- `docs/roadmap/content-discovery/feat-171-yt-video-mapper-broad-catalog-prototype.md`
 
 **Approach:**
 
