@@ -4,15 +4,22 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
+import {
+  type SeriesDownloadState,
+  seriesDownloadLabel,
+} from "../../lib/seriesDownloadAggregate"
 
-// Language + Share only: a series has no single asset to download or caption,
-// so the video page's Download/Subtitles actions don't carry over. Separate
-// from ActionButtonRow (a pill row + icon cluster) — different affordances.
+// Language + Download all + Share. Download-all batches every episode through the
+// per-video queue (U11). Separate from ActionButtonRow (a pill row + icon
+// cluster) — different affordances.
 export type SeriesActionRowProps = {
   onLanguage: () => void
+  onDownload: () => void
   onShare: () => void
   /** Selected language name shown under the Language button. */
   languageLabel?: string | null
+  /** Series-wide download progress shown under the Download button. */
+  downloadState: SeriesDownloadState
 }
 
 type ActionItem = {
@@ -27,12 +34,15 @@ type ActionItem = {
 
 export function SeriesActionRow({
   onLanguage,
+  onDownload,
   onShare,
   languageLabel,
+  downloadState,
 }: SeriesActionRowProps) {
   const typography = useTypography()
 
   const language = languageLabel?.trim() || null
+  const downloadLabel = seriesDownloadLabel(downloadState)
 
   const actions: ActionItem[] = [
     {
@@ -41,6 +51,13 @@ export function SeriesActionRow({
       label: language ?? "Language",
       accessibilityLabel: language ? `Language, ${language}` : "Language",
       onPress: onLanguage,
+    },
+    {
+      id: "download",
+      icon: "arrow-down-circle-outline",
+      label: downloadLabel,
+      accessibilityLabel: downloadLabel,
+      onPress: onDownload,
     },
     { id: "share", icon: "share-outline", label: "Share", onPress: onShare },
   ]
@@ -74,7 +91,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     // Top-align so the icons stay on one line when a long language label wraps.
     alignItems: "flex-start",
-    gap: 64,
+    // Three items now (was 64 for two); tighten so the row fits a 320pt width.
+    gap: 40,
     paddingHorizontal: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255, 255, 255, 0.1)",

@@ -33,6 +33,8 @@ import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
 import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGrid"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { deriveSeriesDownloadState } from "../../src/lib/seriesDownloadAggregate"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
@@ -54,6 +56,17 @@ export default function SeriesScreen() {
 
   const { series, setSeries, languages, selectedLanguageSlug } =
     useSeriesSession()
+  const { downloadedSlugs, offlineRecords } = useDownloads()
+
+  const downloadState = useMemo(
+    () =>
+      deriveSeriesDownloadState(
+        series?.episodes.map((episode) => episode.slug) ?? [],
+        downloadedSlugs,
+        offlineRecords,
+      ),
+    [series?.episodes, downloadedSlugs, offlineRecords],
+  )
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
@@ -239,11 +252,13 @@ export default function SeriesScreen() {
               <>
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
+                  onDownload={() => router.push("/series/download")}
                   onShare={handleShare}
                   languageLabel={
                     languages.find((l) => l.slug === selectedLanguageSlug)
                       ?.name ?? null
                   }
+                  downloadState={downloadState}
                 />
                 <VideoDescription description={series.description} />
                 {series.episodes.length > 0 && (
