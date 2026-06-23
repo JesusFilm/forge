@@ -34,6 +34,11 @@ const ITEM_GAP = scale(28)
 const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 const RAIL_PADDING_LEFT = scale(80)
 
+// Off-window rails render a same-height spacer instead of the card FlatList so
+// the row's onLayout y stays stable (the row-anchored scroll depends on it).
+// = itemWrapper padding (24*2) + thumb + label meta (~67). Tune on-device.
+const CARD_ROW_HEIGHT = HOME_CARD_THUMB_HEIGHT + scale(115)
+
 // How many card columns span the visible width. A rail with fewer cards than
 // this leaves empty columns on the right, which the tvOS focus engine treats
 // as "nothing there" — a vertical move from an over-hanging column SKIPS the
@@ -125,6 +130,14 @@ type HomeRailProps = {
    * restores the last card, while Up from a rail below stays column-preserving.
    */
   restoreLastFocus?: boolean
+  /**
+   * When false (off the focus window), the rail renders its header plus a
+   * fixed-height empty spacer instead of the card FlatList — its ~10 card images
+   * never mount, cutting per-frame composite cost on weak Android TV GPUs. The
+   * parent keeps the focused row and a buffer of neighbours active so D-pad
+   * traversal never reaches an inactive rail. Defaults to true (eager).
+   */
+  active?: boolean
 }
 
 export const HomeRail = memo(function HomeRail({
@@ -137,6 +150,7 @@ export const HomeRail = memo(function HomeRail({
   onCardPress,
   upFocusTarget,
   restoreLastFocus,
+  active = true,
 }: HomeRailProps) {
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
@@ -214,19 +228,26 @@ export const HomeRail = memo(function HomeRail({
           extraData={lastCardNode}: FlatList re-renders rows on data/extraData
           change only — the pads need to re-render once the bounce target is
           captured. */}
-      <TVFocusGuideView autoFocus={restoreLastFocus}>
-        <FlatList
-          data={items}
-          extraData={lastCardNode}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          keyExtractor={keyExtractor}
-          onScrollToIndexFailed={() => {}}
-          getItemLayout={getItemLayout}
-          renderItem={renderItem}
-        />
-      </TVFocusGuideView>
+      {active ? (
+        <TVFocusGuideView autoFocus={restoreLastFocus}>
+          <FlatList
+            data={items}
+            extraData={lastCardNode}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            keyExtractor={keyExtractor}
+            onScrollToIndexFailed={() => {}}
+            getItemLayout={getItemLayout}
+            renderItem={renderItem}
+          />
+        </TVFocusGuideView>
+      ) : (
+        // Off-window: same-height spacer keeps the row's onLayout y stable while
+        // its cards stay unmounted. No focusable here — the parent guarantees
+        // focus is at least `buffer` rows away before a rail deactivates.
+        <View style={styles.cardRowPlaceholder} />
+      )}
     </View>
   )
 })
@@ -257,6 +278,11 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(80),
+  },
+  // Empty spacer for off-window rails — matches the active card row's height so
+  // row positions don't shift when a rail mounts/unmounts its cards.
+  cardRowPlaceholder: {
+    height: CARD_ROW_HEIGHT,
   },
   // Vertical room so the focus lift + white ring + shadow never clip against
   // neighbours; doubles as the design's head→cards gap (22px ≈ 24).
