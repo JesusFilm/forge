@@ -9,7 +9,11 @@ import {
 
 describe("search eval seed prompt set", () => {
   it("includes a 100-query launch-readiness suite with unique ids", () => {
-    expect(SEARCH_EVAL_SEED_PROMPTS).toHaveLength(100)
+    const publicWatchPrompts = seedPromptsForLocales(undefined, {
+      callerTrack: "public-watch",
+    })
+    expect(publicWatchPrompts).toHaveLength(100)
+    expect(SEARCH_EVAL_SEED_PROMPTS.length).toBeGreaterThan(100)
 
     const ids = SEARCH_EVAL_SEED_PROMPTS.map((prompt) => prompt.id)
     expect(new Set(ids).size).toBe(ids.length)
@@ -127,6 +131,7 @@ describe("search eval seed prompt set", () => {
       SEARCH_EVAL_SEED_PROMPTS.every(
         (prompt) =>
           prompt.source === "seed" &&
+          prompt.callerTracks.length > 0 &&
           /^[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(prompt.locale) &&
           (prompt.languageSlug == null ||
             /^[a-z0-9]+(-[a-z0-9]+)*$/.test(prompt.languageSlug)) &&
@@ -137,6 +142,28 @@ describe("search eval seed prompt set", () => {
     expect(
       seedPromptsForLocales(["fr"]).map((prompt) => prompt.locale),
     ).toEqual(["fr"])
+
+    expect(
+      seedPromptsForLocales(undefined, {
+        callerTrack: "ai-experience-generation",
+      }).map((prompt) => prompt.id),
+    ).toEqual(
+      expect.arrayContaining([
+        "seed-ai-easter-devotional-hope",
+        "seed-ai-pentecost-holy-spirit",
+      ]),
+    )
+
+    expect(
+      seedPromptsForLocales(undefined, {
+        callerTrack: "semantic-diagnostic",
+      }).map((prompt) => prompt.id),
+    ).toEqual(
+      expect.arrayContaining([
+        "seed-semantic-lost-son-welcomed-home",
+        "seed-semantic-wedding-water-wine",
+      ]),
+    )
 
     expect(SEARCH_EVAL_SEED_PROMPT_LOCALES).toEqual(
       expect.arrayContaining([

@@ -156,6 +156,7 @@ function baseline(): BaselineArtifact {
       startedAt: "2026-06-02T00:00:00.000Z",
       finishedAt: "2026-06-02T00:00:01.000Z",
       baselineName: "seed-baseline",
+      callerTrack: "public-watch",
       promptSetVersion: SEARCH_EVAL_SEED_PROMPT_SET_VERSION,
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
       judgeModel: null,
@@ -167,6 +168,7 @@ function baseline(): BaselineArtifact {
         locale: "en",
         queryText: "Jesus",
         source: "seed",
+        callerTrack: "public-watch",
         tags: ["core-title"],
         results: [searchResult()],
       },
@@ -204,6 +206,7 @@ function seedReport(): SearchEvalReport {
         locale: "en",
         queryText: "Jesus",
         source: "seed",
+        callerTrack: "public-watch",
         baselineResults: [searchResult()],
         currentResults: [searchResult()],
         verdicts: ["tie", "tie"],
@@ -305,19 +308,19 @@ describe("search eval native suite workflow", () => {
         action: "sync-report",
         reportId: "report-1",
         dataset: {
-          name: "search-eval:local:seed-baseline:hybrid",
+          name: "search-eval:local:seed-baseline:public-watch:hybrid",
           status: "created",
           itemCount: 1,
         },
         experiment: {
-          name: "search-eval-baseline:local:seed-baseline:hybrid:report-1",
+          name: "search-eval-baseline:local:seed-baseline:public-watch:hybrid:report-1",
           status: "created",
         },
         report: {
           mastraEvaluation: {
             integrationStatus: "native_synced",
             dataset: {
-              name: "search-eval:local:seed-baseline:hybrid",
+              name: "search-eval:local:seed-baseline:public-watch:hybrid",
               itemCount: 1,
             },
           },

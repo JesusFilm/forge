@@ -1,7 +1,16 @@
 import { z } from "zod"
 
 import { env, getOpenRouterApiKey } from "../../config/env"
-import type { JudgeVerdict, SearchEvalResult } from "./types"
+import {
+  DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  normalizeSearchEvalCallerTrack,
+  searchEvalCallerTrackDefinition,
+} from "./types"
+import type {
+  JudgeVerdict,
+  SearchEvalCallerTrack,
+  SearchEvalResult,
+} from "./types"
 
 const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions"
@@ -41,6 +50,7 @@ export class OfflineSearchEvalJudgeError extends Error {
 export type JudgePairInput = {
   query: string
   locale: string
+  callerTrack?: SearchEvalCallerTrack
   listA: SearchEvalResult[]
   listB: SearchEvalResult[]
 }
@@ -77,6 +87,10 @@ function truncateForJudge(value: string): string {
 }
 
 function requestBody(model: string, input: JudgePairInput) {
+  const callerTrack = normalizeSearchEvalCallerTrack(
+    input.callerTrack ?? DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  )
+  const definition = searchEvalCallerTrackDefinition(callerTrack)
   return {
     model,
     messages: [
@@ -84,6 +98,11 @@ function requestBody(model: string, input: JudgePairInput) {
         role: "system",
         content: [
           "Compare two ranked search result lists for relevance.",
+          `Caller track: ${definition.id}.`,
+          `Caller: ${definition.caller}.`,
+          `Job: ${definition.job}.`,
+          `Rubric: ${definition.judgeRubric}`,
+          `Success criteria: ${definition.successCriteria.join(" ")}`,
           "Choose both-irrelevant only if neither list is useful.",
           "Return JSON only.",
         ].join("\n"),
