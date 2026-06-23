@@ -16,6 +16,7 @@
 import {
   Archive,
   ChevronRight,
+  Clapperboard,
   MessageSquarePlus,
   Send,
   Sparkles,
@@ -49,6 +50,7 @@ import {
   type ChatThreadDTO,
 } from "@/app/dashboard/experiences/experience-chat-actions"
 
+import { AnchorVideoPicker } from "./anchor-video-picker"
 import type { VideoLibraryItem } from "./block-helpers"
 import { ExperienceChatCrossLocaleModal } from "./experience-chat-cross-locale-modal"
 import {
@@ -214,6 +216,7 @@ export function ExperienceChatPanel({
   canvasController,
   actions,
   suggestedPrompts = [],
+  videoLibrary = [],
   generateDraftAction,
   generateSectionAction,
   streamFactory = openChatStream,
@@ -235,8 +238,13 @@ export function ExperienceChatPanel({
   const [stagedDraft, setStagedDraft] = useState<StagedDraftPreview | null>(
     null,
   )
-  /** Anchor-video id/slug for video-anchored section generation. */
-  const [anchorVideoId, setAnchorVideoId] = useState("")
+  /**
+   * Video chosen via the picker to anchor a generated section. Its `key`
+   * (the video Database id) is what `generateSectionAction` receives.
+   */
+  const [anchorVideo, setAnchorVideo] = useState<VideoLibraryItem | null>(null)
+  /** Whether the anchor-video picker modal is open. */
+  const [anchorPickerOpen, setAnchorPickerOpen] = useState(false)
   // Active user's ratings keyed by messageId. Seeded from
   // GET /threads/{threadId}/ratings on mount / thread switch so the
   // 👍/👎 widget reflects prior state without per-message fetches.
@@ -782,7 +790,7 @@ export function ExperienceChatPanel({
 
   const handleGenerateSection = useCallback(async () => {
     if (!generateSectionAction) return
-    const anchor = anchorVideoId.trim()
+    const anchor = anchorVideo?.key
     if (!anchor) return
     setDraftWorkflowStatus("generating")
     setDraftWorkflowError(null)
@@ -806,14 +814,14 @@ export function ExperienceChatPanel({
         mode: "append",
       })
       setDraftWorkflowStatus("idle")
-      setAnchorVideoId("")
+      setAnchorVideo(null)
     } catch (err) {
       setDraftWorkflowStatus("error")
       setDraftWorkflowError(
         err instanceof Error ? err.message : "Section generation failed.",
       )
     }
-  }, [generateSectionAction, anchorVideoId, canvasController])
+  }, [generateSectionAction, anchorVideo, canvasController])
 
   // -- Render -------------------------------------------------------------
   const inFlightAssistantTokens =
@@ -1028,27 +1036,54 @@ export function ExperienceChatPanel({
 
         {generateSectionAction ? (
           <div
-            className="mt-2 flex items-center gap-2"
+            className="mt-2 flex flex-col gap-2"
             data-testid="experience-chat-section-row"
           >
-            <input
-              type="text"
-              value={anchorVideoId}
-              onChange={(e) => setAnchorVideoId(e.target.value)}
-              placeholder="Anchor video id or slug…"
-              data-testid="experience-chat-anchor-input"
-              className="h-9 flex-1 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-disabled)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand)]"
-            />
+            {anchorVideo ? (
+              <div
+                className="flex min-w-0 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2 py-1.5"
+                data-testid="experience-chat-anchor-chosen"
+              >
+                <div
+                  className="h-8 w-12 shrink-0 overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,#1c2027,#121419)] bg-cover bg-center"
+                  style={
+                    anchorVideo.previewImageUrl
+                      ? {
+                          backgroundImage: `url("${anchorVideo.previewImageUrl}")`,
+                        }
+                      : undefined
+                  }
+                />
+                <div className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--color-text-primary)]">
+                  {anchorVideo.title}
+                </div>
+                <button
+                  type="button"
+                  data-testid="experience-chat-choose-video"
+                  onClick={() => setAnchorPickerOpen(true)}
+                  className="shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)] underline-offset-2 transition-all duration-[120ms] ease-out hover:underline"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-testid="experience-chat-choose-video"
+                onClick={() => setAnchorPickerOpen(true)}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)]"
+              >
+                <Clapperboard className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Choose a video
+              </button>
+            )}
             <button
               type="button"
               data-testid="experience-chat-generate-section"
-              disabled={
-                draftWorkflowStatus === "generating" ||
-                anchorVideoId.trim().length === 0
-              }
+              disabled={draftWorkflowStatus === "generating" || !anchorVideo}
               onClick={() => void handleGenerateSection()}
               title="Generate one grounded section from this video (its study questions + scripture). Staged to append; verse text resolves at render."
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {draftWorkflowStatus === "generating"
                 ? "Working…"
@@ -1212,6 +1247,13 @@ export function ExperienceChatPanel({
         affectedLocales={[locale]}
         onCancel={() => setCrossLocaleModalOpen(false)}
         onConfirm={() => void submitWithConfirmation()}
+      />
+
+      <AnchorVideoPicker
+        videoLibrary={videoLibrary}
+        open={anchorPickerOpen}
+        onClose={() => setAnchorPickerOpen(false)}
+        onSelect={(item) => setAnchorVideo(item)}
       />
     </aside>
   )
