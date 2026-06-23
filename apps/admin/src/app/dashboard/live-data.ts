@@ -1808,6 +1808,8 @@ async function loadVideoRowSlice({
   let videoDubs: VideoDubRow[] = []
   let videoImages: VideoImageRow[] = []
   let videoChildRelations: Array<{ parentId: string }> = []
+  let groundingStudyQuestions: Array<{ videoId: string }> = []
+  let groundingBibleCitations: Array<{ videoId: string }> = []
   let routeManifest: Awaited<ReturnType<typeof loadLatestWatchRouteManifest>> =
     null
   try {
@@ -1816,6 +1818,8 @@ async function loadVideoRowSlice({
       videoDubs,
       videoImages,
       videoChildRelations,
+      groundingStudyQuestions,
+      groundingBibleCitations,
       routeManifest,
     ] = await Promise.all([
       prisma.videoLocale.findMany({
@@ -1874,6 +1878,20 @@ async function loadVideoRowSlice({
         },
         select: { parentId: true },
       }),
+      // Grounding signal: videos with ≥1 non-empty study question. Batched +
+      // distinct so the library list stays one query per relation regardless
+      // of catalogue size — no per-video content load.
+      prisma.videoStudyQuestion.findMany({
+        where: { videoId: { in: ids }, deletedAt: null, text: { not: "" } },
+        select: { videoId: true },
+        distinct: ["videoId"],
+      }),
+      // Grounding signal: videos with ≥1 non-deleted Bible citation.
+      prisma.bibleCitation.findMany({
+        where: { videoId: { in: ids }, deletedAt: null },
+        select: { videoId: true },
+        distinct: ["videoId"],
+      }),
       routeManifestPromise,
     ])
   } catch (error) {
@@ -1915,6 +1933,10 @@ async function loadVideoRowSlice({
     )
   }
 
+  const groundedIds = new Set<string>()
+  for (const item of groundingStudyQuestions) groundedIds.add(item.videoId)
+  for (const item of groundingBibleCitations) groundedIds.add(item.videoId)
+
   return videos.map((video) => {
     const localeRows = localesByVideo.get(video.id) ?? []
     const dubRows = dubsByVideo.get(video.id) ?? []
@@ -1951,6 +1973,7 @@ async function loadVideoRowSlice({
       previewImageUrl: preferredVideoImage(imageRows),
       previewStreamUrl:
         playbackDub?.hls ?? playbackDub?.dash ?? playbackDub?.share ?? null,
+      hasGrounding: groundedIds.has(video.id),
       visitorUrl: includeVisitorUrls
         ? resolveVideoVisitorUrl({
             contentSlug: video.slug,
