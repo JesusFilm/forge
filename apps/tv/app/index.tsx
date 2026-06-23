@@ -24,6 +24,7 @@ import { advanceByDelta } from "../src/components/home/heroPagerState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
   resolveBrowseState,
@@ -61,6 +62,11 @@ import type { WatchHomeCard } from "../src/lib/watchHome/model"
  * The SDUI Experience pipeline still serves /experience/[slug] — only this
  * screen left it (R9).
  */
+// Phase 2 windowing: how many rails on each side of the focused row keep their
+// cards mounted. >= 1 so the next rail is ready before D-pad focus reaches it; 2
+// keeps one extra ready in each direction and lets its images decode ahead.
+const RAIL_WINDOW_BUFFER = 2
+
 export default function HomeScreen() {
   const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
@@ -147,6 +153,9 @@ export default function HomeScreen() {
   // scroll-to-top behavior folds in here). The scroll is immediate (not
   // debounced) — it must track the traversal, not the settled card.
   const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
+  // Phase 2 windowing: the row that holds focus (hero / top bar = 0). State (not
+  // just the gate ref below) so the rail window re-renders as focus moves rows.
+  const [focusedRow, setFocusedRow] = useState(0)
   const scrollRef = useRef<ScrollView | null>(null)
   const rowYsRef = useRef<number[]>([])
   // When a row is focused before its onLayout has measured its y (cold first
@@ -162,6 +171,10 @@ export default function HomeScreen() {
   // Reset to null whenever focus leaves the rails (top bar / hero / mission) so
   // re-entering a row always re-applies its browse/scroll state.
   const lastFocusedRowRef = useRef<number | null>(null)
+  // Last section rail's row index, read by handleMissionFocus so the bottom
+  // rails stay windowed-active when focus drops to the mission tail (Up returns
+  // to a mounted rail). Assigned each render once the model is known.
+  const sectionCountRef = useRef(0)
 
   const scrollToRow = useCallback((rowIndex: number): boolean => {
     const target = resolveRowScrollTarget({
@@ -181,6 +194,7 @@ export default function HomeScreen() {
       // on every horizontal D-pad move).
       if (lastFocusedRowRef.current === rowIndex) return
       lastFocusedRowRef.current = rowIndex
+      setFocusedRow(rowIndex) // shift the rail window
       setBrowseState(resolveBrowseState(rowIndex))
       // Topmost section rail = rowIndex 1; anything >= 2 is a rail below it.
       setBelowTopmost(rowIndex >= 2)
@@ -203,6 +217,7 @@ export default function HomeScreen() {
   // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
     lastFocusedRowRef.current = null
+    setFocusedRow(0)
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -212,6 +227,9 @@ export default function HomeScreen() {
   // needs its own scroll hook — pin to the end in the deep state.
   const handleMissionFocus = useCallback(() => {
     lastFocusedRowRef.current = null
+    // Keep the bottom rails windowed-active so Up from the mission tail returns
+    // to a mounted rail, not an empty placeholder.
+    setFocusedRow(sectionCountRef.current)
     setBrowseState("deep")
     // The mission tail is below the topmost rail — keep its autoFocus OFF so a
     // later Up traversal stays column-preserving.
@@ -222,6 +240,7 @@ export default function HomeScreen() {
   // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
   // memoized rails' wrappers don't churn on every screen re-render.
   const rowCount = (model?.sections.length ?? 0) + 1
+  sectionCountRef.current = rowCount - 1
   const rowLayoutHandlers = useMemo(
     () =>
       Array.from(
@@ -292,6 +311,7 @@ export default function HomeScreen() {
   const handleHeroFocusChange = useCallback((isFocused: boolean) => {
     if (!isFocused) return
     lastFocusedRowRef.current = null
+    setFocusedRow(0)
     setBelowTopmost(false)
     setBrowseState("browse")
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -472,6 +492,13 @@ export default function HomeScreen() {
               // Up-from-below keeps the focus engine's column-preserving
               // geometry instead of snapping to the remembered card.
               restoreLastFocus={sectionIndex === 0 && !belowTopmost}
+              // Phase 2: only rails within the window around the focused row
+              // mount their cards; the rest render a same-height spacer.
+              active={isRailActive(
+                sectionIndex + 1,
+                focusedRow,
+                RAIL_WINDOW_BUFFER,
+              )}
             />
           </View>
         ))}
