@@ -29,13 +29,12 @@ const DEEP_SCRIM_MS = 500
 /** Quick restore when a pending crossfade is cancelled or superseded. */
 const CANCEL_FADE_MS = 200
 
-// Android TV uses a single expo-image that cross-dissolves between sources on a
-// persistent view, instead of the JS-orchestrated two-slot dance. The two-slot
-// crossfade was already native-driven, so this loses no fade smoothness — but it
-// drops the per-focused-card setState + per-URL Image remount (UI-thread
-// reconciliation on every D-pad move) and one full-screen layer of overdraw,
-// and sidesteps the A→B→A cached-slot stall the two-slot path works around. tvOS
-// keeps the two-slot dance (its focus engine + GPU handle it fine).
+// Android TV drops the ambient backdrop ENTIRELY. Measurement on the Sabrina
+// Chromecast showed every redraw of this screen costs ~150ms (100% janky, even
+// at idle) — the weak GPU can't composite the backdrop's full-screen layers
+// (artwork image + 3 gradients + deep scrim) on top of the rail tree each frame.
+// The rails sit on the screen's near-black base instead. tvOS keeps the full
+// focus-driven ambient showcase (its GPU handles it fine).
 const NATIVE = Platform.OS === "android"
 
 // The design's ambient scrim — three stacked gradients over the artwork, all
@@ -235,6 +234,11 @@ export const HomeBackdrop = memo(function HomeBackdrop({
 
   const opacities = slotOpacitiesRef.current
 
+  // Android: no ambient backdrop (see NATIVE comment) — rails on the near-black
+  // screen base. All hooks above still run so the rules of hooks hold; the
+  // two-slot effect already no-ops on Android.
+  if (NATIVE) return null
+
   return (
     <View
       style={styles.container}
@@ -243,43 +247,31 @@ export const HomeBackdrop = memo(function HomeBackdrop({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {NATIVE ? (
-        // Single persistent expo-image; its built-in transition cross-dissolves
-        // between sources without remounting (so no blank flash on swap).
-        <Image
-          source={imageUrl != null ? { uri: imageUrl } : undefined}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          transition={CROSSFADE_MS}
-          cachePolicy="memory-disk"
-        />
-      ) : (
-        ([0, 1] as const).map((slot) => (
-          <Animated.View
-            key={`backdrop-slot-${slot}`}
-            style={[StyleSheet.absoluteFill, { opacity: opacities[slot] }]}
-          >
-            {slotUrls[slot] != null ? (
-              <Image
-                // Keyed by URL: a re-targeted slot remounts its Image so no
-                // stale frame from a previous swap can paint mid-crossfade.
-                key={slotUrls[slot]}
-                source={{ uri: slotUrls[slot] ?? undefined }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                onLoad={() => {
-                  const url = slotUrlsRef.current[slot]
-                  if (url != null) handleSlotLoaded(slot, url)
-                }}
-                onError={() => {
-                  const url = slotUrlsRef.current[slot]
-                  if (url != null) handleSlotLoaded(slot, url)
-                }}
-              />
-            ) : null}
-          </Animated.View>
-        ))
-      )}
+      {([0, 1] as const).map((slot) => (
+        <Animated.View
+          key={`backdrop-slot-${slot}`}
+          style={[StyleSheet.absoluteFill, { opacity: opacities[slot] }]}
+        >
+          {slotUrls[slot] != null ? (
+            <Image
+              // Keyed by URL: a re-targeted slot remounts its Image so no
+              // stale frame from a previous swap can paint mid-crossfade.
+              key={slotUrls[slot]}
+              source={{ uri: slotUrls[slot] ?? undefined }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              onLoad={() => {
+                const url = slotUrlsRef.current[slot]
+                if (url != null) handleSlotLoaded(slot, url)
+              }}
+              onError={() => {
+                const url = slotUrlsRef.current[slot]
+                if (url != null) handleSlotLoaded(slot, url)
+              }}
+            />
+          ) : null}
+        </Animated.View>
+      ))}
 
       {/* collapsable={false} keeps the scrims discrete native views on
           Android TV. */}
