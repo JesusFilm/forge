@@ -67,6 +67,11 @@ import type { WatchHomeCard } from "../src/lib/watchHome/model"
 // keeps one extra ready in each direction and lets its images decode ahead.
 const RAIL_WINDOW_BUFFER = 2
 
+// Delay before a vertical move mounts the new far rail — longer than the
+// row-anchored scroll (~300ms) so the mount lands after the scroll, not during
+// it (mounting ~10 cards mid-scroll is what made cross-rail moves jank).
+const WINDOW_SHIFT_DELAY = 350
+
 export default function HomeScreen() {
   const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
@@ -187,6 +192,45 @@ export default function HomeScreen() {
     return true
   }, [])
 
+  // Rail-window control. focusedRowAppliedRef mirrors focusedRow for the stable
+  // edge-flush check below (reading state in the callback would stale it).
+  const windowShiftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const focusedRowAppliedRef = useRef(0)
+  const applyWindow = useCallback((row: number) => {
+    if (windowShiftTimerRef.current != null) {
+      clearTimeout(windowShiftTimerRef.current)
+      windowShiftTimerRef.current = null
+    }
+    focusedRowAppliedRef.current = row
+    setFocusedRow(row)
+  }, [])
+  const scheduleWindow = useCallback(
+    (row: number) => {
+      // At the window edge, mount now or a fast sweep strands on an unmounted
+      // rail; otherwise defer so the mount lands after the scroll, not during.
+      if (Math.abs(row - focusedRowAppliedRef.current) >= RAIL_WINDOW_BUFFER) {
+        applyWindow(row)
+        return
+      }
+      if (windowShiftTimerRef.current != null) {
+        clearTimeout(windowShiftTimerRef.current)
+      }
+      windowShiftTimerRef.current = setTimeout(
+        () => applyWindow(row),
+        WINDOW_SHIFT_DELAY,
+      )
+    },
+    [applyWindow],
+  )
+  useEffect(
+    () => () => {
+      if (windowShiftTimerRef.current != null) {
+        clearTimeout(windowShiftTimerRef.current)
+      }
+    },
+    [],
+  )
+
   const handleRowFocus = useCallback(
     (rowIndex: number) => {
       // Within-row horizontal move: the row hasn't changed, so the row-level
@@ -194,14 +238,16 @@ export default function HomeScreen() {
       // on every horizontal D-pad move).
       if (lastFocusedRowRef.current === rowIndex) return
       lastFocusedRowRef.current = rowIndex
-      setFocusedRow(rowIndex) // shift the rail window
+      // Focus + scroll run now on the already-mounted buffer rail; the window
+      // mount is deferred (scheduleWindow) so it doesn't jank this move.
       setBrowseState(resolveBrowseState(rowIndex))
       // Topmost section rail = rowIndex 1; anything >= 2 is a rail below it.
       setBelowTopmost(rowIndex >= 2)
       // Defer if the row's y isn't measured yet; recordRowY flushes it.
       pendingScrollRowRef.current = scrollToRow(rowIndex) ? null : rowIndex
+      scheduleWindow(rowIndex)
     },
-    [scrollToRow],
+    [scrollToRow, scheduleWindow],
   )
 
   const recordRowY = useCallback(
@@ -217,11 +263,11 @@ export default function HomeScreen() {
   // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
     lastFocusedRowRef.current = null
-    setFocusedRow(0)
+    applyWindow(0)
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
-  }, [])
+  }, [applyWindow])
 
   // Mission-tail QR focus: with the native focus-scroll disabled, the tail
   // needs its own scroll hook — pin to the end in the deep state.
@@ -229,13 +275,13 @@ export default function HomeScreen() {
     lastFocusedRowRef.current = null
     // Keep the bottom rails windowed-active so Up from the mission tail returns
     // to a mounted rail, not an empty placeholder.
-    setFocusedRow(sectionCountRef.current)
+    applyWindow(sectionCountRef.current)
     setBrowseState("deep")
     // The mission tail is below the topmost rail — keep its autoFocus OFF so a
     // later Up traversal stays column-preserving.
     setBelowTopmost(true)
     scrollRef.current?.scrollToEnd({ animated: true })
-  }, [])
+  }, [applyWindow])
 
   // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
   // memoized rails' wrappers don't churn on every screen re-render.
@@ -308,14 +354,17 @@ export default function HomeScreen() {
       featuredCount > 0 ? Math.min(i, featuredCount - 1) : 0,
     )
   }, [featuredCount])
-  const handleHeroFocusChange = useCallback((isFocused: boolean) => {
-    if (!isFocused) return
-    lastFocusedRowRef.current = null
-    setFocusedRow(0)
-    setBelowTopmost(false)
-    setBrowseState("browse")
-    scrollRef.current?.scrollTo({ y: 0, animated: true })
-  }, [])
+  const handleHeroFocusChange = useCallback(
+    (isFocused: boolean) => {
+      if (!isFocused) return
+      lastFocusedRowRef.current = null
+      applyWindow(0)
+      setBelowTopmost(false)
+      setBrowseState("browse")
+      scrollRef.current?.scrollTo({ y: 0, animated: true })
+    },
+    [applyWindow],
+  )
 
   // The hero CTA's native node — wired as the D-pad-up destination for EVERY
   // card in the first section rail, so Up from any card (even the rightmost)
