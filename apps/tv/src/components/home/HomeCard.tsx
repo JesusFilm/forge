@@ -147,6 +147,13 @@ export const HomeCard = memo(function HomeCard({
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
                   recyclingKey={`home-card-${card.id}`}
+                  // Every rail card mounts at once (no vertical virtualization
+                  // yet), so ~50 decodes fire on home mount. Low priority keeps
+                  // them from saturating the decode queue ahead of the focused
+                  // card; memory-disk cache makes re-entry instant. (Matches
+                  // apps/mobile's HomeCard.)
+                  priority="low"
+                  cachePolicy="memory-disk"
                 />
               ) : (
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
