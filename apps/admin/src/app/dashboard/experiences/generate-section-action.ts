@@ -161,6 +161,12 @@ export async function runGenerateSectionAction(
     },
   })
   if (!remote.ok) {
+    // Surface which leg of the remote call failed so the editor's opaque
+    // "service unavailable" can be traced to a concrete reason in prod logs
+    // (the client logs the connection-level cause on network_error).
+    console.warn(
+      `[runGenerateSectionAction] event=remote_failed reason=${remote.reason} retryable=${remote.retryable}`,
+    )
     switch (remote.reason) {
       case "config_missing":
         return fail("NOT_CONFIGURED")
