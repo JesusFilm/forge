@@ -59,9 +59,11 @@ function setInputValue(input: HTMLInputElement, value: string) {
   })
 }
 
-function rowKeys(container: HTMLElement): string[] {
+// The picker renders through a portal at <body>, so query the document, not
+// the mount container.
+function rowKeys(root: ParentNode = document.body): string[] {
   return Array.from(
-    container.querySelectorAll('[data-testid="anchor-video-picker-row"]'),
+    root.querySelectorAll('[data-testid="anchor-video-picker-row"]'),
   ).map((el) => el.getAttribute("data-video-key") ?? "")
 }
 
@@ -88,8 +90,30 @@ describe("AnchorVideoPicker", () => {
     )
     cleanup = view.cleanup
     expect(
+      document.body.querySelector('[data-testid="anchor-video-picker"]'),
+    ).toBeNull()
+  })
+
+  it("portals the overlay to <body>, not inside the mount container (escapes the chat panel's overflow-hidden aside)", () => {
+    const view = mount(
+      <AnchorVideoPicker
+        videoLibrary={[makeVideo({ key: "vid1" })]}
+        open
+        onClose={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    )
+    cleanup = view.cleanup
+
+    // The whole point of the fix: the fixed-position overlay must render at
+    // document.body so it isn't trapped/clipped by an overflow-hidden ancestor.
+    // It must NOT be a descendant of the component's own mount container.
+    expect(
       view.container.querySelector('[data-testid="anchor-video-picker"]'),
     ).toBeNull()
+    expect(
+      document.body.querySelector('[data-testid="anchor-video-picker"]'),
+    ).not.toBeNull()
   })
 
   it("badges ready videos and sorts them ahead of non-ready ones (Covers AE2)", () => {
@@ -124,22 +148,18 @@ describe("AnchorVideoPicker", () => {
     cleanup = view.cleanup
 
     // Ready video sorts first even though it was listed second.
-    expect(rowKeys(view.container)).toEqual([
-      "ready",
-      "not-ready",
-      "playable-only",
-    ])
+    expect(rowKeys()).toEqual(["ready", "not-ready", "playable-only"])
 
-    const badges = view.container.querySelectorAll(
+    const badges = document.body.querySelectorAll(
       '[data-testid="anchor-video-picker-ready-badge"]',
     )
     expect(badges).toHaveLength(1)
 
-    const readyRow = view.container.querySelector(
+    const readyRow = document.body.querySelector(
       '[data-video-key="ready"]',
     ) as HTMLElement
     expect(readyRow.getAttribute("data-ready")).toBe("true")
-    const playableRow = view.container.querySelector(
+    const playableRow = document.body.querySelector(
       '[data-video-key="playable-only"]',
     ) as HTMLElement
     // Playable but not grounded is NOT ready.
@@ -161,15 +181,15 @@ describe("AnchorVideoPicker", () => {
     )
     cleanup = view.cleanup
 
-    const search = view.container.querySelector(
+    const search = document.body.querySelector(
       '[data-testid="anchor-video-picker-search"]',
     ) as HTMLInputElement
 
     setInputValue(search, "nativ")
-    expect(rowKeys(view.container)).toEqual(["b"])
+    expect(rowKeys()).toEqual(["b"])
 
     setInputValue(search, "core-aaa")
-    expect(rowKeys(view.container)).toEqual(["a"])
+    expect(rowKeys()).toEqual(["a"])
   })
 
   it("calls onSelect with the row item and then onClose when a row is clicked", () => {
@@ -186,7 +206,7 @@ describe("AnchorVideoPicker", () => {
     )
     cleanup = view.cleanup
 
-    const row = view.container.querySelector(
+    const row = document.body.querySelector(
       '[data-video-key="pick-me"]',
     ) as HTMLButtonElement
     act(() => {
@@ -215,7 +235,7 @@ describe("AnchorVideoPicker", () => {
     )
     cleanup = view.cleanup
 
-    const row = view.container.querySelector(
+    const row = document.body.querySelector(
       '[data-video-key="bare"]',
     ) as HTMLButtonElement
     expect(row.getAttribute("data-ready")).toBe("false")
@@ -236,8 +256,8 @@ describe("AnchorVideoPicker", () => {
     )
     cleanup = view.cleanup
     expect(
-      view.container.querySelector('[data-testid="anchor-video-picker-empty"]'),
+      document.body.querySelector('[data-testid="anchor-video-picker-empty"]'),
     ).not.toBeNull()
-    expect(rowKeys(view.container)).toEqual([])
+    expect(rowKeys()).toEqual([])
   })
 })
