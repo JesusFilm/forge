@@ -15,6 +15,7 @@
 
 import { CirclePlay, Search, Sparkles, X } from "lucide-react"
 import { useMemo, useState } from "react"
+import { createPortal } from "react-dom"
 
 import type { VideoLibraryItem } from "./block-helpers"
 
@@ -59,15 +60,20 @@ export function AnchorVideoPicker({
       .map((entry) => entry.item)
   }, [videoLibrary, query])
 
-  if (!open) return null
+  if (!open || typeof document === "undefined") return null
 
-  return (
+  // Render the overlay in a portal at <body>. The picker lives deep inside the
+  // chat panel's `sticky`, `overflow-hidden` <aside>; left in place, its
+  // `fixed inset-0` overlay is trapped + clipped to the ~380px chat column
+  // instead of covering the viewport. Portaling escapes that ancestor chain.
+  // Mirrors background-color-picker.tsx / bible-quote-card.tsx.
+  const overlay = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="anchor-video-picker-title"
       data-testid="anchor-video-picker"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
     >
       <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] shadow-xl">
         {/* Header */}
@@ -192,4 +198,6 @@ export function AnchorVideoPicker({
       </div>
     </div>
   )
+
+  return createPortal(overlay, document.body)
 }

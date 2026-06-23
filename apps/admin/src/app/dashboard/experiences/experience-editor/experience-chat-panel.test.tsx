@@ -234,7 +234,7 @@ describe("ExperienceChatPanel", () => {
     await act(async () => {
       chooseBtn.click()
     })
-    const row = view.container.querySelector(
+    const row = document.querySelector(
       '[data-video-key="vid1"]',
     ) as HTMLButtonElement
     await act(async () => {
@@ -310,7 +310,7 @@ describe("ExperienceChatPanel", () => {
     await act(async () => {
       chooseBtn.click()
     })
-    const row = view.container.querySelector(
+    const row = document.querySelector(
       '[data-video-key="vid1"]',
     ) as HTMLButtonElement
     await act(async () => {
@@ -360,7 +360,7 @@ describe("ExperienceChatPanel", () => {
       chooseBtn.click()
     })
     // A non-ready video is still selectable — the badge does not gate.
-    const row = view.container.querySelector(
+    const row = document.querySelector(
       '[data-video-key="bare"]',
     ) as HTMLButtonElement
     await act(async () => {
