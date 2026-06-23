@@ -39,6 +39,8 @@ import {
 import {
   OFFLINE_INDEX_STORAGE_KEY,
   OFFLINE_MANIFEST_VERSION,
+  isBatchPlaceholderRecord,
+  isLiveDownloadRecord,
   offlineRecordKey,
   parseOfflineIndex,
   parseOfflineRecord,
@@ -48,6 +50,7 @@ import {
   type SwapFrom,
 } from "../lib/offlineManifest"
 import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
+import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
 import { GET_VIDEO_DUB } from "../lib/queries"
@@ -110,12 +113,9 @@ type DownloadsContextValue = {
 
 const DownloadsContext = createContext<DownloadsContextValue | null>(null)
 
-/**
- * Keep this much storage free; refuse a download that would breach it (U12).
- * Exported so the series download sheet can run the same aggregate pre-check
- * the per-call guard applies, before driving the batch (KTD6).
- */
-export const STORAGE_RESERVE_BYTES = 250 * 1024 * 1024
+// Re-exported from the lib constant so existing `from DownloadsProvider`
+// import sites keep working; the value lives in lib/offlineConstants (KTD6).
+export { STORAGE_RESERVE_BYTES }
 
 /**
  * Re-resolve a fresh media URL from a record's stable identity (U4): the manifest
@@ -257,11 +257,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         // driven by start/swap/switch; re-writing a `queued` record over it
         // would discard its committedPath / swapFrom snapshot. Only fresh or
         // previously-terminal slugs need a synchronous queued placeholder.
-        if (
-          existing &&
-          existing.state !== "failed" &&
-          existing.state !== "canceled"
-        ) {
+        if (isLiveDownloadRecord(existing)) {
           continue
         }
         await writeRecord({
@@ -645,21 +641,19 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
       const { videoSlug, rendition } = request
       const existing = recordsRef.current[videoSlug]
-      // A bare `queued` placeholder (no pending/committed file) is this batch's
-      // own durable pre-persist from queueBatchRecords — drive it to downloading
-      // rather than reporting `exists`. Per-video starts never write this shape.
-      const isOwnPlaceholder =
-        existing != null &&
-        existing.state === "queued" &&
-        existing.pendingPath == null &&
-        existing.committedPath == null
+      // Shape contract: a BARE `queued` record (no pending AND no committed path)
+      // is the series batch's own durable placeholder from queueBatchRecords.
+      // Per-video starts write `downloading` + a pendingPath; the launch reattach
+      // always builds a pendingPath before restarting — so neither is ever bare-
+      // queued, and only the batch's own placeholder matches here. Adopt it
+      // (drive to downloading) instead of reporting `exists`.
+      const isOwnPlaceholder = isBatchPlaceholderRecord(existing)
+      // Capture so the storage/error backstops below can clean up an adopted
+      // placeholder that fails — leaving it `queued` would strand it forever
+      // (action row stuck, reconcile re-queues it every relaunch).
+      const adoptedPlaceholder = isOwnPlaceholder
       // One copy per video: ignore if a live copy/queue entry already exists.
-      if (
-        existing &&
-        existing.state !== "failed" &&
-        existing.state !== "canceled" &&
-        !isOwnPlaceholder
-      ) {
+      if (isLiveDownloadRecord(existing) && !isOwnPlaceholder) {
         return { ok: false, reason: "exists" }
       }
 
@@ -669,6 +663,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       const required = (Number(rendition.size) || 0) + STORAGE_RESERVE_BYTES
       const free = await freeDiskBytes()
       if (free > 0 && free < required) {
+        if (adoptedPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "insufficient-storage" }
       }
 
@@ -676,6 +671,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         configureDownloadEngine({ wifiOnly })
         await ensureVideoDir(videoSlug)
       } catch {
+        if (adoptedPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "error" }
       }
 

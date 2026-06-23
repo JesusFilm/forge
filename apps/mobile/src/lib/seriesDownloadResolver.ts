@@ -156,6 +156,32 @@ async function resolveEpisode(
   }
 }
 
+/**
+ * Build the SeriesDownloadResolution summary (resolved set / per-status counts /
+ * total bytes / lower-bound flag) from a per-episode resolution list. Shared by
+ * resolveSeriesDownload (fresh fan-out) and the route's failed-retry merge, so the
+ * two never drift on how the rollup is computed.
+ */
+export function summarizeResolution(
+  episodes: SeriesEpisodeResolution[],
+): SeriesDownloadResolution {
+  const resolved = episodes.filter((r) => r.status === "resolved")
+  return {
+    episodes,
+    resolved,
+    resolvedCount: resolved.length,
+    skippedLanguageCount: episodes.filter(
+      (r) => r.status === "skipped-language-absent",
+    ).length,
+    skippedNoRenditionCount: episodes.filter(
+      (r) => r.status === "skipped-no-rendition",
+    ).length,
+    failedCount: episodes.filter((r) => r.status === "failed-resolve").length,
+    totalBytes: resolved.reduce((sum, r) => sum + (r.sizeBytes ?? 0), 0),
+    totalIsLowerBound: resolved.some((r) => r.sizeUnknown === true),
+  }
+}
+
 export async function resolveSeriesDownload(
   episodes: readonly WatchEpisode[],
   choice: SeriesDownloadChoice,
@@ -184,23 +210,7 @@ export async function resolveSeriesDownload(
     }
   })
 
-  const resolved = resolutions.filter((r) => r.status === "resolved")
-  const totalBytes = resolved.reduce((sum, r) => sum + (r.sizeBytes ?? 0), 0)
-  return {
-    episodes: resolutions,
-    resolved,
-    resolvedCount: resolved.length,
-    skippedLanguageCount: resolutions.filter(
-      (r) => r.status === "skipped-language-absent",
-    ).length,
-    skippedNoRenditionCount: resolutions.filter(
-      (r) => r.status === "skipped-no-rendition",
-    ).length,
-    failedCount: resolutions.filter((r) => r.status === "failed-resolve")
-      .length,
-    totalBytes,
-    totalIsLowerBound: resolved.some((r) => r.sizeUnknown === true),
-  }
+  return summarizeResolution(resolutions)
 }
 
 export type EpisodeAction = "start" | "swap" | "switch" | "skip"

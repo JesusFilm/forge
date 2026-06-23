@@ -208,6 +208,26 @@ describe("AE3 — storage gate (KTD6)", () => {
     }
   })
 
+  it("does NOT budget the old bytes of a switch target (it reclaims first)", () => {
+    const resolution = resolutionOf([resolvedEpisode("a", "dub-NEW", 1000)])
+    // Episode is IN-PROGRESS in a different dub → a switch, which deletes the old
+    // copy before starting. Those 5000 old bytes are reclaimed, so they must NOT
+    // count toward required — unlike the swap test above, which DOES retain them.
+    const getRecord = (slug: string) =>
+      slug === "a" ? record("a", "dub-OLD", "downloading", 5000) : null
+    const free = RESERVE + 1000 + 1 // covers ONLY new + reserve, not the old copy
+    const gate = evaluateStorageGate({
+      resolution,
+      getRecord,
+      freeBytes: free,
+      reserveBytes: RESERVE,
+    })
+    expect(gate.kind).toBe("ok")
+    if (gate.kind === "ok") {
+      expect(gate.requiredBytes).toBe(RESERVE + 1000) // no old bytes added
+    }
+  })
+
   it("blocks an unverifiable (lower-bound) total even when free space is huge", () => {
     const resolution = {
       ...resolutionOf([resolvedEpisode("a", "dub-a", 0)]),
@@ -251,6 +271,9 @@ type Calls = {
   start: string[]
   swap: string[]
   delete: string[]
+  queue: string[]
+  /** Interleaved log of provider calls so a test can assert ordering. */
+  order: string[]
 }
 
 function makeDeps(
@@ -260,19 +283,28 @@ function makeDeps(
     swap?: (req: StartDownloadRequest) => StartDownloadResult
   } = {},
 ) {
-  const calls: Calls = { start: [], swap: [], delete: [] }
+  const calls: Calls = { start: [], swap: [], delete: [], queue: [], order: [] }
   const deps = {
     getRecord: (slug: string) => records[slug] ?? null,
     startDownload: async (req: StartDownloadRequest) => {
       calls.start.push(req.videoSlug)
+      calls.order.push(`start:${req.videoSlug}`)
       return results.start?.(req) ?? ({ ok: true } as StartDownloadResult)
     },
     swapDownload: async (req: StartDownloadRequest) => {
       calls.swap.push(req.videoSlug)
+      calls.order.push(`swap:${req.videoSlug}`)
       return results.swap?.(req) ?? ({ ok: true } as StartDownloadResult)
     },
     deleteDownload: async (slug: string) => {
       calls.delete.push(slug)
+      calls.order.push(`delete:${slug}`)
+    },
+    queueBatchRecords: async (reqs: StartDownloadRequest[]) => {
+      for (const req of reqs) {
+        calls.queue.push(req.videoSlug)
+        calls.order.push(`queue:${req.videoSlug}`)
+      }
     },
   }
   return { deps, calls }
@@ -310,6 +342,34 @@ describe("AE4 — start vs swap vs cancel+start routing", () => {
     const summary = await enqueueResolvedEpisodes(resolved, ctx, deps)
     expect(summary.switched).toBe(0)
     expect(summary.couldntStart).toBe(1)
+  })
+
+  it("a start that returns insufficient-storage is bucketed couldn't-start", async () => {
+    const resolved = [resolvedEpisode("new", "dub-new", 1000)]
+    const { deps } = makeDeps(
+      {}, // no record → start path
+      { start: () => ({ ok: false, reason: "insufficient-storage" }) },
+    )
+    const summary = await enqueueResolvedEpisodes(resolved, ctx, deps)
+    expect(summary.started).toBe(0)
+    expect(summary.couldntStart).toBe(1)
+    expect(summary.allOk).toBe(false)
+  })
+
+  it("the switch path re-queues a placeholder between delete and start (F2)", async () => {
+    // In-progress in the old language → switch: delete the in-flight copy, then
+    // persist a recoverable queued placeholder BEFORE the fresh start, so a kill
+    // in the gap leaves a record launch-reattach can recover.
+    const resolved = [resolvedEpisode("prog", "dub-spanish", 1000)]
+    const { deps, calls } = makeDeps({
+      prog: record("prog", "dub-english", "downloading", 2000),
+    })
+    await enqueueResolvedEpisodes(resolved, ctx, deps)
+    expect(calls.delete).toEqual(["prog"])
+    expect(calls.queue).toEqual(["prog"])
+    expect(calls.start).toEqual(["prog"])
+    // Order matters: delete → queue → start.
+    expect(calls.order).toEqual(["delete:prog", "queue:prog", "start:prog"])
   })
 })
 

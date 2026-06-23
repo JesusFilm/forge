@@ -30,7 +30,7 @@ export type StorageGate =
 
 export type StorageGateInput = {
   resolution: SeriesDownloadResolution
-  /** Existing record per resolved episode slug (for swap/switch on-disk sizing). */
+  /** Existing record per resolved episode slug (for swap on-disk sizing). */
   getRecord: (slug: string) => OfflineDownloadRecord | null
   freeBytes: number
   reserveBytes: number
@@ -38,9 +38,11 @@ export type StorageGateInput = {
 
 /**
  * Required = Σ(new rendition sizes) + Σ(existing on-disk totalBytes of every
- * swap/switch target, since the old copy lives alongside the new until verified)
- * + the reserve. Never green-light an unverifiable total: a lower-bound total
- * (any zero/missing resolved size) or a free read of 0 (API unavailable) blocks.
+ * SWAP target, since a swap keeps the old copy alongside the new until verified)
+ * + the reserve. A `switch` DELETES its old copy before starting, so those bytes
+ * are reclaimed first and must NOT be counted (else switch over-budgets). Never
+ * green-light an unverifiable total: a lower-bound total (any zero/missing
+ * resolved size) or a free read of 0 (API unavailable) blocks.
  */
 export function evaluateStorageGate(input: StorageGateInput): StorageGate {
   const { resolution, getRecord, freeBytes, reserveBytes } = input
@@ -53,7 +55,8 @@ export function evaluateStorageGate(input: StorageGateInput): StorageGate {
     if (!episode.dubDocumentId) continue
     const record = getRecord(episode.slug)
     const action = decideEpisodeAction(record, episode.dubDocumentId)
-    if ((action === "swap" || action === "switch") && record) {
+    // Only a swap retains the old copy; a switch reclaims it before starting.
+    if (action === "swap" && record) {
       swapOnDiskBytes += record.totalBytes || 0
     }
   }
@@ -133,6 +136,8 @@ export type EnqueueDeps = {
   swapDownload: (req: StartDownloadRequest) => Promise<StartDownloadResult>
   /** Cancel an in-flight record before a fresh start (the `switch` path). */
   deleteDownload: (slug: string) => Promise<void>
+  /** Persist a durable `queued` placeholder so a kill stays recoverable. */
+  queueBatchRecords: (reqs: StartDownloadRequest[]) => Promise<void>
 }
 
 // Classify ONE episode from its ACTUAL provider result, never the pre-call
@@ -175,7 +180,12 @@ async function enqueueOne(
   if (action === "switch") {
     // swapDownload only acts on a `downloaded` record; an in-progress copy in
     // the old language must be canceled, then restarted in the chosen one.
+    // Re-queue a durable placeholder between delete and start so a kill in the
+    // gap leaves a record launch-reattach can recover (F1 cleans a couldnt-start).
+    // The tiny window between delete and queue is accepted — a kill there only
+    // loses the (already-canceled) old copy, never a started download.
     await deps.deleteDownload(episode.slug)
+    await deps.queueBatchRecords([request])
     const result = await deps.startDownload(request)
     return { ...base, action, outcome: bucketResult(action, result) }
   }

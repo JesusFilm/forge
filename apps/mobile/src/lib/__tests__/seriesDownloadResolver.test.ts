@@ -1,6 +1,8 @@
 import {
   decideEpisodeAction,
   resolveSeriesDownload,
+  summarizeResolution,
+  type SeriesEpisodeResolution,
   type SeriesResolveDeps,
 } from "../seriesDownloadResolver"
 import type { OfflineDownloadState } from "../offlineManifest"
@@ -213,6 +215,46 @@ describe("resolveSeriesDownload", () => {
     expect(res.episodes.find((e) => e.slug === "b")?.status).toBe(
       "failed-resolve",
     )
+  })
+})
+
+describe("summarizeResolution", () => {
+  const ep = (
+    slug: string,
+    status: SeriesEpisodeResolution["status"],
+    extra: Partial<SeriesEpisodeResolution> = {},
+  ): SeriesEpisodeResolution => ({
+    slug,
+    title: `Title ${slug}`,
+    posterUrl: null,
+    status,
+    ...extra,
+  })
+
+  it("rolls up counts, total bytes, and the lower-bound flag", () => {
+    const summary = summarizeResolution([
+      ep("a", "resolved", { sizeBytes: 1000, sizeUnknown: false }),
+      ep("b", "resolved", { sizeBytes: 2000, sizeUnknown: false }),
+      ep("c", "skipped-language-absent"),
+      ep("d", "skipped-no-rendition"),
+      ep("e", "failed-resolve"),
+    ])
+    expect(summary.resolvedCount).toBe(2)
+    expect(summary.resolved.map((r) => r.slug)).toEqual(["a", "b"])
+    expect(summary.skippedLanguageCount).toBe(1)
+    expect(summary.skippedNoRenditionCount).toBe(1)
+    expect(summary.failedCount).toBe(1)
+    expect(summary.totalBytes).toBe(3000)
+    expect(summary.totalIsLowerBound).toBe(false)
+  })
+
+  it("flags the total as a lower bound when any resolved size is unknown", () => {
+    const summary = summarizeResolution([
+      ep("a", "resolved", { sizeBytes: 1000, sizeUnknown: false }),
+      ep("b", "resolved", { sizeBytes: 0, sizeUnknown: true }),
+    ])
+    expect(summary.totalBytes).toBe(1000)
+    expect(summary.totalIsLowerBound).toBe(true)
   })
 })
 

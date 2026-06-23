@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -18,11 +18,9 @@ import {
 } from "../../src/components/watch/DownloadSheet"
 import { SheetError } from "../../src/components/watch/SheetError"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
-import {
-  STORAGE_RESERVE_BYTES,
-  useDownloads,
-} from "../../src/contexts/DownloadsProvider"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
+import { STORAGE_RESERVE_BYTES } from "../../src/lib/offlineConstants"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
   ACCENT,
@@ -37,6 +35,7 @@ import { normalizeDubMedia, normalizeVideo } from "../../src/lib/normalizeVideo"
 import { formatFileSize, type QualityTier } from "../../src/lib/downloadTiers"
 import {
   resolveSeriesDownload,
+  summarizeResolution,
   type SeriesDownloadResolution,
   type SeriesEpisodeResolution,
 } from "../../src/lib/seriesDownloadResolver"
@@ -94,6 +93,11 @@ export default function SeriesDownloadRoute() {
   const [subtitleUnion, setSubtitleUnion] = useState<Map<string, string>>(
     () => new Map(),
   )
+  // The mount-effect controller is cleaned up by its own effect, but a Retry tap
+  // spawns a fresh controller outside that effect — track the active one here so
+  // each retry aborts the prior fan-out and unmount aborts the last one (R10).
+  const retryControllerRef = useRef<AbortController | null>(null)
+  useEffect(() => () => retryControllerRef.current?.abort(), [])
 
   const episodes = series?.episodes ?? null
   const languageSlug = selectedLanguageSlug
@@ -248,6 +252,7 @@ export default function SeriesDownloadRoute() {
       startDownload,
       swapDownload,
       deleteDownload,
+      queueBatchRecords,
     })
     // An all-ok batch dismisses straight away; otherwise show the summary panel.
     if (summary.allOk) {
@@ -269,13 +274,17 @@ export default function SeriesDownloadRoute() {
   ])
 
   const onRetry = useCallback(() => {
+    retryControllerRef.current?.abort()
     const controller = new AbortController()
+    retryControllerRef.current = controller
     void runResolution(controller)
   }, [runResolution])
 
   const onRetryFailed = useCallback(() => {
     if (!resolution) return
+    retryControllerRef.current?.abort()
     const controller = new AbortController()
+    retryControllerRef.current = controller
     void runResolution(controller, resolution)
   }, [resolution, runResolution])
 
@@ -607,7 +616,8 @@ function ConfirmButton({
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-// Merge a failed-only re-resolution back onto the prior set by slug.
+// Merge a failed-only re-resolution back onto the prior set by slug, then
+// re-summarize via the shared resolver helper (no duplicated rollup logic).
 function mergeResolution(
   prior: SeriesDownloadResolution,
   retry: SeriesDownloadResolution,
@@ -615,27 +625,7 @@ function mergeResolution(
   const bySlug = new Map<string, SeriesEpisodeResolution>()
   for (const ep of retry.episodes) bySlug.set(ep.slug, ep)
   const episodes = prior.episodes.map((ep) => bySlug.get(ep.slug) ?? ep)
-  return recomputeResolution(episodes)
-}
-
-function recomputeResolution(
-  episodes: SeriesEpisodeResolution[],
-): SeriesDownloadResolution {
-  const resolved = episodes.filter((e) => e.status === "resolved")
-  return {
-    episodes,
-    resolved,
-    resolvedCount: resolved.length,
-    skippedLanguageCount: episodes.filter(
-      (e) => e.status === "skipped-language-absent",
-    ).length,
-    skippedNoRenditionCount: episodes.filter(
-      (e) => e.status === "skipped-no-rendition",
-    ).length,
-    failedCount: episodes.filter((e) => e.status === "failed-resolve").length,
-    totalBytes: resolved.reduce((sum, e) => sum + (e.sizeBytes ?? 0), 0),
-    totalIsLowerBound: resolved.some((e) => e.sizeUnknown === true),
-  }
+  return summarizeResolution(episodes)
 }
 
 // A fully-failed resolution is "offline" when nothing resolved AND nothing was
