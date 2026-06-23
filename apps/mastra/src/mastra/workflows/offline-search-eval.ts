@@ -12,17 +12,15 @@ import {
   type OfflineSearchEvalResult,
 } from "../../services/offline-search-eval/runner"
 import { SEARCH_EVAL_SEED_PROMPT_LOCALES } from "../../services/offline-search-eval/seed-prompt-set"
+import {
+  DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  SEARCH_EVAL_CALLER_TRACK_IDS,
+  SEARCH_EVAL_SEARCH_MODES,
+} from "../../services/offline-search-eval/types"
 
 export const OFFLINE_SEARCH_EVAL_MAX_BODY_BYTES = 4096
 const WORKFLOW_FAILURE_ERROR_PREFIX = "OFFLINE_SEARCH_EVAL_WORKFLOW_FAILED:"
-const DEFAULT_BASELINE_NAME = "seed-baseline"
-const DEFAULT_SEARCH_MODE = "hybrid"
 const DEFAULT_CONTENT_TYPE = "all"
-const SEARCH_PIPELINE_MODES = [
-  "hybrid",
-  "keyword-first",
-  "semantic-only",
-] as const
 
 const OfflineSearchEvalInputSchema = z
   .object({
@@ -35,9 +33,15 @@ const OfflineSearchEvalInputSchema = z
     baselineName: z
       .string()
       .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/)
-      .default(DEFAULT_BASELINE_NAME)
+      .optional()
       .describe(
-        "Baseline name. Capture saves to this name; compare loads this existing baseline.",
+        "Baseline name. Omit to use the caller-track default; capture saves to this name and compare loads it.",
+      ),
+    callerTrack: z
+      .enum(SEARCH_EVAL_CALLER_TRACK_IDS)
+      .default(DEFAULT_SEARCH_EVAL_CALLER_TRACK)
+      .describe(
+        "Caller lens for the eval prompt set and judge rubric: public-watch, ai-experience-generation, or semantic-diagnostic.",
       ),
     locales: z
       .array(z.string().min(1).max(32))
@@ -53,10 +57,10 @@ const OfflineSearchEvalInputSchema = z
       .default(20)
       .describe("Admin search results to collect per prompt."),
     searchMode: z
-      .enum(SEARCH_PIPELINE_MODES)
-      .default(DEFAULT_SEARCH_MODE)
+      .enum(SEARCH_EVAL_SEARCH_MODES)
+      .optional()
       .describe(
-        "Search pipeline. Use hybrid for normal search; keyword-first tests the lexical-first candidate strategy; semantic-only is an internal diagnostic eval mode.",
+        "Search pipeline. Omit to use the caller-track default. Public Watch defaults keyword-first, AI generation defaults hybrid, semantic diagnostic defaults semantic-only.",
       ),
     contentType: z
       .enum(["all", "video", "experience"])

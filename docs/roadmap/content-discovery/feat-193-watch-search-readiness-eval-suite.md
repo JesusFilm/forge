@@ -121,6 +121,24 @@ Roadmap window: this week, June 16-19, 2026.
 - Native Evaluation projection now preserves `semantic-only` and includes the
   requested search mode in dataset, experiment, and report outcome source keys
   so mode-by-mode evidence does not overwrite itself.
+- 2026-06-23: Added caller-specific eval tracks for `public-watch`,
+  `ai-experience-generation`, and `semantic-diagnostic`.
+- Existing 100-query v5 launch-readiness prompts stay in the `public-watch`
+  track. Additional AI-agent and semantic-diagnostic prompts are included for
+  their caller-specific use cases.
+- Offline eval runner, workflow, orchestrator, reports, judge rubrics, artifact
+  schemas, and native Evaluation sync now carry `callerTrack`.
+- Caller tracks define their own default baseline names and search modes:
+  public Watch uses `seed-baseline` plus `keyword-first`, AI experience
+  generation uses `seed-baseline-ai-experience-generation` plus `hybrid`, and
+  semantic diagnostics uses `seed-baseline-semantic-diagnostic` plus
+  `semantic-only`.
+- The runner rejects unsupported caller-track/search-mode pairs before Admin
+  search, refuses to overwrite baselines owned by another caller track, and
+  rejects baseline/current caller-track mismatches before judge calls. Legacy
+  untracked artifacts normalize to `public-watch`.
+- Reports now include `callerTrackMix` and `trackSummaries`, including selected
+  mode, suitability, no-result count, totals, and representative failures.
 - Algolia is prompt provenance only in this ticket; no Algolia-backed execution,
   fallback path, or follow-up ticket is in scope.
 - Code-level implementation is verified below. A launch/no-launch decision
@@ -135,9 +153,10 @@ Roadmap window: this week, June 16-19, 2026.
   `pnpm --filter @forge/admin test -- hybrid-search.bible-project`
 - Passed:
   `pnpm --filter @forge/mastra test -- seed-prompt-set runner offline-search-eval search-eval-orchestrator native-evaluation admin-search-eval-client search-eval-native-suite artifacts report`
-- Typecheck caveat: `pnpm --filter @forge/admin typecheck` currently fails on
-  pre-existing Prisma schema drift in
-  `apps/admin/src/services/transcript-embedding.service.ts` for `sourceKind`.
-- Typecheck caveat: `pnpm --filter @forge/mastra typecheck` currently fails
-  because `apps/mastra/src/mastra/memory.ts` cannot resolve `@mastra/memory` in
-  this isolated worktree dependency setup.
+- Passed:
+  `pnpm --filter @forge/mastra test -- seed-prompt-set report artifacts judge runner offline-search-eval search-eval-orchestrator native-evaluation search-eval-native-suite search-eval-baseline-portability baseline-portability`
+- Passed: `pnpm --filter @forge/mastra typecheck`
+- Typecheck caveat: `pnpm --filter @forge/admin typecheck` was not rerun during
+  the caller-track implementation; prior verification noted pre-existing Prisma
+  schema drift in `apps/admin/src/services/transcript-embedding.service.ts` for
+  `sourceKind`.

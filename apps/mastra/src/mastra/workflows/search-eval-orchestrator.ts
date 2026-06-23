@@ -10,7 +10,13 @@ import {
   type SearchEvalBaselineReadiness,
 } from "../../services/offline-search-eval/baseline-portability"
 import { SEARCH_EVAL_SEED_PROMPT_LOCALES } from "../../services/offline-search-eval/seed-prompt-set"
-import type { SearchEvalReport } from "../../services/offline-search-eval/types"
+import {
+  DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  SEARCH_EVAL_CALLER_TRACK_IDS,
+  SEARCH_EVAL_SEARCH_MODES,
+  defaultSearchEvalBaselineNameForCallerTrack,
+  type SearchEvalReport,
+} from "../../services/offline-search-eval/types"
 import {
   launchEvalQueryGenerationWorkflow,
   type EvalQueryGenerationWorkflowResult,
@@ -27,15 +33,8 @@ import {
 
 export const SEARCH_EVAL_ORCHESTRATOR_MAX_BODY_BYTES = 12288
 const WORKFLOW_FAILURE_ERROR_PREFIX = "SEARCH_EVAL_ORCHESTRATOR_FAILED:"
-const DEFAULT_BASELINE_NAME = "seed-baseline"
-const DEFAULT_SEARCH_MODE = "hybrid"
 const DEFAULT_CONTENT_TYPE = "all"
 const DEFAULT_MODE = "seed-baseline"
-const SEARCH_PIPELINE_MODES = [
-  "hybrid",
-  "keyword-first",
-  "semantic-only",
-] as const
 
 const SafeNameSchema = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/)
 
@@ -49,9 +48,15 @@ export const SearchEvalOrchestratorWorkflowInputSchema = z
       .describe(
         "seed-baseline captures the production seed baseline; full coordinates general capture; compare compares against a baseline; release-gate compares and evaluates thresholds.",
       ),
-    baselineName: SafeNameSchema.default(DEFAULT_BASELINE_NAME).describe(
-      "Named baseline artifact to capture or compare against.",
+    baselineName: SafeNameSchema.optional().describe(
+      "Named baseline artifact to capture or compare against. Omit to use the caller-track default.",
     ),
+    callerTrack: z
+      .enum(SEARCH_EVAL_CALLER_TRACK_IDS)
+      .default(DEFAULT_SEARCH_EVAL_CALLER_TRACK)
+      .describe(
+        "Caller lens for prompt selection and judging: public-watch, ai-experience-generation, or semantic-diagnostic.",
+      ),
     locales: z
       .array(z.string().min(1).max(32))
       .min(1)
@@ -66,10 +71,10 @@ export const SearchEvalOrchestratorWorkflowInputSchema = z
       .default(20)
       .describe("Admin search result limit per prompt."),
     searchMode: z
-      .enum(SEARCH_PIPELINE_MODES)
-      .default(DEFAULT_SEARCH_MODE)
+      .enum(SEARCH_EVAL_SEARCH_MODES)
+      .optional()
       .describe(
-        "Admin search pipeline to evaluate. semantic-only is an internal diagnostic eval mode.",
+        "Admin search pipeline to evaluate. Omit to use the caller-track default.",
       ),
     contentType: z
       .enum(["all", "video", "experience"])
@@ -152,6 +157,9 @@ export const SearchEvalOrchestratorWorkflowInputSchema = z
 export type SearchEvalOrchestratorWorkflowInput = z.output<
   typeof SearchEvalOrchestratorWorkflowInputSchema
 >
+
+type NormalizedSearchEvalOrchestratorWorkflowInput =
+  SearchEvalOrchestratorWorkflowInput & { baselineName: string }
 
 const ChildWorkflowRunSchema = z
   .object({
@@ -428,8 +436,25 @@ function childRetryable(result: { ok: false; retryable: boolean }) {
   return result.retryable
 }
 
-function initialSummary(
+function normalizeOrchestratorInput(
   input: SearchEvalOrchestratorWorkflowInput,
+): NormalizedSearchEvalOrchestratorWorkflowInput {
+  return {
+    ...input,
+    baselineName:
+      input.baselineName ??
+      defaultSearchEvalBaselineNameForCallerTrack(input.callerTrack),
+  }
+}
+
+function defaultOrchestratorInput(): NormalizedSearchEvalOrchestratorWorkflowInput {
+  return normalizeOrchestratorInput(
+    SearchEvalOrchestratorWorkflowInputSchema.parse({}),
+  )
+}
+
+function initialSummary(
+  input: NormalizedSearchEvalOrchestratorWorkflowInput,
 ): z.infer<typeof SummarySchema> {
   return {
     mode: input.mode,
@@ -587,7 +612,7 @@ function updateFromPromotedSync(
 }
 
 function evaluateReleaseGate(
-  input: SearchEvalOrchestratorWorkflowInput,
+  input: NormalizedSearchEvalOrchestratorWorkflowInput,
   report: SearchEvalReport | undefined,
 ): z.infer<typeof PassFailSchema> {
   if (input.mode !== "release-gate") {
@@ -675,13 +700,14 @@ function evaluateReleaseGate(
   }
 }
 
-function offlineInputFor(input: SearchEvalOrchestratorWorkflowInput) {
+function offlineInputFor(input: NormalizedSearchEvalOrchestratorWorkflowInput) {
   return {
     mode:
       input.mode === "full" || input.mode === "seed-baseline"
         ? ("capture-baseline" as const)
         : ("compare" as const),
     baselineName: input.baselineName,
+    callerTrack: input.callerTrack,
     locales: input.locales,
     searchLimit: input.searchLimit,
     searchMode: input.searchMode,
@@ -751,13 +777,11 @@ export async function runSearchEvalOrchestratorWorkflow(
     return failure("invalid_input", {
       retryable: false,
       mastraRunId,
-      summary: initialSummary(
-        SearchEvalOrchestratorWorkflowInputSchema.parse({}),
-      ),
+      summary: initialSummary(defaultOrchestratorInput()),
     })
   }
 
-  const input = parsed.data
+  const input = normalizeOrchestratorInput(parsed.data)
   const summary = initialSummary(input)
   const launchGeneration =
     options.launchEvalQueryGeneration ?? launchEvalQueryGenerationWorkflow
@@ -1066,22 +1090,21 @@ export async function launchSearchEvalOrchestratorWorkflow(
     return failure("invalid_input", {
       retryable: false,
       mastraRunId: runId,
-      summary: initialSummary(
-        SearchEvalOrchestratorWorkflowInputSchema.parse({}),
-      ),
+      summary: initialSummary(defaultOrchestratorInput()),
     })
   }
+  const input = normalizeOrchestratorInput(parsed.data)
   const run = await searchEvalOrchestratorWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: parsed.data })
+    result = await run.start({ inputData: input })
   } catch (error) {
     return (
       workflowFailureFromUnknown(error) ??
       failure("orchestration_failed", {
         retryable: true,
         mastraRunId: runId,
-        summary: initialSummary(parsed.data),
+        summary: initialSummary(input),
       })
     )
   }
@@ -1093,7 +1116,7 @@ export async function launchSearchEvalOrchestratorWorkflow(
     failure("orchestration_failed", {
       retryable: true,
       mastraRunId: runId,
-      summary: initialSummary(parsed.data),
+      summary: initialSummary(input),
     })
   )
 }
@@ -1144,9 +1167,7 @@ function invalidInput(runId = randomUUID()): SearchEvalOrchestratorFailure {
   return failure("invalid_input", {
     retryable: false,
     mastraRunId: runId,
-    summary: initialSummary(
-      SearchEvalOrchestratorWorkflowInputSchema.parse({}),
-    ),
+    summary: initialSummary(defaultOrchestratorInput()),
   })
 }
 
@@ -1214,15 +1235,19 @@ export async function handleSearchEvalOrchestratorRouteRequest({
     }
   }
   const parsed = SearchEvalOrchestratorWorkflowInputSchema.safeParse(body)
-  const result = parsed.success
-    ? await launch(parsed.data, { runId }).catch(() =>
-        failure("orchestration_failed", {
-          retryable: true,
-          mastraRunId: runId,
-          summary: initialSummary(parsed.data),
-        }),
-      )
-    : invalidInput(runId)
+  let result: SearchEvalOrchestratorWorkflowResult
+  if (parsed.success) {
+    const input = normalizeOrchestratorInput(parsed.data)
+    result = await launch(input, { runId }).catch(() =>
+      failure("orchestration_failed", {
+        retryable: true,
+        mastraRunId: runId,
+        summary: initialSummary(input),
+      }),
+    )
+  } else {
+    result = invalidInput(runId)
+  }
 
   return {
     status: routeStatusForResult(result),

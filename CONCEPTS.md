@@ -107,6 +107,21 @@ a high-strength source attribution on their own.
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
 
+### Search Eval Caller Track
+
+A search-evaluation prompt group scoped to a caller's job rather than only to a
+retrieval mode. Public Watch search, AI experience generation, and semantic
+diagnostics can each have different prompt intent and success criteria, even
+when they run against the same Search Pipeline Modes.
+
+Current caller tracks are `public-watch`, `ai-experience-generation`, and
+`semantic-diagnostic`. `public-watch` is the launch-readiness lens for the
+viewer-facing Watch search bar and defaults to Keyword-First Search.
+`ai-experience-generation` is for agents selecting videos while building
+devotionals, experiences, or related-content sections and defaults to Hybrid
+Search. `semantic-diagnostic` isolates semantic retrieval quality and only runs
+with Semantic-Only Search.
+
 ### Search Language
 
 The language semantic search uses to interpret and match a query. Search Language is separate from UI locale, public Watch route language, and audio-language selection: changing it affects search results but does not change the viewer's website language, URL language segment, or selected Dub.
