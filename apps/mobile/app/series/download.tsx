@@ -333,23 +333,8 @@ export default function SeriesDownloadRoute() {
         }}
       />
 
-      {/* Audio — label above (matching the pickers); the field is tappable and
-          opens the series language sheet rather than an inline dropdown. */}
-      <View style={styles.audioSection}>
-        <Text style={[styles.sectionLabel, typography.bodySmall]}>Audio</Text>
-        <Pressable
-          style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
-          onPress={() => router.push("/series/language")}
-          accessibilityRole="button"
-          accessibilityLabel={`Audio language, ${languageName}`}
-        >
-          <Text style={[styles.rowValue, typography.body]} numberOfLines={1}>
-            {languageName}
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
-        </Pressable>
-      </View>
-
+      {/* No audio picker: the download language is the series' selected dub
+          (Language button / sheet), shown in the header line above. */}
       <SubtitlePicker
         union={subtitleUnion}
         selectedSlug={subtitleSlug}
@@ -659,31 +644,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontFamily: "System",
     marginBottom: 24,
-  },
-  audioSection: {
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    marginBottom: 12,
-  },
-  langRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    minHeight: 56,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-  },
-  rowValue: {
-    color: TEXT_PRIMARY,
-    fontWeight: "600",
-    fontFamily: "System",
-    flexShrink: 1,
-    marginRight: 8,
   },
   statusPanel: {
     flexDirection: "row",
