@@ -155,6 +155,13 @@ export default function HomeScreen() {
   // that would strand the focused card off-screen, so we stash the row and
   // fire the scroll the moment its onLayout lands (recordRowY below).
   const pendingScrollRowRef = useRef<number | null>(null)
+  // The row that currently holds focus. Within-row horizontal moves keep the
+  // same row, so the row-level chrome/scroll update (handleRowFocus) is gated to
+  // fire only on an actual row TRANSITION — a horizontal D-pad sweep then costs
+  // only the (native-driven) card animation, not a redundant scrollTo per move.
+  // Reset to null whenever focus leaves the rails (top bar / hero / mission) so
+  // re-entering a row always re-applies its browse/scroll state.
+  const lastFocusedRowRef = useRef<number | null>(null)
 
   const scrollToRow = useCallback((rowIndex: number): boolean => {
     const target = resolveRowScrollTarget({
@@ -169,6 +176,11 @@ export default function HomeScreen() {
 
   const handleRowFocus = useCallback(
     (rowIndex: number) => {
+      // Within-row horizontal move: the row hasn't changed, so the row-level
+      // browse/scroll state is identical — skip it (avoids a redundant scrollTo
+      // on every horizontal D-pad move).
+      if (lastFocusedRowRef.current === rowIndex) return
+      lastFocusedRowRef.current = rowIndex
       setBrowseState(resolveBrowseState(rowIndex))
       // Topmost section rail = rowIndex 1; anything >= 2 is a rail below it.
       setBelowTopmost(rowIndex >= 2)
@@ -190,6 +202,7 @@ export default function HomeScreen() {
 
   // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
+    lastFocusedRowRef.current = null
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -198,6 +211,7 @@ export default function HomeScreen() {
   // Mission-tail QR focus: with the native focus-scroll disabled, the tail
   // needs its own scroll hook — pin to the end in the deep state.
   const handleMissionFocus = useCallback(() => {
+    lastFocusedRowRef.current = null
     setBrowseState("deep")
     // The mission tail is below the topmost rail — keep its autoFocus OFF so a
     // later Up traversal stays column-preserving.
@@ -277,6 +291,7 @@ export default function HomeScreen() {
   }, [featuredCount])
   const handleHeroFocusChange = useCallback((isFocused: boolean) => {
     if (!isFocused) return
+    lastFocusedRowRef.current = null
     setBelowTopmost(false)
     setBrowseState("browse")
     scrollRef.current?.scrollTo({ y: 0, animated: true })
