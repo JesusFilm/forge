@@ -36,8 +36,12 @@ import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
-export const HOME_CARD_WIDTH = scale(400)
-export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
+// Android TV shows fewer, wider cards per rail (~3 vs ~5) so a cross-rail scroll
+// redraws far fewer card views per frame — the on-screen view count was the
+// Sabrina SoC's ~23fps floor. tvOS keeps the denser 400px layout.
+const CARD_W = Platform.OS === "android" ? 560 : 400
+export const HOME_CARD_WIDTH = scale(CARD_W)
+export const HOME_CARD_THUMB_HEIGHT = scale(Math.round((CARD_W * 9) / 16)) // 16:9
 
 /** How far the white focus ring sits outside the thumb edge. */
 const RING_WIDTH = scale(5)
@@ -159,8 +163,11 @@ export const HomeCard = memo(function HomeCard({
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
               )}
 
-              {/* Hairline edge over the artwork (design: 1px white .07). */}
-              <View style={styles.thumbEdge} pointerEvents="none" />
+              {/* Hairline edge (design: 1px white .07). Dropped on Android —
+                  one fewer view per card to redraw during a scroll. */}
+              {NATIVE_FOCUS ? null : (
+                <View style={styles.thumbEdge} pointerEvents="none" />
+              )}
 
               {card.metaLabel != null ? (
                 <View style={styles.chip} pointerEvents="none">
