@@ -84,6 +84,7 @@ export type VideoLibraryItem = {
   durationSeconds: number | null
   previewImageUrl: string | null
   previewStreamUrl: string | null
+  hasGrounding: boolean
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"
