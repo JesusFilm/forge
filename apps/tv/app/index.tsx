@@ -9,6 +9,7 @@ import {
 } from "react"
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -488,6 +489,10 @@ export default function HomeScreen() {
         contentContainerStyle={styles.listContent}
         stickyHeaderIndices={[0]}
         scrollEnabled={false}
+        // Android only: skip drawing rails scrolled off-screen so a vertical
+        // move only composites the visible rails. The row-anchored scroll keeps
+        // the focused content on-screen, so focusables are never clipped.
+        removeClippedSubviews={Platform.OS === "android"}
       >
         <View>{topBar}</View>
 
