@@ -19,7 +19,14 @@
 
 import { memo, useMemo } from "react"
 import { Image } from "expo-image"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import type { View as ViewType } from "react-native"
 
 import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
@@ -34,6 +41,13 @@ export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
 
 /** How far the white focus ring sits outside the thumb edge. */
 const RING_WIDTH = scale(5)
+
+/** Android TV runs the per-focus tween on the native driver (off the JS thread,
+ *  which dominated D-pad-move frame time on the weak Chromecast SoC) and drops
+ *  the JS-driven shadow — iOS shadow* props don't render on Android anyway, so
+ *  the white ring carries the focus affordance there. tvOS keeps the full
+ *  JS-driven treatment, shadow included. */
+const NATIVE_FOCUS = Platform.OS === "android"
 
 type HomeCardProps = {
   card: WatchHomeCard
@@ -63,7 +77,9 @@ export const HomeCard = memo(function HomeCard({
   nextFocusUp,
   nodeRef,
 }: HomeCardProps) {
-  const { focused, setFocused, progress } = useFocusAnimation()
+  const { focused, setFocused, progress } = useFocusAnimation({
+    nativeDriver: NATIVE_FOCUS,
+  })
   // CMS-sourced URL is untrusted — sanitize before it reaches expo-image.
   const imageUrl = useMemo(
     () => (card.imageUrl != null ? resolveImageUrl(card.imageUrl) : null),
@@ -84,13 +100,20 @@ export const HomeCard = memo(function HomeCard({
     }),
     [progress],
   )
+  // On Android the native-driven `progress` cannot feed shadowOpacity (the
+  // native driver rejects color/shadow props), and iOS shadow* props don't
+  // render on Android regardless — so skip the animated shadow there. tvOS keeps
+  // it.
   const shadowStyle = useMemo(
-    () => ({
-      shadowOpacity: progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 0.8],
-      }),
-    }),
+    () =>
+      NATIVE_FOCUS
+        ? undefined
+        : {
+            shadowOpacity: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.8],
+            }),
+          },
     [progress],
   )
   const ringStyle = useMemo(() => ({ opacity: progress }), [progress])
