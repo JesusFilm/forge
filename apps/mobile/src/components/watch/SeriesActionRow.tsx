@@ -1,9 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { TEXT_SECONDARY } from "../../lib/color"
+import { ACCENT, SURFACE_COLOR, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
+import { DownloadProgressRing } from "./DownloadProgressRing"
 import {
   type SeriesDownloadState,
   seriesDownloadLabel,
@@ -75,7 +76,20 @@ export function SeriesActionRow({
           accessibilityRole="button"
           accessibilityLabel={action.accessibilityLabel ?? action.label}
         >
-          <Ionicons name={action.icon} size={24} color={TEXT_SECONDARY} />
+          {action.id === "download" && downloadState.inProgress ? (
+            <DownloadProgressRing
+              size={26}
+              strokeWidth={2.5}
+              progress={downloadState.progress}
+              color={ACCENT}
+              trackColor="rgba(255, 255, 255, 0.18)"
+              cutoutColor={SURFACE_COLOR}
+            >
+              <Ionicons name={action.icon} size={12} color={ACCENT} />
+            </DownloadProgressRing>
+          ) : (
+            <Ionicons name={action.icon} size={24} color={TEXT_SECONDARY} />
+          )}
           <Text style={[styles.actionLabel, typography.caption]}>
             {action.label}
           </Text>

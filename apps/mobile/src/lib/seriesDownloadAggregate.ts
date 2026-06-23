@@ -11,6 +11,8 @@ export type SeriesDownloadState = {
   downloaded: number
   total: number
   inProgress: boolean
+  /** 0..1 byte-weighted progress across the series for the action-row ring. */
+  progress: number
 }
 
 const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
@@ -21,17 +23,38 @@ export function deriveSeriesDownloadState(
   downloadedSlugs: readonly string[],
   offlineRecords: readonly OfflineDownloadRecord[],
 ): SeriesDownloadState {
-  const episodes = new Set(episodeSlugs)
   const downloaded = new Set(downloadedSlugs)
+  const recordBySlug = new Map(
+    offlineRecords.map((record) => [record.videoSlug, record] as const),
+  )
+
+  // Episode-normalized byte progress: a completed episode counts as 1, an
+  // in-flight one as its byte fraction, so the ring creeps smoothly and reads
+  // full only when every episode is downloaded.
+  let inProgress = false
+  let units = 0
+  for (const slug of episodeSlugs) {
+    const record = recordBySlug.get(slug)
+    if (!record) continue
+    if (record.state === "downloaded") {
+      units += 1
+    } else if (IN_PROGRESS_STATES.has(record.state)) {
+      inProgress = true
+      if (record.totalBytes > 0) {
+        const fraction = record.bytesWritten / record.totalBytes
+        units += Math.max(0, Math.min(1, fraction))
+      }
+    }
+  }
+
+  const total = episodeSlugs.length
   return {
     // N counts only completed copies; failed records are excluded (they are
     // neither in downloadedSlugs nor an in-progress state).
     downloaded: episodeSlugs.filter((slug) => downloaded.has(slug)).length,
-    total: episodeSlugs.length,
-    inProgress: offlineRecords.some(
-      (record) =>
-        episodes.has(record.videoSlug) && IN_PROGRESS_STATES.has(record.state),
-    ),
+    total,
+    inProgress,
+    progress: total === 0 ? 0 : units / total,
   }
 }
 
