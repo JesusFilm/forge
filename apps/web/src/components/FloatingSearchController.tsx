@@ -355,7 +355,11 @@ export function FloatingSearchController({
         // router.replace() here dispatches an App Router/RSC navigation, which
         // can remount the overlay and clear a newer debounced search while the
         // viewer is still typing.
-        window.history.replaceState(window.history.state, "", nextUrl)
+        try {
+          window.history.replaceState(window.history.state, "", nextUrl)
+        } catch (error) {
+          console.warn("[FloatingSearch] failed to sync search URL", error)
+        }
       }
 
       if (!trimmed) {

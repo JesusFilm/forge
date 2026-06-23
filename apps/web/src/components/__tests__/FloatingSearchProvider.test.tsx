@@ -73,6 +73,7 @@ afterEach(() => {
   })
   container.remove()
   document.body.innerHTML = ""
+  vi.restoreAllMocks()
   vi.clearAllMocks()
   vi.useRealTimers()
 })
@@ -1060,6 +1061,8 @@ describe("FloatingSearchProvider — search mode", () => {
 
     const historyState = { next: "preserve" }
     window.history.replaceState(historyState, "", "/watch?q=bible&utm=campaign")
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState")
+    const pushStateSpy = vi.spyOn(window.history, "pushState")
 
     const searchButton = document.querySelector(
       '[data-testid="search-mode-harness-button"]',
@@ -1073,6 +1076,12 @@ describe("FloatingSearchProvider — search mode", () => {
     expect(window.location.pathname).toBe("/watch")
     expect(window.location.search).toBe("?q=jesus&utm=campaign")
     expect(window.history.state).toEqual(historyState)
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      historyState,
+      "",
+      "/watch?q=jesus&utm=campaign",
+    )
+    expect(pushStateSpy).not.toHaveBeenCalled()
     expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
@@ -1089,6 +1098,8 @@ describe("FloatingSearchProvider — search mode", () => {
 
     const historyState = { next: "preserve" }
     window.history.replaceState(historyState, "", "/watch?q=jesus&utm=campaign")
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState")
+    const pushStateSpy = vi.spyOn(window.history, "pushState")
 
     const clearButton = document.querySelector(
       '[data-testid="search-mode-harness-clear-button"]',
@@ -1102,6 +1113,12 @@ describe("FloatingSearchProvider — search mode", () => {
     expect(window.location.pathname).toBe("/watch")
     expect(window.location.search).toBe("?utm=campaign")
     expect(window.history.state).toEqual(historyState)
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      historyState,
+      "",
+      "/watch?utm=campaign",
+    )
+    expect(pushStateSpy).not.toHaveBeenCalled()
     expect(navigationMocks.replace).not.toHaveBeenCalled()
     expect(mockedRunSearch).not.toHaveBeenCalled()
   })
@@ -1648,6 +1665,35 @@ describe("FloatingSearchProvider — search pagination", () => {
     } finally {
       mockedRunSearch.mockReset()
     }
+  })
+
+  it("continues search when browser history URL sync fails", async () => {
+    vi.useFakeTimers()
+    const urlSyncError = new DOMException("Throttled", "SecurityError")
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(window.history, "replaceState").mockImplementation(() => {
+      throw urlSyncError
+    })
+    mockedRunSearch.mockResolvedValueOnce(
+      makeSearchResponse(
+        [makeSearchResult("bible-project", "Bible Project Result")],
+        false,
+      ),
+    )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+    await flushResolvedSearch()
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[FloatingSearch] failed to sync search URL",
+      urlSyncError,
+    )
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "the bible project" }),
+    )
+    expect(document.body.textContent).toContain("Bible Project Result")
+    expect(document.querySelector(".animate-pulse")).toBeNull()
   })
 
   it("loads the next Watch search page with limit 10, current offset, and appends results", async () => {
