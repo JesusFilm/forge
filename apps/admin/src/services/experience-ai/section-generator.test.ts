@@ -174,3 +174,25 @@ describe("section client parseSectionRouteResult", () => {
     expect(_internals.parseSectionRouteResult({ foo: "bar" })).toBeNull()
   })
 })
+
+describe("section client resolveTimeoutMs", () => {
+  it("passes a valid positive number through", () => {
+    expect(_internals.resolveTimeoutMs(75_000)).toBe(75_000)
+  })
+
+  it("defaults when the value is undefined (skipValidation drops the env default)", () => {
+    expect(_internals.resolveTimeoutMs(undefined)).toBe(75_000)
+  })
+
+  it("coerces a numeric string (raw process.env value)", () => {
+    expect(_internals.resolveTimeoutMs("90000")).toBe(90_000)
+  })
+
+  it("defaults for non-numeric, zero, negative, or NaN inputs", () => {
+    expect(_internals.resolveTimeoutMs("not-a-number")).toBe(75_000)
+    expect(_internals.resolveTimeoutMs(0)).toBe(75_000)
+    expect(_internals.resolveTimeoutMs(-1)).toBe(75_000)
+    expect(_internals.resolveTimeoutMs(Number.NaN)).toBe(75_000)
+    expect(_internals.resolveTimeoutMs(null)).toBe(75_000)
+  })
+})

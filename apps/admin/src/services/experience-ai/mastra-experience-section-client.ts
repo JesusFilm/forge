@@ -110,6 +110,24 @@ function describeFetchError(error: unknown): string {
 
 type RawResponse = { status: number; bodyText: string }
 
+/** Fallback when the env-configured section timeout is missing/invalid. */
+const DEFAULT_SECTION_TIMEOUT_MS = 75_000
+
+/**
+ * Normalize the request timeout to a positive number. `env.MASTRA_SECTION_TIMEOUT_MS`
+ * is TYPED `number`, but at runtime it can arrive `undefined` (or a string)
+ * because t3-env's `skipValidation` path returns raw `process.env` without
+ * applying the Zod default — and passing that to `req.setTimeout` /
+ * `AbortSignal.timeout` throws `ERR_INVALID_ARG_TYPE`. Takes `unknown` so the
+ * runtime guards aren't elided by the (wrong) static type.
+ */
+function resolveTimeoutMs(value: unknown): number {
+  const ms = typeof value === "string" ? Number(value) : value
+  return typeof ms === "number" && Number.isFinite(ms) && ms > 0
+    ? ms
+    : DEFAULT_SECTION_TIMEOUT_MS
+}
+
 /**
  * POST the request over `node:http` instead of the global `fetch`.
  *
@@ -239,7 +257,9 @@ export async function launchMastraExperienceSection(
     "content-type": "application/json",
   }
   const bodyText = JSON.stringify(body)
-  const timeoutMs = options.timeoutMs ?? env.MASTRA_SECTION_TIMEOUT_MS
+  const timeoutMs = resolveTimeoutMs(
+    options.timeoutMs ?? env.MASTRA_SECTION_TIMEOUT_MS,
+  )
 
   let raw: RawResponse
   try {
@@ -304,4 +324,5 @@ export async function launchMastraExperienceSection(
 
 export const _internals = {
   parseSectionRouteResult,
+  resolveTimeoutMs,
 }
