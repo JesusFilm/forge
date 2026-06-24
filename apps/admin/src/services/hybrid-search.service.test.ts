@@ -21,6 +21,7 @@ import {
 } from "./hybrid-search-retrievers"
 import { __resetSearchHealthForTest, getStats } from "./hybrid-search-health"
 import {
+  formatSearchTimingLogLine,
   HybridSearchService,
   normalizeMode,
   sanitizeForLog,
@@ -106,16 +107,24 @@ describe("HybridSearchService", () => {
     })
 
     // All 4 retrievers were invoked with overfetch = DEFAULT_LIMIT * 3 = 60.
-    expect(searchVideoSemantic).toHaveBeenCalledWith(mockPrisma, {
-      queryEmbedding: "[0.1,0.2,0.3]",
-      locale: "en",
-      limit: 60,
-    })
-    expect(searchVideoKeyword).toHaveBeenCalledWith(mockPrisma, {
-      query: "forgiveness",
-      locale: "en",
-      limit: 60,
-    })
+    expect(searchVideoSemantic).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        queryEmbedding: "[0.1,0.2,0.3]",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
+    expect(searchVideoKeyword).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        query: "forgiveness",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
     expect(searchExperienceSemantic).toHaveBeenCalled()
     expect(searchExperienceKeyword).toHaveBeenCalled()
 
@@ -219,6 +228,43 @@ describe("HybridSearchService", () => {
       failedRetrievers: [],
       contributingRetrievers: ["semantic-video"],
     })
+    expect(traced.timings).toMatchObject({
+      pipelineMode: "hybrid",
+      totalMs: expect.any(Number),
+      embeddingMs: expect.any(Number),
+      retrievalsMs: expect.any(Number),
+      fusionMs: expect.any(Number),
+      dilutionCapMs: 0,
+      dedupeMs: expect.any(Number),
+      mappingMs: expect.any(Number),
+      hydrationMs: expect.any(Number),
+    })
+    expect(traced.timings.retrievers.map((r) => r.label)).toEqual([
+      "semantic-video",
+      "keyword-video",
+      "semantic-experience",
+      "keyword-experience",
+    ])
+    expect(traced.timings.retrievers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "semantic-video",
+          status: "fulfilled",
+          resultCount: 1,
+          elapsedMs: expect.any(Number),
+        }),
+      ]),
+    )
+    expect(traced.timings.db).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "hydration.video.findMany",
+          status: "fulfilled",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+      ]),
+    )
     expect(await service.search({ query: "jesus", locale: "en" })).toEqual(
       expect.objectContaining({
         query: "jesus",
@@ -245,6 +291,22 @@ describe("HybridSearchService", () => {
       outcome: "degraded",
       traceClass: "query_embedding_failure",
     })
+    expect(traced.timings.retrievers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "semantic-video",
+          status: "skipped",
+          resultCount: 0,
+          elapsedMs: 0,
+        }),
+        expect.objectContaining({
+          label: "semantic-experience",
+          status: "skipped",
+          resultCount: 0,
+          elapsedMs: 0,
+        }),
+      ]),
+    )
   })
 
   it("classifies partial retriever failure separately from zero results", async () => {
@@ -282,6 +344,66 @@ describe("HybridSearchService", () => {
     expect(traced.trace.traceClass).toBe("retrieval_failure")
     expect(traced.trace.failedRetrievers).toEqual(["keyword-video"])
     expect(traced.trace.contributingRetrievers).toEqual(["semantic-video"])
+    expect(traced.timings.retrievers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "keyword-video",
+          status: "rejected",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+      ]),
+    )
+  })
+
+  it("formats structured timing logs without query text", () => {
+    const line = formatSearchTimingLogLine({
+      route: "graphql",
+      locale: "en\nx=1",
+      requestedMode: "keyword first",
+      searchMode: "hybrid",
+      outcome: "success",
+      resultCount: 2,
+      traceWriteMs: 1.2,
+      timings: {
+        pipelineMode: "keyword-first",
+        totalMs: 123.4,
+        embeddingMs: 15.2,
+        retrievalsMs: 100,
+        fusionMs: 1,
+        dilutionCapMs: 0,
+        dedupeMs: 0.4,
+        mappingMs: 0.3,
+        hydrationMs: 6,
+        retrievers: [
+          {
+            label: "semantic-video",
+            status: "fulfilled",
+            elapsedMs: 99,
+            resultCount: 60,
+          },
+        ],
+        db: [
+          {
+            label: "semantic-video.query",
+            status: "fulfilled",
+            elapsedMs: 98,
+            resultCount: 60,
+          },
+        ],
+      },
+    })
+
+    expect(line).toContain("event=search_timing")
+    expect(line).toContain("route=graphql")
+    expect(line).toContain("locale=en_x_1")
+    expect(line).toContain("requested_mode=keyword_first")
+    expect(line).toContain("pipeline_mode=keyword-first")
+    expect(line).toContain("embedding_ms=15.2")
+    expect(line).toContain("retriever_semantic_video_ms=99")
+    expect(line).toContain("db_semantic_video_query_ms=98")
+    expect(line).toContain("trace_write_ms=1.2")
+    expect(line).not.toContain("Jesus")
   })
 
   describe("query embedding", () => {
@@ -368,6 +490,7 @@ describe("HybridSearchService", () => {
     expect(searchVideoSemantic).toHaveBeenCalledWith(
       mockPrisma,
       expect.objectContaining({ limit: 150 }), // 50 * 3
+      expect.any(Object),
     )
   })
 
@@ -383,6 +506,7 @@ describe("HybridSearchService", () => {
     expect(searchVideoSemantic).toHaveBeenCalledWith(
       mockPrisma,
       expect.objectContaining({ limit: 3 }), // 1 * 3
+      expect.any(Object),
     )
   })
 
