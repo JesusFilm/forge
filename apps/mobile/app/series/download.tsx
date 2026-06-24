@@ -510,16 +510,8 @@ function StatusPanel({
     )
   }
 
-  if (phase.kind === "enqueuing") {
-    return (
-      <View style={styles.statusPanel}>
-        <ActivityIndicator color={ACCENT} />
-        <Text style={[styles.statusText, typography.body]}>
-          Starting downloads…
-        </Text>
-      </View>
-    )
-  }
+  // Enqueuing shows no panel text — the confirm button itself becomes a
+  // "Downloading" spinner (see ConfirmButton), so this falls through to null.
 
   if (phase.kind === "done") {
     const line = formatEnqueueSummary(phase.summary)
@@ -591,6 +583,7 @@ function ConfirmButton({
   onConfirm: () => void
   typography: ReturnType<typeof useTypography>
 }) {
+  const enqueuing = phase.kind === "enqueuing"
   const disabled =
     phase.kind !== "ready" ||
     !resolution ||
@@ -607,12 +600,16 @@ function ConfirmButton({
       onPress={onConfirm}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel="Download all episodes"
-      accessibilityState={{ disabled }}
+      accessibilityLabel={enqueuing ? "Downloading" : "Download all episodes"}
+      accessibilityState={{ disabled, busy: enqueuing }}
     >
-      <Ionicons name="download-outline" size={20} color="#ffffff" />
+      {enqueuing ? (
+        <ActivityIndicator color="#ffffff" size="small" />
+      ) : (
+        <Ionicons name="download-outline" size={20} color="#ffffff" />
+      )}
       <Text style={[styles.confirmButtonText, typography.body]}>
-        Download all
+        {enqueuing ? "Downloading" : "Download all"}
       </Text>
     </Pressable>
   )
