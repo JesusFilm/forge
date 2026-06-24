@@ -13,10 +13,9 @@ import type {
   WatchVariant,
 } from "./normalizeVideo"
 
-// Resolve a series' episodes for a single {quality, language, subtitle} choice.
-// Episodes carry no dubs (lean cards), so each is a two-hop lazy fetch:
-// getEpisodeVariants(slug) → dub by languageSlug → getDubMedia(dubId) → tier.
-// Pure given injected fetchers, so the route wires Apollo and tests inject mocks.
+// Resolve a series' episodes for one {quality, language, subtitle} choice. Lean
+// episode cards carry no dubs, so each is a two-hop lazy fetch (variants → dub →
+// media → tier). Pure given injected fetchers — route wires Apollo, tests mock.
 
 export const SERIES_RESOLVE_CONCURRENCY = 4
 export const SERIES_PER_EPISODE_TIMEOUT_MS = 10_000

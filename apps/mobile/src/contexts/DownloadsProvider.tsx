@@ -253,10 +253,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     async (requests: StartDownloadRequest[]) => {
       for (const request of requests) {
         const existing = recordsRef.current[request.videoSlug]
-        // A live record (downloaded / in-progress) is already durable and is
-        // driven by start/swap/switch; re-writing a `queued` record over it
-        // would discard its committedPath / swapFrom snapshot. Only fresh or
-        // previously-terminal slugs need a synchronous queued placeholder.
+        // A live record (downloaded / in-progress) is driven by start/swap/switch;
+        // overwriting it with `queued` would discard its committedPath / swapFrom.
+        // Only fresh or previously-terminal slugs need a queued placeholder.
         if (isLiveDownloadRecord(existing)) {
           continue
         }
@@ -642,17 +641,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
       const { videoSlug, rendition } = request
       const existing = recordsRef.current[videoSlug]
-      // Shape contract: a BARE `queued` record (no pending AND no committed path)
-      // is the series batch's own durable placeholder from queueBatchRecords.
-      // Per-video starts write `downloading` + a pendingPath; the launch reattach
-      // always builds a pendingPath before restarting — so neither is ever bare-
-      // queued, and only the batch's own placeholder matches here. Adopt it
-      // (drive to downloading) instead of reporting `exists`.
+      // A BARE `queued` record (no pending, no committed) is the batch's own
+      // placeholder from queueBatchRecords — nothing else writes bare-queued — so
+      // adopt it (drive to downloading) instead of reporting `exists`.
       const isOwnPlaceholder = isBatchPlaceholderRecord(existing)
-      // Capture so the storage/error backstops below can clean up an adopted
-      // placeholder that fails — leaving it `queued` would strand it forever
-      // (action row stuck, reconcile re-queues it every relaunch).
-      const adoptedPlaceholder = isOwnPlaceholder
       // One copy per video: ignore if a live copy/queue entry already exists.
       if (isLiveDownloadRecord(existing) && !isOwnPlaceholder) {
         return { ok: false, reason: "exists" }
@@ -664,7 +656,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       const required = (Number(rendition.size) || 0) + STORAGE_RESERVE_BYTES
       const free = await freeDiskBytes()
       if (free > 0 && free < required) {
-        if (adoptedPlaceholder) await removeRecord(videoSlug)
+        // Clean up only our own adopted placeholder — never a pre-existing record.
+        if (isOwnPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "insufficient-storage" }
       }
 
@@ -674,7 +667,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         // sibling download already in flight (the series "stops at N of M" bug).
         await ensureVideoDir(videoSlug)
       } catch {
-        if (adoptedPlaceholder) await removeRecord(videoSlug)
+        if (isOwnPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "error" }
       }
 

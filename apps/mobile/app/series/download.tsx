@@ -105,10 +105,9 @@ export default function SeriesDownloadRoute() {
   const languageName =
     languages.find((l) => l.slug === languageSlug)?.name ?? languageSlug ?? ""
 
-  // Resolve (or re-resolve) the whole set for the current quality/language/
-  // subtitle choice. Aborted on unmount and on each re-run so a stale fan-out
-  // never writes into the new phase. `onlyFailedFrom` re-runs just the
-  // failed-resolve episodes (Retry failed), merging back onto the resolved set.
+  // Re-resolve the set for the current quality/language/subtitle choice; aborted
+  // on each re-run and unmount so a stale fan-out never writes the new phase.
+  // `onlyFailedFrom` restricts to failed episodes (Retry failed) + merges back.
   const runResolution = useCallback(
     async (
       controller: AbortController,
@@ -243,10 +242,9 @@ export default function SeriesDownloadRoute() {
       subtitleLanguageSlug: subtitleSlug,
       allowCellular: !wifiOnly,
     }
-    // Snapshot each episode's record BEFORE pre-queuing: queueBatchRecords writes
-    // a `queued` placeholder carrying the chosen dub, which would otherwise make
-    // decideEpisodeAction read "same dub → skip" and never start the download.
-    // The loop decides actions from this pre-batch snapshot.
+    // Snapshot records BEFORE queueBatchRecords writes its `queued` placeholders —
+    // else decideEpisodeAction sees the chosen dub and reads "same dub → skip",
+    // never starting. The enqueue loop decides from this pre-batch snapshot.
     const preBatch = new Map(
       resolution.resolved.map((e) => [e.slug, getRecord(e.slug)] as const),
     )

@@ -10,10 +10,9 @@ import type {
   StartDownloadResult,
 } from "../contexts/DownloadsProvider"
 
-// Pure enqueue orchestration for the series download-all sheet: the aggregate
-// storage gate, the StartDownloadRequest builder, the capped enqueue loop, and
-// the result-derived outcome buckets. Kept I/O-free given injected provider
-// primitives so it unit-tests without rendering the route (no RN render harness).
+// Pure enqueue orchestration: storage gate, request builder, capped enqueue loop,
+// result-derived outcome buckets. I/O-free via injected provider primitives so it
+// unit-tests without rendering the route (no RN render harness).
 
 // Concurrent enqueue cap. Small so concurrent swaps don't put many old+new
 // copies in flight at once — their transient footprint must stay within the
@@ -140,10 +139,9 @@ export type EnqueueDeps = {
   queueBatchRecords: (reqs: StartDownloadRequest[]) => Promise<void>
 }
 
-// Classify ONE episode from its ACTUAL provider result, never the pre-call
-// decision: a swap can return `exists` and no-op, so the decision over-reports
-// switched. start ok → started; swap/switch ok → switched; exists →
-// already-present; insufficient-storage / error → couldnt-start.
+// Bucket from the ACTUAL provider result, not the pre-call decision: a swap can
+// return `exists` and no-op, so the decision would over-report switched.
+// (exists → already-present; insufficient-storage / error → couldnt-start.)
 function bucketResult(
   action: "start" | "swap" | "switch",
   result: StartDownloadResult,
@@ -178,12 +176,9 @@ async function enqueueOne(
     return { ...base, action, outcome: bucketResult(action, result) }
   }
   if (action === "switch") {
-    // swapDownload only acts on a `downloaded` record; an in-progress copy in
-    // the old language must be canceled, then restarted in the chosen one.
-    // Re-queue a durable placeholder between delete and start so a kill in the
-    // gap leaves a record launch-reattach can recover (F1 cleans a couldnt-start).
-    // The tiny window between delete and queue is accepted — a kill there only
-    // loses the (already-canceled) old copy, never a started download.
+    // An in-progress copy in the old language can't be swapped (swap only acts on
+    // `downloaded`), so cancel + re-queue a recoverable placeholder + restart. The
+    // delete→queue gap only risks the already-canceled old copy, never a started one.
     await deps.deleteDownload(episode.slug)
     await deps.queueBatchRecords([request])
     const result = await deps.startDownload(request)

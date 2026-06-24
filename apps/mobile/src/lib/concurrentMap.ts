@@ -1,8 +1,6 @@
-// Concurrency-capped, abortable fan-out with per-item settled results.
-// Two consumers: the series resolution fan-out (U2) and the enqueue loop (U3).
-// Mirrors prefetchHeroStream's in-flight cap and dubMediaFetch's sync-throw
-// slot-leak discipline — one item failing (sync or async) never fails the batch,
-// and an abort stops new work while in-flight items settle rejected.
+// Concurrency-capped, abortable fan-out with per-item settled results: one item
+// failing (sync or async) never fails the batch; abort stops new work while
+// in-flight items settle rejected. Used by series resolution (4) + enqueue (2).
 
 export type SettledResult<T> =
   | { status: "fulfilled"; value: T }
@@ -26,10 +24,9 @@ export async function mapWithConcurrency<I, O>(
 
   const cap = Math.max(1, Math.min(Math.floor(limit) || 1, n))
 
-  // Settles when the signal aborts; raced against each in-flight item so an
-  // abort rejects work that is already running rather than waiting it out.
-  // Held in an object so the executor's assignment survives TS control-flow
-  // narrowing (a `let` reassigned inside the callback narrows back to null).
+  // Wrapped in an object so the executor's assignment survives TS control-flow
+  // narrowing; settles on abort and is raced against each in-flight item so an
+  // abort rejects already-running work instead of waiting it out.
   const cleanup: { detach: (() => void) | null } = { detach: null }
   const abortPromise = new Promise<typeof ABORT>((resolve) => {
     if (!signal) return
