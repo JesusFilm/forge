@@ -34,8 +34,43 @@ vi.mock("@/services/search-trace.service", () => ({
 }))
 vi.mock("@/services/hybrid-search.service", () => {
   const contentTypes = new Set(["video", "experience"])
+  const makeTimings = () => ({
+    pipelineMode: "hybrid" as const,
+    totalMs: 1,
+    embeddingMs: 1,
+    retrievalsMs: 0,
+    fusionMs: 0,
+    dilutionCapMs: 0,
+    dedupeMs: 0,
+    mappingMs: 0,
+    hydrationMs: 0,
+    retrievers: [],
+    db: [],
+  })
   return {
-    HybridSearchService: vi.fn(() => ({ search: routeMocks.search })),
+    HybridSearchService: vi.fn(() => ({
+      search: routeMocks.search,
+      searchWithTrace: async (params: unknown) => {
+        const response = await routeMocks.search(params)
+        return {
+          response,
+          trace: {
+            searchMode: response.searchMode,
+            resultCount: response.results.length,
+            outcome:
+              response.searchMode === "keyword-only" ? "degraded" : "success",
+            traceClass:
+              response.searchMode === "keyword-only"
+                ? "query_embedding_failure"
+                : "none",
+            failedRetrievers: [],
+            contributingRetrievers: [],
+          },
+          timings: makeTimings(),
+        }
+      },
+    })),
+    formatSearchTimingLogLine: vi.fn(() => "[search] event=search_timing"),
     isContentType: (value: string) => contentTypes.has(value),
   }
 })

@@ -93,21 +93,33 @@ describe("HybridSearchService keyword-first branch", () => {
       mode: "keyword-first",
     })
 
-    expect(searchByKeywordWeighted).toHaveBeenCalledWith(mockPrisma, {
-      query: "the bible project",
-      locale: "en",
-      limit: 60,
-    })
-    expect(searchByTrigram).toHaveBeenCalledWith(mockPrisma, {
-      query: "the bible project",
-      locale: "en",
-      limit: 60,
-    })
-    expect(searchByExactTitle).toHaveBeenCalledWith(mockPrisma, {
-      query: "the bible project",
-      locale: "en",
-      limit: 60,
-    })
+    expect(searchByKeywordWeighted).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        query: "the bible project",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
+    expect(searchByTrigram).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        query: "the bible project",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
+    expect(searchByExactTitle).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        query: "the bible project",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
   })
 
   it("does NOT dispatch the legacy R4 video keyword retriever in keyword-first mode", async () => {
@@ -259,16 +271,24 @@ describe("HybridSearchService keyword-first branch", () => {
       allowInternalEvalModes: true,
     })
 
-    expect(searchVideoSemantic).toHaveBeenCalledWith(mockPrisma, {
-      queryEmbedding: "[0.1,0.2,0.3]",
-      locale: "en",
-      limit: 60,
-    })
-    expect(searchExperienceSemantic).toHaveBeenCalledWith(mockPrisma, {
-      queryEmbedding: "[0.1,0.2,0.3]",
-      locale: "en",
-      limit: 60,
-    })
+    expect(searchVideoSemantic).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        queryEmbedding: "[0.1,0.2,0.3]",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
+    expect(searchExperienceSemantic).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        queryEmbedding: "[0.1,0.2,0.3]",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
     expect(searchVideoKeyword).not.toHaveBeenCalled()
     expect(searchExperienceKeyword).not.toHaveBeenCalled()
     expect(searchByKeywordWeighted).not.toHaveBeenCalled()
