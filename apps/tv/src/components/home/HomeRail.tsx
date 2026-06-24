@@ -31,9 +31,11 @@ import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { HOME_CARD_THUMB_HEIGHT, HOME_CARD_WIDTH, HomeCard } from "./HomeCard"
 import { buildRailItems, type RailItem } from "./homeRailItems"
 
+const IS_ANDROID = Platform.OS === "android"
+
 // Android pairs a smaller card (HomeCard CARD_W) with its own gap so the rail
 // shows a few smaller cards with comfortable spacing (tuned on-device).
-const ITEM_GAP = scale(Platform.OS === "android" ? 48 : 28)
+const ITEM_GAP = scale(IS_ANDROID ? 48 : 28)
 const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 const RAIL_PADDING_LEFT = scale(80)
 
@@ -229,7 +231,15 @@ export const HomeRail = memo(function HomeRail({
           extraData={lastCardNode}: FlatList re-renders rows on data/extraData
           change only — the pads need to re-render once the bounce target is
           captured. */}
-      <TVFocusGuideView autoFocus={restoreLastFocus}>
+      {/* Android: trap horizontal focus inside the rail so Right at the last
+          card (and Left at the first) is a no-op — without this the focus engine
+          escapes diagonally to the rail below's edge card. Up/Down still cross
+          rails (only left/right trapped). tvOS keeps its native edge behavior. */}
+      <TVFocusGuideView
+        autoFocus={restoreLastFocus}
+        trapFocusLeft={IS_ANDROID}
+        trapFocusRight={IS_ANDROID}
+      >
         <FlatList
           data={items}
           extraData={lastCardNode}
