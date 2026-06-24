@@ -382,9 +382,6 @@ async function searchSeedCases(
       tags: prompt.tags,
       operatorNotes: prompt.operatorNotes,
       results: result.ok ? result.result.results : [],
-      ...(result.ok && result.result.timings
-        ? { searchTimings: result.result.timings }
-        : {}),
       ...(result.ok ? {} : { searchFailure: searchFailure(result) }),
     })
   }
@@ -405,12 +402,6 @@ function baselineReportOutcomes(
     callerTrack: normalizeSearchEvalCallerTrack(entry.callerTrack),
     baselineResults: entry.results,
     currentResults: entry.results,
-    ...(entry.searchTimings
-      ? {
-          baselineSearchTimings: entry.searchTimings,
-          currentSearchTimings: entry.searchTimings,
-        }
-      : {}),
     ...(entry.searchFailure ? { searchFailure: entry.searchFailure } : {}),
   }))
 }
@@ -506,9 +497,6 @@ async function exploratoryGeneratedOutcomes(
       queryHash: entry.queryHash,
       retentionExpiresAt: entry.retentionExpiresAt,
       results: result.ok ? result.result.results : [],
-      ...(result.ok && result.result.timings
-        ? { searchTimings: result.result.timings }
-        : {}),
       ...(result.ok ? {} : { searchFailure: searchFailure(result) }),
     })
   }
@@ -599,12 +587,6 @@ async function compareBaselineCases({
         callerTrack: input.callerTrack,
         baselineResults: entry.results,
         currentResults: current.ok ? current.result.results : [],
-        ...(entry.searchTimings
-          ? { baselineSearchTimings: entry.searchTimings }
-          : {}),
-        ...(current.ok && current.result.timings
-          ? { currentSearchTimings: current.result.timings }
-          : {}),
         searchFailure: current.ok
           ? entry.searchFailure
           : searchFailure(current),
@@ -642,12 +624,6 @@ async function compareBaselineCases({
         callerTrack: input.callerTrack,
         baselineResults: entry.results,
         currentResults: current.result.results,
-        ...(entry.searchTimings
-          ? { baselineSearchTimings: entry.searchTimings }
-          : {}),
-        ...(current.result.timings
-          ? { currentSearchTimings: current.result.timings }
-          : {}),
         verdicts: [forward.verdict, swapped.verdict],
         rationale: forward.rationale,
       })
@@ -672,12 +648,6 @@ async function compareBaselineCases({
         callerTrack: input.callerTrack,
         baselineResults: entry.results,
         currentResults: current.result.results,
-        ...(entry.searchTimings
-          ? { baselineSearchTimings: entry.searchTimings }
-          : {}),
-        ...(current.result.timings
-          ? { currentSearchTimings: current.result.timings }
-          : {}),
         rationale: "judge_failed",
         searchFailure: judgeFailure,
       })

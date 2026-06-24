@@ -219,32 +219,6 @@ describe("HybridSearchService", () => {
       failedRetrievers: [],
       contributingRetrievers: ["semantic-video"],
     })
-    expect(traced.timings).toMatchObject({
-      totalMs: expect.any(Number),
-      retrievalsMs: expect.any(Number),
-      fusionMs: expect.any(Number),
-      dilutionCapMs: 0,
-      dedupeMs: expect.any(Number),
-      mappingMs: expect.any(Number),
-      hydrationMs: expect.any(Number),
-    })
-    expect(traced.timings.retrievers.map((r) => r.label)).toEqual([
-      "semantic-video",
-      "keyword-video",
-      "semantic-experience",
-      "keyword-experience",
-    ])
-    expect(traced.timings.retrievers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          label: "semantic-video",
-          status: "fulfilled",
-          resultCount: 1,
-          elapsedMs: expect.any(Number),
-        }),
-      ]),
-    )
-    expect(JSON.stringify(traced.timings)).not.toMatch(/embedding/i)
     expect(await service.search({ query: "jesus", locale: "en" })).toEqual(
       expect.objectContaining({
         query: "jesus",
@@ -308,16 +282,6 @@ describe("HybridSearchService", () => {
     expect(traced.trace.traceClass).toBe("retrieval_failure")
     expect(traced.trace.failedRetrievers).toEqual(["keyword-video"])
     expect(traced.trace.contributingRetrievers).toEqual(["semantic-video"])
-    expect(traced.timings.retrievers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          label: "keyword-video",
-          status: "rejected",
-          resultCount: 0,
-          elapsedMs: expect.any(Number),
-        }),
-      ]),
-    )
   })
 
   describe("query embedding", () => {

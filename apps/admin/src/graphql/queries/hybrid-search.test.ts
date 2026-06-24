@@ -11,23 +11,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const searchMock = vi.fn()
-const mockTimings = {
-  totalMs: 234,
-  retrievalsMs: 190,
-  fusionMs: 2,
-  dilutionCapMs: 0,
-  dedupeMs: 3,
-  mappingMs: 4,
-  hydrationMs: 5,
-  retrievers: [
-    {
-      label: "semantic-video",
-      status: "fulfilled" as const,
-      elapsedMs: 180,
-      resultCount: 2,
-    },
-  ],
-}
 const searchWithTraceMock = vi.fn(async (params) => {
   const response = await searchMock(params)
   return {
@@ -43,7 +26,6 @@ const searchWithTraceMock = vi.fn(async (params) => {
       failedRetrievers: [],
       contributingRetrievers: [],
     },
-    timings: mockTimings,
   }
 })
 vi.mock("@/services/hybrid-search.service", async () => {
@@ -306,37 +288,6 @@ describe("Query.search resolver", () => {
       query: "jesus",
       searchMode: "hybrid",
     })
-  })
-
-  it("emits a search_timing log without query text or secret-bearing fields", async () => {
-    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    try {
-      await expect(
-        invoke({
-          q: "jesus-secret-query",
-          locale: "en",
-          mode: "keyword-first",
-        }),
-      ).resolves.toBeDefined()
-
-      const timingLine = logSpy.mock.calls
-        .map((args) => String(args[0] ?? ""))
-        .find((line) => line.includes("event=search_timing"))
-      expect(timingLine).toContain("route=graphql")
-      expect(timingLine).toContain("locale=en")
-      expect(timingLine).toContain("requested_mode=keyword-first")
-      expect(timingLine).toContain("search_mode=hybrid")
-      expect(timingLine).toContain("total_ms=234")
-      expect(timingLine).toContain("db_retrievals_ms=190")
-      expect(timingLine).toContain("trace_write_ms=")
-      expect(timingLine).toContain("db_retriever_semantic_video_ms=180")
-      expect(timingLine).not.toContain("jesus-secret-query")
-      expect(timingLine).not.toContain("Bearer")
-      expect(timingLine).not.toContain("keyId=")
-      expect(timingLine).not.toMatch(/embedding/i)
-    } finally {
-      logSpy.mockRestore()
-    }
   })
 })
 
