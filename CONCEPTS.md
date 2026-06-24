@@ -146,6 +146,12 @@ Semantic-Only Search is for measuring whether Content Embeddings can find releva
 
 The response-side state that says whether semantic retrieval actually contributed to a search response. It reflects runtime embedding availability, not the requested Search Pipeline Mode.
 
+### Search Stage Timing
+
+Per-query observability that breaks Admin search latency into route, retrieval,
+fusion, mapping, hydration, trace-write, and total service time. It is an
+operator diagnostic contract, not a public search response contract.
+
 ### Content Embedding
 
 A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.

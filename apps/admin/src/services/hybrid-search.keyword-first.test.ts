@@ -87,7 +87,7 @@ describe("HybridSearchService keyword-first branch", () => {
       logger: { warn: vi.fn(), error: vi.fn() },
     })
 
-    await service.search({
+    const traced = await service.searchWithTrace({
       query: "the bible project",
       locale: "en",
       mode: "keyword-first",
@@ -108,6 +108,15 @@ describe("HybridSearchService keyword-first branch", () => {
       locale: "en",
       limit: 60,
     })
+    expect(traced.timings.retrievers.map((r) => r.label)).toEqual([
+      "semantic-video",
+      "keyword-weighted-video",
+      "trigram-video",
+      "exact-title-video",
+      "semantic-experience",
+      "keyword-experience",
+    ])
+    expect(JSON.stringify(traced.timings)).not.toMatch(/embedding/i)
   })
 
   it("does NOT dispatch the legacy R4 video keyword retriever in keyword-first mode", async () => {
@@ -185,16 +194,27 @@ describe("HybridSearchService keyword-first branch", () => {
       logger: { warn: vi.fn(), error: loggerError },
     })
 
-    const result = await service.search({
+    const traced = await service.searchWithTrace({
       query: "jesus",
       locale: "en",
       mode: "keyword-first",
     })
+    const result = traced.response
 
     expect(result.results).toHaveLength(1)
     expect(result.results[0]!.id).toBe("vid-1")
     expect(loggerError).toHaveBeenCalledWith(
       expect.stringContaining("trigram-video retrieval failed"),
+    )
+    expect(traced.timings.retrievers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "trigram-video",
+          status: "rejected",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+      ]),
     )
   })
 
@@ -252,7 +272,7 @@ describe("HybridSearchService keyword-first branch", () => {
       logger: { warn: vi.fn(), error: vi.fn() },
     })
 
-    await service.search({
+    const traced = await service.searchWithTrace({
       query: "jesus",
       locale: "en",
       mode: "semantic-only",
@@ -274,6 +294,10 @@ describe("HybridSearchService keyword-first branch", () => {
     expect(searchByKeywordWeighted).not.toHaveBeenCalled()
     expect(searchByTrigram).not.toHaveBeenCalled()
     expect(searchByExactTitle).not.toHaveBeenCalled()
+    expect(traced.timings.retrievers.map((r) => r.label)).toEqual([
+      "semantic-video",
+      "semantic-experience",
+    ])
   })
 
   it("keeps semantic-only internal and falls back to hybrid without the eval flag", async () => {

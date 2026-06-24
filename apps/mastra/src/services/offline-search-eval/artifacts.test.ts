@@ -14,6 +14,24 @@ import type { BaselineArtifact, SearchEvalReport } from "./types"
 
 let rootDir: string
 
+const searchTimings = {
+  totalMs: 120,
+  retrievalsMs: 90,
+  fusionMs: 3,
+  dilutionCapMs: 0,
+  dedupeMs: 4,
+  mappingMs: 5,
+  hydrationMs: 6,
+  retrievers: [
+    {
+      label: "semantic-video",
+      status: "fulfilled" as const,
+      elapsedMs: 88,
+      resultCount: 1,
+    },
+  ],
+}
+
 beforeEach(async () => {
   rootDir = await mkdtemp(join(tmpdir(), "forge-mastra-search-eval-"))
 })
@@ -86,6 +104,40 @@ describe("search eval artifact store", () => {
       path: expect.stringContaining("reports/run-1.json"),
     })
     await expect(store.readReport("run-1")).resolves.toEqual(report())
+  })
+
+  it("round-trips Admin search timings on baselines and reports", async () => {
+    const store = createSearchEvalArtifactStore(rootDir)
+    const timedBaseline = baseline()
+    timedBaseline.cases[0]!.searchTimings = searchTimings
+    const timedReport = finalizeReport({
+      ...report(),
+      outcomes: [
+        {
+          kind: "tie",
+          caseId: "seed-jesus",
+          locale: "en",
+          queryText: "Jesus",
+          source: "seed",
+          callerTrack: "public-watch",
+          baselineResults: [],
+          currentResults: [],
+          baselineSearchTimings: searchTimings,
+          currentSearchTimings: searchTimings,
+          verdicts: ["tie", "tie"],
+          rationale: "same",
+        },
+      ],
+    })
+
+    await expect(store.writeBaseline(timedBaseline)).resolves.toMatchObject({
+      path: expect.stringContaining("baselines/default.json"),
+    })
+    await expect(store.readBaseline("default")).resolves.toEqual(timedBaseline)
+    await expect(store.writeReport(timedReport)).resolves.toMatchObject({
+      path: expect.stringContaining("reports/run-1.json"),
+    })
+    await expect(store.readReport("run-1")).resolves.toEqual(timedReport)
   })
 
   it("accepts reports after real native Evaluation records are synced", async () => {

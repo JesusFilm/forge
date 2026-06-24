@@ -142,6 +142,24 @@ export type SearchEvalResult = {
   childCount: number | null
 }
 
+export type AdminSearchRetrieverTiming = {
+  label: string
+  status: "fulfilled" | "rejected"
+  elapsedMs: number
+  resultCount: number
+}
+
+export type AdminSearchTimingSummary = {
+  totalMs: number
+  retrievalsMs: number
+  fusionMs: number
+  dilutionCapMs: number
+  dedupeMs: number
+  mappingMs: number
+  hydrationMs: number
+  retrievers: AdminSearchRetrieverTiming[]
+}
+
 export type SeedPromptCase = {
   id: string
   locale: string
@@ -178,6 +196,7 @@ export type BaselineCase = {
   tags: string[]
   operatorNotes?: string
   results: SearchEvalResult[]
+  searchTimings?: AdminSearchTimingSummary
   searchFailure?: SearchFailure
 }
 
@@ -249,6 +268,8 @@ export type ComparisonOutcome = {
   callerTrack: SearchEvalCallerTrack
   baselineResults: SearchEvalResult[]
   currentResults: SearchEvalResult[]
+  baselineSearchTimings?: AdminSearchTimingSummary
+  currentSearchTimings?: AdminSearchTimingSummary
   verdicts?: [JudgeVerdict, JudgeVerdict]
   rationale?: string
   searchFailure?: SearchFailure
@@ -264,6 +285,7 @@ export type ExploratoryGeneratedOutcome = {
   retentionExpiresAt: string | null
   skippedReason?: "trace_derived_not_judged_or_searched"
   results: SearchEvalResult[]
+  searchTimings?: AdminSearchTimingSummary
   searchFailure?: SearchFailure
 }
 

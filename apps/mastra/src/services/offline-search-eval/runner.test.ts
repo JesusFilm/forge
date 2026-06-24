@@ -33,6 +33,42 @@ const resultB: SearchEvalResult = {
   snippet: "current",
 }
 
+const baselineSearchTimings = {
+  totalMs: 120,
+  retrievalsMs: 90,
+  fusionMs: 3,
+  dilutionCapMs: 0,
+  dedupeMs: 4,
+  mappingMs: 5,
+  hydrationMs: 6,
+  retrievers: [
+    {
+      label: "semantic-video",
+      status: "fulfilled" as const,
+      elapsedMs: 88,
+      resultCount: 1,
+    },
+  ],
+}
+
+const currentSearchTimings = {
+  totalMs: 150,
+  retrievalsMs: 111,
+  fusionMs: 4,
+  dilutionCapMs: 0,
+  dedupeMs: 5,
+  mappingMs: 6,
+  hydrationMs: 7,
+  retrievers: [
+    {
+      label: "semantic-video",
+      status: "fulfilled" as const,
+      elapsedMs: 109,
+      resultCount: 1,
+    },
+  ],
+}
+
 function baselineArtifact(): BaselineArtifact {
   return {
     schemaVersion: "1",
@@ -453,6 +489,52 @@ describe("runOfflineSearchEval", () => {
     expect(judgePair).not.toHaveBeenCalledWith(
       expect.objectContaining({ query: "raw trace query" }),
     )
+  })
+
+  it("preserves baseline and current Admin search timings in comparison outcomes", async () => {
+    const baseline = baselineArtifact()
+    baseline.cases[0]!.searchTimings = baselineSearchTimings
+    const store = memoryStore(baseline)
+    const judgePair = vi.fn(async () => ({
+      verdict: "tie" as const,
+      rationale: "same",
+      tokens: { input: 1, output: 1 },
+      model: "judge",
+    }))
+
+    const result = await runOfflineSearchEval(
+      { mode: "compare", baselineName: "default" },
+      {
+        runId: "run-timing-propagation",
+        artifactStore: store,
+        adminBearer: "eval-key",
+        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        searchClient: vi.fn(async () => ({
+          ok: true as const,
+          result: {
+            results: [resultB],
+            hasMore: false,
+            query: "Jesus",
+            searchMode: "hybrid" as const,
+            timings: currentSearchTimings,
+          },
+        })),
+        judge: { model: "judge", judgePair },
+        now: () => new Date("2026-05-27T00:00:00.000Z"),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      report: {
+        outcomes: [
+          {
+            baselineSearchTimings,
+            currentSearchTimings,
+          },
+        ],
+      },
+    })
   })
 
   it("keeps seed baseline capture running when exploratory candidate reads fail", async () => {

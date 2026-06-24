@@ -11,6 +11,7 @@ depends_on:
 blocks:
   - "feat-194"
   - "feat-196"
+  - "feat-203"
 tags:
   - "admin"
   - "mastra"
