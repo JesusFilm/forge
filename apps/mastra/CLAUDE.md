@@ -212,11 +212,21 @@ artifact.
 
 Keep this workflow Studio-friendly: the workflow and first step must expose a
 strict structured input schema, not `z.unknown()`. Defaults should let an
-operator run the seed baseline from Studio without hand-written JSON:
-`mode=capture-baseline`, `baselineName=seed-baseline`, all seeded locales,
-`searchLimit=20`, `searchMode=hybrid`, and `contentType=all`. Use explicit
-`all` options for filter enums when Studio should run both corpora; avoid
-nullable defaults because Studio renders them as awkward `OR` controls.
+operator run the public Watch seed baseline from Studio without hand-written
+JSON: `mode=capture-baseline`, `callerTrack=public-watch`, all seeded locales,
+`searchLimit=20`, and `contentType=all`. `baselineName` and `searchMode` may
+be omitted so the runner applies caller-track defaults:
+
+- `public-watch`: `baselineName=seed-baseline`, `searchMode=keyword-first`.
+- `ai-experience-generation`:
+  `baselineName=seed-baseline-ai-experience-generation`,
+  `searchMode=hybrid`.
+- `semantic-diagnostic`: `baselineName=seed-baseline-semantic-diagnostic`,
+  `searchMode=semantic-only`.
+
+Use explicit `all` options for filter enums when Studio should run both
+corpora; avoid nullable defaults because Studio renders them as awkward `OR`
+controls.
 
 Admin remains the live search authority. Mastra never queries Admin Postgres,
 never imports Admin code, never generates live query embeddings, and never
@@ -224,6 +234,11 @@ enters the public search request path. The Studio-facing offline eval workflow
 is seed-only for now. Generated candidates from the feat-138 staging table are
 not exposed as operator inputs, are not stored in baselines, and do not become
 regression gates.
+
+Search eval baselines and reports are caller-track aware. Legacy untracked
+artifacts are normalized to `public-watch`; new captures refuse to overwrite a
+baseline owned by a different `callerTrack`, and comparisons reject mismatched
+baseline/current caller tracks before Admin search or judge calls.
 
 ## Native search eval suite
 
@@ -242,11 +257,14 @@ into native Mastra Evaluation records:
   rows that are both `promotionStatus=promoted` and
   `sanitizationStatus=sanitized`.
 
-Native record names include the environment label, for example
-`search-eval:local:seed-baseline`, and native metadata carries stable keys for
-idempotent reruns. Re-running a report sync should update Dataset items by
-source key and reuse the existing report Experiment instead of duplicating
-records.
+Native record names include the environment label, caller track, and search
+mode, for example
+`search-eval:local:seed-baseline:public-watch:keyword-first`, and native
+metadata carries stable keys for idempotent reruns. Re-running a report sync
+should update Dataset items by source key and reuse the existing report
+Experiment instead of duplicating records. Report-derived source keys include
+both `track:<callerTrack>` and `mode:<searchMode>` so public, AI-agent, and
+semantic-diagnostic evidence cannot overwrite each other.
 
 For local Studio smoke without Postgres or Admin data, run Mastra with:
 
@@ -270,14 +288,17 @@ It is a thin coordinator over the existing search eval leaf workflows:
 `eval-query-generation`, `offline-search-eval`,
 `search-eval-candidate-review`, and `search-eval-native-suite`.
 
-Default `seed-baseline` mode captures the committed seed prompt baseline named
-`seed-baseline`, requires native report sync, rejects candidate generation,
-rejects seed-candidate submission, rejects promoted-candidate sync, and runs a
-readiness preflight before touching Admin search. Use explicit `full` mode for
-broader operator runs that coordinate generation/review/promoted-sync leaf
-workflows. `compare` mode compares current search against an existing baseline,
-and `release-gate` mode adds explicit pass/fail thresholds for losses, search
-failures, judge failures, judge disagreements, and calibration.
+Default `seed-baseline` mode captures the committed public Watch seed prompt
+baseline named `seed-baseline`, requires native report sync, rejects candidate
+generation, rejects seed-candidate submission, rejects promoted-candidate sync,
+and runs a readiness preflight before touching Admin search. Pass
+`callerTrack=ai-experience-generation` or `callerTrack=semantic-diagnostic` to
+capture or compare the caller-specific prompt suites and baseline names. Use
+explicit `full` mode for broader operator runs that coordinate
+generation/review/promoted-sync leaf workflows. `compare` mode compares current
+search against an existing baseline, and `release-gate` mode adds explicit
+pass/fail thresholds for losses, search failures, judge failures, judge
+disagreements, and calibration.
 `resumeReportId` skips offline search execution and retries native report sync
 for an existing report artifact.
 
@@ -313,7 +334,8 @@ explicit seed-only payload:
 {
   "mode": "seed-baseline",
   "baselineName": "prod-seed-baseline-YYYY-MM-DD",
-  "searchMode": "hybrid",
+  "callerTrack": "public-watch",
+  "searchMode": "keyword-first",
   "contentType": "all",
   "generateCandidates": false,
   "submitSeedCandidates": false,

@@ -1,8 +1,14 @@
-import type { SeedPromptCase } from "./types"
+import {
+  DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  type SearchEvalCallerTrack,
+  type SeedPromptCase,
+} from "./types"
 
 export const SEARCH_EVAL_SEED_PROMPT_SET_VERSION = "search-eval-seed-prompts/v5"
 
-type SeedPromptInput = Omit<SeedPromptCase, "source">
+type SeedPromptInput = Omit<SeedPromptCase, "source" | "callerTracks"> & {
+  callerTracks?: readonly SearchEvalCallerTrack[]
+}
 
 const ENGLISH = {
   locale: "en",
@@ -10,8 +16,10 @@ const ENGLISH = {
 } as const
 
 function seedPrompt(input: SeedPromptInput): SeedPromptCase {
+  const { callerTracks, ...caseInput } = input
   return {
-    ...input,
+    ...caseInput,
+    callerTracks: [...(callerTracks ?? [DEFAULT_SEARCH_EVAL_CALLER_TRACK])],
     source: "seed",
   }
 }
@@ -611,7 +619,7 @@ export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
   seedPrompt({
     id: "seed-chinese-vegetable-animation",
     locale: "zh",
-    languageSlug: "chinese-mandarin-simplified",
+    languageSlug: "mandarin-china",
     websiteLocale: "en",
     queryText: "蔬菜总动员",
     tags: [
@@ -798,16 +806,166 @@ export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
     tags: ["algolia-no-result", "confusing", "sports-outreach"],
     operatorNotes: "Algolia no-result query, 2026-05-22..2026-06-21: count=1.",
   }),
+  seedPrompt({
+    id: "seed-ai-easter-devotional-hope",
+    ...ENGLISH,
+    queryText:
+      "Find videos for an Easter devotional about hope after disappointment",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "devotional", "seasonal", "felt-need"],
+  }),
+  seedPrompt({
+    id: "seed-ai-pentecost-holy-spirit",
+    ...ENGLISH,
+    queryText:
+      "Select videos for a Pentecost experience about the Holy Spirit helping ordinary believers",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "devotional", "bible-topic"],
+  }),
+  seedPrompt({
+    id: "seed-ai-muslim-audience-son-of-god",
+    ...ENGLISH,
+    queryText:
+      "Source videos for a Muslim audience exploring what Christians mean by Jesus as Son of God",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "audience", "bible-topic"],
+  }),
+  seedPrompt({
+    id: "seed-ai-teen-anxiety-identity",
+    ...ENGLISH,
+    queryText:
+      "Find short videos for teenagers struggling with anxiety and identity",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "audience", "felt-need", "teens"],
+  }),
+  seedPrompt({
+    id: "seed-ai-related-prayer-section",
+    ...ENGLISH,
+    queryText:
+      "Recommend related videos for a page section about learning to pray when life is hard",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "related-content", "prayer"],
+  }),
+  seedPrompt({
+    id: "seed-ai-children-forgiveness-series",
+    ...ENGLISH,
+    queryText:
+      "Pick child-friendly videos for a short series about forgiveness and making things right",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "children", "felt-need"],
+  }),
+  seedPrompt({
+    id: "seed-ai-new-believer-follow-jesus",
+    ...ENGLISH,
+    queryText:
+      "Choose videos for a new believer experience about starting to follow Jesus",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "new-believer", "discipleship"],
+  }),
+  seedPrompt({
+    id: "seed-ai-advent-mary-joseph",
+    ...ENGLISH,
+    queryText:
+      "Find videos for an Advent devotional about Mary Joseph and trusting God",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "seasonal", "devotional"],
+  }),
+  seedPrompt({
+    id: "seed-ai-workplace-integrity",
+    ...ENGLISH,
+    queryText:
+      "Select videos for adults wrestling with integrity at work and following Jesus",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "audience", "felt-need"],
+  }),
+  seedPrompt({
+    id: "seed-ai-grief-comfort",
+    ...ENGLISH,
+    queryText:
+      "Find videos for a devotional that comforts someone grieving a loved one",
+    callerTracks: ["ai-experience-generation"],
+    tags: ["ai-experience-generation", "devotional", "felt-need"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-lost-son-welcomed-home",
+    ...ENGLISH,
+    queryText:
+      "a story where a lost son is welcomed home by his father after wasting everything",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "scene-like", "paraphrase"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-blind-man-cries-out",
+    ...ENGLISH,
+    queryText: "a blind man keeps calling out to Jesus and receives his sight",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "scene-like", "paraphrase"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-wedding-water-wine",
+    ...ENGLISH,
+    queryText:
+      "at a wedding the celebration runs out of wine and Jesus provides more",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "scene-like", "paraphrase"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-forgives-enemies-cross",
+    ...ENGLISH,
+    queryText:
+      "Jesus asks forgiveness for the people hurting him while he is being killed",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "scene-like", "paraphrase"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-storm-becomes-calm",
+    ...ENGLISH,
+    queryText:
+      "followers panic in a storm and Jesus makes the wind and waves quiet",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "scene-like", "paraphrase"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-god-stays-near-in-shame",
+    ...ENGLISH,
+    queryText:
+      "someone feels ashamed and rejected but discovers God still comes close",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "felt-need", "paraphrase"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-kingdom-everyday-stories",
+    ...ENGLISH,
+    queryText:
+      "short teachings that explain God's kingdom using ordinary everyday images",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "bible-topic", "paraphrase"],
+  }),
+  seedPrompt({
+    id: "seed-semantic-friendship-with-outsider",
+    ...ENGLISH,
+    queryText:
+      "Jesus shares kindness and truth with someone everyone else avoids",
+    callerTracks: ["semantic-diagnostic"],
+    tags: ["semantic-diagnostic", "scene-like", "paraphrase"],
+  }),
 ] as const
 
 export const SEARCH_EVAL_SEED_PROMPT_LOCALES = [
   ...new Set(SEARCH_EVAL_SEED_PROMPTS.map((prompt) => prompt.locale)),
 ] as const
 
-export function seedPromptsForLocales(locales?: readonly string[]) {
+export function seedPromptsForLocales(
+  locales?: readonly string[],
+  options: { callerTrack?: SearchEvalCallerTrack } = {},
+) {
+  const callerTrack = options.callerTrack ?? DEFAULT_SEARCH_EVAL_CALLER_TRACK
+  const matchingTrack = SEARCH_EVAL_SEED_PROMPTS.filter((prompt) =>
+    prompt.callerTracks.includes(callerTrack),
+  )
   if (locales == null || locales.length === 0) {
-    return [...SEARCH_EVAL_SEED_PROMPTS]
+    return [...matchingTrack]
   }
   const allowed = new Set(locales)
-  return SEARCH_EVAL_SEED_PROMPTS.filter((prompt) => allowed.has(prompt.locale))
+  return matchingTrack.filter((prompt) => allowed.has(prompt.locale))
 }

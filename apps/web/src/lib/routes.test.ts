@@ -142,16 +142,8 @@ describe("videosIndexPath", () => {
 })
 
 describe("searchPath", () => {
-  it("returns / when no q", () => {
+  it("returns the root modal fallback path", () => {
     expect(searchPath()).toBe("/")
-  })
-
-  it("returns /?q=... when q is provided", () => {
-    expect(searchPath("jesus")).toBe("/?q=jesus")
-  })
-
-  it("URL-encodes special characters in q", () => {
-    expect(searchPath("jesus & friends")).toBe("/?q=jesus+%26+friends")
   })
 })
 
@@ -225,38 +217,9 @@ describe("parseWatchPath", () => {
     expect(parseWatchPath("/videos")).toEqual({ kind: "videos" })
   })
 
-  it("parses /search with q from URLSearchParams (proxy.ts caller)", () => {
-    expect(parseWatchPath("/search", new URLSearchParams("q=jesus"))).toEqual({
-      kind: "search",
-      q: "jesus",
-    })
-  })
-
-  it("parses /search with q from plain Record (Next 16 page-route caller)", () => {
-    expect(parseWatchPath("/search", { q: "jesus" })).toEqual({
-      kind: "search",
-      q: "jesus",
-    })
-  })
-
-  it("parses /search with array-valued q from plain Record (takes first)", () => {
-    expect(parseWatchPath("/search", { q: ["jesus", "ignored"] })).toEqual({
-      kind: "search",
-      q: "jesus",
-    })
-  })
-
-  it("parses /search with undefined q from plain Record", () => {
-    expect(parseWatchPath("/search", { q: undefined })).toEqual({
-      kind: "search",
-      q: undefined,
-    })
-  })
-
-  it("parses /search without q", () => {
+  it("parses deprecated /search without query state", () => {
     expect(parseWatchPath("/search")).toEqual({
       kind: "search",
-      q: undefined,
     })
   })
 

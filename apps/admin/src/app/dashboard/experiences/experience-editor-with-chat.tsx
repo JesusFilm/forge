@@ -193,6 +193,7 @@ export function ExperienceEditorWithChat({
         canvasController={canvasController}
         actions={chatActions}
         suggestedPrompts={suggestedPrompts}
+        videoLibrary={videoLibrary}
         generateDraftAction={generateDraftAction}
         generateSectionAction={generateSectionAction}
       />

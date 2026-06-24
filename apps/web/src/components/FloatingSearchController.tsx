@@ -24,7 +24,6 @@ import {
   type SearchLanguageCountrySuggestion,
   type SearchLanguageOption,
 } from "@/lib/search-language"
-import { buildSearchUrl } from "@/lib/search-url"
 import { parseWatchPath } from "@/lib/routes"
 import {
   FloatingSearchContext,
@@ -40,20 +39,9 @@ type ActiveSearchSignature = {
   query: string
   languageEnglishNames: string[]
   languageSlug: string | null
-  languageKey: string
   routeLanguageSlug: string | null
   resultSource: SearchActionResultSource
   nextOffset: number
-}
-
-function buildCurrentSearchUrl(
-  pathname: string,
-  currentParams: URLSearchParams,
-): string {
-  const serializedParams = currentParams.toString()
-  return serializedParams.length > 0
-    ? `${pathname}?${serializedParams}`
-    : pathname
 }
 
 export type FloatingSearchControllerProps = {
@@ -77,14 +65,8 @@ export function FloatingSearchController({
 }: FloatingSearchControllerProps) {
   const tSearchOverlay = useTranslations("SearchOverlay")
   // usePathname() does NOT force the Full Route Cache deopt that
-  // useSearchParams() would. Keep it for route-language parsing, but use the
-  // browser pathname when mutating the visible ?q= URL below so deployments
-  // with a basePath keep their public path intact.
+  // useSearchParams() would. Keep it only for route-language parsing.
   const pathname = usePathname()
-
-  // Whether the modal was opened via URL hydration (vs user click). Gates a
-  // shorter skeleton threshold so the URL-hydrated blank window is less jarring.
-  const hydratedOpenRef = useRef<boolean>(false)
 
   const [results, setResults] = useState<SearchResult[]>([])
   const [displayResults, setDisplayResults] = useState<SearchResult[]>([])
@@ -343,21 +325,6 @@ export function FloatingSearchController({
       activeSearchSignatureRef.current = null
       setLoadingMore(false)
 
-      const currentParams =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search)
-          : new URLSearchParams()
-      const browserPathname =
-        typeof window !== "undefined" ? window.location.pathname : pathname
-      const nextUrl = buildSearchUrl(browserPathname, currentParams, trimmed)
-      if (nextUrl !== buildCurrentSearchUrl(browserPathname, currentParams)) {
-        // The search modal owns ?q= as client-side UI state. Using
-        // router.replace() here dispatches an App Router/RSC navigation, which
-        // can remount the overlay and clear a newer debounced search while the
-        // viewer is still typing.
-        window.history.replaceState(window.history.state, "", nextUrl)
-      }
-
       if (!trimmed) {
         if (displayResultsRef.current.length > 0) {
           setExiting(true)
@@ -389,10 +356,9 @@ export function FloatingSearchController({
       setError(null)
       setSearched(true)
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-      const skeletonThreshold = hydratedOpenRef.current ? 150 : 500
       skeletonTimerRef.current = setTimeout(() => {
         if (requestIdRef.current === thisRequest) setShowSkeleton(true)
-      }, skeletonThreshold)
+      }, 500)
 
       try {
         const currentLanguageOptions = languageOptionsLoadedRef.current
@@ -460,10 +426,6 @@ export function FloatingSearchController({
           query: trimmed.slice(0, 200),
           languageEnglishNames: [...activeLanguageEnglishNames],
           languageSlug: signatureLanguageSlug,
-          languageKey: searchLanguageKey(
-            activeLanguageEnglishNames,
-            signatureLanguageSlug,
-          ),
           routeLanguageSlug,
           resultSource: data.resultSource,
           nextOffset: data.nextOffset ?? newResults.length,
@@ -491,7 +453,6 @@ export function FloatingSearchController({
       languageFacets,
       algoliaSearchEnabled,
       maybeSetLanguageFacets,
-      pathname,
       refreshLanguageOptions,
       routeLanguageSlug,
       setQuery,
@@ -503,22 +464,8 @@ export function FloatingSearchController({
     const expectedSignature = activeSearchSignatureRef.current
     if (!expectedSignature) return
     const currentQuery = queryRef.current.trim().slice(0, 200)
-    const currentLanguageSlug =
-      resultSource === "algolia"
-        ? null
-        : (selectedSearchLanguageOptionRef.current?.publicSlug ??
-          expectedSignature.languageSlug)
-    const currentLanguageEnglishNames =
-      selectedLanguageEnglishNamesRef.current.length > 0
-        ? selectedLanguageEnglishNamesRef.current
-        : expectedSignature.languageEnglishNames
-    const currentLanguageKey = searchLanguageKey(
-      currentLanguageEnglishNames,
-      currentLanguageSlug,
-    )
     if (
       expectedSignature.query !== currentQuery ||
-      expectedSignature.languageKey !== currentLanguageKey ||
       expectedSignature.routeLanguageSlug !== routeLanguageSlug ||
       expectedSignature.resultSource !== resultSource
     ) {
@@ -675,21 +622,6 @@ export function FloatingSearchController({
     void search("")
   }, [resetToken, search])
 
-  // On first client mount, seed state from ?q= in the URL.
-  const didHydrateRef = useRef(false)
-  useEffect(() => {
-    if (didHydrateRef.current) return
-    didHydrateRef.current = true
-    if (typeof window === "undefined") return
-    const seeded = new URLSearchParams(window.location.search).get("q") ?? ""
-    const trimmed = seeded.slice(0, 200)
-    if (trimmed.length === 0) return
-    hydratedOpenRef.current = true
-    setQuery(trimmed)
-    setOpen(true)
-    void search(trimmed)
-  }, [search, setOpen, setQuery])
-
   const value = useMemo<FloatingSearchContextValue>(
     () => ({
       open,
@@ -777,16 +709,6 @@ export function FloatingSearchController({
         : null}
     </FloatingSearchContext.Provider>
   )
-}
-
-function searchLanguageKey(
-  languageEnglishNames: readonly string[],
-  languageSlug: string | null,
-): string {
-  return [
-    languageSlug ?? "",
-    normalizeSearchLanguageEnglishNames(languageEnglishNames).join("\u0001"),
-  ].join("\u0002")
 }
 
 function withSearchLanguageOptionsFallback(

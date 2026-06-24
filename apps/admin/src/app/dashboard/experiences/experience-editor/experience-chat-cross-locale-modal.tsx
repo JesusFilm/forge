@@ -1,6 +1,7 @@
 "use client"
 
 import { AlertTriangle, X } from "lucide-react"
+import { createPortal } from "react-dom"
 
 export function ExperienceChatCrossLocaleModal({
   open,
@@ -13,14 +14,17 @@ export function ExperienceChatCrossLocaleModal({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  if (!open) return null
+  if (!open || typeof document === "undefined") return null
 
-  return (
+  // Portal at <body>: this modal renders inside the chat panel's `sticky`,
+  // `overflow-hidden` <aside>, which traps + clips a `fixed inset-0` overlay
+  // to the chat column. Same root cause + fix as AnchorVideoPicker.
+  const overlay = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="cross-locale-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
     >
       <div className="w-full max-w-md rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
@@ -89,4 +93,6 @@ export function ExperienceChatCrossLocaleModal({
       </div>
     </div>
   )
+
+  return createPortal(overlay, document.body)
 }

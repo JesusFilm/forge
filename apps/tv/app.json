@@ -4,6 +4,7 @@
     "slug": "jesus-film-forge-tv",
     "owner": "jesus-film-project",
     "version": "1.0.0",
+    "scheme": "org.jesusfilm.forgetv",
     "icon": "./assets/icon.png",
     "orientation": "landscape",
     "userInterfaceStyle": "dark",

@@ -17,6 +17,12 @@ const { prismaMock, videoListMock } = vi.hoisted(() => ({
     videoRelation: {
       findMany: vi.fn(),
     },
+    videoStudyQuestion: {
+      findMany: vi.fn(),
+    },
+    bibleCitation: {
+      findMany: vi.fn(),
+    },
   },
   videoListMock: vi.fn(),
 }))
@@ -68,6 +74,8 @@ describe("dashboard live data", () => {
     vi.clearAllMocks()
     prismaMock.videoDub.findMany.mockResolvedValue([])
     prismaMock.videoRelation.findMany.mockResolvedValue([])
+    prismaMock.videoStudyQuestion.findMany.mockResolvedValue([])
+    prismaMock.bibleCitation.findMany.mockResolvedValue([])
   })
 
   it("extracts video ids from nested experience blocks", () => {
@@ -214,5 +222,75 @@ describe("dashboard live data", () => {
       },
     })
     expect(rows.map((row) => row.key)).toEqual(["recent-video", "older-video"])
+  })
+
+  it("flags hasGrounding for a video with at least one study question", async () => {
+    videoListMock.mockResolvedValue([
+      videoRow("grounded-video", "core-grounded", "grounded"),
+    ])
+    prismaMock.videoLocale.findMany.mockResolvedValue([
+      {
+        videoId: "grounded-video",
+        locale: "en",
+        title: "Grounded Video",
+        description: null,
+        updatedAt: now,
+      },
+    ])
+    prismaMock.videoImage.findMany.mockResolvedValue([])
+    prismaMock.videoStudyQuestion.findMany.mockResolvedValue([
+      { videoId: "grounded-video" },
+    ])
+
+    const rows = await loadVideoRows(principal)
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.key).toBe("grounded-video")
+    expect(rows[0]?.hasGrounding).toBe(true)
+  })
+
+  it("flags hasGrounding for a video with a citation but no study questions", async () => {
+    videoListMock.mockResolvedValue([
+      videoRow("cited-video", "core-cited", "cited"),
+    ])
+    prismaMock.videoLocale.findMany.mockResolvedValue([
+      {
+        videoId: "cited-video",
+        locale: "en",
+        title: "Cited Video",
+        description: null,
+        updatedAt: now,
+      },
+    ])
+    prismaMock.videoImage.findMany.mockResolvedValue([])
+    prismaMock.videoStudyQuestion.findMany.mockResolvedValue([])
+    prismaMock.bibleCitation.findMany.mockResolvedValue([
+      { videoId: "cited-video" },
+    ])
+
+    const rows = await loadVideoRows(principal)
+
+    expect(rows[0]?.hasGrounding).toBe(true)
+  })
+
+  it("leaves hasGrounding false when a video has neither study questions nor citations", async () => {
+    videoListMock.mockResolvedValue([
+      videoRow("bare-video", "core-bare", "bare"),
+    ])
+    prismaMock.videoLocale.findMany.mockResolvedValue([
+      {
+        videoId: "bare-video",
+        locale: "en",
+        title: "Bare Video",
+        description: null,
+        updatedAt: now,
+      },
+    ])
+    prismaMock.videoImage.findMany.mockResolvedValue([])
+
+    const rows = await loadVideoRows(principal)
+
+    expect(rows[0]?.key).toBe("bare-video")
+    expect(rows[0]?.hasGrounding).toBe(false)
   })
 })
