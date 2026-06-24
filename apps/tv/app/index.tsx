@@ -167,6 +167,13 @@ export default function HomeScreen() {
   // Phase 2 windowing: the row that holds focus (hero / top bar = 0). State (not
   // just the gate ref below) so the rail window re-renders as focus moves rows.
   const [focusedRow, setFocusedRow] = useState(0)
+  // Real card-row height measured from the first active rail, fed back to every
+  // rail's placeholder so a window toggle shifts layout by zero (kills the
+  // post-scroll jerk). Android-only; tvOS never renders a placeholder.
+  const [measuredRowH, setMeasuredRowH] = useState<number | null>(null)
+  const handleCardRowLayout = useCallback((h: number) => {
+    if (IS_ANDROID) setMeasuredRowH((prev) => prev ?? Math.round(h))
+  }, [])
   const scrollRef = useRef<ScrollView | null>(null)
   const rowYsRef = useRef<number[]>([])
   // When a row is focused before its onLayout has measured its y (cold first
@@ -567,6 +574,8 @@ export default function HomeScreen() {
                     )
                   : true
               }
+              cardRowHeight={measuredRowH ?? undefined}
+              onCardRowLayout={handleCardRowLayout}
             />
           </View>
         ))}

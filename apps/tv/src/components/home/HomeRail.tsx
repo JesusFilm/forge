@@ -141,6 +141,14 @@ type HomeRailProps = {
    * traversal never reaches an inactive rail. Defaults to true (eager).
    */
   active?: boolean
+  /**
+   * Measured real card-row height (px). Applied to the placeholder so toggling
+   * active<->placeholder shifts layout by zero — otherwise the estimate mismatch
+   * jerks the screen when the deferred window shift fires after a scroll.
+   */
+  cardRowHeight?: number
+  /** Active rail reports its card-row height (FlatList onLayout) to the parent. */
+  onCardRowLayout?: (height: number) => void
 }
 
 export const HomeRail = memo(function HomeRail({
@@ -154,6 +162,8 @@ export const HomeRail = memo(function HomeRail({
   upFocusTarget,
   restoreLastFocus,
   active = true,
+  cardRowHeight,
+  onCardRowLayout,
 }: HomeRailProps) {
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
@@ -243,13 +253,23 @@ export const HomeRail = memo(function HomeRail({
             onScrollToIndexFailed={() => {}}
             getItemLayout={getItemLayout}
             renderItem={renderItem}
+            onLayout={
+              onCardRowLayout
+                ? (e) => onCardRowLayout(e.nativeEvent.layout.height)
+                : undefined
+            }
           />
         </TVFocusGuideView>
       ) : (
-        // Off-window: same-height spacer keeps the row's onLayout y stable while
-        // its cards stay unmounted. No focusable here — the parent guarantees
-        // focus is at least `buffer` rows away before a rail deactivates.
-        <View style={styles.cardRowPlaceholder} />
+        // Off-window: spacer at the measured card-row height (falls back to the
+        // CARD_ROW_HEIGHT estimate) so toggling active<->placeholder shifts layout
+        // by zero — no post-scroll jerk when the window mounts/unmounts a rail.
+        <View
+          style={[
+            styles.cardRowPlaceholder,
+            cardRowHeight != null && { height: cardRowHeight },
+          ]}
+        />
       )}
     </View>
   )
