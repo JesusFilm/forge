@@ -47,6 +47,18 @@ of time and silently produce a wrong or stale verification:
    formSheet rows) is flaky, so a "the button doesn't do anything" reading is
    often a missed tap, not a bug.
 
+## Prerequisites
+
+Before any of this, **watchman must be installed** (`brew install watchman`).
+Without it, Metro falls back to a node crawler that crashes with `RangeError:
+Invalid string length` on a monorepo this large — intermittently, so a first
+`expo start` may succeed and a later one won't. The crash also masquerades as a
+device-side ngrok/connect error when Metro runs behind a tunnel. See
+`docs/solutions/runtime-errors/metro-node-crawler-rangerror-missing-watchman-20260622.md`,
+which also explains why a `--tunnel` Metro forces even a localhost-connected
+simulator to fetch its bundle through the tunnel (run plain-localhost Metro for
+sim work, as this guide does).
+
 ## Guidance
 
 ### 1. Point the worktree at the running admin, not stale Strapi
