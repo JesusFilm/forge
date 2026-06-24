@@ -58,10 +58,15 @@ export function deriveSeriesDownloadState(
   }
 }
 
+/** Every episode has a completed offline copy — drives the "all done" tick. */
+export function seriesAllDownloaded(state: SeriesDownloadState): boolean {
+  return state.total > 0 && state.downloaded >= state.total
+}
+
 export function seriesDownloadLabel(state: SeriesDownloadState): string {
   const { downloaded, total, inProgress } = state
   if (inProgress) return `Downloading… (${downloaded} of ${total})`
-  if (total > 0 && downloaded >= total) return "All downloaded"
+  if (seriesAllDownloaded(state)) return "All downloaded"
   if (downloaded > 0) return `${downloaded} of ${total} downloaded`
   return "Download all"
 }

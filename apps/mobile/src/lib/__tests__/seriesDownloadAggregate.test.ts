@@ -1,5 +1,6 @@
 import {
   deriveSeriesDownloadState,
+  seriesAllDownloaded,
   seriesDownloadLabel,
 } from "../seriesDownloadAggregate"
 import type {
@@ -114,5 +115,23 @@ describe("seriesDownloadLabel", () => {
   it("reads the in-progress label and takes priority over partial/complete", () => {
     expect(lbl(1, 3, true)).toBe("Downloading… (1 of 3)")
     expect(lbl(3, 3, true)).toBe("Downloading… (3 of 3)")
+  })
+})
+
+describe("seriesAllDownloaded", () => {
+  const st = (downloaded: number, total: number) => ({
+    downloaded,
+    total,
+    inProgress: false,
+    progress: 0,
+  })
+
+  it("is true only when total > 0 and every episode is downloaded", () => {
+    expect(seriesAllDownloaded(st(3, 3))).toBe(true)
+    expect(seriesAllDownloaded(st(2, 3))).toBe(false)
+  })
+
+  it("is false for an empty series (total 0) so it never ticks nothing", () => {
+    expect(seriesAllDownloaded(st(0, 0))).toBe(false)
   })
 })

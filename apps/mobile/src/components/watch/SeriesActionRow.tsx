@@ -2,11 +2,13 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { ACCENT, SURFACE_COLOR, TEXT_SECONDARY } from "../../lib/color"
+import { DOWNLOAD_DONE_COLOR } from "../../lib/downloadGlyph"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import { DownloadProgressRing } from "./DownloadProgressRing"
 import {
   type SeriesDownloadState,
+  seriesAllDownloaded,
   seriesDownloadLabel,
 } from "../../lib/seriesDownloadAggregate"
 
@@ -44,6 +46,7 @@ export function SeriesActionRow({
 
   const language = languageLabel?.trim() || null
   const downloadLabel = seriesDownloadLabel(downloadState)
+  const allDownloaded = seriesAllDownloaded(downloadState)
 
   const actions: ActionItem[] = [
     {
@@ -87,6 +90,14 @@ export function SeriesActionRow({
             >
               <Ionicons name={action.icon} size={12} color={ACCENT} />
             </DownloadProgressRing>
+          ) : action.id === "download" && allDownloaded ? (
+            // Green tick once every episode is saved — mirrors the per-video
+            // Download button's "downloaded" glyph (checkmark-circle-outline).
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={24}
+              color={DOWNLOAD_DONE_COLOR}
+            />
           ) : (
             <Ionicons name={action.icon} size={24} color={TEXT_SECONDARY} />
           )}
