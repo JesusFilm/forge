@@ -484,6 +484,28 @@ builder.prismaObject("Video", {
           user: ctx.user,
         }),
     }),
+    preferredPlayableDub: t.prismaField({
+      type: "VideoDub",
+      nullable: true,
+      description:
+        "One playable VideoDub for a Watch route. Prefers the requested language slug/BCP-47, then the video's primary language, then the longest playable dub. Lets consumer routes choose the initial player without projecting every dub.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (query, video, args, ctx) =>
+        ctx.services.video.getPreferredPlayableDub({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+          query,
+        }),
+    }),
+    playableDubLanguageCount: t.int({
+      nullable: false,
+      description:
+        "Distinct playable audio-language count for this video. Used by Watch to decide whether to render language switching without loading every VideoDub in the cold route snapshot.",
+      resolve: (video, _args, ctx) =>
+        ctx.services.video.countPlayableDubLanguages({ videoId: video.id }),
+    }),
     locales: t.relation("locales", {
       description:
         "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).",

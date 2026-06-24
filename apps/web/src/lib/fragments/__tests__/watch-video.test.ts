@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
+  getWatchLanguagePickerVariantsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
@@ -25,15 +26,9 @@ describe("WatchVideo split GraphQL operations", () => {
     expect(printed).toMatch(/primaryLanguage\s*\{[\s\S]*?coreId[\s\S]*?bcp47/)
     expect(printed).toMatch(/parents\s*\{[\s\S]*?parent\s*\{/)
     expect(printed).toMatch(/children\s*\{[\s\S]*?child\s*\{/)
-    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{/)
-    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{[\s\S]*?\bhls\b/)
-    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{[\s\S]*?\bduration\b/)
-    expect(printed).toMatch(
-      /variants\s*:\s*dubs\s*\{[\s\S]*?language\s*\{[\s\S]*?coreId[\s\S]*?bcp47[\s\S]*?\bslug\b[\s\S]*?\bname\b/,
-    )
-
     expect(printed).not.toMatch(/\blocales\(/)
     expect(printed).not.toMatch(/\bstudyQuestions\(/)
+    expect(printed).not.toMatch(/\bdubs\s*\{/)
     expect(printed).not.toMatch(/\bdownloads\s*\{/)
     expect(printed).not.toMatch(/\bmuxVideo\s*\{/)
     expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
@@ -106,6 +101,11 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(/englishLocales\s*:\s*locales/)
     expect(printed).toMatch(/exactStudyQuestions\s*:\s*studyQuestions/)
     expect(printed).toMatch(/muxPlaybackId\(languageSlug:\s*\$languageSlug\)/)
+    expect(printed).toMatch(/\bplayableDubLanguageCount\b/)
+    expect(printed).toMatch(
+      /preferredVariant\s*:\s*preferredPlayableDub\(languageSlug:\s*\$languageSlug\)/,
+    )
+    expect(printed).not.toMatch(/variants\s*:\s*dubs\s*\{/)
     expect(printed).not.toMatch(/\bdownloads\s*\{/)
     expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
   })
@@ -117,6 +117,24 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(/\$languageSlug:\s*String\b/)
     expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
     expect(printed).toMatch(/muxPlaybackId\(languageSlug:\s*\$languageSlug\)/)
+  })
+
+  it("keeps the full dub list isolated to the lazy language-picker lookup", () => {
+    const printed = print(getWatchLanguagePickerVariantsBySlugOperation)
+
+    expect(printed).toMatch(
+      /query GetWatchLanguagePickerVariantsBySlug\(\$videoSlug:\s*String!\)/,
+    )
+    expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{/)
+    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{[\s\S]*?\bhls\b/)
+    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{[\s\S]*?\bduration\b/)
+    expect(printed).toMatch(
+      /variants\s*:\s*dubs\s*\{[\s\S]*?language\s*\{[\s\S]*?coreId[\s\S]*?bcp47[\s\S]*?\bslug\b[\s\S]*?\bname\b/,
+    )
+    expect(printed).not.toMatch(/\bdownloads\s*\{/)
+    expect(printed).not.toMatch(/\bmuxVideo\s*\{/)
+    expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
   })
 
   it("threads locale and languageSlug only into the copy lookup", () => {
