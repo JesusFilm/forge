@@ -59,7 +59,7 @@ const QUALITY_TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
 const NO_SUBTITLE_KEY = "__none__"
 
 type SheetPhase =
-  | { kind: "resolving"; settled: number }
+  | { kind: "resolving" }
   | { kind: "error"; offline: boolean }
   | { kind: "ready"; resolution: SeriesDownloadResolution }
   | { kind: "enqueuing" }
@@ -86,10 +86,7 @@ export default function SeriesDownloadRoute() {
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
 
-  const [phase, setPhase] = useState<SheetPhase>({
-    kind: "resolving",
-    settled: 0,
-  })
+  const [phase, setPhase] = useState<SheetPhase>({ kind: "resolving" })
   const [storageError, setStorageError] = useState<string | null>(null)
   // Union of subtitle language { slug → name } seen across the resolved set's dub
   // media — collected as a byproduct of the resolution fan-out (the resolver only
@@ -126,26 +123,22 @@ export default function SeriesDownloadRoute() {
           )
         : episodes
 
-      setPhase({ kind: "resolving", settled: 0 })
+      setPhase({ kind: "resolving" })
       const client = getApolloClient()
       const subtitleSeen = new Map<string, string>()
-      let settled = 0
 
       const resolution = await resolveSeriesDownload(
         target,
         { qualityTier, languageSlug, subtitleLanguageSlug: subtitleSlug },
         {
-          // First hop fires once per episode → a monotonic "X of N" proxy.
+          // Resolution is silent — no progress UI — so the fan-out just fetches;
+          // the per-tier sizes appear on the Quality rows once ready.
           getEpisodeVariants: async (slug: string) => {
             const res = await client.query({
               query: GET_VIDEO_BY_SLUG,
               variables: { slug, locale: LOCALE },
               fetchPolicy: "cache-first" as const,
             })
-            settled += 1
-            if (!controller.signal.aborted) {
-              setPhase({ kind: "resolving", settled })
-            }
             return normalizeVideo(res.data?.videoBySlug ?? null)?.variants ?? []
           },
           getDubMedia: async (dubDocumentId: string) => {
@@ -368,7 +361,6 @@ export default function SeriesDownloadRoute() {
       <StatusPanel
         phase={phase}
         languageName={languageName}
-        episodeCount={episodes.length}
         onRetryFailed={onRetryFailed}
         typography={typography}
       />
@@ -489,29 +481,17 @@ function SubtitlePicker({
 function StatusPanel({
   phase,
   languageName,
-  episodeCount,
   onRetryFailed,
   typography,
 }: {
   phase: SheetPhase
   languageName: string
-  episodeCount: number
   onRetryFailed: () => void
   typography: ReturnType<typeof useTypography>
 }) {
-  if (phase.kind === "resolving") {
-    return (
-      <View style={styles.statusPanel}>
-        {phase.settled === 0 ? <ActivityIndicator color={ACCENT} /> : null}
-        <Text style={[styles.statusText, typography.body]}>
-          {`Resolving ${phase.settled} of ${episodeCount}…`}
-        </Text>
-      </View>
-    )
-  }
-
-  // Enqueuing shows no panel text — the confirm button itself becomes a
-  // "Downloading" spinner (see ConfirmButton), so this falls through to null.
+  // Resolving and enqueuing render no panel: resolution is silent (per-tier
+  // sizes appear on the Quality rows when ready) and enqueuing shows its state
+  // on the confirm button ("Downloading"). Both fall through to null.
 
   if (phase.kind === "done") {
     const line = formatEnqueueSummary(phase.summary)
