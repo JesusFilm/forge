@@ -33,8 +33,8 @@ import { buildRailItems, type RailItem } from "./homeRailItems"
 
 const IS_ANDROID = Platform.OS === "android"
 
-// Android pairs a smaller card (HomeCard CARD_W) with its own gap so the rail
-// shows a few smaller cards with comfortable spacing (tuned on-device).
+// Android uses a wider gap (same card size) so the rail shows slightly fewer
+// cards with more spacing — the user-tuned density. tvOS keeps main's 28.
 const ITEM_GAP = scale(IS_ANDROID ? 48 : 28)
 const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 const RAIL_PADDING_LEFT = scale(80)
