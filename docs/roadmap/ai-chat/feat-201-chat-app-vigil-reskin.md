@@ -8,7 +8,8 @@ start_date: "2026-06-15"
 duration: 1
 depends_on:
   - "feat-200"
-blocks: []
+blocks:
+  - "feat-203"
 tags: []
 ---
 
