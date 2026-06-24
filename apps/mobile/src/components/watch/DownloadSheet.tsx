@@ -21,6 +21,7 @@ import {
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
+import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
 import type { WatchDownload } from "../../lib/normalizeVideo"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
@@ -31,43 +32,7 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-function formatFileSize(sizeString: string): string {
-  const bytes = Number(sizeString)
-  if (Number.isNaN(bytes) || bytes <= 0) return "Unknown"
-  const mb = bytes / 1048576
-  if (mb >= 1024) {
-    return `${(mb / 1024).toFixed(1)} GB`
-  }
-  return `${mb.toFixed(1)} MB`
-}
-
-type QualityTier = "Highest" | "High" | "Low"
-
-type TieredDownload = WatchDownload & { tier: QualityTier }
-
-function tierDownloads(downloads: WatchDownload[]): TieredDownload[] {
-  const sorted = [...downloads].sort((a, b) => Number(b.size) - Number(a.size))
-  if (sorted.length === 0) return []
-  const head = sorted[0]
-  if (sorted.length === 1) {
-    return [{ ...head, tier: "Highest" }]
-  }
-  const tail = sorted[sorted.length - 1]
-  if (sorted.length === 2) {
-    return [
-      { ...head, tier: "Highest" },
-      { ...tail, tier: "Low" },
-    ]
-  }
-  const middle = sorted[Math.floor(sorted.length / 2)]
-  return [
-    { ...head, tier: "Highest" },
-    { ...middle, tier: "High" },
-    { ...tail, tier: "Low" },
-  ]
-}
-
-function TermsModal({
+export function TermsModal({
   visible,
   onAccept,
   onCancel,
@@ -150,7 +115,7 @@ function TermsModal({
   )
 }
 
-type DropdownOption = {
+export type DropdownOption = {
   key: string
   label: string
   /** Optional trailing text shown on the right (e.g. a file size). */
@@ -162,9 +127,10 @@ const DROPDOWN_MAX_HEIGHT = 240
 
 /**
  * Collapsed select expanding to a bounded, internally-scrollable list, so the
- * sheet stays compact on first present regardless of option count.
+ * sheet stays compact on first present regardless of option count. Exported so
+ * the series download sheet reuses one dropdown implementation (no style drift).
  */
-function Dropdown({
+export function Dropdown({
   sectionLabel,
   options,
   selectedKey,

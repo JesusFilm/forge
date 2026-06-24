@@ -180,3 +180,7 @@ invisible without the running backend.
 - `docs/solutions/developer-experience/measurement-driven-layout-iteration-chrome-mcp-20260505.md`
   — the web (Chrome MCP) analog of "measure rendered geometry to confirm a style
   change applied"; idb is the RN/simulator equivalent.
+- `docs/solutions/developer-experience/debugging-rn-sim-state-via-app-container-20260624.md`
+  — the diagnosis-side companion: this doc reads the live a11y tree to _verify_
+  UI; that one reads the on-disk app container (AsyncStorage / `documentDirectory`)
+  to _diagnose_ persisted state and native events when `console.log` is dead.

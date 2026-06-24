@@ -39,6 +39,8 @@ import {
 import {
   OFFLINE_INDEX_STORAGE_KEY,
   OFFLINE_MANIFEST_VERSION,
+  isBatchPlaceholderRecord,
+  isLiveDownloadRecord,
   offlineRecordKey,
   parseOfflineIndex,
   parseOfflineRecord,
@@ -48,6 +50,7 @@ import {
   type SwapFrom,
 } from "../lib/offlineManifest"
 import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
+import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
 import { GET_VIDEO_DUB } from "../lib/queries"
@@ -95,14 +98,24 @@ type DownloadsContextValue = {
   startDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /** Swap a downloaded video to a new quality/language, non-destructively. */
   swapDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
+  /**
+   * Durable batch pre-persist (series download-all): write a `queued` record per
+   * request synchronously, BEFORE any network await, so a backgrounding mid-batch
+   * still completes via the launch reattach (`requeue` re-resolves the URL and
+   * restarts). Skips slugs that already carry a live record — those are handled
+   * by start/swap/switch — so it never clobbers a swap snapshot. The capped
+   * enqueue loop then drives each to `downloading`. Best-effort, never throws.
+   */
+  queueBatchRecords: (requests: StartDownloadRequest[]) => Promise<void>
   /** Remove an offline copy: its files and its manifest entry. */
   deleteDownload: (videoSlug: string) => Promise<void>
 }
 
 const DownloadsContext = createContext<DownloadsContextValue | null>(null)
 
-/** Keep this much storage free; refuse a download that would breach it (U12). */
-const STORAGE_RESERVE_BYTES = 250 * 1024 * 1024
+// Re-exported from the lib constant so existing `from DownloadsProvider`
+// import sites keep working; the value lives in lib/offlineConstants (KTD6).
+export { STORAGE_RESERVE_BYTES }
 
 /**
  * Re-resolve a fresh media URL from a record's stable identity (U4): the manifest
@@ -235,6 +248,36 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       // Best-effort; the in-memory removal already took effect this session.
     }
   }, [])
+
+  const queueBatchRecords = useCallback(
+    async (requests: StartDownloadRequest[]) => {
+      for (const request of requests) {
+        const existing = recordsRef.current[request.videoSlug]
+        // A live record (downloaded / in-progress) is driven by start/swap/switch;
+        // overwriting it with `queued` would discard its committedPath / swapFrom.
+        // Only fresh or previously-terminal slugs need a queued placeholder.
+        if (isLiveDownloadRecord(existing)) {
+          continue
+        }
+        await writeRecord({
+          version: OFFLINE_MANIFEST_VERSION,
+          videoSlug: request.videoSlug,
+          dubDocumentId: request.dubDocumentId,
+          renditionDocumentId: request.rendition.documentId,
+          qualityLabel: request.rendition.quality,
+          title: request.title,
+          subtitleLanguageSlug: request.subtitleLanguageSlug,
+          state: "queued",
+          committedPath: null,
+          pendingPath: null,
+          posterPath: null,
+          bytesWritten: 0,
+          totalBytes: Number(request.rendition.size) || 0,
+        })
+      }
+    },
+    [writeRecord],
+  )
 
   // Apply the global engine config once hydrated and whenever wifi-only changes.
   useEffect(() => {
@@ -491,7 +534,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             record.renditionDocumentId,
           )
           try {
-            configureDownloadEngine({ wifiOnly: wifiOnlyRef.current })
+            // Engine config is applied once by the mount effect — never here.
+            // Re-applying recreates the URLSession and cancels sibling restarts.
             await ensureVideoDir(record.videoSlug)
           } catch {
             return
@@ -597,12 +641,12 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
       const { videoSlug, rendition } = request
       const existing = recordsRef.current[videoSlug]
+      // A BARE `queued` record (no pending, no committed) is the batch's own
+      // placeholder from queueBatchRecords — nothing else writes bare-queued — so
+      // adopt it (drive to downloading) instead of reporting `exists`.
+      const isOwnPlaceholder = isBatchPlaceholderRecord(existing)
       // One copy per video: ignore if a live copy/queue entry already exists.
-      if (
-        existing &&
-        existing.state !== "failed" &&
-        existing.state !== "canceled"
-      ) {
+      if (isLiveDownloadRecord(existing) && !isOwnPlaceholder) {
         return { ok: false, reason: "exists" }
       }
 
@@ -612,13 +656,18 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       const required = (Number(rendition.size) || 0) + STORAGE_RESERVE_BYTES
       const free = await freeDiskBytes()
       if (free > 0 && free < required) {
+        // Clean up only our own adopted placeholder — never a pre-existing record.
+        if (isOwnPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "insufficient-storage" }
       }
 
       try {
-        configureDownloadEngine({ wifiOnly })
+        // Engine config is applied once by the mount effect, NOT per download:
+        // re-applying tears down + recreates the URLSession, cancelling every
+        // sibling download already in flight (the series "stops at N of M" bug).
         await ensureVideoDir(videoSlug)
       } catch {
+        if (isOwnPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "error" }
       }
 
@@ -687,7 +736,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       )
       return { ok: true }
     },
-    [wifiOnly, writeRecord, removeRecord, buildHandlers],
+    [writeRecord, removeRecord, buildHandlers],
   )
 
   // U8: non-destructive quality/language swap on an already-downloaded video.
@@ -719,7 +768,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "insufficient-storage" }
       }
       try {
-        configureDownloadEngine({ wifiOnly })
+        // See startDownload: engine config is applied once by the mount effect.
         await ensureVideoDir(videoSlug)
       } catch {
         return { ok: false, reason: "error" }
@@ -792,7 +841,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       )
       return { ok: true }
     },
-    [wifiOnly, writeRecord, buildHandlers, startDownload],
+    [writeRecord, buildHandlers, startDownload],
   )
 
   const value = useMemo<DownloadsContextValue>(
@@ -817,9 +866,17 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       ),
       startDownload,
       swapDownload,
+      queueBatchRecords,
       deleteDownload,
     }),
-    [records, isReady, startDownload, swapDownload, deleteDownload],
+    [
+      records,
+      isReady,
+      startDownload,
+      swapDownload,
+      queueBatchRecords,
+      deleteDownload,
+    ],
   )
 
   return (
