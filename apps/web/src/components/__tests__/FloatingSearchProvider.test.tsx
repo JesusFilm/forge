@@ -258,6 +258,14 @@ async function flushResolvedSearch() {
   })
 }
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 function PlaybackStatePublisher({
   detail,
 }: {
@@ -1704,5 +1712,98 @@ describe("FloatingSearchProvider — search pagination", () => {
       "Initial Bible Project Result 1",
     )
     expect(document.body.textContent).toContain("Next Bible Project Result 1")
+  })
+
+  it("continues pagination after delayed language metadata refreshes the default selection", async () => {
+    vi.useFakeTimers()
+    const languageMetadata =
+      deferred<Awaited<ReturnType<typeof getSearchLanguageOptions>>>()
+    mockedGetSearchLanguageOptions.mockReturnValue(languageMetadata.promise)
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        searchResult("semantic", {
+          results: [videoResult("semantic-1")],
+          hasMore: true,
+          nextOffset: 10,
+          resolvedLanguage: {
+            locale: "en",
+            publicSlug: "english",
+            englishName: "English",
+            source: "fallback",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("semantic", {
+          results: [videoResult("semantic-2")],
+          hasMore: false,
+          resolvedLanguage: {
+            locale: "en",
+            publicSlug: "english",
+            englishName: "English",
+            source: "fallback",
+          },
+        }),
+      )
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    const searchButton = document.querySelector(
+      '[data-testid="search-mode-harness-button"]',
+    ) as HTMLButtonElement
+    const loadMoreButton = document.querySelector(
+      '[data-testid="search-mode-harness-load-more-button"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+
+    await act(async () => {
+      vi.advanceTimersByTime(1200)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      languageMetadata.resolve({
+        ok: true,
+        algoliaEnabled: false,
+        options: [englishSearchLanguage],
+        countrySuggestion: null,
+        recommendedLanguage: null,
+        countryCode: null,
+        countryName: null,
+      })
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      loadMoreButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        query: "jesus",
+        offset: 10,
+        languageEnglishNames: [],
+        languageSlug: "english",
+      }),
+    )
   })
 })
