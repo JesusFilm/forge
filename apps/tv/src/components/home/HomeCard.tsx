@@ -151,13 +151,11 @@ export const HomeCard = memo(function HomeCard({
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
                   recyclingKey={`home-card-${card.id}`}
-                  // Every rail card mounts at once (no vertical virtualization
-                  // yet), so ~50 decodes fire on home mount. Low priority keeps
-                  // them from saturating the decode queue ahead of the focused
-                  // card; memory-disk cache makes re-entry instant. (Matches
-                  // apps/mobile's HomeCard.)
-                  priority="low"
-                  cachePolicy="memory-disk"
+                  // Android only: de-prioritize decodes so they don't saturate
+                  // the queue ahead of the focused card; memory-disk makes
+                  // re-entry instant. tvOS keeps expo-image defaults (unchanged).
+                  priority={NATIVE_FOCUS ? "low" : undefined}
+                  cachePolicy={NATIVE_FOCUS ? "memory-disk" : undefined}
                 />
               ) : (
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />

@@ -73,6 +73,11 @@ const RAIL_WINDOW_BUFFER = 2
 // it (mounting ~10 cards mid-scroll is what made cross-rail moves jank).
 const WINDOW_SHIFT_DELAY = 350
 
+// All home perf optimizations (rail windowing, deferred mount, row-change scroll
+// gating) are Android-only. Apple TV had no perf problem and stays on its
+// original eager path — every gated branch below restores main's behavior.
+const IS_ANDROID = Platform.OS === "android"
+
 export default function HomeScreen() {
   const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
@@ -234,19 +239,18 @@ export default function HomeScreen() {
 
   const handleRowFocus = useCallback(
     (rowIndex: number) => {
-      // Within-row horizontal move: the row hasn't changed, so the row-level
-      // browse/scroll state is identical — skip it (avoids a redundant scrollTo
-      // on every horizontal D-pad move).
-      if (lastFocusedRowRef.current === rowIndex) return
-      lastFocusedRowRef.current = rowIndex
-      // Focus + scroll run now on the already-mounted buffer rail; the window
-      // mount is deferred (scheduleWindow) so it doesn't jank this move.
+      // Android only: gate on a real row change so within-row horizontal moves
+      // skip the redundant scroll. tvOS keeps main's behavior (fires every move).
+      if (IS_ANDROID) {
+        if (lastFocusedRowRef.current === rowIndex) return
+        lastFocusedRowRef.current = rowIndex
+      }
       setBrowseState(resolveBrowseState(rowIndex))
       // Topmost section rail = rowIndex 1; anything >= 2 is a rail below it.
       setBelowTopmost(rowIndex >= 2)
       // Defer if the row's y isn't measured yet; recordRowY flushes it.
       pendingScrollRowRef.current = scrollToRow(rowIndex) ? null : rowIndex
-      scheduleWindow(rowIndex)
+      if (IS_ANDROID) scheduleWindow(rowIndex)
     },
     [scrollToRow, scheduleWindow],
   )
@@ -263,8 +267,10 @@ export default function HomeScreen() {
 
   // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
-    lastFocusedRowRef.current = null
-    applyWindow(0)
+    if (IS_ANDROID) {
+      lastFocusedRowRef.current = null
+      applyWindow(0)
+    }
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -273,10 +279,12 @@ export default function HomeScreen() {
   // Mission-tail QR focus: with the native focus-scroll disabled, the tail
   // needs its own scroll hook — pin to the end in the deep state.
   const handleMissionFocus = useCallback(() => {
-    lastFocusedRowRef.current = null
-    // Keep the bottom rails windowed-active so Up from the mission tail returns
-    // to a mounted rail, not an empty placeholder.
-    applyWindow(sectionCountRef.current)
+    if (IS_ANDROID) {
+      lastFocusedRowRef.current = null
+      // Keep the bottom rails windowed-active so Up from the mission tail
+      // returns to a mounted rail, not an empty placeholder.
+      applyWindow(sectionCountRef.current)
+    }
     setBrowseState("deep")
     // The mission tail is below the topmost rail — keep its autoFocus OFF so a
     // later Up traversal stays column-preserving.
@@ -358,8 +366,10 @@ export default function HomeScreen() {
   const handleHeroFocusChange = useCallback(
     (isFocused: boolean) => {
       if (!isFocused) return
-      lastFocusedRowRef.current = null
-      applyWindow(0)
+      if (IS_ANDROID) {
+        lastFocusedRowRef.current = null
+        applyWindow(0)
+      }
       setBelowTopmost(false)
       setBrowseState("browse")
       scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -546,13 +556,17 @@ export default function HomeScreen() {
               // Up-from-below keeps the focus engine's column-preserving
               // geometry instead of snapping to the remembered card.
               restoreLastFocus={sectionIndex === 0 && !belowTopmost}
-              // Phase 2: only rails within the window around the focused row
-              // mount their cards; the rest render a same-height spacer.
-              active={isRailActive(
-                sectionIndex + 1,
-                focusedRow,
-                RAIL_WINDOW_BUFFER,
-              )}
+              // Android only: window the rails (off-window = same-height spacer).
+              // tvOS mounts every rail eagerly (true) — main's behavior.
+              active={
+                IS_ANDROID
+                  ? isRailActive(
+                      sectionIndex + 1,
+                      focusedRow,
+                      RAIL_WINDOW_BUFFER,
+                    )
+                  : true
+              }
             />
           </View>
         ))}
