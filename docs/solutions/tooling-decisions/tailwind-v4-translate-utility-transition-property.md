@@ -4,7 +4,7 @@ date: "2026-06-24"
 problem_type: tooling_decision
 component: tooling
 severity: medium
-applies_when: Hand-writing a CSS transition property list (Tailwind arbitrary value like transition-[...] or raw transition-property) that animates a Tailwind v4 transform-family utility — translate-*, scale-*, or rotate-* — e.g. slide-in drawers, off-canvas panels, scaling toasts.
+applies_when: A CSS transition whose property list names transform but not the individual property being animated — a Tailwind v4 translate-*, scale-*, or rotate-* change (drawers, off-canvas panels, scaling toasts); e.g. transition-[transform] or a narrowed property list, including one carried across a v3-to-v4 upgrade.
 tags:
   - tailwind
   - tailwind-v4
@@ -16,7 +16,7 @@ tags:
   - frontend
 ---
 
-# Tailwind v4 splits `transform` into four properties — arbitrary `transition-[transform]` no longer covers `translate`/`scale`/`rotate`
+# Tailwind v4 splits `transform` into four properties — a transition that names `transform` no longer covers `translate`/`scale`/`rotate`
 
 Verified against Tailwind **v4.1.18** (pinned in `apps/chat/package.json`) and
 **v4.2.4** (resolved in the lockfile) — identical behavior, so this is a stable
@@ -33,19 +33,25 @@ while the panel jumped.
 ## Guidance
 
 Tailwind v4's CSS-first rewrite adopts the CSS individual-transform properties:
-`transform`, `translate`, `scale`, and `rotate` are now **four independent
-properties**. `translate-x-*` emits `translate: …` (not `transform: translateX(…)`
-as in v3); `scale-*` emits `scale: …`; 2D `rotate-*` emits `rotate: …`.
+`translate`, `scale`, and `rotate` are now **distinct CSS properties, siblings
+of the legacy `transform` rather than components of it**. `translate-x-*` emits
+`translate: …` (not `transform: translateX(…)` as in v3); `scale-*` emits
+`scale: …`; plain `rotate-*` emits `rotate: …`.
 
-The consequence is **only** about how you spell the transition:
+The consequence is about **which property your transition names** — not
+arbitrary-vs-named syntax:
 
-- The **named** `transition-transform` utility is **safe** — v4 expands it to
-  `transition-property: transform, translate, scale, rotate`, so it animates all
-  four. (This was _not_ the bug.)
-- A **hand-written** property list that names only `transform` is **not** safe —
-  it misses the three siblings. That was the actual bug here: the arbitrary
-  value `transition-[width,transform]` lists the literal `transform` property,
-  which no longer changes when `translate-*` does.
+- A transition must name the property it animates. `transition-[translate]`
+  emits `transition-property: translate` (animates a `translate-*` change);
+  `transition-[transform]` emits `transition-property: transform`, which no
+  longer covers `translate`. The original bug was exactly this:
+  `transition-[width,transform]` named `transform`, which no longer changes when
+  `translate-*` does.
+- The named `transition-transform` utility _is_ safe — but only because v4
+  expands it to all four properties (`transition-property: transform, translate,
+scale, rotate`). That's a convenience, not a safer kind of syntax:
+  `transition-[width,translate]` is also arbitrary and works fine. The syntax was
+  never the issue; the property token is.
 
 Fix — name every transform-family property you actually animate (here, just
 `translate`):
@@ -79,8 +85,14 @@ stops animating after the upgrade, with no error to trace it back to.
 
 ## When to Apply
 
-Any Tailwind **v4** element where you hand-list transition properties and a
-transform-family utility (`translate`/`scale`/`rotate`) changes.
+Any Tailwind **v4** element whose transition names `transform` (via
+`transition-[transform]` or a narrowed `transition-property` list) while a
+transform-family utility (`translate`/`scale`/`rotate`) changes. The bare
+`transition` utility is **not** affected — its v4 default list already includes
+`transform, translate, scale, rotate`; `transition-all` (which emits the CSS
+wildcard `transition-property: all`) is likewise fine. The bug only bites when
+you narrow the list yourself or carry a `transform`-only list across the
+v3 → v4 upgrade.
 
 Verify two ways:
 
@@ -106,10 +118,13 @@ The collapse animation used a clip flag cleared on the aside's
 
 - **`transitionend` is not guaranteed to fire** — globally-disabled transitions,
   zero-delta, or an interrupted animation can skip it, which latches the derived
-  state. Pair it with a fallback `setTimeout` (~50ms past the CSS duration, so
-  ~350ms for a 300ms transition), started in the same handler that starts the
-  transition. Make the cleanup **idempotent** (or `clearTimeout` inside the
-  `transitionend` handler), since the timer and the event can both fire.
+  state. Pair it with a fallback `setTimeout` set comfortably past the CSS
+  duration — the drawer uses **400ms for its 300ms transition** (~100ms margin,
+  enough to clear the transition end plus start latency / frame jitter; the exact
+  slack isn't critical, just stay safely past the duration). Start it in the same
+  handler that starts the transition. Make the cleanup **idempotent** (or
+  `clearTimeout` inside the `transitionend` handler), since the timer and the
+  event can both fire.
 - **`transitionend` fires once per animated property,** so the `propertyName`
   filter is required — and it must track whichever property you key on if the
   transition list changes.
