@@ -329,12 +329,14 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }
   })
 
-  it("redirects deprecated /search into the root search modal without synthetic .html", async () => {
-    const response = await proxy(makeRequest("/search?q=forgiveness"))
+  it("redirects deprecated /search into the root surface without preserving q", async () => {
+    const response = await proxy(
+      makeRequest("/search?q=forgiveness&utm=campaign"),
+    )
     expect(response.status).toBe(307)
     const location = new URL(response.headers.get("location") ?? "")
     expect(location.pathname).toBe("/")
-    expect(location.search).toBe("?q=forgiveness")
+    expect(location.search).toBe("?utm=campaign")
     expect(rewritePath(response)).toBeNull()
   })
 
