@@ -92,6 +92,23 @@ const searchResponse = {
   hasMore: false,
   query: "Jesus",
   searchMode: "hybrid",
+  timings: {
+    totalMs: 321,
+    retrievalsMs: 300,
+    fusionMs: 1,
+    dilutionCapMs: 0,
+    dedupeMs: 2,
+    mappingMs: 3,
+    hydrationMs: 4,
+    retrievers: [
+      {
+        label: "semantic-video",
+        status: "fulfilled",
+        elapsedMs: 295,
+        resultCount: 1,
+      },
+    ],
+  },
 }
 
 const candidateListResponse = {
@@ -225,6 +242,16 @@ describe("Admin search eval client", () => {
       ok: true,
       result: {
         results: [expect.objectContaining({ snippet: expect.any(String) })],
+        timings: {
+          totalMs: 321,
+          retrievalsMs: 300,
+          retrievers: [
+            expect.objectContaining({
+              label: "semantic-video",
+              elapsedMs: 295,
+            }),
+          ],
+        },
       },
     })
     if (result.ok) {
@@ -347,6 +374,35 @@ describe("Admin search eval client", () => {
         bearer: "eval-key",
         payload,
         fetchImpl: vi.fn(async () => Response.json({ bad: true })),
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+      status: 200,
+    })
+
+    await expect(
+      callAdminEvalSearch({
+        url,
+        bearer: "eval-key",
+        payload,
+        fetchImpl: vi.fn(async () =>
+          Response.json({
+            ...searchResponse,
+            timings: {
+              ...searchResponse.timings,
+              retrievers: [
+                {
+                  label: "semantic-video",
+                  status: "fulfilled",
+                  elapsedMs: -1,
+                  resultCount: 1,
+                },
+              ],
+            },
+          }),
+        ),
       }),
     ).resolves.toMatchObject({
       ok: false,

@@ -15,6 +15,7 @@ import { prisma } from "@/db/client"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
 import { env } from "@/config/env"
 import {
+  formatSearchTimingLogLine,
   HybridSearchService,
   isContentType,
   type ContentType,
@@ -254,7 +255,7 @@ builder.queryFields((t) => ({
       const service = new HybridSearchService({ prisma })
       const startedAt = new Date()
       try {
-        const { response, trace } = await service.searchWithTrace({
+        const { response, trace, timings } = await service.searchWithTrace({
           query,
           locale: args.locale,
           limit: args.limit ?? undefined,
@@ -263,6 +264,7 @@ builder.queryFields((t) => ({
           mode,
           debug,
         })
+        const traceWriteStartedAt = performance.now()
         await recordSearchTraceSafely({
           query,
           locale: args.locale,
@@ -275,6 +277,22 @@ builder.queryFields((t) => ({
           startedAt,
           completedAt: new Date(),
         }).catch(() => {})
+        const traceWriteMs = Math.max(
+          0,
+          Math.round(performance.now() - traceWriteStartedAt),
+        )
+        console.error(
+          formatSearchTimingLogLine({
+            route: "graphql",
+            locale: args.locale,
+            requestedMode: mode ?? null,
+            searchMode: trace.searchMode,
+            outcome: trace.outcome,
+            resultCount: trace.resultCount,
+            timings,
+            traceWriteMs,
+          }),
+        )
         return response
       } catch (error) {
         await recordSearchTraceSafely({

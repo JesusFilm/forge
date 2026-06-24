@@ -256,9 +256,107 @@ export type SearchExecutionSummary = {
   contributingRetrievers: string[]
 }
 
+export type SearchRetrieverTiming = {
+  label: string
+  status: "fulfilled" | "rejected"
+  elapsedMs: number
+  resultCount: number
+}
+
+export type SearchTimingSummary = {
+  totalMs: number
+  retrievalsMs: number
+  fusionMs: number
+  dilutionCapMs: number
+  dedupeMs: number
+  mappingMs: number
+  hydrationMs: number
+  retrievers: SearchRetrieverTiming[]
+}
+
 export type SearchWithTraceResult = {
   response: SearchResponse
   trace: SearchExecutionSummary
+  timings: SearchTimingSummary
+}
+
+export type SearchTimingRouteSource = "rest" | "graphql" | "internal"
+
+export function searchTimingLogValue(raw: unknown): string {
+  const normalized = String(raw ?? "none")
+    .replace(/[\r\n\t\s=]/g, "_")
+    .slice(0, 64)
+  return normalized.length > 0 ? normalized : "none"
+}
+
+function nowMs(): number {
+  return performance.now()
+}
+
+function boundedMs(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0
+  return Math.round(value)
+}
+
+function elapsedMs(startedAt: number): number {
+  return boundedMs(nowMs() - startedAt)
+}
+
+function retrieverLogKey(label: string): string {
+  return searchTimingLogValue(label).replace(/-/g, "_")
+}
+
+export function formatSearchTimingLogFields(
+  timings: SearchTimingSummary,
+  extra: { traceWriteMs?: number } = {},
+): string {
+  const fields = [
+    `total_ms=${timings.totalMs}`,
+    `db_retrievals_ms=${timings.retrievalsMs}`,
+    `fusion_ms=${timings.fusionMs}`,
+    `dilution_cap_ms=${timings.dilutionCapMs}`,
+    `dedupe_ms=${timings.dedupeMs}`,
+    `mapping_ms=${timings.mappingMs}`,
+    `hydration_ms=${timings.hydrationMs}`,
+  ]
+
+  if (extra.traceWriteMs != null) {
+    fields.push(`trace_write_ms=${boundedMs(extra.traceWriteMs)}`)
+  }
+
+  for (const retriever of timings.retrievers) {
+    const key = retrieverLogKey(retriever.label)
+    fields.push(`db_retriever_${key}_ms=${retriever.elapsedMs}`)
+    fields.push(`db_retriever_${key}_status=${retriever.status}`)
+    fields.push(`db_retriever_${key}_count=${retriever.resultCount}`)
+  }
+
+  return fields.join(" ")
+}
+
+export function formatSearchTimingLogLine(input: {
+  route: SearchTimingRouteSource
+  locale: string
+  requestedMode?: string | null
+  searchMode: string
+  outcome: string
+  resultCount: number
+  timings: SearchTimingSummary
+  traceWriteMs?: number
+}): string {
+  return [
+    "[search]",
+    "event=search_timing",
+    `route=${input.route}`,
+    `locale=${searchTimingLogValue(input.locale)}`,
+    `requested_mode=${searchTimingLogValue(input.requestedMode ?? "none")}`,
+    `search_mode=${searchTimingLogValue(input.searchMode)}`,
+    `outcome=${searchTimingLogValue(input.outcome)}`,
+    `result_count=${Math.max(0, Math.round(input.resultCount))}`,
+    formatSearchTimingLogFields(input.timings, {
+      traceWriteMs: input.traceWriteMs,
+    }),
+  ].join(" ")
 }
 
 /**
@@ -616,6 +714,7 @@ export class HybridSearchService {
   }
 
   async searchWithTrace(params: SearchParams): Promise<SearchWithTraceResult> {
+    const totalStartedAt = nowMs()
     const { query, locale } = params
 
     // Decode the opt-in pipeline mode. Unknown values warn-and-fall-back
@@ -673,6 +772,35 @@ export class HybridSearchService {
       promise: Promise<RankedItem[]>
     }
     const retrievals: Retrieval[] = []
+    const retrieverTimings = new Map<string, SearchRetrieverTiming>()
+    const timedRetrieval = (
+      label: string,
+      run: () => Promise<RankedItem[]>,
+    ): Promise<RankedItem[]> => {
+      const startedAt = nowMs()
+      return Promise.resolve()
+        .then(run)
+        .then(
+          (value) => {
+            retrieverTimings.set(label, {
+              label,
+              status: "fulfilled",
+              elapsedMs: elapsedMs(startedAt),
+              resultCount: value.length,
+            })
+            return value
+          },
+          (error) => {
+            retrieverTimings.set(label, {
+              label,
+              status: "rejected",
+              elapsedMs: elapsedMs(startedAt),
+              resultCount: 0,
+            })
+            throw error
+          },
+        )
+    }
 
     if (wantsVideos) {
       // Semantic-video is shared by every embedding-backed pipeline.
@@ -680,11 +808,15 @@ export class HybridSearchService {
         label: "semantic-video",
         promise:
           queryEmbeddingText != null
-            ? (searchVideoSemantic(this.prisma, {
-                queryEmbedding: queryEmbeddingText,
-                locale,
-                limit: overfetchLimit,
-              }) as Promise<RankedItem[]>)
+            ? timedRetrieval(
+                "semantic-video",
+                () =>
+                  searchVideoSemantic(this.prisma, {
+                    queryEmbedding: queryEmbeddingText,
+                    locale,
+                    limit: overfetchLimit,
+                  }) as Promise<RankedItem[]>,
+              )
             : Promise.resolve([]),
       })
 
@@ -696,38 +828,54 @@ export class HybridSearchService {
         // strictly weaker than the weighted one for this workload.
         retrievals.push({
           label: "keyword-weighted-video",
-          promise: searchByKeywordWeighted(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
+          promise: timedRetrieval(
+            "keyword-weighted-video",
+            () =>
+              searchByKeywordWeighted(this.prisma, {
+                query,
+                locale,
+                limit: overfetchLimit,
+              }) as Promise<RankedItem[]>,
+          ),
         })
         retrievals.push({
           label: "trigram-video",
-          promise: searchByTrigram(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
+          promise: timedRetrieval(
+            "trigram-video",
+            () =>
+              searchByTrigram(this.prisma, {
+                query,
+                locale,
+                limit: overfetchLimit,
+              }) as Promise<RankedItem[]>,
+          ),
         })
         retrievals.push({
           label: "exact-title-video",
-          promise: searchByExactTitle(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
+          promise: timedRetrieval(
+            "exact-title-video",
+            () =>
+              searchByExactTitle(this.prisma, {
+                query,
+                locale,
+                limit: overfetchLimit,
+              }) as Promise<RankedItem[]>,
+          ),
         })
       } else if (!semanticOnly) {
         // Hybrid path — UNCHANGED from R4. Byte-identity locked in by
         // hybrid-search.regression.test.ts.
         retrievals.push({
           label: "keyword-video",
-          promise: searchVideoKeyword(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
+          promise: timedRetrieval(
+            "keyword-video",
+            () =>
+              searchVideoKeyword(this.prisma, {
+                query,
+                locale,
+                limit: overfetchLimit,
+              }) as Promise<RankedItem[]>,
+          ),
         })
       }
     }
@@ -737,26 +885,36 @@ export class HybridSearchService {
         label: "semantic-experience",
         promise:
           queryEmbeddingText != null
-            ? (searchExperienceSemantic(this.prisma, {
-                queryEmbedding: queryEmbeddingText,
-                locale,
-                limit: overfetchLimit,
-              }) as Promise<RankedItem[]>)
+            ? timedRetrieval(
+                "semantic-experience",
+                () =>
+                  searchExperienceSemantic(this.prisma, {
+                    queryEmbedding: queryEmbeddingText,
+                    locale,
+                    limit: overfetchLimit,
+                  }) as Promise<RankedItem[]>,
+              )
             : Promise.resolve([]),
       })
       if (!semanticOnly) {
         retrievals.push({
           label: "keyword-experience",
-          promise: searchExperienceKeyword(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
+          promise: timedRetrieval(
+            "keyword-experience",
+            () =>
+              searchExperienceKeyword(this.prisma, {
+                query,
+                locale,
+                limit: overfetchLimit,
+              }) as Promise<RankedItem[]>,
+          ),
         })
       }
     }
 
+    const retrievalsStartedAt = nowMs()
     const outcomes = await Promise.allSettled(retrievals.map((r) => r.promise))
+    const retrievalsMs = elapsedMs(retrievalsStartedAt)
     const failedRetrievers: string[] = []
     const lists = outcomes.map((outcome, i) =>
       this.unwrapOutcome(outcome, retrievals[i]!.label, failedRetrievers),
@@ -794,7 +952,9 @@ export class HybridSearchService {
     // normalizes by dividing by the number of input lists, so empty
     // ones dilute scores from lists that did contribute.
     const nonEmptyLists = lists.filter((list) => list.length > 0)
+    const fusionStartedAt = nowMs()
     const fused = fuseRankedLists(nonEmptyLists, RRF_K)
+    const fusionMs = elapsedMs(fusionStartedAt)
 
     // Snapshot pre-cap fused scores so the debug payload can surface
     // both numbers (the cap mutates `result.score` in place).
@@ -809,18 +969,24 @@ export class HybridSearchService {
     // fused result whose ONLY contributing list was semantic AND whose
     // video core_id is not represented in the top-N keyword-side
     // core_ids. Hybrid mode never reaches this step.
+    let dilutionCapMs = 0
     if (pipelineMode === "keyword-first" && isDilutionCapEnabled()) {
+      const dilutionCapStartedAt = nowMs()
       applyDilutionCap(fused, labeledLists, query, debugByKey)
+      dilutionCapMs = elapsedMs(dilutionCapStartedAt)
     }
 
     // Step 4: Dedup one extra result beyond the page window so we know
     // whether more results exist (drives hasMore without a full count
     // pass).
+    const dedupeStartedAt = nowMs()
     const deduped = deduplicateResults(fused, offset + limit + 1)
 
     // Step 5: Paginate and map to API contract.
     const page = deduped.slice(offset, offset + limit)
     const hasMore = deduped.length > offset + limit
+    const dedupeMs = elapsedMs(dedupeStartedAt)
+    const mappingStartedAt = nowMs()
     const mapped = page.map((result) => {
       const base = mapToSearchResult(result)
       if (params.debug !== true) return base
@@ -829,15 +995,18 @@ export class HybridSearchService {
       if (trace == null) return base
       return { ...base, debug: trace }
     })
+    const mappingMs = elapsedMs(mappingStartedAt)
 
     // Hydrate card display fields for video results in one batched query.
     // Experience rows pass through untouched.
+    const hydrationStartedAt = nowMs()
     const results = await hydrateCardDisplayFields(
       this.prisma,
       mapped,
       locale,
       this.logger,
     )
+    const hydrationMs = elapsedMs(hydrationStartedAt)
 
     const searchMode = queryEmbeddingText != null ? "hybrid" : "keyword-only"
     const contributingRetrievers = labeledLists
@@ -867,6 +1036,19 @@ export class HybridSearchService {
         traceClass,
         failedRetrievers,
         contributingRetrievers,
+      },
+      timings: {
+        totalMs: elapsedMs(totalStartedAt),
+        retrievalsMs,
+        fusionMs,
+        dilutionCapMs,
+        dedupeMs,
+        mappingMs,
+        hydrationMs,
+        retrievers: retrievals.flatMap((retrieval) => {
+          const timing = retrieverTimings.get(retrieval.label)
+          return timing == null ? [] : [timing]
+        }),
       },
     }
   }

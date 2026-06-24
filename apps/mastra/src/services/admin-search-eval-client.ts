@@ -158,12 +158,42 @@ const SearchResultSchema = z
     childCount: result.childCount ?? null,
   }))
 
+const NonNegativeTimingMsSchema = z
+  .number()
+  .nonnegative()
+  .refine((value) => Number.isFinite(value), "must be finite")
+
+export const AdminSearchRetrieverTimingSchema = z
+  .object({
+    label: z.string(),
+    status: z.enum(["fulfilled", "rejected"]),
+    elapsedMs: NonNegativeTimingMsSchema,
+    resultCount: z.number().int().nonnegative(),
+  })
+  .strict()
+
+export const AdminSearchTimingsSchema = z
+  .object({
+    totalMs: NonNegativeTimingMsSchema,
+    retrievalsMs: NonNegativeTimingMsSchema,
+    fusionMs: NonNegativeTimingMsSchema,
+    dilutionCapMs: NonNegativeTimingMsSchema,
+    dedupeMs: NonNegativeTimingMsSchema,
+    mappingMs: NonNegativeTimingMsSchema,
+    hydrationMs: NonNegativeTimingMsSchema,
+    retrievers: z.array(AdminSearchRetrieverTimingSchema),
+  })
+  .strict()
+
+export type AdminSearchTimings = z.infer<typeof AdminSearchTimingsSchema>
+
 export const AdminSearchResponseSchema = z
   .object({
     results: z.array(SearchResultSchema),
     hasMore: z.boolean(),
     query: z.string(),
     searchMode: z.enum(["hybrid", "keyword-only"]),
+    timings: AdminSearchTimingsSchema.optional(),
   })
   .strict()
 
