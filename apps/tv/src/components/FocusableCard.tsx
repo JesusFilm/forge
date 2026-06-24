@@ -52,9 +52,9 @@ type FocusableCardProps = {
    */
   focusAnchor?: "center" | "left"
   /**
-   * Focus highlight. "crimson" (default) = Crimson Gallery glow for SDUI/series/
-   * legacy. "white" = WATCH_THEME white ring (border + neutral shadow) for Home,
-   * watch detail, and Search; matches ResultCard/HomeCard.
+   * Focus highlight. "white" (default) = WATCH_THEME white ring (border + neutral
+   * shadow) matching Home/ResultCard/HomeCard — the app-wide focus look. "crimson"
+   * = legacy Crimson Gallery glow, opt-in only.
    */
   focusRing?: "crimson" | "white"
   accessibilityLabel?: string
@@ -73,7 +73,7 @@ export function FocusableCard({
   hasTVPreferredFocus,
   focusScale,
   focusAnchor = "center",
-  focusRing = "crimson",
+  focusRing = "white",
   accessibilityLabel,
   accessibilityHint,
   style,
@@ -100,6 +100,12 @@ export function FocusableCard({
       visualStyle: Object.keys(visual).length > 0 ? visual : undefined,
     }
   }, [style])
+
+  // The white ring must follow the card's OWN corner radius (e.g. a pill at
+  // borderRadius 999), not a fixed 16 — otherwise a square-ish ring frames a
+  // rounded card. Falls back to the default card radius.
+  const cardRadius = visualStyle?.borderRadius
+  const ringRadius = typeof cardRadius === "number" ? cardRadius : scaleSize(16)
 
   const animateIn = () => {
     setIsFocused(true)
@@ -159,7 +165,10 @@ export function FocusableCard({
             (matches ResultCard/HomeCard). Mounted only while focused; constant
             geometry means toggling it never reflows content underneath. */}
         {whiteRing && isFocused ? (
-          <View style={styles.whiteRing} pointerEvents="none" />
+          <View
+            style={[styles.whiteRing, { borderRadius: ringRadius }]}
+            pointerEvents="none"
+          />
         ) : null}
       </Animated.View>
     </Pressable>

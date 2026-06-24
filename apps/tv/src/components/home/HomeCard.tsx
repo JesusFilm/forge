@@ -11,14 +11,16 @@ import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import {
+  focusTransform,
+  THUMB_SHADOW,
+  useFocusAnimation,
+  useThumbFocusRing,
+} from "../watch/useFocusAnimation"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
 export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
-
-/** How far the white focus ring sits outside the thumb edge. */
-const RING_WIDTH = scale(5)
 
 type HomeCardProps = {
   card: WatchHomeCard
@@ -68,16 +70,11 @@ export const HomeCard = memo(function HomeCard({
     }),
     [progress],
   )
-  const shadowStyle = useMemo(
-    () => ({
-      shadowOpacity: progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 0.8],
-      }),
-    }),
-    [progress],
+  const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
+    progress,
+    HOME_CARD_WIDTH,
+    HOME_CARD_THUMB_HEIGHT,
   )
-  const ringStyle = useMemo(() => ({ opacity: progress }), [progress])
 
   return (
     <Pressable
@@ -127,10 +124,7 @@ export const HomeCard = memo(function HomeCard({
           </Animated.View>
 
           {/* White focus ring just outside the thumb (decorative overlay). */}
-          <Animated.View
-            style={[styles.focusRing, ringStyle]}
-            pointerEvents="none"
-          />
+          <Animated.View style={[ringFrame, ringStyle]} pointerEvents="none" />
         </View>
 
         <View style={styles.meta} pointerEvents="none">
@@ -160,9 +154,7 @@ const styles = StyleSheet.create({
   shadowWrap: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: scale(16),
-    shadowColor: "#000000",
-    shadowRadius: scale(25),
-    shadowOffset: { width: 0, height: scale(16) },
+    ...THUMB_SHADOW,
   },
   thumb: {
     ...StyleSheet.absoluteFillObject,
@@ -178,16 +170,6 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     borderWidth: scale(1),
     borderColor: "rgba(255,255,255,0.07)",
-  },
-  focusRing: {
-    position: "absolute",
-    top: -RING_WIDTH,
-    bottom: -RING_WIDTH,
-    left: -RING_WIDTH,
-    right: -RING_WIDTH,
-    borderRadius: scale(16) + RING_WIDTH,
-    borderWidth: RING_WIDTH,
-    borderColor: "rgba(255,255,255,0.88)",
   },
   chip: {
     position: "absolute",
