@@ -63,19 +63,15 @@ import type { WatchHomeCard } from "../src/lib/watchHome/model"
  * The SDUI Experience pipeline still serves /experience/[slug] — only this
  * screen left it (R9).
  */
-// Phase 2 windowing: how many rails on each side of the focused row keep their
-// cards mounted. >= 1 so the next rail is ready before D-pad focus reaches it; 2
-// keeps one extra ready in each direction and lets its images decode ahead.
+// Image-windowing: how many rails on each side of the focused row load their
+// card images. Cards outside this window still mount (focus-safe) but skip the
+// decode. 2 keeps a neighbour ready in each direction so images are warm on
+// arrival without decoding the whole feed at once.
 const RAIL_WINDOW_BUFFER = 2
 
-// Delay before a vertical move mounts the new far rail — longer than the
-// row-anchored scroll (~300ms) so the mount lands after the scroll, not during
-// it (mounting ~10 cards mid-scroll is what made cross-rail moves jank).
-const WINDOW_SHIFT_DELAY = 350
-
-// All home perf optimizations (rail windowing, deferred mount, row-change scroll
-// gating) are Android-only. Apple TV had no perf problem and stays on its
-// original eager path — every gated branch below restores main's behavior.
+// All home perf optimizations (image-windowing, row-change scroll gating) are
+// Android-only. Apple TV had no perf problem and stays on its original eager
+// path — every gated branch below restores main's behavior.
 const IS_ANDROID = Platform.OS === "android"
 
 export default function HomeScreen() {
@@ -164,16 +160,9 @@ export default function HomeScreen() {
   // scroll-to-top behavior folds in here). The scroll is immediate (not
   // debounced) — it must track the traversal, not the settled card.
   const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
-  // Phase 2 windowing: the row that holds focus (hero / top bar = 0). State (not
-  // just the gate ref below) so the rail window re-renders as focus moves rows.
+  // Image-windowing: the row that holds focus (hero / top bar = 0). Drives which
+  // rails load card images (isRailActive); cards always mount so focus is safe.
   const [focusedRow, setFocusedRow] = useState(0)
-  // Real card-row height measured from the first active rail, fed back to every
-  // rail's placeholder so a window toggle shifts layout by zero (kills the
-  // post-scroll jerk). Android-only; tvOS never renders a placeholder.
-  const [measuredRowH, setMeasuredRowH] = useState<number | null>(null)
-  const handleCardRowLayout = useCallback((h: number) => {
-    if (IS_ANDROID) setMeasuredRowH((prev) => prev ?? Math.round(h))
-  }, [])
   const scrollRef = useRef<ScrollView | null>(null)
   const rowYsRef = useRef<number[]>([])
   // When a row is focused before its onLayout has measured its y (cold first
@@ -205,45 +194,6 @@ export default function HomeScreen() {
     return true
   }, [])
 
-  // Rail-window control. focusedRowAppliedRef mirrors focusedRow for the stable
-  // edge-flush check below (reading state in the callback would stale it).
-  const windowShiftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const focusedRowAppliedRef = useRef(0)
-  const applyWindow = useCallback((row: number) => {
-    if (windowShiftTimerRef.current != null) {
-      clearTimeout(windowShiftTimerRef.current)
-      windowShiftTimerRef.current = null
-    }
-    focusedRowAppliedRef.current = row
-    setFocusedRow(row)
-  }, [])
-  const scheduleWindow = useCallback(
-    (row: number) => {
-      // At the window edge, mount now or a fast sweep strands on an unmounted
-      // rail; otherwise defer so the mount lands after the scroll, not during.
-      if (Math.abs(row - focusedRowAppliedRef.current) >= RAIL_WINDOW_BUFFER) {
-        applyWindow(row)
-        return
-      }
-      if (windowShiftTimerRef.current != null) {
-        clearTimeout(windowShiftTimerRef.current)
-      }
-      windowShiftTimerRef.current = setTimeout(
-        () => applyWindow(row),
-        WINDOW_SHIFT_DELAY,
-      )
-    },
-    [applyWindow],
-  )
-  useEffect(
-    () => () => {
-      if (windowShiftTimerRef.current != null) {
-        clearTimeout(windowShiftTimerRef.current)
-      }
-    },
-    [],
-  )
-
   const handleRowFocus = useCallback(
     (rowIndex: number) => {
       // Android only: gate on a real row change so within-row horizontal moves
@@ -257,9 +207,11 @@ export default function HomeScreen() {
       setBelowTopmost(rowIndex >= 2)
       // Defer if the row's y isn't measured yet; recordRowY flushes it.
       pendingScrollRowRef.current = scrollToRow(rowIndex) ? null : rowIndex
-      if (IS_ANDROID) scheduleWindow(rowIndex)
+      // Shift the image-window. Immediate + cheap (cards stay mounted; only
+      // images toggle), so it can't strand focus or jerk the scroll.
+      if (IS_ANDROID) setFocusedRow(rowIndex)
     },
-    [scrollToRow, scheduleWindow],
+    [scrollToRow],
   )
 
   const recordRowY = useCallback(
@@ -276,28 +228,28 @@ export default function HomeScreen() {
   const handleChromeFocus = useCallback(() => {
     if (IS_ANDROID) {
       lastFocusedRowRef.current = null
-      applyWindow(0)
+      setFocusedRow(0)
     }
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
-  }, [applyWindow])
+  }, [])
 
   // Mission-tail QR focus: with the native focus-scroll disabled, the tail
   // needs its own scroll hook — pin to the end in the deep state.
   const handleMissionFocus = useCallback(() => {
     if (IS_ANDROID) {
       lastFocusedRowRef.current = null
-      // Keep the bottom rails windowed-active so Up from the mission tail
-      // returns to a mounted rail, not an empty placeholder.
-      applyWindow(sectionCountRef.current)
+      // Center the image-window on the bottom rails so Up from the mission tail
+      // returns to a rail whose images are loaded.
+      setFocusedRow(sectionCountRef.current)
     }
     setBrowseState("deep")
     // The mission tail is below the topmost rail — keep its autoFocus OFF so a
     // later Up traversal stays column-preserving.
     setBelowTopmost(true)
     scrollRef.current?.scrollToEnd({ animated: true })
-  }, [applyWindow])
+  }, [])
 
   // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
   // memoized rails' wrappers don't churn on every screen re-render.
@@ -370,19 +322,16 @@ export default function HomeScreen() {
       featuredCount > 0 ? Math.min(i, featuredCount - 1) : 0,
     )
   }, [featuredCount])
-  const handleHeroFocusChange = useCallback(
-    (isFocused: boolean) => {
-      if (!isFocused) return
-      if (IS_ANDROID) {
-        lastFocusedRowRef.current = null
-        applyWindow(0)
-      }
-      setBelowTopmost(false)
-      setBrowseState("browse")
-      scrollRef.current?.scrollTo({ y: 0, animated: true })
-    },
-    [applyWindow],
-  )
+  const handleHeroFocusChange = useCallback((isFocused: boolean) => {
+    if (!isFocused) return
+    if (IS_ANDROID) {
+      lastFocusedRowRef.current = null
+      setFocusedRow(0)
+    }
+    setBelowTopmost(false)
+    setBrowseState("browse")
+    scrollRef.current?.scrollTo({ y: 0, animated: true })
+  }, [])
 
   // The hero CTA's native node — wired as the D-pad-up destination for EVERY
   // card in the first section rail, so Up from any card (even the rightmost)
@@ -563,8 +512,8 @@ export default function HomeScreen() {
               // Up-from-below keeps the focus engine's column-preserving
               // geometry instead of snapping to the remembered card.
               restoreLastFocus={sectionIndex === 0 && !belowTopmost}
-              // Android only: window the rails (off-window = same-height spacer).
-              // tvOS mounts every rail eagerly (true) — main's behavior.
+              // Android only: load images for rails in the focus window (cards
+              // always mount). tvOS loads every rail's images (true) — main.
               active={
                 IS_ANDROID
                   ? isRailActive(
@@ -574,8 +523,6 @@ export default function HomeScreen() {
                     )
                   : true
               }
-              cardRowHeight={measuredRowH ?? undefined}
-              onCardRowLayout={handleCardRowLayout}
             />
           </View>
         ))}

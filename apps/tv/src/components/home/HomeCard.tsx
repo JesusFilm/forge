@@ -72,6 +72,12 @@ type HomeCardProps = {
    * requestTVFocus(). Ref-as-state in the rail, like MissionSection.
    */
   nodeRef?: (node: ViewType | null) => void
+  /**
+   * Whether to load the artwork. Off-window rails (Android image-windowing) pass
+   * false: the card still mounts at full size and stays focusable — so D-pad
+   * focus never lands on an empty rail — but skips the expensive image decode.
+   */
+  loadImage?: boolean
 }
 
 export const HomeCard = memo(function HomeCard({
@@ -79,6 +85,7 @@ export const HomeCard = memo(function HomeCard({
   onFocus,
   onPress,
   index,
+  loadImage = true,
   nextFocusUp,
   nodeRef,
 }: HomeCardProps) {
@@ -146,7 +153,7 @@ export const HomeCard = memo(function HomeCard({
               on its own overflow-visible wrapper so iOS doesn't clip it. */}
           <Animated.View style={[styles.shadowWrap, shadowStyle]}>
             <View style={styles.thumb}>
-              {imageUrl != null ? (
+              {imageUrl != null && loadImage ? (
                 <Image
                   source={{ uri: imageUrl }}
                   style={StyleSheet.absoluteFill}
@@ -159,6 +166,9 @@ export const HomeCard = memo(function HomeCard({
                   cachePolicy={NATIVE_FOCUS ? "memory-disk" : undefined}
                 />
               ) : (
+                // No artwork yet (missing URL, or off-window: loadImage=false).
+                // The card keeps its size + focusability; only the decode is
+                // skipped, so focus can still traverse this rail.
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
               )}
 

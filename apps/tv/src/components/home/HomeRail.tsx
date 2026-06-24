@@ -37,11 +37,6 @@ const ITEM_GAP = scale(Platform.OS === "android" ? 48 : 28)
 const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 const RAIL_PADDING_LEFT = scale(80)
 
-// Off-window rails render a same-height spacer instead of the card FlatList so
-// the row's onLayout y stays stable (the row-anchored scroll depends on it).
-// = itemWrapper padding (24*2) + thumb + label meta (~67). Tune on-device.
-const CARD_ROW_HEIGHT = HOME_CARD_THUMB_HEIGHT + scale(115)
-
 // How many card columns span the visible width. A rail with fewer cards than
 // this leaves empty columns on the right, which the tvOS focus engine treats
 // as "nothing there" — a vertical move from an over-hanging column SKIPS the
@@ -134,21 +129,12 @@ type HomeRailProps = {
    */
   restoreLastFocus?: boolean
   /**
-   * When false (off the focus window), the rail renders its header plus a
-   * fixed-height empty spacer instead of the card FlatList — its ~10 card images
-   * never mount, cutting per-frame composite cost on weak Android TV GPUs. The
-   * parent keeps the focused row and a buffer of neighbours active so D-pad
-   * traversal never reaches an inactive rail. Defaults to true (eager).
+   * Image-windowing (Android): when false (off the focus window), the rail's
+   * cards still mount at full size and stay focusable — so D-pad focus never
+   * lands on an empty rail — but skip their image decode. The parent keeps the
+   * focused row + a buffer of neighbours active. Defaults to true (eager).
    */
   active?: boolean
-  /**
-   * Measured real card-row height (px). Applied to the placeholder so toggling
-   * active<->placeholder shifts layout by zero — otherwise the estimate mismatch
-   * jerks the screen when the deferred window shift fires after a scroll.
-   */
-  cardRowHeight?: number
-  /** Active rail reports its card-row height (FlatList onLayout) to the parent. */
-  onCardRowLayout?: (height: number) => void
 }
 
 export const HomeRail = memo(function HomeRail({
@@ -162,8 +148,6 @@ export const HomeRail = memo(function HomeRail({
   upFocusTarget,
   restoreLastFocus,
   active = true,
-  cardRowHeight,
-  onCardRowLayout,
 }: HomeRailProps) {
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
@@ -205,6 +189,9 @@ export const HomeRail = memo(function HomeRail({
             nextFocusUp={upFocusTarget ?? undefined}
             // Capture the last REAL card — the pads' bounce target.
             nodeRef={index === cards.length - 1 ? setLastCardNode : undefined}
+            // Off-window rails mount their cards (so focus always has a target)
+            // but skip the image decode — that's the image-window perf win.
+            loadImage={active}
           />
         </View>
       )
@@ -216,6 +203,7 @@ export const HomeRail = memo(function HomeRail({
       onCardPress,
       upFocusTarget,
       lastCardNode,
+      active,
     ],
   )
 
@@ -241,36 +229,19 @@ export const HomeRail = memo(function HomeRail({
           extraData={lastCardNode}: FlatList re-renders rows on data/extraData
           change only — the pads need to re-render once the bounce target is
           captured. */}
-      {active ? (
-        <TVFocusGuideView autoFocus={restoreLastFocus}>
-          <FlatList
-            data={items}
-            extraData={lastCardNode}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-            keyExtractor={keyExtractor}
-            onScrollToIndexFailed={() => {}}
-            getItemLayout={getItemLayout}
-            renderItem={renderItem}
-            onLayout={
-              onCardRowLayout
-                ? (e) => onCardRowLayout(e.nativeEvent.layout.height)
-                : undefined
-            }
-          />
-        </TVFocusGuideView>
-      ) : (
-        // Off-window: spacer at the measured card-row height (falls back to the
-        // CARD_ROW_HEIGHT estimate) so toggling active<->placeholder shifts layout
-        // by zero — no post-scroll jerk when the window mounts/unmounts a rail.
-        <View
-          style={[
-            styles.cardRowPlaceholder,
-            cardRowHeight != null && { height: cardRowHeight },
-          ]}
+      <TVFocusGuideView autoFocus={restoreLastFocus}>
+        <FlatList
+          data={items}
+          extraData={lastCardNode}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          keyExtractor={keyExtractor}
+          onScrollToIndexFailed={() => {}}
+          getItemLayout={getItemLayout}
+          renderItem={renderItem}
         />
-      )}
+      </TVFocusGuideView>
     </View>
   )
 })
@@ -301,11 +272,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(80),
-  },
-  // Empty spacer for off-window rails — matches the active card row's height so
-  // row positions don't shift when a rail mounts/unmounts its cards.
-  cardRowPlaceholder: {
-    height: CARD_ROW_HEIGHT,
   },
   // Vertical room so the focus lift + white ring + shadow never clip against
   // neighbours; doubles as the design's head→cards gap (22px ≈ 24).
