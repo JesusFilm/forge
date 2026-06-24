@@ -1,7 +1,7 @@
 ---
 title: "Watch search URL sync can strand the overlay in loading"
 date: "2026-06-15"
-last_updated: "2026-06-15"
+last_updated: "2026-06-24"
 category: "ui-bugs"
 module: "apps/web watch search"
 problem_type: "ui_bug"
@@ -18,12 +18,14 @@ related_components:
   - "apps/web/src/components/FloatingSearchController.tsx"
   - "apps/web/src/components/FloatingSearchProvider.tsx"
   - "apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx"
-  - "apps/web/src/lib/search-url.ts"
+  - "apps/web/src/lib/routes.ts"
+  - "apps/web/src/proxy.ts"
 tags:
   - "web"
   - "watch"
   - "search"
   - "url-sync"
+  - "local-state"
   - "app-router"
   - "router-replace"
   - "history-replace-state"
@@ -31,6 +33,12 @@ tags:
 ---
 
 # Watch search URL sync can strand the overlay in loading
+
+## Superseded Current Contract
+
+As of 2026-06-24, Watch search no longer treats `?q=` as modal state. The modal owns search query, results, loading, and pagination in memory; page-load `q` params are ignored; typed, edited, cleared, and category searches leave the browser URL unchanged; deprecated `/search?q=...` redirects to the root Watch surface with `q` stripped.
+
+This document remains as the production incident record. Do not reintroduce `buildSearchUrl`, `router.replace`, or `history.replaceState` for Watch modal query syncing; use `docs/brainstorms/2026-06-24-watch-search-local-state-requirements.md` as the current product contract.
 
 ## Problem
 
@@ -54,83 +62,11 @@ The backend was not simply timing out. Browser-level production tracing showed p
 - **Checking only HTTP status.** The relevant question was not whether a server-action POST returned 200, but whether the page-level hydration flow reached `runSearch` and cleared the active skeleton state.
 - **Testing only direct `?q=` hydration.** That proved the first URL-open path, but missed the post-success edit path where a changed-query navigation could remount the overlay and clear a newer debounce timer.
 
-## Solution
+## Historical Fix (Superseded)
 
-Keep URL synchronization in the search controller, but do not use Next App Router navigation for modal-owned `?q=` edits. The search modal uses `?q=` as client UI state, so update the visible URL with `window.history.replaceState()` while passing through `window.history.state`. That preserves Next's existing App Router history metadata instead of replacing it with `null`.
+The first repair kept URL synchronization but moved modal-owned query updates from App Router navigation to native browser history, then tightened request-id-scoped loading cleanup. That reduced App Router remount risk while preserving the shareable `?q=` contract.
 
-```ts
-function buildCurrentSearchUrl(
-  pathname: string,
-  currentParams: URLSearchParams,
-): string {
-  const serializedParams = currentParams.toString()
-  return serializedParams.length > 0
-    ? `${pathname}?${serializedParams}`
-    : pathname
-}
-
-const browserPathname =
-  typeof window !== "undefined" ? window.location.pathname : pathname
-const nextUrl = buildSearchUrl(browserPathname, currentParams, trimmed)
-if (nextUrl !== buildCurrentSearchUrl(browserPathname, currentParams)) {
-  window.history.replaceState(window.history.state, "", nextUrl)
-}
-```
-
-Use `window.location.pathname` for the browser-visible path so non-root public routes such as `/watch` stay intact when the query string changes.
-
-Then make loading cleanup request-id-scoped and reusable so both normal completion and empty-query resets clear the active spinner without letting stale requests affect newer searches:
-
-```ts
-const clearLoadingForRequest = useCallback((requestId: number): void => {
-  if (requestIdRef.current !== requestId) return
-  if (skeletonTimerRef.current) {
-    clearTimeout(skeletonTimerRef.current)
-    skeletonTimerRef.current = null
-  }
-  setShowSkeleton(false)
-  setLoading(false)
-}, [])
-
-if (!trimmed) {
-  // clear results and reset search state...
-  clearLoadingForRequest(thisRequest)
-  return
-}
-
-try {
-  // run search...
-} finally {
-  clearLoadingForRequest(thisRequest)
-}
-```
-
-Lock the behavior with provider/controller tests:
-
-- Direct `?q=jesus` hydration calls `runSearch` and does not call `router.replace` for the same URL.
-- Changed queries sync `/watch?utm=campaign` to `/watch?q=jesus&utm=campaign`, preserve unrelated params, preserve a non-null `window.history.state`, and do not call `router.replace`.
-- Clearing search removes `q` without calling `runSearch`.
-- Editing from a completed `jesus` search through an intermediate debounced query to `the bible project` still calls `runSearch` for the final query and clears the pulsing skeleton cards.
-- Resetting an in-flight search clears `loading` and `showSkeleton`.
-- A stale search resolving after a newer search starts does not clear the active loading state.
-
-## Why This Works
-
-In a Next.js App Router page, `router.replace()` is not a harmless assignment. It can start client navigation and RSC work around the same time the search overlay is hydrating, exiting previous result cards, or holding a pending debounce for the user's next keystrokes.
-
-The direct query URL already contains the intended search state, so replacing it with itself gives the router a chance to interrupt the flow without adding any user value. For changed queries, the URL update is still useful, but it does not need a server navigation because the modal's input and results are controlled client-side. Native `replaceState()` keeps the address bar shareable without remounting the overlay or clearing pending debounce timers.
-
-The loading fix follows the controller's existing request-id model. Every search increments `requestIdRef`; only the currently winning request can clear `loading`, `showSkeleton`, and the skeleton timer. Empty-query reset is also a valid winning request, so it must run the same cleanup instead of invalidating the older request and returning with skeletons still visible.
-
-## Prevention
-
-- Reproduce search bugs through the web page, not just one-off server-action probes. For App Router UI bugs, network success can coexist with broken client state.
-- Treat `router.replace()` as a navigation side effect. Before calling it from a hydrated overlay or modal, prove that a server navigation is actually needed.
-- For modal-owned URL state, prefer `window.history.replaceState(window.history.state, "", nextUrl)` so Next history metadata is preserved without dispatching RSC navigation.
-- Keep delayed skeleton timers paired with request-id cleanup. A reset path that increments the request id must also clear the active timer and loading flags.
-- Test both sides of URL sync: no-op URLs must not navigate, changed modal query URLs must update browser history without App Router navigation, and edited-query regressions must prove skeletons are gone after final results render.
-- Isolate URL-sync tests from mount hydration by mounting without `q`, then changing `window.history` immediately before the user action being tested.
-- Keep URL helper comments transport-neutral. A helper used by native history updates should describe browser search URL sync, not `router.replace()` calls.
+The current repair removes the URL-sync contract entirely for Watch search. The durable prevention rule is now simpler: page-level search bugs must be reproduced through the modal, and the modal must not depend on browser query params for active query, loading, results, or pagination state.
 
 ## Related Issues
 

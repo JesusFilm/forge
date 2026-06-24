@@ -76,6 +76,7 @@ function buildNotFound(): NextResponse {
 function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   const url = request.nextUrl.clone()
   url.pathname = "/"
+  url.searchParams.delete("q")
   return buildRedirect(url, 307)
 }
 
