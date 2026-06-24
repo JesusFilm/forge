@@ -695,6 +695,120 @@ describe("VideoService", () => {
     })
   })
 
+  describe("getPreferredPlayableDub", () => {
+    it("prefers a playable dub matching the requested language slug", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce({ id: "dub-es" })
+
+      const result = await service.getPreferredPlayableDub({
+        videoId: "video-1",
+        languageSlug: "spanish",
+        query: { select: { id: true } },
+      })
+
+      expect(result).toEqual({ id: "dub-es" })
+      const call = prisma.videoDub.findFirst.mock.calls[0][0]
+      expect(call).toMatchObject({ select: { id: true } })
+      expect(call.where).toMatchObject({
+        videoId: "video-1",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+        video: { deletedAt: null },
+        language: {
+          deletedAt: null,
+          OR: [{ slug: "spanish" }, { bcp47: "spanish" }],
+        },
+      })
+      expect(call.orderBy).toEqual([{ duration: "desc" }, { id: "asc" }])
+      expect(prisma.video.findFirst).not.toHaveBeenCalled()
+    })
+
+    it("falls back to the primary language playable dub before longest playable", async () => {
+      prisma.videoDub.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "dub-primary" })
+      prisma.video.findFirst.mockResolvedValueOnce({
+        primaryLanguageId: "language-en",
+      })
+
+      const result = await service.getPreferredPlayableDub({
+        videoId: "video-1",
+        languageSlug: "missing-language",
+        query: {},
+      })
+
+      expect(result).toEqual({ id: "dub-primary" })
+      expect(prisma.video.findFirst.mock.calls[0][0]).toEqual({
+        where: { id: "video-1", deletedAt: null },
+        select: { primaryLanguageId: true },
+      })
+      expect(prisma.videoDub.findFirst.mock.calls[1][0].where).toMatchObject({
+        videoId: "video-1",
+        languageId: "language-en",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+      })
+      expect(prisma.videoDub.findFirst).toHaveBeenCalledTimes(2)
+    })
+
+    it("falls back to the longest playable dub when no requested or primary dub exists", async () => {
+      prisma.videoDub.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "dub-longest" })
+      prisma.video.findFirst.mockResolvedValueOnce({
+        primaryLanguageId: "language-en",
+      })
+
+      const result = await service.getPreferredPlayableDub({
+        videoId: "video-1",
+        languageSlug: "missing-language",
+        query: {},
+      })
+
+      expect(result).toEqual({ id: "dub-longest" })
+      const fallbackCall = prisma.videoDub.findFirst.mock.calls[2][0]
+      expect(fallbackCall.where).toMatchObject({
+        videoId: "video-1",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+      })
+      expect(fallbackCall.orderBy).toEqual([
+        { duration: "desc" },
+        { id: "asc" },
+      ])
+    })
+  })
+
+  describe("countPlayableDubLanguages", () => {
+    it("counts distinct playable dub languages without loading dub payloads", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([
+        { languageId: "language-en" },
+        { languageId: "language-es" },
+      ])
+
+      const count = await service.countPlayableDubLanguages({
+        videoId: "video-1",
+      })
+
+      expect(count).toBe(2)
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call.where).toMatchObject({
+        videoId: "video-1",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+        video: { deletedAt: null },
+        languageId: { not: null },
+        language: { slug: { not: null }, deletedAt: null },
+      })
+      expect(call.distinct).toEqual(["languageId"])
+      expect(call.select).toEqual({ languageId: true })
+    })
+  })
+
   describe("getByCoreId", () => {
     it("VIEWER can get by coreId", async () => {
       prisma.video.findFirst.mockResolvedValueOnce({
