@@ -3,7 +3,7 @@ id: "feat-043"
 title: "Video Vectorization — Visual Shot Detection Fusion"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-06-06"
 duration: 10
 depends_on:
