@@ -36,10 +36,11 @@ import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
-// Android TV shows fewer, wider cards per rail (~3 vs ~5) so a cross-rail scroll
-// redraws far fewer card views per frame — the on-screen view count was the
-// Sabrina SoC's ~23fps floor. tvOS keeps the denser 400px layout.
-const CARD_W = Platform.OS === "android" ? 560 : 400
+// Android TV shows fewer cards per rail (~3 vs ~5) so a cross-rail scroll redraws
+// far fewer card views per frame — the on-screen view count was the Sabrina SoC's
+// ~23fps floor. Smaller card + wider ITEM_GAP (HomeRail) keep the count at ~3.
+// tvOS keeps the denser 400px layout.
+const CARD_W = Platform.OS === "android" ? 400 : 400
 export const HOME_CARD_WIDTH = scale(CARD_W)
 export const HOME_CARD_THUMB_HEIGHT = scale(Math.round((CARD_W * 9) / 16)) // 16:9
 

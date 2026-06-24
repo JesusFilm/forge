@@ -15,6 +15,7 @@ import { memo, useCallback, useMemo, useState } from "react"
 import {
   Dimensions,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -30,7 +31,9 @@ import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { HOME_CARD_THUMB_HEIGHT, HOME_CARD_WIDTH, HomeCard } from "./HomeCard"
 import { buildRailItems, type RailItem } from "./homeRailItems"
 
-const ITEM_GAP = scale(28)
+// Android pairs a smaller card (HomeCard CARD_W) with its own gap so the rail
+// shows a few smaller cards with comfortable spacing (tuned on-device).
+const ITEM_GAP = scale(Platform.OS === "android" ? 48 : 28)
 const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 const RAIL_PADDING_LEFT = scale(80)
 
