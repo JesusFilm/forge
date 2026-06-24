@@ -2,7 +2,6 @@ import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isValidSearchTraceSamplingBearer } from "@/auth/search-trace-bearer"
 import { prisma } from "@/db/client"
 import {
-  formatSearchTimingLogLine,
   HybridSearchService,
   isContentType,
   type ContentType,
@@ -232,7 +231,7 @@ export async function POST(request: Request): Promise<Response> {
     const locale = await searchLocaleForParams(params)
     if (locale instanceof Response) return locale
     const service = new HybridSearchService({ prisma })
-    const { response, trace, timings } = await service.searchWithTrace({
+    const response = await service.search({
       query: params.query,
       locale,
       limit: params.limit,
@@ -244,18 +243,7 @@ export async function POST(request: Request): Promise<Response> {
     console.info(
       `[search] event=eval_search auth=bearer route=internal rl=${limit.source} locale=${logValue(locale)} mode=${logValue(params.mode)} result_count=${response.results.length}`,
     )
-    console.error(
-      formatSearchTimingLogLine({
-        route: "internal",
-        locale,
-        requestedMode: params.mode ?? null,
-        searchMode: trace.searchMode,
-        outcome: trace.outcome,
-        resultCount: trace.resultCount,
-        timings,
-      }),
-    )
-    return Response.json({ ...response, timings }, { status: 200 })
+    return Response.json(response, { status: 200 })
   } catch (error) {
     console.error(
       `[search] event=eval_search_failed route=internal error_class=${logValue(error instanceof Error ? error.name : typeof error)}`,

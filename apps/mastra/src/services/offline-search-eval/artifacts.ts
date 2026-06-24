@@ -38,33 +38,6 @@ const SearchEvalResultSchema = z
   })
   .strict()
 
-const NonNegativeTimingMsSchema = z
-  .number()
-  .nonnegative()
-  .refine((value) => Number.isFinite(value), "must be finite")
-
-const AdminSearchRetrieverTimingSchema = z
-  .object({
-    label: z.string().max(128),
-    status: z.enum(["fulfilled", "rejected"]),
-    elapsedMs: NonNegativeTimingMsSchema,
-    resultCount: z.number().int().nonnegative().max(MAX_RESULT_COUNT),
-  })
-  .strict()
-
-const AdminSearchTimingSummarySchema = z
-  .object({
-    totalMs: NonNegativeTimingMsSchema,
-    retrievalsMs: NonNegativeTimingMsSchema,
-    fusionMs: NonNegativeTimingMsSchema,
-    dilutionCapMs: NonNegativeTimingMsSchema,
-    dedupeMs: NonNegativeTimingMsSchema,
-    mappingMs: NonNegativeTimingMsSchema,
-    hydrationMs: NonNegativeTimingMsSchema,
-    retrievers: z.array(AdminSearchRetrieverTimingSchema).max(10),
-  })
-  .strict()
-
 const SearchFailureSchema = z
   .object({
     code: z.enum([
@@ -138,7 +111,6 @@ const BaselineCaseSchema = z
     tags: z.array(z.string().max(64)).max(MAX_TAGS),
     operatorNotes: z.string().max(MAX_SAFE_TEXT).optional(),
     results: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
-    searchTimings: AdminSearchTimingSummarySchema.optional(),
     searchFailure: SearchFailureSchema.optional(),
   })
   .strict()
@@ -261,8 +233,6 @@ const ComparisonOutcomeSchema = z
     ),
     baselineResults: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
     currentResults: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
-    baselineSearchTimings: AdminSearchTimingSummarySchema.optional(),
-    currentSearchTimings: AdminSearchTimingSummarySchema.optional(),
     verdicts: z.tuple([JudgeVerdictSchema, JudgeVerdictSchema]).optional(),
     rationale: z.string().max(MAX_SAFE_TEXT).optional(),
     searchFailure: SearchFailureSchema.optional(),
@@ -284,7 +254,6 @@ const ExploratoryGeneratedOutcomeSchema = z
     retentionExpiresAt: z.string().nullable(),
     skippedReason: z.literal("trace_derived_not_judged_or_searched").optional(),
     results: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
-    searchTimings: AdminSearchTimingSummarySchema.optional(),
     searchFailure: SearchFailureSchema.optional(),
   })
   .strict()

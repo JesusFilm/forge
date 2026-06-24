@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const routeMocks = vi.hoisted(() => ({
   rateLimitAuthRoute: vi.fn(),
   isValidSearchTraceSamplingBearer: vi.fn(),
-  searchWithTrace: vi.fn(),
+  search: vi.fn(),
   recordSearchTraceSafely: vi.fn(),
   languageFindFirst: vi.fn(),
 }))
@@ -11,7 +11,7 @@ const routeMocks = vi.hoisted(() => ({
 const {
   rateLimitAuthRoute,
   isValidSearchTraceSamplingBearer,
-  searchWithTrace,
+  search,
   recordSearchTraceSafely,
   languageFindFirst,
 } = routeMocks
@@ -32,16 +32,10 @@ vi.mock("@/db/client", () => ({
 vi.mock("@/services/search-trace.service", () => ({
   recordSearchTraceSafely: routeMocks.recordSearchTraceSafely,
 }))
-vi.mock("@/services/hybrid-search.service", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/services/hybrid-search.service")
-  >("@/services/hybrid-search.service")
+vi.mock("@/services/hybrid-search.service", () => {
   const contentTypes = new Set(["video", "experience"])
   return {
-    ...actual,
-    HybridSearchService: vi.fn(() => ({
-      searchWithTrace: routeMocks.searchWithTrace,
-    })),
+    HybridSearchService: vi.fn(() => ({ search: routeMocks.search })),
     isContentType: (value: string) => contentTypes.has(value),
   }
 })
@@ -66,53 +60,26 @@ describe("POST /api/internal/search-eval/search", () => {
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     isValidSearchTraceSamplingBearer.mockReturnValue(true)
     languageFindFirst.mockResolvedValue(null)
-    searchWithTrace.mockResolvedValue({
-      response: {
-        results: [
-          {
-            type: "video",
-            id: "video-1",
-            slug: "jesus",
-            title: "JESUS",
-            imageUrl: null,
-            snippet: "The story of Jesus.",
-            startSeconds: null,
-            playbackId: null,
-            score: 1,
-            label: "FEATURE_FILM",
-            durationSeconds: 120,
-            childCount: null,
-          },
-        ],
-        hasMore: false,
-        query: "Jesus",
-        searchMode: "hybrid",
-      },
-      trace: {
-        searchMode: "hybrid",
-        resultCount: 1,
-        outcome: "success",
-        traceClass: "none",
-        failedRetrievers: [],
-        contributingRetrievers: ["semantic-video"],
-      },
-      timings: {
-        totalMs: 321,
-        retrievalsMs: 300,
-        fusionMs: 1,
-        dilutionCapMs: 0,
-        dedupeMs: 2,
-        mappingMs: 3,
-        hydrationMs: 4,
-        retrievers: [
-          {
-            label: "semantic-video",
-            status: "fulfilled",
-            elapsedMs: 295,
-            resultCount: 1,
-          },
-        ],
-      },
+    search.mockResolvedValue({
+      results: [
+        {
+          type: "video",
+          id: "video-1",
+          slug: "jesus",
+          title: "JESUS",
+          imageUrl: null,
+          snippet: "The story of Jesus.",
+          startSeconds: null,
+          playbackId: null,
+          score: 1,
+          label: "FEATURE_FILM",
+          durationSeconds: 120,
+          childCount: null,
+        },
+      ],
+      hasMore: false,
+      query: "Jesus",
+      searchMode: "hybrid",
     })
   })
 
@@ -132,16 +99,6 @@ describe("POST /api/internal/search-eval/search", () => {
       results: [{ id: "video-1" }],
       query: "Jesus",
       searchMode: "hybrid",
-      timings: {
-        totalMs: 321,
-        retrievalsMs: 300,
-        fusionMs: 1,
-        dilutionCapMs: 0,
-        dedupeMs: 2,
-        mappingMs: 3,
-        hydrationMs: 4,
-        retrievers: [{ label: "semantic-video" }],
-      },
     })
     expect(rateLimitAuthRoute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -150,7 +107,7 @@ describe("POST /api/internal/search-eval/search", () => {
         windowMs: 60_000,
       }),
     )
-    expect(searchWithTrace).toHaveBeenCalledWith({
+    expect(search).toHaveBeenCalledWith({
       query: "Jesus",
       locale: "en",
       limit: 10,
@@ -179,7 +136,7 @@ describe("POST /api/internal/search-eval/search", () => {
       where: { slug: "spanish-castilian", deletedAt: null },
       select: { bcp47: true },
     })
-    expect(searchWithTrace).toHaveBeenCalledWith(
+    expect(search).toHaveBeenCalledWith(
       expect.objectContaining({
         query: "Jesus",
         locale: "es",
@@ -187,32 +144,6 @@ describe("POST /api/internal/search-eval/search", () => {
         allowInternalEvalModes: true,
       }),
     )
-  })
-
-  it("emits a search_timing log for internal eval without query text", async () => {
-    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    try {
-      const response = await POST(
-        request({
-          query: "Jesus secret query",
-          locale: "en",
-          mode: "semantic-only",
-        }),
-      )
-      expect(response.status).toBe(200)
-      const timingLine = logSpy.mock.calls
-        .map((args) => String(args[0] ?? ""))
-        .find((line) => line.includes("event=search_timing"))
-      expect(timingLine).toContain("route=internal")
-      expect(timingLine).toContain("locale=en")
-      expect(timingLine).toContain("requested_mode=semantic-only")
-      expect(timingLine).toContain("total_ms=321")
-      expect(timingLine).toContain("db_retriever_semantic_video_ms=295")
-      expect(timingLine).not.toContain("Jesus secret query")
-      expect(timingLine).not.toMatch(/embedding/i)
-    } finally {
-      logSpy.mockRestore()
-    }
   })
 
   it("rejects unsafe or unknown language slugs before search", async () => {
@@ -233,7 +164,7 @@ describe("POST /api/internal/search-eval/search", () => {
       }),
     )
     expect(response.status).toBe(400)
-    expect(searchWithTrace).not.toHaveBeenCalled()
+    expect(search).not.toHaveBeenCalled()
   })
 
   it("rejects missing bearer before parsing the body", async () => {
@@ -249,7 +180,7 @@ describe("POST /api/internal/search-eval/search", () => {
 
     expect(response.status).toBe(401)
     expect(text).not.toHaveBeenCalled()
-    expect(searchWithTrace).not.toHaveBeenCalled()
+    expect(search).not.toHaveBeenCalled()
   })
 
   it("returns 429 before auth or body parsing when rate-limited", async () => {
@@ -301,7 +232,7 @@ describe("POST /api/internal/search-eval/search", () => {
       const response = await POST(request(body))
       expect(response.status).toBe(400)
     }
-    expect(searchWithTrace).not.toHaveBeenCalled()
+    expect(search).not.toHaveBeenCalled()
   })
 
   it("rejects chunked bodies after the byte cap without fully parsing", async () => {
@@ -319,7 +250,7 @@ describe("POST /api/internal/search-eval/search", () => {
     } as unknown as Request)
 
     expect(response.status).toBe(413)
-    expect(searchWithTrace).not.toHaveBeenCalled()
+    expect(search).not.toHaveBeenCalled()
   })
 
   it("rejects declared oversized bodies before search", async () => {
@@ -333,11 +264,11 @@ describe("POST /api/internal/search-eval/search", () => {
     } as unknown as Request)
 
     expect(response.status).toBe(413)
-    expect(searchWithTrace).not.toHaveBeenCalled()
+    expect(search).not.toHaveBeenCalled()
   })
 
   it("maps search failures to a 503 without leaking details", async () => {
-    searchWithTrace.mockRejectedValueOnce(new Error("provider secret leaked?"))
+    search.mockRejectedValueOnce(new Error("provider secret leaked?"))
 
     const response = await POST(request({ query: "Jesus", locale: "en" }))
 

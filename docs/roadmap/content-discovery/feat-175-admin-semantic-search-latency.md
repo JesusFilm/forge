@@ -9,8 +9,7 @@ duration: 1
 depends_on:
   - "feat-131"
   - "feat-172"
-blocks:
-  - "feat-203"
+blocks: []
 tags:
   - "admin"
   - "search"

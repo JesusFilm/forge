@@ -15,23 +15,6 @@ vi.mock("@/config/env", () => ({
 // The route constructs a HybridSearchService with the shared `prisma`
 // import; we mock the class so tests don't touch the DB.
 const searchMock = vi.fn()
-const mockTimings = {
-  totalMs: 123,
-  retrievalsMs: 80,
-  fusionMs: 1,
-  dilutionCapMs: 0,
-  dedupeMs: 2,
-  mappingMs: 3,
-  hydrationMs: 4,
-  retrievers: [
-    {
-      label: "semantic-video",
-      status: "fulfilled" as const,
-      elapsedMs: 77,
-      resultCount: 1,
-    },
-  ],
-}
 const searchWithTraceMock = vi.fn(async (params) => {
   const response = await searchMock(params)
   return {
@@ -47,7 +30,6 @@ const searchWithTraceMock = vi.fn(async (params) => {
       failedRetrievers: [],
       contributingRetrievers: [],
     },
-    timings: mockTimings,
   }
 })
 vi.mock("@/services/hybrid-search.service", async () => {
@@ -378,35 +360,6 @@ describe("GET /api/search", () => {
       query: "jesus",
       searchMode: "hybrid",
     })
-  })
-
-  it("emits a search_timing log without query text or secret-bearing fields", async () => {
-    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    try {
-      const res = await GET(
-        req("/api/search?q=jesus-secret-query&locale=en&mode=keyword-first"),
-      )
-      expect(res.status).toBe(200)
-
-      const timingLine = logSpy.mock.calls
-        .map((args) => String(args[0] ?? ""))
-        .find((line) => line.includes("event=search_timing"))
-      expect(timingLine).toContain("route=rest")
-      expect(timingLine).toContain("locale=en")
-      expect(timingLine).toContain("requested_mode=keyword-first")
-      expect(timingLine).toContain("search_mode=hybrid")
-      expect(timingLine).toContain("result_count=0")
-      expect(timingLine).toContain("total_ms=123")
-      expect(timingLine).toContain("db_retrievals_ms=80")
-      expect(timingLine).toContain("trace_write_ms=")
-      expect(timingLine).toContain("db_retriever_semantic_video_ms=77")
-      expect(timingLine).not.toContain("jesus-secret-query")
-      expect(timingLine).not.toContain("Bearer")
-      expect(timingLine).not.toContain("keyId=")
-      expect(timingLine).not.toMatch(/embedding/i)
-    } finally {
-      logSpy.mockRestore()
-    }
   })
 
   it("does not trace invalid requests rejected before live search", async () => {
