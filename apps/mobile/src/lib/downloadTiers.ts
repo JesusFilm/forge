@@ -18,6 +18,20 @@ export function formatFileSize(sizeString: string): string {
   return `${mb.toFixed(1)} MB`
 }
 
+/**
+ * Format a (possibly lower-bound) size for a tier hint. A lower bound with a
+ * partial known sum means the real download is LARGER than `bytes`, so mark it
+ * approximate ("~") rather than showing an exact total the storage gate would
+ * later reject. A zero/unknown total already renders honestly as "Unknown".
+ */
+export function formatTierSize(total: {
+  bytes: number
+  isLowerBound: boolean
+}): string {
+  const text = formatFileSize(String(total.bytes))
+  return total.isLowerBound && total.bytes > 0 ? `~${text}` : text
+}
+
 // Collapse a dub's renditions to up to three labelled tiers by descending size.
 // Copies before sorting — Apollo freezes cached arrays and an in-place sort
 // throws on a warm cache.

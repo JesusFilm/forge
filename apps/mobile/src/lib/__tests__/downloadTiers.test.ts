@@ -1,4 +1,4 @@
-import { formatFileSize, tierDownloads } from "../downloadTiers"
+import { formatFileSize, formatTierSize, tierDownloads } from "../downloadTiers"
 import type { WatchDownload } from "../normalizeVideo"
 
 const dl = (size: string): WatchDownload => ({
@@ -21,6 +21,24 @@ describe("formatFileSize", () => {
     expect(formatFileSize("0")).toBe("Unknown")
     expect(formatFileSize("-5")).toBe("Unknown")
     expect(formatFileSize("not-a-number")).toBe("Unknown")
+  })
+})
+
+describe("formatTierSize", () => {
+  it("renders an exact total when not a lower bound", () => {
+    expect(formatTierSize({ bytes: 5 * 1048576, isLowerBound: false })).toBe(
+      "5.0 MB",
+    )
+  })
+
+  it("marks a partial lower-bound total approximate so it never reads exact", () => {
+    expect(formatTierSize({ bytes: 5 * 1048576, isLowerBound: true })).toBe(
+      "~5.0 MB",
+    )
+  })
+
+  it("stays 'Unknown' (no ~) when the whole tier is unsized", () => {
+    expect(formatTierSize({ bytes: 0, isLowerBound: true })).toBe("Unknown")
   })
 })
 

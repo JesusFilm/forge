@@ -32,7 +32,11 @@ import { feedback, HORIZONTAL_PADDING } from "../../src/styles/shared"
 import { getApolloClient } from "../../src/lib/apolloClient"
 import { GET_VIDEO_BY_SLUG, GET_VIDEO_DUB } from "../../src/lib/queries"
 import { normalizeDubMedia, normalizeVideo } from "../../src/lib/normalizeVideo"
-import { formatFileSize, type QualityTier } from "../../src/lib/downloadTiers"
+import {
+  formatFileSize,
+  formatTierSize,
+  type QualityTier,
+} from "../../src/lib/downloadTiers"
 import {
   resolveSeriesDownload,
   summarizeResolution,
@@ -206,7 +210,7 @@ export default function SeriesDownloadRoute() {
         key: t,
         label: t,
         trailing: resolution
-          ? formatFileSize(String(resolution.tierTotals[t].bytes))
+          ? formatTierSize(resolution.tierTotals[t])
           : undefined,
       })),
     [resolution],
@@ -360,7 +364,7 @@ export default function SeriesDownloadRoute() {
         }}
       />
 
-      {/* Status panel — resolving / size / partial / all-skipped / summary. */}
+      {/* Status panel — resolving / partial / all-skipped / summary. */}
       <StatusPanel
         phase={phase}
         languageName={languageName}
