@@ -94,6 +94,71 @@ describe("resolveSeriesDownload", () => {
     expect(res.resolved[0].rendition?.size).toBe("3000")
   })
 
+  it("totals every tier across the resolved set (for the quality picker hints)", async () => {
+    const deps: SeriesResolveDeps = {
+      getEpisodeVariants: async (slug) => [variant("es", `${slug}-es`)],
+      getDubMedia: async (dubId) => threeTier(dubId), // Highest 3000/High 2000/Low 1000
+    }
+    const res = await resolveSeriesDownload(
+      [episode("a"), episode("b")],
+      {
+        qualityTier: "Highest",
+        languageSlug: "es",
+        subtitleLanguageSlug: null,
+      },
+      deps,
+    )
+    // Two episodes — the tier totals are independent of the selected tier.
+    expect(res.tierTotals.Highest.bytes).toBe(6000)
+    expect(res.tierTotals.High.bytes).toBe(4000)
+    expect(res.tierTotals.Low.bytes).toBe(2000)
+    expect(res.tierTotals.Highest.isLowerBound).toBe(false)
+    // The selected tier's total equals the resolution totalBytes.
+    expect(res.tierTotals.Highest.bytes).toBe(res.totalBytes)
+  })
+
+  it("tier totals use the same nearest fallback as the download", async () => {
+    const deps: SeriesResolveDeps = {
+      getEpisodeVariants: async (slug) => [variant("es", `${slug}-es`)],
+      // Only two renditions → tiers [Highest 3000, Low 1000]; "High" must fall back.
+      getDubMedia: async (dubId) =>
+        media([
+          dl(`${dubId}-hi`, "high", "3000"),
+          dl(`${dubId}-lo`, "low", "1000"),
+        ]),
+    }
+    const res = await resolveSeriesDownload(
+      [episode("a")],
+      { qualityTier: "Low", languageSlug: "es", subtitleLanguageSlug: null },
+      deps,
+    )
+    expect(res.tierTotals.Highest.bytes).toBe(3000)
+    expect(res.tierTotals.High.bytes).toBe(3000) // ties prefer higher quality
+    expect(res.tierTotals.Low.bytes).toBe(1000)
+  })
+
+  it("marks a tier lower-bound when an episode lacks a size for it", async () => {
+    const deps: SeriesResolveDeps = {
+      getEpisodeVariants: async (slug) => [variant("es", `${slug}-es`)],
+      getDubMedia: async (dubId) =>
+        media([
+          dl(`${dubId}-hi`, "high", "3000"),
+          dl(`${dubId}-lo`, "low", "0"), // unknown size → Low tier
+        ]),
+    }
+    const res = await resolveSeriesDownload(
+      [episode("a")],
+      {
+        qualityTier: "Highest",
+        languageSlug: "es",
+        subtitleLanguageSlug: null,
+      },
+      deps,
+    )
+    expect(res.tierTotals.Highest).toEqual({ bytes: 3000, isLowerBound: false })
+    expect(res.tierTotals.Low).toEqual({ bytes: 0, isLowerBound: true })
+  })
+
   it("skips an episode lacking the chosen language without failing it", async () => {
     const deps: SeriesResolveDeps = {
       getEpisodeVariants: async (slug) =>

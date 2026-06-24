@@ -114,6 +114,11 @@ function resolutionOf(resolved: SeriesEpisodeResolution[]) {
     failedCount: 0,
     totalBytes: resolved.reduce((s, e) => s + (e.sizeBytes ?? 0), 0),
     totalIsLowerBound: resolved.some((e) => e.sizeUnknown === true),
+    tierTotals: {
+      Highest: { bytes: 0, isLowerBound: false },
+      High: { bytes: 0, isLowerBound: false },
+      Low: { bytes: 0, isLowerBound: false },
+    },
   }
 }
 

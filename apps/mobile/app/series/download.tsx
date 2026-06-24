@@ -198,6 +198,20 @@ export default function SeriesDownloadRoute() {
 
   const resolution = phase.kind === "ready" ? phase.resolution : null
 
+  // Quality options carry each tier's whole-series total as trailing text (the
+  // per-video sheet's pattern); the size hint lives here, not in a separate panel.
+  const qualityOptions = useMemo<DropdownOption[]>(
+    () =>
+      QUALITY_TIERS.map((t) => ({
+        key: t,
+        label: t,
+        trailing: resolution
+          ? formatFileSize(String(resolution.tierTotals[t].bytes))
+          : undefined,
+      })),
+    [resolution],
+  )
+
   const onConfirm = useCallback(async () => {
     if (!resolution || resolution.resolvedCount === 0 || !touAccepted) return
     setStorageError(null)
@@ -323,7 +337,7 @@ export default function SeriesDownloadRoute() {
 
       <Dropdown
         sectionLabel="Quality"
-        options={QUALITY_TIERS.map((t) => ({ key: t, label: t }))}
+        options={qualityOptions}
         selectedKey={qualityTier}
         open={qualityOpen}
         onToggle={() => setQualityOpen((o) => !o)}
@@ -526,11 +540,11 @@ function StatusPanel({
       )
     }
     const skipped = r.skippedLanguageCount + r.skippedNoRenditionCount
+    // The total size now rides on the Quality picker; this panel is only the
+    // partial-resolution warnings, so omit it entirely when there are none.
+    if (skipped === 0 && r.failedCount === 0) return null
     return (
       <View style={styles.statusPanel}>
-        <Text style={[styles.sizeText, typography.body]}>
-          {`${r.resolvedCount} ${r.resolvedCount === 1 ? "segment" : "segments"} · ${formatFileSize(String(r.totalBytes))} total`}
-        </Text>
         {skipped > 0 && (
           <Text style={[styles.skippedText, typography.bodySmall]}>
             {`${skipped} skipped (unavailable in ${languageName})`}
@@ -658,12 +672,6 @@ const styles = StyleSheet.create({
   statusText: {
     color: TEXT_BODY,
     fontFamily: "System",
-  },
-  sizeText: {
-    color: TEXT_PRIMARY,
-    fontWeight: "600",
-    fontFamily: "System",
-    width: "100%",
   },
   skippedText: {
     color: TEXT_SECONDARY,

@@ -51,6 +51,8 @@ export type SeriesEpisodeResolution = {
   dubDocumentId?: string
   /** The rendition chosen by tier; present only when resolved. */
   rendition?: WatchDownload
+  /** Every tier available for this episode — feeds the per-tier size totals. */
+  tiered?: TieredDownload[]
   /** The tier actually selected — may differ from the request on fallback. */
   resolvedTier?: QualityTier
   subtitleUrl?: string | null
@@ -59,6 +61,14 @@ export type SeriesEpisodeResolution = {
   sizeBytes?: number
   /** The rendition reported a missing/zero size — the total is a lower bound. */
   sizeUnknown?: boolean
+}
+
+/** One quality tier's total download size across the resolved set. */
+export type TierTotal = {
+  /** Sum of this tier's rendition sizes over resolved episodes (known sizes). */
+  bytes: number
+  /** A resolved episode lacked a size for this tier — bytes understates. */
+  isLowerBound: boolean
 }
 
 export type SeriesDownloadResolution = {
@@ -72,6 +82,8 @@ export type SeriesDownloadResolution = {
   totalBytes: number
   /** Any resolved rendition had an unknown size — totalBytes understates. */
   totalIsLowerBound: boolean
+  /** Per-tier total size (Highest/High/Low) for the quality picker's hints. */
+  tierTotals: Record<QualityTier, TierTotal>
 }
 
 const TIER_ORDER: readonly QualityTier[] = ["Highest", "High", "Low"]
@@ -128,10 +140,8 @@ async function resolveEpisode(
   }
 
   const media = await deps.getDubMedia(variant.documentId)
-  const rendition = selectTierRendition(
-    tierDownloads(media.downloads),
-    choice.qualityTier,
-  )
+  const tiered = tierDownloads(media.downloads)
+  const rendition = selectTierRendition(tiered, choice.qualityTier)
   if (!rendition) {
     return {
       ...base,
@@ -148,6 +158,7 @@ async function resolveEpisode(
     status: "resolved",
     dubDocumentId: variant.documentId,
     rendition,
+    tiered,
     resolvedTier: rendition.tier,
     subtitleUrl: subtitle.url,
     subtitleMissing: subtitle.missing,
@@ -157,10 +168,37 @@ async function resolveEpisode(
 }
 
 /**
+ * Per-tier (Highest/High/Low) total size across the resolved set for the quality
+ * picker's hints. Each resolved episode contributes its rendition size for that
+ * tier — using the same nearest-tier fallback the download uses — so the totals
+ * reflect what would actually download. A missing size makes that tier a lower
+ * bound (its known sizes still sum).
+ */
+function computeTierTotals(
+  resolved: readonly SeriesEpisodeResolution[],
+): Record<QualityTier, TierTotal> {
+  const totals: Record<QualityTier, TierTotal> = {
+    Highest: { bytes: 0, isLowerBound: false },
+    High: { bytes: 0, isLowerBound: false },
+    Low: { bytes: 0, isLowerBound: false },
+  }
+  for (const episode of resolved) {
+    const tiered = episode.tiered
+    if (!tiered || tiered.length === 0) continue
+    for (const tier of TIER_ORDER) {
+      const size = Number(selectTierRendition(tiered, tier)?.size)
+      if (Number.isFinite(size) && size > 0) totals[tier].bytes += size
+      else totals[tier].isLowerBound = true
+    }
+  }
+  return totals
+}
+
+/**
  * Build the SeriesDownloadResolution summary (resolved set / per-status counts /
- * total bytes / lower-bound flag) from a per-episode resolution list. Shared by
- * resolveSeriesDownload (fresh fan-out) and the route's failed-retry merge, so the
- * two never drift on how the rollup is computed.
+ * total bytes / lower-bound flag / per-tier totals) from a per-episode resolution
+ * list. Shared by resolveSeriesDownload (fresh fan-out) and the route's
+ * failed-retry merge, so the two never drift on how the rollup is computed.
  */
 export function summarizeResolution(
   episodes: SeriesEpisodeResolution[],
@@ -179,6 +217,7 @@ export function summarizeResolution(
     failedCount: episodes.filter((r) => r.status === "failed-resolve").length,
     totalBytes: resolved.reduce((sum, r) => sum + (r.sizeBytes ?? 0), 0),
     totalIsLowerBound: resolved.some((r) => r.sizeUnknown === true),
+    tierTotals: computeTierTotals(resolved),
   }
 }
 
