@@ -3,7 +3,7 @@ id: "feat-193"
 title: "Watch search readiness eval suite"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-16"
 duration: 4
 depends_on:
@@ -19,6 +19,39 @@ tags:
   - "algolia"
   - "launch-readiness"
 ---
+
+## Resolution
+
+Completed on 2026-06-24 as an operational search-readiness eval suite. The
+curated prompt set, caller-specific tracks, keyword-first / hybrid /
+semantic-only execution modes, structured reports, and prod-backed verification
+artifacts are in place.
+
+This ticket is closed as eval infrastructure, not as a search launch approval.
+The generated reports give the team and AI agents enough evidence to make a
+launch/no-launch decision, and they surfaced follow-up relevance work around
+multilingual no-results and over-promoted generic content.
+
+Prod-backed rerun artifacts:
+
+- Public Watch keyword-first:
+  `.tmp/prod-search-eval-fixed-2026-06-23/local-runner/artifacts/reports/3895034d-00fe-400c-bbf5-7df53a0e469d-baseline.json`
+  - 100 queries, 0 search failures, 0 judge failures.
+- AI experience generation hybrid:
+  `.tmp/prod-search-eval-fixed-2026-06-23/local-runner/artifacts/reports/88bbb0a0-3126-4c0c-acdc-8ff535f2a387-baseline.json`
+  - 10 queries, 0 search failures, 0 judge failures.
+- Semantic diagnostic semantic-only:
+  `.tmp/prod-search-eval-fixed-2026-06-23/local-runner/artifacts/reports/365b391f-cc56-4bbd-baee-4c261b1fffed-baseline.json`
+  - 8 queries, 0 search failures, 0 judge failures.
+
+Notable readiness signals:
+
+- `bible project` returns `The BibleProject Collection` first.
+- `jesus` returns `Who Is Jesus?` and `JESUS` near the top.
+- The Chinese seed now uses the canonical `mandarin-china` language slug and no
+  longer fails the eval run.
+- Relevance follow-ups remain for Spanish and Chinese no-result cases and
+  repeated generic results such as `Football 2026`.
 
 ## Problem
 
@@ -144,6 +177,11 @@ Roadmap window: this week, June 16-19, 2026.
 - Code-level implementation is verified below. A launch/no-launch decision
   still requires running the Mastra eval workflow against a configured Admin
   search-eval endpoint and reviewing the produced report.
+- 2026-06-24: Closed after prod-backed local runner verification. The suite
+  completed across public Watch keyword-first, AI experience generation hybrid,
+  and semantic diagnostic semantic-only tracks with 0 search failures and 0
+  judge failures. Reports are suitable for launch-readiness review, while the
+  relevance findings are follow-up search-quality work.
 
 ## Implementation Verification Notes
 
