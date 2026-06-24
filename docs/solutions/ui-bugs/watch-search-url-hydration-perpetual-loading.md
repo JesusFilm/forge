@@ -9,6 +9,7 @@ component: "frontend_stimulus"
 symptoms:
   - "Opening `/watch?q=jesus` can show the search overlay and skeleton cards indefinitely."
   - "Editing a successful search into a second query can leave the URL behind the input and keep skeleton cards visible."
+  - "Clicking Load more can leave the visible result set unchanged when delayed language metadata refreshes after the first search."
   - "Production `/watch` server-action POSTs can return 200 while the UI never renders result cards."
   - "The browser can post language metadata for the partial query without ever posting the final `runSearch` payload."
 root_cause: "async_timing"
@@ -67,6 +68,12 @@ The backend was not simply timing out. Browser-level production tracing showed p
 The first repair kept URL synchronization but moved modal-owned query updates from App Router navigation to native browser history, then tightened request-id-scoped loading cleanup. That reduced App Router remount risk while preserving the shareable `?q=` contract.
 
 The current repair removes the URL-sync contract entirely for Watch search. The durable prevention rule is now simpler: page-level search bugs must be reproduced through the modal, and the modal must not depend on browser query params for active query, loading, results, or pagination state.
+
+## Follow-up: Load More Signature Drift
+
+Production smoke after the local-state merge showed typed search requests were firing with a clean URL, but the `Load more` button could still no-op. The controller had a defensive guard that compared the visible search signature against the mutable current language UI state before paging. When language metadata arrived after the first search and refreshed the default language selection, that guard treated the visible result set as stale and returned before calling `runSearch`.
+
+The follow-up fix keeps the query, route-language, and result-source guards, but stops comparing pagination against mutable post-search language UI defaults. Load More now pages from the active signature that produced the visible results. The regression test delays `getSearchLanguageOptions`, lets the initial search proceed through the fallback path, resolves English metadata afterward, and verifies the next-page request still fires with the original signature offset.
 
 ## Related Issues
 

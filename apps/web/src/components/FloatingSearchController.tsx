@@ -39,7 +39,6 @@ type ActiveSearchSignature = {
   query: string
   languageEnglishNames: string[]
   languageSlug: string | null
-  languageKey: string
   routeLanguageSlug: string | null
   resultSource: SearchActionResultSource
   nextOffset: number
@@ -427,10 +426,6 @@ export function FloatingSearchController({
           query: trimmed.slice(0, 200),
           languageEnglishNames: [...activeLanguageEnglishNames],
           languageSlug: signatureLanguageSlug,
-          languageKey: searchLanguageKey(
-            activeLanguageEnglishNames,
-            signatureLanguageSlug,
-          ),
           routeLanguageSlug,
           resultSource: data.resultSource,
           nextOffset: data.nextOffset ?? newResults.length,
@@ -469,22 +464,8 @@ export function FloatingSearchController({
     const expectedSignature = activeSearchSignatureRef.current
     if (!expectedSignature) return
     const currentQuery = queryRef.current.trim().slice(0, 200)
-    const currentLanguageSlug =
-      resultSource === "algolia"
-        ? null
-        : (selectedSearchLanguageOptionRef.current?.publicSlug ??
-          expectedSignature.languageSlug)
-    const currentLanguageEnglishNames =
-      selectedLanguageEnglishNamesRef.current.length > 0
-        ? selectedLanguageEnglishNamesRef.current
-        : expectedSignature.languageEnglishNames
-    const currentLanguageKey = searchLanguageKey(
-      currentLanguageEnglishNames,
-      currentLanguageSlug,
-    )
     if (
       expectedSignature.query !== currentQuery ||
-      expectedSignature.languageKey !== currentLanguageKey ||
       expectedSignature.routeLanguageSlug !== routeLanguageSlug ||
       expectedSignature.resultSource !== resultSource
     ) {
@@ -728,16 +709,6 @@ export function FloatingSearchController({
         : null}
     </FloatingSearchContext.Provider>
   )
-}
-
-function searchLanguageKey(
-  languageEnglishNames: readonly string[],
-  languageSlug: string | null,
-): string {
-  return [
-    languageSlug ?? "",
-    normalizeSearchLanguageEnglishNames(languageEnglishNames).join("\u0001"),
-  ].join("\u0002")
 }
 
 function withSearchLanguageOptionsFallback(
