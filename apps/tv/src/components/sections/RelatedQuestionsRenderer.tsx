@@ -49,6 +49,12 @@ type QuestionItem = {
 
 const PILL_ICON_SIZE = Math.round(scale(18))
 
+// Question-row focus ring overhangs the row into the column gutter so the border
+// clears edge-to-edge content (the row keeps paddingHorizontal 0). Outset must
+// stay <= the surrounding gutter; it does on both the inset=80 and inset=0 mounts.
+const RING_OUTSET_H = scale(16)
+const RING_OUTSET_V = scale(6)
+
 function FallbackPill({
   icon,
   label,
@@ -58,11 +64,14 @@ function FallbackPill({
   label: string
   onPress: () => void
 }) {
+  // White pill (bg #F5F5F4): the app-wide white focus ring has no contrast here,
+  // so opt into the crimson glow — the documented light-surface exception.
   return (
     <FocusableCard
       onPress={onPress}
       accessibilityLabel={label}
       style={styles.fallbackPill}
+      focusRing="crimson"
     >
       <Ionicons name={icon} size={PILL_ICON_SIZE} color={COLORS.surface} />
       <Text style={styles.fallbackPillText}>{label}</Text>
@@ -114,7 +123,7 @@ function QuestionRow({
   return (
     <View style={[styles.item, { marginHorizontal: inset }]}>
       <Pressable
-        style={[styles.questionRow, isFocused && styles.questionRowFocused]}
+        style={styles.questionRow}
         onPress={onToggle}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
@@ -126,6 +135,10 @@ function QuestionRow({
           {item.question}
         </Text>
         <Text style={styles.chevron}>{isExpanded ? "\u2304" : "\u203A"}</Text>
+        {/* White focus ring overlay (matches HomeCard) \u2014 no layout shift. */}
+        {isFocused ? (
+          <View style={styles.questionRowRing} pointerEvents="none" />
+        ) : null}
       </Pressable>
       {isExpanded &&
         (hasAnswer ? (
@@ -232,11 +245,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     borderRadius: scale(8),
   },
-  questionRowFocused: {
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(30),
-    shadowOpacity: 1,
-    shadowOffset: { width: 0, height: 0 },
+  // Extended OUTWARD (negative insets) so the 5px border clears the row's
+  // edge-to-edge content (paddingHorizontal 0) instead of overlapping the first
+  // glyph + chevron; the overhang sits in the empty column gutter.
+  questionRowRing: {
+    position: "absolute",
+    top: -RING_OUTSET_V,
+    bottom: -RING_OUTSET_V,
+    left: -RING_OUTSET_H,
+    right: -RING_OUTSET_H,
+    borderRadius: scale(12),
+    borderWidth: scale(5),
+    borderColor: "rgba(255,255,255,0.9)",
   },
   questionText: {
     flex: 1,
@@ -266,7 +286,7 @@ const styles = StyleSheet.create({
     gap: scale(16),
   },
   // White pill with dark ink (mobile/web parity); focus comes from
-  // FocusableCard's scale + crimson glow.
+  // FocusableCard's scale + white ring.
   fallbackPill: {
     flexDirection: "row",
     alignItems: "center",
