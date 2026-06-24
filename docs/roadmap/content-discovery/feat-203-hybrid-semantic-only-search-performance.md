@@ -39,10 +39,10 @@ ship with hidden latency problems after the public keyword-first path is fixed.
    - current keyword-first latency recovery and pgvector/HNSW guardrails.
 2. `docs/roadmap/content-discovery/feat-193-watch-search-readiness-eval-suite.md`
    - existing eval tracks for `public-watch`, `ai-experience-generation`, and
-   `semantic-diagnostic`.
+     `semantic-diagnostic`.
 3. `apps/admin/src/services/hybrid-search.service.ts`
    - mode selection, retriever fan-out, RRF orchestration, trace metadata, and
-   result mapping.
+     result mapping.
 4. `apps/admin/src/services/hybrid-search-retrievers.ts`
    - semantic-video, keyword, trigram, exact-title, and experience retriever SQL.
 5. `apps/admin/src/app/api/internal/search-eval/search/route.ts`
