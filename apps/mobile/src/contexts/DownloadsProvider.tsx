@@ -535,7 +535,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             record.renditionDocumentId,
           )
           try {
-            configureDownloadEngine({ wifiOnly: wifiOnlyRef.current })
+            // Engine config is applied once by the mount effect — never here.
+            // Re-applying recreates the URLSession and cancels sibling restarts.
             await ensureVideoDir(record.videoSlug)
           } catch {
             return
@@ -668,7 +669,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        configureDownloadEngine({ wifiOnly })
+        // Engine config is applied once by the mount effect, NOT per download:
+        // re-applying tears down + recreates the URLSession, cancelling every
+        // sibling download already in flight (the series "stops at N of M" bug).
         await ensureVideoDir(videoSlug)
       } catch {
         if (adoptedPlaceholder) await removeRecord(videoSlug)
@@ -740,7 +743,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       )
       return { ok: true }
     },
-    [wifiOnly, writeRecord, removeRecord, buildHandlers],
+    [writeRecord, removeRecord, buildHandlers],
   )
 
   // U8: non-destructive quality/language swap on an already-downloaded video.
@@ -772,7 +775,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "insufficient-storage" }
       }
       try {
-        configureDownloadEngine({ wifiOnly })
+        // See startDownload: engine config is applied once by the mount effect.
         await ensureVideoDir(videoSlug)
       } catch {
         return { ok: false, reason: "error" }
@@ -845,7 +848,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       )
       return { ok: true }
     },
-    [wifiOnly, writeRecord, buildHandlers, startDownload],
+    [writeRecord, buildHandlers, startDownload],
   )
 
   const value = useMemo<DownloadsContextValue>(
