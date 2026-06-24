@@ -18,7 +18,8 @@
     "generate:ui-locales": "node scripts/generate-ui-locales.mjs",
     "check:ui-locales": "node scripts/generate-ui-locales.mjs --check",
     "verify:categories": "tsx scripts/verify-categories.ts",
-    "probe:watch-urls": "tsx scripts/probe-watch-urls.ts"
+    "probe:watch-urls": "tsx scripts/probe-watch-urls.ts",
+    "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",

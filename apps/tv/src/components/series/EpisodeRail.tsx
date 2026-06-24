@@ -23,7 +23,12 @@ import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "../sections/sectionHeading"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import {
+  focusTransform,
+  THUMB_SHADOW,
+  useFocusAnimation,
+  useThumbFocusRing,
+} from "../watch/useFocusAnimation"
 import { episodeHref, resolveEpisodePath } from "./episodeRouting"
 
 const CARD_WIDTH = scale(360)
@@ -126,8 +131,8 @@ const EpisodeCard = memo(function EpisodeCard({
   index: number
   onPress: (episode: WatchEpisode) => void
 }) {
-  // Focus eases in (no "blink"): the card lifts + magnifies, the white glow
-  // ramps up, and the overlay icon fades in over ~180ms.
+  // Focus eases in (no "blink"): the card lifts + magnifies, the white ring
+  // fades in, and the overlay icon fades in over ~180ms.
   const { setFocused, progress } = useFocusAnimation()
   const title = episode.title ?? episode.slug
   // A series-shaped card opens a nested collection, not a video — its eyebrow
@@ -148,18 +153,14 @@ const EpisodeCard = memo(function EpisodeCard({
   // rather than on every focus/blur re-render.
   const cardStyle = useMemo(
     () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.05 }),
+      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
     }),
     [progress],
   )
-  const glowStyle = useMemo(
-    () => ({
-      shadowOpacity: progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 0.9],
-      }),
-    }),
-    [progress],
+  const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
+    progress,
+    CARD_WIDTH,
+    THUMB_HEIGHT,
   )
 
   return (
@@ -174,10 +175,11 @@ const EpisodeCard = memo(function EpisodeCard({
       }
     >
       <Animated.View style={[styles.card, cardStyle]}>
-        {/* Glow on the outer wrapper (overflow visible); image-clipping on the
-            inner view (overflow hidden). A shadow on an overflow:hidden view is
-            clipped away on iOS — same outer/inner split as FocusableCard. */}
-        <Animated.View style={[styles.thumbWrap, glowStyle]}>
+        {/* Neutral drop shadow on the outer wrapper (overflow visible);
+            image-clipping on the inner view (overflow hidden). A shadow on an
+            overflow:hidden view is clipped away on iOS — same outer/inner split
+            as FocusableCard. */}
+        <Animated.View style={[styles.thumbWrap, shadowStyle]}>
           <View style={styles.thumb}>
             {poster != null ? (
               <Image
@@ -198,6 +200,9 @@ const EpisodeCard = memo(function EpisodeCard({
             </Animated.View>
           </View>
         </Animated.View>
+
+        {/* White focus ring hugging the thumb — matches HomeCard. */}
+        <Animated.View style={[ringFrame, ringStyle]} pointerEvents="none" />
 
         <View style={styles.meta}>
           <Text style={styles.eyebrow} numberOfLines={1}>
@@ -244,16 +249,14 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
   },
-  // White focus glow matching the action-row pills; shadowOpacity is animated
-  // (0 at rest). On the OUTER wrapper so iOS doesn't clip it (the inner thumb
-  // is overflow:hidden).
+  // Neutral dark drop shadow for depth (matches HomeCard), revealed by the
+  // animated opacity. On the OUTER wrapper so iOS doesn't clip it (the inner
+  // thumb is overflow:hidden).
   thumbWrap: {
     width: CARD_WIDTH,
     height: THUMB_HEIGHT,
     borderRadius: scale(16),
-    shadowColor: "#ffffff",
-    shadowRadius: scale(10),
-    shadowOffset: { width: 0, height: 0 },
+    ...THUMB_SHADOW,
   },
   thumb: {
     ...StyleSheet.absoluteFillObject,

@@ -1246,6 +1246,14 @@ type Video {
   Parent Video-Video relations: rows where this Video appears on the CHILD side of the VideoRelation join. Traverse `parent { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
   """
   parents: [VideoRelation!]
+  """
+  Distinct playable audio-language count for this video. Used by Watch to decide whether to render language switching without loading every VideoDub in the cold route snapshot.
+  """
+  playableDubLanguageCount: Int!
+  """
+  One playable VideoDub for a Watch route. Prefers the requested language slug/BCP-47, then the video's primary language, then the longest playable dub. Lets consumer routes choose the initial player without projecting every dub.
+  """
+  preferredPlayableDub(languageSlug: String): VideoDub
   primaryLanguage: Language
   publishedAt: String
   slug: String

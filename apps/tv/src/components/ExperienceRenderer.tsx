@@ -344,8 +344,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 24,
+    // Reserve the focus border so toggling its color never shifts layout.
+    borderWidth: scale(3),
+    borderColor: "transparent",
   },
+  // Matches the home Play/See More CTA: white border + red drop shadow on the
+  // red fill (not a crimson glow).
   retryButtonFocused: {
+    transform: [{ scale: 1.05 }],
+    borderColor: "rgba(255,255,255,0.9)",
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,

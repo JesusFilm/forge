@@ -1,6 +1,7 @@
 ---
 title: Verifying mobile (Expo) worktree changes in the iOS simulator
 date: 2026-06-08
+last_updated: 2026-06-24
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -10,7 +11,7 @@ applies_when:
   - "Verifying apps/mobile (or apps/tv) Expo changes in the iOS simulator from a git worktree"
   - "A worktree's mobile app shows 'Search failed' or renders no data despite correct code"
   - "Another Metro is already running for the main checkout or another app"
-  - "An on-disk style/JS change doesn't appear in the running Expo Go app"
+  - "A worktree's own Metro crashes the main checkout's Metro or red-boxes the dev-client (watchman recrawl contention)"
 related_components:
   - apps/tv
   - packages/admin-graphql
@@ -45,6 +46,18 @@ of time and silently produce a wrong or stale verification:
 4. Driving the sim with `idb` taps on virtualized lists (FlashList, grids,
    formSheet rows) is flaky, so a "the button doesn't do anything" reading is
    often a missed tap, not a bug.
+
+## Prerequisites
+
+Before any of this, **watchman must be installed** (`brew install watchman`).
+Without it, Metro falls back to a node crawler that crashes with `RangeError:
+Invalid string length` on a monorepo this large — intermittently, so a first
+`expo start` may succeed and a later one won't. The crash also masquerades as a
+device-side ngrok/connect error when Metro runs behind a tunnel. See
+`docs/solutions/runtime-errors/metro-node-crawler-rangerror-missing-watchman-20260622.md`,
+which also explains why a `--tunnel` Metro forces even a localhost-connected
+simulator to fetch its bundle through the tunnel (run plain-localhost Metro for
+sim work, as this guide does).
 
 ## Guidance
 
@@ -93,6 +106,35 @@ xcrun simctl openurl <iphone-udid> "exp://127.0.0.1:8090"
 This leaves the user's main (8081) and TV (8082) Metros untouched. When done,
 `xcrun simctl openurl <udid> "exp://127.0.0.1:8081"` restores Expo Go to the
 main checkout.
+
+### 2b. A worktree's Metro needs its OWN node_modules — don't symlink to main
+
+Section 2 assumes the worktree has its own installed `node_modules` (`pnpm
+install` ran there). `EnterWorktree` / a bare `git worktree add` does **not**
+install, so a worktree under `.claude/worktrees/` starts with none. **Do not**
+shortcut that by symlinking the worktree's `node_modules` to the main checkout's:
+the worktree's Metro then resolves through the symlink, ends up watching the
+**entire main repo tree**, and the resulting `watchman` recrawl contends with the
+main checkout's already-running Metro. Observed failure — the main checkout's
+`:8082` Metro **crashes** and the tvOS dev-client red-boxes (`RCTFatal`), while the
+worktree's Metro logs `Recrawled this watch N times`. (Symlinked `node_modules` is
+fine for a one-off `tsc`/`eslint` pass; it's running a second **Metro** through it
+that triggers the watch contention.)
+
+Two ways out, preferred order:
+
+1. **Real install in the worktree** — `pnpm install` there so it has isolated
+   `node_modules` and its own watch scope, then run its Metro on a free port per
+   section 2. Heaviest, but the clean isolation the second-Metro approach needs.
+2. **Mirror to the primary checkout (best for JS/style-only changes)** — keep the
+   canonical work on the worktree **branch**, but apply the same changed files in
+   the **primary checkout** and verify against its already-running Metro. The
+   dev-client reads the primary checkout's Metro, so a Fast-Refresh/reload there
+   shows the change with zero new Metro and zero watchman contention. Revert the
+   mirror only after review (the "keep the main mirror applied" pattern).
+
+Applies to the TV dev-client (`org.jesusfilm.forgetv`, route deep-links like
+`exp+jesus-film-forge-tv:///watch/<slug>`) the same as to mobile's Expo Go.
 
 ### 3. Force a full reload — fast-refresh lies
 
