@@ -2,7 +2,8 @@
 // slides (Apple-TV page-flip: the incoming image slides in over the current,
 // from the right on "next" / from the left on "previous"); the COPY
 // crossfades (a separate dissolve layer), so text and image transition with
-// distinct motions.
+// distinct motions. On ANDROID the artwork crossfades too (opacity dissolve, the
+// IS_ANDROID path in runSlide) — a full-screen slide steps visibly at ~24fps.
 //
 // Layered ABOVE the ambient HomeBackdrop and BELOW the ScrollView, so the hero
 // action row (See more + chevron, in the ScrollView flow) stays pinned on top
@@ -319,7 +320,12 @@ function HeroArtworkCell({
     [card?.imageUrl],
   )
   const cellStyle = useMemo(
-    () => ({ transform: [{ translateX }], opacity, zIndex: onTop ? 2 : 1 }),
+    // Android drives the crossfade via opacity; tvOS slides and never animates
+    // opacity, so omit it there to keep the cell on its original style (no layer).
+    () =>
+      IS_ANDROID
+        ? { transform: [{ translateX }], opacity, zIndex: onTop ? 2 : 1 }
+        : { transform: [{ translateX }], zIndex: onTop ? 2 : 1 },
     [translateX, opacity, onTop],
   )
 

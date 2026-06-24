@@ -12,7 +12,8 @@ describe("isRailActive", () => {
 
   it("leaves rows beyond the buffer inactive", () => {
     expect(isRailActive(6, 3, BUFFER)).toBe(false)
-    expect(isRailActive(0, 3, BUFFER)).toBe(false)
+    // Real section-rail rowIndex (>= 1) below the window, not the hero row 0.
+    expect(isRailActive(1, 4, BUFFER)).toBe(false)
   })
 
   it("mounts the top rails when focus rests on the hero (row 0)", () => {
@@ -22,8 +23,14 @@ describe("isRailActive", () => {
     expect(isRailActive(3, 0, BUFFER)).toBe(false)
   })
 
-  it("always keeps at least the next rail ready in the travel direction (buffer >= 1)", () => {
-    // The contract that prevents D-pad landing on an empty placeholder.
+  it("keeps the bottom rails active when focus drops to the mission tail", () => {
+    // handleMissionFocus centers the window on the last rail (focusedRow = N).
+    expect(isRailActive(8, 8, BUFFER)).toBe(true)
+    expect(isRailActive(6, 8, BUFFER)).toBe(true)
+    expect(isRailActive(5, 8, BUFFER)).toBe(false)
+  })
+
+  it("keeps at least the next rail's images warm in the travel direction (buffer >= 1)", () => {
     expect(isRailActive(4, 3, 1)).toBe(true)
     expect(isRailActive(2, 3, 1)).toBe(true)
     expect(isRailActive(5, 3, 1)).toBe(false)

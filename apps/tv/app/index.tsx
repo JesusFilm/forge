@@ -63,10 +63,9 @@ import type { WatchHomeCard } from "../src/lib/watchHome/model"
  * The SDUI Experience pipeline still serves /experience/[slug] — only this
  * screen left it (R9).
  */
-// Image-windowing: how many rails on each side of the focused row load their
-// card images. Cards outside this window still mount (focus-safe) but skip the
-// decode. 2 keeps a neighbour ready in each direction so images are warm on
-// arrival without decoding the whole feed at once.
+// Image-windowing: rails within BUFFER rows of the focused row load their card
+// images; cards outside still mount (focus-safe) but skip the decode. 2 keeps a
+// neighbour warm in each direction without decoding the whole feed at once.
 const RAIL_WINDOW_BUFFER = 2
 
 // All home perf optimizations (image-windowing, row-change scroll gating) are
@@ -171,12 +170,9 @@ export default function HomeScreen() {
   // that would strand the focused card off-screen, so we stash the row and
   // fire the scroll the moment its onLayout lands (recordRowY below).
   const pendingScrollRowRef = useRef<number | null>(null)
-  // The row that currently holds focus. Within-row horizontal moves keep the
-  // same row, so the row-level chrome/scroll update (handleRowFocus) is gated to
-  // fire only on an actual row TRANSITION — a horizontal D-pad sweep then costs
-  // only the (native-driven) card animation, not a redundant scrollTo per move.
-  // Reset to null whenever focus leaves the rails (top bar / hero / mission) so
-  // re-entering a row always re-applies its browse/scroll state.
+  // Last focused row, so handleRowFocus fires only on a real row TRANSITION
+  // (within-row horizontal moves skip the redundant scroll). Reset to null when
+  // focus leaves the rails so re-entering a row re-applies its scroll state.
   const lastFocusedRowRef = useRef<number | null>(null)
   // Last section rail's row index, read by handleMissionFocus so the bottom
   // rails stay windowed-active when focus drops to the mission tail (Up returns
@@ -275,6 +271,9 @@ export default function HomeScreen() {
   useEffect(() => {
     rowYsRef.current = []
     pendingScrollRowRef.current = null
+    // A reshape can land focus on the same row index it held pre-refetch; clear
+    // the gate so handleRowFocus re-applies scroll + image-window state.
+    lastFocusedRowRef.current = null
   }, [sections])
 
   // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
@@ -458,7 +457,7 @@ export default function HomeScreen() {
         // Android only: skip drawing rails scrolled off-screen so a vertical
         // move only composites the visible rails. The row-anchored scroll keeps
         // the focused content on-screen, so focusables are never clipped.
-        removeClippedSubviews={Platform.OS === "android"}
+        removeClippedSubviews={IS_ANDROID}
       >
         <View>{topBar}</View>
 

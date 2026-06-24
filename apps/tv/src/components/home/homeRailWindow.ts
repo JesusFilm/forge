@@ -1,12 +1,12 @@
-// Focus-windowed rail mounting (Phase 2 perf): only rails near the focused row
-// mount their cards; off-window rails are fixed-height spacers. Drawing all ~8
-// rails (~50 images) every frame pinned the weak Chromecast home at ~6fps.
+// Image-windowing (Android home perf): every rail mounts its full card tree (so
+// D-pad focus always has a target), but cards in off-window rails skip the image
+// decode. Decoding ~50 card images per frame pinned the weak Chromecast home.
 
 /**
  * Rows: 0 is the hero (mounted separately), 1..N are the section rails.
- * `focusedRow` is the focused row (hero / top bar = 0); a rail is active when
- * within `buffer` rows of it. `buffer` must be >= 1 so the next rail mounts
- * before D-pad focus reaches it (focus never lands on an empty placeholder).
+ * `focusedRow` is the focused row (hero / top bar = 0); a rail is active (loads
+ * its images) when within `buffer` rows of it. `buffer` must be >= 1 so the next
+ * rail's images are warm before D-pad focus reaches it.
  */
 export function isRailActive(
   rowIndex: number,

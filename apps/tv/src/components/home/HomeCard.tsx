@@ -45,12 +45,10 @@ export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
 /** How far the white focus ring sits outside the thumb edge. */
 const RING_WIDTH = scale(5)
 
-/** Android TV runs the per-focus tween on the native driver (off the JS thread,
- *  which dominated D-pad-move frame time on the weak Chromecast SoC) and drops
- *  the JS-driven shadow — iOS shadow* props don't render on Android anyway, so
- *  the white ring carries the focus affordance there. tvOS keeps the full
- *  JS-driven treatment, shadow included. */
-const NATIVE_FOCUS = Platform.OS === "android"
+// Android runs the focus tween on the native driver (off the JS thread, the
+// D-pad-move bottleneck on the weak SoC) and drops the JS shadow (iOS shadow*
+// doesn't render on Android anyway). tvOS keeps the full JS treatment.
+const IS_ANDROID = Platform.OS === "android"
 
 type HomeCardProps = {
   card: WatchHomeCard
@@ -88,7 +86,7 @@ export const HomeCard = memo(function HomeCard({
   nodeRef,
 }: HomeCardProps) {
   const { focused, setFocused, progress } = useFocusAnimation({
-    nativeDriver: NATIVE_FOCUS,
+    nativeDriver: IS_ANDROID,
   })
   // CMS-sourced URL is untrusted — sanitize before it reaches expo-image.
   const imageUrl = useMemo(
@@ -110,13 +108,11 @@ export const HomeCard = memo(function HomeCard({
     }),
     [progress],
   )
-  // On Android the native-driven `progress` cannot feed shadowOpacity (the
-  // native driver rejects color/shadow props), and iOS shadow* props don't
-  // render on Android regardless — so skip the animated shadow there. tvOS keeps
-  // it.
+  // Android skips the animated shadow: the native driver rejects shadow/color
+  // props and iOS shadow* doesn't render on Android anyway. tvOS keeps it.
   const shadowStyle = useMemo(
     () =>
-      NATIVE_FOCUS
+      IS_ANDROID
         ? undefined
         : {
             shadowOpacity: progress.interpolate({
@@ -160,8 +156,8 @@ export const HomeCard = memo(function HomeCard({
                   // Android only: de-prioritize decodes so they don't saturate
                   // the queue ahead of the focused card; memory-disk makes
                   // re-entry instant. tvOS keeps expo-image defaults (unchanged).
-                  priority={NATIVE_FOCUS ? "low" : undefined}
-                  cachePolicy={NATIVE_FOCUS ? "memory-disk" : undefined}
+                  priority={IS_ANDROID ? "low" : undefined}
+                  cachePolicy={IS_ANDROID ? "memory-disk" : undefined}
                 />
               ) : (
                 // No artwork yet (missing URL, or off-window: loadImage=false).
@@ -172,7 +168,7 @@ export const HomeCard = memo(function HomeCard({
 
               {/* Hairline edge (design: 1px white .07). Dropped on Android —
                   one fewer view per card to redraw during a scroll. */}
-              {NATIVE_FOCUS ? null : (
+              {IS_ANDROID ? null : (
                 <View style={styles.thumbEdge} pointerEvents="none" />
               )}
 

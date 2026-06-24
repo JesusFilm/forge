@@ -29,13 +29,10 @@ const DEEP_SCRIM_MS = 500
 /** Quick restore when a pending crossfade is cancelled or superseded. */
 const CANCEL_FADE_MS = 200
 
-// Android TV drops the ambient backdrop ENTIRELY. Measurement on the Sabrina
-// Chromecast showed every redraw of this screen costs ~150ms (100% janky, even
-// at idle) — the weak GPU can't composite the backdrop's full-screen layers
-// (artwork image + 3 gradients + deep scrim) on top of the rail tree each frame.
-// The rails sit on the screen's near-black base instead. tvOS keeps the full
-// focus-driven ambient showcase (its GPU handles it fine).
-const NATIVE = Platform.OS === "android"
+// Android drops the ambient backdrop entirely: the Sabrina GPU can't composite
+// its full-screen layers (artwork + 3 gradients + deep scrim) over the rail tree
+// each frame (~150ms/redraw). Rails sit on the near-black base; tvOS keeps it.
+const IS_ANDROID = Platform.OS === "android"
 
 // The design's ambient scrim — three stacked gradients over the artwork, all
 // on the WATCH_THEME near-black scrim base. Module-scope so the gradient
@@ -157,7 +154,7 @@ export const HomeBackdrop = memo(function HomeBackdrop({
 
   useEffect(() => {
     // Android renders the single-slot path below — skip the two-slot dance.
-    if (NATIVE) return
+    if (IS_ANDROID) return
     const opacities = slotOpacitiesRef.current
     const front = frontIndexRef.current
     const back: SlotIndex = front === 0 ? 1 : 0
@@ -234,10 +231,10 @@ export const HomeBackdrop = memo(function HomeBackdrop({
 
   const opacities = slotOpacitiesRef.current
 
-  // Android: no ambient backdrop (see NATIVE comment) — rails on the near-black
+  // Android: no ambient backdrop (see IS_ANDROID comment) — rails on the near-black
   // screen base. All hooks above still run so the rules of hooks hold; the
   // two-slot effect already no-ops on Android.
-  if (NATIVE) return null
+  if (IS_ANDROID) return null
 
   return (
     <View
