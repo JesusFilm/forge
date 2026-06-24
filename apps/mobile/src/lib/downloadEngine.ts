@@ -20,17 +20,34 @@ import {
 
 export type EngineTask = ReturnType<typeof createDownloadTask>
 
+let appliedWifiOnly: boolean | undefined
+
 /**
  * Apply global engine config. iOS wifi-only is global (`allowsCellularAccess`);
  * Android's metered flag is per-download in {@link startMediaDownload}. The
  * persistent Android notification is required by the foreground service.
+ *
+ * IDEMPOTENT BY CONTRACT: the native `setConfig` mutates `allowsCellularAccess`,
+ * which the library applies by tearing down and recreating the shared
+ * URLSession — and that CANCELS every in-flight download (they surface as
+ * errorCode -999 "cancelled"). A series fans out many downloads, so re-applying
+ * an unchanged config mid-series would cancel the ones already running. Skip the
+ * native call when nothing changed so configuration only ever happens on first
+ * apply and on an actual wifi-only toggle.
  */
 export function configureDownloadEngine(opts: { wifiOnly: boolean }): void {
+  if (opts.wifiOnly === appliedWifiOnly) return
+  appliedWifiOnly = opts.wifiOnly
   setConfig({
     allowsCellularAccess: !opts.wifiOnly,
     showNotificationsEnabled: true,
     progressInterval: 1000,
   })
+}
+
+/** Test-only: clear the cached config so each case starts from a clean slate. */
+export function __resetEngineConfigForTest(): void {
+  appliedWifiOnly = undefined
 }
 
 export type MediaDownloadHandlers = {

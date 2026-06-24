@@ -29,7 +29,6 @@ tags:
   - "local-state"
   - "app-router"
   - "router-replace"
-  - "history-replace-state"
   - "loading-state"
 ---
 
@@ -75,10 +74,25 @@ Production smoke after the local-state merge showed typed search requests were f
 
 The follow-up fix keeps the query, route-language, and result-source guards, but stops comparing pagination against mutable post-search language UI defaults. Load More now pages from the active signature that produced the visible results. The regression test delays `getSearchLanguageOptions`, lets the initial search proceed through the fallback path, resolves English metadata afterward, and verifies the next-page request still fires with the original signature offset.
 
+## Verification
+
+- PR [#1349](https://github.com/JesusFilm/forge/pull/1349) removed Watch search URL query sync and merged into `main` as `b5e32cd5` on 2026-06-24.
+- PR [#1351](https://github.com/JesusFilm/forge/pull/1351) fixed Load More signature drift and merged into `main` as `4cfcf497` on 2026-06-24.
+- CI passed for both changes: `format`, `lint (@forge/web)`, `test (@forge/web)`, and `build (@forge/web)`.
+- Production smoke after #1351 passed: direct `?q=` stayed inert, typed `bible` search kept the URL at `/watch`, Load More fired an additional server action, and no page errors were reported.
+
+## Prevention
+
+- Treat Watch modal query, result, loading, and pagination state as local UI state unless the product explicitly reintroduces a shareable-search URL contract.
+- Test page-level modal behavior, not only isolated server-action HTTP status; the bug class is whether the client reaches `runSearch` and clears skeleton/loading state.
+- For pagination, page from the active result-set signature that produced the visible cards. Do not recompute language identity from mutable selected/default language UI state after results render.
+- Include delayed language metadata in regression tests whenever `getSearchLanguageOptions` can resolve after a first search page.
+
 ## Related Issues
 
 - [Forge Algolia Search Modal Pattern](../architecture-patterns/forge-algolia-search-modal-20260610.md)
 - [Watch search overlay page size mismatch](../logic-errors/watch-search-overlay-page-size-mismatch.md)
+- [Watch semantic search language metadata confirmation race](watch-semantic-search-language-metadata-confirmation-race.md)
 - [Watch Staged Client Loading](../performance-issues/watch-staged-client-loading-20260611.md)
 - [Next.js search overlay UI patterns](../best-practices/nextjs-search-overlay-ui-patterns-20260415.md)
 - [Queueing a user action across a Suspense boundary re-key in Next.js App Router](../best-practices/nextjs-cross-suspense-action-queue-with-url-params-20260421.md)

@@ -170,3 +170,33 @@ export function parseOfflineIndex(raw: string | null): string[] {
 export function serializeOfflineIndex(slugs: string[]): string {
   return JSON.stringify(Array.from(new Set(slugs)))
 }
+
+/**
+ * A bare `queued` placeholder written by the series batch (queueBatchRecords),
+ * before any transfer — no pending or committed file. The per-video start path
+ * writes `downloading`+pendingPath, and launch reattach builds a pendingPath, so
+ * neither is misclassified. Used to ADOPT (drive to downloading) vs. report exists.
+ */
+export function isBatchPlaceholderRecord(
+  record: OfflineDownloadRecord | null | undefined,
+): boolean {
+  return (
+    record != null &&
+    record.state === "queued" &&
+    record.pendingPath == null &&
+    record.committedPath == null
+  )
+}
+
+/**
+ * A live record (downloaded or in-progress) that the batch pre-persist must not
+ * overwrite — only fresh or previously-terminal (failed/canceled) slugs get a new
+ * queued placeholder, so a swap snapshot or in-flight copy is never clobbered.
+ */
+export function isLiveDownloadRecord(
+  record: OfflineDownloadRecord | null | undefined,
+): boolean {
+  return (
+    record != null && record.state !== "failed" && record.state !== "canceled"
+  )
+}
