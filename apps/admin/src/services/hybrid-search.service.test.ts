@@ -62,7 +62,7 @@ function defaultHydrationRawQuery(
   return Promise.resolve([])
 }
 
-function latestHydrationRawSqlContaining(pattern: string): string {
+function hydrationRawSqlContaining(pattern: string): string {
   const calls = mockPrisma.$queryRaw.mock.calls as Array<
     [TemplateStringsArray, ...unknown[]]
   >
@@ -70,7 +70,8 @@ function latestHydrationRawSqlContaining(pattern: string): string {
     const strings = rawCall[0]
     return strings?.join(" ").includes(pattern)
   })
-  return call?.[0].join(" ") ?? ""
+  expect(call, `Expected hydration SQL containing ${pattern}`).toBeDefined()
+  return call![0].join(" ")
 }
 
 const mockPrisma = {
@@ -975,7 +976,7 @@ describe("HybridSearchService", () => {
       ).toBe(60)
     })
 
-    it("uses a stable tie-breaker for equal-duration hydration dubs", async () => {
+    it("orders hydration dub ranking with a stable tie-breaker", async () => {
       vi.mocked(searchVideoSemantic).mockResolvedValue([
         {
           resultType: "video",
@@ -1015,8 +1016,8 @@ describe("HybridSearchService", () => {
 
       await service.search({ query: "x", locale: "en" })
 
-      expect(latestHydrationRawSqlContaining("FROM video_dub")).toContain(
-        "ORDER BY vd.duration DESC, vd.id ASC",
+      expect(hydrationRawSqlContaining("FROM video_dub")).toMatch(
+        /row_number\(\)\s+OVER\s*\(\s*PARTITION BY vd\.video_id\s+ORDER BY vd\.duration DESC,\s*vd\.id ASC\s*\)\s+AS hydration_rank/,
       )
     })
 
