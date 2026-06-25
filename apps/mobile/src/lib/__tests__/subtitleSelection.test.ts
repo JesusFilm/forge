@@ -1,6 +1,8 @@
 import {
   deriveSubtitleLabel,
+  reconcileSeriesSubtitleSlug,
   resolveActiveSubtitle,
+  resolveSeriesSubtitleLabel,
   resolveSubtitleActionLabel,
   subtitleNameToCache,
 } from "../subtitleSelection"
@@ -79,16 +81,91 @@ describe("resolveSubtitleActionLabel", () => {
     )
   })
 
-  it("falls back to the cached name when enabled but unresolved (cold load)", () => {
-    // The whole point of the feature: paint the persisted name during the gap.
-    expect(resolveSubtitleActionLabel(true, null, [], "French")).toBe("French")
+  it("returns 'Off' when the dub is loaded with no subtitle tracks", () => {
+    // The reported bug: a loaded-empty dub ([]) must say "Off", not a stale name.
+    expect(resolveSubtitleActionLabel(true, "arabic", [], "Arabic")).toBe("Off")
+    expect(resolveSubtitleActionLabel(true, null, [], "French")).toBe("Off")
+  })
+
+  it("paints the cached name while the dub media is still loading (null)", () => {
+    // null = not loaded yet → optimistic paint; distinct from [] = loaded-empty.
+    expect(resolveSubtitleActionLabel(true, null, null, "French")).toBe(
+      "French",
+    )
+    // Loaded with tracks but the slug isn't among them → cached name during the
+    // gap before the pre-select effect reconciles to a supported track.
     expect(resolveSubtitleActionLabel(true, "german", SUBS, "French")).toBe(
       "French",
     )
   })
 
-  it("returns null when enabled, unresolved, and there is no cached name", () => {
-    expect(resolveSubtitleActionLabel(true, null, [], null)).toBeNull()
+  it("returns null when enabled, not loaded, and there is no cached name", () => {
+    expect(resolveSubtitleActionLabel(true, null, null, null)).toBeNull()
+  })
+})
+
+describe("reconcileSeriesSubtitleSlug", () => {
+  it("returns null when disabled or the series has no subtitles", () => {
+    expect(reconcileSeriesSubtitleSlug(false, "english", SUBS, null)).toBeNull()
+    expect(reconcileSeriesSubtitleSlug(true, "english", [], null)).toBeNull()
+  })
+
+  it("keeps the preferred slug when the series offers it", () => {
+    expect(reconcileSeriesSubtitleSlug(true, "french", SUBS, null)).toBe(
+      "french",
+    )
+  })
+
+  it("falls back to a supported track when the preference is unavailable", () => {
+    // Cantonese isn't in the series → must resolve to a track it actually has,
+    // never the unsupported preference (the reported bug).
+    const slug = reconcileSeriesSubtitleSlug(true, "cantonese", SUBS, null)
+    expect(slug).not.toBe("cantonese")
+    expect(["english", "french"]).toContain(slug)
+  })
+})
+
+describe("resolveSeriesSubtitleLabel", () => {
+  it("paints the cached name optimistically before the union resolves", () => {
+    expect(
+      resolveSeriesSubtitleLabel(true, "cantonese", "Cantonese", null, null),
+    ).toBe("Cantonese")
+  })
+
+  it("returns 'Off' when subtitles are disabled", () => {
+    expect(
+      resolveSeriesSubtitleLabel(false, "english", "English", SUBS, null),
+    ).toBe("Off")
+    expect(
+      resolveSeriesSubtitleLabel(false, "english", "English", null, null),
+    ).toBe("Off")
+  })
+
+  it("shows the preferred name when the resolved union offers it", () => {
+    expect(
+      resolveSeriesSubtitleLabel(true, "french", "French", SUBS, null),
+    ).toBe("French")
+  })
+
+  it("falls back to a supported track, never the unsupported cached name", () => {
+    // The fix: a Cantonese pref on an English/French series must NOT paint
+    // "Cantonese" once we know the series doesn't carry it.
+    const label = resolveSeriesSubtitleLabel(
+      true,
+      "cantonese",
+      "Cantonese",
+      SUBS,
+      null,
+    )
+    expect(label).not.toBe("Cantonese")
+    expect(["English", "French"]).toContain(label)
+  })
+
+  it("shows 'Off' when the resolved series has no subtitles", () => {
+    // Empty union → the series has no subtitles: "Off", not the stale cached name.
+    expect(
+      resolveSeriesSubtitleLabel(true, "cantonese", "Cantonese", [], null),
+    ).toBe("Off")
   })
 })
 

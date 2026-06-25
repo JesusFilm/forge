@@ -289,9 +289,14 @@ export default function WatchVideoPage() {
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,
     activeSubtitleSlug,
-    activeVariantMedia?.subtitles ?? [],
+    activeVariantMedia?.subtitles ?? null,
     preferredSubtitleName,
   )
+  // A loaded dub with no tracks reads as "Off" — mute the pill too, so an enabled
+  // preference carried from another video doesn't paint as active here.
+  const subtitlesAvailable =
+    activeVariantMedia == null || activeVariantMedia.subtitles.length > 0
+  const subtitleActive = subtitleEnabled && subtitlesAvailable
 
   // Prefer the resolved video; fall back to the seed so first paint has
   // content. The player source resolves to the active variant, then the
@@ -515,7 +520,7 @@ export default function WatchVideoPage() {
               onShare={handleShare}
               languageLabel={languageActionLabel}
               subtitleLabel={subtitleActionLabel}
-              subtitleActive={subtitleEnabled}
+              subtitleActive={subtitleActive}
             />
 
             <VideoDescription description={video.description} />

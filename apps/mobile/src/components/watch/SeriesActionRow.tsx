@@ -1,7 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
-import { ACCENT, SURFACE_COLOR, TEXT_SECONDARY } from "../../lib/color"
+import {
+  ACCENT_ON_DARK,
+  SURFACE_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+} from "../../lib/color"
 import { DOWNLOAD_DONE_COLOR } from "../../lib/downloadGlyph"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
@@ -12,100 +18,139 @@ import {
   seriesDownloadLabel,
 } from "../../lib/seriesDownloadAggregate"
 
-// Language + Download all + Share. Download-all batches every episode through the
-// per-video queue (U11). Separate from ActionButtonRow (a pill row + icon
-// cluster) — different affordances.
+const DIVIDER_COLOR = "rgba(255, 255, 255, 0.12)"
+// Subtle filled background so the Language row reads as a tappable pill.
+const CHIP_BG = "rgba(255, 255, 255, 0.07)"
+// Full-radius pill sentinel; clamps to half the height so it stays a pill.
+const PILL_RADIUS = 999
+
+// Mirrors ActionButtonRow: Language + Subtitles pills, a divider, then a
+// right-aligned icon cluster. The "Download all" icon carries series-wide state
+// (idle download-outline → progress ring → green tick when every episode saved).
 export type SeriesActionRowProps = {
   onLanguage: () => void
+  onSubtitles: () => void
   onDownload: () => void
   onShare: () => void
-  /** Selected language name shown under the Language button. */
+  /** Selected language name shown in the Language pill. */
   languageLabel?: string | null
-  /** Series-wide download progress shown under the Download button. */
+  /** Selected subtitle name (or "Off") shown in the Subtitles pill. */
+  subtitleLabel?: string | null
+  /** Subtitles on → bright pill; off → muted, matching the "Off" state. */
+  subtitleActive?: boolean
+  /** Series-wide download progress driving the Download icon/ring. */
   downloadState: SeriesDownloadState
-}
-
-type ActionItem = {
-  /** Stable identity for the React key — label is dynamic (e.g. a language). */
-  id: string
-  icon: React.ComponentProps<typeof Ionicons>["name"]
-  label: string
-  onPress: () => void
-  /** Spoken label; falls back to the visible label when omitted. */
-  accessibilityLabel?: string
 }
 
 export function SeriesActionRow({
   onLanguage,
+  onSubtitles,
   onDownload,
   onShare,
   languageLabel,
+  subtitleLabel,
+  subtitleActive,
   downloadState,
 }: SeriesActionRowProps) {
   const typography = useTypography()
 
-  const language = languageLabel?.trim() || null
-  const downloadLabel = seriesDownloadLabel(downloadState)
+  const language = languageLabel?.trim() || "Language"
+  const subtitle = subtitleLabel?.trim() || "Subtitles"
+  // Subtitles read bright when on, muted when off (mirrors the "Off" label).
+  const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
+  // Icon-only Download button → the spoken label carries the state/meaning.
+  const downloadA11y = seriesDownloadLabel(downloadState)
   const allDownloaded = seriesAllDownloaded(downloadState)
-
-  const actions: ActionItem[] = [
-    {
-      id: "language",
-      icon: "globe-outline",
-      label: language ?? "Language",
-      accessibilityLabel: language ? `Language, ${language}` : "Language",
-      onPress: onLanguage,
-    },
-    {
-      id: "download",
-      icon: "arrow-down-circle-outline",
-      label: downloadLabel,
-      accessibilityLabel: downloadLabel,
-      onPress: onDownload,
-    },
-    { id: "share", icon: "share-outline", label: "Share", onPress: onShare },
-  ]
 
   return (
     <View style={styles.row}>
-      {actions.map((action) => (
+      {/* Audio + Subtitles flow as content-hugging pills, wrapping to a stacked
+          layout only when the two names can't fit together. Tap opens the picker. */}
+      <View style={styles.languages}>
         <Pressable
-          key={action.id}
-          onPress={action.onPress}
+          onPress={onLanguage}
+          style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Language, ${language}`}
+        >
+          <Ionicons name="globe-outline" size={21} color={TEXT_SECONDARY} />
+          <Text
+            style={[styles.langText, typography.body, { color: TEXT_PRIMARY }]}
+            numberOfLines={1}
+          >
+            {language}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={onSubtitles}
+          style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Subtitles, ${subtitle}`}
+        >
+          <MaterialCommunityIcons
+            name="closed-caption-outline"
+            size={21}
+            color={subColor}
+          />
+          <Text
+            style={[styles.langText, typography.body, { color: subColor }]}
+            numberOfLines={1}
+          >
+            {subtitle}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* Download all + Share are clean icons, grouped right. */}
+      <View style={styles.icons}>
+        <Pressable
+          onPress={onDownload}
           style={({ pressed }) => [
-            styles.actionButton,
+            styles.iconButton,
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel={action.accessibilityLabel ?? action.label}
+          accessibilityLabel={downloadA11y}
         >
-          {action.id === "download" && downloadState.inProgress ? (
+          {downloadState.inProgress ? (
             <DownloadProgressRing
               size={26}
               strokeWidth={2.5}
               progress={downloadState.progress}
-              color={ACCENT}
+              color={ACCENT_ON_DARK}
               trackColor="rgba(255, 255, 255, 0.18)"
               cutoutColor={SURFACE_COLOR}
             >
-              <Ionicons name={action.icon} size={12} color={ACCENT} />
+              <Ionicons name="arrow-down" size={12} color={ACCENT_ON_DARK} />
             </DownloadProgressRing>
-          ) : action.id === "download" && allDownloaded ? (
-            // Green tick once every episode is saved — mirrors the per-video
-            // Download button's "downloaded" glyph (checkmark-circle-outline).
+          ) : allDownloaded ? (
             <Ionicons
               name="checkmark-circle-outline"
               size={24}
               color={DOWNLOAD_DONE_COLOR}
             />
           ) : (
-            <Ionicons name={action.icon} size={24} color={TEXT_SECONDARY} />
+            <Ionicons
+              name="download-outline"
+              size={24}
+              color={TEXT_SECONDARY}
+            />
           )}
-          <Text style={[styles.actionLabel, typography.caption]}>
-            {action.label}
-          </Text>
         </Pressable>
-      ))}
+        <Pressable
+          onPress={onShare}
+          style={({ pressed }) => [
+            styles.iconButton,
+            pressed && feedback.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Share"
+        >
+          <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
+        </Pressable>
+      </View>
     </View>
   )
 }
@@ -113,31 +158,60 @@ export function SeriesActionRow({
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    justifyContent: "center",
-    // Top-align so the icons stay on one line when a long language label wraps.
-    alignItems: "flex-start",
-    // Three items now (was 64 for two); tighten so the row fits a 320pt width.
-    gap: 40,
+    alignItems: "center",
+    gap: 16,
     paddingHorizontal: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255, 255, 255, 0.1)",
     marginTop: 4,
-    paddingTop: 8,
+    paddingTop: 14,
+    paddingBottom: 8,
   },
-  actionButton: {
+  languages: {
+    flex: 1,
+    minWidth: 0,
+    // Pills flow on one line and only wrap to a stacked layout when the two
+    // names can't fit together — no forced double-line gap for short names.
+    flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "flex-start",
-    minWidth: 48,
-    minHeight: 48,
-    paddingVertical: 8,
+    rowGap: 10,
+    columnGap: 8,
   },
-  actionLabel: {
-    color: TEXT_SECONDARY,
+  langRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    // Hug content, but never exceed the column — a very long name ellipsizes.
+    maxWidth: "100%",
+    minHeight: 38,
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: PILL_RADIUS,
+    backgroundColor: CHIP_BG,
+  },
+  langText: {
+    // Shrink + ellipsize only when the pill hits its max width.
+    flexShrink: 1,
+    minWidth: 0,
     fontFamily: "System",
-    marginTop: 4,
-    // Bound the width so a long language name (e.g. "Arabic, Modern Standard")
-    // wraps onto a second line instead of stretching the centered row.
-    maxWidth: 200,
-    textAlign: "center",
+  },
+  divider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginVertical: 4,
+    backgroundColor: DIVIDER_COLOR,
+  },
+  icons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
   },
 })
