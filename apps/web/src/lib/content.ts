@@ -1586,7 +1586,7 @@ function mergeChildRelationsShellAndCopy(
 }
 
 function mergeParentRelationsShellAndCopy(
-  relations: AdminVideoShellRaw["parents"],
+  relations: AdminVideoRaw["parents"],
   copyRelations: AdminVideoLocalizedCopyRaw["parents"] | undefined,
 ): AdminParentRelationRaw[] {
   const copyByParentId = new Map(

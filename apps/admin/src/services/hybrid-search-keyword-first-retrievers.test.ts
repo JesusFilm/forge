@@ -16,6 +16,7 @@ import {
   searchByTrigram,
   tokenizeForExactTitle,
 } from "./hybrid-search-keyword-first-retrievers"
+import { SearchTimingRecorder } from "./hybrid-search-timing"
 
 function mockPrisma() {
   const $queryRaw = vi.fn()
@@ -131,6 +132,30 @@ describe("searchByKeywordWeighted", () => {
       description: "Animated bible overview",
       rank: 0.42,
     })
+  })
+
+  it("records the weighted keyword DB timing when a recorder is passed", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    const timing = new SearchTimingRecorder()
+
+    await searchByKeywordWeighted(
+      prisma,
+      {
+        query: "bible project",
+        locale: "en",
+        limit: 10,
+      },
+      timing,
+    )
+
+    expect(timing.snapshotDbTimings()).toEqual([
+      expect.objectContaining({
+        label: "keyword-weighted-video.query",
+        status: "fulfilled",
+        resultCount: 0,
+        elapsedMs: expect.any(Number),
+      }),
+    ])
   })
 
   it("short-circuits to [] on empty / whitespace input without a DB call", async () => {

@@ -38,6 +38,29 @@ import {
   searchByExactTitle,
   tokenizeForExactTitle,
 } from "./hybrid-search-keyword-first-retrievers"
+import {
+  activeTimingIntervalsMs,
+  boundedMs,
+  elapsedMs,
+  nowMs,
+  recordSearchDbTiming,
+  SearchTimingRecorder,
+  type SearchTimingInterval,
+  type SearchRetrieverTiming,
+  type SearchTimingSummary,
+} from "./hybrid-search-timing"
+
+export {
+  formatSearchTimingLogLine,
+  formatSearchTimingLogFields,
+  searchTimingLogValue,
+} from "./hybrid-search-timing"
+export type {
+  SearchDbTiming,
+  SearchRetrieverTiming,
+  SearchTimingRouteSource,
+  SearchTimingSummary,
+} from "./hybrid-search-timing"
 
 export const RRF_K = 60
 export const DEFAULT_LIMIT = 20
@@ -259,6 +282,7 @@ export type SearchExecutionSummary = {
 export type SearchWithTraceResult = {
   response: SearchResponse
   trace: SearchExecutionSummary
+  timings: SearchTimingSummary
 }
 
 /**
@@ -381,6 +405,7 @@ async function hydrateCardDisplayFields(
   results: SearchResult[],
   locale: string,
   logger?: { error: (msg: string) => void },
+  timing?: SearchTimingRecorder,
 ): Promise<SearchResult[]> {
   const videoIds = results.filter((r) => r.type === "video").map((r) => r.id)
   if (videoIds.length === 0) return results
@@ -391,88 +416,92 @@ async function hydrateCardDisplayFields(
   // sparse card metadata rather than HTTP 503 for the whole request.
   let rows
   try {
-    rows = await prisma.video.findMany({
-      where: { id: { in: videoIds }, deletedAt: null },
-      select: {
-        id: true,
-        label: true,
-        primaryLanguageId: true,
-        locales: {
-          where: {
-            locale,
-            status: "PUBLISHED",
-            deletedAt: null,
+    rows = await recordSearchDbTiming(timing, "hydration.video.findMany", () =>
+      prisma.video.findMany({
+        where: { id: { in: videoIds }, deletedAt: null },
+        select: {
+          id: true,
+          label: true,
+          primaryLanguageId: true,
+          locales: {
+            where: {
+              locale,
+              status: "PUBLISHED",
+              deletedAt: null,
+            },
+            take: 1,
+            select: {
+              description: true,
+              snippet: true,
+            },
           },
-          take: 1,
-          select: {
-            description: true,
-            snippet: true,
+          images: {
+            where: { deletedAt: null },
+            orderBy: [{ createdAt: "asc" }],
+            take: HYDRATION_IMAGES_PER_VIDEO,
+            select: {
+              mobileCinematicHigh: true,
+              mobileCinematicLow: true,
+              videoStill: true,
+              thumbnail: true,
+              url: true,
+            },
           },
-        },
-        images: {
-          where: { deletedAt: null },
-          orderBy: [{ createdAt: "asc" }],
-          take: HYDRATION_IMAGES_PER_VIDEO,
-          select: {
-            mobileCinematicHigh: true,
-            mobileCinematicLow: true,
-            videoStill: true,
-            thumbnail: true,
-            url: true,
+          dubs: {
+            // `duration: { gt: 0 }` excludes sync-glitch rows (Core
+            // occasionally returns a published dub with duration=0; the
+            // pill picker then renders nothing for those rows, leaving an
+            // unexplained gap on the card).
+            where: {
+              published: true,
+              hls: { not: null },
+              deletedAt: null,
+              duration: { gt: 0 },
+            },
+            // `take` bounds the per-video dubs scan. Order by duration
+            // descending so the longest published in-locale dub anchors
+            // the top of the page; the post-query `find` below prefers the
+            // primary-language dub among these top-N rows, falling back to
+            // `dubs[0]` (longest) when the primary dub isn't in the top-N
+            // by duration. On heavily-dubbed videos (200+ dubs) the primary
+            // may rank below position N — accept the fallback rather than
+            // widen `take` (cost is bounded at 50 × N rows per request).
+            orderBy: [{ duration: "desc" }],
+            take: HYDRATION_DUBS_PER_VIDEO,
+            select: {
+              languageId: true,
+              duration: true,
+              muxVideo: { select: { playbackId: true } },
+            },
           },
-        },
-        dubs: {
-          // `duration: { gt: 0 }` excludes sync-glitch rows (Core
-          // occasionally returns a published dub with duration=0; the
-          // pill picker then renders nothing for those rows, leaving an
-          // unexplained gap on the card).
-          where: {
-            published: true,
-            hls: { not: null },
-            deletedAt: null,
-            duration: { gt: 0 },
-          },
-          // `take` bounds the per-video dubs scan. Order by duration
-          // descending so the longest published in-locale dub anchors
-          // the top of the page; the post-query `find` below prefers the
-          // primary-language dub among these top-N rows, falling back to
-          // `dubs[0]` (longest) when the primary dub isn't in the top-N
-          // by duration. On heavily-dubbed videos (200+ dubs) the primary
-          // may rank below position N — accept the fallback rather than
-          // widen `take` (cost is bounded at 50 × N rows per request).
-          orderBy: [{ duration: "desc" }],
-          take: HYDRATION_DUBS_PER_VIDEO,
-          select: {
-            languageId: true,
-            duration: true,
-            muxVideo: { select: { playbackId: true } },
-          },
-        },
-        // `_count.children` mirrors the consumer-facing ABAC at
-        // videoChildrenFilter (apps/admin/src/graphql/types/video.ts):
-        // only count children that have a PUBLISHED locale and aren't
-        // soft-deleted. Without this filter the search-card "{n} episodes"
-        // pill drifts from what the watch page actually renders. Self-
-        // referential rows (parent_id = child_id) — a data-quality issue
-        // seen for `1-jesus-our-loving-pursuer` — can still inflate the
-        // count; web's normalizeAdminVideo filters those client-side, but
-        // the count is computed before that pass. Acceptable today; if
-        // self-ref inflation becomes a UX issue, switch to a raw SQL
-        // count that adds `WHERE child_id <> parent_id`.
-        _count: {
-          select: {
-            children: {
-              where: {
-                child: {
-                  deletedAt: null,
-                  locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          // `_count.children` mirrors the consumer-facing ABAC at
+          // videoChildrenFilter (apps/admin/src/graphql/types/video.ts):
+          // only count children that have a PUBLISHED locale and aren't
+          // soft-deleted. Without this filter the search-card "{n} episodes"
+          // pill drifts from what the watch page actually renders. Self-
+          // referential rows (parent_id = child_id) — a data-quality issue
+          // seen for `1-jesus-our-loving-pursuer` — can still inflate the
+          // count; web's normalizeAdminVideo filters those client-side, but
+          // the count is computed before that pass. Acceptable today; if
+          // self-ref inflation becomes a UX issue, switch to a raw SQL
+          // count that adds `WHERE child_id <> parent_id`.
+          _count: {
+            select: {
+              children: {
+                where: {
+                  child: {
+                    deletedAt: null,
+                    locales: {
+                      some: { status: "PUBLISHED", deletedAt: null },
+                    },
+                  },
                 },
               },
             },
           },
         },
-      },
-    })
+      }),
+    )
   } catch (err) {
     const log = logger ?? console
     log.error(
@@ -616,6 +645,8 @@ export class HybridSearchService {
   }
 
   async searchWithTrace(params: SearchParams): Promise<SearchWithTraceResult> {
+    const totalStartedAt = nowMs()
+    const timing = new SearchTimingRecorder()
     const { query, locale } = params
 
     // Decode the opt-in pipeline mode. Unknown values warn-and-fall-back
@@ -642,13 +673,128 @@ export class HybridSearchService {
     const wantsVideos = requested.includes("video")
     const wantsExperiences = requested.includes("experience")
 
-    // Step 1: Embed the user's query. Degrade gracefully if the
+    // Step 1: Prepare retrieval wrappers before embedding. Keyword-first
+    // video lexical retrievers do not need the query embedding, so they
+    // can start while the embedding provider is still in flight.
+    type Retrieval = {
+      label: string
+      promise: Promise<RankedItem[]>
+    }
+    const retrievals: Retrieval[] = []
+    const retrieverTimings = new Map<string, SearchRetrieverTiming>()
+    const retrievalIntervals: SearchTimingInterval[] = []
+    const skippedRetrieval = (label: string): Promise<RankedItem[]> => {
+      retrieverTimings.set(label, {
+        label,
+        status: "skipped",
+        elapsedMs: 0,
+        resultCount: 0,
+      })
+      return Promise.resolve([])
+    }
+    const timedRetrieval = (
+      label: string,
+      run: () => Promise<RankedItem[]>,
+    ): Promise<RankedItem[]> => {
+      const startedAt = nowMs()
+      return Promise.resolve()
+        .then(run)
+        .then(
+          (value) => {
+            const endedAt = nowMs()
+            retrievalIntervals.push({ startedAt, endedAt })
+            retrieverTimings.set(label, {
+              label,
+              status: "fulfilled",
+              elapsedMs: boundedMs(endedAt - startedAt),
+              resultCount: value.length,
+            })
+            return value
+          },
+          (error) => {
+            const endedAt = nowMs()
+            retrievalIntervals.push({ startedAt, endedAt })
+            retrieverTimings.set(label, {
+              label,
+              status: "rejected",
+              elapsedMs: boundedMs(endedAt - startedAt),
+              resultCount: 0,
+            })
+            throw error
+          },
+        )
+    }
+
+    const earlyKeywordFirstRetrievals: Retrieval[] = []
+    if (wantsVideos && pipelineMode === "keyword-first") {
+      // Start the three-list lexical stack before embedding resolves.
+      // Attaching allSettled immediately prevents a fast DB rejection
+      // from surfacing as an unhandled promise rejection while embedding
+      // is still pending.
+      earlyKeywordFirstRetrievals.push(
+        {
+          label: "keyword-weighted-video",
+          promise: timedRetrieval(
+            "keyword-weighted-video",
+            () =>
+              searchByKeywordWeighted(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
+        },
+        {
+          label: "trigram-video",
+          promise: timedRetrieval(
+            "trigram-video",
+            () =>
+              searchByTrigram(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
+        },
+        {
+          label: "exact-title-video",
+          promise: timedRetrieval(
+            "exact-title-video",
+            () =>
+              searchByExactTitle(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
+        },
+      )
+    }
+    const earlyRetrievalOutcomes = Promise.allSettled(
+      earlyKeywordFirstRetrievals.map((r) => r.promise),
+    )
+
+    // Step 2: Embed the user's query. Degrade gracefully if the
     // provider is unavailable — keyword search alone still returns
     // useful results. Failures are logged at error level (a silent
     // warn let feat-097 hide in production for days) and tracked via
     // process-local counters the health probe exposes.
     let queryEmbeddingText: string | null = null
     let embeddingFailed = false
+    let embeddingMs = 0
+    const embeddingStartedAt = nowMs()
     recordAttempt()
     try {
       const vector = await this.embedder(query)
@@ -662,30 +808,34 @@ export class HybridSearchService {
       this.logger.error(
         `[search] event=query_embedding_failure error_class=${errorClass} message=${message}`,
       )
+    } finally {
+      embeddingMs = elapsedMs(embeddingStartedAt)
     }
 
-    // Step 2: Run retrieval in parallel. allSettled keeps partial
-    // results when one retrieval fails (e.g. pgvector timeout but
+    // Step 3: Run embedding-gated retrieval in parallel. allSettled keeps
+    // partial results when one retrieval fails (e.g. pgvector timeout but
     // keyword succeeds). Each retrieval is paired with a label so
     // outcomes can map back to their source for logging.
-    type Retrieval = {
-      label: string
-      promise: Promise<RankedItem[]>
-    }
-    const retrievals: Retrieval[] = []
-
     if (wantsVideos) {
       // Semantic-video is shared by every embedding-backed pipeline.
       retrievals.push({
         label: "semantic-video",
         promise:
           queryEmbeddingText != null
-            ? (searchVideoSemantic(this.prisma, {
-                queryEmbedding: queryEmbeddingText,
-                locale,
-                limit: overfetchLimit,
-              }) as Promise<RankedItem[]>)
-            : Promise.resolve([]),
+            ? timedRetrieval(
+                "semantic-video",
+                () =>
+                  searchVideoSemantic(
+                    this.prisma,
+                    {
+                      queryEmbedding: queryEmbeddingText,
+                      locale,
+                      limit: overfetchLimit,
+                    },
+                    timing,
+                  ) as Promise<RankedItem[]>,
+              )
+            : skippedRetrieval("semantic-video"),
       })
 
       if (pipelineMode === "keyword-first") {
@@ -694,40 +844,27 @@ export class HybridSearchService {
         // (Algolia-like). The legacy R4 `searchVideoKeyword` is NOT
         // dispatched on this branch — its concatenated tsvector is
         // strictly weaker than the weighted one for this workload.
-        retrievals.push({
-          label: "keyword-weighted-video",
-          promise: searchByKeywordWeighted(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
-        })
-        retrievals.push({
-          label: "trigram-video",
-          promise: searchByTrigram(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
-        })
-        retrievals.push({
-          label: "exact-title-video",
-          promise: searchByExactTitle(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
-        })
+        // The keyword-first lexical promises were already started above
+        // so they can overlap the embedding provider call.
+        retrievals.push(...earlyKeywordFirstRetrievals)
       } else if (!semanticOnly) {
         // Hybrid path — UNCHANGED from R4. Byte-identity locked in by
         // hybrid-search.regression.test.ts.
         retrievals.push({
           label: "keyword-video",
-          promise: searchVideoKeyword(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
+          promise: timedRetrieval(
+            "keyword-video",
+            () =>
+              searchVideoKeyword(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
         })
       }
     }
@@ -737,26 +874,54 @@ export class HybridSearchService {
         label: "semantic-experience",
         promise:
           queryEmbeddingText != null
-            ? (searchExperienceSemantic(this.prisma, {
-                queryEmbedding: queryEmbeddingText,
-                locale,
-                limit: overfetchLimit,
-              }) as Promise<RankedItem[]>)
-            : Promise.resolve([]),
+            ? timedRetrieval(
+                "semantic-experience",
+                () =>
+                  searchExperienceSemantic(
+                    this.prisma,
+                    {
+                      queryEmbedding: queryEmbeddingText,
+                      locale,
+                      limit: overfetchLimit,
+                    },
+                    timing,
+                  ) as Promise<RankedItem[]>,
+              )
+            : skippedRetrieval("semantic-experience"),
       })
       if (!semanticOnly) {
         retrievals.push({
           label: "keyword-experience",
-          promise: searchExperienceKeyword(this.prisma, {
-            query,
-            locale,
-            limit: overfetchLimit,
-          }) as Promise<RankedItem[]>,
+          promise: timedRetrieval(
+            "keyword-experience",
+            () =>
+              searchExperienceKeyword(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
         })
       }
     }
 
-    const outcomes = await Promise.allSettled(retrievals.map((r) => r.promise))
+    const settledRetrieval = (promise: Promise<RankedItem[]>) =>
+      Promise.allSettled([promise]).then(([outcome]) => outcome!)
+    const retrievalWaitStartedAt = nowMs()
+    const outcomes = await Promise.all(
+      retrievals.map((retrieval) => {
+        const earlyIndex = earlyKeywordFirstRetrievals.indexOf(retrieval)
+        return earlyIndex >= 0
+          ? earlyRetrievalOutcomes.then((outcomes) => outcomes[earlyIndex]!)
+          : settledRetrieval(retrieval.promise)
+      }),
+    )
+    const retrievalWaitMs = elapsedMs(retrievalWaitStartedAt)
+    const retrievalsMs = activeTimingIntervalsMs(retrievalIntervals)
     const failedRetrievers: string[] = []
     const lists = outcomes.map((outcome, i) =>
       this.unwrapOutcome(outcome, retrievals[i]!.label, failedRetrievers),
@@ -790,11 +955,13 @@ export class HybridSearchService {
       }
     }
 
-    // Step 3: Fuse ranked lists via RRF. Drop empty lists first — RRF
+    // Step 4: Fuse ranked lists via RRF. Drop empty lists first — RRF
     // normalizes by dividing by the number of input lists, so empty
     // ones dilute scores from lists that did contribute.
     const nonEmptyLists = lists.filter((list) => list.length > 0)
+    const fusionStartedAt = nowMs()
     const fused = fuseRankedLists(nonEmptyLists, RRF_K)
+    const fusionMs = elapsedMs(fusionStartedAt)
 
     // Snapshot pre-cap fused scores so the debug payload can surface
     // both numbers (the cap mutates `result.score` in place).
@@ -804,23 +971,29 @@ export class HybridSearchService {
       if (trace != null) trace.fusedScore = result.score
     }
 
-    // Step 3b: Semantic-dilution cap. Active only in keyword-first mode
+    // Step 4b: Semantic-dilution cap. Active only in keyword-first mode
     // and only when an exact-title hit exists. Halves the score of any
     // fused result whose ONLY contributing list was semantic AND whose
     // video core_id is not represented in the top-N keyword-side
     // core_ids. Hybrid mode never reaches this step.
+    let dilutionCapMs = 0
     if (pipelineMode === "keyword-first" && isDilutionCapEnabled()) {
+      const dilutionCapStartedAt = nowMs()
       applyDilutionCap(fused, labeledLists, query, debugByKey)
+      dilutionCapMs = elapsedMs(dilutionCapStartedAt)
     }
 
-    // Step 4: Dedup one extra result beyond the page window so we know
+    // Step 5: Dedup one extra result beyond the page window so we know
     // whether more results exist (drives hasMore without a full count
     // pass).
+    const dedupeStartedAt = nowMs()
     const deduped = deduplicateResults(fused, offset + limit + 1)
 
-    // Step 5: Paginate and map to API contract.
+    // Step 6: Paginate and map to API contract.
     const page = deduped.slice(offset, offset + limit)
     const hasMore = deduped.length > offset + limit
+    const dedupeMs = elapsedMs(dedupeStartedAt)
+    const mappingStartedAt = nowMs()
     const mapped = page.map((result) => {
       const base = mapToSearchResult(result)
       if (params.debug !== true) return base
@@ -829,15 +1002,19 @@ export class HybridSearchService {
       if (trace == null) return base
       return { ...base, debug: trace }
     })
+    const mappingMs = elapsedMs(mappingStartedAt)
 
     // Hydrate card display fields for video results in one batched query.
     // Experience rows pass through untouched.
+    const hydrationStartedAt = nowMs()
     const results = await hydrateCardDisplayFields(
       this.prisma,
       mapped,
       locale,
       this.logger,
+      timing,
     )
+    const hydrationMs = elapsedMs(hydrationStartedAt)
 
     const searchMode = queryEmbeddingText != null ? "hybrid" : "keyword-only"
     const contributingRetrievers = labeledLists
@@ -857,6 +1034,23 @@ export class HybridSearchService {
       // empty degraded response without lexical fallback.
       searchMode,
     }
+    const timings: SearchTimingSummary = {
+      pipelineMode,
+      totalMs: elapsedMs(totalStartedAt),
+      embeddingMs,
+      retrievalsMs,
+      retrievalWaitMs,
+      fusionMs,
+      dilutionCapMs,
+      dedupeMs,
+      mappingMs,
+      hydrationMs,
+      retrievers: retrievals.flatMap((retrieval) => {
+        const retrieverTiming = retrieverTimings.get(retrieval.label)
+        return retrieverTiming == null ? [] : [retrieverTiming]
+      }),
+      db: timing.snapshotDbTimings(),
+    }
 
     return {
       response,
@@ -868,6 +1062,7 @@ export class HybridSearchService {
         failedRetrievers,
         contributingRetrievers,
       },
+      timings,
     }
   }
 

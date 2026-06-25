@@ -5,7 +5,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { Animated, StyleSheet, View } from "react-native"
+import { Animated, Platform, StyleSheet, View } from "react-native"
 
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -18,6 +18,11 @@ const CROSSFADE_MS = 600
 const DEEP_SCRIM_MS = 500
 /** Quick restore when a pending crossfade is cancelled or superseded. */
 const CANCEL_FADE_MS = 200
+
+// Android drops the ambient backdrop entirely: the Sabrina GPU can't composite
+// its full-screen layers (artwork + 3 gradients + deep scrim) over the rail tree
+// each frame (~150ms/redraw). Rails sit on the near-black base; tvOS keeps it.
+const IS_ANDROID = Platform.OS === "android"
 
 // Ambient scrim: three module-scope gradients (stable identity; scrim(0) not
 // "transparent" avoids banding), exported so HeroPager paints matching scrims.
@@ -128,6 +133,8 @@ export const HomeBackdrop = memo(function HomeBackdrop({
   )
 
   useEffect(() => {
+    // Android renders the single-slot path below — skip the two-slot dance.
+    if (IS_ANDROID) return
     const opacities = slotOpacitiesRef.current
     const front = frontIndexRef.current
     const back: SlotIndex = front === 0 ? 1 : 0
@@ -200,6 +207,11 @@ export const HomeBackdrop = memo(function HomeBackdrop({
   }, [browseState, deepScrim])
 
   const opacities = slotOpacitiesRef.current
+
+  // Android: no ambient backdrop (see IS_ANDROID comment) — rails on the near-black
+  // screen base. All hooks above still run so the rules of hooks hold; the
+  // two-slot effect already no-ops on Android.
+  if (IS_ANDROID) return null
 
   return (
     <View

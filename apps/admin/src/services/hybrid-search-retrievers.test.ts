@@ -16,6 +16,7 @@ import {
   searchExperienceSemantic,
   searchExperienceKeyword,
 } from "./hybrid-search-retrievers"
+import { SearchTimingRecorder } from "./hybrid-search-timing"
 
 function mockPrisma() {
   const $queryRaw = vi.fn()
@@ -124,6 +125,30 @@ describe("searchVideoSemantic", () => {
       similarity: 0.87,
       embeddingText: "[0.1,0.2]",
     })
+  })
+
+  it("records the semantic-video DB timing when a recorder is passed", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    const timing = new SearchTimingRecorder()
+
+    await searchVideoSemantic(
+      prisma,
+      {
+        queryEmbedding: "[0.1,0.2]",
+        locale: "en",
+        limit: 10,
+      },
+      timing,
+    )
+
+    expect(timing.snapshotDbTimings()).toEqual([
+      expect.objectContaining({
+        label: "semantic-video.query",
+        status: "fulfilled",
+        resultCount: 0,
+        elapsedMs: expect.any(Number),
+      }),
+    ])
   })
 
   it("maps transcript evidence rows through the same semantic-video result shape", async () => {

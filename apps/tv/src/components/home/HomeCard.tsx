@@ -4,7 +4,14 @@
 
 import { memo, useCallback, useMemo, useRef } from "react"
 import { Image } from "expo-image"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import type { View as ViewType } from "react-native"
 
 import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
@@ -21,6 +28,11 @@ import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
 export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
+
+// Android runs the focus tween on the native driver (off the JS thread, the
+// D-pad-move bottleneck on the weak SoC) and drops the JS shadow + hairline.
+// tvOS keeps the full JS treatment.
+const IS_ANDROID = Platform.OS === "android"
 
 type HomeCardProps = {
   card: WatchHomeCard
@@ -41,6 +53,12 @@ type HomeCardProps = {
    * requestTVFocus(). Ref-as-state in the rail, like MissionSection.
    */
   nodeRef?: (node: ViewType | null) => void
+  /**
+   * Whether to load the artwork. Off-window rails (Android image-windowing)
+   * pass false: the card still mounts + stays focusable, only the decode is
+   * skipped — so D-pad focus never lands on an empty rail.
+   */
+  loadImage?: boolean
 }
 
 export const HomeCard = memo(function HomeCard({
@@ -48,10 +66,13 @@ export const HomeCard = memo(function HomeCard({
   onFocus,
   onPress,
   index,
+  loadImage = true,
   nextFocusUp,
   nodeRef,
 }: HomeCardProps) {
-  const { focused, setFocused, progress } = useFocusAnimation()
+  const { focused, setFocused, progress } = useFocusAnimation({
+    nativeDriver: IS_ANDROID,
+  })
   // Own this card's host node so onFocus can report it upward, while still
   // forwarding to nodeRef (the rail captures its LAST card for RailPad bounce).
   const localRef = useRef<ViewType | null>(null)
@@ -107,23 +128,37 @@ export const HomeCard = memo(function HomeCard({
     >
       <Animated.View style={[styles.card, liftStyle]}>
         <View style={styles.thumbBox}>
-          {/* Deep dark drop shadow, revealed by the animated opacity. Kept
-              on its own overflow-visible wrapper so iOS doesn't clip it. */}
-          <Animated.View style={[styles.shadowWrap, shadowStyle]}>
+          {/* Animated drop shadow on its own overflow-visible wrapper (iOS clips
+              shadows on overflow:hidden). Gated off on Android — the native
+              driver can't animate shadowOpacity and Android skips shadow* anyway. */}
+          <Animated.View
+            style={[styles.shadowWrap, IS_ANDROID ? null : shadowStyle]}
+          >
             <View style={styles.thumb}>
-              {imageUrl != null ? (
+              {imageUrl != null && loadImage ? (
                 <Image
                   source={{ uri: imageUrl }}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
                   recyclingKey={`home-card-${card.id}`}
+                  // Android only: de-prioritize decodes so they don't saturate
+                  // the queue ahead of the focused card; memory-disk makes
+                  // re-entry instant. tvOS keeps expo-image defaults.
+                  priority={IS_ANDROID ? "low" : undefined}
+                  cachePolicy={IS_ANDROID ? "memory-disk" : undefined}
                 />
               ) : (
+                // No artwork yet (missing URL, or off-window: loadImage=false).
+                // The card keeps its size + focusability; only the decode is
+                // skipped, so focus can still traverse this rail.
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
               )}
 
-              {/* Hairline edge over the artwork (design: 1px white .07). */}
-              <View style={styles.thumbEdge} pointerEvents="none" />
+              {/* Hairline edge (design: 1px white .07). Dropped on Android —
+                  one fewer view per card to redraw during a scroll. */}
+              {IS_ANDROID ? null : (
+                <View style={styles.thumbEdge} pointerEvents="none" />
+              )}
 
               {card.metaLabel != null ? (
                 <View style={styles.chip} pointerEvents="none">

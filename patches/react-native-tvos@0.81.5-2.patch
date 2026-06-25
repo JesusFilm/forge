@@ -1,3 +1,64 @@
+diff --git a/Libraries/Components/Pressable/Pressable.js b/Libraries/Components/Pressable/Pressable.js
+index 7b24a6bb867d715e8a076ddaf3dab2c4a7c420f0..4702300d441cb1f9248efe3ddd32a295e57ef213 100644
+--- a/Libraries/Components/Pressable/Pressable.js
++++ b/Libraries/Components/Pressable/Pressable.js
+@@ -22,14 +22,16 @@ import type {ViewProps} from '../View/ViewPropTypes';
+ import {PressabilityDebugView} from '../../Pressability/PressabilityDebug';
+ import usePressability from '../../Pressability/usePressability';
+ import {type RectOrSize} from '../../StyleSheet/Rect';
++import Platform from '../../Utilities/Platform';
+ import useMergeRefs from '../../Utilities/useMergeRefs';
++import {tvFocusEventHandler} from '../TV/TVFocusEventHandler';
+ import tagForComponentOrHandle from '../TV/tagForComponentOrHandle';
+ import View from '../View/View';
+ import useAndroidRippleForView, {
+   type PressableAndroidRippleConfig,
+ } from './useAndroidRippleForView';
+ import * as React from 'react';
+-import {memo, useMemo, useRef, useState} from 'react';
++import {memo, useEffect, useMemo, useRef, useState} from 'react';
+ 
+ export type {PressableAndroidRippleConfig};
+ 
+@@ -364,6 +366,38 @@ function Pressable({
+ 
+   const eventHandlers = usePressability(config);
+ 
++  // [Android TV focus bridge] On Android, react-native-tvos delivers per-view
++  // focus/blur ONLY as a global onHWKeyEvent (ReactViewGroup.onFocusChanged is
++  // a no-op) and Pressability never registers with tvFocusEventHandler — so a
++  // Pressable's onFocus/onBlur never fire on Android TV (they DO on tvOS via
++  // the native focus engine). Bridge the global focus event to this Pressable's
++  // config handlers by registering its host tag, mirroring TVTextScrollView.
++  // tvOS is unaffected (guarded to OS === 'android').
++  useEffect(() => {
++    if (
++      Platform.OS !== 'android' ||
++      !Platform.isTV ||
++      tvFocusEventHandler == null
++    ) {
++      return;
++    }
++    const myTag = tagForComponentOrHandle(viewRef.current);
++    if (myTag == null) {
++      return;
++    }
++    tvFocusEventHandler.register(myTag, (evt: $FlowFixMe) => {
++      if (evt.tag !== myTag) {
++        return;
++      }
++      if (evt.eventType === 'focus') {
++        config.onFocus((evt: $FlowFixMe));
++      } else if (evt.eventType === 'blur') {
++        config.onBlur((evt: $FlowFixMe));
++      }
++    });
++    return () => tvFocusEventHandler.unregister(myTag);
++  }, [config]);
++
+   const computedStyle = useMemo(() => {
+     return typeof style === 'function' ? style({pressed, focused}) : style;
+   }, [pressed, focused, style]);
 diff --git a/third-party-podspecs/RCT-Folly.podspec b/third-party-podspecs/RCT-Folly.podspec
 index 8852179b6ce2ef6ae64e0239edb2594925ff8bc1..2dbc576e8ec2d137a89fffe9ceca772d04ef1328 100644
 --- a/third-party-podspecs/RCT-Folly.podspec
