@@ -3,7 +3,7 @@ id: "feat-203"
 title: "Chat sidebar component + behavior extraction"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-01"
 duration: 2
 depends_on:
