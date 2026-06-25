@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
+  Animated,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -19,8 +20,10 @@ import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { validateActionUrl } from "../../lib/validateUrl"
-import { FocusableCard } from "../FocusableCard"
 import { LinkModal } from "../LinkModal"
+import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
+import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Enable LayoutAnimation on Android ───────────────────────────────────────
@@ -55,6 +58,10 @@ const PILL_ICON_SIZE = Math.round(scale(18))
 const RING_OUTSET_H = scale(16)
 const RING_OUTSET_V = scale(6)
 
+// Breathing room above an expanded row's answer/CTAs so the focused row's ring
+// (which overhangs RING_OUTSET_V below the row) clears them instead of crowding.
+const EXPANDED_TOP_GAP = scale(28)
+
 function FallbackPill({
   icon,
   label,
@@ -64,18 +71,52 @@ function FallbackPill({
   label: string
   onPress: () => void
 }) {
-  // White pill (bg #F5F5F4): the app-wide white focus ring has no contrast here,
-  // so opt into the crimson glow — the documented light-surface exception.
+  // Standardized invert-on-focus pill (matches the watch hero's secondary pills,
+  // DetailsActionRow): dark glass + white ink at rest, flipping to a white fill +
+  // near-black ink + icon on focus. No crimson glow — the previous FocusableCard
+  // focusRing="crimson" light-surface exception is retired here.
+  const { setFocused, progress } = useFocusAnimation()
+  const fillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
+  const ink = useMemo(
+    () =>
+      progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+      }),
+    [progress],
+  )
   return (
-    <FocusableCard
+    <Pressable
       onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      accessibilityRole="button"
       accessibilityLabel={label}
-      style={styles.fallbackPill}
-      focusRing="crimson"
     >
-      <Ionicons name={icon} size={PILL_ICON_SIZE} color={COLORS.surface} />
-      <Text style={styles.fallbackPillText}>{label}</Text>
-    </FocusableCard>
+      <Animated.View style={[styles.fallbackPill, fillStyle]}>
+        <AnimatedFocusIcon
+          name={icon}
+          progress={progress}
+          size={PILL_ICON_SIZE}
+        />
+        <Animated.Text style={[styles.fallbackPillText, { color: ink }]}>
+          {label}
+        </Animated.Text>
+      </Animated.View>
+    </Pressable>
   )
 }
 
@@ -272,6 +313,7 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
   },
   fallbackContainer: {
+    paddingTop: EXPANDED_TOP_GAP,
     paddingBottom: scale(24),
   },
   fallbackBody: {
@@ -285,22 +327,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: scale(16),
   },
-  // White pill with dark ink (mobile/web parity); focus comes from
-  // FocusableCard's scale + white ring.
+  // Invert-on-focus pill (backgroundColor + ink are animated in FallbackPill).
+  // Static dark drop shadow revealed by the focus shadowOpacity ramp; rounded-rect
+  // to echo the watch hero's secondary pills.
   fallbackPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: scale(8),
-    backgroundColor: COLORS.text,
-    borderRadius: scale(999),
-    paddingHorizontal: scale(20),
-    paddingVertical: scale(10),
+    gap: scale(10),
+    borderRadius: scale(16),
+    paddingHorizontal: scale(22),
+    paddingVertical: scale(14),
+    shadowColor: "#000000",
+    shadowRadius: scale(18),
+    shadowOffset: { width: 0, height: scale(10) },
   },
   fallbackPillText: {
     fontFamily: "System",
     fontSize: Math.round(scale(18)),
     fontWeight: "600",
-    color: COLORS.surface,
   },
   answerText: {
     fontFamily: "System",
@@ -308,6 +352,7 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     color: COLORS.muted,
     lineHeight: scale(30),
+    marginTop: EXPANDED_TOP_GAP,
     paddingBottom: scale(20),
   },
 })
