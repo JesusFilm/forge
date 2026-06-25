@@ -39,10 +39,13 @@ import {
   tokenizeForExactTitle,
 } from "./hybrid-search-keyword-first-retrievers"
 import {
+  activeTimingIntervalsMs,
+  boundedMs,
   elapsedMs,
   nowMs,
   recordSearchDbTiming,
   SearchTimingRecorder,
+  type SearchTimingInterval,
   type SearchRetrieverTiming,
   type SearchTimingSummary,
 } from "./hybrid-search-timing"
@@ -670,7 +673,120 @@ export class HybridSearchService {
     const wantsVideos = requested.includes("video")
     const wantsExperiences = requested.includes("experience")
 
-    // Step 1: Embed the user's query. Degrade gracefully if the
+    // Step 1: Prepare retrieval wrappers before embedding. Keyword-first
+    // video lexical retrievers do not need the query embedding, so they
+    // can start while the embedding provider is still in flight.
+    type Retrieval = {
+      label: string
+      promise: Promise<RankedItem[]>
+    }
+    const retrievals: Retrieval[] = []
+    const retrieverTimings = new Map<string, SearchRetrieverTiming>()
+    const retrievalIntervals: SearchTimingInterval[] = []
+    const skippedRetrieval = (label: string): Promise<RankedItem[]> => {
+      retrieverTimings.set(label, {
+        label,
+        status: "skipped",
+        elapsedMs: 0,
+        resultCount: 0,
+      })
+      return Promise.resolve([])
+    }
+    const timedRetrieval = (
+      label: string,
+      run: () => Promise<RankedItem[]>,
+    ): Promise<RankedItem[]> => {
+      const startedAt = nowMs()
+      return Promise.resolve()
+        .then(run)
+        .then(
+          (value) => {
+            const endedAt = nowMs()
+            retrievalIntervals.push({ startedAt, endedAt })
+            retrieverTimings.set(label, {
+              label,
+              status: "fulfilled",
+              elapsedMs: boundedMs(endedAt - startedAt),
+              resultCount: value.length,
+            })
+            return value
+          },
+          (error) => {
+            const endedAt = nowMs()
+            retrievalIntervals.push({ startedAt, endedAt })
+            retrieverTimings.set(label, {
+              label,
+              status: "rejected",
+              elapsedMs: boundedMs(endedAt - startedAt),
+              resultCount: 0,
+            })
+            throw error
+          },
+        )
+    }
+
+    const earlyKeywordFirstRetrievals: Retrieval[] = []
+    if (wantsVideos && pipelineMode === "keyword-first") {
+      // Start the three-list lexical stack before embedding resolves.
+      // Attaching allSettled immediately prevents a fast DB rejection
+      // from surfacing as an unhandled promise rejection while embedding
+      // is still pending.
+      earlyKeywordFirstRetrievals.push(
+        {
+          label: "keyword-weighted-video",
+          promise: timedRetrieval(
+            "keyword-weighted-video",
+            () =>
+              searchByKeywordWeighted(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
+        },
+        {
+          label: "trigram-video",
+          promise: timedRetrieval(
+            "trigram-video",
+            () =>
+              searchByTrigram(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
+        },
+        {
+          label: "exact-title-video",
+          promise: timedRetrieval(
+            "exact-title-video",
+            () =>
+              searchByExactTitle(
+                this.prisma,
+                {
+                  query,
+                  locale,
+                  limit: overfetchLimit,
+                },
+                timing,
+              ) as Promise<RankedItem[]>,
+          ),
+        },
+      )
+    }
+    const earlyRetrievalOutcomes = Promise.allSettled(
+      earlyKeywordFirstRetrievals.map((r) => r.promise),
+    )
+
+    // Step 2: Embed the user's query. Degrade gracefully if the
     // provider is unavailable — keyword search alone still returns
     // useful results. Failures are logged at error level (a silent
     // warn let feat-097 hide in production for days) and tracked via
@@ -696,55 +812,10 @@ export class HybridSearchService {
       embeddingMs = elapsedMs(embeddingStartedAt)
     }
 
-    // Step 2: Run retrieval in parallel. allSettled keeps partial
-    // results when one retrieval fails (e.g. pgvector timeout but
+    // Step 3: Run embedding-gated retrieval in parallel. allSettled keeps
+    // partial results when one retrieval fails (e.g. pgvector timeout but
     // keyword succeeds). Each retrieval is paired with a label so
     // outcomes can map back to their source for logging.
-    type Retrieval = {
-      label: string
-      promise: Promise<RankedItem[]>
-    }
-    const retrievals: Retrieval[] = []
-    const retrieverTimings = new Map<string, SearchRetrieverTiming>()
-    const retrievalsStartedAt = nowMs()
-    const skippedRetrieval = (label: string): Promise<RankedItem[]> => {
-      retrieverTimings.set(label, {
-        label,
-        status: "skipped",
-        elapsedMs: 0,
-        resultCount: 0,
-      })
-      return Promise.resolve([])
-    }
-    const timedRetrieval = (
-      label: string,
-      run: () => Promise<RankedItem[]>,
-    ): Promise<RankedItem[]> => {
-      const startedAt = nowMs()
-      return Promise.resolve()
-        .then(run)
-        .then(
-          (value) => {
-            retrieverTimings.set(label, {
-              label,
-              status: "fulfilled",
-              elapsedMs: elapsedMs(startedAt),
-              resultCount: value.length,
-            })
-            return value
-          },
-          (error) => {
-            retrieverTimings.set(label, {
-              label,
-              status: "rejected",
-              elapsedMs: elapsedMs(startedAt),
-              resultCount: 0,
-            })
-            throw error
-          },
-        )
-    }
-
     if (wantsVideos) {
       // Semantic-video is shared by every embedding-backed pipeline.
       retrievals.push({
@@ -773,54 +844,9 @@ export class HybridSearchService {
         // (Algolia-like). The legacy R4 `searchVideoKeyword` is NOT
         // dispatched on this branch — its concatenated tsvector is
         // strictly weaker than the weighted one for this workload.
-        retrievals.push({
-          label: "keyword-weighted-video",
-          promise: timedRetrieval(
-            "keyword-weighted-video",
-            () =>
-              searchByKeywordWeighted(
-                this.prisma,
-                {
-                  query,
-                  locale,
-                  limit: overfetchLimit,
-                },
-                timing,
-              ) as Promise<RankedItem[]>,
-          ),
-        })
-        retrievals.push({
-          label: "trigram-video",
-          promise: timedRetrieval(
-            "trigram-video",
-            () =>
-              searchByTrigram(
-                this.prisma,
-                {
-                  query,
-                  locale,
-                  limit: overfetchLimit,
-                },
-                timing,
-              ) as Promise<RankedItem[]>,
-          ),
-        })
-        retrievals.push({
-          label: "exact-title-video",
-          promise: timedRetrieval(
-            "exact-title-video",
-            () =>
-              searchByExactTitle(
-                this.prisma,
-                {
-                  query,
-                  locale,
-                  limit: overfetchLimit,
-                },
-                timing,
-              ) as Promise<RankedItem[]>,
-          ),
-        })
+        // The keyword-first lexical promises were already started above
+        // so they can overlap the embedding provider call.
+        retrievals.push(...earlyKeywordFirstRetrievals)
       } else if (!semanticOnly) {
         // Hybrid path — UNCHANGED from R4. Byte-identity locked in by
         // hybrid-search.regression.test.ts.
@@ -883,8 +909,19 @@ export class HybridSearchService {
       }
     }
 
-    const outcomes = await Promise.allSettled(retrievals.map((r) => r.promise))
-    const retrievalsMs = elapsedMs(retrievalsStartedAt)
+    const settledRetrieval = (promise: Promise<RankedItem[]>) =>
+      Promise.allSettled([promise]).then(([outcome]) => outcome!)
+    const retrievalWaitStartedAt = nowMs()
+    const outcomes = await Promise.all(
+      retrievals.map((retrieval) => {
+        const earlyIndex = earlyKeywordFirstRetrievals.indexOf(retrieval)
+        return earlyIndex >= 0
+          ? earlyRetrievalOutcomes.then((outcomes) => outcomes[earlyIndex]!)
+          : settledRetrieval(retrieval.promise)
+      }),
+    )
+    const retrievalWaitMs = elapsedMs(retrievalWaitStartedAt)
+    const retrievalsMs = activeTimingIntervalsMs(retrievalIntervals)
     const failedRetrievers: string[] = []
     const lists = outcomes.map((outcome, i) =>
       this.unwrapOutcome(outcome, retrievals[i]!.label, failedRetrievers),
@@ -918,7 +955,7 @@ export class HybridSearchService {
       }
     }
 
-    // Step 3: Fuse ranked lists via RRF. Drop empty lists first — RRF
+    // Step 4: Fuse ranked lists via RRF. Drop empty lists first — RRF
     // normalizes by dividing by the number of input lists, so empty
     // ones dilute scores from lists that did contribute.
     const nonEmptyLists = lists.filter((list) => list.length > 0)
@@ -934,7 +971,7 @@ export class HybridSearchService {
       if (trace != null) trace.fusedScore = result.score
     }
 
-    // Step 3b: Semantic-dilution cap. Active only in keyword-first mode
+    // Step 4b: Semantic-dilution cap. Active only in keyword-first mode
     // and only when an exact-title hit exists. Halves the score of any
     // fused result whose ONLY contributing list was semantic AND whose
     // video core_id is not represented in the top-N keyword-side
@@ -946,13 +983,13 @@ export class HybridSearchService {
       dilutionCapMs = elapsedMs(dilutionCapStartedAt)
     }
 
-    // Step 4: Dedup one extra result beyond the page window so we know
+    // Step 5: Dedup one extra result beyond the page window so we know
     // whether more results exist (drives hasMore without a full count
     // pass).
     const dedupeStartedAt = nowMs()
     const deduped = deduplicateResults(fused, offset + limit + 1)
 
-    // Step 5: Paginate and map to API contract.
+    // Step 6: Paginate and map to API contract.
     const page = deduped.slice(offset, offset + limit)
     const hasMore = deduped.length > offset + limit
     const dedupeMs = elapsedMs(dedupeStartedAt)
@@ -1002,6 +1039,7 @@ export class HybridSearchService {
       totalMs: elapsedMs(totalStartedAt),
       embeddingMs,
       retrievalsMs,
+      retrievalWaitMs,
       fusionMs,
       dilutionCapMs,
       dedupeMs,

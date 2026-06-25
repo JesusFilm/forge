@@ -233,6 +233,7 @@ describe("HybridSearchService", () => {
       totalMs: expect.any(Number),
       embeddingMs: expect.any(Number),
       retrievalsMs: expect.any(Number),
+      retrievalWaitMs: expect.any(Number),
       fusionMs: expect.any(Number),
       dilutionCapMs: 0,
       dedupeMs: expect.any(Number),
@@ -370,6 +371,7 @@ describe("HybridSearchService", () => {
         totalMs: 123.4,
         embeddingMs: 15.2,
         retrievalsMs: 100,
+        retrievalWaitMs: 80,
         fusionMs: 1,
         dilutionCapMs: 0,
         dedupeMs: 0.4,
@@ -400,6 +402,7 @@ describe("HybridSearchService", () => {
     expect(line).toContain("requested_mode=keyword_first")
     expect(line).toContain("pipeline_mode=keyword-first")
     expect(line).toContain("embedding_ms=15.2")
+    expect(line).toContain("retrieval_wait_ms=80")
     expect(line).toContain("retriever_semantic_video_ms=99")
     expect(line).toContain("db_semantic_video_query_ms=98")
     expect(line).toContain("trace_write_ms=1.2")
