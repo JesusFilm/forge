@@ -107,6 +107,14 @@ a high-strength source attribution on their own.
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
 
+### Search Candidate Window
+
+A bounded per-retriever set of eligible search candidates that is handed to
+fusion after retrieval-specific ranking and filtering. Eligibility gates that
+affect whether a result can appear must run before the window; display-only
+hydration should run after the window so it cannot multiply or reorder
+candidates.
+
 ### Search Eval Caller Track
 
 A search-evaluation prompt group scoped to a caller's job rather than only to a
