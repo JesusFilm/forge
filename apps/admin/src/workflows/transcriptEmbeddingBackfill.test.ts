@@ -84,7 +84,7 @@ const {
   _internals,
 } = await import("./transcriptEmbeddingBackfill")
 const {
-  shouldDeferNextTranscriptEmbeddingWave,
+  shouldDeferNextTranscriptEmbeddingLaunch,
   stepProcessTranscriptEmbeddingGroups,
 } = await import("./_steps/process-transcript-embedding-group")
 
@@ -1042,10 +1042,190 @@ Subtitle transcript text.
     }
   })
 
+  it("defers remaining targets inside a large group when the next target launch would exceed the step budget", async () => {
+    vi.useFakeTimers()
+    vi.mocked(launchMastraTranscriptEmbedding).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50_000))
+      return {
+        ok: true,
+        status: "created",
+        chunks: 1,
+        totalTokens: 4,
+        model: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+        mastraRunId: "run-1",
+        sourceContentHash: "sha256:test",
+      }
+    })
+
+    try {
+      const group = {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        targets: ["en", "es", "fr", "de"].map((language) =>
+          target("v-a", "e-a", "core-a", 1, language),
+        ),
+      }
+
+      const resultPromise = stepProcessTranscriptEmbeddingGroups(
+        [group],
+        "idempotent",
+        1,
+        100_000,
+        40_000,
+      )
+
+      await vi.advanceTimersByTimeAsync(50_000)
+      const result = await resultPromise
+
+      expect(result.outcomes.map((outcome) => outcome.language)).toEqual(["en"])
+      expect(result.pendingConfirmations).toEqual([])
+      expect(result.unprocessedGroups).toHaveLength(1)
+      expect(
+        result.unprocessedGroups[0]!.targets.map((target) => target.language),
+      ).toEqual(["es", "fr", "de"])
+      expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps pending confirmations when deferring remaining targets inside a large group", async () => {
+    vi.useFakeTimers()
+    vi.mocked(launchMastraTranscriptEmbedding).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50_000))
+      return {
+        ok: false,
+        reason: "network_error",
+        retryable: true,
+        mastraRunId: "run-timeout-continued",
+      }
+    })
+
+    try {
+      const group = {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        targets: ["en", "es", "fr", "de"].map((language) =>
+          target("v-a", "e-a", "core-a", 1, language),
+        ),
+      }
+
+      const resultPromise = stepProcessTranscriptEmbeddingGroups(
+        [group],
+        "idempotent",
+        1,
+        100_000,
+        40_000,
+      )
+
+      await vi.advanceTimersByTimeAsync(50_000)
+      const result = await resultPromise
+
+      expect(result.outcomes).toEqual([])
+      expect(result.pendingConfirmations).toHaveLength(1)
+      expect(result.pendingConfirmations[0]).toMatchObject({
+        language: "en",
+        mastraRunId: "run-timeout-continued",
+      })
+      expect(result.unprocessedGroups).toHaveLength(1)
+      expect(
+        result.unprocessedGroups[0]!.targets.map((target) => target.language),
+      ).toEqual(["es", "fr", "de"])
+      expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("rechecks the step budget after source resolution before launching later targets", async () => {
+    vi.useFakeTimers()
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+    let subtitleLookups = 0
+    ;(
+      prisma as unknown as {
+        videoSubtitle: { findMany: ReturnType<typeof vi.fn> }
+      }
+    ).videoSubtitle.findMany.mockImplementation(async () => {
+      subtitleLookups += 1
+      if (subtitleLookups === 2) {
+        await new Promise((resolve) => setTimeout(resolve, 35_000))
+      }
+      return []
+    })
+    vi.mocked(launchMastraTranscriptEmbedding).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20_000))
+      return {
+        ok: true,
+        status: "created",
+        chunks: 1,
+        totalTokens: 4,
+        model: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+        mastraRunId: "run-1",
+        sourceContentHash: "sha256:test",
+      }
+    })
+
+    try {
+      const group = {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        targets: ["en", "es", "fr"].map((language) =>
+          target("v-a", "e-a", "core-a", 1, language),
+        ),
+      }
+
+      const resultPromise = stepProcessTranscriptEmbeddingGroups(
+        [group],
+        "idempotent",
+        1,
+        120_000,
+        40_000,
+      )
+
+      await vi.advanceTimersByTimeAsync(55_000)
+      const result = await resultPromise
+
+      expect(result.outcomes.map((outcome) => outcome.language)).toEqual(["en"])
+      expect(result.pendingConfirmations).toEqual([])
+      expect(result.unprocessedGroups).toHaveLength(1)
+      expect(
+        result.unprocessedGroups[0]!.targets.map((target) => target.language),
+      ).toEqual(["es", "fr"])
+      expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(1)
+      const deferralLog = logSpy.mock.calls
+        .map(
+          ([message]) => JSON.parse(String(message)) as Record<string, unknown>,
+        )
+        .find((message) => message.event === "transcript_index_target_deferred")
+      expect(deferralLog).toMatchObject({
+        coreId: "core-a",
+        videoEditionId: "e-a",
+        processedTargets: 1,
+        remainingTargets: 2,
+        stepMaxDurationMs: 120_000,
+        launchTimeoutMs: 40_000,
+      })
+      expect(deferralLog?.elapsedMs).toBe(55_000)
+    } finally {
+      logSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
   it("keeps the first process wave eligible even when the configured budget is tight", () => {
     expect(
-      shouldDeferNextTranscriptEmbeddingWave({
-        wavesStarted: 0,
+      shouldDeferNextTranscriptEmbeddingLaunch({
+        launchesStarted: 0,
         elapsedMs: 90_000,
         stepMaxDurationMs: 100_000,
         launchTimeoutMs: 120_000,
@@ -1053,8 +1233,8 @@ Subtitle transcript text.
       }),
     ).toBe(false)
     expect(
-      shouldDeferNextTranscriptEmbeddingWave({
-        wavesStarted: 1,
+      shouldDeferNextTranscriptEmbeddingLaunch({
+        launchesStarted: 1,
         elapsedMs: 50_000,
         stepMaxDurationMs: 100_000,
         launchTimeoutMs: 40_000,
@@ -1062,8 +1242,8 @@ Subtitle transcript text.
       }),
     ).toBe(true)
     expect(
-      shouldDeferNextTranscriptEmbeddingWave({
-        wavesStarted: 1,
+      shouldDeferNextTranscriptEmbeddingLaunch({
+        launchesStarted: 1,
         elapsedMs: 49_999,
         stepMaxDurationMs: 100_000,
         launchTimeoutMs: 40_000,
@@ -1139,7 +1319,7 @@ describe("groupTargetsByVideoEdition", () => {
     expect(groups[1]?.targets.map((target) => target.language)).toEqual(["en"])
   })
 
-  it("batches groups by target count and shards oversized multilingual groups into single-target entries", () => {
+  it("batches groups by target count and shards oversized multilingual groups into target-limited chunks", () => {
     const groups = _internals.groupTargetsByVideoEdition([
       target("v-a", "e-a", "core-a", 1, "en"),
       target("v-a", "e-a", "core-a", 1, "es"),
@@ -1153,9 +1333,7 @@ describe("groupTargetsByVideoEdition", () => {
     const batches = _internals.batchGroupsByTargetLimit(groups, 5)
 
     expect(batches).toHaveLength(2)
-    expect(batches[0]?.map((group) => group.targets.length)).toEqual([
-      1, 1, 1, 1, 1,
-    ])
+    expect(batches[0]?.map((group) => group.targets.length)).toEqual([5])
     expect(
       batches[0]?.flatMap((group) =>
         group.targets.map((target) => target.language),

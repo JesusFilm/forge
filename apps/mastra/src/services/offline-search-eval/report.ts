@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto"
 
+import {
+  DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  isSearchEvalModeSuitableForCallerTrack,
+  isSearchEvalSearchMode,
+  normalizeSearchEvalCallerTrack,
+  searchEvalCallerTrackDefinition,
+} from "./types"
 import type {
   ComparisonOutcome,
   ExploratoryGeneratedOutcome,
@@ -7,6 +14,7 @@ import type {
   MastraEvaluationProjection,
   ReportOutcomeKind,
   ReportTotals,
+  SearchEvalCallerTrack,
   SearchFailure,
   SearchEvalReport,
 } from "./types"
@@ -120,6 +128,75 @@ export function promptSourceMix(
   return mix
 }
 
+export function callerTrackMix(
+  outcomes: readonly ComparisonOutcome[],
+  callerTrack: SearchEvalCallerTrack,
+): Record<string, number> {
+  return outcomes.reduce<Record<string, number>>((mix, outcome) => {
+    const track = normalizeSearchEvalCallerTrack(
+      outcome.callerTrack ?? callerTrack,
+    )
+    mix[track] = (mix[track] ?? 0) + 1
+    return mix
+  }, {})
+}
+
+function representativeFailures(
+  outcomes: readonly ComparisonOutcome[],
+): SearchEvalReport["trackSummaries"][number]["representativeFailures"] {
+  return outcomes
+    .filter(
+      (outcome) =>
+        outcome.currentResults.length === 0 ||
+        outcome.kind === "loss" ||
+        outcome.kind === "both-irrelevant" ||
+        outcome.kind === "judge-disagreement" ||
+        outcome.kind === "judge-failure" ||
+        outcome.kind === "search-failure",
+    )
+    .slice(0, 5)
+    .map((outcome) => ({
+      caseId: outcome.caseId,
+      queryText: outcome.queryText,
+      kind: outcome.kind,
+      ...(outcome.rationale ? { rationale: outcome.rationale } : {}),
+      topResults: outcome.currentResults
+        .slice(0, 3)
+        .map((result) => result.title),
+    }))
+}
+
+export function trackSummaries(
+  outcomes: readonly ComparisonOutcome[],
+  metadata: SearchEvalReportDraft["metadata"],
+): SearchEvalReport["trackSummaries"] {
+  const callerTrack = normalizeSearchEvalCallerTrack(metadata.callerTrack)
+  const definition = searchEvalCallerTrackDefinition(callerTrack)
+  const mode = metadata.search.mode
+  const suitableMode =
+    isSearchEvalSearchMode(mode) &&
+    isSearchEvalModeSuitableForCallerTrack(callerTrack, mode)
+
+  return [
+    {
+      callerTrack,
+      caller: definition.caller,
+      job: definition.job,
+      mode,
+      defaultMode: definition.defaultMode,
+      suitableMode,
+      successCriteria: [...definition.successCriteria],
+      totals: computeTotals(outcomes),
+      noResultCases: outcomes.filter(
+        (outcome) =>
+          outcome.currentResults.length === 0 ||
+          outcome.kind === "search-failure",
+      ).length,
+      representativeFailures: representativeFailures(outcomes),
+    },
+  ]
+}
+
 export function redactExploratoryGenerated(
   outcomes: readonly ExploratoryGeneratedOutcome[],
 ): ExploratoryGeneratedOutcome[] {
@@ -140,6 +217,8 @@ type SearchEvalReportDraft = Omit<
   | "totals"
   | "localeMix"
   | "promptSourceMix"
+  | "callerTrackMix"
+  | "trackSummaries"
   | "generatedCandidateBehavior"
   | "mastraEvaluation"
 > & {
@@ -153,11 +232,15 @@ function mastraEvaluationProjection(
     report.kind === "baseline-report" ? "baseline_capture" : "comparison"
   const experimentVerb =
     report.kind === "baseline-report" ? "baseline" : "compare"
+  const callerTrack = normalizeSearchEvalCallerTrack(
+    report.metadata.callerTrack,
+  )
+  const searchMode = report.metadata.search.mode ?? "hybrid"
 
   return {
     integrationStatus: "custom_artifact_only",
     dataset: {
-      name: `search-eval:${report.metadata.baselineName}`,
+      name: `search-eval:${report.metadata.baselineName}:${callerTrack}:${searchMode}`,
       datasetId: null,
       source: "seed_prompt_set",
       version: report.metadata.promptSetVersion,
@@ -174,7 +257,7 @@ function mastraEvaluationProjection(
       },
     ],
     experiment: {
-      name: `search-eval-${experimentVerb}:${report.metadata.baselineName}:${report.reportId}`,
+      name: `search-eval-${experimentVerb}:${report.metadata.baselineName}:${callerTrack}:${searchMode}:${report.reportId}`,
       experimentId: null,
       status: "not_created",
       mode,
@@ -188,6 +271,9 @@ export function finalizeReport(
   report: SearchEvalReportDraft,
 ): SearchEvalReport {
   const { generatedCandidateReadFailure, ...baseReport } = report
+  const callerTrack = normalizeSearchEvalCallerTrack(
+    baseReport.metadata.callerTrack ?? DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  )
   const exploratoryGenerated = redactExploratoryGenerated(
     baseReport.exploratoryGenerated,
   )
@@ -217,6 +303,8 @@ export function finalizeReport(
     totals: computeTotals(baseReport.outcomes),
     localeMix: localeMix(baseReport.outcomes, exploratoryGenerated),
     promptSourceMix: promptSourceMix(baseReport.outcomes, exploratoryGenerated),
+    callerTrackMix: callerTrackMix(baseReport.outcomes, callerTrack),
+    trackSummaries: trackSummaries(baseReport.outcomes, baseReport.metadata),
     generatedCandidateBehavior,
   }
 }

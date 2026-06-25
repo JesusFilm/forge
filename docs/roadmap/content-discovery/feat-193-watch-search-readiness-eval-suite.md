@@ -3,7 +3,7 @@ id: "feat-193"
 title: "Watch search readiness eval suite"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-16"
 duration: 4
 depends_on:
@@ -19,6 +19,39 @@ tags:
   - "algolia"
   - "launch-readiness"
 ---
+
+## Resolution
+
+Completed on 2026-06-24 as an operational search-readiness eval suite. The
+curated prompt set, caller-specific tracks, keyword-first / hybrid /
+semantic-only execution modes, structured reports, and prod-backed verification
+artifacts are in place.
+
+This ticket is closed as eval infrastructure, not as a search launch approval.
+The generated reports give the team and AI agents enough evidence to make a
+launch/no-launch decision, and they surfaced follow-up relevance work around
+multilingual no-results and over-promoted generic content.
+
+Prod-backed rerun artifacts:
+
+- Public Watch keyword-first:
+  `.tmp/prod-search-eval-fixed-2026-06-23/local-runner/artifacts/reports/3895034d-00fe-400c-bbf5-7df53a0e469d-baseline.json`
+  - 100 queries, 0 search failures, 0 judge failures.
+- AI experience generation hybrid:
+  `.tmp/prod-search-eval-fixed-2026-06-23/local-runner/artifacts/reports/88bbb0a0-3126-4c0c-acdc-8ff535f2a387-baseline.json`
+  - 10 queries, 0 search failures, 0 judge failures.
+- Semantic diagnostic semantic-only:
+  `.tmp/prod-search-eval-fixed-2026-06-23/local-runner/artifacts/reports/365b391f-cc56-4bbd-baee-4c261b1fffed-baseline.json`
+  - 8 queries, 0 search failures, 0 judge failures.
+
+Notable readiness signals:
+
+- `bible project` returns `The BibleProject Collection` first.
+- `jesus` returns `Who Is Jesus?` and `JESUS` near the top.
+- The Chinese seed now uses the canonical `mandarin-china` language slug and no
+  longer fails the eval run.
+- Relevance follow-ups remain for Spanish and Chinese no-result cases and
+  repeated generic results such as `Football 2026`.
 
 ## Problem
 
@@ -121,11 +154,34 @@ Roadmap window: this week, June 16-19, 2026.
 - Native Evaluation projection now preserves `semantic-only` and includes the
   requested search mode in dataset, experiment, and report outcome source keys
   so mode-by-mode evidence does not overwrite itself.
+- 2026-06-23: Added caller-specific eval tracks for `public-watch`,
+  `ai-experience-generation`, and `semantic-diagnostic`.
+- Existing 100-query v5 launch-readiness prompts stay in the `public-watch`
+  track. Additional AI-agent and semantic-diagnostic prompts are included for
+  their caller-specific use cases.
+- Offline eval runner, workflow, orchestrator, reports, judge rubrics, artifact
+  schemas, and native Evaluation sync now carry `callerTrack`.
+- Caller tracks define their own default baseline names and search modes:
+  public Watch uses `seed-baseline` plus `keyword-first`, AI experience
+  generation uses `seed-baseline-ai-experience-generation` plus `hybrid`, and
+  semantic diagnostics uses `seed-baseline-semantic-diagnostic` plus
+  `semantic-only`.
+- The runner rejects unsupported caller-track/search-mode pairs before Admin
+  search, refuses to overwrite baselines owned by another caller track, and
+  rejects baseline/current caller-track mismatches before judge calls. Legacy
+  untracked artifacts normalize to `public-watch`.
+- Reports now include `callerTrackMix` and `trackSummaries`, including selected
+  mode, suitability, no-result count, totals, and representative failures.
 - Algolia is prompt provenance only in this ticket; no Algolia-backed execution,
   fallback path, or follow-up ticket is in scope.
 - Code-level implementation is verified below. A launch/no-launch decision
   still requires running the Mastra eval workflow against a configured Admin
   search-eval endpoint and reviewing the produced report.
+- 2026-06-24: Closed after prod-backed local runner verification. The suite
+  completed across public Watch keyword-first, AI experience generation hybrid,
+  and semantic diagnostic semantic-only tracks with 0 search failures and 0
+  judge failures. Reports are suitable for launch-readiness review, while the
+  relevance findings are follow-up search-quality work.
 
 ## Implementation Verification Notes
 
@@ -135,9 +191,10 @@ Roadmap window: this week, June 16-19, 2026.
   `pnpm --filter @forge/admin test -- hybrid-search.bible-project`
 - Passed:
   `pnpm --filter @forge/mastra test -- seed-prompt-set runner offline-search-eval search-eval-orchestrator native-evaluation admin-search-eval-client search-eval-native-suite artifacts report`
-- Typecheck caveat: `pnpm --filter @forge/admin typecheck` currently fails on
-  pre-existing Prisma schema drift in
-  `apps/admin/src/services/transcript-embedding.service.ts` for `sourceKind`.
-- Typecheck caveat: `pnpm --filter @forge/mastra typecheck` currently fails
-  because `apps/mastra/src/mastra/memory.ts` cannot resolve `@mastra/memory` in
-  this isolated worktree dependency setup.
+- Passed:
+  `pnpm --filter @forge/mastra test -- seed-prompt-set report artifacts judge runner offline-search-eval search-eval-orchestrator native-evaluation search-eval-native-suite search-eval-baseline-portability baseline-portability`
+- Passed: `pnpm --filter @forge/mastra typecheck`
+- Typecheck caveat: `pnpm --filter @forge/admin typecheck` was not rerun during
+  the caller-track implementation; prior verification noted pre-existing Prisma
+  schema drift in `apps/admin/src/services/transcript-embedding.service.ts` for
+  `sourceKind`.

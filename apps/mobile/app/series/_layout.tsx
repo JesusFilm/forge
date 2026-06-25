@@ -23,6 +23,10 @@ const LIST_SHEET_OPTIONS = {
   sheetExpandsWhenScrolledToEdge: false,
 }
 
+// Mirrors app/watch/_layout.tsx: the download-all sheet opens at 0.65, grabber
+// drags to full (keeps scroll-expands-to-edge on, like the per-video sheet).
+const DOWNLOAD_SHEET_DETENTS = [0.65, 1] as const
+
 // Mirrors app/watch/_layout.tsx: the series screen + its language sheet share a
 // session context, so the Stack is wrapped in SeriesSessionProvider.
 export default function SeriesLayout() {
@@ -57,6 +61,13 @@ export default function SeriesLayout() {
           }}
         />
         <Stack.Screen name="language" options={LIST_SHEET_OPTIONS} />
+        <Stack.Screen
+          name="download"
+          options={{
+            ...SHEET_BASE_OPTIONS,
+            sheetAllowedDetents: [...DOWNLOAD_SHEET_DETENTS],
+          }}
+        />
       </Stack>
     </SeriesSessionProvider>
   )

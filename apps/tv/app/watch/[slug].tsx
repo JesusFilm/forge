@@ -1,21 +1,6 @@
-// Video-details screen — /watch/[slug].
-//
-// Paints from an (untrusted, sanitized) seed for instant first paint, then
-// fills in from GET_VIDEO_BY_SLUG (cache-first + returnPartialData so re-entry
-// reads the warm cache without a blocking refetch — R3, R21). The normalized
-// video is published into the shared WatchSession so the action row's pickers
-// (and the in-player menu) read one source of truth.
-//
-// Layout (Claude Design handoff, "match the mockup exactly"): a full-screen
-// cinematic VideoBackdrop with the hero content anchored bottom-left over it —
-// a SERIES badge + meta kicker, large title, 2-line teaser, and a single
-// left-aligned action row (DetailsActionRow: Play + Language/Subtitles/Share/
-// Download pills). Below the fold (opaque #08080a): the Up Next rail, an About
-// block, then Related Questions and Bible Quotes.
-//
-// DEGRADED (R14–R17): a section with zero items is omitted entirely. Below-fold
-// sections render only once the full query has resolved (the seed paints
-// title/poster first; no per-section spinners).
+// Video-details screen (/watch/[slug]): sanitized seed for instant first paint,
+// then GET_VIDEO_BY_SLUG (cache-first + returnPartialData, R3/R21) into the shared
+// WatchSession. DEGRADED (R14–R17): empty sections omitted; below-fold last.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native"
@@ -102,15 +87,9 @@ export default function WatchVideoScreen() {
     [seed],
   )
 
-  // A series reached via /watch (deep link, stale recommendation) redirects to
-  // the dedicated series screen — replace (not push) so Menu pops to the
-  // pre-watch origin. resolveWatchRedirect decides only on complete data
-  // (never off a partial cache read); detection is label-only at this seam, so
-  // an unlabeled-with-children deep link stays here (accepted gap, mirrors
-  // mobile). Deep-linked series show one watch-skeleton frame before the
-  // replace lands (the render below skips the backdrop on that frame). The
-  // seed carries through with playbackId nulled so the series side never
-  // derives a stream from it. Once-guarded per slug so it can't loop.
+  // A series reached via /watch replaces (not pushes) to the series screen so Menu
+  // pops to origin. Decides on complete data only, label-only (unlabeled-with-
+  // children stays here, mirrors mobile); seed playbackId nulled, once-guarded.
   const redirectDecision = resolveWatchRedirect(normalized, { loading })
   const redirectedRef = useRef<string | null>(null)
   useEffect(() => {
@@ -181,10 +160,9 @@ export default function WatchVideoScreen() {
   )
   const descriptionText = video?.description ?? null
 
-  // Below-fold section blocks — built from the resolved video only (adapters
-  // return null for empty input so the whole section is omitted: R14–R17).
-  // Verse text is fetched per citation (useBibleVerses) and threaded into the
-  // quote cards; until it resolves the cards render reference-only.
+  // Below-fold blocks from the resolved video only (adapters return null for empty
+  // input so the section is omitted, R14–R17). Verse text is fetched per citation
+  // (useBibleVerses) into the quote cards; until it resolves cards are ref-only.
   const bibleVerses = useBibleVerses(video?.bibleCitations ?? NO_CITATIONS)
   const relatedQuestionsBlock = hasVideo
     ? buildRelatedQuestionsBlock(video.studyQuestions)
@@ -223,12 +201,9 @@ export default function WatchVideoScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero: cinematic backdrop with content anchored bottom-left. The
-            backdrop fills the (HERO_PEEK-shortened) hero so the video clips by
-            construction on BOTH tvOS and Android — a full-height VideoView would
-            punch through the Up Next rail on Android (SurfaceView ignores
-            overflow:hidden). bottomFadeColor draws the hero→rail fade INSIDE the
-            backdrop so it composites over that SurfaceView. */}
+        {/* Hero: backdrop fills the HERO_PEEK-shortened hero so video clips by
+            construction (full-height VideoView punches through Up Next on Android —
+            SurfaceView ignores overflow:hidden). bottomFadeColor fades inside it. */}
         <View style={styles.hero}>
           <VideoBackdrop
             streamingUrl={backdropSource ?? null}
@@ -277,11 +252,9 @@ export default function WatchVideoScreen() {
         <View style={styles.below}>
           {hasVideo ? <UpNextRail siblings={video.siblings} /> : null}
 
-          {/* About + Related Questions share one two-column row; either column
-              alone stretches across the full row width. The TVFocusGuideView
-              spans the full row so vertical D-pad traversal over the
-              non-focusable About column redirects into the question rows
-              (offset focusables are otherwise skipped by the focus engine). */}
+          {/* About + Related Questions share a two-column row. TVFocusGuideView
+              spans the row so vertical D-pad over the non-focusable About column
+              redirects into the question rows (offset focusables are else skipped). */}
           {descriptionText != null || relatedQuestionsBlock != null ? (
             <TVFocusGuideView autoFocus style={styles.aboutRow}>
               {descriptionText != null ? (
@@ -336,11 +309,9 @@ const styles = StyleSheet.create({
 
   // ── Hero ──────────────────────────────────────────────────────────
   hero: {
-    // Shortened by HERO_PEEK so the Up Next rail peeks above the fold. The
-    // VideoBackdrop fills this (not full-screen) so its VideoView clips by
-    // construction on both tvOS and Android; the hero→rail fade is drawn inside
-    // the backdrop (bottomFadeColor) so it composites over the Android
-    // SurfaceView. overflow:hidden still guards the poster/scrim layers.
+    // Shortened by HERO_PEEK so Up Next peeks above the fold. The VideoBackdrop
+    // fills this (not full-screen) so its VideoView clips by construction on both
+    // platforms; overflow:hidden still guards the poster/scrim layers.
     height: SCREEN_HEIGHT - HERO_PEEK,
     justifyContent: "flex-end",
     backgroundColor: "#000000",

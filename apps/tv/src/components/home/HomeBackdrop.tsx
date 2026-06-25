@@ -1,16 +1,6 @@
-// Full-screen ambient backdrop for the redesigned Home — absolutely
-// positioned BEHIND all content (non-focusable, pointerEvents "none"; absolute
-// decorative layers are fine, only focusables must stay in flow). Paints the
-// focused card's artwork full-bleed with a ~600ms crossfade, beneath the
-// design's three ambient gradients and a deep scrim whose opacity tracks the
-// browse state ("top" 0 / "browse" 0.22 / "deep" 1, ~500ms).
-//
-// Crossfade: two stacked expo-image slots swapping opacity. The incoming slot
-// fades in ONLY after its image reports onLoad — expo-image's own `transition`
-// clears to blank between sources on a single layer, which is exactly the
-// flash this two-slot dance avoids. Slot images are keyed by URL so a slot
-// never shows a stale frame from two swaps ago. A generation counter
-// invalidates loads/fades that a newer focus target supersedes.
+// Non-focusable Home backdrop: two stacked expo-image slots crossfade the focused
+// card's artwork. Incoming slot fades in only after onLoad (a single layer flashes
+// blank between sources); slots keyed by URL + generation counter block stale frames.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Image } from "expo-image"
@@ -34,16 +24,8 @@ const CANCEL_FADE_MS = 200
 // each frame (~150ms/redraw). Rails sit on the near-black base; tvOS keeps it.
 const IS_ANDROID = Platform.OS === "android"
 
-// The design's ambient scrim — three stacked gradients over the artwork, all
-// on the WATCH_THEME near-black scrim base. Module-scope so the gradient
-// props keep one identity across renders; WATCH_THEME.scrim(0) (never
-// "transparent") avoids dark banding.
-//
-// The three ambient scrims + the deep-scrim color are exported so the hero
-// pager (HeroPager) can paint pixel-matched scrims over its own sliding
-// artwork. Export-only — the constants and this component's behavior are
-// otherwise unchanged.
-//
+// Ambient scrim: three module-scope gradients (stable identity; scrim(0) not
+// "transparent" avoids banding), exported so HeroPager paints matching scrims.
 // linear-gradient(90deg, rgba(7,7,8,.9) 0%, rgba(7,7,8,.5) 36%, 0 at 62%)
 export const LEFT_SCRIM_COLORS = [
   WATCH_THEME.scrim(0.9),
@@ -120,10 +102,8 @@ export const HomeBackdrop = memo(function HomeBackdrop({
     if (generation !== generationRef.current) return
     const opacities = slotOpacitiesRef.current
     const other: SlotIndex = slot === 0 ? 1 : 0
-    // Mark intent eagerly: `slot` is the front from now on, even before the
-    // fade finishes. A focus change that supersedes this fade then reads the
-    // correct front/back and crossfades FROM the in-flight target rather than
-    // snapping back to the prior front.
+    // Mark `slot` as front eagerly (before the fade finishes) so a superseding
+    // focus change crossfades FROM the in-flight target, not back to the prior front.
     frontIndexRef.current = slot
     Animated.parallel([
       Animated.timing(opacities[slot], {
@@ -180,11 +160,8 @@ export const HomeBackdrop = memo(function HomeBackdrop({
       return
     }
 
-    // Back slot ALREADY holds the target artwork (e.g. A->B->A): its Image is
-    // mounted and loaded, so its URL-keyed onLoad will NOT fire again. Waiting
-    // on pendingRef for that load would stall forever — the backdrop would
-    // stay stuck on the front card while the billboard shows the target.
-    // Crossfade to the back slot directly instead.
+    // Back slot already holds the target (A->B->A): its onLoad won't fire again,
+    // so waiting on pendingRef would stall forever — crossfade to it directly.
     if (imageUrl != null && slotUrlsRef.current[back] === imageUrl) {
       pendingRef.current = null
       startCrossfade(back, generation)

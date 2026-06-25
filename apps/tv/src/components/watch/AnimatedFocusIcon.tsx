@@ -1,9 +1,6 @@
-// Focus-aware Ionicons glyph for the watch-detail surfaces (DetailsActionRow's
-// secondary pills + the menu rows in WatchOptionRow). Ionicons' colour is a
-// prop, not an animatable style, so the rest→focus colour flip is a cross-fade
-// of two stacked copies (opacity IS animatable). Driven by useFocusAnimation's
-// 0→1 `progress` so the white→ink flip glides in with the pill/row fill rather
-// than snapping.
+// Focus-aware Ionicons glyph for watch-detail surfaces. Ionicons colour is a
+// prop, not animatable, so the rest→focus flip cross-fades two stacked copies
+// (opacity is animatable), driven by useFocusAnimation's 0→1 progress.
 
 import { Animated, StyleSheet, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"

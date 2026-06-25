@@ -47,24 +47,20 @@ type FocusableCardProps = {
   focusScale?: number
   /**
    * Where the focus scale grows from. "center" (default) scales symmetrically;
-   * "left" pins the left edge so the card grows rightward only — use it for the
-   * first item in a left-aligned rail so a focused first card stays flush with
-   * the rail inset instead of bleeding toward the screen edge.
+   * "left" pins the left edge (grows rightward only) so a rail's first card stays
+   * flush with the inset instead of bleeding toward the screen edge.
    */
   focusAnchor?: "center" | "left"
   /**
-   * Focus highlight style. "crimson" (default) is the app-wide Crimson Gallery
-   * glow — keep it on SDUI / series / legacy surfaces. "white" draws the
-   * WATCH_THEME white ring (a white border + neutral shadow) used by Home, the
-   * watch detail page, and Search; pass it on those surfaces so the focus
-   * treatment stays consistent. Matches ResultCard / HomeCard's white ring.
+   * Focus highlight. "white" (default) = WATCH_THEME white ring (border + neutral
+   * shadow) matching Home/ResultCard/HomeCard — the app-wide focus look. "crimson"
+   * = legacy Crimson Gallery glow, opt-in only.
    */
   focusRing?: "crimson" | "white"
   accessibilityLabel?: string
-  /** VoiceOver / TalkBack reads this after the label, on a short pause,
-   *  to describe what activating the card does (e.g., "Opens this
-   *  experience"). Optional — labels alone are sufficient when the
-   *  action is self-evident (single-letter keyboard cells). */
+  /** VoiceOver/TalkBack reads this after the label to describe what activating
+   *  the card does (e.g. "Opens this experience"). Optional when the action is
+   *  self-evident (single-letter keyboard cells). */
   accessibilityHint?: string
   style?: ViewStyle
   children: ReactNode
@@ -77,7 +73,7 @@ export function FocusableCard({
   hasTVPreferredFocus,
   focusScale,
   focusAnchor = "center",
-  focusRing = "crimson",
+  focusRing = "white",
   accessibilityLabel,
   accessibilityHint,
   style,
@@ -104,6 +100,12 @@ export function FocusableCard({
       visualStyle: Object.keys(visual).length > 0 ? visual : undefined,
     }
   }, [style])
+
+  // The white ring must follow the card's OWN corner radius (e.g. a pill at
+  // borderRadius 999), not a fixed 16 — otherwise a square-ish ring frames a
+  // rounded card. Falls back to the default card radius.
+  const cardRadius = visualStyle?.borderRadius
+  const ringRadius = typeof cardRadius === "number" ? cardRadius : scaleSize(16)
 
   const animateIn = () => {
     setIsFocused(true)
@@ -159,12 +161,14 @@ export function FocusableCard({
         >
           {children}
         </View>
-        {/* White focus ring — an inset border overlay on the non-clipping
-            outer (matches ResultCard / HomeCard). Mounted only while focused;
-            its constant geometry means toggling it never reflows the content
-            underneath. */}
+        {/* White focus ring — inset border overlay on the non-clipping outer
+            (matches ResultCard/HomeCard). Mounted only while focused; constant
+            geometry means toggling it never reflows content underneath. */}
         {whiteRing && isFocused ? (
-          <View style={styles.whiteRing} pointerEvents="none" />
+          <View
+            style={[styles.whiteRing, { borderRadius: ringRadius }]}
+            pointerEvents="none"
+          />
         ) : null}
       </Animated.View>
     </Pressable>

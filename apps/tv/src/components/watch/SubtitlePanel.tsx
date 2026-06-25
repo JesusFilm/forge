@@ -1,21 +1,6 @@
-// On-page subtitle picker for the details screen (R9, R13).
-//
-// Styled to the Claude Design handoff ("Forge TV Video Page" → Subtitles sheet):
-// a translucent, hairline-bordered sheet over a dimmed backdrop, a header with a
-// dimmed sub-line, and a focus-trapping TVFocusGuideView. Calls
-// ensureActiveVariantMedia() on open so the active dub's lazy media (subtitles)
-// is fetched (GET_VIDEO_DUB), then renders the four media states distinctly:
-//   - loading      → a NON-focusable "Loading…" status row,
-//   - error        → a NON-focusable "Couldn't load subtitles" status row,
-//   - loaded-empty → a NON-focusable "No subtitles available" status row,
-//   - loaded-list  → the subtitle rows (WatchOptionRow, slug-keyed, red check on
-//     the active track; focus inverts the row to a white fill).
-// A "Subtitles off" row is always present and focusable (setSubtitleEnabled(false)).
-// In EVERY state the Close affordance stays focusable, so the viewer is never
-// trapped in an empty/loading/error panel.
-//
-// The media-state → UI-state mapping and the active-row test are pure helpers in
-// panelState.ts (unit-tested there — jest-expo can't load this .tsx).
+// On-page subtitle picker (R9, R13). Fetches the active dub's lazy media on open
+// (GET_VIDEO_DUB), renders loading/error/empty/list states; "Subtitles off" and
+// Close stay focusable in EVERY state. Media→UI mapping lives in panelState.ts (jest-expo can't load .tsx).
 
 import { useEffect } from "react"
 import { Modal, ScrollView, Text, View } from "react-native"

@@ -1,11 +1,6 @@
-// Pure state for the Home screen's Focus-Driven Showcase (R10/R11). Kept as a
-// React-free .ts module (like searchResultPath.ts / seriesScreenState.ts) so
-// it is unit-testable under jest-expo, which cannot load .tsx.
-//
-// The reducer is synchronous and pure; the ~150ms trailing debounce on focus
-// commits lives component-side via createShowcaseFocusDebouncer (patterns doc
-// tv-focus-driven-hero-patterns-20260420.md §4 — committing on every
-// micro-focus event thrashes during fast D-pad traversal).
+// Pure state for the Home screen's Focus-Driven Showcase (R10/R11). React-free .ts
+// so it's unit-testable under jest-expo. The ~150ms trailing focus-commit debounce
+// lives component-side via createShowcaseFocusDebouncer (per-micro-focus thrashes during fast D-pad traversal — tv-focus-driven-hero-patterns-20260420.md §4).
 
 import type { WatchHomeCard, WatchHomeModel } from "../../lib/watchHome/model"
 
@@ -29,10 +24,9 @@ export const INITIAL_SHOWCASE_STATE: ShowcaseState = { current: null }
 export const SHOWCASE_FOCUS_DEBOUNCE_MS = 150
 
 /**
- * Initial showcase pick (R10/AE7): the first featured card, falling back to
- * the first card of the first non-empty section, else null (the screen falls
- * to its empty state). The model already drops empty sections; the length
- * check is defensive.
+ * Initial showcase pick (R10/AE7): first featured card, else first card of the
+ * first non-empty section, else null (screen falls to its empty state). Model
+ * already drops empty sections; the length check is defensive.
  */
 export function initialShowcaseCard(
   model: WatchHomeModel,
@@ -87,8 +81,7 @@ export type ShowcaseFocusDebouncer = {
 
 /**
  * Trailing-only debounce: rapid focus A→B→C commits once, with C, after the
- * window closes. The component holds one instance in a ref and wires `focus`
- * into every card's onFocus.
+ * window closes. Component holds one instance in a ref, wired into onFocus.
  */
 export function createShowcaseFocusDebouncer(
   commit: (card: WatchHomeCard) => void,

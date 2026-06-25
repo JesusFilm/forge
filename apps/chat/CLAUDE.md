@@ -19,8 +19,9 @@ src/
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
   components/
     shell/
-      app-shell.tsx      'use client' — owns conversation state via useConversations; lays out sidebar + chat
-      sidebar.tsx        Left rail: brand lockup, "New conversation", conversation list (presentational)
+      app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
+      sidebar.tsx        'use client' — responsive left rail: desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Holds local UI mechanics (collapse clip animation, Escape-to-close, drawer focus trap/restore); conversation data is props
+      icons.tsx          Inline line-icon components (panel/compose/menu/close) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational)
       message-list.tsx   Renders turns (Embersoot user bubble / plain assistant text) + pending pulse cursor
@@ -30,6 +31,7 @@ src/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
   lib/
     chat-stub.ts         Reply-generation seam — the Mastra wiring replaces THIS file
+    cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
     conversations.ts     Message + Conversation types + createConversation / deriveTitle helpers
     use-conversations.ts Client hook: send + per-conversation reply timers + per-conversation pending + double-send guard + new/select conversation
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
@@ -39,9 +41,13 @@ public/                  Static assets served by URL (Next.js convention, matche
 ```
 
 - **State ownership:** all conversation state lives in `useConversations`,
-  consumed by `AppShell`. Everything else is presentational and receives props
-  — `chat.tsx` does not own state. Data flows one way:
-  `useConversations` → `AppShell` → `Sidebar` / `Chat` → leaf components.
+  consumed by `AppShell`, which also owns sidebar _view_ state (`collapsed`,
+  `mobileOpen`). Data flows one way: `useConversations`/view-state → `AppShell`
+  → `Sidebar` / `Chat` → leaf components. `chat.tsx` is fully presentational;
+  `sidebar.tsx` is presentational for _data_ but holds local _UI mechanics_
+  (collapse clip animation, Escape listener, drawer focus trap). Pulling those
+  mechanics into a hook + sub-components is tracked in
+  `docs/roadmap/ai-chat/feat-203`.
 - **The stub seam:** reply generation is isolated in `lib/chat-stub.ts`. The
   hook only orchestrates timing, the per-conversation pending/double-send guard,
   and which conversation a reply lands in. The `Message` type lives in
@@ -50,9 +56,11 @@ public/                  Static assets served by URL (Next.js convention, matche
   swap renames nothing.
 - **Sidebar is our own addition**, not from the design system — the Vigil
   system as handed to us is single-surface (it lists no conversation sidebar),
-  so the rail was built from its tokens rather than copied from it. This too may
-  change. Multi-conversation state is client-only and resets on refresh (no
-  DB/users yet).
+  so the rail was built from its tokens rather than copied from it. It is
+  responsive (Gemini-style): a desktop rail that collapses to an icon column,
+  and a mobile off-canvas drawer (hamburger opens; scrim / X / Escape close;
+  `<main>` is `inert` while open). This too may change. Multi-conversation state
+  is client-only and resets on refresh (no DB/users yet).
 
 ### Initial design direction — "The Vigil"
 
@@ -132,8 +140,9 @@ roadmap ticket that settles the integration path (above) as explicit
   `shell/app-shell.tsx`, `shell/sidebar.tsx`, `chat/chat.tsx`,
   `chat/composer.tsx`, and `chat/empty-state.tsx`. `chat/message-list.tsx` is a
   pure presentational render (no hooks/handlers) so it carries no `'use client'`
-  and inherits its parent's client context. `brand/*` and the `app/` entry files
-  stay server.
+  and inherits its parent's client context — `shell/icons.tsx` (stateless SVG
+  components) is the same. `brand/*`, `lib/cn.ts`, and the `app/` entry files
+  stay server / framework-agnostic.
 - Strict TypeScript, `src/` layout, `@/*` path alias — config mirrors
   `apps/web` (the CI-proven template).
 - Tailwind v4, CSS-first (`@import "tailwindcss"` in `src/app/globals.css`;
@@ -143,6 +152,18 @@ roadmap ticket that settles the integration path (above) as explicit
   (the `apps/admin` style — no testing-library). The behavioral suite lives in
   `components/shell/app-shell.test.tsx` (AppShell owns the state).
 - Runs on port **3200**.
+
+### Comments
+
+- **Inline comments are 3 lines maximum.** This applies to every `//` comment
+  that explains code (in function bodies, beside JSX) and to file/module
+  headers. If a note needs more, cut it down to the load-bearing insight.
+- **Every new exported building block — component, hook, or non-trivial module —
+  gets a JSDoc (`/** … \*/`) block** directly above it, describing its purpose
+and any non-obvious behavior: for a component, what it renders and its key
+props/state; for a hook or module, what it does and its inputs/outputs. This
+is the one exception to the 3-line cap — keep it concise. Trivial one-line
+helpers (e.g. a `cn`class joiner) don't need one; a short`//` note is fine.
 
 ## Development
 

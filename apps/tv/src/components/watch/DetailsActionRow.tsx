@@ -1,24 +1,6 @@
-// Action row for the video-details screen — the "Inline pills" layout from the
-// Claude Design handoff. Play + all secondary actions live in ONE left-aligned,
-// remote-navigable row directly under the title, so the D-pad travels naturally
-// left→right (the mockup's core fix: no more leaping from Play to far-right
-// actions). Order: [Play] [Language] [Subtitles] [Share] [Download].
-//
-// Styling matches the mockup exactly (WATCH_THEME): a solid-red Play pill (play
-// icon + "Play") and glass secondary pills that invert to a white fill on focus.
-// tvOS magnify: focused pills lift + scale 1.06. The whole row is a
-// TVFocusGuideView (autoFocus) so left/right traverses it and focus returns here
-// from the Up Next rail below.
-//
-// Focus (R7): Play receives a one-shot hasTVPreferredFocus on mount (cleared via
-// useEffect) AND becomes the focus-restore target when the fullscreen overlay
-// dismisses — when VideoPlayerContext goes visible → not-visible, we re-arm
-// Play's preferred focus for one render.
-//
-// Play (R5): validate the active variant's hls via validateStreamingUrl, then
-// playVideo(hls, title). Share / Download (R18, R19): build the continuation URL,
-// validate it, and only render the action when valid; pressing it opens the QR
-// LinkModal (the phone is the continuation surface).
+// Video-details inline pills row (Claude Design handoff): [Play] [Language] [Subtitles]
+// [Share] [Download] left-aligned under the title; WATCH_THEME, a TVFocusGuideView (autoFocus).
+// Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share/Download R18/R19 open the QR LinkModal.
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
@@ -148,11 +130,9 @@ export function DetailsActionRow({
 }
 
 // ── Buttons ─────────────────────────────────────────────────────────
-//
-// Focus eases in via useFocusAnimation's 0→1 `progress` (no "blink"): the pill
-// lifts + magnifies, and its highlight (Play's white ring; the secondary pills'
-// glass→white fill, drop shadow, and icon/text colour) cross-fades over ~180ms.
-// SecondaryPill is exported for reuse (SeriesActionRow's Language pill).
+// Focus eases in via useFocusAnimation's 0→1 `progress`: the pill lifts + magnifies
+// and its highlight cross-fades over ~180ms. SecondaryPill is exported for reuse
+// (SeriesActionRow's Language pill).
 
 const ICON_SIZE = Math.round(scale(30))
 

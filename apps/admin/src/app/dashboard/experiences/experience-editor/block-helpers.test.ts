@@ -30,6 +30,7 @@ const videoLibrary: VideoLibraryItem[] = [
     durationSeconds: 754,
     previewImageUrl: "https://example.com/image.jpg",
     previewStreamUrl: "https://example.com/video.mp4",
+    hasGrounding: true,
   },
 ]
 

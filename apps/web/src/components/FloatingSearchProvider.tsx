@@ -119,30 +119,6 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     setOpen(true)
   }, [enableSearchController, setOpen])
 
-  const didHydrateSearchUrlRef = useRef(false)
-  useEffect(() => {
-    if (didHydrateSearchUrlRef.current) return
-    didHydrateSearchUrlRef.current = true
-    if (typeof window === "undefined") return
-
-    const seeded = new URLSearchParams(window.location.search).get("q") ?? ""
-    const trimmed = seeded.slice(0, 200)
-    if (trimmed.length === 0) return
-
-    let cancelled = false
-    const hydrateSearchIntent = () => {
-      if (cancelled) return
-      setQuery(trimmed)
-      enableSearchController()
-      setOpen(true)
-    }
-
-    window.queueMicrotask(hydrateSearchIntent)
-    return () => {
-      cancelled = true
-    }
-  }, [enableSearchController, setOpen])
-
   useEffect(() => {
     if (!searchControllerEnabled) return
     void loadWatchInteraction("search").catch(() => {})

@@ -12,10 +12,10 @@ import { enrichRouteRelatedVideo } from "@/lib/enrichment"
 import type { YouVersionBibleQuotePassage } from "@/lib/youversion-passage"
 import {
   getVideoChildDubLanguagesBySlugOperation,
+  getWatchLanguagePickerVariantsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
-  getWatchVideoShellBySlugOperation,
   watchExperienceFragment,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -66,8 +66,8 @@ const GET_WATCH_SETTINGS = adminGraphql(
 )
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
-type GetWatchVideoShellData = AdminResultOf<
-  typeof getWatchVideoShellBySlugOperation
+type GetWatchLanguagePickerVariantsData = AdminResultOf<
+  typeof getWatchLanguagePickerVariantsBySlugOperation
 >
 type GetWatchVideoLocalizedCopyData = AdminResultOf<
   typeof getWatchVideoLocalizedCopyBySlugOperation
@@ -75,7 +75,9 @@ type GetWatchVideoLocalizedCopyData = AdminResultOf<
 type GetWatchVideoDubDetailData = AdminResultOf<
   typeof getWatchVideoDubDetailOperation
 >
-type AdminVideoShellRaw = NonNullable<GetWatchVideoShellData["videoBySlug"]>
+type AdminLanguagePickerVideoRaw = NonNullable<
+  GetWatchLanguagePickerVariantsData["videoBySlug"]
+>
 type AdminVideoLocalizedCopyRaw = NonNullable<
   GetWatchVideoLocalizedCopyData["videoBySlug"]
 >
@@ -268,6 +270,7 @@ export type WatchVideoRecord = {
   // walking `children[].variants`.
   childDubLanguages: WatchChildLanguage[]
   variants: WatchVariant[]
+  playableLanguageCount?: number
   subtitles: WatchSubtitle[]
   studyQuestions: WatchStudyQuestion[]
   bibleCitations: WatchBibleCitation[]
@@ -523,6 +526,7 @@ type AdminVideoRaw = {
   parents?: AdminParentRelationRaw[] | null
   children?: AdminChildRelationRaw[] | null
   variants?: AdminVideoVariantRaw[] | null
+  playableDubLanguageCount?: number | null
   studyQuestions?: AdminStudyQuestionRaw[] | null
   bibleCitations?: AdminBibleCitationRaw[] | null
 }
@@ -557,9 +561,11 @@ type AdminVideoRouteSnapshotParentRelation = {
     | null
 }
 
-type AdminVideoRouteSnapshotRaw = AdminVideoShellRaw &
+type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
   AdminVideoRouteSnapshotStudyQuestionAliases & {
+    preferredVariant?: AdminVideoVariantRaw | null
+    playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
     children?: AdminVideoRouteSnapshotChildRelation[] | null
   }
@@ -862,6 +868,8 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     // getVideoChildDubLanguagesBySlugOperation.
     childDubLanguages: [],
     variants,
+    playableLanguageCount:
+      raw.playableDubLanguageCount ?? countPlayableWatchVariants(variants),
     subtitles: normalizeSubtitlesFromVariants(variants),
     studyQuestions: (raw.studyQuestions ?? [])
       .map((q): WatchStudyQuestion | null => {
@@ -1423,11 +1431,11 @@ function snapshotLocalizedCopyWithFallback({
   return merged
 }
 
-async function queryWatchVideoShellBySlug(
+async function queryWatchLanguagePickerVariantsBySlug(
   videoSlug: string,
-): Promise<AdminVideoShellRaw | null> {
+): Promise<AdminLanguagePickerVideoRaw | null> {
   const result = await client.query({
-    query: getWatchVideoShellBySlugOperation,
+    query: getWatchLanguagePickerVariantsBySlugOperation,
     variables: { videoSlug },
     fetchPolicy: "no-cache",
   })
@@ -1480,9 +1488,9 @@ async function queryWatchVideoDubDetail(
   return result.data?.videoDub ?? null
 }
 
-const fetchWatchVideoShell = unstable_cache(
-  queryWatchVideoShellBySlug,
-  ["watch-video-shell"],
+const fetchWatchLanguagePickerVariants = unstable_cache(
+  queryWatchLanguagePickerVariantsBySlug,
+  ["watch-language-picker-variants"],
   { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
 )
 
@@ -1508,7 +1516,7 @@ function countPlayableWatchVariants(variants: WatchVariant[]): number {
 
 export const resolveWatchLanguagePickerVariants = cache(
   async (videoSlug: string): Promise<WatchLanguagePickerVariant[]> => {
-    const shell = await fetchWatchVideoShell(videoSlug)
+    const shell = await fetchWatchLanguagePickerVariants(videoSlug)
     if (!shell) return []
 
     const seenLanguageSlugs = new Set<string>()
@@ -1612,7 +1620,11 @@ function mergeParentRelationsShellAndCopy(
 }
 
 function mergeWatchVideoShellWithCopy(
-  shell: AdminVideoShellRaw,
+  shell: AdminVideoRaw & {
+    preferredVariant?: AdminVideoVariantRaw | null
+    playableDubLanguageCount?: number | null
+    variants?: AdminVideoVariantRaw[] | null
+  },
   copy: AdminVideoLocalizedCopyRaw | null,
 ): AdminVideoRaw {
   return {
@@ -1620,7 +1632,11 @@ function mergeWatchVideoShellWithCopy(
     locales: (copy?.locales as AdminLocaleRaw[] | null | undefined) ?? [],
     parents: mergeParentRelationsShellAndCopy(shell.parents, copy?.parents),
     children: mergeChildRelationsShellAndCopy(shell.children, copy?.children),
-    variants: (shell.variants ?? []).map((variant) => ({
+    playableDubLanguageCount: shell.playableDubLanguageCount ?? null,
+    variants: (shell.preferredVariant
+      ? [shell.preferredVariant]
+      : (shell.variants ?? [])
+    ).map((variant) => ({
       ...variant,
       downloads: [],
       muxVideo: null,
@@ -2260,7 +2276,8 @@ export function buildHeroBlock(
     kind: "HeroPlayer",
     video,
     variant,
-    playableLanguageCount: countPlayableWatchVariants(video.variants),
+    playableLanguageCount:
+      video.playableLanguageCount ?? countPlayableWatchVariants(video.variants),
   }
 }
 

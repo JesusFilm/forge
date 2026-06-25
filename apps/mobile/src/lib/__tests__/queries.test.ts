@@ -26,19 +26,16 @@ describe("GET_SERIES_BY_SLUG (lean series detail)", () => {
     expect(operationOnly(seriesSdl)).not.toContain("...WatchVideo")
   })
 
-  // Perf guard (series detail slow render): the screen renders its episode grid
-  // from its OWN children and never shows siblings, so the parents → parent →
-  // children chain (~208 nodes / ~190KB and ~1.6s of prod resolver time on a
-  // Jesus-sized series) must NOT be fetched here. It lives only on the watch
-  // screen's full WatchVideo fragment.
+  // Perf guard (series detail slow render): screen renders its episode grid from
+  // its OWN children, never siblings, so the parents → parent → children chain
+  // (~208 nodes/~190KB, ~1.6s prod resolver time) must stay on the watch screen only.
   it("EXCLUDES the parents/siblings chain", () => {
     expect(seriesSdl).not.toContain("parents")
   })
 
-  // Perf guard: the series screen only needs a playable `hls` + `language` to
-  // pick/swap the trailer. Each dub's `duration` + `muxVideo.playbackId` are
-  // player-only — fetching them across ~2,270 dubs is dead weight (bytes + a
-  // per-dub muxVideo relation resolution server-side).
+  // Perf guard: series screen only needs `hls` + `language` to pick/swap the
+  // trailer. Per-dub `duration` + `muxVideo.playbackId` are player-only — dead
+  // weight across ~2,270 dubs (bytes + server-side per-dub muxVideo resolution).
   it("KEEPS variants: dubs with hls + language, but EXCLUDES per-dub duration + muxVideo", () => {
     expect(seriesSdl).toContain("variants: dubs")
     expect(seriesSdl).toContain("hls")

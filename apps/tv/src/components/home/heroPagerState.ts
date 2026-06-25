@@ -3,8 +3,7 @@
 // "already showing it" skip guard are jest-testable without rendering.
 
 /**
- * Step the slide index by `delta` (+1 next, -1 previous), wrapping both ends
- * (last → first on +1, first → last on -1). Returns 0 for an empty set. The
+ * Step the slide index by `delta`, wrapping both ends; 0 for an empty set. The
  * `+ count` before the modulo keeps a negative `current + delta` positive.
  */
 export function advanceByDelta(
@@ -22,9 +21,8 @@ export function backFace(front: 0 | 1): 0 | 1 {
 }
 
 /**
- * Whether a requested slide is already the one on the front face — in which
- * case there is nothing to slide (mirrors HomeBackdrop aborting a crossfade to
- * the artwork it already shows). Null ids never match (nothing painted yet).
+ * Whether the requested slide already occupies the front face (nothing to
+ * slide, like HomeBackdrop's crossfade abort). Null ids never match.
  */
 export function shouldSkipSlide(
   incomingId: string | null | undefined,

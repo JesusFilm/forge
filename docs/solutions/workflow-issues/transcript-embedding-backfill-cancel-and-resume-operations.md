@@ -618,6 +618,80 @@ The expected early signals are:
   `reason=already_enriched_healthy` instead of launching provider work again.
 - Legacy or incomplete `1_jf-0-0` language rows still launch through Mastra and
   ingest normally.
+
+### Hotfix checkpoint: 2026-06-22 large groups must defer remaining targets
+
+After the bounded-confirm/resume-skip hotfix deployed, the intended scoped
+resume was started through the existing Admin GraphQL mutation:
+`MODEL_UPGRADE`, `coreIds: ["1_jf-0-0"]`, and no language filter. The GraphQL
+request timed out, but Workflow run `wrun_01KVPQTTTQJGSWKET22FB3V156` started
+successfully at 2026-06-22 04:01 UTC.
+
+Early process and confirm steps were healthy. Process steps completed around
+the expected two-minute range, confirm steps stayed short, and the event log
+had no duplicate `step_started` entries in the early window. The later failure
+shape was different: `1_jf-0-0` is one very large `(video, edition)` group, so
+the outer process-wave budget guard did not stop
+`processTranscriptEmbeddingGroup` from launching many language targets
+sequentially inside one durable step.
+
+The run was cancelled through Workflow's native CLI and production containment
+was verified before applying the next hotfix:
+
+```bash
+WORKFLOW_POSTGRES_URL="$DATABASE_PUBLIC_URL" \
+pnpm --filter @forge/admin exec workflow cancel \
+  wrun_01KVPQTTTQJGSWKET22FB3V156 \
+  --backend @workflow/world-postgres --json
+```
+
+The cancelled run reached terminal `cancelled` status at
+2026-06-22 09:00:19 UTC. Admin transcript storage showed 56 rows touched since
+that scoped run started, with the latest observed write at
+2026-06-22 09:20:05 UTC, and no transcript writes in the later containment
+window.
+
+The follow-up Admin hotfix applies the projected-runtime guard inside the group
+target loop as well as between outer group waves. The production batcher also
+preserves target-limited multi-target group chunks instead of rewriting every
+language target into a singleton group, so the existing GraphQL trigger path
+actually exercises the guarded loop. When the next language target cannot fit
+inside the remaining step budget, the step returns the same group with
+`targets` sliced to the unprocessed languages. The parent workflow then
+processes that remainder group in a fresh durable step.
+
+Do not retry the scoped `1_jf-0-0` resume until both `@forge/admin` and
+`@forge/admin/worker` have the target-loop hotfix. After deploy, retry the same
+scoped shape rather than restarting the broad all-language corpus:
+
+```graphql
+mutation ResumeTranscriptEmbeddingBackfill {
+  triggerTranscriptEmbeddingBackfill(mode: MODEL_UPGRADE, coreIds: ["1_jf-0-0"])
+}
+```
+
+The expected proof is that long `1_jf-0-0` process steps return under the
+worker boundary, healthy enriched rows log `already_enriched_healthy`, and any
+remaining language targets continue through sliced remainder groups instead of
+one oversized durable step. The target-loop hotfix emits a scrubbed structured
+log when it defers a suffix:
+
+```text
+event=transcript_index_target_deferred
+coreId=<core id>
+videoEditionId=<edition id>
+processedTargets=<count already handled in this group>
+remainingTargets=<count returned as the sliced remainder>
+elapsedMs=<step elapsed before deferral>
+stepMaxDurationMs=<configured step budget>
+launchTimeoutMs=<configured Mastra launch timeout>
+```
+
+Use that event, plus short `stepProcessTranscriptEmbeddingGroups` durations,
+to prove the sliced remainder path is actually active. The log must not include
+transcript text, embedding input text, vectors, request bodies, raw provider
+responses, or API keys.
+
 - No confirm-ingest Graphile task runs near the 300 second boundary.
 
 ### Hotfix checkpoint: 2026-06-22 projected process-step budget

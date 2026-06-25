@@ -25,6 +25,10 @@ type ChatGenerateDraftAction = NonNullable<
   Parameters<typeof ExperienceChatPanel>[0]["generateDraftAction"]
 >
 
+type ChatGenerateSectionAction = NonNullable<
+  Parameters<typeof ExperienceChatPanel>[0]["generateSectionAction"]
+>
+
 export type ExperienceEditorWithChatProps = Omit<
   ExperienceEditorProps,
   "onCanvasController" | "videoLibrary"
@@ -42,6 +46,11 @@ export type ExperienceEditorWithChatProps = Omit<
    * in environments without the AI surface configured.
    */
   generateDraftAction?: ChatGenerateDraftAction
+  /**
+   * Video-anchored section generator surfaced as the chat panel's
+   * "Generate section from video" control. Optional, like generateDraftAction.
+   */
+  generateSectionAction?: ChatGenerateSectionAction
 }
 
 function collectVideoIdsFromBlocks(blocks: readonly unknown[]): string[] {
@@ -70,6 +79,7 @@ export function ExperienceEditorWithChat({
   videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
   generateDraftAction,
+  generateSectionAction,
   ...editorProps
 }: ExperienceEditorWithChatProps) {
   const controllerRef = useRef<ExperienceCanvasController | null>(null)
@@ -183,7 +193,9 @@ export function ExperienceEditorWithChat({
         canvasController={canvasController}
         actions={chatActions}
         suggestedPrompts={suggestedPrompts}
+        videoLibrary={videoLibrary}
         generateDraftAction={generateDraftAction}
+        generateSectionAction={generateSectionAction}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <ExperienceEditor

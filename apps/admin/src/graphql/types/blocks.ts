@@ -184,7 +184,16 @@ BibleQuoteItemRef.implement({
   description: "Single entry in BibleQuotesCarouselBlock.quotes.",
   fields: (t) => ({
     reference: t.exposeString("reference"),
-    text: t.exposeString("text"),
+    // Optional: reference-first scripture stores no verse text (apps/web resolves it
+    // at render). Hand-authored quotes may still carry text.
+    text: t.exposeString("text", { nullable: true }),
+    // Structured citation identity so apps/web resolves verse text by stable
+    // book/chapter/verse instead of parsing the reference label.
+    osisId: t.exposeString("osisId", { nullable: true }),
+    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
+    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
+    verseStart: t.exposeInt("verseStart", { nullable: true }),
+    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
     backgroundImageUrl: t.exposeString("backgroundImageUrl", {
       nullable: true,
     }),

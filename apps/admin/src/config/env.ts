@@ -370,6 +370,26 @@ export const env = createEnv({
       .int()
       .positive()
       .default(200_000),
+    // Flag-gated video-anchored section cutover. When "true",
+    // `runGenerateSectionAction` calls the standalone
+    // `/forge-experience-section` route (reusing MASTRA_BASE_URL +
+    // MASTRA_SERVICE_API_KEY); there is NO admin in-process fallback for the
+    // section path (it is remote-first by design, to avoid expanding the
+    // consolidation's U10 deletion scope). Opt-in scaffolding: optional +
+    // defaulted so an unprovisioned env still boots.
+    EXPERIENCE_AI_REMOTE_SECTION: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Outbound HTTP budget for the remote section call. MUST stay strictly
+    // LARGER than mastra's internal section budget (TIME_BUDGET_MS.section,
+    // 60s) so the mastra-side timeout wins the race (same invariant as
+    // MASTRA_DRAFT_TIMEOUT_MS).
+    MASTRA_SECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(75_000),
     // Flag-gated streaming chat cutover (consolidation U9). When "true",
     // `runMastraChat` relays the token stream from the standalone
     // `/forge-experience-chat` route instead of running the agent in-process;
@@ -604,6 +624,12 @@ export const env = createEnv({
     ),
     MASTRA_DRAFT_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_DRAFT_TIMEOUT_MS,
+    ),
+    EXPERIENCE_AI_REMOTE_SECTION: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_SECTION,
+    ),
+    MASTRA_SECTION_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_SECTION_TIMEOUT_MS,
     ),
     EXPERIENCE_AI_REMOTE_CHAT: emptyToUndefined(
       process.env.EXPERIENCE_AI_REMOTE_CHAT,

@@ -1,6 +1,8 @@
 import {
   OFFLINE_INDEX_STORAGE_KEY,
   OFFLINE_MANIFEST_VERSION,
+  isBatchPlaceholderRecord,
+  isLiveDownloadRecord,
   offlineRecordKey,
   parseOfflineIndex,
   parseOfflineRecord,
@@ -146,5 +148,60 @@ describe("parseOfflineIndex", () => {
   it("filters non-string and empty entries", () => {
     const raw = JSON.stringify(["a", 1, null, "", "b", { x: 1 }])
     expect(parseOfflineIndex(raw)).toEqual(["a", "b"])
+  })
+})
+
+describe("isBatchPlaceholderRecord", () => {
+  it("is true only for a bare queued record with no pending/committed file", () => {
+    expect(
+      isBatchPlaceholderRecord({
+        ...RECORD,
+        state: "queued",
+        pendingPath: null,
+        committedPath: null,
+      }),
+    ).toBe(true)
+  })
+
+  it("is false for null, an in-progress record, or a queued record with a file", () => {
+    expect(isBatchPlaceholderRecord(null)).toBe(false)
+    expect(isBatchPlaceholderRecord({ ...RECORD, state: "downloading" })).toBe(
+      false,
+    )
+    expect(
+      isBatchPlaceholderRecord({
+        ...RECORD,
+        state: "queued",
+        pendingPath: "/tmp/x.pending",
+        committedPath: null,
+      }),
+    ).toBe(false)
+    expect(
+      isBatchPlaceholderRecord({
+        ...RECORD,
+        state: "queued",
+        pendingPath: null,
+        committedPath: "/files/x.mp4",
+      }),
+    ).toBe(false)
+  })
+})
+
+describe("isLiveDownloadRecord", () => {
+  it("is true for downloaded and in-progress states", () => {
+    for (const state of [
+      "downloaded",
+      "downloading",
+      "queued",
+      "paused",
+    ] as const) {
+      expect(isLiveDownloadRecord({ ...RECORD, state })).toBe(true)
+    }
+  })
+
+  it("is false for null, failed, and canceled (re-downloadable slugs)", () => {
+    expect(isLiveDownloadRecord(null)).toBe(false)
+    expect(isLiveDownloadRecord({ ...RECORD, state: "failed" })).toBe(false)
+    expect(isLiveDownloadRecord({ ...RECORD, state: "canceled" })).toBe(false)
   })
 })

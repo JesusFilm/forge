@@ -17,10 +17,9 @@ export type VideoRef = {
 }
 
 /**
- * Pick the best thumbnail URL from a video's images.
- * Accepts either an array (runtime shape from GraphQL) or a single object
- * (gql.tada inferred shape), since Strapi returns images as a collection.
- * Prefers mobileCinematicHigh, falls back to videoStill, then url.
+ * Pick the best thumbnail URL from a video's images. Accepts an array (runtime
+ * GraphQL shape) or single object (gql.tada inferred); Strapi returns a collection.
+ * Prefers mobileCinematicHigh, then videoStill, then url.
  */
 export function pickThumbnailUrl(
   images: VideoImage | VideoImage[] | null | undefined,

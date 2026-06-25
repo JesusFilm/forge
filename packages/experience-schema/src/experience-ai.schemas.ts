@@ -36,7 +36,20 @@ const DraftHeadingLevelSchema = z.enum(["h1", "h2", "h3", "h4", "h5", "h6"])
 export const DraftBibleQuoteItemSchema = z
   .object({
     reference: z.string().min(1),
-    text: z.string().min(1),
+    // Reference-first scripture: verse text is NEVER LLM-authored. The model emits a
+    // citation reference grounded in the anchor video's BibleCitation rows; apps/web
+    // resolves the actual verse text at render from the YouVersion / jsdelivr pipeline.
+    // `text` stays optional only for backward compatibility with hand-authored quotes
+    // that already carry it — generation must not populate it.
+    text: z.string().min(1).optional(),
+    // Structured citation identity (from the anchor video's BibleCitation rows) so the
+    // web resolver keys on stable book/chapter/verse instead of parsing the label, and
+    // the admin-side allowlist matches by identity rather than a fuzzy reference string.
+    osisId: z.string().min(1).optional(),
+    chapterStart: z.number().int().min(1).optional(),
+    chapterEnd: z.number().int().min(1).optional(),
+    verseStart: z.number().int().min(1).optional(),
+    verseEnd: z.number().int().min(1).optional(),
     attribution: z.string().optional(),
     ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),
@@ -390,6 +403,36 @@ export const DraftExperienceSchema = z
     blocks: z.array(z.lazy(() => DraftBlockSchema)).min(GENERATION_MIN_BLOCKS),
   })
   .strict()
+
+/**
+ * Video-anchored section unit (the apps/mastra section generator's output; admin
+ * re-validates the wire response against the same schema so generator and re-validator
+ * can never drift).
+ *
+ * A constrained subset of the top-level block union for the "turn one video into a
+ * grounded experience section" path: a video hero/embed, optional prose, FAQ sourced from
+ * the anchor video's study questions, and a reference-first scripture carousel.
+ * `quizButton` is deliberately excluded — it is section-content-scoped (not a top-level
+ * block) and requires a configured nextstep.is URL, so it is out of the v1 section unit.
+ */
+export const DraftVideoSectionBlockSchema = z.discriminatedUnion("t", [
+  DraftVideoHeroBlockSchema,
+  DraftVideoBlockSchema,
+  DraftTextBlockSchema,
+  DraftRelatedQuestionsBlockSchema,
+  DraftBibleQuotesCarouselBlockSchema,
+])
+
+export const DraftVideoSectionSchema = z
+  .object({
+    blocks: z.array(DraftVideoSectionBlockSchema).min(1),
+  })
+  .strict()
+
+export type DraftVideoSectionBlock = z.infer<
+  typeof DraftVideoSectionBlockSchema
+>
+export type DraftVideoSection = z.infer<typeof DraftVideoSectionSchema>
 
 export type DraftExperience = z.infer<typeof DraftExperienceSchema>
 export type DraftBlock = z.infer<typeof DraftBlockSchema>

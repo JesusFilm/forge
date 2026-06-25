@@ -20,26 +20,9 @@ import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
- * /search route — TV search surface, redesigned to the "Forge TV Home"
- * search-layer mockup. The layout varies by TV platform:
- *
- *   - Apple TV (Platform.OS === "ios"): a single-line keyboard at the top
- *     (SearchKeyboardLinear) with results stacked full-width below it — the
- *     native tvOS "swipe along the line" search idiom.
- *   - Android TV (Platform.OS === "android"): the grid keyboard on the left
- *     (SearchKeyboard) with results in a narrower pane on the right.
- *
- * Both share the query line (big type + blinking caret) at the top and the
- * results region (SearchResultsGrid when the query is non-empty, SearchBrowse —
- * Recent + Categories — when it's empty).
- *
- * SearchScreen owns `query` state and routes all writes through sanitizeQuery so
- * the backend never sees control chars, RTL overrides, or anything beyond 256
- * chars. useSemanticSearch handles debounce, stale-guard, and the state machine.
- *
- * The native tvOS UISearchController is intentionally NOT used: a real-device
- * spike (2026-06-22) proved react-native-screens headerSearchBarOptions crashes
- * on tvOS at mount. See docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
+ * /search route — Apple TV (Platform.OS "ios") = top linear keyboard + full-width
+ * results; Android TV = left grid keyboard + right pane. Native tvOS UISearchController
+ * NOT used (2026-06-22 spike: crashes at mount). See docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -47,20 +30,15 @@ export default function SearchScreen() {
     useSemanticSearch(query)
   const { recents, addRecent, clearAll } = useSearchHistory()
 
-  // Sanitize at the write site so downstream consumers never see raw
-  // input. For the on-screen keyboard this is a no-op today (discrete
-  // printable keys), but defense-in-depth for future input sources.
+  // Sanitize at the write site so downstream consumers never see raw input.
+  // No-op for the on-screen keyboard today; defense-in-depth for future sources.
   const setSanitizedQuery = useCallback((next: string) => {
     setQuery(sanitizeQuery(next))
   }, [])
 
-  // Record successful non-empty searches in recent history once, when
-  // the state first transitions to 'ready' with a non-empty result set
-  // for the lastSubmittedQuery. Reading lastSubmittedQuery (the query
-  // that drove these results) instead of the live `query` state means
-  // the recorded entry matches what the user actually saw — typing
-  // past the most-recent debounce-fired search no longer causes the
-  // in-progress query to be persisted as if it had returned results.
+  // Record a successful non-empty search in recents once, on first 'ready' with
+  // results. Keying on lastSubmittedQuery (not live `query`) matches what the user
+  // saw — typing past the last debounced search won't persist the in-progress query.
   const lastRecordedQueryRef = useRef<string>("")
   useEffect(() => {
     if (state !== "ready") return
@@ -71,13 +49,9 @@ export default function SearchScreen() {
     addRecent(lastSubmittedQuery)
   }, [state, results.length, lastSubmittedQuery, addRecent])
 
-  // Recent / Category click runs a fresh search immediately, bypassing
-  // the 600 ms debounce. Category search terms are hardcoded constants;
-  // recent queries were already sanitized when first submitted. We
-  // thread the sanitized value through runQuery directly because
-  // submit() closes over the previous `query` state until React
-  // commits the next render — the one-tick lag would otherwise fire a
-  // search for the prior query, not the one the user just clicked.
+  // Recent / Category click runs a fresh search immediately, bypassing the 600ms
+  // debounce. Thread the sanitized value through runQuery directly: submit() closes
+  // over stale `query` until the next render, so the lag would search the prior one.
   const runQueryImmediate = useCallback(
     (next: string) => {
       const sanitized = sanitizeQuery(next)
@@ -87,10 +61,9 @@ export default function SearchScreen() {
     [runQuery],
   )
 
-  // Trim so a whitespace-only query falls back to SearchBrowse rather than an
-  // empty results pane — matching useSemanticSearch, which gates its fetch on
-  // the trimmed length. (Not reachable via the on-screen keyboard today, but
-  // defensive for future input sources and keeps the two gates in lockstep.)
+  // Trim so a whitespace-only query falls back to SearchBrowse, not an empty
+  // pane — matching useSemanticSearch's trimmed-length fetch gate (keeps the two
+  // gates in lockstep; defensive for future input sources).
   const hasQuery = query.trim().length > 0
   const meta = resolveSearchMeta(state, results.length)
 
@@ -139,8 +112,7 @@ type SearchBodyProps = {
 /**
  * Meta line + results region, shared by both bodies. Renders the results grid
  * when there is a query, else the idle browse grid. `columns` is forwarded to
- * SearchResultsGrid (the two-pane layout passes a fixed count for its narrower
- * pane; the stacked layout omits it to use the responsive full-width default).
+ * SearchResultsGrid (two-pane passes a fixed count; stacked omits it for full-width).
  */
 function SearchResultsPane({
   state,
@@ -214,17 +186,13 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
 
 /**
  * Apple TV body: single-line keyboard on top, results stacked full-width below.
- * `columns` is omitted so SearchResultsGrid uses its responsive full-width
- * default (4 columns at ≤2880dp, 6 above). Down from the keyboard drops into
- * the results region (the keyboard does not trap focus downward).
+ * `columns` omitted so SearchResultsGrid uses its responsive default (4 cols at
+ * ≤2880dp, 6 above). Down from the keyboard drops into results (no focus trap).
  */
 function SearchBodyStacked(props: SearchBodyProps) {
-  // The keyboard sits ABOVE a vertically-scrolling results grid here, so
-  // D-pad-up out of the grid's top row must reach the keyboard. tvOS swallows
-  // that along-scroll-axis exit while the grid is still decelerating, so we
-  // give the grid's top row an explicit `nextFocusUp` target: the keyboard's
-  // first key node, captured ref-as-state. (The two-pane body needs none of
-  // this — there the keyboard is to the LEFT, a cross-axis escape.)
+  // Keyboard sits ABOVE a scrolling results grid, but tvOS swallows D-pad-up out
+  // of the top row while the grid decelerates. So give the top row an explicit
+  // `nextFocusUp`: the keyboard's first key node (two-pane needs none — keyboard is LEFT).
   const [keyboardLandingNode, setKeyboardLandingNode] =
     useState<ViewType | null>(null)
   return (
@@ -288,10 +256,9 @@ const styles = StyleSheet.create({
   resultsPane: {
     flex: 1,
   },
-  // Holds the one-line meta text at a stable height so the grid below
-  // doesn't shift as the label changes (N RESULTS / empty while browsing).
-  // Just tall enough for the 18px line — no extra reserved space, which
-  // had opened a visible gap above the results.
+  // Stable height for the one-line meta text so the grid doesn't shift as the
+  // label changes (N RESULTS / empty). Just tall enough for the 18px line —
+  // extra reserved space had opened a visible gap above the results.
   metaLine: {
     minHeight: scale(30),
   },

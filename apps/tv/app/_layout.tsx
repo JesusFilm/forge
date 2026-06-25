@@ -162,17 +162,13 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <ApolloProvider client={clientRef.current!}>
-        {/* SeriesLanguage sits ABOVE WatchSession: the session's default-dub
-            resolution reads the carried series-language selection (U4), so the
-            provider supplying it must already be mounted. Selections live up
-            here (not on the series screen) so they survive episode push/pop. */}
+        {/* SeriesLanguage sits ABOVE WatchSession: session default-dub resolution
+            reads the carried series-language selection (U4), so its provider must
+            be mounted first. Lives here, not the series screen, to survive push/pop. */}
         <SeriesLanguageProvider>
-          {/* WatchSession is the OUTER provider relative to VideoPlayer: the
-              overlay VideoPlayer rendered inside VideoPlayerProvider must be
-              able to call useWatchSession() (live dub/subtitle handoff). It
-              sits below ErrorBoundary so a provider throw degrades to the
-              error screen, not a white screen. Inert when no video is
-              published into it (KTD2, U3). */}
+          {/* WatchSession is OUTER of VideoPlayer so the overlay VideoPlayer can
+              call useWatchSession() (live dub/subtitle handoff). Below ErrorBoundary
+              so a throw degrades to the error screen. Inert until a video is published (KTD2, U3). */}
           <WatchSessionProvider>
             <VideoPlayerProvider>
               <StatusBar style="light" />

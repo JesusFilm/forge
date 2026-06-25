@@ -238,7 +238,16 @@ function normalizeDraftBlock(
         quotes: block.quotes.map((quote) =>
           compactRecord({
             reference: quote.reference,
+            // Reference-first scripture: `text` is optional and absent on
+            // generated quotes (apps/web resolves verse text at render).
             text: quote.text,
+            // Structured citation identity passes through so the web renderer
+            // can resolve verse text by stable book/chapter/verse.
+            osisId: quote.osisId,
+            chapterStart: quote.chapterStart,
+            chapterEnd: quote.chapterEnd,
+            verseStart: quote.verseStart,
+            verseEnd: quote.verseEnd,
             attribution: quote.attribution,
             ctaEnabled: quote.ctaEnabled,
             ctaLabel: quote.ctaLabel,

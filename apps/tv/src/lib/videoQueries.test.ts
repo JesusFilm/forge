@@ -22,10 +22,9 @@ const dubSdl = asSdl(GET_VIDEO_DUB)
 const bulkFragmentSdl = asSdl(watchVideoFragment)
 const dubFragmentSdl = asSdl(watchDubMediaFragment)
 
-// The printed document is the operation followed by its fragment definitions.
-// Slicing off the fragments isolates an operation's OWN selections, so absence
-// assertions (e.g. "no dubs inside children") aren't defeated by the shared
-// WatchVideo fragment legitimately selecting `variants: dubs`.
+// Slice off the trailing fragment definitions to isolate an operation's OWN
+// selections, so absence assertions ("no dubs inside children") aren't defeated
+// by the shared WatchVideo fragment legitimately selecting `variants: dubs`.
 function operationOnly(sdl: string): string {
   const fragmentStart = sdl.indexOf("fragment ")
   return fragmentStart === -1 ? sdl : sdl.slice(0, fragmentStart)
@@ -107,19 +106,16 @@ describe("GET_SERIES_BY_SLUG (series detail: own children + language union)", ()
     expect(seriesOpSdl).not.toContain("...WatchVideo")
   })
 
-  // Perf guard (TV series 10s render): the series screen renders the EpisodeRail
-  // from its OWN children and never renders siblings, so the parents → parent →
-  // children chain (~208 nodes / ~190KB on a Jesus-sized series, ~1.6s of prod
-  // resolver time) must NOT be fetched here. It lives only on the watch screen's
-  // full WatchVideo fragment.
+  // Perf guard (TV series 10s render): the series screen renders EpisodeRail from
+  // its OWN children, never siblings, so the parents→parent→children chain (~208
+  // nodes / ~190KB / ~1.6s prod resolver) stays on the watch screen only.
   it("EXCLUDES the parents/siblings chain", () => {
     expect(seriesSdl).not.toContain("parents")
   })
 
-  // Perf guard: the series screen only needs a playable `hls` + `language` to
-  // pick and swap the trailer. Each dub's `duration` + `muxVideo.playbackId`
-  // are player-only (watch screen) — fetching them across ~2,270 dubs is dead
-  // weight (bytes + a per-dub muxVideo relation resolution server-side).
+  // Perf guard: the series screen only needs `hls` + `language` to swap the
+  // trailer. Per-dub `duration` + `muxVideo.playbackId` are player-only; fetching
+  // them across ~2,270 dubs is dead weight (bytes + per-dub muxVideo resolution).
   it("KEEPS variants: dubs with hls + language, but EXCLUDES per-dub duration + muxVideo", () => {
     expect(seriesSdl).toContain("variants: dubs")
     expect(seriesSdl).toContain("hls")

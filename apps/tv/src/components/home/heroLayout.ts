@@ -1,8 +1,6 @@
-// Shared hero geometry so the pinned action row (HomeBillboard, in the
-// ScrollView) and the sliding copy (HeroPager, a screen-level layer) line up
-// from ONE source of truth. The copy lives in a different layer than the
-// buttons, so its bottom padding must reserve the action row's height + gap to
-// land directly above the buttons.
+// One source of truth for hero geometry so the pinned action row (HomeBillboard)
+// and the sliding copy (HeroPager, a separate layer) line up — the copy reserves
+// the action row's height + gap as bottom padding to sit above the buttons.
 
 import { Dimensions } from "react-native"
 
@@ -14,9 +12,8 @@ import { TOP_BAR_HEIGHT } from "./HomeTopBar"
 const HERO_DESIGN_RATIO = 880 / 1080
 
 /**
- * The top bar sits in flow above the scroll feed, so the in-content hero
- * region is the 880/1080 design height minus the bar. The pager (a screen-level
- * layer) offsets its copy region down by TOP_BAR_HEIGHT to align with this.
+ * In-content hero region: 880/1080 design height minus the in-flow top bar. The
+ * pager layer offsets its copy down by TOP_BAR_HEIGHT to align with this.
  */
 export const HERO_REGION_HEIGHT =
   Math.round(Dimensions.get("window").height * HERO_DESIGN_RATIO) -

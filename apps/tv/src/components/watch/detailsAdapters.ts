@@ -1,16 +1,6 @@
-// Pure builders that turn a normalized WatchVideoRecord's content into the
-// NormalizedBlock-shaped inputs the existing section renderers consume. The
-// renderers read TV's ALIASED field names off the block (rqHeading, textHeading,
-// bqcHeading + per-item arrays), so these adapters reproduce exactly those keys
-// — see RelatedQuestionsRenderer / TextRenderer / BibleQuotesCarouselRenderer.
-//
-// KTD7: feed the existing renderers via small adapter objects rather than
-// rebuilding them. Study questions carry no inline answers (the data has none),
-// so answers are empty strings. Bible citations carry only reference fields, so
-// the verse text arrives via the useBibleVerses fetch map and the card
-// backgrounds are the same stock Unsplash set mobile/web cycle by index.
-// Returning null when there are no items lets the screen omit the whole section
-// (heading + body) — the degraded contract in U5.
+// KTD7: pure builders feeding section renderers via adapter objects that
+// reproduce TV's ALIASED block keys (rqHeading/textHeading/bqcHeading + per-item
+// arrays). Returning null omits the whole section (heading + body) — U5 contract.
 
 import {
   BIBLE_IMAGES,
@@ -26,9 +16,9 @@ import type {
 // ── Description → TextRenderer block ───────────────────────────────
 
 /**
- * Build the TextRenderer input from the video description, or null when there's
- * no usable description. `textHeading` is null (the description stands alone
- * under the title); `contentParagraphs` is the renderer's `string[]` field.
+ * TextRenderer input from the video description, or null when none. `textHeading`
+ * is null (description stands alone under the title); `contentParagraphs` is the
+ * renderer's `string[]` field.
  */
 export function buildDescriptionBlock(
   description: string | null | undefined,
@@ -46,10 +36,9 @@ export function buildDescriptionBlock(
 // ── Study questions → RelatedQuestionsRenderer block ───────────────
 
 /**
- * Build the RelatedQuestionsRenderer input from the video's study questions, or
- * null when there are none. Each question gets a per-question stable `id` (its
- * index) and an empty `answer` — the data carries no inline answers; the QR /
- * CTA-on-expand handoff is layered by the screen, not here.
+ * RelatedQuestionsRenderer input from study questions, or null when none. Each
+ * gets a stable `id` (its index) and empty `answer` — the data has no inline
+ * answers; the QR / CTA-on-expand handoff is layered by the screen, not here.
  */
 export function buildRelatedQuestionsBlock(
   studyQuestions: readonly WatchStudyQuestion[] | null | undefined,
@@ -103,12 +92,9 @@ type BibleQuoteCard = {
 }
 
 /**
- * Build the BibleQuotesCarouselRenderer input from the video's bible citations,
- * or null when there are none with a usable reference. Each citation card gets
- * the verse text from the `verses` fetch map (keyed by documentId — empty
- * fallback while loading / unavailable) and a stock background image cycled by
- * index, then the "Join Our Bible Study" promo card closes the rail — the same
- * card set mobile/web render for this section.
+ * BibleQuotesCarouselRenderer input from bible citations, or null when none have
+ * a usable reference. Verse text comes from the `verses` map (by documentId);
+ * a "Join Our Bible Study" promo card closes the rail — same set mobile/web use.
  */
 export function buildBibleQuotesBlock(
   bibleCitations: readonly WatchBibleCitation[] | null | undefined,

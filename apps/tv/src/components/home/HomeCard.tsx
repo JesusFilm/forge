@@ -1,21 +1,6 @@
-// One Home rail card, restyled per the Forge TV Home design: a 16:9 thumb
-// (radius 16, hairline white border) with the metaLabel chip top-right, and
-// the labels BELOW the art — title line + kind line (the card's display
-// label, e.g. "Feature film" / "Series"). Fixed width — exported for
-// HomeRail's getItemLayout — so the list virtualizes without a measuring
-// pass.
-//
-// Focus: translateY(-8) + scale(1.06) eased by useFocusAnimation, with a
-// 5px WHITE ring + deep dark shadow replacing the app-wide crimson glow ON
-// HOME CARDS ONLY (FocusableCard and other screens keep theirs). The ring is
-// an absolute DECORATIVE overlay (pointerEvents "none" — fine; only
-// focusables must avoid absolute positioning) so it never shifts layout, and
-// the shadow lives on a separate overflow-visible wrapper because iOS clips
-// shadows on overflow:hidden views.
-//
-// `onFocus`/`onPress` re-emit the `card` PROP the component closed over —
-// never re-indexed from the rail's data array, which can shrink between a
-// queued focus event and its handler (patterns doc §7).
+// One Home rail card: 16:9 thumb + metaLabel chip, fixed width (exported for
+// HomeRail's getItemLayout). Focus = white ring overlay + shadow on a separate
+// overflow-visible wrapper. onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
 
 import { memo, useMemo } from "react"
 import { Image } from "expo-image"
@@ -33,21 +18,20 @@ import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import {
+  focusTransform,
+  THUMB_SHADOW,
+  useFocusAnimation,
+  useThumbFocusRing,
+} from "../watch/useFocusAnimation"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
-// Card size is identical on both platforms (unchanged from main). The Android
-// home's slightly-lower card density comes only from a wider ITEM_GAP (HomeRail),
-// not the card width — so nothing here diverges for tvOS.
 export const HOME_CARD_WIDTH = scale(400)
 export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
 
-/** How far the white focus ring sits outside the thumb edge. */
-const RING_WIDTH = scale(5)
-
 // Android runs the focus tween on the native driver (off the JS thread, the
-// D-pad-move bottleneck on the weak SoC) and drops the JS shadow (iOS shadow*
-// doesn't render on Android anyway). tvOS keeps the full JS treatment.
+// D-pad-move bottleneck on the weak SoC) and drops the JS shadow + hairline.
+// tvOS keeps the full JS treatment.
 const IS_ANDROID = Platform.OS === "android"
 
 type HomeCardProps = {
@@ -56,22 +40,21 @@ type HomeCardProps = {
   onPress: (card: WatchHomeCard) => void
   index: number
   /**
-   * Forced D-pad-up destination (the featured rail wires the Search tab here
-   * so edge cards reach the centered top bar, which has no horizontal overlap
-   * above them). Pressable forwards this to its host View via
-   * tagForComponentOrHandle, so a node instance works directly.
+   * Forced D-pad-up destination (featured rail wires the Search tab here so
+   * edge cards reach the centered top bar, which has no horizontal overlap
+   * above them). Pressable forwards it to its host View, so a node works.
    */
   nextFocusUp?: ViewType | null
   /**
    * Exposes this card's native node. The rail captures its LAST real card's
-   * node so the invisible over-hang pad cards can bounce focus to it via
+   * node so invisible over-hang pad cards can bounce focus to it via
    * requestTVFocus(). Ref-as-state in the rail, like MissionSection.
    */
   nodeRef?: (node: ViewType | null) => void
   /**
-   * Whether to load the artwork. Off-window rails (Android image-windowing) pass
-   * false: the card still mounts at full size and stays focusable — so D-pad
-   * focus never lands on an empty rail — but skips the expensive image decode.
+   * Whether to load the artwork. Off-window rails (Android image-windowing)
+   * pass false: the card still mounts + stays focusable, only the decode is
+   * skipped — so D-pad focus never lands on an empty rail.
    */
   loadImage?: boolean
 }
@@ -108,21 +91,11 @@ export const HomeCard = memo(function HomeCard({
     }),
     [progress],
   )
-  // Android skips the animated shadow: the native driver rejects shadow/color
-  // props and iOS shadow* doesn't render on Android anyway. tvOS keeps it.
-  const shadowStyle = useMemo(
-    () =>
-      IS_ANDROID
-        ? undefined
-        : {
-            shadowOpacity: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.8],
-            }),
-          },
-    [progress],
+  const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
+    progress,
+    HOME_CARD_WIDTH,
+    HOME_CARD_THUMB_HEIGHT,
   )
-  const ringStyle = useMemo(() => ({ opacity: progress }), [progress])
 
   return (
     <Pressable
@@ -143,9 +116,12 @@ export const HomeCard = memo(function HomeCard({
     >
       <Animated.View style={[styles.card, liftStyle]}>
         <View style={styles.thumbBox}>
-          {/* Deep dark drop shadow, revealed by the animated opacity. Kept
-              on its own overflow-visible wrapper so iOS doesn't clip it. */}
-          <Animated.View style={[styles.shadowWrap, shadowStyle]}>
+          {/* Animated drop shadow on its own overflow-visible wrapper (iOS clips
+              shadows on overflow:hidden). Gated off on Android — the native
+              driver can't animate shadowOpacity and Android skips shadow* anyway. */}
+          <Animated.View
+            style={[styles.shadowWrap, IS_ANDROID ? null : shadowStyle]}
+          >
             <View style={styles.thumb}>
               {imageUrl != null && loadImage ? (
                 <Image
@@ -155,7 +131,7 @@ export const HomeCard = memo(function HomeCard({
                   recyclingKey={`home-card-${card.id}`}
                   // Android only: de-prioritize decodes so they don't saturate
                   // the queue ahead of the focused card; memory-disk makes
-                  // re-entry instant. tvOS keeps expo-image defaults (unchanged).
+                  // re-entry instant. tvOS keeps expo-image defaults.
                   priority={IS_ANDROID ? "low" : undefined}
                   cachePolicy={IS_ANDROID ? "memory-disk" : undefined}
                 />
@@ -183,10 +159,7 @@ export const HomeCard = memo(function HomeCard({
           </Animated.View>
 
           {/* White focus ring just outside the thumb (decorative overlay). */}
-          <Animated.View
-            style={[styles.focusRing, ringStyle]}
-            pointerEvents="none"
-          />
+          <Animated.View style={[ringFrame, ringStyle]} pointerEvents="none" />
         </View>
 
         <View style={styles.meta} pointerEvents="none">
@@ -216,9 +189,7 @@ const styles = StyleSheet.create({
   shadowWrap: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: scale(16),
-    shadowColor: "#000000",
-    shadowRadius: scale(25),
-    shadowOffset: { width: 0, height: scale(16) },
+    ...THUMB_SHADOW,
   },
   thumb: {
     ...StyleSheet.absoluteFillObject,
@@ -234,16 +205,6 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     borderWidth: scale(1),
     borderColor: "rgba(255,255,255,0.07)",
-  },
-  focusRing: {
-    position: "absolute",
-    top: -RING_WIDTH,
-    bottom: -RING_WIDTH,
-    left: -RING_WIDTH,
-    right: -RING_WIDTH,
-    borderRadius: scale(16) + RING_WIDTH,
-    borderWidth: RING_WIDTH,
-    borderColor: "rgba(255,255,255,0.88)",
   },
   chip: {
     position: "absolute",

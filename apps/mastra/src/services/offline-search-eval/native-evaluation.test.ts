@@ -305,11 +305,13 @@ describe("native search eval projection", () => {
     })
 
     expect(first.dataset.nativeKey).toContain("mode:hybrid")
+    expect(first.dataset.nativeKey).toContain("track:public-watch")
     expect(second.dataset.nativeKey).toContain("mode:semantic-only")
+    expect(second.dataset.nativeKey).toContain("track:public-watch")
     expect(second.dataset.datasetId).not.toBe(first.dataset.datasetId)
     expect(mastra.records.map((record) => record.name)).toEqual([
-      "search-eval:local:local-smoke:hybrid",
-      "search-eval:local:local-smoke:semantic-only",
+      "search-eval:local:local-smoke:public-watch:hybrid",
+      "search-eval:local:local-smoke:public-watch:semantic-only",
     ])
   })
 

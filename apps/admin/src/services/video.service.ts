@@ -13,6 +13,7 @@ import {
   type LocaleStatus,
   type PrismaClient,
   type SourceTier,
+  type VideoDub,
   type VideoLabel,
   type VideoSource,
 } from "@prisma/client"
@@ -204,6 +205,13 @@ const WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT = 12
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS = 10_000
 const WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS = 11_000
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS}ms'`
+
+const PLAYABLE_DUB_WHERE = {
+  deletedAt: null,
+  published: true,
+  AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+  video: { deletedAt: null },
+} satisfies Prisma.VideoDubWhereInput
 
 const VIDEO_LABEL_SEARCH_TOKENS = {
   COLLECTION: ["collection"],
@@ -665,6 +673,85 @@ export class VideoService {
       ...query,
       where: { id, deletedAt: null, video: { deletedAt: null } },
     })
+  }
+
+  async getPreferredPlayableDub({
+    videoId,
+    languageSlug,
+    query,
+  }: {
+    videoId: string
+    languageSlug?: string | null
+    query: object
+  }): Promise<VideoDub | null> {
+    const baseWhere = {
+      ...PLAYABLE_DUB_WHERE,
+      videoId,
+    } satisfies Prisma.VideoDubWhereInput
+
+    const normalizedLanguageSlug =
+      typeof languageSlug === "string" && languageSlug.length > 0
+        ? languageSlug
+        : null
+
+    if (normalizedLanguageSlug) {
+      const exact = await this.prisma.videoDub.findFirst({
+        ...query,
+        where: {
+          ...baseWhere,
+          language: {
+            deletedAt: null,
+            OR: [
+              { slug: normalizedLanguageSlug },
+              { bcp47: normalizedLanguageSlug },
+            ],
+          },
+        },
+        orderBy: [{ duration: "desc" }, { id: "asc" }],
+      })
+      if (exact) return exact
+    }
+
+    const video = await this.prisma.video.findFirst({
+      where: { id: videoId, deletedAt: null },
+      select: { primaryLanguageId: true },
+    })
+    if (video?.primaryLanguageId) {
+      const primary = await this.prisma.videoDub.findFirst({
+        ...query,
+        where: {
+          ...baseWhere,
+          languageId: video.primaryLanguageId,
+        },
+        orderBy: [{ duration: "desc" }, { id: "asc" }],
+      })
+      if (primary) return primary
+    }
+
+    return this.prisma.videoDub.findFirst({
+      ...query,
+      where: baseWhere,
+      orderBy: [{ duration: "desc" }, { id: "asc" }],
+    })
+  }
+
+  async countPlayableDubLanguages({
+    videoId,
+  }: {
+    videoId: string
+  }): Promise<number> {
+    const rows = await this.prisma.videoDub.findMany({
+      where: {
+        ...PLAYABLE_DUB_WHERE,
+        videoId,
+        languageId: { not: null },
+        language: { slug: { not: null }, deletedAt: null },
+      },
+      distinct: ["languageId"],
+      select: { languageId: true },
+    })
+
+    return rows.length
   }
 
   async listMapperCatalogVariants({

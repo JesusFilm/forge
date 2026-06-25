@@ -11,6 +11,7 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -20,7 +21,8 @@ import {
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
-import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
+import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
+import type { WatchDownload } from "../../lib/normalizeVideo"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
 function formatDuration(seconds: number | null): string {
@@ -30,43 +32,7 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-function formatFileSize(sizeString: string): string {
-  const bytes = Number(sizeString)
-  if (Number.isNaN(bytes) || bytes <= 0) return "Unknown"
-  const mb = bytes / 1048576
-  if (mb >= 1024) {
-    return `${(mb / 1024).toFixed(1)} GB`
-  }
-  return `${mb.toFixed(1)} MB`
-}
-
-type QualityTier = "Highest" | "High" | "Low"
-
-type TieredDownload = WatchDownload & { tier: QualityTier }
-
-function tierDownloads(downloads: WatchDownload[]): TieredDownload[] {
-  const sorted = [...downloads].sort((a, b) => Number(b.size) - Number(a.size))
-  if (sorted.length === 0) return []
-  const head = sorted[0]
-  if (sorted.length === 1) {
-    return [{ ...head, tier: "Highest" }]
-  }
-  const tail = sorted[sorted.length - 1]
-  if (sorted.length === 2) {
-    return [
-      { ...head, tier: "Highest" },
-      { ...tail, tier: "Low" },
-    ]
-  }
-  const middle = sorted[Math.floor(sorted.length / 2)]
-  return [
-    { ...head, tier: "Highest" },
-    { ...middle, tier: "High" },
-    { ...tail, tier: "Low" },
-  ]
-}
-
-function TermsModal({
+export function TermsModal({
   visible,
   onAccept,
   onCancel,
@@ -149,28 +115,22 @@ function TermsModal({
   )
 }
 
-type DropdownOption = {
+export type DropdownOption = {
   key: string
   label: string
   /** Optional trailing text shown on the right (e.g. a file size). */
   trailing?: string
 }
 
-/** Sentinel key for the "No subtitles" option (a real null selection). */
-const NO_SUBTITLE_KEY = "__none__"
-
-/**
- * Cap the open panel at ~5 rows so a long option list (e.g. dozens of subtitle
- * languages) scrolls INSIDE the dropdown instead of growing the sheet.
- */
+/** Cap the open panel at ~5 rows so long lists scroll inside the dropdown, not grow the sheet. */
 const DROPDOWN_MAX_HEIGHT = 240
 
 /**
- * A collapsed select that shows the current choice and, when tapped, expands a
- * bounded, internally-scrollable list. Keeps the whole sheet compact on first
- * present regardless of how many options a video has.
+ * Collapsed select expanding to a bounded, internally-scrollable list, so the
+ * sheet stays compact on first present regardless of option count. Exported so
+ * the series download sheet reuses one dropdown implementation (no style drift).
  */
-function Dropdown({
+export function Dropdown({
   sectionLabel,
   options,
   selectedKey,
@@ -288,17 +248,18 @@ export type DownloadSheetProps = {
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
-  /** Available subtitle tracks for the active dub (empty if none). */
-  subtitles: WatchSubtitle[]
   /**
-   * Enqueue the chosen rendition + optional subtitle for offline download. The
-   * parent builds the full request (identity + fresh URLs) and dismisses the
-   * sheet; the download runs in the background via DownloadsProvider.
+   * The subtitle language that will be bundled with the download — the dub's
+   * active subtitle as chosen on the Video Details subtitle sheet, or null when
+   * none is active. Display-only; the route resolves and enqueues the track.
    */
-  onStartDownload: (
-    rendition: WatchDownload,
-    subtitle: WatchSubtitle | null,
-  ) => void
+  subtitleLanguageName: string | null
+  /**
+   * Enqueue the chosen rendition for offline download. The active subtitle is
+   * inherited from the watch session (not picked here); the route builds the
+   * full request, dismisses the sheet, and downloads via DownloadsProvider.
+   */
+  onStartDownload: (rendition: WatchDownload) => void
 }
 
 export function DownloadSheetContent({
@@ -306,7 +267,7 @@ export function DownloadSheetContent({
   duration,
   languageName,
   downloads,
-  subtitles,
+  subtitleLanguageName,
   onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
@@ -314,21 +275,13 @@ export function DownloadSheetContent({
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
-  // null = "No subtitles" (the default); otherwise a subtitle languageSlug.
-  const [selectedSubtitleSlug, setSelectedSubtitleSlug] = useState<
-    string | null
-  >(null)
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
-  // Only one dropdown is open at a time so the sheet never shows two expansions.
-  const [openDropdown, setOpenDropdown] = useState<
-    "quality" | "subtitle" | null
-  >(null)
+  const [qualityOpen, setQualityOpen] = useState(false)
 
-  // Key by tier-array index, not documentId: tierDownloads yields a stable
-  // ordered list, whereas normalizeVideo defaults documentId to "" and does not
-  // dedupe downloads — non-unique ids would collide React keys and break
-  // selection (findIndex would always resolve to the first match).
+  // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
+  // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
+  // and break selection (findIndex always resolving to the first match).
   const qualityOptions = useMemo<DropdownOption[]>(
     () =>
       tiered.map((t, index) => ({
@@ -338,15 +291,7 @@ export function DownloadSheetContent({
       })),
     [tiered],
   )
-  const subtitleOptions = useMemo<DropdownOption[]>(
-    () => [
-      { key: NO_SUBTITLE_KEY, label: "No subtitles" },
-      ...subtitles.map((s) => ({ key: s.languageSlug, label: s.languageName })),
-    ],
-    [subtitles],
-  )
   const selectedQualityKey = String(selectedIndex)
-  const selectedSubtitleKey = selectedSubtitleSlug ?? NO_SUBTITLE_KEY
 
   // Keep selectedIndex in range if the renditions list changes out from under
   // it — otherwise the trigger shows a stale tier while Download silently
@@ -359,22 +304,10 @@ export function DownloadSheetContent({
     if (!touAccepted || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
-    const selectedSubtitle =
-      selectedSubtitleSlug == null
-        ? null
-        : (subtitles.find((s) => s.languageSlug === selectedSubtitleSlug) ??
-          null)
     // Enqueue and hand off to the background engine; the parent dismisses the
     // sheet. One copy per video is enforced by DownloadsProvider.
-    onStartDownload(selected, selectedSubtitle)
-  }, [
-    touAccepted,
-    tiered,
-    selectedIndex,
-    selectedSubtitleSlug,
-    subtitles,
-    onStartDownload,
-  ])
+    onStartDownload(selected)
+  }, [touAccepted, tiered, selectedIndex, onStartDownload])
 
   if (downloads.length === 0) {
     return (
@@ -411,18 +344,6 @@ export function DownloadSheetContent({
             </Text>
           )}
           <View style={styles.metaRow}>
-            {languageName != null && (
-              <View style={styles.metaPill}>
-                <Ionicons
-                  name="globe-outline"
-                  size={14}
-                  color={TEXT_SECONDARY}
-                />
-                <Text style={[styles.metaPillText, typography.bodySmall]}>
-                  {languageName}
-                </Text>
-              </View>
-            )}
             {duration != null && duration > 0 && (
               <View style={styles.metaPill}>
                 <Ionicons
@@ -435,6 +356,28 @@ export function DownloadSheetContent({
                 </Text>
               </View>
             )}
+            {languageName != null && (
+              <View style={styles.metaPill}>
+                <Ionicons
+                  name="globe-outline"
+                  size={14}
+                  color={TEXT_SECONDARY}
+                />
+                <Text style={[styles.metaPillText, typography.bodySmall]}>
+                  {languageName}
+                </Text>
+              </View>
+            )}
+            <View style={styles.metaPill}>
+              <MaterialCommunityIcons
+                name="closed-caption-outline"
+                size={16}
+                color={TEXT_SECONDARY}
+              />
+              <Text style={[styles.metaPillText, typography.bodySmall]}>
+                {subtitleLanguageName ?? "No subtitles"}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -442,31 +385,13 @@ export function DownloadSheetContent({
           sectionLabel="Select a file size"
           options={qualityOptions}
           selectedKey={selectedQualityKey}
-          open={openDropdown === "quality"}
-          onToggle={() =>
-            setOpenDropdown((o) => (o === "quality" ? null : "quality"))
-          }
+          open={qualityOpen}
+          onToggle={() => setQualityOpen((o) => !o)}
           onSelect={(key) => {
             setSelectedIndex(Number(key))
-            setOpenDropdown(null)
+            setQualityOpen(false)
           }}
         />
-
-        {subtitles.length > 0 && (
-          <Dropdown
-            sectionLabel="Subtitles"
-            options={subtitleOptions}
-            selectedKey={selectedSubtitleKey}
-            open={openDropdown === "subtitle"}
-            onToggle={() =>
-              setOpenDropdown((o) => (o === "subtitle" ? null : "subtitle"))
-            }
-            onSelect={(key) => {
-              setSelectedSubtitleSlug(key === NO_SUBTITLE_KEY ? null : key)
-              setOpenDropdown(null)
-            }}
-          />
-        )}
 
         <View style={styles.touRow}>
           <Pressable
@@ -560,7 +485,11 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    // Wrap chips onto the next line instead of pushing a long language name
+    // (and the chips after it) off the right edge. Row gap matches the column.
+    flexWrap: "wrap",
+    rowGap: 8,
+    columnGap: 8,
   },
   metaPill: {
     flexDirection: "row",

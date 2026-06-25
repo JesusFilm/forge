@@ -1,14 +1,6 @@
-// Up Next rail for the video-details screen — sibling videos under the same
-// parent; selecting a card opens THAT video's details screen (R15), it does NOT
-// start playback. Renders nothing when there are no siblings.
-//
-// Styled to the Claude Design handoff ("match the mockup exactly"): a prominent
-// section head + larger episode-style cards (360×202 poster, label eyebrow in
-// the red accent, 2-line title) that lift with a white focus ring and reveal a
-// centred play overlay on focus. Built inline (its own FlatList + focus guide)
-// rather than via the shared ContentRail so Home / Search keep their look. We
-// only render real sibling data — no invented day numbers or progress bars (the
-// JFP model has no per-episode progress).
+// Up Next rail — siblings under the same parent; a card opens THAT video's details
+// (R15), it does NOT play; renders nothing without siblings. Built inline (own
+// FlatList) not via shared ContentRail so Home/Search keep their look.
 
 import { useMemo } from "react"
 import {
@@ -29,7 +21,12 @@ import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { WATCH_THEME } from "./watchDetailTheme"
 import { SECTION_HEADING } from "../sections/sectionHeading"
-import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
+import {
+  focusTransform,
+  THUMB_SHADOW,
+  useFocusAnimation,
+  useThumbFocusRing,
+} from "./useFocusAnimation"
 
 const CARD_WIDTH = scale(360)
 const THUMB_HEIGHT = scale(202) // 16:9-ish, matches the mockup
@@ -84,8 +81,8 @@ function EpisodeCard({
   sibling: WatchSibling
   onPress: () => void
 }) {
-  // Focus eases in (no "blink"): the card lifts + magnifies, the white glow ramps
-  // up, and the play overlay fades in over ~180ms.
+  // Focus eases in (no "blink"): the card lifts + magnifies, the white ring fades
+  // in, and the play overlay fades in over ~180ms.
   const { setFocused, progress } = useFocusAnimation()
   const title = sibling.title ?? sibling.slug
   // CMS poster URL is untrusted — sanitize before it reaches expo-image.
@@ -96,18 +93,14 @@ function EpisodeCard({
   // rather than on every focus/blur re-render.
   const cardStyle = useMemo(
     () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.05 }),
+      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
     }),
     [progress],
   )
-  const glowStyle = useMemo(
-    () => ({
-      shadowOpacity: progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 0.9],
-      }),
-    }),
-    [progress],
+  const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
+    progress,
+    CARD_WIDTH,
+    THUMB_HEIGHT,
   )
 
   return (
@@ -120,10 +113,11 @@ function EpisodeCard({
       accessibilityHint="Opens this video"
     >
       <Animated.View style={[styles.card, cardStyle]}>
-        {/* Glow on the outer wrapper (overflow visible); image-clipping on the
-            inner view (overflow hidden). A shadow on an overflow:hidden view is
-            clipped away on iOS — same outer/inner split as FocusableCard. */}
-        <Animated.View style={[styles.thumbWrap, glowStyle]}>
+        {/* Neutral drop shadow on the outer wrapper (overflow visible);
+            image-clipping on the inner view (overflow hidden). A shadow on an
+            overflow:hidden view is clipped away on iOS — same outer/inner split
+            as FocusableCard. */}
+        <Animated.View style={[styles.thumbWrap, shadowStyle]}>
           <View style={styles.thumb}>
             {poster != null ? (
               <Image
@@ -144,6 +138,9 @@ function EpisodeCard({
             </Animated.View>
           </View>
         </Animated.View>
+
+        {/* White focus ring hugging the thumb — matches HomeCard. */}
+        <Animated.View style={[ringFrame, ringStyle]} pointerEvents="none" />
 
         {/* The mockup's accent eyebrow is a meaningful per-episode label ("Day 1");
             JFP siblings only carry the content-type label (e.g. "SERIES"), which
@@ -190,16 +187,14 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
   },
-  // White focus glow matching the action-row buttons; shadowOpacity is animated
-  // (0 at rest). On the OUTER wrapper so iOS doesn't clip it (the inner thumb is
-  // overflow:hidden).
+  // Neutral dark drop shadow for depth (matches HomeCard), revealed by the
+  // animated opacity. On the OUTER wrapper so iOS doesn't clip it (the inner
+  // thumb is overflow:hidden).
   thumbWrap: {
     width: CARD_WIDTH,
     height: THUMB_HEIGHT,
     borderRadius: scale(16),
-    shadowColor: "#ffffff",
-    shadowRadius: scale(10),
-    shadowOffset: { width: 0, height: 0 },
+    ...THUMB_SHADOW,
   },
   thumb: {
     ...StyleSheet.absoluteFillObject,

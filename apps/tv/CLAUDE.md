@@ -46,7 +46,7 @@ From the Stitch mockups:
 - Font: System (SF Pro on tvOS, Roboto on Android TV)
 - No 1px borders — use background color shifts
 - 16px border radius on cards
-- Focus state: 1.05x scale + crimson glow
+- Focus state: 1.05x scale + white ring (the app-wide default; crimson glow is opt-in via FocusableCard `focusRing="crimson"`, used only on near-white surfaces where a white ring has no contrast — e.g. the Related Questions FallbackPill)
 
 ### WATCH_THEME (`src/components/watch/watchDetailTheme.ts`)
 
@@ -84,7 +84,7 @@ search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
 ## TV-Specific Patterns
 
 - Every interactive element must be focusable via D-pad.
-- Visible focus ring on focused elements: crimson glow on Crimson Gallery surfaces, white ring on WATCH_THEME surfaces (watch detail, Home, Search).
+- Visible focus ring on focused elements: a white ring is the app-wide default on all surfaces (cards get a white border ring; the primary red CTA keeps its colored drop shadow). Crimson glow is an opt-in variant (`focusRing="crimson"`) used only on near-white surfaces where a white ring has no contrast (e.g. the Related Questions FallbackPill).
 - `TVFocusGuideView` to constrain focus within horizontal rails.
 - `hasTVPreferredFocus` for initial focus control and back-navigation focus restore.
 - Stack navigation only: Home → Experience Detail → Video Playback.

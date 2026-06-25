@@ -1,12 +1,6 @@
-// Shared Server-Driven-UI renderer for a single Experience.
-//
-// Both the home screen (apps/tv/app/index.tsx) and the experience-detail
-// screen (apps/tv/app/experience/[slug].tsx) render an Experience the same
-// way: fetch experienceBySlug (PUBLIC), normalize, then map blocks through
-// SectionDispatcher inside a scroll-to-section-aware ScrollView. Keeping that
-// logic in one place is deliberate — the home previously diverged onto the
-// editor-gated Query.experiences and broke for the public TV app. The home
-// passes a `header` slot (its sticky nav row); the detail screen passes none.
+// Shared SDUI renderer for one Experience, used by both home and detail
+// screens. Centralized deliberately: the home previously diverged onto the
+// editor-gated Query.experiences and broke for the public TV app.
 import { useQuery } from "@apollo/client/react"
 import React, {
   useCallback,
@@ -36,20 +30,14 @@ type Props = {
   /** Experience slug to load via the public experienceBySlug query. */
   slug: string
   /**
-   * Optional node rendered as the STICKY first child of the ScrollView. The
-   * home screen passes its nav header here so it pins to the top during
-   * scroll while staying inside the same ScrollView — the tvOS focus engine
-   * cannot traverse focus across a parent-View boundary, so a sibling header
-   * makes D-pad-up from the first section a no-op (proven empirically; see
-   * docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md).
+   * Optional STICKY first child of the ScrollView (home's nav header). Must stay
+   * inside the same ScrollView: tvOS focus can't cross a parent-View boundary, so
+   * a sibling header makes D-pad-up a no-op (docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md).
    */
   header?: ReactNode
 }
 
-/**
- * Renders one Experience's blocks. `header`, when provided, becomes the
- * sticky first child; without it the screen is plain (detail screen).
- */
+/** Renders one Experience's blocks; `header` (if given) is the sticky first child. */
 export function ExperienceRenderer({ slug, header }: Props) {
   const { data, loading, error, refetch } = useQuery(GET_WATCH_EXPERIENCE, {
     variables: {
@@ -98,10 +86,8 @@ export function ExperienceRenderer({ slug, header }: Props) {
   )
 
   /**
-   * Register the Y position for a nested block inside a sectionWrapper.
-   * offsetWithinSection is the block's Y relative to the section View.
-   * We add the section View's own Y (from handleSectionLayout) to get
-   * the absolute Y within the ScrollView content.
+   * Register a nested block's absolute Y: its offsetWithinSection plus the
+   * parent section View's own Y (from handleSectionLayout).
    */
   const handleNestedLayout = useCallback(
     (
@@ -150,11 +136,9 @@ export function ExperienceRenderer({ slug, header }: Props) {
     // flush against the screen edge (particularly noticeable for the
     // first navigation card which scrolls to the topmost content section).
     const base = Platform.OS === "android" ? Math.max(0, y - 24) : y
-    // Subtract the sticky header height (0 on the detail screen, which has no
-    // header) so the section top clears the pinned header rather than landing
-    // behind it. sectionPositions stores Y within the ScrollView content,
-    // which already includes the header's own height, so the pinned overlay
-    // would otherwise occlude the target's top by ~headerHeight.
+    // Subtract sticky header height (0 on detail) so the section top clears the
+    // pinned header. sectionPositions' Y already includes the header height, so
+    // without this the pinned overlay occludes the target's top by ~headerHeight.
     const offset = Math.max(0, base - headerHeightRef.current)
     scrollViewRef.current?.scrollTo({ y: offset, animated: true })
 
@@ -215,10 +199,8 @@ export function ExperienceRenderer({ slug, header }: Props) {
         ref={scrollViewRef}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        // When a header slot is present it is the sticky first child. The
-        // section .map() index below stays 0-based regardless (the header
-        // is prepended outside the map), so scroll-to-section indices are
-        // unaffected by the header's presence.
+        // Header (when present) is the sticky first child, prepended outside
+        // the section .map(), so scroll-to-section indices stay 0-based.
         stickyHeaderIndices={header != null ? [0] : undefined}
       >
         {header != null ? (
@@ -261,11 +243,9 @@ export function ExperienceRenderer({ slug, header }: Props) {
 }
 
 /**
- * Centered status screen (loading / error / empty). When a `header` slot is
- * present (the home), it is rendered above the centered content as a plain
- * (non-sticky) top row so the nav — and its Search chip — stays reachable
- * while the experience resolves; the detail screen passes no header and gets
- * the bare centered layout it had before.
+ * Centered status screen (loading / error / empty). A `header` (home) renders
+ * above as a plain top row so nav + Search stay reachable while resolving;
+ * detail passes none and gets the bare centered layout.
  */
 function StateScreen({
   header,
@@ -333,10 +313,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   listContent: {
-    // Extra bottom padding ensures the last section can scroll fully to the
-    // top of the viewport. Without this, scrollToSection for the last nav
-    // card stops short and the invisible focus anchor remains off-screen,
-    // preventing tvOS from transferring focus to the target section.
+    // Lets the last section scroll fully to the viewport top; without it
+    // scrollToSection stops short, the focus anchor stays off-screen, and
+    // tvOS can't transfer focus to the target section.
     paddingBottom: scale(600),
   },
   focusAnchor: {
@@ -365,8 +344,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 24,
+    // Reserve the focus border so toggling its color never shifts layout.
+    borderWidth: scale(3),
+    borderColor: "transparent",
   },
+  // Matches the home Play/See More CTA: white border + red drop shadow on the
+  // red fill (not a crimson glow).
   retryButtonFocused: {
+    transform: [{ scale: 1.05 }],
+    borderColor: "rgba(255,255,255,0.9)",
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,

@@ -33,14 +33,14 @@ import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
 import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGrid"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { deriveSeriesDownloadState } from "../../src/lib/seriesDownloadAggregate"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
-// Series detail screen. The hero is pinned at the route root (outside the
-// ScrollView), mirroring the watch screen: with a playable trailer it's the
-// reused VideoPlayer (custom fullscreen needs to never be reparented); without
-// one it's a plain poster image — no player mounted. Either way the hero holds
-// the only decoder slot on the screen; the episode grid (U4) is static images.
+// Series detail screen. Hero is pinned at the route root (outside the ScrollView)
+// so custom fullscreen never reparents: VideoPlayer when there's a trailer, else
+// a poster (no player). It holds the only decoder slot; the grid is static images.
 export default function SeriesScreen() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
     slug: string
@@ -54,7 +54,19 @@ export default function SeriesScreen() {
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
   const typography = useTypography()
 
-  const { series, setSeries, selectedLanguageSlug } = useSeriesSession()
+  const { series, setSeries, languages, selectedLanguageSlug } =
+    useSeriesSession()
+  const { downloadedSlugs, offlineRecords } = useDownloads()
+
+  const downloadState = useMemo(
+    () =>
+      deriveSeriesDownloadState(
+        series?.episodes.map((episode) => episode.slug) ?? [],
+        downloadedSlugs,
+        offlineRecords,
+      ),
+    [series?.episodes, downloadedSlugs, offlineRecords],
+  )
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
@@ -117,10 +129,9 @@ export default function SeriesScreen() {
     series?.posterUrl ?? seed?.imageUrl ?? null,
   )
 
-  // The trailer follows the selected language: the series' own dub for that
-  // language, else its first playable dub. Resolved only from the loaded series
-  // — never the seed — so a series that turns out to have no trailer never
-  // mounts a player.
+  // Trailer follows the selected language (series' dub for it, else first playable
+  // dub). Resolved only from the loaded series, never the seed, so a series with
+  // no trailer never mounts a player.
   const trailerHls = useMemo(() => {
     if (!series) return null
     const forLanguage = series.variants.find(
@@ -151,11 +162,9 @@ export default function SeriesScreen() {
     }).catch(() => {})
   }, [series, selectedLanguageSlug])
 
-  // Tap an episode → its video detail page. The selected language carries via
-  // the persisted WatchPreferences audio slug (set when the user picks a
-  // language in the sheet), which the watch screen resolves its dub from — so no
-  // language is threaded through the nav params. The seed paints the episode
-  // hero instantly.
+  // Tap an episode → its detail page. Language carries via the persisted
+  // WatchPreferences audio slug (the watch screen resolves its dub from it), so
+  // it's not threaded through nav params. The seed paints the hero instantly.
   const handleSelectEpisode = useCallback(
     (episode: WatchEpisode) => {
       const seed = encodeWatchSeed({
@@ -243,7 +252,13 @@ export default function SeriesScreen() {
               <>
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
+                  onDownload={() => router.push("/series/download")}
                   onShare={handleShare}
+                  languageLabel={
+                    languages.find((l) => l.slug === selectedLanguageSlug)
+                      ?.name ?? null
+                  }
+                  downloadState={downloadState}
                 />
                 <VideoDescription description={series.description} />
                 {series.episodes.length > 0 && (

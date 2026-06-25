@@ -428,3 +428,159 @@ describe("AppShell", () => {
     expect(getTextarea().value).toBe("draft in progress")
   })
 })
+
+// Sidebar collapse + mobile drawer (state lives in AppShell, so this suite
+// belongs here per apps/chat/CLAUDE.md). jsdom applies no CSS, so assertions
+// read structural signals — which toggle is rendered, the `data-open` attr.
+function getAside(): HTMLElement {
+  const el = container.querySelector("aside")
+  if (!el) throw new Error("aside not found")
+  return el
+}
+
+function getMain(): HTMLElement {
+  const el = container.querySelector("main")
+  if (!el) throw new Error("main not found")
+  return el
+}
+
+// Find a button by accessible label, scoped so the desktop expand toggle and
+// the mobile menu trigger don't collide across responsive contexts.
+function buttonByLabel(label: string, scope: ParentNode = container) {
+  return Array.from(scope.querySelectorAll<HTMLButtonElement>("button")).find(
+    (b) => b.getAttribute("aria-label") === label,
+  )
+}
+
+function clickButton(el: HTMLButtonElement | undefined) {
+  if (!el) throw new Error("button to click not found")
+  act(() => {
+    el.click()
+  })
+}
+
+function drawerOpen(): boolean {
+  return getAside().getAttribute("data-open") === "true"
+}
+
+describe("Sidebar shell", () => {
+  it("starts expanded: wordmark, collapse toggle, and the conversation list are present", () => {
+    const aside = getAside()
+    expect(aside.textContent).toContain("jesusfilm.ai")
+    expect(buttonByLabel("Collapse sidebar", aside)).toBeTruthy()
+    expect(buttonByLabel("Open sidebar", aside)).toBeFalsy()
+    expect(
+      aside.querySelector('nav[aria-label="Conversations"]'),
+    ).not.toBeNull()
+  })
+
+  it("collapses and re-expands the desktop rail via the toggle", () => {
+    const aside = getAside()
+    clickButton(buttonByLabel("Collapse sidebar", aside))
+    // Collapsed: the in-rail expand affordance appears; collapse toggle is gone.
+    expect(buttonByLabel("Open sidebar", aside)).toBeTruthy()
+    expect(buttonByLabel("Collapse sidebar", aside)).toBeFalsy()
+
+    clickButton(buttonByLabel("Open sidebar", aside))
+    expect(buttonByLabel("Collapse sidebar", aside)).toBeTruthy()
+    expect(buttonByLabel("Open sidebar", aside)).toBeFalsy()
+  })
+
+  it("opens the mobile drawer from the menu trigger and closes it via the X, toggling aria-expanded", () => {
+    const trigger = buttonByLabel("Open menu", getMain())
+    expect(drawerOpen()).toBe(false)
+    expect(trigger?.getAttribute("aria-expanded")).toBe("false")
+
+    clickButton(trigger)
+    expect(drawerOpen()).toBe(true)
+    expect(
+      buttonByLabel("Open menu", getMain())?.getAttribute("aria-expanded"),
+    ).toBe("true")
+    // Open drawer carries dialog semantics; the desktop rail does not.
+    expect(getAside().getAttribute("role")).toBe("dialog")
+
+    clickButton(buttonByLabel("Close sidebar", getAside()))
+    expect(drawerOpen()).toBe(false)
+    expect(getAside().getAttribute("role")).toBeNull()
+  })
+
+  it("closes the mobile drawer on Escape", () => {
+    clickButton(buttonByLabel("Open menu", getMain()))
+    expect(drawerOpen()).toBe(true)
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+    expect(drawerOpen()).toBe(false)
+  })
+
+  it("closes the mobile drawer when the scrim is clicked", () => {
+    clickButton(buttonByLabel("Open menu", getMain()))
+    expect(drawerOpen()).toBe(true)
+
+    // The scrim is the aria-hidden sibling of the aside carrying onCloseMobile.
+    const scrim = container.querySelector<HTMLElement>(
+      'div[aria-hidden="true"]',
+    )
+    if (!scrim) throw new Error("scrim not found")
+    act(() => {
+      scrim.click()
+    })
+    expect(drawerOpen()).toBe(false)
+  })
+
+  it("closes the mobile drawer when New conversation is tapped", () => {
+    clickButton(buttonByLabel("Open menu", getMain()))
+    expect(drawerOpen()).toBe(true)
+
+    clickNewConversation()
+    expect(drawerOpen()).toBe(false)
+  })
+
+  it("navigates and closes the drawer when a non-active conversation is selected", () => {
+    // Two conversations so the selection actually changes the active one
+    // (clicking the already-active row early-returns and proves nothing).
+    sendMessage("first conversation")
+    awaitReply()
+    clickNewConversation()
+
+    clickButton(buttonByLabel("Open menu", getMain()))
+    expect(drawerOpen()).toBe(true)
+
+    selectSidebarConversation(deriveTitle("first conversation"))
+    expect(drawerOpen()).toBe(false)
+    expect(messageTexts()).toEqual([
+      "first conversation",
+      buildStubReply("first conversation"),
+    ])
+  })
+
+  it("marks <main> inert only while the mobile drawer is open (focus trap)", () => {
+    expect(getMain().hasAttribute("inert")).toBe(false)
+
+    clickButton(buttonByLabel("Open menu", getMain()))
+    expect(getMain().hasAttribute("inert")).toBe(true)
+
+    clickButton(buttonByLabel("Close sidebar", getAside()))
+    expect(getMain().hasAttribute("inert")).toBe(false)
+  })
+
+  it("locks body scroll while the mobile drawer is open and restores it on close", () => {
+    expect(document.body.style.overflow).toBe("")
+
+    clickButton(buttonByLabel("Open menu", getMain()))
+    expect(document.body.style.overflow).toBe("hidden")
+
+    clickButton(buttonByLabel("Close sidebar", getAside()))
+    expect(document.body.style.overflow).toBe("")
+  })
+
+  it("moves focus to the close button when the mobile drawer opens", () => {
+    // Open direction is jsdom-testable; focus *restore* on close depends on a
+    // visibility guard jsdom can't represent (no layout), so it's browser-verified.
+    clickButton(buttonByLabel("Open menu", getMain()))
+    expect(document.activeElement).toBe(
+      buttonByLabel("Close sidebar", getAside()),
+    )
+  })
+})

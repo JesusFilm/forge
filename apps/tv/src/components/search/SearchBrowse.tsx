@@ -16,24 +16,16 @@ type Props = {
   /** Called when the user presses the "Clear" chip in the Recent rail. */
   onClearHistory: () => void
   /**
-   * Break out of the parent's horizontal page padding so this view is
-   * full-bleed. The rail title / chip / grid gutters below already encode the
-   * 80dp page gutter, so once full-bleed the content lands exactly on the page
-   * edges. The Apple TV stacked layout sets this (the browse view sits inside
-   * the screen's scale(80) padding, which would otherwise double-inset it
-   * relative to the full-width keyboard). The two-pane layout leaves it off —
-   * there the browse view lives inside the narrower right pane.
+   * Break out of the parent's horizontal page padding so this view is full-bleed
+   * (the rail/chip/grid gutters below encode the 80dp gutter, landing content on
+   * the page edges). Apple TV stacked layout sets this; two-pane leaves it off.
    */
   fullBleed?: boolean
 }
 
-// The search-empty browse view: Recent searches + Browse-topics categories.
-// Both are sourced locally / statically (recents from history, categories from
-// the static CATEGORIES list), so this view needs no GraphQL query and works
-// for the unauthenticated public app. (It previously showed a "Popular
-// experiences" rail backed by the editor-gated Query.experiences, which 401'd
-// for the public TV app and silently rendered empty — removed with the home's
-// migration off that gated query.)
+// Search-empty browse view: Recent searches + Browse-topics (static CATEGORIES) —
+// both local/static, so no GraphQL, works for the public app. Dropped a "Popular
+// experiences" rail that hit editor-gated Query.experiences and 401'd for public TV.
 export function SearchBrowse({
   recents,
   onRunQuery,
@@ -64,11 +56,9 @@ export function SearchBrowse({
         <Text style={styles.railTitle} accessibilityRole="header">
           Browse topics
         </Text>
-        {/* 3-column grid (not a horizontal carousel that ran off-screen): the
-            categories wrap to rows of three, each card filling a third of the
-            results pane. tvOS spatial navigation handles row/column D-pad moves
-            by geometry; each cell's padding gives the focus glow + 1.05x lift
-            room so the grid never clips it. */}
+        {/* 3-column wrapping grid (not a carousel that ran off-screen). tvOS
+            handles D-pad moves by geometry; each cell's padding gives the focus
+            glow + 1.05x lift room so the grid never clips it. */}
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
             <View
@@ -170,11 +160,9 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  // Cancels the parent screen's page padding so the view is full-bleed. Shares
+  // Cancels the parent screen's page padding for full-bleed. Shares
   // SEARCH_PAGE_GUTTER with app/search.tsx styles.screen.paddingHorizontal so
-  // the cancellation can't silently drift. The rail/chip/grid gutters then
-  // place content on the page edges, matching the full-width keyboard above it
-  // in the stacked (Apple TV) layout.
+  // it can't drift; rail/chip/grid gutters then place content on the page edges.
   fullBleed: {
     marginHorizontal: -scale(SEARCH_PAGE_GUTTER),
   },
@@ -197,11 +185,9 @@ const styles = StyleSheet.create({
     marginLeft: scale(80),
   },
   chipRowContent: {
-    // Start/end gutter so the leftmost / rightmost chip has room for
-    // its focus glow inside the ScrollView's clip region. Inter-chip
-    // spacing comes from chipCellWrapper.paddingHorizontal — see
-    // categoryCellWrapper for the same pattern's rationale. Sized so
-    // the first chip's edge lands at the 80px page gutter (68 + 12).
+    // Start/end gutter for the edge chips' focus glow inside the clip region;
+    // inter-chip spacing is chipCellWrapper.paddingHorizontal. Sized so the
+    // first chip's edge lands at the 80px page gutter (68 + 12).
     paddingHorizontal: scale(68),
   },
   chipCellWrapper: {
@@ -243,18 +229,15 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     paddingHorizontal: scale(64),
   },
-  // One third of the grid per cell → three columns. The padding is the
-  // inter-card gap AND the focus-glow / 1.05x-lift breathing room
-  // (shadowRadius scale(16)); RN's border-box width keeps three cells at
-  // exactly 100%.
+  // One third per cell → three columns. Padding is the inter-card gap AND the
+  // focus-glow / 1.05x-lift room; RN's border-box width keeps three cells at 100%.
   categoryCellWrapper: {
     width: "33.333%",
     padding: scale(16),
   },
-  // Fills its cell — roughly a third of the results pane, far larger than the
-  // old fixed 220dp carousel card. A definite height (not aspectRatio) is what
-  // sizes it: FocusableCard routes width/height to its outer layout box but
-  // aspectRatio only to the inner, which can't size the box.
+  // Fills its cell. Needs a definite height (not aspectRatio): FocusableCard
+  // routes width/height to its outer layout box but aspectRatio only to the
+  // inner, which can't size the box.
   categoryCard: {
     width: "100%",
     height: scale(210),

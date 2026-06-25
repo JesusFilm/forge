@@ -13,10 +13,7 @@ export function deriveMuxThumbnailUrl(
   return `https://image.mux.com/${match[1]}/thumbnail.png?width=1280&fit_mode=smartcrop`
 }
 
-/**
- * Build the canonical Mux HLS URL from a playback ID, or null if the ID is
- * missing or not a clean alphanumeric token.
- */
+/** Canonical Mux HLS URL from a playback ID; null if missing or non-alphanumeric. */
 export function muxHlsUrlFromPlaybackId(
   playbackId: string | null | undefined,
 ): string | null {
@@ -25,9 +22,9 @@ export function muxHlsUrlFromPlaybackId(
 }
 
 /**
- * Extract the Mux playback ID from a stored HLS URL, or null if it isn't a
- * Mux stream URL. Used to compare two sources by asset identity rather than
- * exact URL string (the stored `hls` may differ in shape from a rebuilt URL).
+ * Extract the Mux playback ID from a stored HLS URL; null if not a Mux stream.
+ * Lets callers compare sources by asset identity, since stored `hls` may differ
+ * in shape from a rebuilt URL.
  */
 export function extractMuxPlaybackId(
   streamingUrl: string | null | undefined,

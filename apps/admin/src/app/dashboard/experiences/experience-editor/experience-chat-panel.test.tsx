@@ -14,6 +14,7 @@ import {
   type ExperienceCanvasController,
   type ExperienceChatPanelActions,
 } from "./experience-chat-panel"
+import type { VideoLibraryItem } from "./block-helpers"
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -70,6 +71,27 @@ function makeStreamFactory(events: ChatStreamEvent[]) {
       yield evt
     }
   })
+}
+
+function makeVideo(overrides: Partial<VideoLibraryItem>): VideoLibraryItem {
+  return {
+    key: "vid1",
+    title: "The Resurrection",
+    description: null,
+    id: "core-vid1",
+    label: null,
+    labelLabel: null,
+    sourceLabel: "Core",
+    sourceTone: "success",
+    dubs: "1 dub",
+    updated: "2026-06-01T00:00:00.000Z",
+    duration: "10:00",
+    durationSeconds: 600,
+    previewImageUrl: null,
+    previewStreamUrl: "https://example.com/v.m3u8",
+    hasGrounding: true,
+    ...overrides,
+  }
 }
 
 async function flush() {
@@ -141,6 +163,227 @@ describe("ExperienceChatPanel", () => {
       '[data-testid="experience-chat-empty-state"]',
     )
     expect(empty).not.toBeNull()
+  })
+
+  it("video-anchored section: stages an append-mode draft and Apply appends to existing canvas blocks", async () => {
+    const existingBlock = {
+      t: "text",
+      heading: "Existing",
+      contentParagraphs: ["x"],
+    }
+    const state: EditableLocaleState = {
+      title: "Existing Title",
+      metaDescription: "Existing meta",
+      ogImageUrl: null,
+      blocks: [existingBlock],
+    }
+    const canvas: ExperienceCanvasController & {
+      applyDiff: ReturnType<typeof vi.fn>
+      revertDiff: ReturnType<typeof vi.fn>
+    } = {
+      getState: () => state,
+      applyDiff: vi.fn(),
+      revertDiff: vi.fn(),
+    }
+    const sectionBlocks = [
+      { t: "videoHero", videoId: "vid1", heading: "The Resurrection" },
+      {
+        t: "relatedQuestions",
+        questions: [{ question: "Why?", answer: "Because." }],
+      },
+    ]
+    const generateSectionAction = vi.fn().mockResolvedValue({
+      ok: true,
+      draft: {
+        title: "The Resurrection",
+        metaDescription: "meta",
+        blocks: sectionBlocks,
+      },
+      review: {
+        scriptureNotes: ["note"],
+        researchNotes: [],
+        theologyReview: { status: "passed", notes: [] },
+        referenceLedger: [
+          {
+            sourceKind: "video_candidate",
+            claim: "Anchor",
+            reference: "The Resurrection",
+            candidateRef: "v01",
+          },
+        ],
+      },
+    })
+
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={canvas}
+        actions={makeActions()}
+        videoLibrary={[makeVideo({ key: "vid1", title: "The Resurrection" })]}
+        generateSectionAction={generateSectionAction}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    // Open the picker, choose a video — no raw id is typed (Covers AE1).
+    const chooseBtn = view.container.querySelector(
+      '[data-testid="experience-chat-choose-video"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      chooseBtn.click()
+    })
+    const row = document.querySelector(
+      '[data-video-key="vid1"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      row.click()
+    })
+    await flush()
+
+    const genBtn = view.container.querySelector(
+      '[data-testid="experience-chat-generate-section"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      genBtn.click()
+    })
+    await flush()
+
+    expect(generateSectionAction).toHaveBeenCalledWith({
+      anchorVideoId: "vid1",
+    })
+
+    const applyBtn = view.container.querySelector(
+      '[data-testid="experience-chat-draft-apply"]',
+    ) as HTMLButtonElement
+    expect(applyBtn).not.toBeNull()
+    await act(async () => {
+      applyBtn.click()
+    })
+    await flush()
+
+    expect(canvas.applyDiff).toHaveBeenCalledTimes(1)
+    const arg = canvas.applyDiff.mock.calls[0][0] as { blocks: unknown[] }
+    // Append: existing block preserved + section blocks added (not replaced).
+    expect(arg.blocks).toHaveLength(1 + sectionBlocks.length)
+    expect(arg.blocks[0]).toMatchObject({ heading: "Existing" })
+    expect(arg.blocks[1]).toMatchObject({ t: "videoHero" })
+  })
+
+  it("video-anchored section: Generate is disabled until a video is chosen, and no raw-id input remains", async () => {
+    const generateSectionAction = vi.fn()
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+        videoLibrary={[makeVideo({ key: "vid1", title: "The Resurrection" })]}
+        generateSectionAction={generateSectionAction}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    // The old raw-id text input is gone.
+    expect(
+      view.container.querySelector(
+        '[data-testid="experience-chat-anchor-input"]',
+      ),
+    ).toBeNull()
+
+    const genBtn = view.container.querySelector(
+      '[data-testid="experience-chat-generate-section"]',
+    ) as HTMLButtonElement
+    expect(genBtn.disabled).toBe(true)
+    // Clicking while disabled is a no-op.
+    await act(async () => {
+      genBtn.click()
+    })
+    expect(generateSectionAction).not.toHaveBeenCalled()
+
+    // Choose a video → button enables.
+    const chooseBtn = view.container.querySelector(
+      '[data-testid="experience-chat-choose-video"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      chooseBtn.click()
+    })
+    const row = document.querySelector(
+      '[data-video-key="vid1"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      row.click()
+    })
+    await flush()
+
+    expect(genBtn.disabled).toBe(false)
+    // The chosen video's title is surfaced.
+    const chosen = view.container.querySelector(
+      '[data-testid="experience-chat-anchor-chosen"]',
+    ) as HTMLElement
+    expect(chosen.textContent).toContain("The Resurrection")
+  })
+
+  it("video-anchored section: surfaces the backend error for an ineligible pick (Covers AE3)", async () => {
+    const generateSectionAction = vi.fn().mockResolvedValue({
+      ok: false,
+      code: "NO_GROUNDING",
+      error:
+        "This video has no study questions or scripture to ground a section.",
+    })
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+        videoLibrary={[
+          makeVideo({
+            key: "bare",
+            title: "Bare Clip",
+            previewStreamUrl: null,
+            hasGrounding: false,
+          }),
+        ]}
+        generateSectionAction={generateSectionAction}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const chooseBtn = view.container.querySelector(
+      '[data-testid="experience-chat-choose-video"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      chooseBtn.click()
+    })
+    // A non-ready video is still selectable — the badge does not gate.
+    const row = document.querySelector(
+      '[data-video-key="bare"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      row.click()
+    })
+    await flush()
+
+    const genBtn = view.container.querySelector(
+      '[data-testid="experience-chat-generate-section"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      genBtn.click()
+    })
+    await flush()
+
+    expect(generateSectionAction).toHaveBeenCalledWith({
+      anchorVideoId: "bare",
+    })
+    const error = view.container.querySelector(
+      '[data-testid="experience-chat-draft-workflow-error"]',
+    ) as HTMLElement
+    expect(error).not.toBeNull()
+    expect(error.textContent).toContain("no study questions or scripture")
   })
 
   it("keeps the rail viewport-bound with an independently scrollable message list", async () => {

@@ -163,15 +163,14 @@ export function SearchOverlay() {
     setClosePortalContainer(node)
   }, [])
 
-  // Autofocus the input shortly after mount. Covers both user-open and
-  // URL-hydration paths.
+  // Autofocus the input shortly after user-open.
   useEffect(() => {
     if (!open) return
     const t = setTimeout(() => inputRef.current?.focus(), 100)
     return () => clearTimeout(t)
   }, [open])
 
-  // Escape closes the modal (preserving ?q= and query state).
+  // Escape closes the modal while preserving the in-memory query state.
   useEffect(() => {
     if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
@@ -667,8 +666,8 @@ export function SearchOverlay() {
           href={"/" as Route}
           aria-label={t("home")}
           // stopPropagation keeps the overlay from intercepting the click as
-          // a backdrop dismiss; search("") clears the query + ?q= + cached
-          // results so home navigation lands on a fresh search bar.
+          // a backdrop dismiss; search("") clears the query and cached results
+          // so home navigation lands on a fresh search bar.
           onClick={(e) => {
             e.stopPropagation()
             void search("")

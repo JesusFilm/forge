@@ -20,9 +20,10 @@ import { adminGraphql } from "@forge/admin-graphql"
  *
  * Locale-varying fields (`title`, `description`, `snippet`, `imageAlt`)
  * live on `VideoLocale` in admin, not on the parent `Video`. Watch routes
- * fetch the shell plus exact/broad/English copy aliases in
- * `getWatchVideoRouteSnapshotBySlugOperation`, while the split localized-copy
- * operation remains as a small document-level contract test fixture.
+ * fetch the shell plus exact/broad/English copy aliases and one preferred
+ * playable dub in `getWatchVideoRouteSnapshotBySlugOperation`, while the
+ * split localized-copy operation remains as a small document-level contract
+ * test fixture.
  *
  * `VideoRelation` is admin's join shape for `parents` / `children`. The
  * fragment projects the related Video through `parent { ... }` /
@@ -98,19 +99,6 @@ export const watchVideoShellFragment = adminGraphql(`
         # server-side scalar (admin's Video.durationSeconds, like
         # HybridSearchResult.durationSeconds), NOT a full dub fetch.
         durationSeconds
-      }
-    }
-    variants: dubs {
-      documentId: id
-      slug
-      published
-      hls
-      duration
-      language {
-        coreId
-        bcp47
-        slug
-        name
       }
     }
     bibleCitations {
@@ -360,11 +348,46 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           value: text
           order
         }
+        playableDubLanguageCount
+        preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
+          documentId: id
+          slug
+          published
+          hls
+          duration
+          language {
+            coreId
+            bcp47
+            slug
+            name
+          }
+        }
       }
     }
   `,
   [watchVideoShellFragment],
 )
+
+export const getWatchLanguagePickerVariantsBySlugOperation = adminGraphql(`
+  query GetWatchLanguagePickerVariantsBySlug($videoSlug: String!) {
+    videoBySlug(slug: $videoSlug) {
+      documentId: id
+      variants: dubs {
+        documentId: id
+        slug
+        published
+        hls
+        duration
+        language {
+          coreId
+          bcp47
+          slug
+          name
+        }
+      }
+    }
+  }
+`)
 
 export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
   query GetWatchVideoCarouselMuxPlaybackIds(

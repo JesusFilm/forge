@@ -17,6 +17,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   DraftExperienceSchema,
+  DraftVideoSectionSchema,
+  DraftBibleQuoteItemSchema,
   SkeletonSchema,
   validateSkeleton,
   getFillSchemaForType,
@@ -30,12 +32,54 @@ import {
 describe("@forge/experience-schema public surface (admin-free contract)", () => {
   it("exposes the generation-contract symbols as their expected kinds", () => {
     expect(typeof DraftExperienceSchema.safeParse).toBe("function")
+    expect(typeof DraftVideoSectionSchema.safeParse).toBe("function")
+    expect(typeof DraftBibleQuoteItemSchema.safeParse).toBe("function")
     expect(typeof SkeletonSchema.safeParse).toBe("function")
     expect(typeof validateSkeleton).toBe("function")
     expect(typeof getFillSchemaForType).toBe("function")
     expect(typeof coerceDraftEnvelope).toBe("function")
     expect(typeof extractJsonObject).toBe("function")
     expect(typeof buildDraftExperienceJsonSchema).toBe("function")
+  })
+
+  it("keeps the reference-first scripture contract on the public surface (no LLM verse text)", () => {
+    // The model emits a reference + structured citation identity; verse text is resolved
+    // at web render, never authored by the LLM. The package surface must accept a
+    // text-less, structured quote so the generator and admin re-validation agree.
+    const referenceOnly = DraftBibleQuoteItemSchema.safeParse({
+      reference: "John 20:19-29",
+      osisId: "John.20.19",
+      chapterStart: 20,
+      verseStart: 19,
+      verseEnd: 29,
+    })
+    expect(referenceOnly.success).toBe(true)
+
+    // A minimal grounded section (video hero + FAQ + reference-first scripture) validates.
+    const section = DraftVideoSectionSchema.safeParse({
+      blocks: [
+        { t: "videoHero", candidateRef: "v01", heading: "The Resurrection" },
+        {
+          t: "relatedQuestions",
+          questions: [
+            { question: "Why does the resurrection matter?", answer: "..." },
+          ],
+        },
+        {
+          t: "bibleQuotesCarousel",
+          quotes: [
+            {
+              reference: "John 20:19-29",
+              osisId: "John.20.19",
+              chapterStart: 20,
+              verseStart: 19,
+              verseEnd: 29,
+            },
+          ],
+        },
+      ],
+    })
+    expect(section.success).toBe(true)
   })
 
   it("single-sources GENERATION_MIN_BLOCKS as a positive integer", () => {
