@@ -1,29 +1,16 @@
-// @vitest-environment jsdom
-
-import { act, createRef } from "react"
-import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { render, screen } from "@testing-library/react"
+import userEvent, { type UserEvent } from "@testing-library/user-event"
+import { createRef } from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { collapsedStyles } from "./sidebar-collapsed-styles"
 import { SidebarHeader } from "./sidebar-header"
-;(
-  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-).IS_REACT_ACT_ENVIRONMENT = true
 
-let container: HTMLDivElement
-let root: Root
-
+// Built per test (not at module load) so the instance never predates a future
+// fake-timer install in this file — matches app-shell.test.tsx.
+let user: UserEvent
 beforeEach(() => {
-  container = document.createElement("div")
-  document.body.appendChild(container)
-  root = createRoot(container)
-})
-
-afterEach(() => {
-  act(() => {
-    root.unmount()
-  })
-  container.remove()
+  user = userEvent.setup()
 })
 
 type Overrides = {
@@ -33,82 +20,79 @@ type Overrides = {
   onCloseMobile?: () => void
 }
 
-function render(overrides: Overrides = {}) {
-  const props = {
+function buildProps(overrides: Overrides = {}) {
+  return {
     collapsed: overrides.collapsed ?? false,
     styles: collapsedStyles(overrides.collapsed ?? false),
     closeRef: overrides.closeRef ?? createRef<HTMLButtonElement>(),
     onToggleCollapsed: overrides.onToggleCollapsed ?? (() => {}),
     onCloseMobile: overrides.onCloseMobile ?? (() => {}),
   }
-  act(() => {
-    root.render(<SidebarHeader {...props} />)
-  })
 }
 
-function buttonByLabel(label: string): HTMLButtonElement | undefined {
-  return Array.from(
-    container.querySelectorAll<HTMLButtonElement>("button"),
-  ).find((b) => b.getAttribute("aria-label") === label)
-}
-
-// Throws a descriptive error (not a bare undefined deref) if the button is
-// absent — mirrors app-shell.test.tsx's clickButton guard.
-function clickByLabel(label: string) {
-  const button = buttonByLabel(label)
-  if (!button) throw new Error(`button "${label}" not found`)
-  act(() => {
-    button.click()
-  })
+function renderHeader(overrides: Overrides = {}) {
+  return render(<SidebarHeader {...buildProps(overrides)} />)
 }
 
 describe("SidebarHeader", () => {
   it("shows the collapse toggle (not the expand affordance) when expanded", () => {
-    render({ collapsed: false })
-    expect(buttonByLabel("Collapse sidebar")).toBeTruthy()
-    expect(buttonByLabel("Open sidebar")).toBeFalsy()
-    expect(container.textContent).toContain("jesusfilm.ai")
+    const { container } = renderHeader({ collapsed: false })
+    expect(
+      screen.getByRole("button", { name: "Collapse sidebar" }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Open sidebar" })).toBeNull()
+    expect(container).toHaveTextContent("jesusfilm.ai")
   })
 
   it("shows the expand affordance (not the collapse toggle) when collapsed", () => {
-    render({ collapsed: true })
-    expect(buttonByLabel("Open sidebar")).toBeTruthy()
-    expect(buttonByLabel("Collapse sidebar")).toBeFalsy()
+    renderHeader({ collapsed: true })
+    expect(
+      screen.getByRole("button", { name: "Open sidebar" }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Collapse sidebar" }),
+    ).toBeNull()
   })
 
-  it("fires onToggleCollapsed from the collapse toggle when expanded", () => {
+  it("fires onToggleCollapsed from the collapse toggle when expanded", async () => {
     const onToggleCollapsed = vi.fn()
-    render({ collapsed: false, onToggleCollapsed })
-    clickByLabel("Collapse sidebar")
+    renderHeader({ collapsed: false, onToggleCollapsed })
+    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }))
     expect(onToggleCollapsed).toHaveBeenCalledTimes(1)
   })
 
-  it("fires onToggleCollapsed from the expand affordance when collapsed", () => {
+  it("fires onToggleCollapsed from the expand affordance when collapsed", async () => {
     const onToggleCollapsed = vi.fn()
-    render({ collapsed: true, onToggleCollapsed })
-    clickByLabel("Open sidebar")
+    renderHeader({ collapsed: true, onToggleCollapsed })
+    await user.click(screen.getByRole("button", { name: "Open sidebar" }))
     expect(onToggleCollapsed).toHaveBeenCalledTimes(1)
   })
 
   it("renders the mobile close button in both collapsed states", () => {
     // The X lives in the drawer regardless of the desktop collapse flag, so it
     // must render whether expanded or collapsed.
-    render({ collapsed: false })
-    expect(buttonByLabel("Close sidebar")).toBeTruthy()
-    render({ collapsed: true })
-    expect(buttonByLabel("Close sidebar")).toBeTruthy()
+    const { rerender } = renderHeader({ collapsed: false })
+    expect(
+      screen.getByRole("button", { name: "Close sidebar" }),
+    ).toBeInTheDocument()
+    rerender(<SidebarHeader {...buildProps({ collapsed: true })} />)
+    expect(
+      screen.getByRole("button", { name: "Close sidebar" }),
+    ).toBeInTheDocument()
   })
 
-  it("fires onCloseMobile from the mobile close button", () => {
+  it("fires onCloseMobile from the mobile close button", async () => {
     const onCloseMobile = vi.fn()
-    render({ onCloseMobile })
-    clickByLabel("Close sidebar")
+    renderHeader({ onCloseMobile })
+    await user.click(screen.getByRole("button", { name: "Close sidebar" }))
     expect(onCloseMobile).toHaveBeenCalledTimes(1)
   })
 
   it("forwards closeRef to the mobile close button so the drawer can focus it", () => {
     const closeRef = createRef<HTMLButtonElement>()
-    render({ closeRef })
-    expect(closeRef.current).toBe(buttonByLabel("Close sidebar"))
+    renderHeader({ closeRef })
+    expect(closeRef.current).toBe(
+      screen.getByRole("button", { name: "Close sidebar" }),
+    )
   })
 })

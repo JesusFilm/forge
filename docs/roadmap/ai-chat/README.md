@@ -14,9 +14,9 @@ from the main DS Year 1 roadmap.
 ## Status (June 25, 2026)
 
 - **Total tickets:** 9
-- ✅ **Complete:** 5
+- ✅ **Complete:** 6
 - 🟡 **In progress:** 0
-- 🔵 **Not started:** 4
+- 🔵 **Not started:** 3
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -31,4 +31,4 @@ from the main DS Year 1 roadmap.
 | [feat-203](feat-203-chat-sidebar-component-extraction.md)    | Chat sidebar component + behavior extraction              | jian wei | P2       | 2026-07-01 | 2    | ✅ complete    | #1368   |
 | [feat-204](feat-204-expose-seeker-mastra-service-route.md)   | Expose Seeker agent via internal Mastra SSE service route | jian wei | P2       | 2026-06-24 | 3    | 🔵 not-started | —       |
 | [feat-205](feat-205-chat-wire-seeker-route.md)               | Wire chat app to the Seeker Mastra route                  | jian wei | P1       | 2026-06-27 | 3    | 🔵 not-started | —       |
-| [feat-206](feat-206-chat-introduce-react-testing-library.md) | Introduce React Testing Library to the chat app           | jian wei | P2       | 2026-07-03 | 2    | 🔵 not-started | —       |
+| [feat-206](feat-206-chat-introduce-react-testing-library.md) | Introduce React Testing Library to the chat app           | jian wei | P2       | 2026-07-03 | 2    | ✅ complete    | #1372   |

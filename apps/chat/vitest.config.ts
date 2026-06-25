@@ -8,9 +8,10 @@ export default defineConfig({
     },
   },
   test: {
-    // Default environment is `node`; DOM tests opt in per-file with
-    // `// @vitest-environment jsdom` (matches apps/web and apps/admin).
-    environment: "node",
+    // jsdom is the app default: chat tests use React Testing Library (a
+    // deliberate divergence from apps/web and apps/admin — see CLAUDE.md).
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 })

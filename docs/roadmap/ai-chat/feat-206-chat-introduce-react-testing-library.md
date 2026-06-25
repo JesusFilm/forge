@@ -3,7 +3,7 @@ id: "feat-206"
 title: "Introduce React Testing Library to the chat app"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-07-03"
 duration: 2
 depends_on:
@@ -12,6 +12,16 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-06-25 via [PR #1372](https://github.com/JesusFilm/forge/pull/1372) (`feat(chat): adopt React Testing Library for the test suite (feat-206)`).
+
+**What landed.** Migrated the five DOM test files in `apps/chat` to React Testing Library + `user-event` + `renderHook`, flipped the Vitest default env to `jsdom` via a new `vitest.setup.ts`, and deleted the hand-rolled plumbing (value-setter typing, raw `KeyboardEvent`/`submit` dispatch, the `useEffect`-capture hook harness). All 63 tests still pass — a pure mechanism swap, with two assertions deliberately _strengthened_ because `user-event` is more faithful than the old synthetic dispatch: Shift+Enter now proves the real newline (`"no send\n"`), and the error-throw test gained an explicit `act(() => {})` flush + `toBeEnabled()` recovery check (user-event refuses to type into a still-disabled composer). The three pure-function tests stayed plain vitest by design. Two things `git log` won't tell a future reader: the working fake-timer config is `vi.useFakeTimers({ shouldAdvanceTime: true })` (the documented `advanceTimers`-only pattern _hangs_ user-event under Vitest 3), and jest-dom matcher types needed a `src/vitest.d.ts` re-export because `vitest.setup.ts` sits outside the tsconfig `include`. This is a deliberate **chat-only** divergence — `apps/admin`/`apps/web` keep plain `react-dom/client` + `act`.
+
+**Compound docs.** [`docs/solutions/best-practices/rtl-user-event-vitest-fake-timers-migration-20260625.md`](../../solutions/best-practices/rtl-user-event-vitest-fake-timers-migration-20260625.md).
+
+**Residual risk / follow-ups.** None blocking. focus-restore-on-close stays browser-verified (depends on `offsetParent`, which jsdom can't represent). feat-205's async Mastra wiring can now be written in RTL from the start — the motivation for landing this first.
 
 ## Problem
 
