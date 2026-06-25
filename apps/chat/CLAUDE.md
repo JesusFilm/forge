@@ -20,7 +20,12 @@ src/
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
-      sidebar.tsx        'use client' — responsive left rail: desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Holds local UI mechanics (collapse clip animation, Escape-to-close, drawer focus trap/restore); conversation data is props
+      sidebar.tsx        'use client' — responsive left rail composition (scrim + <aside>): desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Presentational shell now — UI mechanics live in use-sidebar-chrome, collapsed-style policy in sidebar-collapsed-styles, sub-rows in the sidebar-* components
+      use-sidebar-chrome.ts        'use client' — sidebar UI-mechanics hook: collapse clip state machine (+ 400ms fallback timer), Escape-to-close listener, drawer focus trap/restore. Derives presentation from collapsed/mobileOpen; owns no view state
+      sidebar-collapsed-styles.ts  collapsedStyles(collapsed) → the md:-scoped collapsed-rail class policy in one slot-keyed map (header/brand/wordmark/newButton/nav)
+      sidebar-header.tsx           Brand mark + wordmark + the three mutually-exclusive controls (desktop collapse toggle / collapsed expand affordance / mobile close X); presentational
+      sidebar-new-conversation.tsx New-conversation action (full-width labeled ↔ centered icon-only when collapsed); presentational
+      sidebar-conversation-list.tsx Conversation history nav (select + per-row replying pulse; hidden when collapsed); presentational
       icons.tsx          Inline line-icon components (panel/compose/menu/close) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational)
@@ -43,11 +48,13 @@ public/                  Static assets served by URL (Next.js convention, matche
 - **State ownership:** all conversation state lives in `useConversations`,
   consumed by `AppShell`, which also owns sidebar _view_ state (`collapsed`,
   `mobileOpen`). Data flows one way: `useConversations`/view-state → `AppShell`
-  → `Sidebar` / `Chat` → leaf components. `chat.tsx` is fully presentational;
-  `sidebar.tsx` is presentational for _data_ but holds local _UI mechanics_
-  (collapse clip animation, Escape listener, drawer focus trap). Pulling those
-  mechanics into a hook + sub-components is tracked in
-  `docs/roadmap/ai-chat/feat-203`.
+  → `Sidebar` / `Chat` → leaf components. Both `chat.tsx` and `sidebar.tsx` are
+  presentational compositions now: `sidebar.tsx` lays out the scrim + `<aside>`
+  and delegates its local _UI mechanics_ (collapse clip animation, Escape
+  listener, drawer focus trap) to the `useSidebarChrome` hook, its collapsed
+  class policy to `collapsedStyles`, and its rows to the `sidebar-*`
+  sub-components (feat-203). State ownership stays in `AppShell` — the hook
+  only derives presentation from the `collapsed`/`mobileOpen` flags.
 - **The stub seam:** reply generation is isolated in `lib/chat-stub.ts`. The
   hook only orchestrates timing, the per-conversation pending/double-send guard,
   and which conversation a reply lands in. The `Message` type lives in
@@ -136,12 +143,14 @@ roadmap ticket that settles the integration path (above) as explicit
 
 ## Key Conventions
 
-- Server Components by default. Client components are the interactive ones:
-  `shell/app-shell.tsx`, `shell/sidebar.tsx`, `chat/chat.tsx`,
-  `chat/composer.tsx`, and `chat/empty-state.tsx`. `chat/message-list.tsx` is a
-  pure presentational render (no hooks/handlers) so it carries no `'use client'`
-  and inherits its parent's client context — `shell/icons.tsx` (stateless SVG
-  components) is the same. `brand/*`, `lib/cn.ts`, and the `app/` entry files
+- Server Components by default. Client components are the ones holding hooks:
+  `shell/app-shell.tsx`, `shell/sidebar.tsx`, `shell/use-sidebar-chrome.ts`,
+  `chat/chat.tsx`, `chat/composer.tsx`, and `chat/empty-state.tsx`.
+  `chat/message-list.tsx` and the `shell/sidebar-{header,new-conversation,conversation-list}.tsx`
+  sub-components carry no `'use client'` — they have event handlers but no hooks,
+  so they inherit the client context of the `'use client'` modules that import
+  them (`shell/icons.tsx`, the stateless SVGs, is the same). `shell/sidebar-collapsed-styles.ts`
+  (a pure class-map function), `brand/*`, `lib/cn.ts`, and the `app/` entry files
   stay server / framework-agnostic.
 - Strict TypeScript, `src/` layout, `@/*` path alias — config mirrors
   `apps/web` (the CI-proven template).
@@ -150,7 +159,9 @@ roadmap ticket that settles the integration path (above) as explicit
 - Tests colocated (`*.test.ts(x)`); component tests use plain
   `react-dom/client` + `act` with per-file `// @vitest-environment jsdom`
   (the `apps/admin` style — no testing-library). The behavioral suite lives in
-  `components/shell/app-shell.test.tsx` (AppShell owns the state).
+  `components/shell/app-shell.test.tsx` (AppShell owns the state); the extracted
+  `use-sidebar-chrome` hook has its own colocated unit test for its state machine
+  in isolation.
 - Runs on port **3200**.
 
 ### Comments

@@ -17,8 +17,12 @@
  * 5. Paginate with hasMore signal (dedup one extra to detect overflow).
  */
 
-import type { PrismaClient, VideoLabel } from "@prisma/client"
-import { generateExperienceEmbedding } from "./embeddings.service"
+import { Prisma, type PrismaClient, type VideoLabel } from "@prisma/client"
+import {
+  EXPERIENCE_EMBEDDING_DIMENSIONS,
+  OPENROUTER_EMBEDDING_MODEL,
+  generateExperienceEmbedding,
+} from "./embeddings.service"
 import {
   fuseRankedLists,
   deduplicateResults,
@@ -301,9 +305,93 @@ function toPgvectorText(embedding: number[]): string {
  */
 export type QueryEmbedder = (text: string) => Promise<number[]>
 
+const QUERY_EMBEDDING_CACHE_TTL_MS = 10 * 60 * 1000
+const QUERY_EMBEDDING_CACHE_MAX_ENTRIES = 512
+const QUERY_EMBEDDING_PROVIDER = "openrouter"
+
+type CachedQueryEmbedding = {
+  embedding: number[]
+  expiresAt: number
+}
+
+const queryEmbeddingCache = new Map<string, CachedQueryEmbedding>()
+const queryEmbeddingInflight = new Map<string, Promise<number[]>>()
+
+function normalizeEmbeddingCacheText(text: string): string {
+  return text.replace(/\s+/g, " ").trim()
+}
+
+function queryEmbeddingCacheKey(text: string): string {
+  return JSON.stringify({
+    provider: QUERY_EMBEDDING_PROVIDER,
+    model: OPENROUTER_EMBEDDING_MODEL,
+    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    text: normalizeEmbeddingCacheText(text),
+  })
+}
+
+function cloneEmbedding(embedding: readonly number[]): number[] {
+  return [...embedding]
+}
+
+function readCachedQueryEmbedding(key: string): number[] | null {
+  const cached = queryEmbeddingCache.get(key)
+  if (cached == null) return null
+
+  if (cached.expiresAt <= Date.now()) {
+    queryEmbeddingCache.delete(key)
+    return null
+  }
+
+  queryEmbeddingCache.delete(key)
+  queryEmbeddingCache.set(key, cached)
+  return cloneEmbedding(cached.embedding)
+}
+
+function rememberQueryEmbedding(key: string, embedding: readonly number[]) {
+  if (queryEmbeddingCache.has(key)) queryEmbeddingCache.delete(key)
+
+  while (queryEmbeddingCache.size >= QUERY_EMBEDDING_CACHE_MAX_ENTRIES) {
+    const oldestKey = queryEmbeddingCache.keys().next().value
+    if (oldestKey == null) break
+    queryEmbeddingCache.delete(oldestKey)
+  }
+
+  queryEmbeddingCache.set(key, {
+    embedding: cloneEmbedding(embedding),
+    expiresAt: Date.now() + QUERY_EMBEDDING_CACHE_TTL_MS,
+  })
+}
+
+export function __resetQueryEmbeddingCacheForTest() {
+  queryEmbeddingCache.clear()
+  queryEmbeddingInflight.clear()
+}
+
 const defaultEmbedder: QueryEmbedder = async (text) => {
-  const result = await generateExperienceEmbedding(text)
-  return result.embedding
+  const key = queryEmbeddingCacheKey(text)
+  const cached = readCachedQueryEmbedding(key)
+  if (cached != null) return cached
+
+  const inflight = queryEmbeddingInflight.get(key)
+  if (inflight != null) return cloneEmbedding(await inflight)
+
+  const request = (async () => {
+    recordAttempt()
+    try {
+      const result = await generateExperienceEmbedding(text)
+      rememberQueryEmbedding(key, result.embedding)
+      return cloneEmbedding(result.embedding)
+    } catch (error) {
+      recordFailure(error)
+      throw error
+    } finally {
+      queryEmbeddingInflight.delete(key)
+    }
+  })()
+  queryEmbeddingInflight.set(key, request)
+
+  return cloneEmbedding(await request)
 }
 
 /**
@@ -363,7 +451,7 @@ function mapToSearchResult(result: FusedResult): SearchResult {
 }
 
 /**
- * Cap on dubs returned per video by the hydration sub-include. The
+ * Cap on dubs returned per video by the hydration dub query. The
  * selector picks one row to compute `durationSeconds`; a small N
  * (primary-language dub + a handful of regional fallbacks) is sufficient
  * and bounds the worst case at 50 videos × 5 dubs = 250 rows per request
@@ -373,9 +461,214 @@ function mapToSearchResult(result: FusedResult): SearchResult {
 const HYDRATION_DUBS_PER_VIDEO = 5
 const HYDRATION_IMAGES_PER_VIDEO = 5
 
+type HydrationBaseRow = {
+  id: string
+  label: VideoLabel | null
+  primaryLanguageId: string | null
+}
+
+type HydrationLocaleRow = {
+  videoId: string
+  description: string | null
+  snippet: string | null
+}
+
+type HydrationImageRow = {
+  videoId: string
+  mobileCinematicHigh: string | null
+  mobileCinematicLow: string | null
+  videoStill: string | null
+  thumbnail: string | null
+  url: string | null
+}
+
+type HydrationDubRow = {
+  videoId: string
+  languageId: string | null
+  duration: number | null
+  playbackId: string | null
+}
+
+type HydrationChildCountRow = {
+  videoId: string
+  childCount: number | bigint | null
+}
+
+type HydrationDataRow = HydrationBaseRow & {
+  locales: HydrationLocaleRow[]
+  images: HydrationImageRow[]
+  dubs: HydrationDubRow[]
+  childCount: number
+}
+
+function groupByVideoId<T extends { videoId: string }>(
+  rows: readonly T[],
+): Map<string, T[]> {
+  const grouped = new Map<string, T[]>()
+  for (const row of rows) {
+    const group = grouped.get(row.videoId)
+    if (group != null) {
+      group.push(row)
+    } else {
+      grouped.set(row.videoId, [row])
+    }
+  }
+  return grouped
+}
+
+function toChildCount(value: number | bigint | null | undefined): number {
+  if (typeof value === "bigint") return Number(value)
+  if (typeof value === "number") return value
+  return 0
+}
+
+async function loadHydrationDataRows(
+  prisma: PrismaClient,
+  videoIds: string[],
+  locale: string,
+  timing?: SearchTimingRecorder,
+): Promise<HydrationDataRow[]> {
+  const [baseRows, localeRows, imageRows, dubRows, childCountRows] =
+    await Promise.all([
+      recordSearchDbTiming(
+        timing,
+        "hydration.video.findMany",
+        () =>
+          prisma.video.findMany({
+            where: { id: { in: videoIds }, deletedAt: null },
+            select: {
+              id: true,
+              label: true,
+              primaryLanguageId: true,
+            },
+          }) as Promise<HydrationBaseRow[]>,
+      ),
+      recordSearchDbTiming(
+        timing,
+        "hydration.videoLocale.findMany",
+        () =>
+          prisma.videoLocale.findMany({
+            where: {
+              videoId: { in: videoIds },
+              locale,
+              status: "PUBLISHED",
+              deletedAt: null,
+            },
+            select: {
+              videoId: true,
+              description: true,
+              snippet: true,
+            },
+          }) as Promise<HydrationLocaleRow[]>,
+      ),
+      recordSearchDbTiming(
+        timing,
+        "hydration.videoImage.query",
+        () =>
+          prisma.$queryRaw<HydrationImageRow[]>`
+        SELECT
+          ranked."videoId",
+          ranked."mobileCinematicHigh",
+          ranked."mobileCinematicLow",
+          ranked."videoStill",
+          ranked.thumbnail,
+          ranked.url
+        FROM (
+          SELECT
+            vi.video_id AS "videoId",
+            vi.mobile_cinematic_high AS "mobileCinematicHigh",
+            vi.mobile_cinematic_low AS "mobileCinematicLow",
+            vi.video_still AS "videoStill",
+            vi.thumbnail,
+            vi.url,
+            row_number() OVER (
+              PARTITION BY vi.video_id
+              ORDER BY vi.created_at ASC
+            ) AS hydration_rank
+          FROM video_image vi
+          WHERE vi.video_id IN (${Prisma.join(videoIds)})
+            AND vi.deleted_at IS NULL
+        ) ranked
+        WHERE ranked.hydration_rank <= ${HYDRATION_IMAGES_PER_VIDEO}
+        ORDER BY ranked."videoId", ranked.hydration_rank
+      `,
+      ),
+      recordSearchDbTiming(
+        timing,
+        "hydration.videoDub.query",
+        () =>
+          prisma.$queryRaw<HydrationDubRow[]>`
+        SELECT
+          ranked."videoId",
+          ranked."languageId",
+          ranked.duration,
+          ranked."playbackId"
+        FROM (
+          SELECT
+            vd.video_id AS "videoId",
+            vd.language_id AS "languageId",
+            vd.duration,
+            mv.playback_id AS "playbackId",
+            row_number() OVER (
+              PARTITION BY vd.video_id
+              ORDER BY vd.duration DESC, vd.id ASC
+            ) AS hydration_rank
+          FROM video_dub vd
+          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
+          WHERE vd.video_id IN (${Prisma.join(videoIds)})
+            AND vd.published = true
+            AND vd.hls IS NOT NULL
+            AND vd.deleted_at IS NULL
+            AND vd.duration > 0
+        ) ranked
+        WHERE ranked.hydration_rank <= ${HYDRATION_DUBS_PER_VIDEO}
+        ORDER BY ranked."videoId", ranked.hydration_rank
+      `,
+      ),
+      recordSearchDbTiming(
+        timing,
+        "hydration.videoChildCount.query",
+        () =>
+          prisma.$queryRaw<HydrationChildCountRow[]>`
+        SELECT
+          vr.parent_id AS "videoId",
+          COUNT(*)::int AS "childCount"
+        FROM video_relation vr
+        JOIN video child
+          ON child.id = vr.child_id
+          AND child.deleted_at IS NULL
+        WHERE vr.parent_id IN (${Prisma.join(videoIds)})
+          AND EXISTS (
+            SELECT 1
+            FROM video_locale child_locale
+            WHERE child_locale.video_id = child.id
+              AND child_locale.status = 'published'
+              AND child_locale.deleted_at IS NULL
+          )
+        GROUP BY vr.parent_id
+      `,
+      ),
+    ])
+
+  const localesByVideoId = groupByVideoId(localeRows)
+  const imagesByVideoId = groupByVideoId(imageRows)
+  const dubsByVideoId = groupByVideoId(dubRows)
+  const childCountsByVideoId = new Map(
+    childCountRows.map((row) => [row.videoId, toChildCount(row.childCount)]),
+  )
+
+  return baseRows.map((row) => ({
+    ...row,
+    locales: localesByVideoId.get(row.id) ?? [],
+    images: imagesByVideoId.get(row.id) ?? [],
+    dubs: dubsByVideoId.get(row.id) ?? [],
+    childCount: childCountsByVideoId.get(row.id) ?? 0,
+  }))
+}
+
 /**
  * Card display hydration. Given the final page of video-type results,
- * batch-load card metadata in ONE Prisma query and return a new array
+ * batch-load card metadata with bounded, timed reads and return a new array
  * with display fields filled in:
  *
  * - public snippet from VideoLocale description/snippet
@@ -388,10 +681,9 @@ const HYDRATION_IMAGES_PER_VIDEO = 5
  * Why a post-mapping pass instead of fetching the data inline in each
  * retriever: the retrievers project tightly via `$queryRaw` for index
  * use; adding extra display fields per retriever would either duplicate the
- * LATERALs across 4+ SQL paths or force a UNION shape change. A single
- * `findMany({ where: { id: { in: [...] } } })` after pagination is
- * O(page-size) — at most ~50 rows for MAX_LIMIT — and keeps the SQL
- * read paths unchanged.
+ * LATERALs across 4+ SQL paths or force a UNION shape change. A small set
+ * of bounded, parallel reads after pagination is O(page-size) — at most
+ * ~50 rows for MAX_LIMIT — and keeps the retriever SQL read paths unchanged.
  *
  * Returns a NEW array (not mutating the input). Soft-deleted-mid-search
  * rows pass through with null pill fields — they keep title/slug from
@@ -414,94 +706,9 @@ async function hydrateCardDisplayFields(
   // error here must NOT take the search endpoint down. Catch, log, and pass
   // through the pre-hydration array; consumers see a search response with
   // sparse card metadata rather than HTTP 503 for the whole request.
-  let rows
+  let rows: HydrationDataRow[]
   try {
-    rows = await recordSearchDbTiming(timing, "hydration.video.findMany", () =>
-      prisma.video.findMany({
-        where: { id: { in: videoIds }, deletedAt: null },
-        select: {
-          id: true,
-          label: true,
-          primaryLanguageId: true,
-          locales: {
-            where: {
-              locale,
-              status: "PUBLISHED",
-              deletedAt: null,
-            },
-            take: 1,
-            select: {
-              description: true,
-              snippet: true,
-            },
-          },
-          images: {
-            where: { deletedAt: null },
-            orderBy: [{ createdAt: "asc" }],
-            take: HYDRATION_IMAGES_PER_VIDEO,
-            select: {
-              mobileCinematicHigh: true,
-              mobileCinematicLow: true,
-              videoStill: true,
-              thumbnail: true,
-              url: true,
-            },
-          },
-          dubs: {
-            // `duration: { gt: 0 }` excludes sync-glitch rows (Core
-            // occasionally returns a published dub with duration=0; the
-            // pill picker then renders nothing for those rows, leaving an
-            // unexplained gap on the card).
-            where: {
-              published: true,
-              hls: { not: null },
-              deletedAt: null,
-              duration: { gt: 0 },
-            },
-            // `take` bounds the per-video dubs scan. Order by duration
-            // descending so the longest published in-locale dub anchors
-            // the top of the page; the post-query `find` below prefers the
-            // primary-language dub among these top-N rows, falling back to
-            // `dubs[0]` (longest) when the primary dub isn't in the top-N
-            // by duration. On heavily-dubbed videos (200+ dubs) the primary
-            // may rank below position N — accept the fallback rather than
-            // widen `take` (cost is bounded at 50 × N rows per request).
-            orderBy: [{ duration: "desc" }],
-            take: HYDRATION_DUBS_PER_VIDEO,
-            select: {
-              languageId: true,
-              duration: true,
-              muxVideo: { select: { playbackId: true } },
-            },
-          },
-          // `_count.children` mirrors the consumer-facing ABAC at
-          // videoChildrenFilter (apps/admin/src/graphql/types/video.ts):
-          // only count children that have a PUBLISHED locale and aren't
-          // soft-deleted. Without this filter the search-card "{n} episodes"
-          // pill drifts from what the watch page actually renders. Self-
-          // referential rows (parent_id = child_id) — a data-quality issue
-          // seen for `1-jesus-our-loving-pursuer` — can still inflate the
-          // count; web's normalizeAdminVideo filters those client-side, but
-          // the count is computed before that pass. Acceptable today; if
-          // self-ref inflation becomes a UX issue, switch to a raw SQL
-          // count that adds `WHERE child_id <> parent_id`.
-          _count: {
-            select: {
-              children: {
-                where: {
-                  child: {
-                    deletedAt: null,
-                    locales: {
-                      some: { status: "PUBLISHED", deletedAt: null },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      }),
-    )
+    rows = await loadHydrationDataRows(prisma, videoIds, locale, timing)
   } catch (err) {
     const log = logger ?? console
     log.error(
@@ -523,27 +730,28 @@ async function hydrateCardDisplayFields(
   >()
   for (const row of rows) {
     // Pick the primary-language dub when available; otherwise the
-    // longest-duration playable dub (the orderBy in the sub-include
-    // sorted them). `duration` is already in seconds (Int?); the
-    // millisecond column on VideoDub uses BigInt and isn't needed for
-    // pill display where second precision is the right fidelity.
+    // longest-duration playable dub. The hydration query sorts dubs by
+    // duration descending with a stable ID tie-breaker. `duration` is
+    // already in seconds (Int?); the millisecond column on VideoDub uses
+    // BigInt and isn't needed for pill display where second precision is
+    // the right fidelity.
     const primaryDub = row.primaryLanguageId
       ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
       : undefined
     const durationDub = primaryDub ?? row.dubs[0] ?? null
     const playbackDub =
-      (nonEmptyString(primaryDub?.muxVideo?.playbackId) != null
+      (nonEmptyString(primaryDub?.playbackId) != null
         ? primaryDub
         : undefined) ??
-      row.dubs.find((d) => nonEmptyString(d.muxVideo?.playbackId) != null) ??
+      row.dubs.find((d) => nonEmptyString(d.playbackId) != null) ??
       durationDub
     hydration.set(row.id, {
       snippet: pickLocalizedSnippet(row.locales),
       imageUrl: pickImageUrl(row.images),
-      playbackId: nonEmptyString(playbackDub?.muxVideo?.playbackId),
+      playbackId: nonEmptyString(playbackDub?.playbackId),
       label: row.label,
       durationSeconds: durationDub?.duration ?? null,
-      childCount: row._count.children,
+      childCount: row.childCount,
     })
   }
 
@@ -625,6 +833,7 @@ export type HybridSearchServiceDeps = {
 export class HybridSearchService {
   private readonly prisma: PrismaClient
   private readonly embedder: QueryEmbedder
+  private readonly embedderRecordsHealth: boolean
   private readonly logger: {
     error: (message: string) => void
     warn: (message: string) => void
@@ -633,6 +842,7 @@ export class HybridSearchService {
   constructor(deps: HybridSearchServiceDeps) {
     this.prisma = deps.prisma
     this.embedder = deps.embedder ?? defaultEmbedder
+    this.embedderRecordsHealth = deps.embedder == null
     this.logger = deps.logger ?? {
       error: (message: string) => console.error(message),
       warn: (message: string) => console.warn(message),
@@ -795,13 +1005,13 @@ export class HybridSearchService {
     let embeddingFailed = false
     let embeddingMs = 0
     const embeddingStartedAt = nowMs()
-    recordAttempt()
+    if (!this.embedderRecordsHealth) recordAttempt()
     try {
       const vector = await this.embedder(query)
       queryEmbeddingText = toPgvectorText(vector)
     } catch (error) {
       embeddingFailed = true
-      recordFailure(error)
+      if (!this.embedderRecordsHealth) recordFailure(error)
       const errorClass =
         error instanceof Error ? error.constructor.name : "UnknownError"
       const message = error instanceof Error ? error.message : String(error)

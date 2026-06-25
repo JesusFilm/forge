@@ -33,8 +33,11 @@ import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
 import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGrid"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { deriveSeriesDownloadState } from "../../src/lib/seriesDownloadAggregate"
+import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
+import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
@@ -57,6 +60,32 @@ export default function SeriesScreen() {
   const { series, setSeries, languages, selectedLanguageSlug } =
     useSeriesSession()
   const { downloadedSlugs, offlineRecords } = useDownloads()
+  const { subtitleLanguageSlug, subtitleLanguageName, subtitlesEnabled } =
+    useWatchPreferences()
+
+  // Reconcile the persisted subtitle pref against what this series offers — an
+  // unsupported pref falls back. Fetched only when a subtitle is set; the pill
+  // paints the cached name optimistically until the union lands.
+  const { subtitles: subtitleUnion, error: subtitleUnionError } =
+    useSeriesSubtitleUnion(
+      series?.episodes ?? null,
+      selectedLanguageSlug,
+      subtitlesEnabled && subtitleLanguageSlug != null,
+    )
+  const subtitleActionLabel = resolveSeriesSubtitleLabel(
+    subtitlesEnabled,
+    subtitleLanguageSlug,
+    subtitleLanguageName,
+    subtitleUnion,
+    series?.primaryLanguageBcp47 ?? null,
+  )
+  // Bright only when subtitles are on, a language is set, the union didn't error,
+  // and the series has tracks — otherwise the pill reads "Off"/placeholder, muted.
+  const subtitleActive =
+    subtitlesEnabled &&
+    subtitleLanguageSlug != null &&
+    !subtitleUnionError &&
+    (subtitleUnion == null || subtitleUnion.length > 0)
 
   const downloadState = useMemo(
     () =>
@@ -252,12 +281,15 @@ export default function SeriesScreen() {
               <>
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
+                  onSubtitles={() => router.push("/series/subtitle")}
                   onDownload={() => router.push("/series/download")}
                   onShare={handleShare}
                   languageLabel={
                     languages.find((l) => l.slug === selectedLanguageSlug)
                       ?.name ?? null
                   }
+                  subtitleLabel={subtitleActionLabel}
+                  subtitleActive={subtitleActive}
                   downloadState={downloadState}
                 />
                 <VideoDescription description={series.description} />

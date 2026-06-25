@@ -61,6 +61,7 @@ export default function SeriesLayout() {
           }}
         />
         <Stack.Screen name="language" options={LIST_SHEET_OPTIONS} />
+        <Stack.Screen name="subtitle" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen
           name="download"
           options={{
