@@ -108,6 +108,23 @@ pnpm --filter @forge/mastra typecheck
 pnpm --filter @forge/mastra lint
 ```
 
+### Why `dev` runs under `--import tsx`
+
+`mastra dev` externalizes workspace deps (e.g. `@forge/experience-schema`) and
+lets Node's loader resolve them at runtime. That package's `exports` point at
+raw `.ts` source whose `index.ts` re-exports siblings **extensionlessly**
+(`export * from "./experience-ai.schemas"`). Node's ESM resolver does not guess
+extensions, so the default loader throws
+`ERR_MODULE_NOT_FOUND … experience-ai.schemas` before the server can boot — it
+is the first multi-file raw-`.ts` workspace package this runtime loads. The
+`dev` script therefore sets `NODE_OPTIONS="--import tsx"` so tsx's loader (which
+does resolve extensionless `.ts`) handles those imports, on **both** the CLI
+analysis pass and the spawned dev server. Adding explicit `.ts` extensions to
+the shared package instead would force `allowImportingTsExtensions` (TS5097)
+into every consumer's tsconfig, and the repo's other packages all stay
+extensionless — so the fix lives here, dev-only. `build`/`start` are unaffected:
+the Rollup deployer transpiles the workspace package into the bundle.
+
 ## Environment
 
 | Variable                                     | Purpose                                                                                                                                                                                                                                                                                                                                                     |

@@ -6,6 +6,7 @@ import { memo, useCallback, useMemo, useState } from "react"
 import {
   Dimensions,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -21,7 +22,11 @@ import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { HOME_CARD_THUMB_HEIGHT, HOME_CARD_WIDTH, HomeCard } from "./HomeCard"
 import { buildRailItems, type RailItem } from "./homeRailItems"
 
-const ITEM_GAP = scale(28)
+const IS_ANDROID = Platform.OS === "android"
+
+// Android uses a wider gap (same card size) so the rail shows slightly fewer
+// cards with more spacing — the user-tuned density. tvOS keeps main's 28.
+const ITEM_GAP = scale(IS_ANDROID ? 48 : 28)
 const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 const RAIL_PADDING_LEFT = scale(80)
 
@@ -106,6 +111,13 @@ type HomeRailProps = {
    * Down off the hero CTA restores while Up from below stays column-preserving.
    */
   restoreLastFocus?: boolean
+  /**
+   * Image-windowing (Android): when false (off the focus window), the rail's
+   * cards still mount at full size and stay focusable — so D-pad focus never
+   * lands on an empty rail — but skip their image decode. The parent keeps the
+   * focused row + a buffer of neighbours active. Defaults to true (eager).
+   */
+  active?: boolean
 }
 
 export const HomeRail = memo(function HomeRail({
@@ -118,6 +130,7 @@ export const HomeRail = memo(function HomeRail({
   onCardPress,
   upFocusTarget,
   restoreLastFocus,
+  active = true,
 }: HomeRailProps) {
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
@@ -159,6 +172,9 @@ export const HomeRail = memo(function HomeRail({
             nextFocusUp={upFocusTarget ?? undefined}
             // Capture the last REAL card — the pads' bounce target.
             nodeRef={index === cards.length - 1 ? setLastCardNode : undefined}
+            // Off-window rails mount their cards (so focus always has a target)
+            // but skip the image decode — that's the image-window perf win.
+            loadImage={active}
           />
         </View>
       )
@@ -170,6 +186,7 @@ export const HomeRail = memo(function HomeRail({
       onCardPress,
       upFocusTarget,
       lastCardNode,
+      active,
     ],
   )
 
@@ -189,7 +206,14 @@ export const HomeRail = memo(function HomeRail({
       {/* autoFocus restores the LAST-focused card on re-entry; parent gates it off when source focus
           is a rail below (keeps column-preserving geometry). Short-rail skips are handled by RailPad
           cards, not the guide. extraData forces the pads to re-render once the bounce target is captured. */}
-      <TVFocusGuideView autoFocus={restoreLastFocus}>
+      {/* Android: trap horizontal focus so Right at the last card (Left at the
+          first) is a no-op — else the focus engine escapes diagonally to the
+          rail below. Up/Down still cross rails. tvOS keeps native edge behavior. */}
+      <TVFocusGuideView
+        autoFocus={restoreLastFocus}
+        trapFocusLeft={IS_ANDROID}
+        trapFocusRight={IS_ANDROID}
+      >
         <FlatList
           data={items}
           extraData={lastCardNode}

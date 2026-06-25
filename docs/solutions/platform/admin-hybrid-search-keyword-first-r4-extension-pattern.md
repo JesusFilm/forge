@@ -140,15 +140,19 @@ DB call. All three honor `OVERFETCH_FACTOR = 3` via the `limit` param.
 ## Branched orchestrator — `HybridSearchService.search()`
 
 ```
+if mode === "keyword-first" && wantsVideos:
+  start keyword-weighted-video + trigram-video + exact-title-video
+  attach Promise.allSettled immediately
+  ↓
 embed(query)
   ↓
-build retrievals[]:
+build final retrievals[]:
   if wantsVideos:
     push semantic-video                         (shared)
     if mode === "keyword-first":
-      push keyword-weighted-video
-      push trigram-video
-      push exact-title-video
+      push pre-started keyword-weighted-video
+      push pre-started trigram-video
+      push pre-started exact-title-video
     else:                                        (hybrid path UNCHANGED)
       push keyword-video                         (R4)
   if wantsExperiences:
@@ -164,6 +168,16 @@ return { results, hasMore, query, searchMode }
                                        ↑
                               UNCHANGED degradation signal
 ```
+
+The three keyword-first video lexical retrievers do not need the query
+embedding, so they may run while the embedding provider is in flight. Semantic
+retrievers remain embedding-gated. Reuse the early settled outcomes in the final
+retriever order; do not let async overlap change RRF list order or debug labels.
+
+Timing attribution follows
+`docs/solutions/performance-issues/admin-search-stage-db-timing-instrumentation-20260624.md`:
+`db_retrievals_ms` is active retriever time, while `retrieval_wait_ms` is the
+final await span. Overlapped stage timings are not additive.
 
 ## Semantic-dilution cap
 
