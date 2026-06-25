@@ -105,14 +105,9 @@ export default function WatchVideoScreen() {
     router.replace(target)
   }, [redirectDecision, decodedSlug, seed, router])
 
-  // Publish the fetched video into the shared session WHILE FOCUSED — on mount,
-  // on partial → full enrichment (normalized dep re-runs the focus effect), AND
-  // on re-focus after a child watch screen pops. The child's unmount clears the
-  // singleton (below), so a plain mount effect wouldn't re-fire here (normalized
-  // is unchanged) and this still-mounted parent would render with video=null,
-  // dropping everything that reads the session: Up Next / About / Related
-  // Questions and the Share/Download/Play action pills. The session guards user
-  // selections across these republishes.
+  // Re-publish into the shared session WHILE FOCUSED so a child screen's pop (its
+  // unmount clears the singleton below) doesn't strand this still-mounted parent at
+  // video=null, blanking everything session-driven (Up Next/About/RQ/pills).
   useFocusEffect(
     useCallback(() => {
       if (normalized) setVideo(normalized)

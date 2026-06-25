@@ -71,10 +71,9 @@ function FallbackPill({
   label: string
   onPress: () => void
 }) {
-  // Standardized invert-on-focus pill (matches the watch hero's secondary pills,
-  // DetailsActionRow): dark glass + white ink at rest, flipping to a white fill +
-  // near-black ink + icon on focus. No crimson glow — the previous FocusableCard
-  // focusRing="crimson" light-surface exception is retired here.
+  // Standardized invert-on-focus pill (matches DetailsActionRow's SecondaryPill):
+  // dark glass + white ink at rest -> white fill + near-black ink/icon on focus.
+  // No crimson glow — the old FocusableCard focusRing="crimson" exception is gone.
   const { setFocused, progress } = useFocusAnimation()
   const fillStyle = useMemo(
     () => ({

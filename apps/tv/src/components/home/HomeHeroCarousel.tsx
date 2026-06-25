@@ -85,6 +85,11 @@ export function HomeHeroCarousel({
   // side stays put (never escapes the hero); the capture pages instead.
   const [seeMoreNode, setSeeMoreNode] = useState<ViewType | null>(null)
   const [chevronNode, setChevronNode] = useState<ViewType | null>(null)
+  // Mirror the node in a ref so onFocus reports a synchronously-current node —
+  // the state set via the ref callback may not have committed on first focus
+  // (same dual-ref pattern as HomeCard).
+  const seeMoreNodeRef = useRef<ViewType | null>(null)
+  const chevronNodeRef = useRef<ViewType | null>(null)
 
   // Report hero focus to the screen only when it actually changes (moving See
   // more ↔ chevron keeps it true, so the feed never re-pins between buttons).
@@ -140,8 +145,8 @@ export function HomeHeroCarousel({
     seeMoreFocusedRef.current = true
     focusMovedRef.current = true
     setSeeMoreFocused(true)
-    onFocusNode?.(seeMoreNode)
-  }, [onFocusNode, seeMoreNode])
+    onFocusNode?.(seeMoreNodeRef.current)
+  }, [onFocusNode])
   const handleSeeMoreBlur = useCallback(() => {
     seeMoreFocusedRef.current = false
     focusMovedRef.current = true
@@ -151,8 +156,8 @@ export function HomeHeroCarousel({
     chevronFocusedRef.current = true
     focusMovedRef.current = true
     setChevronFocused(true)
-    onFocusNode?.(chevronNode)
-  }, [onFocusNode, chevronNode])
+    onFocusNode?.(chevronNodeRef.current)
+  }, [onFocusNode])
   const handleChevronBlur = useCallback(() => {
     chevronFocusedRef.current = false
     focusMovedRef.current = true
@@ -163,11 +168,16 @@ export function HomeHeroCarousel({
   // self-target nextFocusLeft below.
   const handleSeeMoreNode = useCallback(
     (node: ViewType | null) => {
+      seeMoreNodeRef.current = node
       onCtaNode?.(node)
       setSeeMoreNode(node)
     },
     [onCtaNode],
   )
+  const handleChevronNode = useCallback((node: ViewType | null) => {
+    chevronNodeRef.current = node
+    setChevronNode(node)
+  }, [])
 
   return (
     <View>
@@ -189,7 +199,7 @@ export function HomeHeroCarousel({
                 onPress={() => onRequestAdvance(1)}
                 onFocus={handleChevronFocus}
                 onBlur={handleChevronBlur}
-                onNode={setChevronNode}
+                onNode={handleChevronNode}
                 selfNode={chevronNode}
                 upFocusTarget={upFocusTarget}
               />

@@ -1,10 +1,6 @@
-// Screen-level memory of the last-focused D-pad element, so Home can re-focus it
-// after a stack push/pop. tvOS does NOT restore the previously focused native
-// view on a pop (react-native-tvos #852) — it falls back to the geometric
-// default (top-left). We remember the focused node and imperatively re-focus it
-// via requestTVFocus(), the same native call HomeRail's RailPad uses; a direct
-// imperative focus works across FlatList/tree boundaries where declarative
-// nextFocus* silently does not.
+// Screen-level memory of the last-focused D-pad element so Home can re-focus it
+// after a stack pop (tvos#852: tvOS drops it, falling to the top-left default).
+// Restores via requestTVFocus() — works across FlatList/tree boundaries.
 
 import type { View as ViewType } from "react-native"
 

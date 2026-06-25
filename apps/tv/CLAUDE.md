@@ -46,7 +46,7 @@ From the Stitch mockups:
 - Font: System (SF Pro on tvOS, Roboto on Android TV)
 - No 1px borders — use background color shifts
 - 16px border radius on cards
-- Focus state: 1.05x scale + white ring (the app-wide default; crimson glow is opt-in via FocusableCard `focusRing="crimson"`, used only on near-white surfaces where a white ring has no contrast — e.g. the Related Questions FallbackPill)
+- Focus state: 1.05x scale + white ring (the app-wide default). The `focusRing="crimson"` opt-in for near-white surfaces is retired — no active instances; the Related Questions FallbackPill was migrated to the invert-on-focus fill.
 
 ### WATCH_THEME (`src/components/watch/watchDetailTheme.ts`)
 
@@ -84,16 +84,16 @@ search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
 ## TV-Specific Patterns
 
 - Every interactive element must be focusable via D-pad.
-- Visible focus ring on focused elements: a white ring is the app-wide default on all surfaces (cards get a white border ring; the primary red CTA keeps its colored drop shadow). Crimson glow is an opt-in variant (`focusRing="crimson"`) used only on near-white surfaces where a white ring has no contrast (e.g. the Related Questions FallbackPill).
+- Visible focus ring on focused elements: a white ring is the app-wide default on all surfaces (cards get a white border ring; the primary red CTA keeps its colored drop shadow). The `focusRing="crimson"` opt-in is retired; pills on dark glass (e.g. the former Related Questions FallbackPill, the hero next-chevron) use the invert-on-focus fill (dark glass -> white fill + near-black ink/icon on focus).
 - `TVFocusGuideView` to constrain focus within horizontal rails.
-- `hasTVPreferredFocus` for initial focus control and back-navigation focus restore.
+- `hasTVPreferredFocus` for initial (first-mount) focus control. For back-navigation focus restore use `createFocusMemory()` + `requestTVFocus()` in a `useFocusEffect` (Home; see `src/components/home/focusMemory.ts`) — `hasTVPreferredFocus` is one-shot mount-only and does not restore on pop.
 - Stack navigation only: Home → Experience Detail → Video Playback.
 - Menu/Back button pops navigation stack.
 
 ## Common Pitfalls
 
 - Android TV VideoView z-order: renders on top of all RN Views.
-- Focus lost on back-navigation (react-native-tvos #852): workaround with `hasTVPreferredFocus` in `useEffect`.
+- Focus lost on back-navigation (react-native-tvos #852): Home remembers the focused node (`createFocusMemory`) and re-focuses it via `requestTVFocus()` on `useFocusEffect` re-entry. `hasTVPreferredFocus` is mount-only and does not restore on pop.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Must run `EXPO_TV=1 npx expo prebuild --clean` when switching between TV and phone targets.

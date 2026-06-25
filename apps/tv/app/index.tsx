@@ -60,11 +60,9 @@ export default function HomeScreen() {
   const [retryFocused, setRetryFocused] = useState(false)
   const { model, loading, error, refetch } = useWatchHome()
 
-  // ── Last-focused-element restoration (tvos#852) ── On a stack pop, tvOS does
-  // NOT restore the previously focused native view — it falls back to the
-  // geometric default (top-left). We remember the focused node (cards, hero CTA,
-  // top-bar tabs, mission QR all report theirs) and imperatively re-focus it on
-  // re-entry. Subsumes the old back-from-/search restore: last focus was Search.
+  // tvos#852: a stack pop doesn't restore the previously focused view (falls to
+  // the top-left default). Remember the focused node (every focusable reports it)
+  // and re-focus it on re-entry — subsumes the old back-from-/search restore.
   const focusMemoryRef = useRef<FocusMemory | null>(null)
   if (focusMemoryRef.current == null) {
     focusMemoryRef.current = createFocusMemory()
@@ -73,10 +71,9 @@ export default function HomeScreen() {
     focusMemoryRef.current?.capture(node)
   }, [])
 
-  // Only restore after a real navigation away — never on first mount (the hero's
-  // hasTVPreferredFocus owns initial focus). useFocusEffect's cleanup runs on
-  // blur, so a prior blur means this focus is a genuine re-entry. The rAF defers
-  // past the pop's commit so the target node is mounted before we focus it.
+  // Restore only on a genuine re-entry, not first mount (hero's hasTVPreferredFocus
+  // owns initial focus) — a prior blur proves re-entry. rAF defers past the pop's
+  // commit so the target node is mounted before we focus it.
   const hasBlurredRef = useRef(false)
   useFocusEffect(
     useCallback(() => {
