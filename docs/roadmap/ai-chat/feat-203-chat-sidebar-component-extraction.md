@@ -3,7 +3,7 @@ id: "feat-203"
 title: "Chat sidebar component + behavior extraction"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-01"
 duration: 2
 depends_on:
@@ -12,6 +12,14 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-06-25 via [PR #1368](https://github.com/JesusFilm/forge/pull/1368) (`feat(chat): extract sidebar into hook + sub-components (feat-203)`).
+
+**What landed.** Pure refactor, no behavior change. `sidebar.tsx` (~296 lines) was split into a `useSidebarChrome` hook (the clip-during-collapse state machine + 400ms fallback timer, the Escape-to-close listener, and the mobile-drawer focus trap/restore) plus three presentational sub-components — `SidebarHeader`, `NewConversationButton`, `ConversationList` — with the dispersed `collapsed &&` classes consolidated into a single `collapsedStyles` slot map; the shell now reads ~120 lines. State ownership stayed in `AppShell` per the brief, and the rail was deliberately **not** split by viewport. Added a `useSidebarChrome` unit test plus colocated component and slot-map tests (33 new), keeping the existing `app-shell.test.tsx` behavioral suite green with only import-path changes. Browser-verified in Chromium: desktop collapse/expand (clip reveal + icon rail), mobile drawer open/close, and dialog/focus-trap/focus-restore all behave identically to before.
+
+**Residual risk / follow-ups.** [feat-206](feat-206-chat-introduce-react-testing-library.md) was filed off this work — adopting React Testing Library for `apps/chat` would retire the hand-rolled `react-dom`/`act` plumbing and the `useEffect`-capture hook-test workaround this refactor leaned on. The focus-restore-on-close path stays browser-verified only, since jsdom has no layout (`offsetParent` is always null).
 
 ## Problem
 
