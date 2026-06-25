@@ -19,6 +19,8 @@ tags:
 
 **What landed.** Pure refactor, no behavior change. `sidebar.tsx` (~296 lines) was split into a `useSidebarChrome` hook (the clip-during-collapse state machine + 400ms fallback timer, the Escape-to-close listener, and the mobile-drawer focus trap/restore) plus three presentational sub-components — `SidebarHeader`, `NewConversationButton`, `ConversationList` — with the dispersed `collapsed &&` classes consolidated into a single `collapsedStyles` slot map; the shell now reads ~120 lines. State ownership stayed in `AppShell` per the brief, and the rail was deliberately **not** split by viewport. Added a `useSidebarChrome` unit test plus colocated component and slot-map tests (33 new), keeping the existing `app-shell.test.tsx` behavioral suite green with only import-path changes. Browser-verified in Chromium: desktop collapse/expand (clip reveal + icon rail), mobile drawer open/close, and dialog/focus-trap/focus-restore all behave identically to before.
 
+**Compound docs.** [worktree-pnpm-install-8mb-file-truncation](../../solutions/build-errors/worktree-pnpm-install-8mb-file-truncation-20260624.md) — an incident note produced during this work (a fresh-worktree `pnpm install` truncating large `node_modules` files to exactly 8 MiB); tangential to the sidebar feature itself, but written and shipped in the same PR.
+
 **Residual risk / follow-ups.** [feat-206](feat-206-chat-introduce-react-testing-library.md) was filed off this work — adopting React Testing Library for `apps/chat` would retire the hand-rolled `react-dom`/`act` plumbing and the `useEffect`-capture hook-test workaround this refactor leaned on. The focus-restore-on-close path stays browser-verified only, since jsdom has no layout (`offsetParent` is always null).
 
 ## Problem
