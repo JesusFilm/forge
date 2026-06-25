@@ -19,7 +19,8 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { useFocusAnimation } from "../watch/useFocusAnimation"
+import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
+import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import { HomeBillboard } from "./HomeBillboard"
 
 const AUTO_ADVANCE_MS = 7000
@@ -48,6 +49,9 @@ type HomeHeroCarouselProps = {
    *  Centered tabs don't overlap the left-anchored row, so geometry dead-ends Up;
    *  this explicit destination bridges Up from the hero to the top bar. */
   upFocusTarget?: ViewType | null
+  /** Reports the focused hero button's node so the screen can re-focus it after
+   *  a nav push/pop (the See more CTA is a valid "last focused element"). */
+  onFocusNode?: (node: ViewType | null) => void
 }
 
 export function HomeHeroCarousel({
@@ -59,6 +63,7 @@ export function HomeHeroCarousel({
   onRequestAdvance,
   onCtaNode,
   upFocusTarget,
+  onFocusNode,
 }: HomeHeroCarouselProps) {
   const count = slides.length
   const safeIndex = count > 0 ? ((index % count) + count) % count : 0
@@ -135,7 +140,8 @@ export function HomeHeroCarousel({
     seeMoreFocusedRef.current = true
     focusMovedRef.current = true
     setSeeMoreFocused(true)
-  }, [])
+    onFocusNode?.(seeMoreNode)
+  }, [onFocusNode, seeMoreNode])
   const handleSeeMoreBlur = useCallback(() => {
     seeMoreFocusedRef.current = false
     focusMovedRef.current = true
@@ -145,7 +151,8 @@ export function HomeHeroCarousel({
     chevronFocusedRef.current = true
     focusMovedRef.current = true
     setChevronFocused(true)
-  }, [])
+    onFocusNode?.(chevronNode)
+  }, [onFocusNode, chevronNode])
   const handleChevronBlur = useCallback(() => {
     chevronFocusedRef.current = false
     focusMovedRef.current = true
@@ -269,9 +276,9 @@ function HeroCtaButton({
   )
 }
 
-// White square next-slide button: black chevron on a white fill, gaining a
-// white ring on focus — the ring alone marks focus, no scale change. The ring
-// sits OUTSIDE the fill with a gap (an inset border would vanish on white).
+// Square next-slide button using the standardized invert-on-focus look (matches
+// the watch hero's secondary pills): dark glass + white chevron at rest, flipping
+// to a white fill + near-black chevron on focus. No ring — the fill is the cue.
 function HeroChevronButton({
   onPress,
   onFocus,
@@ -288,7 +295,20 @@ function HeroChevronButton({
   upFocusTarget?: ViewType | null
 }) {
   const { setFocused, progress } = useFocusAnimation()
-  const ringStyle = useMemo(() => ({ opacity: progress }), [progress])
+  const fillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
   return (
     <Pressable
       ref={onNode}
@@ -310,19 +330,13 @@ function HeroChevronButton({
       accessibilityRole="button"
       accessibilityLabel="Next featured title"
     >
-      <View style={styles.chevronBox}>
-        <Animated.View
-          style={[styles.chevronRing, ringStyle]}
-          pointerEvents="none"
+      <Animated.View style={[styles.chevron, fillStyle]}>
+        <AnimatedFocusIcon
+          name="chevron-forward"
+          progress={progress}
+          size={CHEVRON_ICON_SIZE}
         />
-        <View style={styles.chevron}>
-          <Ionicons
-            name="chevron-forward"
-            size={CHEVRON_ICON_SIZE}
-            color="#0a0a0b"
-          />
-        </View>
-      </View>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -356,38 +370,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: WATCH_THEME.accentText,
   },
-  // Holds the white button + its outset focus ring (no clipping so the ring,
-  // which sits beyond the fill, shows).
-  chevronBox: {
-    width: scale(62),
-    height: scale(62),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // White square next-slide button, same height/radius as the See more CTA.
+  // Square next-slide button, same height/radius as the See more CTA. backgroundColor +
+  // shadowOpacity are animated in HeroChevronButton (dark glass → white fill on focus);
+  // the static dark drop shadow is revealed by the focus shadowOpacity ramp.
   chevron: {
     width: scale(62),
     height: scale(62),
     alignItems: "center",
     justifyContent: "center",
     borderRadius: scale(16),
-    backgroundColor: "#ffffff",
     shadowColor: "#000000",
     shadowRadius: scale(14),
-    shadowOpacity: 0.35,
     shadowOffset: { width: 0, height: scale(6) },
-  },
-  // White focus ring, offset outside the fill with a small dark gap so it reads
-  // against the white button. Opacity animated 0→1 on focus.
-  chevronRing: {
-    position: "absolute",
-    top: -scale(6),
-    left: -scale(6),
-    right: -scale(6),
-    bottom: -scale(6),
-    borderRadius: scale(22),
-    borderWidth: scale(4),
-    borderColor: "rgba(255,255,255,0.92)",
   },
   // Page indicator: bottom-center of the hero region, just above the peeking
   // first rail.
