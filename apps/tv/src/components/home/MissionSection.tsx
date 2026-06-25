@@ -40,9 +40,14 @@ type MissionSectionProps = {
   /** Fires when the QR tile gains focus — the home screen scrolls the tail
       into view itself now that the ScrollView's native focus-scroll is off. */
   onQrFocus?: () => void
+  /** Reports the QR tile's node so the screen can re-focus it after a nav push/pop. */
+  onFocusNode?: (node: ViewType | null) => void
 }
 
-export function MissionSection({ onQrFocus }: MissionSectionProps) {
+export function MissionSection({
+  onQrFocus,
+  onFocusNode,
+}: MissionSectionProps) {
   const [qrFocused, setQrFocused] = useState(false)
   // State (not a ref) so the guide re-renders with its destination once the
   // QR node mounts — a plain ref leaves destinations empty on first render.
@@ -116,6 +121,7 @@ export function MissionSection({ onQrFocus }: MissionSectionProps) {
             onFocus={() => {
               setQrFocused(true)
               onQrFocus?.()
+              onFocusNode?.(qrNode)
             }}
             onBlur={() => setQrFocused(false)}
             // role "image" not "button": tile is focusable only to scroll the tail

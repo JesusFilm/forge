@@ -2,7 +2,7 @@
 // HomeRail's getItemLayout). Focus = white ring overlay + shadow on a separate
 // overflow-visible wrapper. onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
 
-import { memo, useMemo } from "react"
+import { memo, useCallback, useMemo, useRef } from "react"
 import { Image } from "expo-image"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
@@ -24,7 +24,9 @@ export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
 
 type HomeCardProps = {
   card: WatchHomeCard
-  onFocus: (card: WatchHomeCard) => void
+  /** Re-emits the `card` PROP plus this card's native node, so the screen can
+   *  remember the exact element to re-focus after a nav push/pop. */
+  onFocus: (card: WatchHomeCard, node: ViewType | null) => void
   onPress: (card: WatchHomeCard) => void
   index: number
   /**
@@ -50,6 +52,16 @@ export const HomeCard = memo(function HomeCard({
   nodeRef,
 }: HomeCardProps) {
   const { focused, setFocused, progress } = useFocusAnimation()
+  // Own this card's host node so onFocus can report it upward, while still
+  // forwarding to nodeRef (the rail captures its LAST card for RailPad bounce).
+  const localRef = useRef<ViewType | null>(null)
+  const setRef = useCallback(
+    (node: ViewType | null) => {
+      localRef.current = node
+      nodeRef?.(node)
+    },
+    [nodeRef],
+  )
   // CMS-sourced URL is untrusted — sanitize before it reaches expo-image.
   const imageUrl = useMemo(
     () => (card.imageUrl != null ? resolveImageUrl(card.imageUrl) : null),
@@ -78,11 +90,11 @@ export const HomeCard = memo(function HomeCard({
 
   return (
     <Pressable
-      ref={nodeRef}
+      ref={setRef}
       onPress={() => onPress(card)}
       onFocus={() => {
         setFocused(true)
-        onFocus(card)
+        onFocus(card, localRef.current)
       }}
       onBlur={() => setFocused(false)}
       nextFocusUp={nextFocusUp}
