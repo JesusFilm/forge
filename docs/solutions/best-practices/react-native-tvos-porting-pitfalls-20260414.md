@@ -12,7 +12,7 @@ applies_when:
   - "Building interactive overlays (Modal, bottom sheet) for the TV app"
   - "Implementing scroll-to or jump-to navigation in a TV ScrollView"
   - "pod install fails after adding a new dependency to apps/tv"
-last_updated: "2026-04-20"
+last_updated: "2026-06-25"
 tags:
   - react-native-tvos
   - tvos
@@ -209,4 +209,4 @@ See `apps/tv/app/experience/[slug].tsx` for a real implementation of pitfall 4 (
 - `docs/solutions/ui-bugs/tv-video-hero-blank-autoplay-20260413.md` -- expo-video player.play() timing on tvOS
 - `apps/tv/CLAUDE.md` -- TV app conventions including Crimson Gallery tokens, focus ring pattern, Math.round on Android
 - react-native-tvos issue #839 -- `hasTVPreferredFocus` re-steals focus on every re-render (session history)
-- react-native-tvos issue #852 -- focus lost on back-navigation workaround
+- react-native-tvos issue #852 -- focus lost on back-navigation workaround. For restoring the exact last-focused element across a multi-focusable screen, see `docs/solutions/design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md`

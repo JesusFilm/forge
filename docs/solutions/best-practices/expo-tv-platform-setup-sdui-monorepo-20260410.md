@@ -1,7 +1,7 @@
 ---
 title: "Expo TV Platform Setup in an SDUI Monorepo"
 date: "2026-04-10"
-last_updated: "2026-06-15"
+last_updated: "2026-06-25"
 category: best-practices
 module: tv-app
 problem_type: best_practice
@@ -237,7 +237,7 @@ const focusMemory = new Map<string, number>() // railId -> itemIndex
 
 **Overlay VideoView focus pattern:** In fullscreen video overlays where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already constrains D-pad navigation, do NOT wrap `VideoView` in `<View pointerEvents="none">`. The wrapper blocks AVPlayerLayer rendering on tvOS (black screen, controls work). Use `focusable={false}` directly on the `VideoView` instead. The `pointerEvents="none"` wrapper is only correct for inline VideoViews without focus trapping. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md`.
 
-**Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). Workaround: restore focus via `hasTVPreferredFocus` in a `useEffect` on screen focus.
+**Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). For a screen with one fixed control to restore, set a one-shot `hasTVPreferredFocus` on re-entry. For a screen with **many** focusables (rails, hero, tabs) where the user should land back on the _exact_ element, use a screen-level focus memory (`requestTVFocus` on the remembered node, on `useFocusEffect` re-entry) instead — see [`../design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md`](../design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md).
 
 **Focus-driven background media heroes (rail-owns-focus pattern):** If a hero reacts to rail focus with a background `VideoView`, prefer making the hero subtree fully non-interactive (no `Pressable`/`focusable`/`hasTVPreferredFocus` anywhere in the hero) and letting the rail's `TVFocusGuideView autoFocus` own focus outright. Wrapping the hero in `TVFocusGuideView` with `destinations` is fragile once the video is actively playing — `VideoView` continues to intercept focus despite `focusable={false}` + `pointerEvents="none"` + `isTVSelectable={false}`. See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` for the full pattern (including the poster-hold technique that hides the black flash during HLS source swap).
 

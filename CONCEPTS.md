@@ -292,7 +292,7 @@ The Chrome is visible when playback starts, auto-hides after a few idle seconds 
 
 The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
 
-A Watch Session belongs to the currently-viewed Video: it is published when the details screen resolves its Video and cleared when that screen goes away, and switching the active Dub mid-playback updates the session rather than restarting playback. Player features that depend on it (the in-player language/subtitle menu, subtitle rendering) gate on the session matching what is actually playing, so playback started outside a details screen runs without them.
+A Watch Session belongs to the currently-viewed Video: it is published when the details screen resolves its Video and cleared when that screen goes away, and switching the active Dub mid-playback updates the session rather than restarting playback. It is a single shared instance rather than one-per-screen, so when one watch screen is opened from another (e.g. an Up Next episode), the newer screen takes ownership and the earlier screen must re-assert ownership when it regains focus — the focused screen is always the owner, otherwise a returning screen would find the session emptied by the one it spawned. Player features that depend on it (the in-player language/subtitle menu, subtitle rendering) gate on the session matching what is actually playing, so playback started outside a details screen runs without them.
 
 ### Watch Preference
 

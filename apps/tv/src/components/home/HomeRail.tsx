@@ -93,8 +93,9 @@ type HomeRailProps = {
   cards: WatchHomeCard[]
   /** This rail's position in the feed (featured = 0). */
   rowIndex: number
-  /** Re-emits the focused card object (closed over per-card in HomeCard). */
-  onCardFocus: (card: WatchHomeCard) => void
+  /** Re-emits the focused card object plus its native node (closed over
+   *  per-card in HomeCard) so the screen can re-focus it after a nav push/pop. */
+  onCardFocus: (card: WatchHomeCard, node: ViewType | null) => void
   /** Fires alongside onCardFocus with this rail's rowIndex — drives the
    *  screen's row-anchored scrolling and deep/browse chrome state. */
   onRowFocus?: (rowIndex: number) => void
@@ -137,9 +138,9 @@ export const HomeRail = memo(function HomeRail({
   const [lastCardNode, setLastCardNode] = useState<ViewType | null>(null)
 
   const handleCardFocus = useCallback(
-    (card: WatchHomeCard) => {
+    (card: WatchHomeCard, node: ViewType | null) => {
       onRowFocus?.(rowIndex)
-      onCardFocus(card)
+      onCardFocus(card, node)
     },
     [onCardFocus, onRowFocus, rowIndex],
   )

@@ -37,6 +37,10 @@ import { HomeTopBar } from "../src/components/home/HomeTopBar"
 import { MissionSection } from "../src/components/home/MissionSection"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import {
+  createFocusMemory,
+  type FocusMemory,
+} from "../src/components/home/focusMemory"
+import {
   createShowcaseFocusDebouncer,
   INITIAL_SHOWCASE_STATE,
   showcaseReducer,
@@ -68,20 +72,31 @@ export default function HomeScreen() {
   const [retryFocused, setRetryFocused] = useState(false)
   const { model, loading, error, refetch } = useWatchHome()
 
-  // Back-from-/search focus restoration (tvos#852): bump a key on regain-focus
-  // so HomeTopBar puts hasTVPreferredFocus on Search; skip first mount (rails win).
-  // Counter (not bool) absorbs Strict Mode dev double-invoke — bump on third run.
-  const [searchTabFocusKey, setSearchTabFocusKey] = useState(0)
-  const focusEffectRunCountRef = useRef(0)
+  // tvos#852: a stack pop doesn't restore the previously focused view (falls to
+  // the top-left default). Remember the focused node (every focusable reports it)
+  // and re-focus it on re-entry — subsumes the old back-from-/search restore.
+  const focusMemoryRef = useRef<FocusMemory | null>(null)
+  if (focusMemoryRef.current == null) {
+    focusMemoryRef.current = createFocusMemory()
+  }
+  const captureFocusedNode = useCallback((node: ViewType | null) => {
+    focusMemoryRef.current?.capture(node)
+  }, [])
+
+  // Restore only on a genuine re-entry, not first mount (hero's hasTVPreferredFocus
+  // owns initial focus) — a prior blur proves re-entry. rAF defers past the pop's
+  // commit so the target node is mounted before we focus it.
+  const hasBlurredRef = useRef(false)
   useFocusEffect(
     useCallback(() => {
-      focusEffectRunCountRef.current += 1
-      // Prod: first real run is #1. Dev Strict Mode adds runs #1 (mount) + #2
-      // (remount) before any nav, so first back-from-/search is run #3. Skip
-      // everything before #2 so dev matches prod first-render behavior.
-      const STRICT_MODE_DEV_RUNS = 1
-      if (focusEffectRunCountRef.current <= STRICT_MODE_DEV_RUNS + 1) return
-      setSearchTabFocusKey((k) => k + 1)
+      let raf: number | null = null
+      if (hasBlurredRef.current) {
+        raf = requestAnimationFrame(() => focusMemoryRef.current?.restore())
+      }
+      return () => {
+        if (raf != null) cancelAnimationFrame(raf)
+        hasBlurredRef.current = true
+      }
     }, []),
   )
 
@@ -121,9 +136,13 @@ export default function HomeScreen() {
     useCallback(() => () => focusDebouncerRef.current?.cancel(), []),
   )
 
-  const handleCardFocus = useCallback((card: WatchHomeCard) => {
-    focusDebouncerRef.current?.focus(card)
-  }, [])
+  const handleCardFocus = useCallback(
+    (card: WatchHomeCard, node: ViewType | null) => {
+      captureFocusedNode(node)
+      focusDebouncerRef.current?.focus(card)
+    },
+    [captureFocusedNode],
+  )
 
   // ── Browse state + row-anchored scrolling ── Focused row → top|browse|deep
   // (homeScrollState.ts) drives deep scrim + top bar hide. Scroll is row-anchored
@@ -309,12 +328,11 @@ export default function HomeScreen() {
   // in the content state it is the ScrollView's sticky first child.
   const topBar = (
     <HomeTopBar
-      key={`home-top-bar-${searchTabFocusKey}`}
       hidden={isTopBarHidden(browseState)}
-      searchTabPreferredFocus={searchTabFocusKey > 0}
       onSearchPress={handleSearchPress}
       onChromeFocus={handleChromeFocus}
       onSearchTabNode={setSearchTabNode}
+      onFocusNode={captureFocusedNode}
     />
   )
 
@@ -425,6 +443,7 @@ export default function HomeScreen() {
               onRequestAdvance={advanceHero}
               onCtaNode={setCtaNode}
               upFocusTarget={searchTabNode}
+              onFocusNode={captureFocusedNode}
             />
           </TVFocusGuideView>
         </View>
@@ -465,7 +484,10 @@ export default function HomeScreen() {
         {/* Mission tail (R15): storytelling cards + beta-signup QR. Its QR wrapper
             is focusable but non-actioning and never dispatches card-focus — the
             showcase keeps the last card (R10) and browse state stays "deep". */}
-        <MissionSection onQrFocus={handleMissionFocus} />
+        <MissionSection
+          onQrFocus={handleMissionFocus}
+          onFocusNode={captureFocusedNode}
+        />
       </ScrollView>
     </View>
   )

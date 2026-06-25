@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
@@ -105,12 +105,14 @@ export default function WatchVideoScreen() {
     router.replace(target)
   }, [redirectDecision, decodedSlug, seed, router])
 
-  // Publish the fetched video into the shared session; keyed on the normalized
-  // object so partial → full enrichment republishes (the session guards user
-  // selections across these republishes).
-  useEffect(() => {
-    if (normalized) setVideo(normalized)
-  }, [normalized, setVideo])
+  // Re-publish into the shared session WHILE FOCUSED so a child screen's pop (its
+  // unmount clears the singleton below) doesn't strand this still-mounted parent at
+  // video=null, blanking everything session-driven (Up Next/About/RQ/pills).
+  useFocusEffect(
+    useCallback(() => {
+      if (normalized) setVideo(normalized)
+    }, [normalized, setVideo]),
+  )
 
   // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
   // the previous video from the session so its stale variants don't leak.
