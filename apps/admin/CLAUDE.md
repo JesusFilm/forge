@@ -455,6 +455,22 @@ unless every service should inherit it. Deployment details should be checked
 after merge to confirm the package settings were applied to both admin web and
 worker services.
 
+### Datadog GraphQL tracing
+
+`src/instrumentation.ts` configures `dd-trace` for the Node runtime and enables
+Datadog's built-in `graphql` plugin. This plugin automatically traces
+`graphql.parse`, `graphql.validate`, `graphql.execute`, and `graphql.resolve`
+spans, including Yoga's GraphQL executor path. Keep query source and variables
+disabled in `src/observability/datadog.ts`; do not tag raw GraphQL documents,
+variables, slugs, bearer keys, cookies, IPs, or user identifiers.
+
+Production Admin Railway config is dashboard-owned: `apps/admin/railway.toml`
+is documented dead config. For best Datadog auto-instrumentation, production
+must set Datadog service env (`DD_SERVICE=forge-admin`, `DD_ENV=production`,
+`DD_VERSION=<git sha>`) and load the tracer before application modules, ideally
+with `NODE_OPTIONS=--require dd-trace/init`. Confirm the effective Railway
+service config after any change rather than assuming this file was read.
+
 Use `pnpm --filter @forge/admin restore:video-db -- --target-env=development --in=<dump>`
 to restore into local or staging Postgres. The restore path reads
 `TARGET_DATABASE_URL` first, then `DATABASE_URL`, truncates only the reviewed
