@@ -156,12 +156,25 @@ roadmap ticket that settles the integration path (above) as explicit
   `apps/web` (the CI-proven template).
 - Tailwind v4, CSS-first (`@import "tailwindcss"` in `src/app/globals.css`;
   no tailwind.config file). Design tokens live in the `@theme` block there.
-- Tests colocated (`*.test.ts(x)`); component tests use plain
-  `react-dom/client` + `act` with per-file `// @vitest-environment jsdom`
-  (the `apps/admin` style — no testing-library). The behavioral suite lives in
-  `components/shell/app-shell.test.tsx` (AppShell owns the state); the extracted
-  `use-sidebar-chrome` hook has its own colocated unit test for its state machine
-  in isolation.
+- Tests colocated (`*.test.ts(x)`). Component tests use **React Testing
+  Library** (`render` / `screen` / `within` + `@testing-library/user-event`,
+  with `@testing-library/jest-dom` matchers); the hook test uses `renderHook`.
+  jsdom is the app-wide test env (`vitest.config.ts` `environment: "jsdom"` +
+  `vitest.setup.ts`), so there are no per-file `// @vitest-environment`
+  directives. This is a **deliberate divergence** from the `apps/admin` /
+  `apps/web` no-testing-library convention (plain `react-dom/client` + `act`),
+  scoped to chat by design — it does not change those apps. Pure-function tests
+  (`lib/conversations.test.ts`, `lib/chat-stub.test.ts`,
+  `shell/sidebar-collapsed-styles.test.ts`) stay plain vitest. The behavioral
+  suite lives in `components/shell/app-shell.test.tsx` (AppShell owns the
+  state); the extracted `use-sidebar-chrome` hook has its own colocated
+  `renderHook` unit test for its state machine in isolation. Note for the
+  behavioral suite: the reply lands via `setTimeout`, so it runs on fake timers
+  with `userEvent.setup({ advanceTimers, ... })` under
+  `vi.useFakeTimers({ shouldAdvanceTime: true })` — a plain fake clock hangs
+  user-event's awaited interactions. Layout/visibility behavior jsdom can't
+  represent (e.g. focus-restore-on-close, which depends on `offsetParent`) stays
+  **browser-verified**, not asserted in jsdom.
 - Runs on port **3200**.
 
 ### Comments

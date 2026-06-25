@@ -1,62 +1,44 @@
-// @vitest-environment jsdom
-
-import { act } from "react"
-import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { render, screen } from "@testing-library/react"
+import userEvent, { type UserEvent } from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { collapsedStyles } from "./sidebar-collapsed-styles"
 import { NewConversationButton } from "./sidebar-new-conversation"
-;(
-  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-).IS_REACT_ACT_ENVIRONMENT = true
 
-let container: HTMLDivElement
-let root: Root
-
+// Built per test (not at module load) so the instance never predates a future
+// fake-timer install in this file — matches app-shell.test.tsx.
+let user: UserEvent
 beforeEach(() => {
-  container = document.createElement("div")
-  document.body.appendChild(container)
-  root = createRoot(container)
+  user = userEvent.setup()
 })
 
-afterEach(() => {
-  act(() => {
-    root.unmount()
-  })
-  container.remove()
-})
-
-function render(onNew: () => void, onCloseMobile: () => void) {
-  act(() => {
-    root.render(
-      <NewConversationButton
-        styles={collapsedStyles(false)}
-        onNew={onNew}
-        onCloseMobile={onCloseMobile}
-      />,
-    )
-  })
+function renderButton(onNew: () => void, onCloseMobile: () => void) {
+  render(
+    <NewConversationButton
+      styles={collapsedStyles(false)}
+      onNew={onNew}
+      onCloseMobile={onCloseMobile}
+    />,
+  )
 }
 
 describe("NewConversationButton", () => {
   it("renders the labeled action", () => {
-    render(
+    renderButton(
       () => {},
       () => {},
     )
-    expect(container.textContent).toContain("New conversation")
+    expect(
+      screen.getByRole("button", { name: "New conversation" }),
+    ).toBeInTheDocument()
   })
 
-  it("starts a new conversation and closes the mobile drawer on click", () => {
+  it("starts a new conversation and closes the mobile drawer on click", async () => {
     const onNew = vi.fn()
     const onCloseMobile = vi.fn()
-    render(onNew, onCloseMobile)
+    renderButton(onNew, onCloseMobile)
 
-    const button = container.querySelector("button")
-    if (!button) throw new Error("New conversation button not found")
-    act(() => {
-      button.click()
-    })
+    await user.click(screen.getByRole("button", { name: "New conversation" }))
 
     // Both fire on a single click — a new chat also dismisses the drawer.
     expect(onNew).toHaveBeenCalledTimes(1)

@@ -1,31 +1,17 @@
-// @vitest-environment jsdom
-
-import { act } from "react"
-import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { render, screen, within } from "@testing-library/react"
+import userEvent, { type UserEvent } from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { type Conversation } from "@/lib/conversations"
 
 import { collapsedStyles } from "./sidebar-collapsed-styles"
 import { ConversationList } from "./sidebar-conversation-list"
-;(
-  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-).IS_REACT_ACT_ENVIRONMENT = true
 
-let container: HTMLDivElement
-let root: Root
-
+// Built per test (not at module load) so the instance never predates a future
+// fake-timer install in this file — matches app-shell.test.tsx.
+let user: UserEvent
 beforeEach(() => {
-  container = document.createElement("div")
-  document.body.appendChild(container)
-  root = createRoot(container)
-})
-
-afterEach(() => {
-  act(() => {
-    root.unmount()
-  })
-  container.remove()
+  user = userEvent.setup()
 })
 
 const conversations: Conversation[] = [
@@ -41,8 +27,8 @@ type Overrides = {
   onCloseMobile?: () => void
 }
 
-function render(overrides: Overrides = {}) {
-  const props = {
+function buildProps(overrides: Overrides = {}) {
+  return {
     conversations: overrides.conversations ?? conversations,
     activeId: overrides.activeId ?? "a",
     pendingIds: overrides.pendingIds ?? new Set<string>(),
@@ -50,28 +36,27 @@ function render(overrides: Overrides = {}) {
     onSelect: overrides.onSelect ?? (() => {}),
     onCloseMobile: overrides.onCloseMobile ?? (() => {}),
   }
-  act(() => {
-    root.render(<ConversationList {...props} />)
-  })
 }
 
-function rowByTitle(title: string): HTMLButtonElement {
-  const btn = Array.from(
-    container.querySelectorAll<HTMLButtonElement>("nav button"),
-  ).find((b) => b.textContent?.includes(title))
-  if (!btn) throw new Error(`row "${title}" not found`)
-  return btn
+function renderList(overrides: Overrides = {}) {
+  return render(<ConversationList {...buildProps(overrides)} />)
+}
+
+// Match by substring (regex) so a replying row — whose accessible name gains an
+// sr-only "Replying" — still resolves by its title alone.
+function rowByTitle(title: string): HTMLElement {
+  return within(
+    screen.getByRole("navigation", { name: "Conversations" }),
+  ).getByRole("button", { name: new RegExp(title) })
 }
 
 describe("ConversationList", () => {
-  it("selects a conversation and closes the mobile drawer on row click", () => {
+  it("selects a conversation and closes the mobile drawer on row click", async () => {
     const onSelect = vi.fn()
     const onCloseMobile = vi.fn()
-    render({ onSelect, onCloseMobile })
+    renderList({ onSelect, onCloseMobile })
 
-    act(() => {
-      rowByTitle("Second chat").click()
-    })
+    await user.click(rowByTitle("Second chat"))
 
     // Both fire on a single click — selecting also dismisses the drawer.
     expect(onSelect).toHaveBeenCalledTimes(1)
@@ -80,13 +65,13 @@ describe("ConversationList", () => {
   })
 
   it("marks only the active row with aria-current", () => {
-    render({ activeId: "b" })
-    expect(rowByTitle("Second chat").getAttribute("aria-current")).toBe("true")
-    expect(rowByTitle("First chat").getAttribute("aria-current")).toBeNull()
+    renderList({ activeId: "b" })
+    expect(rowByTitle("Second chat")).toHaveAttribute("aria-current", "true")
+    expect(rowByTitle("First chat")).not.toHaveAttribute("aria-current")
   })
 
   it("renders the replying pulse only on conversations awaiting a reply", () => {
-    render({ pendingIds: new Set(["a"]) })
+    renderList({ pendingIds: new Set(["a"]) })
     expect(
       rowByTitle("First chat").querySelector("[data-replying]"),
     ).not.toBeNull()
@@ -94,13 +79,13 @@ describe("ConversationList", () => {
       rowByTitle("Second chat").querySelector("[data-replying]"),
     ).toBeNull()
     // The pulse carries an sr-only label so it is announced, not silent.
-    expect(rowByTitle("First chat").textContent).toContain("Replying")
+    expect(rowByTitle("First chat")).toHaveTextContent("Replying")
   })
 
   it("renders the labeled nav with no rows when there are no conversations", () => {
-    render({ conversations: [], activeId: "" })
-    const nav = container.querySelector('nav[aria-label="Conversations"]')
-    expect(nav).not.toBeNull()
-    expect(nav?.querySelectorAll("li")).toHaveLength(0)
+    renderList({ conversations: [], activeId: "" })
+    const nav = screen.getByRole("navigation", { name: "Conversations" })
+    expect(nav).toBeInTheDocument()
+    expect(within(nav).queryAllByRole("listitem")).toHaveLength(0)
   })
 })
