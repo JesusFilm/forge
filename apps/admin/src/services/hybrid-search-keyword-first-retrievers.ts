@@ -49,6 +49,12 @@ export type ExactTitleSearchParams = {
   limit: number
 }
 
+export type KeywordFirstVideoLexicalSearchParams = {
+  query: string
+  locale: string
+  limit: number
+}
+
 // -----------------------------------------------------------------------------
 // Return shapes — all three carry the same row contract as R4's
 // `searchVideoKeyword`, plus a retriever-specific score field
@@ -78,6 +84,12 @@ export type KeywordWeightedResult = VideoKeywordRowShape & { rank: number }
  */
 export type TrigramResult = VideoKeywordRowShape & { similarity: number }
 export type ExactTitleResult = VideoKeywordRowShape & { titleLength: number }
+
+export type KeywordFirstVideoLexicalResults = {
+  keywordWeighted: KeywordWeightedResult[]
+  trigram: TrigramResult[]
+  exactTitle: ExactTitleResult[]
+}
 
 // -----------------------------------------------------------------------------
 // Internal raw-row shapes
@@ -109,6 +121,11 @@ type ExactTitleRow = {
   description: string | null
   title_length: number
 }
+
+type QueryRawClient = Pick<PrismaClient, "$queryRaw">
+
+const KEYWORD_FIRST_LEXICAL_TRANSACTION_MAX_WAIT_MS = 5_000
+const KEYWORD_FIRST_LEXICAL_TRANSACTION_TIMEOUT_MS = 20_000
 
 // -----------------------------------------------------------------------------
 // Exact-title tokenizer + DoS cap
@@ -172,7 +189,7 @@ export function tokenizeForExactTitle(query: string): string[] {
  * Empty / whitespace input short-circuits to `[]`.
  */
 export async function searchByKeywordWeighted(
-  prisma: PrismaClient,
+  prisma: QueryRawClient,
   params: KeywordWeightedSearchParams,
   timing?: SearchTimingRecorder,
 ): Promise<KeywordWeightedResult[]> {
@@ -260,7 +277,7 @@ export async function searchByKeywordWeighted(
  * Empty input short-circuits to `[]`.
  */
 export async function searchByTrigram(
-  prisma: PrismaClient,
+  prisma: QueryRawClient,
   params: TrigramSearchParams,
   timing?: SearchTimingRecorder,
 ): Promise<TrigramResult[]> {
@@ -333,7 +350,7 @@ export async function searchByTrigram(
  * placeholders at parse time, which is the safe failure mode.
  */
 export async function searchByExactTitle(
-  prisma: PrismaClient,
+  prisma: QueryRawClient,
   params: ExactTitleSearchParams,
   timing?: SearchTimingRecorder,
 ): Promise<ExactTitleResult[]> {
@@ -385,4 +402,43 @@ export async function searchByExactTitle(
     description: row.description,
     titleLength: Number(row.title_length),
   }))
+}
+
+/**
+ * Run the keyword-first video lexical stack on one DB connection.
+ *
+ * The three underlying SQL queries stay byte-for-byte owned by their
+ * retrievers above; this helper changes only connection scheduling. In
+ * production that cuts pool fan-out from three concurrent video-lexical
+ * connections to one transaction-bound connection while preserving the
+ * three logical result lists consumed by RRF, debug attribution, and the
+ * dilution cap.
+ */
+export async function searchKeywordFirstVideoLexical(
+  prisma: PrismaClient,
+  params: KeywordFirstVideoLexicalSearchParams,
+  timing?: SearchTimingRecorder,
+): Promise<KeywordFirstVideoLexicalResults> {
+  if (params.query.trim().length === 0) {
+    return {
+      keywordWeighted: [],
+      trigram: [],
+      exactTitle: [],
+    }
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
+      const client: QueryRawClient = tx
+      return {
+        keywordWeighted: await searchByKeywordWeighted(client, params, timing),
+        trigram: await searchByTrigram(client, params, timing),
+        exactTitle: await searchByExactTitle(client, params, timing),
+      }
+    },
+    {
+      maxWait: KEYWORD_FIRST_LEXICAL_TRANSACTION_MAX_WAIT_MS,
+      timeout: KEYWORD_FIRST_LEXICAL_TRANSACTION_TIMEOUT_MS,
+    },
+  )
 }

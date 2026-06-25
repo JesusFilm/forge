@@ -37,10 +37,9 @@ import {
   searchExperienceKeyword,
 } from "./hybrid-search-retrievers"
 import {
-  searchByKeywordWeighted,
-  searchByTrigram,
-  searchByExactTitle,
+  searchKeywordFirstVideoLexical,
   tokenizeForExactTitle,
+  type KeywordFirstVideoLexicalResults,
 } from "./hybrid-search-keyword-first-retrievers"
 import {
   activeTimingIntervalsMs,
@@ -934,6 +933,54 @@ export class HybridSearchService {
           },
         )
     }
+    const timedKeywordFirstVideoLexicalBatch = (
+      run: () => Promise<KeywordFirstVideoLexicalResults>,
+    ): Promise<KeywordFirstVideoLexicalResults> => {
+      const labels = [
+        "keyword-weighted-video",
+        "trigram-video",
+        "exact-title-video",
+      ] as const
+      const startedAt = nowMs()
+      return Promise.resolve()
+        .then(run)
+        .then(
+          (value) => {
+            const endedAt = nowMs()
+            const elapsed = boundedMs(endedAt - startedAt)
+            retrievalIntervals.push({ startedAt, endedAt })
+            for (const label of labels) {
+              const resultCount =
+                label === "keyword-weighted-video"
+                  ? value.keywordWeighted.length
+                  : label === "trigram-video"
+                    ? value.trigram.length
+                    : value.exactTitle.length
+              retrieverTimings.set(label, {
+                label,
+                status: "fulfilled",
+                elapsedMs: elapsed,
+                resultCount,
+              })
+            }
+            return value
+          },
+          (error) => {
+            const endedAt = nowMs()
+            const elapsed = boundedMs(endedAt - startedAt)
+            retrievalIntervals.push({ startedAt, endedAt })
+            for (const label of labels) {
+              retrieverTimings.set(label, {
+                label,
+                status: "rejected",
+                elapsedMs: elapsed,
+                resultCount: 0,
+              })
+            }
+            throw error
+          },
+        )
+    }
 
     const earlyKeywordFirstRetrievals: Retrieval[] = []
     if (wantsVideos && pipelineMode === "keyword-first") {
@@ -941,53 +988,34 @@ export class HybridSearchService {
       // Attaching allSettled immediately prevents a fast DB rejection
       // from surfacing as an unhandled promise rejection while embedding
       // is still pending.
+      const lexicalBatch = timedKeywordFirstVideoLexicalBatch(() =>
+        searchKeywordFirstVideoLexical(
+          this.prisma,
+          {
+            query,
+            locale,
+            limit: overfetchLimit,
+          },
+          timing,
+        ),
+      )
       earlyKeywordFirstRetrievals.push(
         {
           label: "keyword-weighted-video",
-          promise: timedRetrieval(
-            "keyword-weighted-video",
-            () =>
-              searchByKeywordWeighted(
-                this.prisma,
-                {
-                  query,
-                  locale,
-                  limit: overfetchLimit,
-                },
-                timing,
-              ) as Promise<RankedItem[]>,
+          promise: lexicalBatch.then(
+            (result) => result.keywordWeighted as RankedItem[],
           ),
         },
         {
           label: "trigram-video",
-          promise: timedRetrieval(
-            "trigram-video",
-            () =>
-              searchByTrigram(
-                this.prisma,
-                {
-                  query,
-                  locale,
-                  limit: overfetchLimit,
-                },
-                timing,
-              ) as Promise<RankedItem[]>,
+          promise: lexicalBatch.then(
+            (result) => result.trigram as RankedItem[],
           ),
         },
         {
           label: "exact-title-video",
-          promise: timedRetrieval(
-            "exact-title-video",
-            () =>
-              searchByExactTitle(
-                this.prisma,
-                {
-                  query,
-                  locale,
-                  limit: overfetchLimit,
-                },
-                timing,
-              ) as Promise<RankedItem[]>,
+          promise: lexicalBatch.then(
+            (result) => result.exactTitle as RankedItem[],
           ),
         },
       )
