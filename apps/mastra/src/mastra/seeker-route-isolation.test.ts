@@ -3,27 +3,36 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 /**
- * Route-isolation guard for the seeker agent (feat-198, U5).
+ * Route-exposure guard for the seeker agent (feat-198 U5, re-pinned by
+ * feat-204 U3 / KTD5).
  *
- * WHAT THIS PROVES: no *custom* `registerApiRoute` in `index.ts` wires up the
- * seeker agent — i.e. no hand-written `/forge-*` route exposes it.
+ * WHAT THIS PROVES (post-feat-204): the seeker agent is exposed via EXACTLY ONE
+ * custom `registerApiRoute` in `index.ts` — `/forge-seeker`, wired to the
+ * `handleSeekerRouteRequest` handler — and no OTHER `/forge-*` route references
+ * it. The handler looks the agent up by string id inside its own module
+ * (`getAgentById("seekerAgent")`, KTD1), so the literal `seekerAgent` token
+ * must NOT appear anywhere in the `apiRoutes` region — its presence there would
+ * mean someone smuggled an agent import into a route block and must re-review
+ * isolation. The whole-source `seekerAgent` count stays exactly 2 (the import
+ * line + the agents-map registration).
  *
- * WHAT THIS DOES NOT PROVE: that the agent is unreachable. Mastra's
+ * WHAT THIS DOES NOT PROVE: that the agent is otherwise unreachable. Mastra's
  * framework-generated `/api/agents/*` surface exposes ANY registered agent for
  * generate/stream regardless of custom routes, and that surface is
  * unauthenticated at the code layer (see
  * `docs/solutions/integration-issues/mastra-studio-api-auth-guard.md` — the
  * broad `/api/*` service-bearer guard was deliberately removed so Studio's own
- * browser calls work). The real "Studio-only" boundary is the
- * apps/mastra-gateway + Railway network layer, NOT this test. A `/forge-*` 200
- * must never be mistaken for proof the agent is or isn't exposed.
+ * browser calls work). `/forge-seeker` itself is default-off (KTD7) +
+ * bearer-gated, but the load-bearing containment for the built-in surface
+ * remains the apps/mastra-gateway + Railway network layer, NOT this test. A
+ * `/forge-*` 200 must never be mistaken for proof the agent is or isn't exposed.
  *
  * Source-text over runtime introspection (KTD4): route handlers are opaque
- * closures (a runtime route list can prove no seeker *path* exists but cannot
- * prove a handler doesn't internally call the agent), and importing `index.ts`
- * eagerly constructs the entire Mastra instance (DuckDB store, observability,
- * all workflows) at module load. Same family as admin's migration byte-parity
- * tests.
+ * closures (a runtime route list can prove a seeker *path* exists but cannot
+ * prove a handler does or doesn't internally call the agent), and importing
+ * `index.ts` eagerly constructs the entire Mastra instance (DuckDB store,
+ * observability, all workflows) at module load. Same family as admin's
+ * migration byte-parity tests.
  */
 
 const indexSource = readFileSync(new URL("./index.ts", import.meta.url), "utf8")
@@ -65,7 +74,24 @@ describe("seeker agent route isolation", () => {
     expect(region).toContain("registerApiRoute")
   })
 
-  it("does NOT wire seekerAgent into any custom apiRoute", () => {
+  it("exposes the seeker via exactly one /forge-seeker route", () => {
+    // feat-204 (KTD5): the seeker is now exposed by exactly one custom route.
+    // More than one occurrence would mean a duplicate/competing registration.
+    const region = extractApiRoutesRegion(indexSource)
+    const occurrences = region.match(/["']\/forge-seeker["']/g) ?? []
+    expect(occurrences).toHaveLength(1)
+  })
+
+  it("wires /forge-seeker to the handleSeekerRouteRequest handler", () => {
+    const region = extractApiRoutesRegion(indexSource)
+    expect(region).toContain("handleSeekerRouteRequest")
+  })
+
+  it("does NOT reference seekerAgent inside any custom apiRoute", () => {
+    // The route looks the agent up by string id in the handler module (KTD1),
+    // so the literal `seekerAgent` token must never appear in the apiRoutes
+    // region. Its presence here means a route smuggled in an agent import and
+    // the isolation guarantee must be re-reviewed.
     const region = extractApiRoutesRegion(indexSource)
     expect(region).not.toContain("seekerAgent")
   })
@@ -78,9 +104,19 @@ describe("seeker agent route isolation", () => {
     // count catches ANY new seekerAgent reference (a route handler, a second
     // registration) regardless of the parser — it rises to 3+ and fails.
     // The two legitimate references are the import line and the agents-map
-    // registration; any third occurrence (incl. a new comment) must be a
-    // conscious change with the isolation guarantee re-reviewed.
+    // registration. `/forge-seeker` (feat-204) deliberately does NOT add a
+    // third: its handler resolves the agent by string id (KTD1), so any third
+    // occurrence (incl. a new comment) must be a conscious change with the
+    // isolation guarantee re-reviewed.
     const occurrences = indexSource.match(/seekerAgent/g) ?? []
+    expect(occurrences).toHaveLength(2)
+  })
+
+  it("imports handleSeekerRouteRequest exactly once", () => {
+    // Regression note (feat-204): the route handler is imported once at the top
+    // of index.ts. A second import would signal a stray/duplicate wiring.
+    const occurrences = indexSource.match(/handleSeekerRouteRequest/g) ?? []
+    // One import binding + one call site in the route block = 2 occurrences.
     expect(occurrences).toHaveLength(2)
   })
 })

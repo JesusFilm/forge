@@ -1,0 +1,353 @@
+/**
+ * Streaming seeker route handler (feat-204).
+ *
+ * Bearer-gated, default-off `POST /forge-seeker`: an internal, server-to-server
+ * dogfooding surface that streams the existing `seekerAgent` (feat-198/199). It
+ * mirrors `experience-chat-route.ts` but adds two things that template does not:
+ *   1. per-session memory keying — `threadId` (required) + optional `resourceId`
+ *      threaded into `agent.stream(..., { memory })`; and
+ *   2. extraction of the `retrieveAnswer` tool's `sources[]` for the terminal
+ *      `result` frame, plus a `grounded` flag.
+ *
+ * Wire frames (one SSE event each):
+ *   - token_delta  { text }                                 — per stream chunk
+ *   - result       { text, sources, grounded, producedBy }  — terminal success
+ *   - error        { reason }                                — terminal failure
+ *
+ * Defense-in-depth gates, checked in order: enable flag (KTD7) → service bearer
+ * (R5) → body validation (R2) → model-key preflight (R11) → stream. The route
+ * is MORE locked down than Mastra's built-in unauthenticated `/api/agents/*`
+ * surface; it adds no CORS (R6).
+ *
+ * Memory contract (KTD3): a memory-configured agent throws
+ * `AGENT_MEMORY_MISSING_RESOURCE_ID` at runtime if a `threadId` is supplied
+ * without a `resourceId` (the `.d.ts` marks `resource?` optional, but the
+ * compiled runtime guards it as required). So the route ALWAYS supplies a
+ * `resource`: the caller's `resourceId` when present, else the constant
+ * `SEEKER_DEFAULT_RESOURCE_ID`. `resourceId` stays optional + opaque to callers
+ * (R8); isolation rides on `threadId`.
+ *
+ * Logging is ENUM-only plain-string `[seeker-route] event=… reason=…` (KTD6) —
+ * never `JSON.stringify` (Railway logsV2 silences it) and never raw
+ * exception/RAG text interpolated as `key=value` (log injection). No
+ * `error.message` reaches the wire — error frames carry a fixed-vocabulary
+ * `reason` only (R12).
+ */
+
+import { isValidServiceBearer } from "../../server/service-bearer"
+import { getOpenRouterApiKey, isSeekerRouteEnabled } from "../../config/env"
+import { TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
+
+// Narrow structural surface of the seeker agent's streaming API (avoids
+// fighting the generic Agent.stream signature; the runtime contract is
+// textStream + toolResults). `resource` is ALWAYS set — see KTD3.
+type SeekerToolResultChunk = {
+  payload?: { toolName?: string; result?: unknown }
+}
+type SeekerStreamOutput = {
+  textStream: ReadableStream<string>
+  toolResults: Promise<SeekerToolResultChunk[]>
+}
+type SeekerStreamAgent = {
+  stream: (
+    prompt: string,
+    opts: {
+      maxSteps?: number
+      abortSignal?: AbortSignal
+      memory?: { thread: string; resource: string }
+    },
+  ) => Promise<SeekerStreamOutput> | SeekerStreamOutput
+}
+
+export type SeekerRouteMastra = {
+  getAgentById: (id: string) => unknown
+}
+
+export type SeekerRouteHandlerInput = {
+  authHeader: string | null | undefined
+  serviceKeys: readonly string[]
+  readJson: () => Promise<unknown>
+  getMastra: () => SeekerRouteMastra
+  /** Inbound request signal — aborts the agent run when the caller disconnects. */
+  requestSignal?: AbortSignal
+  /** Seam: model-key preflight (R11). Defaults to `getOpenRouterApiKey`. */
+  getModelKey?: () => string | undefined
+  /** Seam: enable-gate (KTD7). Defaults to `isSeekerRouteEnabled`. */
+  getEnabled?: () => boolean
+  /**
+   * Seam: internal per-turn wall-clock budget in ms (R9). Defaults to
+   * `TIME_BUDGET_MS.chatTurn` (90s). Overridable so the timeout-reason branch
+   * is deterministically testable without faking `AbortSignal.timeout`.
+   */
+  budgetMs?: number
+}
+
+const SEEKER_AGENT_ID = "seekerAgent"
+/**
+ * Constant `resourceId` supplied whenever a caller omits one (KTD3). Keeps
+ * `resourceId` optional to callers while satisfying the runtime memory guard.
+ */
+export const SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"
+const RETRIEVE_ANSWER_TOOL_NAME = "retrieveAnswer"
+
+/** A single source as projected onto the wire (KTD4 allowlist). */
+type SeekerWireSource = {
+  sourceName: string
+  title: string | null
+  url: string
+  score: number
+  snippet: string
+}
+
+function sseFrame(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  })
+}
+
+/**
+ * Body guard (R2). Requires non-empty string `prompt` AND non-empty string
+ * `threadId`. `resourceId` is accepted only as a non-empty string; absent or
+ * empty is treated as not provided (never rejected — R8).
+ */
+function isSeekerBody(
+  value: unknown,
+): value is { prompt: string; threadId: string; resourceId?: string } {
+  if (typeof value !== "object" || value === null) return false
+  const v = value as {
+    prompt?: unknown
+    threadId?: unknown
+    resourceId?: unknown
+  }
+  if (typeof v.prompt !== "string" || v.prompt.length === 0) return false
+  if (typeof v.threadId !== "string" || v.threadId.length === 0) return false
+  // R8: a present resourceId must be a string, but an empty string is NOT a
+  // rejection — it is normalized to "not provided" at the memory-build step
+  // (falls back to SEEKER_DEFAULT_RESOURCE_ID), exactly like an absent field.
+  if (v.resourceId !== undefined && typeof v.resourceId !== "string") {
+    return false
+  }
+  return true
+}
+
+/**
+ * Project a single retrieveAnswer source onto the wire field-by-field (KTD4).
+ * Never spreads — a future field added to the tool's source shape cannot
+ * silently widen the wire. `snippet` is the tool's already-capped `text`.
+ * Returns null when the candidate is not a well-shaped source object.
+ */
+function projectSource(candidate: unknown): SeekerWireSource | null {
+  if (typeof candidate !== "object" || candidate === null) return null
+  const s = candidate as {
+    text?: unknown
+    sourceName?: unknown
+    title?: unknown
+    url?: unknown
+    score?: unknown
+  }
+  if (typeof s.sourceName !== "string") return null
+  if (typeof s.url !== "string") return null
+  if (typeof s.score !== "number") return null
+  return {
+    sourceName: s.sourceName,
+    title: typeof s.title === "string" ? s.title : null,
+    url: s.url,
+    score: s.score,
+    snippet: typeof s.text === "string" ? s.text : "",
+  }
+}
+
+/**
+ * Extract `{ sources, grounded }` from the resolved tool results. Reads the
+ * LAST `retrieveAnswer` chunk, projects its `result.sources` through the
+ * allowlist, and sets `grounded` only when that result's `status === "ok"`.
+ * Pure + total: any shape mismatch degrades to `{ sources: [], grounded:false }`.
+ */
+function extractSources(chunks: SeekerToolResultChunk[]): {
+  sources: SeekerWireSource[]
+  grounded: boolean
+} {
+  let last: { result?: unknown } | undefined
+  for (const chunk of chunks) {
+    if (chunk?.payload?.toolName === RETRIEVE_ANSWER_TOOL_NAME) {
+      last = chunk.payload
+    }
+  }
+  if (!last) return { sources: [], grounded: false }
+  const result = last.result as { status?: unknown; sources?: unknown }
+  const rawSources = Array.isArray(result?.sources) ? result.sources : []
+  const sources = rawSources
+    .map(projectSource)
+    .filter((s): s is SeekerWireSource => s !== null)
+  return { sources, grounded: result?.status === "ok" }
+}
+
+export async function handleSeekerRouteRequest({
+  authHeader,
+  serviceKeys,
+  readJson,
+  getMastra,
+  requestSignal,
+  getModelKey = getOpenRouterApiKey,
+  getEnabled = isSeekerRouteEnabled,
+  budgetMs = TIME_BUDGET_MS.chatTurn,
+}: SeekerRouteHandlerInput): Promise<Response> {
+  // Gate 1 — enable flag FIRST (KTD7): unreachable unless explicitly enabled.
+  // No bearer check, no body read, no agent lookup when disabled.
+  if (!getEnabled()) {
+    return jsonResponse(404, { error: "Not found" })
+  }
+
+  // Gate 2 — service bearer (R5): before any agent work or body read.
+  if (!isValidServiceBearer({ authHeader, allowlist: serviceKeys })) {
+    return jsonResponse(401, { error: "Service bearer required" })
+  }
+
+  // Gate 3 — body validation (R2).
+  const raw = await readJson().catch(() => undefined)
+  if (!isSeekerBody(raw)) {
+    return jsonResponse(400, { error: "prompt and threadId are required" })
+  }
+  const { prompt, threadId, resourceId } = raw
+
+  // Gate 4 — model-key preflight (R11): before opening the stream / invoking
+  // the agent so a missing key is a clean 503, not a mid-stream error frame.
+  if (getModelKey() == null) {
+    return jsonResponse(503, { reason: "model_key_missing" })
+  }
+
+  const agent = getMastra().getAgentById(SEEKER_AGENT_ID) as SeekerStreamAgent
+
+  // Memory keying (KTD3): `resource` is ALWAYS set — the runtime guard requires
+  // it whenever the agent has memory attached. `resourceId` stays opaque (R8).
+  // An absent OR empty-string `resourceId` normalizes to the constant default.
+  const memory = {
+    thread: threadId,
+    resource:
+      resourceId && resourceId.length > 0
+        ? resourceId
+        : SEEKER_DEFAULT_RESOURCE_ID,
+  }
+
+  // Compose the inbound request signal with the internal turn budget so EITHER
+  // a client disconnect or the 90s ceiling aborts the agent run (R9, R10).
+  const budgetSignal = AbortSignal.timeout(budgetMs)
+  const abortSignal = requestSignal
+    ? AbortSignal.any([requestSignal, budgetSignal])
+    : budgetSignal
+
+  const encoder = new TextEncoder()
+  let reader: ReadableStreamDefaultReader<string> | null = null
+  // Hoisted to the start/cancel scope so the outer catch and cancel() can settle
+  // a still-pending `toolResults` promise. If the textStream drain throws, control
+  // jumps to the outer catch BEFORE the inner `await output.toolResults`, leaving
+  // that promise unawaited — a later rejection would then escape as an unhandled
+  // rejection (there is no global handler). Settling it on those paths prevents it.
+  let output: SeekerStreamOutput | null = null
+  // Guards against enqueue/close on an already-closed controller. A consumer
+  // can cancel mid-drain or during the `toolResults` await; without this the
+  // terminal-frame enqueue (or the finally close) throws from inside start()
+  // and surfaces as an unhandled rejection. `cancel()` and a failed enqueue
+  // both flip it, so every later enqueue and the close short-circuit cleanly.
+  let closed = false
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const enqueue = (frame: string) => {
+        if (closed) return
+        try {
+          controller.enqueue(encoder.encode(frame))
+        } catch {
+          // Controller already closed (consumer disconnected) — stop emitting.
+          closed = true
+        }
+      }
+      try {
+        output = await agent.stream(prompt, {
+          maxSteps: STEP_CAPS.toolCallingTurn,
+          abortSignal,
+          memory,
+        })
+        reader = output.textStream.getReader()
+        let full = ""
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (typeof value === "string" && value.length > 0) {
+            full += value
+            enqueue(sseFrame("token_delta", { text: value }))
+          }
+        }
+
+        // Source extraction is isolated: a rejected `toolResults` promise (or a
+        // malformed shape) AFTER a successful textStream drain degrades to an
+        // ungrounded `result` — never an `error` frame for an otherwise-good
+        // generation (KTD4).
+        let sources: SeekerWireSource[] = []
+        let grounded = false
+        try {
+          const extracted = extractSources(await output.toolResults)
+          sources = extracted.sources
+          grounded = extracted.grounded
+        } catch {
+          console.warn(
+            "[seeker-route] event=tool_results_extraction_failed reason=extraction_failed",
+          )
+        }
+
+        enqueue(
+          sseFrame("result", {
+            text: full,
+            sources,
+            grounded,
+            producedBy: SEEKER_AGENT_ID,
+          }),
+        )
+      } catch {
+        // If the textStream drain threw, `output.toolResults` was never awaited
+        // (the extraction try is downstream of the drain). Settle it so a later
+        // rejection cannot escape as an unhandled rejection.
+        void output?.toolResults.catch(() => {})
+        // R12 + KTD6: fixed-vocabulary reason only — no raw text on the wire or
+        // interpolated into the log as `key=value`.
+        const reason = budgetSignal.aborted ? "timeout" : "generation_failed"
+        console.warn(`[seeker-route] event=stream_error reason=${reason}`)
+        enqueue(sseFrame("error", { reason }))
+      } finally {
+        if (!closed) {
+          try {
+            controller.close()
+          } catch {
+            // Already closed by a concurrent cancel — nothing to do.
+          }
+          closed = true
+        }
+      }
+    },
+    cancel() {
+      // Caller disconnected → mark closed so in-flight enqueues stop, and cancel
+      // the agent's textStream so the run stops burning provider/tool calls
+      // (R10, leg 2).
+      closed = true
+      void reader?.cancel().catch(() => {})
+      // Belt-and-suspenders: if cancel races such that the drain loop exits
+      // without reaching the toolResults await, settle the promise so it cannot
+      // reject unhandled.
+      void output?.toolResults.catch(() => {})
+    },
+  })
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+    },
+  })
+}

@@ -43,6 +43,10 @@ import {
   type ExperienceChatRouteMastra,
 } from "./agents/experience-chat-route"
 import {
+  handleSeekerRouteRequest,
+  type SeekerRouteMastra,
+} from "./agents/seeker-route"
+import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
@@ -356,6 +360,17 @@ export const mastra = new Mastra({
             serviceKeys,
             readJson: () => c.req.json(),
             getMastra: () => mastra as unknown as ExperienceChatRouteMastra,
+            requestSignal: c.req.raw.signal,
+          }),
+      }),
+      registerApiRoute("/forge-seeker", {
+        method: "POST",
+        handler: async (c) =>
+          handleSeekerRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            getMastra: () => mastra as unknown as SeekerRouteMastra,
             requestSignal: c.req.raw.signal,
           }),
       }),
