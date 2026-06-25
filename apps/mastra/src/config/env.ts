@@ -266,6 +266,12 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
+  // Default-off gate for the internal `/forge-seeker` SSE service route
+  // (feat-204, KTD7). Optional + no default — unset means the route is
+  // disabled (returns 404). Read via the repo's string-boolean convention
+  // (`=== "true"`, see AI_GATEWAY_CHAT_ENABLED), NOT JS truthiness, so
+  // `SEEKER_ROUTE_ENABLED="false"` stays disabled. No new required-at-boot var.
+  SEEKER_ROUTE_ENABLED: z.string().optional(),
   SUBTITLE_ENRICHMENT_MODEL: z
     .string()
     .min(1)
@@ -487,6 +493,7 @@ export const env = envSchema.parse({
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
+  SEEKER_ROUTE_ENABLED: emptyToUndefined(process.env.SEEKER_ROUTE_ENABLED),
   SUBTITLE_ENRICHMENT_MODEL: emptyToUndefined(
     process.env.SUBTITLE_ENRICHMENT_MODEL,
   ),
@@ -676,6 +683,17 @@ export function getMastraStorageDir() {
 
 export function getOpenRouterApiKey(): string | undefined {
   return env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
+}
+
+/**
+ * Whether the internal `/forge-seeker` SSE service route is enabled (feat-204,
+ * KTD7). Default-off: the route returns 404 unless this is explicitly set to
+ * the string `"true"`. Uses the repo's string-boolean convention (matching
+ * `AI_GATEWAY_CHAT_ENABLED`), NOT JS truthiness — `"false"` (or any other
+ * value) keeps the route disabled, preserving the safety default.
+ */
+export function isSeekerRouteEnabled(): boolean {
+  return env.SEEKER_ROUTE_ENABLED === "true"
 }
 
 export function getFirecrawlConfig(): FirecrawlConfig {

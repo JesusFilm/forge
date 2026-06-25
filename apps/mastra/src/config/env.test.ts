@@ -839,4 +839,47 @@ describe("Mastra env", () => {
 
     await expect(import("./env")).rejects.toThrow()
   })
+
+  // --- feat-204: SEEKER_ROUTE_ENABLED default-off string-boolean gate (KTD7) ---
+
+  it("disables the seeker route when SEEKER_ROUTE_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isSeekerRouteEnabled } = await import("./env")
+
+    expect(isSeekerRouteEnabled()).toBe(false)
+  })
+
+  it('treats SEEKER_ROUTE_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // The load-bearing guard against JS truthiness inverting the safety default:
+    // a naive `Boolean(env.SEEKER_ROUTE_ENABLED)` would enable on "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_ROUTE_ENABLED", "false")
+
+    const { isSeekerRouteEnabled } = await import("./env")
+
+    expect(isSeekerRouteEnabled()).toBe(false)
+  })
+
+  it('enables the seeker route only when SEEKER_ROUTE_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_ROUTE_ENABLED", "true")
+
+    const { isSeekerRouteEnabled } = await import("./env")
+
+    expect(isSeekerRouteEnabled()).toBe(true)
+  })
+
+  it("keeps SEEKER_ROUTE_ENABLED out of the production required-var set (optional at boot)", async () => {
+    // The route flag must NEVER brick a Railway deploy: a fully-provisioned
+    // production env with SEEKER_ROUTE_ENABLED unset still boots.
+    stubProductionBaseline()
+    // SEEKER_ROUTE_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isSeekerRouteEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isSeekerRouteEnabled()).toBe(false)
+  })
 })

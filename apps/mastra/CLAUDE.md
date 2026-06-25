@@ -132,6 +132,7 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `DATABASE_URL`                               | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                                                                                                                                                                                      |
 | `MASTRA_SERVICE_API_KEYS`                    | CSV allowlist for service bearer calls. Required in production runtime.                                                                                                                                                                                                                                                                                     |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                         |
+| `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                 |
 | `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE`    | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.                                                                                                                                                                                                                                          |
 | `AI_GATEWAY_EMBEDDINGS_API_KEY`              | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.                                                                                                                                                                                                                                               |
 | `AI_GATEWAY_EMBEDDINGS_BASE_URL`             | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                                                                                                                                                                                                                                                        |
@@ -478,11 +479,34 @@ memory is process-lifetime in-memory and leaks across testers on a shared thread
 The agent is reachable on Mastra's built-in, code-unauthenticated `/api/agents/*`
 surface to anyone who can reach the Mastra endpoint. "Studio-only" is the
 `apps/mastra-gateway` + Railway **network** boundary, **NOT** the
-`seeker-route-isolation.test.ts` guard (which only proves no custom `/forge-*`
-route wires it up). The safety line bounds leaked-output blast radius; the
+`seeker-route-isolation.test.ts` guard (which now pins the single
+default-off `/forge-seeker` exposure and that no OTHER route wires the agent in
+— see "Service route" below). The safety line bounds leaked-output blast radius; the
 `redactPromptBodies` processor blanks span `input`/`output` in traces. Do not
 expose to a public surface before the deferred guardrail gate AND a gateway
 access decision.
+
+### Service route (`POST /forge-seeker`, feat-204)
+
+Internal, server-to-server dogfooding route that streams the seeker over a
+stable bearer-gated contract (handler: `agents/seeker-route.ts`,
+`handleSeekerRouteRequest`). It mirrors `/forge-experience-chat` but adds
+per-session memory keying and `retrieveAnswer` `sources[]` extraction. Frames:
+`token_delta {text}` → terminal `result {text, sources, grounded, producedBy}`,
+or `error {reason}` (fixed-vocabulary reason only — no raw text on the wire).
+
+- **Default-off**: gated on `SEEKER_ROUTE_ENABLED === "true"`, checked FIRST →
+  404 when disabled (KTD7). It is **more** locked down than the built-in
+  `/api/agents/*` surface, not a replacement for the network boundary.
+- **Body**: `{ prompt, threadId }` required; `resourceId` optional + opaque.
+  The route ALWAYS supplies a memory `resource` (the caller's `resourceId` else
+  the constant `SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"`) because a
+  memory-configured agent throws `AGENT_MEMORY_MISSING_RESOURCE_ID` at runtime
+  when a `threadId` arrives without one. Isolation rides on `threadId`.
+- **Budget**: `TIME_BUDGET_MS.chatTurn` (90s) + `STEP_CAPS.toolCallingTurn` (8),
+  composed with the inbound request signal. No CORS, no `error.message` on wire.
+- Scope is `apps/mastra` only; chat-app wiring is feat-205. The
+  `seeker-route-isolation.test.ts` guard is re-pinned to this single route.
 
 ### Not wired yet (deferred)
 

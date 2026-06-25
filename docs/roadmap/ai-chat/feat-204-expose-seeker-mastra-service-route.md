@@ -3,7 +3,7 @@ id: "feat-204"
 title: "Expose Seeker agent via internal Mastra SSE service route"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-06-24"
 duration: 3
 depends_on:
