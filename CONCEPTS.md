@@ -294,6 +294,12 @@ The user's current watch state for one Video — which Dub is active, and whethe
 
 A Watch Session belongs to the currently-viewed Video: it is published when the details screen resolves its Video and cleared when that screen goes away, and switching the active Dub mid-playback updates the session rather than restarting playback. Player features that depend on it (the in-player language/subtitle menu, subtitle rendering) gate on the session matching what is actually playing, so playback started outside a details screen runs without them.
 
+### Watch Preference
+
+The app-wide, persisted audio- and subtitle-language choice that carries across every Video and series — a stored _intent_ (a Language slug plus a cached display name), distinct from the per-Video Watch Session. Because the same preference flows over content with different Dubs and subtitle tracks, it is reconciled against each item's actual tracks at display and apply time rather than shown verbatim: an unsupported choice falls back to a supported track, and content with no matching track reads "Off".
+
+Identity always keys on the Language slug; the cached name paints labels instantly on a cold load but is never used for matching. Toggling subtitles on or off changes visibility only — it never rewrites the stored language, which only an explicit pick changes.
+
 ## AI chat
 
 ### Seeker Agent

@@ -396,10 +396,12 @@ export function VideoPlayer({
 
       {/* Captions sit ABOVE the scrim but BELOW the controls so the timeline
           always draws over a tall caption. Outside the fade wrapper so they
-          stay visible when the controls auto-hide. */}
+          stay visible when the controls auto-hide. Gated on hasStarted: captions
+          stay hidden until the first play (a cue covering t=0 would otherwise
+          paint over the un-started poster), then persist through pauses. */}
       <SubtitleOverlay
         player={player}
-        vttSrc={subtitleVttSrc}
+        vttSrc={hasStarted ? subtitleVttSrc : null}
         bottomOffset={subtitleBottomOffset}
         horizontalInset={subtitleHorizontalInset}
         fontSize={subtitleFontSize}

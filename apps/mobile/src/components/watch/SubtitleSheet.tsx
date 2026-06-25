@@ -33,7 +33,14 @@ export type SubtitleSheetProps = {
   subtitles: WatchSubtitle[]
   subtitleEnabled: boolean
   activeSubtitleSlug: string | null
-  onSubtitleChange: (enabled: boolean, slug: string | null) => void
+  // isUserSelection distinguishes a deliberate row pick (true → persist the
+  // language) from a bare on/off toggle (false → don't overwrite the preference
+  // with the optimistic/reconciled active slug).
+  onSubtitleChange: (
+    enabled: boolean,
+    slug: string | null,
+    isUserSelection: boolean,
+  ) => void
   onClose: () => void
 }
 
@@ -83,7 +90,7 @@ export function SubtitleSheetContent({
   const handleToggle = useCallback(
     (value: boolean) => {
       setLocalToggle(value)
-      onSubtitleChange(value, activeSubtitleSlug)
+      onSubtitleChange(value, activeSubtitleSlug, false)
     },
     [onSubtitleChange, activeSubtitleSlug],
   )
@@ -93,7 +100,7 @@ export function SubtitleSheetContent({
       const now = Date.now()
       if (now - lastSelectRef.current < 500) return
       lastSelectRef.current = now
-      onSubtitleChange(true, sub.languageSlug)
+      onSubtitleChange(true, sub.languageSlug, true)
       if (!localToggle) {
         // Let the switch animate to ON before dismissing.
         setLocalToggle(true)
