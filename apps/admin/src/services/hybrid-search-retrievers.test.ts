@@ -304,7 +304,12 @@ describe("searchVideoSemantic", () => {
 
     const sql = latestRawSql(prisma)
     expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(1)
-    expect((sql.match(/vl\.status = 'published'/g) ?? []).length).toBe(1)
+    expect((sql.match(/vl_visible\.status = 'published'/g) ?? []).length).toBe(
+      1,
+    )
+    expect((sql.match(/vl_display\.status = 'published'/g) ?? []).length).toBe(
+      1,
+    )
     const sqlWithFragments = latestRawSqlWithFragments(prisma)
     expect((sqlWithFragments.match(/IS NOT NULL/g) ?? []).length).toBe(1)
     expect(sqlWithFragments).not.toContain("vsl.embedding")
@@ -318,20 +323,26 @@ describe("searchVideoSemantic", () => {
       latestRawValues(prisma).filter((value) => value === "[0.1,0.2]"),
     ).toHaveLength(1)
 
+    const candidateWindow = sqlBetween(
+      sqlWithFragments,
+      "visible_semantic_candidates AS",
+      "requested_language AS MATERIALIZED",
+    )
+    const candidateLimitIndex = candidateWindow.lastIndexOf("LIMIT")
+    expect(candidateWindow.indexOf("v.deleted_at IS NULL")).toBeLessThan(
+      candidateLimitIndex,
+    )
+    expect(
+      candidateWindow.indexOf("vl_visible.status = 'published'"),
+    ).toBeLessThan(candidateLimitIndex)
+    expect(
+      candidateWindow.indexOf("vl_visible.deleted_at IS NULL"),
+    ).toBeLessThan(candidateLimitIndex)
+
     const transcriptSource = sqlBetween(
       sqlWithFragments,
       "transcript_source AS",
       "requested_language AS MATERIALIZED",
-    )
-    const transcriptOrderIndex = transcriptSource.indexOf("ORDER BY")
-    expect(transcriptSource.indexOf("v.deleted_at IS NULL")).toBeLessThan(
-      transcriptOrderIndex,
-    )
-    expect(transcriptSource.indexOf("vl.status = 'published'")).toBeLessThan(
-      transcriptOrderIndex,
-    )
-    expect(transcriptSource.indexOf("vl.deleted_at IS NULL")).toBeLessThan(
-      transcriptOrderIndex,
     )
     expect(transcriptSource).not.toContain("LATERAL")
     expect(transcriptSource).not.toContain("embedding::text")
@@ -340,6 +351,11 @@ describe("searchVideoSemantic", () => {
       sqlWithFragments.indexOf("requested_language AS MATERIALIZED"),
     )
     expect(hydratedTail).toContain("LEFT JOIN LATERAL")
+    expect(hydratedTail).toContain("JOIN LATERAL")
+    expect(hydratedTail).toContain("FROM video_locale vl_display")
+    expect(hydratedTail).toMatch(
+      /ORDER BY\s+vl_display\.language_core_id ASC NULLS LAST,\s+vl_display\.language_slug ASC NULLS LAST,\s+vl_display\.id ASC/,
+    )
     expect(hydratedTail).toContain(
       "vd.language_id IN (SELECT id FROM requested_language)",
     )
@@ -365,12 +381,79 @@ describe("searchVideoSemantic", () => {
       "ORDER BY",
       sql.indexOf("SELECT DISTINCT ON (vt.video_id)"),
     )
-    const transcriptCandidateLimitIndex = sql.indexOf(
-      "LIMIT",
-      sql.indexOf("best_transcript_per_video"),
+    const preCandidateWindow = sqlBetween(
+      sql,
+      "best_transcript_per_video AS",
+      "transcript_source AS",
     )
+    expect(preCandidateWindow).not.toContain("LIMIT")
+
+    const transcriptSource = sqlBetween(
+      sql,
+      "transcript_source AS",
+      "requested_language AS MATERIALIZED",
+    )
+    const transcriptCandidateLimitIndex = transcriptSource.indexOf("LIMIT")
     expect(transcriptOrderIndex).toBeGreaterThan(-1)
-    expect(transcriptOrderIndex).toBeLessThan(transcriptCandidateLimitIndex)
+    expect(transcriptCandidateLimitIndex).toBeGreaterThan(
+      transcriptSource.indexOf("FROM visible_semantic_candidates"),
+    )
+  })
+
+  it("keeps locale visibility before the candidate limit and display selection after it", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "en",
+      limit: 5,
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    const bestTranscript = sqlBetween(
+      sql,
+      "best_transcript_per_video AS",
+      "visible_semantic_candidates AS",
+    )
+    expect(bestTranscript).toContain("SELECT DISTINCT ON (vt.video_id)")
+    expect(bestTranscript).not.toContain("JOIN video v")
+    expect(bestTranscript).not.toContain("video_locale")
+
+    const visibleCandidates = sqlBetween(
+      sql,
+      "visible_semantic_candidates AS",
+      "transcript_source AS",
+    )
+    expect(visibleCandidates).toContain("JOIN video v")
+    expect(visibleCandidates).toContain("WHERE EXISTS")
+    expect(visibleCandidates).toContain("FROM video_locale vl_visible")
+    expect(visibleCandidates).toContain("vl_visible.status = 'published'")
+    expect(visibleCandidates).toContain("vl_visible.deleted_at IS NULL")
+    expect(visibleCandidates).not.toContain("JOIN LATERAL")
+    expect(visibleCandidates).not.toContain("vl_display")
+    expect(visibleCandidates).not.toContain("LIMIT")
+
+    const transcriptSource = sqlBetween(
+      sql,
+      "transcript_source AS",
+      "requested_language AS MATERIALIZED",
+    )
+    expect(transcriptSource).toContain("FROM visible_semantic_candidates")
+    expect(transcriptSource).not.toContain("video_locale")
+    expect(transcriptSource.indexOf("LIMIT")).toBeGreaterThan(
+      transcriptSource.indexOf("FROM visible_semantic_candidates"),
+    )
+
+    const hydratedTail = sql.slice(
+      sql.indexOf("requested_language AS MATERIALIZED"),
+    )
+    expect(hydratedTail).toContain("FROM video_locale vl_display")
+    expect(hydratedTail).toContain("vl_display.status = 'published'")
+    expect(hydratedTail).toContain("vl_display.deleted_at IS NULL")
+    expect(hydratedTail).toMatch(
+      /ORDER BY\s+vl_display\.language_core_id ASC NULLS LAST,\s+vl_display\.language_slug ASC NULLS LAST,\s+vl_display\.id ASC/,
+    )
+    expect(hydratedTail).toMatch(/LIMIT\s+1/)
   })
 
   it("uses bounded per-source candidate windows after per-video collapse", async () => {
@@ -612,6 +695,33 @@ describe("mixVideoSemanticEvidenceRows", () => {
 
     expect(rows.map((row) => row.video_id)).toEqual(["a", "b"])
     expect(rows[0]!.scene_description).toBe("Scene A")
+  })
+
+  it("uses video id as the final public tie-breaker for otherwise equal winners", () => {
+    const rows = mixVideoSemanticEvidenceRows([
+      {
+        ...base,
+        video_id: "b",
+        evidence_id: "chunk-b",
+        evidence_source: "transcript",
+        scene_description: "Transcript B",
+        start_seconds: 3,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+      {
+        ...base,
+        video_id: "a",
+        evidence_id: "chunk-a",
+        evidence_source: "transcript",
+        scene_description: "Transcript A",
+        start_seconds: 3,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+    ])
+
+    expect(rows.map((row) => row.video_id)).toEqual(["a", "b"])
   })
 })
 

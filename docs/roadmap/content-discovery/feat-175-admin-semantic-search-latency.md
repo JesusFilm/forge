@@ -33,7 +33,10 @@ Railway HTTP logs showed Web `POST /watch` search-action requests near the
 historical 15 second Admin caller budget. The current safe slice keeps Admin's
 existing transcript best-evidence-per-video semantics, but removes expensive
 image/dub hydration and `embedding::text` projection from the unbounded
-candidate-collapse work.
+candidate-collapse work. The semantic DB retrieval follow-up also keeps
+published-locale visibility before the candidate limit while moving display
+locale selection after the limit, because broad `video_locale.locale` is not a
+unique row identity.
 
 An HNSW-first raw nearest-neighbor window remains a possible follow-up
 performance lever only if the safe slice and instrumentation show the semantic
@@ -45,6 +48,9 @@ diversity while losing recall, and degrade semantic relevance.
 
 - [x] Move image lookup, dub playback lookup, and `embedding::text` hydration
       after transcript candidates are narrowed.
+- [x] Gate published requested-locale visibility with a one-row-per-video
+      `EXISTS` check before the semantic candidate limit, then hydrate one
+      deterministic display locale row only after the limit.
 - [x] Preserve the existing per-source best-evidence-per-video semantics for
       the default path.
 - [x] Keep the existing `semantic-video` retriever label and public search

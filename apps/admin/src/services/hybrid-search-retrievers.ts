@@ -334,43 +334,58 @@ export async function searchVideoSemantic(
       WITH query_embedding AS MATERIALIZED (
         SELECT ${queryEmbedding}::vector AS embedding
       ),
+      best_transcript_per_video AS (
+        SELECT DISTINCT ON (vt.video_id)
+          vt.video_id                       AS video_id,
+          vt.video_edition_id               AS video_edition_id,
+          vtc.id                            AS evidence_id,
+          'transcript'                      AS evidence_source,
+          COALESCE(
+            NULLIF(vtc.content_summary, ''),
+            NULLIF(vtc.raw_source_text, ''),
+            vtc.text
+          )                                 AS scene_description,
+          vtc.start_seconds                 AS start_seconds,
+          1 - (vtc.embedding <=> qe.embedding) AS source_score
+        FROM video_transcript_chunk vtc
+        CROSS JOIN query_embedding qe
+        JOIN video_transcript vt ON vt.id = vtc.transcript_id
+          AND vt.language = ${locale}
+        WHERE vtc.embedding IS NOT NULL
+          ${transcriptProvenanceFilter}
+          AND vtc.language = ${locale}
+        ORDER BY
+          vt.video_id,
+          vtc.embedding <=> qe.embedding,
+          vtc.start_seconds ASC NULLS LAST,
+          vtc.id ASC
+      ),
+      visible_semantic_candidates AS (
+        SELECT
+          b.video_id                       AS video_id,
+          v.core_id                        AS video_core_id,
+          v.slug                           AS video_slug,
+          b.video_edition_id               AS video_edition_id,
+          b.evidence_id                    AS evidence_id,
+          b.evidence_source                AS evidence_source,
+          b.scene_description              AS scene_description,
+          b.start_seconds                  AS start_seconds,
+          b.source_score                   AS source_score
+        FROM best_transcript_per_video b
+        JOIN video v ON v.id = b.video_id
+          AND v.deleted_at IS NULL
+        WHERE EXISTS (
+          SELECT 1
+          FROM video_locale vl_visible
+          WHERE vl_visible.video_id = v.id
+            AND vl_visible.locale = ${locale}
+            AND vl_visible.status = 'published'
+            AND vl_visible.deleted_at IS NULL
+        )
+      ),
       transcript_source AS (
-        SELECT * FROM (
-          SELECT DISTINCT ON (vt.video_id)
-            vt.video_id                       AS video_id,
-            v.core_id                         AS video_core_id,
-            v.slug                            AS video_slug,
-            vl.title                          AS video_title,
-            vt.video_edition_id               AS video_edition_id,
-            vtc.id                            AS evidence_id,
-            'transcript'                      AS evidence_source,
-            COALESCE(
-              NULLIF(vtc.content_summary, ''),
-              NULLIF(vtc.raw_source_text, ''),
-              vtc.text
-            )                                 AS scene_description,
-            vtc.start_seconds                 AS start_seconds,
-            1 - (vtc.embedding <=> qe.embedding) AS source_score
-          FROM video_transcript_chunk vtc
-          CROSS JOIN query_embedding qe
-          JOIN video_transcript vt ON vt.id = vtc.transcript_id
-            AND vt.language = ${locale}
-          JOIN video v ON v.id = vt.video_id
-            AND v.deleted_at IS NULL
-          JOIN video_locale vl
-            ON vl.video_id = v.id
-            AND vl.locale = ${locale}
-            AND vl.status = 'published'
-            AND vl.deleted_at IS NULL
-          WHERE vtc.embedding IS NOT NULL
-            ${transcriptProvenanceFilter}
-            AND vtc.language = ${locale}
-          ORDER BY
-            vt.video_id,
-            vtc.embedding <=> qe.embedding,
-            vtc.start_seconds ASC NULLS LAST,
-            vtc.id ASC
-        ) best_transcript_per_video
+        SELECT *
+        FROM visible_semantic_candidates
         ORDER BY source_score DESC, start_seconds ASC NULLS LAST, evidence_id ASC
         LIMIT ${candidateLimit}
       ),
@@ -383,7 +398,7 @@ export async function searchVideoSemantic(
         ts.video_id                      AS video_id,
         ts.video_core_id                 AS video_core_id,
         ts.video_slug                    AS video_slug,
-        ts.video_title                   AS video_title,
+        display_locale.title             AS video_title,
         COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
         ts.evidence_id                   AS evidence_id,
         ts.evidence_source               AS evidence_source,
@@ -395,6 +410,19 @@ export async function searchVideoSemantic(
       FROM transcript_source ts
       LEFT JOIN video_transcript_chunk vtc_final
         ON vtc_final.id = ts.evidence_id
+      JOIN LATERAL (
+        SELECT vl_display.title
+        FROM video_locale vl_display
+        WHERE vl_display.video_id = ts.video_id
+          AND vl_display.locale = ${locale}
+          AND vl_display.status = 'published'
+          AND vl_display.deleted_at IS NULL
+        ORDER BY
+          vl_display.language_core_id ASC NULLS LAST,
+          vl_display.language_slug ASC NULLS LAST,
+          vl_display.id ASC
+        LIMIT 1
+      ) display_locale ON true
       LEFT JOIN LATERAL (
         SELECT mv.playback_id
         FROM video_dub vd
