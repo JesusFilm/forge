@@ -611,7 +611,7 @@ async function loadHydrationDataRows(
             mv.playback_id AS "playbackId",
             row_number() OVER (
               PARTITION BY vd.video_id
-              ORDER BY vd.duration DESC
+              ORDER BY vd.duration DESC, vd.id ASC
             ) AS hydration_rank
           FROM video_dub vd
           LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
@@ -731,9 +731,10 @@ async function hydrateCardDisplayFields(
   for (const row of rows) {
     // Pick the primary-language dub when available; otherwise the
     // longest-duration playable dub. The hydration query sorts dubs by
-    // duration descending. `duration` is already in seconds (Int?); the
-    // millisecond column on VideoDub uses BigInt and isn't needed for pill
-    // display where second precision is the right fidelity.
+    // duration descending with a stable ID tie-breaker. `duration` is
+    // already in seconds (Int?); the millisecond column on VideoDub uses
+    // BigInt and isn't needed for pill display where second precision is
+    // the right fidelity.
     const primaryDub = row.primaryLanguageId
       ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
       : undefined
