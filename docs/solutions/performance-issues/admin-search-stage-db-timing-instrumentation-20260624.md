@@ -1,6 +1,7 @@
 ---
 title: "Admin search stage and DB timing instrumentation"
 date: "2026-06-24"
+last_updated: "2026-06-25"
 category: "performance-issues"
 module: "apps/admin"
 problem_type: "performance_issue"
@@ -80,6 +81,20 @@ exact-title-video.query
 hydration.video.findMany
 ```
 
+When keyword-first mode overlaps video lexical retrieval with embedding, keep
+two retrieval clocks:
+
+- `db_retrievals_ms`: merged active retriever interval time. This measures
+  database/retriever work and must not grow just because the embedding provider
+  is still pending.
+- `retrieval_wait_ms`: the final orchestrator wait after the full retrieval
+  list has been assembled. This is the critical-path wait surface and may be
+  small when early lexical retrievers already settled before embedding returned.
+
+Do not compute `db_retrievals_ms` from a single wall-clock span that starts
+when early keyword-first retrievers launch. That double-counts embedding wait
+as database latency and makes production bottleneck reports misleading.
+
 The retriever labels should stay aligned with existing search debug labels so
 operators can compare result contribution and elapsed time without learning a
 second vocabulary:
@@ -129,6 +144,42 @@ outside PostgreSQL. If they track closely, the next optimization pass should
 move to `EXPLAIN (ANALYZE, BUFFERS)`, indexes, query shape, or hydration
 projection.
 
+For overlapped phases, stage timings are not additive. Compare `total_ms`,
+`embedding_ms`, `db_retrievals_ms`, `retrieval_wait_ms`, per-retriever timings,
+and per-DB labels together. A healthy keyword-first overlap can reduce
+`total_ms` while leaving individual lexical DB timings unchanged.
+
+## Async Overlap Follow-Up
+
+Keyword-first video lexical retrievers only depend on `query`, `locale`, and
+`limit`, so they can start before `await embedder(query)`. Semantic retrievers
+still require `queryEmbeddingText`, so keep them embedding-gated and skip them
+when embedding fails.
+
+The safe orchestration shape is:
+
+```ts
+const earlyKeywordFirstRetrievals = [
+  keywordWeightedVideo(),
+  trigramVideo(),
+  exactTitleVideo(),
+]
+const earlyRetrievalOutcomes = Promise.allSettled(
+  earlyKeywordFirstRetrievals.map((r) => r.promise),
+)
+
+const vector = await embedder(query)
+
+retrievals.push(semanticVideo(vector))
+retrievals.push(...earlyKeywordFirstRetrievals)
+```
+
+Attach `Promise.allSettled` immediately to early lexical promises. A fast DB
+rejection can otherwise surface as an unhandled promise rejection while the
+embedding provider is still pending. After embedding resolves, reuse the early
+settled outcomes in the final retriever order so RRF input order and debug
+labels remain unchanged.
+
 ## Prevention
 
 - Do not add a new search retriever without adding both a retriever timing label
@@ -141,10 +192,19 @@ projection.
   `EXPLAIN (ANALYZE, BUFFERS)` output before changing ranking semantics.
 - Treat keyword-only timing as the degraded embedding-failure path; it is useful
   for isolating lexical costs, not proof that semantic quality is preserved.
+- Keep tests that hold the embedder pending and prove keyword-first lexical
+  retrievers start before semantic retrieval.
+- Keep a fast-rejection test for early keyword-first lexical retrievers so the
+  immediate settled handler does not regress.
+- Keep interval tests for merged active retrieval timing; overlapping DB
+  intervals and idle embedding gaps should not be double-counted.
 
 ## Related Issues
 
 - `docs/roadmap/content-discovery/feat-175-admin-semantic-search-latency.md`
+- `docs/plans/2026-06-24-001-perf-admin-search-parallel-keyword-plan.md`
 - `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`
 - `docs/solutions/platform/admin-search-trace-retention-pattern.md`
 - `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`
+- GitHub issue `JesusFilm/forge#979` — adjacent statement-timeout follow-up for
+  hybrid-search SQL paths.

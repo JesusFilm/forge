@@ -39,6 +39,7 @@ vi.mock("@/services/hybrid-search.service", () => {
     totalMs: 1,
     embeddingMs: 1,
     retrievalsMs: 0,
+    retrievalWaitMs: 0,
     fusionMs: 0,
     dilutionCapMs: 0,
     dedupeMs: 0,

@@ -26,6 +26,7 @@ export type SearchTimingSummary = {
   totalMs: number
   embeddingMs: number
   retrievalsMs: number
+  retrievalWaitMs: number
   fusionMs: number
   dilutionCapMs: number
   dedupeMs: number
@@ -60,6 +61,37 @@ export function boundedMs(value: number): number {
 
 export function elapsedMs(startedAt: number): number {
   return boundedMs(nowMs() - startedAt)
+}
+
+export type SearchTimingInterval = {
+  startedAt: number
+  endedAt: number
+}
+
+export function activeTimingIntervalsMs(
+  intervals: readonly SearchTimingInterval[],
+): number {
+  if (intervals.length === 0) return 0
+
+  const sorted = [...intervals].sort((a, b) => a.startedAt - b.startedAt)
+  let activeMs = 0
+  let currentStart = sorted[0]!.startedAt
+  let currentEnd = sorted[0]!.endedAt
+
+  for (let i = 1; i < sorted.length; i++) {
+    const interval = sorted[i]!
+    if (interval.startedAt <= currentEnd) {
+      currentEnd = Math.max(currentEnd, interval.endedAt)
+      continue
+    }
+
+    activeMs += Math.max(0, currentEnd - currentStart)
+    currentStart = interval.startedAt
+    currentEnd = interval.endedAt
+  }
+
+  activeMs += Math.max(0, currentEnd - currentStart)
+  return boundedMs(activeMs)
 }
 
 function defaultResultCount(value: unknown): number {
@@ -121,6 +153,7 @@ export function formatSearchTimingLogFields(
     `total_ms=${timings.totalMs}`,
     `embedding_ms=${timings.embeddingMs}`,
     `db_retrievals_ms=${timings.retrievalsMs}`,
+    `retrieval_wait_ms=${timings.retrievalWaitMs}`,
     `db_total_ms=${dbTotalMs}`,
     `fusion_ms=${timings.fusionMs}`,
     `dilution_cap_ms=${timings.dilutionCapMs}`,
