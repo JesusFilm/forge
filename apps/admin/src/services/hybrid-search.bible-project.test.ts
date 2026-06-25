@@ -57,6 +57,10 @@ const mockPrisma = {
     // `prisma.video.findMany`) doesn't crash these tests.
     findMany: vi.fn().mockResolvedValue([]),
   },
+  videoLocale: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  $queryRaw: vi.fn().mockResolvedValue([]),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
 const successEmbedder = (): QueryEmbedder =>
@@ -237,6 +241,8 @@ beforeEach(() => {
   vi.mocked(searchExperienceKeyword).mockResolvedValue([])
   // Restore default hydration stub after clearAllMocks wipes it.
   mockPrisma.video.findMany.mockResolvedValue([])
+  mockPrisma.videoLocale.findMany.mockResolvedValue([])
+  mockPrisma.$queryRaw.mockResolvedValue([])
 })
 
 describe("Bible Project headline (keyword-first mode)", () => {

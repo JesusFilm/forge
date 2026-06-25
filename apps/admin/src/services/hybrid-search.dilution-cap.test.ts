@@ -82,6 +82,15 @@ function buildDebugByKey(
   return map
 }
 
+function mockHydrationPrisma() {
+  return {
+    video: { findMany: vi.fn().mockResolvedValue([]) },
+    videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any
+}
+
 describe("applyDilutionCap", () => {
   it("does NOT trigger when no exact-title hit covers every query token", () => {
     // Query: "the bible project". Exact-title list has one item but its
@@ -428,8 +437,7 @@ describe("HybridSearchService skips dilution cap when SEARCH_DILUTION_CAP_ENABLE
     process.env.SEARCH_DILUTION_CAP_ENABLED = "false"
 
     const service = new HybridSearchService({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma: { video: { findMany: vi.fn().mockResolvedValue([]) } } as any,
+      prisma: mockHydrationPrisma(),
       embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
       logger: { warn: vi.fn(), error: vi.fn() },
     })
@@ -490,8 +498,7 @@ describe("HybridSearchService skips dilution cap when SEARCH_DILUTION_CAP_ENABLE
     delete process.env.SEARCH_DILUTION_CAP_ENABLED
 
     const service = new HybridSearchService({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma: { video: { findMany: vi.fn().mockResolvedValue([]) } } as any,
+      prisma: mockHydrationPrisma(),
       embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
       logger: { warn: vi.fn(), error: vi.fn() },
     })
