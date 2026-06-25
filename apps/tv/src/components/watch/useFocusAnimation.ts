@@ -3,12 +3,16 @@ import { Animated, Easing, type ViewStyle } from "react-native"
 
 import { scale } from "../../lib/scale"
 
-// 0→1 "focus progress" so highlights glide in (timing/easing match the mockup's
-// .18s cubic-bezier). JS-driven on purpose: callers interpolate it into
-// backgroundColor/borderColor/shadowOpacity, which the native driver can't animate.
+// 0→1 focus-progress so highlights glide in (timing/easing match the mockup's
+// .18s cubic-bezier). JS-driven by default: callers interpolate color/shadow,
+// which the native driver can't animate.
+//
+// Pass { nativeDriver: true } ONLY for transform/opacity-only callers (never
+// color/shadow) — Android uses it to get the focus tween off the JS thread.
 const FOCUS_DURATION_MS = 180
 
-export function useFocusAnimation() {
+export function useFocusAnimation(opts?: { nativeDriver?: boolean }) {
+  const nativeDriver = opts?.nativeDriver ?? false
   const [focused, setFocused] = useState(false)
   const progress = useRef(new Animated.Value(0)).current
 
@@ -17,18 +21,18 @@ export function useFocusAnimation() {
       toValue: focused ? 1 : 0,
       duration: FOCUS_DURATION_MS,
       easing: Easing.bezier(0.22, 0.61, 0.36, 1),
-      useNativeDriver: false,
+      useNativeDriver: nativeDriver,
     })
     animation.start()
     return () => animation.stop()
-  }, [focused, progress])
+  }, [focused, progress, nativeDriver])
 
   return { focused, setFocused, progress }
 }
 
-// Shared tvOS-magnify transform (lift + scale) from focus progress; pills and Up
-// Next cards reuse it with different magnitudes. Memoize at the call site (keyed on
-// stable `progress`) so interpolations aren't reallocated per focus/blur re-render.
+// Shared focus lift+scale transform (transform-only → safe with the native driver
+// on both platforms). Memoize at the call site (keyed on `progress`) so the
+// interpolations aren't reallocated on every focus/blur re-render.
 export function focusTransform(
   progress: Animated.Value,
   opts?: { lift?: number; magnify?: number },

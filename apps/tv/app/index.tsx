@@ -9,6 +9,7 @@ import {
 } from "react"
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,7 @@ import { advanceByDelta } from "../src/components/home/heroPagerState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
   resolveBrowseState,
@@ -51,6 +53,16 @@ import type { WatchHomeCard } from "../src/lib/watchHome/model"
  * over ambient backdrop + non-interactive billboard hero + top bar; rails drive
  * showcase + browse (R10/R11). Only this screen left SDUI; /experience/[slug] still uses it (R9).
  */
+// Image-windowing: rails within BUFFER rows of the focused row load their card
+// images; cards outside still mount (focus-safe) but skip the decode. 2 keeps a
+// neighbour warm in each direction without decoding the whole feed at once.
+const RAIL_WINDOW_BUFFER = 2
+
+// All home perf optimizations (image-windowing, row-change scroll gating) are
+// Android-only. Apple TV had no perf problem and stays on its original eager
+// path — every gated branch below restores main's behavior.
+const IS_ANDROID = Platform.OS === "android"
+
 export default function HomeScreen() {
   const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
@@ -117,12 +129,23 @@ export default function HomeScreen() {
   // (homeScrollState.ts) drives deep scrim + top bar hide. Scroll is row-anchored
   // via each shelf's onLayout y, immediate (not debounced) to track traversal.
   const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
+  // Image-windowing: the row that holds focus (hero / top bar = 0). Drives which
+  // rails load card images (isRailActive); cards always mount so focus is safe.
+  const [focusedRow, setFocusedRow] = useState(0)
   const scrollRef = useRef<ScrollView | null>(null)
   const rowYsRef = useRef<number[]>([])
   // If a row is focused before onLayout measures its y (cold paint / refetch
   // remount), resolveRowScrollTarget returns null and (focus-scroll off) the card
   // strands off-screen. Stash the row; recordRowY fires the scroll on onLayout.
   const pendingScrollRowRef = useRef<number | null>(null)
+  // Last focused row, so handleRowFocus fires only on a real row TRANSITION
+  // (within-row horizontal moves skip the redundant scroll). Reset to null when
+  // focus leaves the rails so re-entering a row re-applies its scroll state.
+  const lastFocusedRowRef = useRef<number | null>(null)
+  // Last section rail's row index, read by handleMissionFocus so the bottom
+  // rails stay windowed-active when focus drops to the mission tail (Up returns
+  // to a mounted rail). Assigned each render once the model is known.
+  const sectionCountRef = useRef(0)
 
   const scrollToRow = useCallback((rowIndex: number): boolean => {
     const target = resolveRowScrollTarget({
@@ -137,11 +160,20 @@ export default function HomeScreen() {
 
   const handleRowFocus = useCallback(
     (rowIndex: number) => {
+      // Android only: gate on a real row change so within-row horizontal moves
+      // skip the redundant scroll. tvOS keeps main's behavior (fires every move).
+      if (IS_ANDROID) {
+        if (lastFocusedRowRef.current === rowIndex) return
+        lastFocusedRowRef.current = rowIndex
+      }
       setBrowseState(resolveBrowseState(rowIndex))
       // Topmost section rail = rowIndex 1; anything >= 2 is a rail below it.
       setBelowTopmost(rowIndex >= 2)
       // Defer if the row's y isn't measured yet; recordRowY flushes it.
       pendingScrollRowRef.current = scrollToRow(rowIndex) ? null : rowIndex
+      // Shift the image-window. Immediate + cheap (cards stay mounted; only
+      // images toggle), so it can't strand focus or jerk the scroll.
+      if (IS_ANDROID) setFocusedRow(rowIndex)
     },
     [scrollToRow],
   )
@@ -158,6 +190,10 @@ export default function HomeScreen() {
 
   // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
+    if (IS_ANDROID) {
+      lastFocusedRowRef.current = null
+      setFocusedRow(0)
+    }
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -166,6 +202,12 @@ export default function HomeScreen() {
   // Mission-tail QR focus: with the native focus-scroll disabled, the tail
   // needs its own scroll hook — pin to the end in the deep state.
   const handleMissionFocus = useCallback(() => {
+    if (IS_ANDROID) {
+      lastFocusedRowRef.current = null
+      // Center the image-window on the bottom rails so Up from the mission tail
+      // returns to a rail whose images are loaded.
+      setFocusedRow(sectionCountRef.current)
+    }
     setBrowseState("deep")
     // The mission tail is below the topmost rail — keep its autoFocus OFF so a
     // later Up traversal stays column-preserving.
@@ -176,6 +218,7 @@ export default function HomeScreen() {
   // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
   // memoized rails' wrappers don't churn on every screen re-render.
   const rowCount = (model?.sections.length ?? 0) + 1
+  sectionCountRef.current = rowCount - 1
   const rowLayoutHandlers = useMemo(
     () =>
       Array.from(
@@ -194,6 +237,9 @@ export default function HomeScreen() {
   useEffect(() => {
     rowYsRef.current = []
     pendingScrollRowRef.current = null
+    // A reshape can land focus on the same row index it held pre-refetch; clear
+    // the gate so handleRowFocus re-applies scroll + image-window state.
+    lastFocusedRowRef.current = null
   }, [sections])
 
   // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
@@ -239,6 +285,10 @@ export default function HomeScreen() {
   }, [featuredCount])
   const handleHeroFocusChange = useCallback((isFocused: boolean) => {
     if (!isFocused) return
+    if (IS_ANDROID) {
+      lastFocusedRowRef.current = null
+      setFocusedRow(0)
+    }
     setBelowTopmost(false)
     setBrowseState("browse")
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -351,6 +401,10 @@ export default function HomeScreen() {
         contentContainerStyle={styles.listContent}
         stickyHeaderIndices={[0]}
         scrollEnabled={false}
+        // Android only: skip drawing rails scrolled off-screen so a vertical
+        // move only composites the visible rails. The row-anchored scroll keeps
+        // the focused content on-screen, so focusables are never clipped.
+        removeClippedSubviews={IS_ANDROID}
       >
         <View>{topBar}</View>
 
@@ -393,6 +447,17 @@ export default function HomeScreen() {
               // off the CTA), but NOT from a rail BELOW: belowTopmost gates autoFocus
               // off so Up-from-below keeps column-preserving geometry.
               restoreLastFocus={sectionIndex === 0 && !belowTopmost}
+              // Android only: load images for rails in the focus window (cards
+              // always mount). tvOS loads every rail's images (true) — main.
+              active={
+                IS_ANDROID
+                  ? isRailActive(
+                      sectionIndex + 1,
+                      focusedRow,
+                      RAIL_WINDOW_BUFFER,
+                    )
+                  : true
+              }
             />
           </View>
         ))}

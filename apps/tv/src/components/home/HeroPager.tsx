@@ -1,11 +1,19 @@
-// Screen-level hero pager: artwork page-flips while copy crossfades separately.
-// Sits above HomeBackdrop, below the ScrollView; fades out (`visible`) when a
-// rail is focused. Two-cell ring; advances SERIALIZED + generation-guarded.
+// Screen-level hero pager: artwork page-flips, copy crossfades separately; on
+// ANDROID the artwork crossfades too (IS_ANDROID path in runSlide — a full-screen
+// slide steps visibly at ~24fps). Sits above HomeBackdrop, below the ScrollView;
+// fades out (`visible`) when a rail is focused. Two-cell ring, SERIALIZED advances.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { Animated, Dimensions, Easing, StyleSheet, View } from "react-native"
+import {
+  Animated,
+  Dimensions,
+  Easing,
+  Platform,
+  StyleSheet,
+  View,
+} from "react-native"
 
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -34,8 +42,13 @@ import { HeroCopyBlock } from "./HeroCopyBlock"
 import { TOP_BAR_HEIGHT } from "./HomeTopBar"
 import { deepScrimOpacity } from "./homeScrollState"
 
-/** Artwork page-flip slide duration; transform-only, native driver. */
+/** Artwork page-flip slide duration; transform-only, native driver (tvOS). */
 const SLIDE_MS = 420
+/** Android: replace the artwork slide with an opacity crossfade. A full-screen
+ *  slide steps visibly at the Sabrina SoC's ~24fps; a native-driven opacity
+ *  dissolve reads far softer. Matches the copy crossfade so they move as one. */
+const IS_ANDROID = Platform.OS === "android"
+const ARTWORK_FADE_MS = 300
 /** Copy crossfade duration — the incoming copy fades IN while the outgoing
  *  fades OUT (a true crossfade, so the text is never fully blank). Roughly the
  *  slide budget so copy and artwork read as one transition. */
@@ -81,9 +94,15 @@ export const HeroPager = memo(function HeroPager({
   // Ref mirrors so animation callbacks read settled values, not stale closures.
   const slotCardsRef = useRef<[Slot, Slot]>([first, null])
   const frontRef = useRef<0 | 1>(0)
+  // Android stacks both cells at x=0 and crossfades via opRef; tvOS parks the
+  // back cell off-screen and slides it via txRef.
   const txRef = useRef([
     new Animated.Value(0),
-    new Animated.Value(PARK_X),
+    new Animated.Value(IS_ANDROID ? 0 : PARK_X),
+  ] as const)
+  const opRef = useRef([
+    new Animated.Value(1),
+    new Animated.Value(IS_ANDROID ? 0 : 1),
   ] as const)
   const genRef = useRef(0)
   const pendingRef = useRef<PendingSlide | null>(null)
@@ -114,20 +133,33 @@ export const HeroPager = memo(function HeroPager({
       fallbackRef.current = null
     }
     pendingRef.current = null
-    Animated.timing(txRef.current[back], {
-      toValue: 0,
-      duration: SLIDE_MS,
-      easing: Easing.bezier(0.22, 0.61, 0.36, 1),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
+    // Android: fade the incoming cell IN over the resting front (dissolve).
+    // tvOS: slide the incoming cell across to x=0 over the front.
+    const transition = IS_ANDROID
+      ? Animated.timing(opRef.current[back], {
+          toValue: 1,
+          duration: ARTWORK_FADE_MS,
+          useNativeDriver: true,
+        })
+      : Animated.timing(txRef.current[back], {
+          toValue: 0,
+          duration: SLIDE_MS,
+          easing: Easing.bezier(0.22, 0.61, 0.36, 1),
+          useNativeDriver: true,
+        })
+    transition.start(({ finished }) => {
       if (!finished || gen !== genRef.current) return
-      // Commit under the opaque incoming cell: flip the front face and repark
-      // the old front off-screen in the SAME frame — never clear its source
-      // first (that would expose the backdrop for a frame).
+      // Commit under the now-opaque incoming cell: flip the front face and hide
+      // the old front in the SAME frame (Android: opacity 0; tvOS: repark
+      // off-screen) — never clear its source first (would expose a frame).
       const oldFront = frontRef.current
       frontRef.current = back
       setFrontFace(back)
-      txRef.current[oldFront].setValue(PARK_X)
+      if (IS_ANDROID) {
+        opRef.current[oldFront].setValue(0)
+      } else {
+        txRef.current[oldFront].setValue(PARK_X)
+      }
       slidingRef.current = false
       // Coalesce: if newer presses moved the target past this slide, chain to
       // the latest index now (skipping the intermediates we never rendered).
@@ -147,10 +179,14 @@ export const HeroPager = memo(function HeroPager({
     const gen = genRef.current
     const back = backFace(front)
     slidingRef.current = true
-    // Park the incoming cell off the entry side, then paint it (unless it
-    // already shows this card — e.g. an A→B→A wrap — whose image is mounted +
-    // loaded and won't fire onLoad again).
-    txRef.current[back].setValue(directionRef.current >= 0 ? PARK_X : -PARK_X)
+    // Stage the incoming cell hidden, then paint it (unless it already shows
+    // this card — e.g. an A→B→A wrap — whose image is mounted + loaded and won't
+    // fire onLoad again). Android: opacity 0 at x=0. tvOS: parked off-screen.
+    if (IS_ANDROID) {
+      opRef.current[back].setValue(0)
+    } else {
+      txRef.current[back].setValue(directionRef.current >= 0 ? PARK_X : -PARK_X)
+    }
     const alreadyShowing = slotCardsRef.current[back]?.id === incoming.id
     if (!alreadyShowing) paint(back, incoming)
 
@@ -207,9 +243,12 @@ export const HeroPager = memo(function HeroPager({
   // a dead tree (navigating to /search or a detail mid-slide).
   useEffect(() => {
     const tx = txRef.current
+    const op = opRef.current
     return () => {
       tx[0].stopAnimation()
       tx[1].stopAnimation()
+      op[0].stopAnimation()
+      op[1].stopAnimation()
       if (fallbackRef.current != null) clearTimeout(fallbackRef.current)
     }
   }, [])
@@ -229,6 +268,7 @@ export const HeroPager = memo(function HeroPager({
           key={`hero-cell-${cell}`}
           card={slotCards[cell]}
           translateX={txRef.current[cell]}
+          opacity={opRef.current[cell]}
           // The incoming (back) cell paints ON TOP of the resting front.
           onTop={cell !== frontFace}
           onLoaded={handleCellLoaded}
@@ -245,12 +285,14 @@ export const HeroPager = memo(function HeroPager({
 function HeroArtworkCell({
   card,
   translateX,
+  opacity,
   onTop,
   onLoaded,
   cell,
 }: {
   card: Slot
   translateX: Animated.Value
+  opacity: Animated.Value
   onTop: boolean
   onLoaded: (cell: 0 | 1, url: string) => void
   cell: 0 | 1
@@ -260,8 +302,13 @@ function HeroArtworkCell({
     [card?.imageUrl],
   )
   const cellStyle = useMemo(
-    () => ({ transform: [{ translateX }], zIndex: onTop ? 2 : 1 }),
-    [translateX, onTop],
+    // Android drives the crossfade via opacity; tvOS slides and never animates
+    // opacity, so omit it there to keep the cell on its original style (no layer).
+    () =>
+      IS_ANDROID
+        ? { transform: [{ translateX }], opacity, zIndex: onTop ? 2 : 1 }
+        : { transform: [{ translateX }], zIndex: onTop ? 2 : 1 },
+    [translateX, opacity, onTop],
   )
 
   if (card == null) {
