@@ -62,6 +62,18 @@ function defaultHydrationRawQuery(
   return Promise.resolve([])
 }
 
+function hydrationRawSqlContaining(pattern: string): string {
+  const calls = mockPrisma.$queryRaw.mock.calls as Array<
+    [TemplateStringsArray, ...unknown[]]
+  >
+  const call = calls.find((rawCall) => {
+    const strings = rawCall[0]
+    return strings?.join(" ").includes(pattern)
+  })
+  expect(call, `Expected hydration SQL containing ${pattern}`).toBeDefined()
+  return call![0].join(" ")
+}
+
 const mockPrisma = {
   video: {
     // Default to empty hydration so paginated tests don't need to seed
@@ -962,6 +974,51 @@ describe("HybridSearchService", () => {
       expect(
         result.results.find((r) => r.id === "vid-fallback")!.durationSeconds,
       ).toBe(60)
+    })
+
+    it("orders hydration dub ranking with a stable tie-breaker", async () => {
+      vi.mocked(searchVideoSemantic).mockResolvedValue([
+        {
+          resultType: "video",
+          resultId: "vid-tied-dubs",
+          videoCoreId: "1_tied",
+          videoSlug: "tied",
+          videoTitle: "Tied",
+          imageUrl: null,
+          sceneDescription: "",
+          startSeconds: 0,
+          playbackId: null,
+          similarity: 0.9,
+          embeddingText: "[]",
+        },
+      ])
+      mockPrisma.video.findMany.mockResolvedValueOnce([
+        {
+          id: "vid-tied-dubs",
+          label: "EPISODE",
+          primaryLanguageId: null,
+        },
+      ])
+      hydrationRawRows.dubs = [
+        {
+          videoId: "vid-tied-dubs",
+          languageId: "lang-a",
+          duration: 120,
+          playbackId: "mux-a",
+        },
+      ]
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      await service.search({ query: "x", locale: "en" })
+
+      expect(hydrationRawSqlContaining("FROM video_dub")).toMatch(
+        /row_number\(\)\s+OVER\s*\(\s*PARTITION BY vd\.video_id\s+ORDER BY vd\.duration DESC,\s*vd\.id ASC\s*\)\s+AS hydration_rank/,
+      )
     })
 
     it("keeps pre-hydration video fields when hydration fails", async () => {

@@ -67,6 +67,9 @@ Use a result-preserving optimization ladder:
    - image variants via a per-video `row_number()` window over `video_image`;
    - playable dubs via a per-video `row_number()` window over `video_dub`;
    - child counts via grouped raw SQL with the same published-child gate.
+     Any window that picks one hydrated row from otherwise-equivalent candidates
+     needs a stable final tie-breaker, such as `video_dub.id`, so result-preserving
+     optimizations do not create nondeterministic display fields.
 3. Preserve overlay semantics exactly. Hydrated display fields fill public card
    metadata, but existing semantic evidence still owns `startSeconds` and any
    non-empty retriever `playbackId` / `imageUrl` fallback.
@@ -130,10 +133,14 @@ call, while failures still degrade to keyword-only and remain observable.
   dimensions in the cache key so model upgrades cannot reuse stale vectors.
 - Keep health counters and health probes honest: cache hits are not provider
   attempts, and `/api/search/health` should still call the provider directly.
+- Treat deterministic hydration ordering as part of result preservation. When a
+  hydration window orders by a non-unique display attribute, add a stable
+  tie-breaker and assert it in the raw SQL shape.
 
 ## Related Issues
 
 - `docs/roadmap/content-discovery/feat-175-admin-semantic-search-latency.md`
+- `docs/solutions/database-issues/stable-admin-search-dub-hydration-ordering.md`
 - `docs/solutions/performance-issues/admin-search-stage-db-timing-instrumentation-20260624.md`
 - `docs/solutions/integration-issues/semantic-search-video-card-display-metadata-hydration.md`
 - `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`
