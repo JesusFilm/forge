@@ -92,6 +92,12 @@ companion's nature:
    harmless belt-and-suspenders (on the error path it _creates_ the rejected
    promise just to handle it — net-neutral, not load-bearing for a lazy
    companion, but the right habit and load-bearing if the companion is eager).
+   One nuance from consequence (a): this is net-neutral only once consumption has
+   started (the happy and drain-throw paths, where the first `reader.read()`
+   already kicked off `consumeStream()`). On a `cancel()` that fires in the narrow
+   window after `output` resolves but before the first `read()`, the settle is
+   itself the _first_ access and starts consumption — but the `abortSignal` makes
+   that abandoned work short-lived, so the cost is bounded rather than zero.
 
 2. **Hoist the output handle** to the enclosing (start/cancel) scope either way,
    so the value is reachable from `cancel()` and (for per-path settling) the
@@ -230,7 +236,7 @@ const stream = new ReadableStream({
   },
   cancel() {
     void reader?.cancel().catch(() => {})
-    void output?.toolResults.catch(() => {}) // no-op if output is still null
+    void output?.toolResults.catch(() => {}) // no-op if output is null; else touches (may start consumption on) a lazy companion — accepted on disconnect
   },
 })
 ```
