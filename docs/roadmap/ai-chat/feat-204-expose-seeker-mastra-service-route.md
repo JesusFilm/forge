@@ -3,7 +3,7 @@ id: "feat-204"
 title: "Expose Seeker agent via internal Mastra SSE service route"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-24"
 duration: 3
 depends_on:
@@ -14,6 +14,22 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-06-25 via [PR #1371](https://github.com/JesusFilm/forge/pull/1371) (`feat(mastra): expose Seeker agent via internal /forge-seeker SSE route (feat-204)`). The roadmap flip rides the same PR branch, so feat-204 reads `complete` on `main` exactly when the code lands — the PR is open and unmerged at time of writing.
+
+**What landed.** The `POST /forge-seeker` SSE route shipped with full per-session memory keying — the brief's "key risk" (the `agent.stream(...)` memory contract) resolved, so the stateless fallback (AE3/AE3c waived) was **not** needed. The route always supplies a constant default `resource` (`SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"`) because a memory-configured agent throws `AGENT_MEMORY_MISSING_RESOURCE_ID` at runtime when given a `threadId` without one; `resourceId` stays optional + opaque to callers. Two deliberate deviations from the brief: a default-off `SEEKER_ROUTE_ENABLED` gate was pulled into v1 (the brief deferred it), and `seekerAgent` occurrences in `index.ts` stayed at **2** (not 2→3) because the handler looks the agent up by string id in its own module — the isolation guard was re-pinned to that shape. A real-memory smoke (a fresh `Agent` + stubbed `MockLanguageModelV3`, no network) proves the resourceId-default satisfies the runtime guard and that turn-2 recalls turn-1; defensive controller guards + companion-promise settling close an unhandled-rejection path found in review.
+
+**Compound docs.**
+
+- `docs/solutions/best-practices/settle-orphaned-companion-promise-streaming-early-exit-20260625.md`
+- `docs/solutions/best-practices/deterministic-mastra-sse-route-testing-stub-model-budget-seam-20260625.md`
+- `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` (added the runtime-guard-vs-`.d.ts`-optional worked instance)
+
+**Residual risk / follow-ups.** Shared `MASTRA_SERVICE_API_KEYS` blast radius is accepted for single-consumer v1; a dedicated per-route bearer and `threadId` namespacing are deferred until a second caller joins. Safety/crisis guardrails and Postgres-persisted memory remain deferred release gates. feat-205's client budget must be strictly greater than the route's 90s ceiling so a route timeout isn't misclassified as a network error.
+
+**Unblocked.** feat-205 (Wire chat app to the Seeker Mastra route).
 
 ## Problem
 
