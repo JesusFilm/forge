@@ -312,11 +312,15 @@ describe("searchVideoSemantic", () => {
     expect(sql).not.toContain("vsl.locale =")
     expect(sql).toContain("vtc.language =")
     expect(sql).toContain("vt.language =")
+    expect(sql).toContain("query_embedding AS MATERIALIZED")
     expect(sql).toContain("requested_language AS MATERIALIZED")
+    expect(
+      latestRawValues(prisma).filter((value) => value === "[0.1,0.2]"),
+    ).toHaveLength(1)
 
     const transcriptSource = sqlBetween(
       sqlWithFragments,
-      "WITH transcript_source AS",
+      "transcript_source AS",
       "requested_language AS MATERIALIZED",
     )
     const transcriptOrderIndex = transcriptSource.indexOf("ORDER BY")

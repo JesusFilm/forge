@@ -1,8 +1,8 @@
 /**
  * Process-local counters and last-error state for query-embedding operations.
  *
- * Used by the search orchestrator to track attempts and failures of the
- * OpenRouter embedding call, and by the health probe endpoint to surface
+ * Used by the search orchestrator to track attempts and failures of actual
+ * OpenRouter embedding calls, and by the health probe endpoint to surface
  * that state to external monitors (Railway healthchecks, uptime tools,
  * curl-based checks) without requiring log tailing.
  *
@@ -33,7 +33,7 @@ export type SearchHealthStats = {
   lastErrorAt: string | null
 }
 
-/** Increment attempts counter. Call before every `embedQuery` invocation. */
+/** Increment attempts counter before each real provider request. */
 export function recordAttempt(): void {
   attempts += 1
 }

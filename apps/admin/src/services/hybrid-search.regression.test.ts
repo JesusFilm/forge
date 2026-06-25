@@ -66,6 +66,10 @@ const mockPrisma = {
     // `prisma.video.findMany`) doesn't crash these regression tests.
     findMany: vi.fn().mockResolvedValue([]),
   },
+  videoLocale: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  $queryRaw: vi.fn().mockResolvedValue([]),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
 
@@ -156,6 +160,8 @@ beforeEach(() => {
   setupRetrieverFixtures()
   // Restore default hydration stub after clearAllMocks wipes it.
   mockPrisma.video.findMany.mockResolvedValue([])
+  mockPrisma.videoLocale.findMany.mockResolvedValue([])
+  mockPrisma.$queryRaw.mockResolvedValue([])
 })
 
 describe("HybridSearchService default-mode regression snapshot", () => {

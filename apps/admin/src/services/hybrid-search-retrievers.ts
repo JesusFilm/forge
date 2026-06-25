@@ -331,7 +331,10 @@ export async function searchVideoSemantic(
     timing,
     "semantic-video.query",
     () => prisma.$queryRaw<VideoSemanticEvidenceRow[]>`
-      WITH transcript_source AS (
+      WITH query_embedding AS MATERIALIZED (
+        SELECT ${queryEmbedding}::vector AS embedding
+      ),
+      transcript_source AS (
         SELECT * FROM (
           SELECT DISTINCT ON (vt.video_id)
             vt.video_id                       AS video_id,
@@ -347,8 +350,9 @@ export async function searchVideoSemantic(
               vtc.text
             )                                 AS scene_description,
             vtc.start_seconds                 AS start_seconds,
-            1 - (vtc.embedding <=> ${queryEmbedding}::vector) AS source_score
+            1 - (vtc.embedding <=> qe.embedding) AS source_score
           FROM video_transcript_chunk vtc
+          CROSS JOIN query_embedding qe
           JOIN video_transcript vt ON vt.id = vtc.transcript_id
             AND vt.language = ${locale}
           JOIN video v ON v.id = vt.video_id
@@ -363,7 +367,7 @@ export async function searchVideoSemantic(
             AND vtc.language = ${locale}
           ORDER BY
             vt.video_id,
-            vtc.embedding <=> ${queryEmbedding}::vector,
+            vtc.embedding <=> qe.embedding,
             vtc.start_seconds ASC NULLS LAST,
             vtc.id ASC
         ) best_transcript_per_video

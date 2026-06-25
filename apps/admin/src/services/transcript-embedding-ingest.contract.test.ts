@@ -151,7 +151,7 @@ function buildContractPrisma() {
       return [...transcripts.values()]
     }
 
-    if (sql.includes("WITH transcript_source AS")) {
+    if (sql.includes("transcript_source AS")) {
       return chunks.map((chunk) => {
         const transcript = transcripts.get(chunk.transcriptId)!
         return {
