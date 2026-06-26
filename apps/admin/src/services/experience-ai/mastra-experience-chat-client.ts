@@ -73,9 +73,6 @@ function hostAllowed(
  * Parse a UTF-8 SSE stream, invoking `onFrame(event, data)` per complete frame.
  * Minimal parser: frames are separated by a blank line; an `event:` line is the
  * discriminator and a `data:` line carries the JSON payload.
- *
- * NOTE: `apps/chat/src/lib/sse.ts` is a fork of this parser. If Mastra's SSE
- * frame format changes, update both copies (no shared util package exists yet).
  */
 async function readSseStream(
   body: ReadableStream<Uint8Array>,

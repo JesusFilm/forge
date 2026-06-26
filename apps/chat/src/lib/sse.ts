@@ -1,6 +1,7 @@
-// Minimal SSE helpers (feat-205). Chat-local FORK of admin's parser in
-// apps/admin/src/services/experience-ai/mastra-experience-chat-client.ts — if
-// Mastra's frame format changes, both copies must change (drift risk).
+// Minimal SSE helpers (feat-205). Forked from admin's reference parser in
+// apps/admin/src/services/experience-ai/mastra-experience-chat-client.ts (no
+// shared util package). The contract that matters is Mastra's SSE frame
+// format — keep this aligned with what /forge-seeker emits (seeker-route.ts).
 
 /**
  * Parse a UTF-8 SSE stream, invoking `onFrame(event, data)` per complete frame.
