@@ -469,6 +469,12 @@ variables, slugs, bearer keys, cookies, IPs, or user identifiers.
 configured. The RUM service is `forge-admin`, matching backend APM for trace
 correlation. RUM traces only Admin GraphQL URLs and uses masked-input privacy.
 
+`src/observability/datadog-logs.ts` forwards server console logs to the shared
+Datadog Agent over syslog UDP when `DD_AGENT_HOST` is configured. It preserves
+normal Railway stdout, adds Datadog service/env/version fields, and attaches
+active trace/span ids when `dd-trace` has an active span. Keep this transport
+plain and opt-in; Railway does not let the Agent scrape sibling service stdout.
+
 The shared Railway Datadog Agent service definition lives in
 `infra/datadog-agent/`; operator setup and env variables are documented in
 `docs/observability/datadog.md`. Admin browser sourcemaps upload with
@@ -478,8 +484,8 @@ Production Admin Railway config lives in `apps/admin/railway.toml` once the
 service's Config-as-code Path is set to that file. For best Datadog
 auto-instrumentation, production must set Datadog service env
 (`DD_SERVICE=forge-admin`, `DD_ENV=production`, `DD_VERSION=<git sha>`), point
-at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`), and
-load the tracer before application modules through the `startCommand`:
+at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`,
+`DD_AGENT_SYSLOG_PORT=514`), and load the tracer before application modules through the `startCommand`:
 `NODE_OPTIONS='--require dd-trace/init' node ...server.js`. Do not set
 `NODE_OPTIONS` as a global Railway service variable because it is also present
 during Railpack/mise build setup.
