@@ -95,14 +95,14 @@ replay samples, and GraphQL resource timings can be correlated to backend APM.
   current-main errors in `src/services/experience-ai/*`,
   `src/mastra/workflows/multi-step-draft-workflow.test.ts`, and
   `packages/experience-schema` missing `zod` resolution.
-- Production deployment has `DD_SERVICE=forge-admin`, `DD_ENV=production`,
+- Production deployment has `DD_SERVICE=forge-admin`, `DD_ENV=prod`,
   `DD_VERSION=<git sha>`, `DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`, and
   Datadog agent connectivity.
 - Production `@forge/admin` process starts with Datadog loaded before GraphQL
   modules via the runtime start command's
   `NODE_OPTIONS='--require dd-trace/init'`.
 - Production Admin RUM has `NEXT_PUBLIC_DATADOG_APPLICATION_ID`,
-  `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`, `NEXT_PUBLIC_DATADOG_ENV=production`, and
+  `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`, `NEXT_PUBLIC_DATADOG_ENV=prod`, and
   `NEXT_PUBLIC_DATADOG_VERSION=<same git sha as DD_VERSION>`.
 - Admin sourcemaps upload with `pnpm --filter @forge/admin datadog:sourcemaps`
   using `DATADOG_RELEASE_VERSION=<same git sha as DD_VERSION>`.

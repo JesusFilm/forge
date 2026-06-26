@@ -483,7 +483,7 @@ The shared Railway Datadog Agent service definition lives in
 Production Admin Railway config lives in `apps/admin/railway.toml` once the
 service's Config-as-code Path is set to that file. For best Datadog
 auto-instrumentation, production must set Datadog service env
-(`DD_SERVICE=forge-admin`, `DD_ENV=production`, `DD_VERSION=<git sha>`), point
+(`DD_SERVICE=forge-admin`, `DD_ENV=prod`, `DD_VERSION=<git sha>`), point
 at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`,
 `DD_AGENT_SYSLOG_PORT=514`), and load the tracer before application modules through the `startCommand`:
 `NODE_OPTIONS='--require dd-trace/init' node ...server.js`. Do not set
