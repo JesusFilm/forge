@@ -80,7 +80,6 @@ DD_ENV=production
 DD_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 DD_LOGS_INJECTION=true
 DD_RUNTIME_METRICS_ENABLED=true
-NODE_OPTIONS=--require dd-trace/init
 
 # Admin browser RUM
 NEXT_PUBLIC_DATADOG_APPLICATION_ID=<Forge Admin RUM application ID>
@@ -93,6 +92,15 @@ NEXT_PUBLIC_DATADOG_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 DATADOG_API_KEY=<Forge-production API key value>
 DATADOG_SITE=datadoghq.com
 DATADOG_RELEASE_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
+```
+
+Do not set `NODE_OPTIONS=--require dd-trace/init` as a Railway service
+variable. Railway exposes service variables during the Railpack/mise build
+phase, before `dd-trace` is guaranteed to exist. Admin's
+`apps/admin/railway.toml` scopes the preload to runtime:
+
+```bash
+HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/admin/.next/standalone/apps/admin/server.js
 ```
 
 Because the Agent service name contains `/`, prefer Railway's variable
