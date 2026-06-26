@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react"
 
 import { env } from "@/env"
 
-const DATADOG_SERVICE = "watch"
+const DATADOG_SERVICE = "forge-web"
 
 const DATADOG_ALLOWED_TRACING_URLS = [
   {

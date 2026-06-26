@@ -102,7 +102,7 @@ describe("DatadogRum", () => {
         applicationId: "rum-app-id",
         clientToken: "rum-client-token",
         site: "datadoghq.com",
-        service: "watch",
+        service: "forge-web",
         env: "prod",
         version: "abc123",
         sessionSampleRate: 50,

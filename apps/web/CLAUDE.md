@@ -86,6 +86,28 @@ Production proof on 2026-06-10 showed `@forge/web` online in Railway US West beh
 
 See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.
 
+## Datadog observability
+
+`src/instrumentation.ts` configures `dd-trace` for the Node runtime and enables
+Datadog's built-in `graphql` plugin with source and variables disabled. Keep
+query source, variables, bearer keys, cookies, IPs, slugs, and user identifiers
+out of trace tags.
+
+`src/observability/datadog-logs.ts` forwards server console logs to the shared
+Datadog Agent over syslog UDP when `DD_AGENT_HOST` is configured. Railway still
+receives normal stdout. Forwarded logs include service/env/version plus active
+trace/span ids when a span is active.
+
+Production Web Railway config lives in `apps/web/railway.toml` once the
+service's Config-as-code Path is set to that file. For server APM, production
+must set Datadog service env (`DD_SERVICE=forge-web`, `DD_ENV=prod`,
+`DD_VERSION=<git sha>`), point at the private Datadog Agent
+(`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`, `DD_AGENT_SYSLOG_PORT=514`), and
+load the tracer before application modules through the `startCommand`:
+`NODE_OPTIONS='--require dd-trace/init' node ...server.js`. Do not set
+`NODE_OPTIONS` as a global Railway service variable because service variables
+are also present during Railpack setup before dependencies are installed.
+
 ## Feature flags
 
 LaunchDarkly server-side feature flag evaluation is available through

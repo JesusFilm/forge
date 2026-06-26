@@ -9,6 +9,12 @@ function useBaseEnv() {
   delete process.env.YOUVERSION_APP_KEY
   delete process.env.YOUVERSION_DEFAULT_VERSION_ID
   delete process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT
+  delete process.env.DD_AGENT_HOST
+  delete process.env.DD_TRACE_AGENT_PORT
+  delete process.env.DD_AGENT_SYSLOG_PORT
+  delete process.env.DD_ENV
+  delete process.env.DD_SERVICE
+  delete process.env.DD_VERSION
   delete process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID
   delete process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
   delete process.env.NEXT_PUBLIC_DATADOG_SITE
@@ -92,6 +98,12 @@ describe("web env — Datadog RUM config", () => {
   it("imports cleanly without optional Datadog config", async () => {
     const { env } = await import("./env")
 
+    expect(env.DD_AGENT_HOST).toBeUndefined()
+    expect(env.DD_TRACE_AGENT_PORT).toBe(8126)
+    expect(env.DD_AGENT_SYSLOG_PORT).toBe(514)
+    expect(env.DD_ENV).toBe("test")
+    expect(env.DD_SERVICE).toBeUndefined()
+    expect(env.DD_VERSION).toBeUndefined()
     expect(env.NEXT_PUBLIC_DATADOG_APPLICATION_ID).toBeUndefined()
     expect(env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN).toBeUndefined()
     expect(env.NEXT_PUBLIC_DATADOG_SITE).toBe("datadoghq.com")
@@ -100,6 +112,12 @@ describe("web env — Datadog RUM config", () => {
   })
 
   it("reads explicit Datadog config", async () => {
+    process.env.DD_AGENT_HOST = "forge-datadog-agent-prd.railway.internal"
+    process.env.DD_TRACE_AGENT_PORT = "8127"
+    process.env.DD_AGENT_SYSLOG_PORT = "1514"
+    process.env.DD_ENV = "prod"
+    process.env.DD_SERVICE = "forge-web"
+    process.env.DD_VERSION = "server-release-1"
     process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID = "rum-app-id"
     process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN = "rum-client-token"
     process.env.NEXT_PUBLIC_DATADOG_SITE = "us5.datadoghq.com"
@@ -108,6 +126,12 @@ describe("web env — Datadog RUM config", () => {
 
     const { env } = await import("./env")
 
+    expect(env.DD_AGENT_HOST).toBe("forge-datadog-agent-prd.railway.internal")
+    expect(env.DD_TRACE_AGENT_PORT).toBe(8127)
+    expect(env.DD_AGENT_SYSLOG_PORT).toBe(1514)
+    expect(env.DD_ENV).toBe("prod")
+    expect(env.DD_SERVICE).toBe("forge-web")
+    expect(env.DD_VERSION).toBe("server-release-1")
     expect(env.NEXT_PUBLIC_DATADOG_APPLICATION_ID).toBe("rum-app-id")
     expect(env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN).toBe("rum-client-token")
     expect(env.NEXT_PUBLIC_DATADOG_SITE).toBe("us5.datadoghq.com")
