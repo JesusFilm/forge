@@ -32,10 +32,13 @@ networking.
 - Enabled Agent log collection and syslog UDP exposure in the Agent Dockerfile.
 - Added Admin server console forwarding to the Agent over UDP syslog.
 - Included Datadog service/env/version tags and active trace/span ids.
+- Normalized Datadog env aliases so logs, APM, and RUM use the org-standard `prod`.
 - Documented `DD_AGENT_SYSLOG_PORT=514` and Agent log variables.
 
 ## Verification
 
 - `pnpm --filter @forge/admin test -- src/observability/datadog.test.ts src/observability/datadog-logs.test.ts`
+- `pnpm --filter @forge/admin test -- src/config/datadog-env.test.ts src/observability/datadog-logs.test.ts src/components/__tests__/DatadogRum.test.tsx`
 - `pnpm --filter @forge/admin lint -- src/observability/datadog.ts src/observability/datadog.test.ts src/observability/datadog-logs.ts src/observability/datadog-logs.test.ts src/config/env.ts`
+- `pnpm --filter @forge/admin lint -- src/config/datadog-env.ts src/config/datadog-env.test.ts src/config/env.ts src/config/datadog-rum-env.ts src/observability/datadog-logs.ts src/observability/datadog-logs.test.ts src/components/DatadogRum.tsx src/components/__tests__/DatadogRum.test.tsx`
 - `git diff --check`
