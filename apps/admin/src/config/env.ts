@@ -9,6 +9,58 @@ const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
 export const DEFAULT_WEB_CANONICAL_ORIGIN = "https://www.jesusfilm.org"
 export const DEFAULT_WATCH_CANONICAL_ORIGIN = "https://watch.jesusfilm.org"
 
+const DATADOG_SITE_VALUES = [
+  "datadoghq.com",
+  "us3.datadoghq.com",
+  "us5.datadoghq.com",
+  "datadoghq.eu",
+  "ddog-gov.com",
+  "ap1.datadoghq.com",
+  "ap2.datadoghq.com",
+] as const
+
+function normalizeDatadogEnv(value: string | undefined): string | undefined {
+  const normalized = emptyToUndefined(value)?.toLowerCase()
+
+  switch (normalized) {
+    case undefined:
+      return undefined
+    case "production":
+    case "prod":
+      return "prod"
+    case "staging":
+    case "stage":
+      return "stage"
+    case "preview":
+      return "preview"
+    case "development":
+    case "dev":
+      return "development"
+    case "test":
+      return "test"
+    default:
+      return normalized
+  }
+}
+
+function datadogEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
+function datadogVersionFallback(): string | undefined {
+  return (
+    emptyToUndefined(process.env.NEXT_PUBLIC_DATADOG_VERSION) ??
+    emptyToUndefined(process.env.RAILWAY_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.VERCEL_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.GIT_COMMIT_SHA)
+  )
+}
+
 const httpOriginEnvSchema = (varName: string) =>
   z
     .string()
@@ -428,10 +480,32 @@ export const env = createEnv({
     OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
   },
-  client: {},
+  client: {
+    // Optional Datadog RUM configuration. Application id + client token gate
+    // initialization; when absent, the client component no-ops so local and
+    // preview environments can boot before Datadog is provisioned.
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_SITE: z
+      .enum(DATADOG_SITE_VALUES)
+      .default("datadoghq.com"),
+    NEXT_PUBLIC_DATADOG_ENV: z.string().default("development"),
+    NEXT_PUBLIC_DATADOG_VERSION: z.string().optional(),
+  },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
+      process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
+    ),
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: emptyToUndefined(
+      process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
+    ),
+    NEXT_PUBLIC_DATADOG_SITE: emptyToUndefined(
+      process.env.NEXT_PUBLIC_DATADOG_SITE,
+    ),
+    NEXT_PUBLIC_DATADOG_ENV: datadogEnvFallback(),
+    NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
     DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
     ADMIN_SESSION_SECRET: emptyToUndefined(process.env.ADMIN_SESSION_SECRET),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
