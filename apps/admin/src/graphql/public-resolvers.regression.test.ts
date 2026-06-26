@@ -39,6 +39,9 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "watchHomeVideos",
   // Forge /watch language inventory lookup: public consumer read, flat card shape.
   "watchLanguageInventory",
+  // Forge /watch single-video cold route lookup: public consumer read, flat
+  // route snapshot shape that replaces the hot nested videoBySlug graph.
+  "watchVideoRouteSnapshotBySlug",
   // Lazy per-dub downloads/subtitles fetch for mobile's lean watch screen —
   // same public posture + visibility as videoBySlug{ dubs }.
   "videoDub",

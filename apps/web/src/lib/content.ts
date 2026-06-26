@@ -1467,7 +1467,16 @@ async function queryWatchVideoRouteSnapshotBySlug(
   )
   if (error) throw error
 
-  return (result.data?.videoBySlug ??
+  const data = result.data as
+    | {
+        watchVideoRouteSnapshotBySlug?: unknown
+        videoBySlug?: unknown
+      }
+    | null
+    | undefined
+
+  return (data?.watchVideoRouteSnapshotBySlug ??
+    data?.videoBySlug ??
     null) as unknown as AdminVideoRouteSnapshotRaw | null
 }
 

@@ -91,20 +91,24 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(/\.\.\.WatchVideoShell\b/)
   })
 
-  it("collapses route shell, fallback copy, and carousel Mux ids into one videoBySlug snapshot", () => {
+  it("uses the dedicated route snapshot field for the cold watch route", () => {
     const printed = print(getWatchVideoRouteSnapshotBySlugOperation)
 
-    expect(printed.match(/videoBySlug\(slug:\s*\$videoSlug\)/g)).toHaveLength(1)
-    expect(printed).toMatch(/\.\.\.WatchVideoShell\b/)
-    expect(printed).toMatch(/exactLocales\s*:\s*locales/)
-    expect(printed).toMatch(/broadLocales\s*:\s*locales/)
-    expect(printed).toMatch(/englishLocales\s*:\s*locales/)
-    expect(printed).toMatch(/exactStudyQuestions\s*:\s*studyQuestions/)
-    expect(printed).toMatch(/muxPlaybackId\(languageSlug:\s*\$languageSlug\)/)
-    expect(printed).toMatch(/\bplayableDubLanguageCount\b/)
     expect(printed).toMatch(
-      /preferredVariant\s*:\s*preferredPlayableDub\(languageSlug:\s*\$languageSlug\)/,
+      /watchVideoRouteSnapshotBySlug\(\s*slug:\s*\$videoSlug\s*locale:\s*\$locale\s*languageSlug:\s*\$languageSlug\s*\)/,
     )
+    expect(printed).toMatch(/\bexactLocales\b/)
+    expect(printed).toMatch(/\bbroadLocales\b/)
+    expect(printed).toMatch(/\benglishLocales\b/)
+    expect(printed).toMatch(/\bexactStudyQuestions\b/)
+    expect(printed).toMatch(/\bmuxPlaybackId\b/)
+    expect(printed).toMatch(/\bplayableDubLanguageCount\b/)
+    expect(printed).toMatch(/\bpreferredVariant\b/)
+    expect(printed).not.toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).not.toMatch(/\.\.\.WatchVideoShell\b/)
+    expect(printed).not.toMatch(/\blocales\(/)
+    expect(printed).not.toMatch(/\bstudyQuestions\(/)
+    expect(printed).not.toMatch(/preferredPlayableDub\(/)
     expect(printed).not.toMatch(/variants\s*:\s*dubs\s*\{/)
     expect(printed).not.toMatch(/\bdownloads\s*\{/)
     expect(printed).not.toMatch(/\bvideoEdition\s*\{/)

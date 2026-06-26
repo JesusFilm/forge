@@ -230,72 +230,79 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
       $languageSlug: String
       $videoSlug: String!
     ) {
-      videoBySlug(slug: $videoSlug) {
-        ...WatchVideoShell
-        exactLocales: locales(locale: $locale, languageSlug: $languageSlug) {
-          documentId: id
-          languageSlug
-          title
-          description
-          snippet
-          imageAlt
+      watchVideoRouteSnapshotBySlug(
+        slug: $videoSlug
+        locale: $locale
+        languageSlug: $languageSlug
+      ) {
+        documentId
+        slug
+        noIndex
+        label
+        images {
+          documentId
+          url
+          thumbnail
+          mobileCinematicHigh
+          mobileCinematicLow
         }
-        broadLocales: locales(locale: $locale) {
-          documentId: id
-          languageSlug
-          title
-          description
-          snippet
-          imageAlt
-        }
-        englishLocales: locales(locale: "en") {
-          documentId: id
-          languageSlug
-          title
-          description
-          snippet
-          imageAlt
+        primaryLanguage {
+          coreId
+          bcp47
         }
         parents {
           parent {
-            documentId: id
-            exactLocales: locales(
-              locale: $locale
-              languageSlug: $languageSlug
-            ) {
-              documentId: id
+            documentId
+            slug
+            noIndex
+            label
+            images {
+              documentId
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+            exactLocales {
+              documentId
               languageSlug
               title
             }
-            broadLocales: locales(locale: $locale) {
-              documentId: id
+            broadLocales {
+              documentId
               languageSlug
               title
             }
-            englishLocales: locales(locale: "en") {
-              documentId: id
+            englishLocales {
+              documentId
               languageSlug
               title
             }
             children {
               child {
-                documentId: id
-                muxPlaybackId(languageSlug: $languageSlug)
-                exactLocales: locales(
-                  locale: $locale
-                  languageSlug: $languageSlug
-                ) {
-                  documentId: id
+                documentId
+                slug
+                label
+                muxPlaybackId
+                images {
+                  documentId
+                  url
+                  thumbnail
+                  mobileCinematicHigh
+                  mobileCinematicLow
+                }
+                exactLocales {
+                  documentId
                   languageSlug
                   title
                 }
-                broadLocales: locales(locale: $locale) {
-                  documentId: id
+                broadLocales {
+                  documentId
                   languageSlug
                   title
                 }
-                englishLocales: locales(locale: "en") {
-                  documentId: id
+                englishLocales {
+                  documentId
                   languageSlug
                   title
                 }
@@ -305,52 +312,93 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
         }
         children {
           child {
-            documentId: id
-            muxPlaybackId(languageSlug: $languageSlug)
-            exactLocales: locales(
-              locale: $locale
-              languageSlug: $languageSlug
-            ) {
-              documentId: id
+            documentId
+            slug
+            label
+            muxPlaybackId
+            durationSeconds
+            images {
+              documentId
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+            exactLocales {
+              documentId
               languageSlug
               title
             }
-            broadLocales: locales(locale: $locale) {
-              documentId: id
+            broadLocales {
+              documentId
               languageSlug
               title
             }
-            englishLocales: locales(locale: "en") {
-              documentId: id
+            englishLocales {
+              documentId
               languageSlug
               title
             }
           }
         }
-        exactStudyQuestions: studyQuestions(
-          locale: $locale
-          languageSlug: $languageSlug
-        ) {
-          documentId: id
+        bibleCitations {
+          documentId
+          chapterStart
+          chapterEnd
+          verseStart
+          verseEnd
+          order
+          osisId
+          bibleBook {
+            documentId
+            name
+          }
+        }
+        exactLocales {
+          documentId
           languageSlug
-          value: text
+          title
+          description
+          snippet
+          imageAlt
+        }
+        broadLocales {
+          documentId
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        englishLocales {
+          documentId
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        exactStudyQuestions {
+          documentId
+          languageSlug
+          value
           order
         }
-        broadStudyQuestions: studyQuestions(locale: $locale) {
-          documentId: id
+        broadStudyQuestions {
+          documentId
           languageSlug
-          value: text
+          value
           order
         }
-        englishStudyQuestions: studyQuestions(locale: "en") {
-          documentId: id
+        englishStudyQuestions {
+          documentId
           languageSlug
-          value: text
+          value
           order
         }
         playableDubLanguageCount
-        preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
-          documentId: id
+        preferredVariant {
+          documentId
           slug
           published
           hls
@@ -365,7 +413,6 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
       }
     }
   `,
-  [watchVideoShellFragment],
 )
 
 export const getWatchLanguagePickerVariantsBySlugOperation = adminGraphql(`
