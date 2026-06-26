@@ -291,6 +291,28 @@ export type WatchRouteSnapshot = {
   preferredVariant: WatchRouteSnapshotPreferredVariant | null
 }
 
+type WatchRouteSnapshotMuxRow = {
+  videoId: string
+  playbackId: string | null
+}
+
+type WatchRouteSnapshotDurationRow = {
+  videoId: string
+  duration: number | null
+}
+
+type WatchRouteSnapshotPreferredVariantRow = {
+  id: string
+  slug: string | null
+  published: boolean | null
+  hls: string | null
+  duration: number | null
+  languageCoreId: string | null
+  languageBcp47: string | null
+  languageSlug: string | null
+  languageName: Prisma.JsonValue | null
+}
+
 /**
  * Maximum coreIds accepted in a single `getByCoreIds` call. Mirrors
  * the receiver-side cap in manager's `admin-trigger-route.ts` so the
@@ -857,6 +879,205 @@ function firstByVideoId<T extends { videoId: string }>(rows: T[]) {
 export class VideoService {
   constructor(private prisma: PrismaClient) {}
 
+  private async findPreferredPlayableMuxRows(
+    videoIds: string[],
+  ): Promise<WatchRouteSnapshotMuxRow[]> {
+    if (videoIds.length === 0) return []
+
+    return this.prisma.$queryRaw<WatchRouteSnapshotMuxRow[]>`
+      SELECT
+        v.id AS "videoId",
+        COALESCE(primary_dub.playback_id, fallback_dub.playback_id) AS "playbackId"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT mv.playback_id
+        FROM "video_dub" vd
+        JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.playback_id IS NOT NULL
+         AND mv.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND v.primary_language_id IS NOT NULL
+          AND vd.language_id = v.primary_language_id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) primary_dub ON true
+      LEFT JOIN LATERAL (
+        SELECT mv.playback_id
+        FROM "video_dub" vd
+        JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.playback_id IS NOT NULL
+         AND mv.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) fallback_dub ON primary_dub.playback_id IS NULL
+      WHERE v.id IN (${Prisma.join(videoIds)})
+        AND v.deleted_at IS NULL
+    `
+  }
+
+  private async findExactLanguagePlayableMuxRows({
+    videoIds,
+    languageSlug,
+  }: {
+    videoIds: string[]
+    languageSlug: string | null
+  }): Promise<WatchRouteSnapshotMuxRow[]> {
+    if (videoIds.length === 0 || languageSlug == null) return []
+
+    return this.prisma.$queryRaw<WatchRouteSnapshotMuxRow[]>`
+      SELECT
+        v.id AS "videoId",
+        exact_dub.playback_id AS "playbackId"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT mv.playback_id
+        FROM "video_dub" vd
+        JOIN "language" l
+          ON l.id = vd.language_id
+         AND l.slug = ${languageSlug}
+         AND l.deleted_at IS NULL
+        JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.playback_id IS NOT NULL
+         AND mv.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) exact_dub ON true
+      WHERE v.id IN (${Prisma.join(videoIds)})
+        AND v.deleted_at IS NULL
+    `
+  }
+
+  private async findPreferredPlayableDurationRows(
+    videoIds: string[],
+  ): Promise<WatchRouteSnapshotDurationRow[]> {
+    if (videoIds.length === 0) return []
+
+    return this.prisma.$queryRaw<WatchRouteSnapshotDurationRow[]>`
+      SELECT
+        v.id AS "videoId",
+        COALESCE(primary_dub.duration, fallback_dub.duration) AS "duration"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT vd.duration
+        FROM "video_dub" vd
+        WHERE vd.video_id = v.id
+          AND v.primary_language_id IS NOT NULL
+          AND vd.language_id = v.primary_language_id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+          AND vd.duration > 0
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) primary_dub ON true
+      LEFT JOIN LATERAL (
+        SELECT vd.duration
+        FROM "video_dub" vd
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+          AND vd.duration > 0
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) fallback_dub ON true
+      WHERE v.id IN (${Prisma.join(videoIds)})
+        AND v.deleted_at IS NULL
+    `
+  }
+
+  private async findPreferredPlayableVariantRow(
+    videoId: string,
+  ): Promise<WatchRouteSnapshotPreferredVariantRow | null> {
+    const rows = await this.prisma.$queryRaw<
+      WatchRouteSnapshotPreferredVariantRow[]
+    >`
+      SELECT
+        COALESCE(primary_dub.id, fallback_dub.id) AS "id",
+        COALESCE(primary_dub.slug, fallback_dub.slug) AS "slug",
+        COALESCE(primary_dub.published, fallback_dub.published) AS "published",
+        COALESCE(primary_dub.hls, fallback_dub.hls) AS "hls",
+        COALESCE(primary_dub.duration, fallback_dub.duration) AS "duration",
+        COALESCE(primary_dub.language_core_id, fallback_dub.language_core_id) AS "languageCoreId",
+        COALESCE(primary_dub.language_bcp47, fallback_dub.language_bcp47) AS "languageBcp47",
+        COALESCE(primary_dub.language_slug, fallback_dub.language_slug) AS "languageSlug",
+        COALESCE(primary_dub.language_name, fallback_dub.language_name) AS "languageName"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT
+          vd.id,
+          vd.slug,
+          vd.published,
+          vd.hls,
+          vd.duration,
+          l.core_id AS language_core_id,
+          l.bcp47 AS language_bcp47,
+          l.slug AS language_slug,
+          l.name AS language_name
+        FROM "video_dub" vd
+        LEFT JOIN "language" l
+          ON l.id = vd.language_id
+         AND l.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND v.primary_language_id IS NOT NULL
+          AND vd.language_id = v.primary_language_id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) primary_dub ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          vd.id,
+          vd.slug,
+          vd.published,
+          vd.hls,
+          vd.duration,
+          l.core_id AS language_core_id,
+          l.bcp47 AS language_bcp47,
+          l.slug AS language_slug,
+          l.name AS language_name
+        FROM "video_dub" vd
+        LEFT JOIN "language" l
+          ON l.id = vd.language_id
+         AND l.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) fallback_dub ON primary_dub.id IS NULL
+      WHERE v.id = ${videoId}
+        AND v.deleted_at IS NULL
+      LIMIT 1
+    `
+
+    return rows[0]?.id == null ? null : rows[0]
+  }
+
   async list({ input: raw, query }: { input: VideoListInput; query: object }) {
     return this.prisma.video.findMany({
       ...query,
@@ -1115,12 +1336,11 @@ export class VideoService {
       localeRows,
       studyQuestionRows,
       exactMuxRows,
-      fallbackMuxVideos,
-      rootDurationRows,
-      childDurationVideos,
+      fallbackMuxRows,
+      durationRows,
       playableLanguageRows,
       preferredExact,
-      preferredFallbackVideos,
+      preferredFallback,
     ] = await Promise.all([
       relatedVideoIds.length === 0
         ? []
@@ -1181,76 +1401,12 @@ export class VideoService {
           order: true,
         },
       }),
-      normalizedLanguageSlug == null || relatedVideoIds.length === 0
-        ? []
-        : this.prisma.videoDub.findMany({
-            where: {
-              videoId: { in: relatedVideoIds },
-              ...PLAYABLE_DUB_WHERE,
-              language: { slug: normalizedLanguageSlug, deletedAt: null },
-              muxVideo: { playbackId: { not: null }, deletedAt: null },
-            },
-            orderBy: [{ duration: "desc" }, { id: "asc" }],
-            select: {
-              videoId: true,
-              muxVideo: { select: { playbackId: true } },
-            },
-          }),
-      relatedVideoIds.length === 0
-        ? []
-        : this.prisma.video.findMany({
-            where: { id: { in: relatedVideoIds }, deletedAt: null },
-            select: {
-              id: true,
-              primaryLanguageId: true,
-              dubs: {
-                where: {
-                  published: true,
-                  hls: { not: null },
-                  deletedAt: null,
-                  muxVideo: { playbackId: { not: null }, deletedAt: null },
-                },
-                orderBy: [{ duration: "desc" }, { id: "asc" }],
-                take: 8,
-                select: {
-                  languageId: true,
-                  muxVideo: { select: { playbackId: true } },
-                },
-              },
-            },
-          }),
-      this.prisma.videoDub.findMany({
-        where: {
-          videoId: root.id,
-          published: true,
-          hls: { not: null },
-          deletedAt: null,
-          duration: { gt: 0 },
-        },
-        orderBy: [{ duration: "desc" }],
-        take: 8,
-        select: { languageId: true, duration: true },
+      this.findExactLanguagePlayableMuxRows({
+        videoIds: relatedVideoIds,
+        languageSlug: normalizedLanguageSlug,
       }),
-      rootChildIds.length === 0
-        ? []
-        : this.prisma.video.findMany({
-            where: { id: { in: rootChildIds }, deletedAt: null },
-            select: {
-              id: true,
-              primaryLanguageId: true,
-              dubs: {
-                where: {
-                  published: true,
-                  hls: { not: null },
-                  deletedAt: null,
-                  duration: { gt: 0 },
-                },
-                orderBy: [{ duration: "desc" }],
-                take: 8,
-                select: { languageId: true, duration: true },
-              },
-            },
-          }),
+      this.findPreferredPlayableMuxRows(relatedVideoIds),
+      this.findPreferredPlayableDurationRows([root.id, ...rootChildIds]),
       this.prisma.videoDub.findMany({
         where: {
           ...PLAYABLE_DUB_WHERE,
@@ -1292,76 +1448,21 @@ export class VideoService {
               },
             },
           }),
-      this.prisma.video.findMany({
-        where: { id: root.id, deletedAt: null },
-        select: {
-          id: true,
-          primaryLanguageId: true,
-          dubs: {
-            where: PLAYABLE_DUB_WHERE,
-            orderBy: [{ duration: "desc" }, { id: "asc" }],
-            take: 8,
-            select: {
-              id: true,
-              slug: true,
-              published: true,
-              hls: true,
-              duration: true,
-              languageId: true,
-              language: {
-                select: {
-                  coreId: true,
-                  bcp47: true,
-                  slug: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      }),
+      this.findPreferredPlayableVariantRow(root.id),
     ])
 
     const allImages = [...rootImages, ...relatedImages]
     const localeArgs = { locale, languageSlug: normalizedLanguageSlug }
     const exactMuxByVideoId = firstByVideoId(
-      exactMuxRows
-        .map((row) => ({
-          videoId: row.videoId,
-          playbackId: row.muxVideo?.playbackId ?? null,
-        }))
-        .filter((row) => row.playbackId != null),
+      exactMuxRows.filter((row) => row.playbackId != null),
     )
     const fallbackMuxByVideoId = new Map<string, string | null>()
-    for (const video of fallbackMuxVideos) {
-      const primaryDub = video.primaryLanguageId
-        ? video.dubs.find((dub) => dub.languageId === video.primaryLanguageId)
-        : undefined
-      fallbackMuxByVideoId.set(
-        video.id,
-        primaryDub?.muxVideo?.playbackId ??
-          video.dubs[0]?.muxVideo?.playbackId ??
-          null,
-      )
+    for (const row of fallbackMuxRows) {
+      fallbackMuxByVideoId.set(row.videoId, row.playbackId)
     }
-    const rootPrimaryDuration = root.primaryLanguageId
-      ? rootDurationRows.find(
-          (dub) => dub.languageId === root.primaryLanguageId,
-        )
-      : undefined
     const durationByVideoId = new Map<string, number | null>()
-    durationByVideoId.set(
-      root.id,
-      rootPrimaryDuration?.duration ?? rootDurationRows[0]?.duration ?? null,
-    )
-    for (const video of childDurationVideos) {
-      const primaryDub = video.primaryLanguageId
-        ? video.dubs.find((dub) => dub.languageId === video.primaryLanguageId)
-        : undefined
-      durationByVideoId.set(
-        video.id,
-        primaryDub?.duration ?? video.dubs[0]?.duration ?? null,
-      )
+    for (const row of durationRows) {
+      durationByVideoId.set(row.videoId, row.duration)
     }
 
     const makeChild = (
@@ -1401,17 +1502,30 @@ export class VideoService {
       parentChildrenByParentId.set(relation.parentId, children)
     }
 
-    const preferredVideo = preferredFallbackVideos[0] ?? null
-    const preferredFallback = preferredVideo
-      ? preferredVideo.primaryLanguageId
-        ? (preferredVideo.dubs.find(
-            (dub) => dub.languageId === preferredVideo.primaryLanguageId,
-          ) ??
-          preferredVideo.dubs[0] ??
-          null)
-        : (preferredVideo.dubs[0] ?? null)
-      : null
     const preferredVariant = preferredExact ?? preferredFallback
+    const preferredVariantLanguage =
+      preferredVariant == null
+        ? null
+        : "language" in preferredVariant
+          ? preferredVariant.language
+            ? {
+                coreId: preferredVariant.language.coreId,
+                bcp47: preferredVariant.language.bcp47,
+                slug: preferredVariant.language.slug,
+                name: preferredVariant.language.name,
+              }
+            : null
+          : preferredVariant.languageCoreId == null &&
+              preferredVariant.languageBcp47 == null &&
+              preferredVariant.languageSlug == null &&
+              preferredVariant.languageName == null
+            ? null
+            : {
+                coreId: preferredVariant.languageCoreId,
+                bcp47: preferredVariant.languageBcp47,
+                slug: preferredVariant.languageSlug,
+                name: preferredVariant.languageName,
+              }
 
     return {
       documentId: root.id,
@@ -1470,14 +1584,7 @@ export class VideoService {
             published: preferredVariant.published,
             hls: preferredVariant.hls,
             duration: preferredVariant.duration,
-            language: preferredVariant.language
-              ? {
-                  coreId: preferredVariant.language.coreId,
-                  bcp47: preferredVariant.language.bcp47,
-                  slug: preferredVariant.language.slug,
-                  name: preferredVariant.language.name,
-                }
-              : null,
+            language: preferredVariantLanguage,
           }
         : null,
     }
