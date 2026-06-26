@@ -3,11 +3,11 @@
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import {
-  isWatchBlock,
   type MergedWatchBlock,
   type WatchBlock,
   type WatchStudyQuestionsBlock,
 } from "@/lib/content"
+import { isWatchBlock } from "@/lib/watch-blocks"
 import { ExperienceSectionRenderer } from "@/components/sections"
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"

@@ -87,7 +87,6 @@ vi.mock("@/lib/watch-interaction-loader", () => ({
   getCachedWatchLanguageOptions: () => null,
   loadWatchInteraction: vi.fn(async () => undefined),
   loadWatchLanguageOptionsForVideo: vi.fn(async () => []),
-  scheduleWatchInteractionWarmup: vi.fn(() => vi.fn()),
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"

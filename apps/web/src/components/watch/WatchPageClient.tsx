@@ -56,7 +56,7 @@ import type {
   WatchSiblingCarouselBlock,
   WatchSubtitle,
 } from "@/lib/content"
-import { isWatchBlock } from "@/lib/content"
+import { isWatchBlock } from "@/lib/watch-blocks"
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import {
@@ -80,7 +80,6 @@ import {
   getCachedWatchLanguageOptions,
   loadWatchInteraction,
   loadWatchLanguageOptionsForVideo,
-  scheduleWatchInteractionWarmup,
 } from "@/lib/watch-interaction-loader"
 
 function resolveSubtitleSlug(
@@ -535,10 +534,6 @@ export function WatchPageClient({
         ? { status: "ready", variants: cached }
         : { status: "idle", variants: [] },
     )
-  }, [videoSlug])
-
-  useEffect(() => {
-    return scheduleWatchInteractionWarmup({ videoSlug })
   }, [videoSlug])
 
   const loadLanguageOptions = useCallback(async () => {

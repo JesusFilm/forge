@@ -13,7 +13,6 @@ const {
   loadWatchInteractionMock,
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
-  scheduleWatchInteractionWarmupMock,
 } = vi.hoisted(() => ({
   checkDownloadSessionMock: vi.fn(),
   downloadModalProps: [] as unknown[],
@@ -21,7 +20,6 @@ const {
   loadWatchInteractionMock: vi.fn(async () => undefined),
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
-  scheduleWatchInteractionWarmupMock: vi.fn(() => vi.fn()),
 }))
 
 vi.mock("next/dynamic", () => {
@@ -122,7 +120,6 @@ vi.mock("@/lib/watch-interaction-loader", () => ({
   getCachedWatchLanguageOptions: () => null,
   loadWatchInteraction: loadWatchInteractionMock,
   loadWatchLanguageOptionsForVideo: loadWatchLanguageOptionsMock,
-  scheduleWatchInteractionWarmup: scheduleWatchInteractionWarmupMock,
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
@@ -146,7 +143,6 @@ beforeEach(() => {
   loadWatchInteractionMock.mockClear()
   loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
-  scheduleWatchInteractionWarmupMock.mockClear()
 })
 
 afterEach(() => {
@@ -212,9 +208,7 @@ describe("WatchPageClient download boundary", () => {
 
     expect(downloadModalProps).toHaveLength(0)
     expect(languageModalProps).toHaveLength(0)
-    expect(scheduleWatchInteractionWarmupMock).toHaveBeenCalledWith({
-      videoSlug: "jesus-is-brought-to-pilate",
-    })
+    expect(loadWatchInteractionMock).not.toHaveBeenCalled()
     const renderer = document.querySelector(
       '[data-testid="watch-section-renderer"]',
     )
