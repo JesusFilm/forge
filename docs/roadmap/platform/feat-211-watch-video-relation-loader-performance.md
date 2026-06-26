@@ -3,7 +3,7 @@ id: "feat-211"
 title: "Watch video relation loader performance"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-26"
 duration: 1
 depends_on:
@@ -55,3 +55,21 @@ selected-dub `jesus` request.
 - After deployment, re-run
   `pnpm --filter @forge/web probe:watch-video-snapshot --slug jesus --language-slug english --locale en --runs 3 --warmup 0`
   and inspect Datadog for reduced `Video.findUniqueOrThrow` fanout.
+
+## Completion Notes
+
+- Merged PR #1382 as `807ac371` and deployed Admin production deployment
+  `b4c659a7-cd81-41aa-9ae4-a9a343f51fc9`.
+- Healthcheck passed at `https://admin.jesusfilm.org/api/health`.
+- Alternating legacy/current probe after deploy:
+  - `jesus`, selected-dub projection: median `7729.1ms`, mean `8721.2ms`,
+    p95 `11276.2ms`, `264.2 KiB`.
+  - Baseline median was `9155.9ms`, so the alternating probe showed a
+    `15.6%` selected-dub median improvement.
+- Selected-only probe using the live web route-snapshot document:
+  - Runs: `6806.4ms`, `6907.1ms`, `5497.6ms`, `5767.7ms`, `8902.4ms`.
+  - Median: `6806.4ms`, a `25.7%` improvement from the `9155.9ms` baseline.
+- The page is still too slow. Datadog retained selected-only traces around
+  `6.9s-8.0s` plus a tail above `10s`; the next optimization should collapse
+  more of the Watch route snapshot into an Admin-owned projection or reduce the
+  sibling/localized-copy relation traversal itself.
