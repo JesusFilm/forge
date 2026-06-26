@@ -135,7 +135,10 @@ function buildHeroPlaybackFallbackHref(playbackId: string | undefined): string {
     : `#${HERO_PLAYER_MEDIA_ID}`
 }
 
-const IDLE_PREVIEW_FALLBACK_DELAY_MS = 1200
+// Keep automatic muted-preview activation out of the critical first-load
+// window. The poster is already the intentional LCP surface, and user intent
+// still activates the player synchronously through the click/pointer handlers.
+const IDLE_PREVIEW_FALLBACK_DELAY_MS = 8000
 const IDLE_PREVIEW_VIEWPORT_MARGIN_PX = 200
 
 type IdleWindow = Window & {
@@ -406,16 +409,17 @@ export function HeroPlayer({
 
     const scheduleIdleActivation = () => {
       if (cancelled || idleHandle != null || timeoutHandle != null) return
-      if (idleWindow.requestIdleCallback) {
-        idleHandle = idleWindow.requestIdleCallback(tryActivatePreview, {
-          timeout: IDLE_PREVIEW_FALLBACK_DELAY_MS,
-        })
-        return
-      }
-      timeoutHandle = window.setTimeout(
-        tryActivatePreview,
-        IDLE_PREVIEW_FALLBACK_DELAY_MS,
-      )
+      timeoutHandle = window.setTimeout(() => {
+        timeoutHandle = null
+        if (cancelled) return
+        if (idleWindow.requestIdleCallback) {
+          idleHandle = idleWindow.requestIdleCallback(tryActivatePreview, {
+            timeout: 1000,
+          })
+          return
+        }
+        tryActivatePreview()
+      }, IDLE_PREVIEW_FALLBACK_DELAY_MS)
     }
 
     const scheduleAfterLoad = () => {
