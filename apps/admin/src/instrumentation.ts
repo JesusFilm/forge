@@ -122,6 +122,11 @@ async function startWorkflowWorldWithTransientRetry(
 }
 
 export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { configureDatadog } = await import("@/observability/datadog")
+    configureDatadog()
+  }
+
   if (!shouldStartWorkflowWorld()) return
 
   await startWorkflowWorldWithTransientRetry()

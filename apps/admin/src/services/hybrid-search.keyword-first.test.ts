@@ -25,13 +25,27 @@ vi.mock("./hybrid-search-retrievers", () => ({
   searchExperienceKeyword: vi.fn(),
 }))
 
-vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
-  searchByKeywordWeighted: vi.fn(),
-  searchByTrigram: vi.fn(),
-  searchByExactTitle: vi.fn(),
-  MAX_EXACT_TITLE_TOKENS: 16,
-  tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
-}))
+vi.mock("./hybrid-search-keyword-first-retrievers", () => {
+  const searchByKeywordWeighted = vi.fn()
+  const searchByTrigram = vi.fn()
+  const searchByExactTitle = vi.fn()
+  const searchKeywordFirstVideoLexical = vi.fn(
+    async (prisma: unknown, params: unknown, timing: unknown) => ({
+      keywordWeighted: await searchByKeywordWeighted(prisma, params, timing),
+      trigram: await searchByTrigram(prisma, params, timing),
+      exactTitle: await searchByExactTitle(prisma, params, timing),
+    }),
+  )
+
+  return {
+    searchByKeywordWeighted,
+    searchByTrigram,
+    searchByExactTitle,
+    searchKeywordFirstVideoLexical,
+    MAX_EXACT_TITLE_TOKENS: 16,
+    tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
+  }
+})
 
 import {
   searchVideoSemantic,
@@ -195,7 +209,7 @@ describe("HybridSearchService keyword-first branch", () => {
       mode: "keyword-first",
     })
     await flushQueuedPromises()
-    await delayMs(40)
+    await delayMs(90)
 
     expect(searchByKeywordWeighted).toHaveBeenCalled()
     expect(searchByTrigram).toHaveBeenCalled()
@@ -205,8 +219,8 @@ describe("HybridSearchService keyword-first branch", () => {
     embedding.resolve([0.1, 0.2, 0.3])
     const traced = await searchPromise
 
-    expect(traced.timings.embeddingMs).toBeGreaterThanOrEqual(35)
-    expect(traced.timings.retrievalsMs).toBeGreaterThanOrEqual(15)
+    expect(traced.timings.embeddingMs).toBeGreaterThanOrEqual(85)
+    expect(traced.timings.retrievalsMs).toBeGreaterThanOrEqual(55)
     expect(traced.timings.retrievalsMs).toBeLessThan(traced.timings.embeddingMs)
     expect(traced.timings.retrievalWaitMs).toBeLessThan(
       traced.timings.embeddingMs / 2,
@@ -266,7 +280,7 @@ describe("HybridSearchService keyword-first branch", () => {
     expect(searchByExactTitle).not.toHaveBeenCalled()
   })
 
-  it("isolates per-retriever failures via Promise.allSettled (one rejected list = empty list, response still returns)", async () => {
+  it("isolates a lexical batch failure via Promise.allSettled while other retrievers still return", async () => {
     const loggerError = vi.fn()
     vi.mocked(searchByTrigram).mockRejectedValue(new Error("boom trigram"))
     vi.mocked(searchByKeywordWeighted).mockResolvedValue([
@@ -279,6 +293,21 @@ describe("HybridSearchService keyword-first branch", () => {
         imageUrl: null,
         description: "kw weighted survivor",
         rank: 0.7,
+      },
+    ])
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-semantic",
+        videoCoreId: null,
+        videoSlug: "semantic",
+        videoTitle: "Semantic",
+        imageUrl: null,
+        sceneDescription: "semantic survivor",
+        startSeconds: 0,
+        playbackId: null,
+        similarity: 0.8,
+        embeddingText: "[0.1,0.2,0.3]",
       },
     ])
 
@@ -295,9 +324,15 @@ describe("HybridSearchService keyword-first branch", () => {
     })
 
     expect(result.results).toHaveLength(1)
-    expect(result.results[0]!.id).toBe("vid-1")
+    expect(result.results[0]!.id).toBe("vid-semantic")
+    expect(loggerError).toHaveBeenCalledWith(
+      expect.stringContaining("keyword-weighted-video retrieval failed"),
+    )
     expect(loggerError).toHaveBeenCalledWith(
       expect.stringContaining("trigram-video retrieval failed"),
+    )
+    expect(loggerError).toHaveBeenCalledWith(
+      expect.stringContaining("exact-title-video retrieval failed"),
     )
   })
 
@@ -320,6 +355,21 @@ describe("HybridSearchService keyword-first branch", () => {
         imageUrl: null,
         description: "kw weighted survivor",
         rank: 0.7,
+      },
+    ])
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-semantic",
+        videoCoreId: null,
+        videoSlug: "semantic",
+        videoTitle: "Semantic",
+        imageUrl: null,
+        sceneDescription: "semantic survivor",
+        startSeconds: 0,
+        playbackId: null,
+        similarity: 0.8,
+        embeddingText: "[0.1,0.2,0.3]",
       },
     ])
 
@@ -347,9 +397,15 @@ describe("HybridSearchService keyword-first branch", () => {
       await flushQueuedPromises()
 
       expect(result.results).toHaveLength(1)
-      expect(result.results[0]!.id).toBe("vid-1")
+      expect(result.results[0]!.id).toBe("vid-semantic")
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining("keyword-weighted-video retrieval failed"),
+      )
       expect(loggerError).toHaveBeenCalledWith(
         expect.stringContaining("trigram-video retrieval failed"),
+      )
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining("exact-title-video retrieval failed"),
       )
       expect(unhandledRejections).toEqual([])
     } finally {

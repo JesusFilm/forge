@@ -13,6 +13,7 @@ import {
   MAX_EXACT_TITLE_TOKENS,
   searchByExactTitle,
   searchByKeywordWeighted,
+  searchKeywordFirstVideoLexical,
   searchByTrigram,
   tokenizeForExactTitle,
 } from "./hybrid-search-keyword-first-retrievers"
@@ -20,8 +21,11 @@ import { SearchTimingRecorder } from "./hybrid-search-timing"
 
 function mockPrisma() {
   const $queryRaw = vi.fn()
+  const tx = { $queryRaw }
+  const $transaction = vi.fn(async (run) => run(tx))
   return {
     $queryRaw,
+    $transaction,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
 }
@@ -413,5 +417,98 @@ describe("searchByExactTitle", () => {
     const callArgs = prisma.$queryRaw.mock.calls[0]
     const ilikeChain = callArgs[1] as { values: string[] }
     expect(ilikeChain.values).toEqual(["%the%", "%bible%"])
+  })
+})
+
+describe("searchKeywordFirstVideoLexical", () => {
+  let prisma: ReturnType<typeof mockPrisma>
+
+  beforeEach(() => {
+    prisma = mockPrisma()
+  })
+
+  it("runs all three lexical retrievers inside one transaction", async () => {
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          video_id: "vid-kw",
+          video_core_id: "core-kw",
+          video_slug: "kw",
+          video_title: "Keyword",
+          description: "keyword result",
+          rank: 0.7,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          video_id: "vid-trgm",
+          video_core_id: "core-trgm",
+          video_slug: "trgm",
+          video_title: "Trigram",
+          description: "trigram result",
+          similarity: 0.5,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          video_id: "vid-exact",
+          video_core_id: "core-exact",
+          video_slug: "exact",
+          video_title: "Exact",
+          description: "exact result",
+          title_length: 5,
+        },
+      ])
+    const timing = new SearchTimingRecorder()
+
+    const result = await searchKeywordFirstVideoLexical(
+      prisma,
+      {
+        query: "the bible project",
+        locale: "en",
+        limit: 10,
+      },
+      timing,
+    )
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      maxWait: 5_000,
+      timeout: 20_000,
+    })
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(3)
+    expect(result.keywordWeighted[0]).toMatchObject({
+      resultId: "vid-kw",
+      rank: 0.7,
+    })
+    expect(result.trigram[0]).toMatchObject({
+      resultId: "vid-trgm",
+      similarity: 0.5,
+    })
+    expect(result.exactTitle[0]).toMatchObject({
+      resultId: "vid-exact",
+      titleLength: 5,
+    })
+    expect(timing.snapshotDbTimings().map((row) => row.label)).toEqual([
+      "keyword-weighted-video.query",
+      "trigram-video.query",
+      "exact-title-video.query",
+    ])
+  })
+
+  it("short-circuits whitespace-only input before opening a transaction", async () => {
+    await expect(
+      searchKeywordFirstVideoLexical(prisma, {
+        query: "   ",
+        locale: "en",
+        limit: 10,
+      }),
+    ).resolves.toEqual({
+      keywordWeighted: [],
+      trigram: [],
+      exactTitle: [],
+    })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(prisma.$queryRaw).not.toHaveBeenCalled()
   })
 })
