@@ -1,7 +1,7 @@
 ---
 id: feat-212
 title: Clamp Watch single-video GraphQL DB latency with targeted indexes
-status: in-progress
+status: complete
 lane: platform
 depends_on:
   - feat-211
@@ -48,3 +48,12 @@ Prisma/Postgres work:
 4. If p50 remains above 2s, follow with a purpose-built Watch snapshot resolver
    to collapse the remaining relation fanout instead of relying on nested
    Pothos relation resolution.
+
+## Outcome
+
+Merged and deployed on 2026-06-26. The indexes exist in production, but the
+post-deploy probe still measured the selected Watch snapshot around 7.6s
+median with p95 above 13s. Datadog showed the worst `video_dub` spans improved
+from the prior ~6.45s outlier, but the route remained dominated by nested
+`Video.findUniqueOrThrow` / relation fanout. Follow-up work moves to
+`feat-213`.
