@@ -23,6 +23,7 @@ import {
 } from "@/lib/fragments"
 import { slugToBcp47Tag } from "@/lib/locale"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import { isWatchBlock } from "@/lib/watch-blocks"
 
 // Keep gql.tada introspection types live for the watch-page fragments.
 void watchVideoShellFragment
@@ -2439,14 +2440,7 @@ function blockSlot(block: MergedWatchBlock): WatchSlotKey | null {
   return null
 }
 
-/**
- * Type guard distinguishing synthetic watch blocks from Experience blocks.
- * Synthetic blocks carry a `kind` discriminator; Experience blocks carry
- * `__typename`.
- */
-export function isWatchBlock(block: MergedWatchBlock): block is WatchBlock {
-  return "kind" in block
-}
+export { isWatchBlock } from "@/lib/watch-blocks"
 
 // Merge -----------------------------------------------------------------------
 
