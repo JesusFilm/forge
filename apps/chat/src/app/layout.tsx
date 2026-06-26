@@ -5,8 +5,7 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: "Forge Chat",
-  description:
-    "Chat UI scaffold for the Forge Mastra agents. Stub-only — no agent is connected yet.",
+  description: "Chat UI for the Forge Mastra agents (jesusfilm.ai).",
 }
 
 export const viewport: Viewport = {

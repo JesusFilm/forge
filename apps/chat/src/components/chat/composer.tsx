@@ -6,6 +6,7 @@ type ComposerProps = {
   draft: string
   pending: boolean
   placeholder: string
+  seekerEnabled?: boolean
   onChange: (value: string) => void
   onSend: (text: string) => void
 }
@@ -16,6 +17,7 @@ export function Composer({
   draft,
   pending,
   placeholder,
+  seekerEnabled = false,
   onChange,
   onSend,
 }: ComposerProps) {
@@ -79,7 +81,11 @@ export function Composer({
       </div>
       <div className="mt-2.5 flex items-center justify-between border-t border-linen/5 pt-2.5 text-xs text-ash">
         <span>Enter to send · Shift + Enter for a new line</span>
-        <span>Stub — no agent connected</span>
+        <span>
+          {seekerEnabled
+            ? "Seeker — grounded answers"
+            : "Stub — no agent connected"}
+        </span>
       </div>
     </form>
   )

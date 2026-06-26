@@ -12,6 +12,8 @@ type ChatProps = {
   conversation: Conversation
   draft: string
   pending: boolean
+  streamingMessageId: string | null
+  seekerEnabled?: boolean
   onDraftChange: (value: string) => void
   onSend: (text: string) => void
 }
@@ -23,6 +25,8 @@ export function Chat({
   conversation,
   draft,
   pending,
+  streamingMessageId,
+  seekerEnabled = false,
   onDraftChange,
   onSend,
 }: ChatProps) {
@@ -45,9 +49,12 @@ export function Chat({
       >
         <div className="mx-auto w-full max-w-[680px] pb-10">
           {isEmpty ? (
-            <EmptyState onPick={onSend} />
+            <EmptyState onPick={onSend} seekerEnabled={seekerEnabled} />
           ) : (
-            <MessageList messages={conversation.messages} pending={pending} />
+            <MessageList
+              messages={conversation.messages}
+              streamingMessageId={streamingMessageId}
+            />
           )}
         </div>
       </div>
@@ -59,6 +66,7 @@ export function Chat({
           <Composer
             draft={draft}
             pending={pending}
+            seekerEnabled={seekerEnabled}
             placeholder={
               isEmpty
                 ? "Scripture, doubt, prayer, next steps — ask anything."

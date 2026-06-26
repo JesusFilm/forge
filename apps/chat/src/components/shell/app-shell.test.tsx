@@ -1,10 +1,17 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import * as chatStub from "@/lib/chat-stub"
 import { buildStubReply, STUB_REPLY_DELAY_MS } from "@/lib/chat-stub"
 import { deriveTitle } from "@/lib/conversations"
+import { encodeSseFrame } from "@/lib/sse"
 
 import { AppShell } from "./app-shell"
 
@@ -12,18 +19,27 @@ let user: UserEvent
 let view: ReturnType<typeof render>
 let container: HTMLElement
 
+// Render the shell with a given flag value and capture the view/container. The
+// outer beforeEach renders flag-off (the stub path); Seeker-path tests unmount
+// that and re-render flag-on after stubbing fetch.
+function renderShell(seekerEnabled = false) {
+  view = render(<AppShell seekerEnabled={seekerEnabled} />)
+  container = view.container
+}
+
 beforeEach(() => {
-  // shouldAdvanceTime lets user-event's awaited interactions resolve (a plain
-  // fake clock hangs them); awaitReply() still jumps the 800ms reply timer
-  // deterministically. cleanup() (vitest.setup.ts) unmounts after each test.
+  // shouldAdvanceTime lets user-event's awaited interactions resolve AND lets
+  // real microtasks flow, so the promise-driven streaming seam settles under the
+  // fake clock (the stub path's 800ms timer is jumped by awaitReply). cleanup()
+  // (vitest.setup.ts) unmounts after each test.
   vi.useFakeTimers({ shouldAdvanceTime: true })
   user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  view = render(<AppShell />)
-  container = view.container
+  renderShell(false)
 })
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 function getTextarea(): HTMLTextAreaElement {
@@ -42,21 +58,18 @@ function getConversationNav(): HTMLElement {
   return screen.getByRole("navigation", { name: "Conversations" })
 }
 
-// Scope message reads to the conversation log so sidebar rows (also listitems)
-// never leak in. The pending turn is a listitem too (as the old querySelectorAll
-// "li" was), so exact-count assertions run after awaitReply(), never mid-pending.
+// Read only the answer text of each turn (the [data-message-content] node), so
+// the engine marker / grounded badge / sources metadata never leak into counts.
 function messageTexts(): string[] {
-  return within(getLog())
-    .queryAllByRole("listitem")
-    .map((li) => li.textContent ?? "")
+  return Array.from(getLog().querySelectorAll("[data-message-content]")).map(
+    (el) => el.textContent ?? "",
+  )
 }
 
 function isPending(): boolean {
   return getLog().querySelector("[data-pending]") !== null
 }
 
-// The "New conversation" action and a default-titled conversation row share the
-// same accessible name; the action is the one outside the conversation nav.
 function getNewConversationAction(): HTMLButtonElement {
   const nav = getConversationNav()
   const action = screen
@@ -66,7 +79,6 @@ function getNewConversationAction(): HTMLButtonElement {
   return action as HTMLButtonElement
 }
 
-// How many sidebar rows show the per-conversation "replying" pulse.
 function sidebarReplyingCount(): number {
   return getConversationNav().querySelectorAll("[data-replying]").length
 }
@@ -76,9 +88,11 @@ async function sendMessage(text: string) {
   await user.click(getSendButton())
 }
 
-function awaitReply() {
-  act(() => {
-    vi.advanceTimersByTime(STUB_REPLY_DELAY_MS)
+// Jump the stub reply's 800ms timer AND flush the microtasks the streaming seam
+// resolves on (the reply now lands via an awaited promise, not a sync callback).
+async function awaitReply() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(STUB_REPLY_DELAY_MS)
   })
 }
 
@@ -86,15 +100,48 @@ async function clickNewConversation() {
   await user.click(getNewConversationAction())
 }
 
-// Click a conversation in the rail by its visible title. Scoped to the nav so
-// the "New conversation" action is never matched.
 async function selectSidebarConversation(title: string) {
   await user.click(
     within(getConversationNav()).getByRole("button", { name: title }),
   )
 }
 
-describe("AppShell", () => {
+// ---------------------------------------------------------------------------
+// Seeker-path helpers (flag on): a mocked fetch returning an SSE Response.
+// ---------------------------------------------------------------------------
+
+type Frame = { event: string; data: unknown }
+
+function sseResponse(frames: Frame[], init?: ResponseInit): Response {
+  const encoder = new TextEncoder()
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const f of frames) {
+        controller.enqueue(encoder.encode(encodeSseFrame(f.event, f.data)))
+      }
+      controller.close()
+    },
+  })
+  return new Response(body, { status: 200, ...init })
+}
+
+// Stub global fetch (the hook calls streamReply with no fetchImpl → global
+// fetch), render flag-on, and return the mock. `framesFor` is called per request
+// so each turn gets a fresh, un-consumed stream.
+function renderSeeker(framesFor: () => Frame[] | { reject: true } = () => []) {
+  view.unmount()
+  const fetchMock = vi.fn().mockImplementation(() => {
+    const out = framesFor()
+    if (!Array.isArray(out) && out.reject)
+      return Promise.reject(new Error("down"))
+    return Promise.resolve(sseResponse(out as Frame[]))
+  })
+  vi.stubGlobal("fetch", fetchMock)
+  renderShell(true)
+  return fetchMock
+}
+
+describe("AppShell — reply lifecycle (stub path, flag off)", () => {
   it("renders the empty-state prompt and stub note when no messages exist", () => {
     expect(container).toHaveTextContent("What would you like to ask?")
     expect(container).toHaveTextContent("no agent is connected yet")
@@ -113,7 +160,7 @@ describe("AppShell", () => {
     expect(getTextarea()).toBeDisabled()
     expect(getSendButton()).toBeDisabled()
 
-    awaitReply()
+    await awaitReply()
 
     expect(isPending()).toBe(false)
     expect(getTextarea()).toBeEnabled()
@@ -122,7 +169,7 @@ describe("AppShell", () => {
 
   it("replies with exactly buildStubReply of the sent text", async () => {
     await sendMessage("what is this?")
-    awaitReply()
+    await awaitReply()
     expect(messageTexts()[1]).toBe(buildStubReply("what is this?"))
   })
 
@@ -136,8 +183,6 @@ describe("AppShell", () => {
 
   it("treats whitespace-only submit as a no-op", async () => {
     await user.type(getTextarea(), "   ")
-    // Enter bypasses the disabled send button, so this exercises the hook's
-    // whitespace guard rather than the button's disabled state.
     await user.keyboard("{Enter}")
     expect(messageTexts()).toHaveLength(0)
     expect(container).toHaveTextContent("What would you like to ask?")
@@ -145,14 +190,12 @@ describe("AppShell", () => {
 
   it("ignores a rapid double-submit before re-render", async () => {
     await user.type(getTextarea(), "once")
-    // Two synchronous submits in one render cycle — the double-send guard must
-    // collapse them to one message (awaited user.click would re-render between and
-    // dissolve the test). The form has no role/name, so query it from container.
     const form = container.querySelector("form")
     if (!form) throw new Error("form not found")
     fireEvent.submit(form)
     fireEvent.submit(form)
-    awaitReply()
+    await awaitReply()
+    // One user turn + one assistant turn — the double-send guard collapsed them.
     expect(messageTexts()).toHaveLength(2)
   })
 
@@ -160,11 +203,8 @@ describe("AppShell", () => {
     await user.type(getTextarea(), "enter sends{Enter}")
     expect(messageTexts()).toContain("enter sends")
 
-    awaitReply()
+    await awaitReply()
 
-    // Shift+Enter inserts a newline instead of sending — user-event simulates
-    // the native newline the old synthetic dispatch could not, so the retained
-    // draft now carries the "\n".
     await user.type(getTextarea(), "no send")
     await user.keyboard("{Shift>}{Enter}{/Shift}")
     expect(messageTexts()).not.toContain("no send")
@@ -176,25 +216,24 @@ describe("AppShell", () => {
     expect(getTextarea()).toHaveValue("")
   })
 
-  it("cleans up the pending timer on unmount without state-update warnings", async () => {
+  it("aborts the in-flight stream on unmount without state-update warnings", async () => {
     const errorSpy = vi.spyOn(console, "error")
 
     await sendMessage("unmount race")
     view.unmount()
-    act(() => {
-      vi.runAllTimers()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(STUB_REPLY_DELAY_MS)
     })
 
-    expect(vi.getTimerCount()).toBe(0)
     expect(errorSpy).not.toHaveBeenCalled()
     errorSpy.mockRestore()
   })
 
   it("keeps history append-only with alternating roles across exchanges", async () => {
     await sendMessage("first")
-    awaitReply()
+    await awaitReply()
     await sendMessage("second")
-    awaitReply()
+    await awaitReply()
 
     const texts = messageTexts()
     expect(texts).toHaveLength(4)
@@ -216,12 +255,11 @@ describe("AppShell", () => {
 
   it("starts a fresh empty conversation from the New conversation action", async () => {
     await sendMessage("keep me")
-    awaitReply()
+    await awaitReply()
     expect(messageTexts()).toHaveLength(2)
 
     await clickNewConversation()
 
-    // New active conversation is empty again; the old one still lives in the rail.
     expect(messageTexts()).toHaveLength(0)
     expect(container).toHaveTextContent("What would you like to ask?")
     expect(container).toHaveTextContent("keep me")
@@ -229,31 +267,25 @@ describe("AppShell", () => {
 
   it("auto-titles the prior conversation in the rail from its first message", async () => {
     await sendMessage("keep me titled")
-    awaitReply()
+    await awaitReply()
 
     const titles = within(getConversationNav())
       .getAllByRole("button")
       .map((b) => b.textContent ?? "")
-    // Explicit: the rail row shows the derived title, not the default
-    // "New conversation" placeholder (the message-list text is excluded
-    // because we only read the sidebar nav).
     expect(titles).toContain(deriveTitle("keep me titled"))
     expect(titles).not.toContain("New conversation")
   })
 
   it("keeps a reply routed to its originating conversation when the user switches mid-reply", async () => {
     await sendMessage("question in A")
-    // Switch to a fresh conversation before A's stub reply fires.
     await clickNewConversation()
 
-    // The new conversation is genuinely idle: empty, not pending, composer live.
     expect(messageTexts()).toHaveLength(0)
     expect(isPending()).toBe(false)
     expect(getTextarea()).toBeEnabled()
 
-    awaitReply()
+    await awaitReply()
 
-    // The reply landed in A, not the conversation that was active when it fired.
     await selectSidebarConversation(deriveTitle("question in A"))
     const texts = messageTexts()
     expect(texts).toHaveLength(2)
@@ -266,29 +298,25 @@ describe("AppShell", () => {
     expect(sidebarReplyingCount()).toBe(1)
 
     await clickNewConversation()
-    // Active pane (the new, empty conversation) shows no pending cursor...
     expect(isPending()).toBe(false)
     expect(getTextarea()).toBeEnabled()
-    // ...but the rail still marks the original conversation as replying.
     expect(sidebarReplyingCount()).toBe(1)
 
-    awaitReply()
+    await awaitReply()
     expect(sidebarReplyingCount()).toBe(0)
   })
 
   it("allows sending in a second conversation while the first is still pending", async () => {
     await sendMessage("alpha")
     await clickNewConversation()
-    // This send must NOT be swallowed by a cross-conversation lock.
     await sendMessage("beta")
 
     expect(messageTexts()).toContain("beta")
     expect(sidebarReplyingCount()).toBe(2)
 
-    awaitReply()
+    await awaitReply()
     expect(sidebarReplyingCount()).toBe(0)
 
-    // Each reply landed in its own conversation.
     expect(messageTexts()).toEqual(["beta", buildStubReply("beta")])
     await selectSidebarConversation(deriveTitle("alpha"))
     expect(messageTexts()).toEqual(["alpha", buildStubReply("alpha")])
@@ -296,53 +324,231 @@ describe("AppShell", () => {
 
   it("restores a prior conversation's messages when reselected from the rail", async () => {
     await sendMessage("conv one")
-    awaitReply()
+    await awaitReply()
     await clickNewConversation()
     await sendMessage("conv two")
-    awaitReply()
+    await awaitReply()
 
     await selectSidebarConversation(deriveTitle("conv one"))
     expect(messageTexts()).toEqual(["conv one", buildStubReply("conv one")])
   })
 
-  it("releases the pending slot when reply generation throws, so the conversation can send again", async () => {
-    // Latent with the pure stub, but this is the slot-leak guard that matters
-    // once the real (rejectable) Mastra call replaces buildStubReply: the
-    // finally must clear the timer/pending slot even on a throw.
-    const spy = vi
-      .spyOn(chatStub, "buildStubReply")
-      .mockImplementationOnce(() => {
-        throw new Error("reply boom")
-      })
-
-    await sendMessage("trigger throw")
-    expect(isPending()).toBe(true)
-
-    // The thrown reply propagates out of the timer, but the finally already
-    // ran clearTimer, freeing the per-conversation slot.
-    expect(() => awaitReply()).toThrow("reply boom")
-
-    // The throw escaped before React committed the slot-release re-render;
-    // flush it so the composer reflects the cleared (enabled) state.
-    act(() => {})
-    expect(getTextarea()).toBeEnabled()
-
-    // Proof the slot was released: a fresh send is accepted (not swallowed by
-    // the double-send guard) and resolves cleanly, leaving the pane idle.
-    spy.mockRestore()
-    await sendMessage("after throw")
-    expect(messageTexts()).toContain("after throw")
-    awaitReply()
-    expect(isPending()).toBe(false)
-    expect(getTextarea()).toBeEnabled()
-  })
-
   it("treats reselecting the active conversation as a no-op and keeps the draft", async () => {
-    // The sole conversation starts active with the default title. Reselecting
-    // it must hit the early-return guard (no draft reset).
     await user.type(getTextarea(), "draft in progress")
     await selectSidebarConversation("New conversation")
     expect(getTextarea()).toHaveValue("draft in progress")
+  })
+
+  it("marks stub turns with the Stub engine marker (AE8 — never unmarked)", async () => {
+    await sendMessage("stub turn")
+    await awaitReply()
+    expect(getLog().querySelector('[data-engine="stub"]')).not.toBeNull()
+    expect(getLog().querySelector('[data-engine="seeker"]')).toBeNull()
+  })
+})
+
+describe("Seeker wiring (flag on)", () => {
+  it("flag on: empty-state + composer copy name Seeker, not the stub", () => {
+    renderSeeker(() => [])
+    expect(container).toHaveTextContent("Answers come from Seeker")
+    expect(container).toHaveTextContent("Seeker — grounded answers")
+    expect(container).not.toHaveTextContent("no agent is connected yet")
+  })
+
+  // AE1
+  it("flag OFF makes no fetch (the stub path never reaches Mastra)", async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    // already rendered flag-off in the outer beforeEach
+    await sendMessage("offline")
+    await awaitReply()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(messageTexts()[1]).toBe(buildStubReply("offline"))
+  })
+
+  // AE2
+  it("streams tokens then renders final text, a sources list, and a grounded indicator", async () => {
+    renderSeeker(() => [
+      { event: "token_delta", data: { text: "Jesus " } },
+      { event: "token_delta", data: { text: "wept." } },
+      {
+        event: "result",
+        data: {
+          text: "Jesus wept.",
+          grounded: true,
+          sources: [
+            {
+              sourceName: "John",
+              title: "John 11:35",
+              url: "https://bible.example/john-11-35",
+              score: 0.99,
+              snippet: "the shortest verse",
+            },
+          ],
+        },
+      },
+    ])
+    await sendMessage("shortest verse?")
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    expect(messageTexts()).toContain("Jesus wept.")
+    expect(getLog().querySelector('[data-grounded="cited"]')).not.toBeNull()
+    expect(
+      within(getLog()).getByRole("link", { name: /John 11:35/ }),
+    ).toHaveAttribute("href", "https://bible.example/john-11-35")
+    expect(getLog().querySelector('[data-engine="seeker"]')).not.toBeNull()
+  })
+
+  // AE3
+  it("forwards the same threadId across turns in one conversation", async () => {
+    const fetchMock = renderSeeker(() => [
+      { event: "result", data: { text: "ok", grounded: false, sources: [] } },
+    ])
+    await sendMessage("first turn")
+    await waitFor(() => expect(isPending()).toBe(false))
+    await sendMessage("second turn")
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const firstBody = JSON.parse(fetchMock.mock.calls[0][1].body)
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(firstBody.conversationId).toBe(secondBody.conversationId)
+  })
+
+  // AE4
+  it("renders a distinct timeout message (not a generic network error)", async () => {
+    renderSeeker(() => [{ event: "error", data: { reason: "timeout" } }])
+    await sendMessage("slow one")
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    const alert = within(getLog()).getByRole("alert")
+    expect(alert).toHaveTextContent(/timed out/i)
+    expect(getTextarea()).toBeEnabled()
+  })
+
+  // AE5
+  it("keeps partial text and re-enables the composer on a mid-stream error", async () => {
+    renderSeeker(() => [
+      { event: "token_delta", data: { text: "partial answer" } },
+      { event: "error", data: { reason: "generation_failed" } },
+    ])
+    await sendMessage("interrupt me")
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    expect(messageTexts()).toContain("partial answer")
+    expect(within(getLog()).getByRole("alert")).toBeInTheDocument()
+    expect(getTextarea()).toBeEnabled()
+    // The per-conversation slot is released on the error path (not just the
+    // composer re-enabled) — guards against a leaked in-flight AbortController.
+    expect(sidebarReplyingCount()).toBe(0)
+  })
+
+  // AE6
+  it("surfaces a visible failure on 401/auth_failed rather than silently re-enabling", async () => {
+    renderSeeker(() => [{ event: "error", data: { reason: "auth_failed" } }])
+    await sendMessage("who am i")
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    expect(within(getLog()).getByRole("alert")).toBeInTheDocument()
+    expect(getTextarea()).toBeEnabled()
+    expect(sidebarReplyingCount()).toBe(0)
+  })
+
+  // AE6 variant — transport failure (fetch rejects) is also visible.
+  it("surfaces a visible failure when the fetch rejects, and can send again", async () => {
+    let reject = true
+    renderSeeker(() => (reject ? { reject: true } : []))
+    await sendMessage("drop me")
+    await waitFor(() => expect(isPending()).toBe(false))
+    expect(within(getLog()).getByRole("alert")).toBeInTheDocument()
+    expect(getTextarea()).toBeEnabled()
+
+    // Slot released → a fresh send is accepted.
+    reject = false
+    await sendMessage("try again")
+    expect(messageTexts()).toContain("try again")
+  })
+
+  // AE7
+  it("renders 'No sources cited' and a distinct grounded-no-citations badge", async () => {
+    renderSeeker(() => [
+      {
+        event: "result",
+        data: { text: "grounded but uncited", grounded: true, sources: [] },
+      },
+    ])
+    await sendMessage("any sources?")
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    expect(within(getLog()).getByText("No sources cited")).toBeInTheDocument()
+    expect(
+      getLog().querySelector('[data-grounded="no-citations"]'),
+    ).not.toBeNull()
+    expect(getLog().querySelector('[data-grounded="cited"]')).toBeNull()
+  })
+
+  // AE8
+  it("marks Seeker turns with the Seeker engine marker", async () => {
+    renderSeeker(() => [
+      {
+        event: "result",
+        data: { text: "from seeker", grounded: false, sources: [] },
+      },
+    ])
+    await sendMessage("who answered")
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    expect(getLog().querySelector('[data-engine="seeker"]')).not.toBeNull()
+    expect(getLog().querySelector('[data-engine="stub"]')).toBeNull()
+  })
+
+  it("renders an ungrounded badge when grounded is false", async () => {
+    renderSeeker(() => [
+      {
+        event: "result",
+        data: { text: "no grounding", grounded: false, sources: [] },
+      },
+    ])
+    await sendMessage("ungrounded?")
+    await waitFor(() => expect(isPending()).toBe(false))
+    expect(
+      getLog().querySelector('[data-grounded="ungrounded"]'),
+    ).not.toBeNull()
+  })
+
+  it("aborts the in-flight Seeker stream on unmount without state-update warnings", async () => {
+    const errorSpy = vi.spyOn(console, "error")
+    let fetchSignal: AbortSignal | undefined
+    // A stream that stays open and idle, erroring its body on abort (mirroring
+    // real fetch) so the unmount-driven abort is what unwinds it.
+    const fetchMock = vi.fn().mockImplementation((_url, init) => {
+      fetchSignal = (init as { signal?: AbortSignal }).signal
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          fetchSignal?.addEventListener("abort", () => {
+            try {
+              controller.error(new DOMException("aborted", "AbortError"))
+            } catch {
+              // already errored
+            }
+          })
+        },
+      })
+      return Promise.resolve(new Response(body, { status: 200 }))
+    })
+    view.unmount()
+    vi.stubGlobal("fetch", fetchMock)
+    renderShell(true)
+
+    await sendMessage("unmount mid-stream")
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    view.unmount()
+
+    // Unmount aborts the in-flight fetch (resource cleanup) and the post-abort
+    // resolution fires no setState-after-unmount warning.
+    await waitFor(() => expect(fetchSignal?.aborted).toBe(true))
+    expect(errorSpy).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 })
 
@@ -385,7 +591,6 @@ describe("Sidebar shell", () => {
     await user.click(
       within(aside).getByRole("button", { name: "Collapse sidebar" }),
     )
-    // Collapsed: the in-rail expand affordance appears; collapse toggle is gone.
     expect(
       within(aside).getByRole("button", { name: "Open sidebar" }),
     ).toBeInTheDocument()
@@ -417,7 +622,6 @@ describe("Sidebar shell", () => {
     expect(
       within(getMain()).getByRole("button", { name: "Open menu" }),
     ).toHaveAttribute("aria-expanded", "true")
-    // Open drawer carries dialog semantics; the desktop rail does not.
     expect(getAside()).toHaveAttribute("role", "dialog")
 
     await user.click(
@@ -443,7 +647,6 @@ describe("Sidebar shell", () => {
     )
     expect(drawerOpen()).toBe(true)
 
-    // The scrim is the aria-hidden sibling of the aside carrying onCloseMobile.
     const scrim = container.querySelector<HTMLElement>(
       'div[aria-hidden="true"]',
     )
@@ -463,10 +666,8 @@ describe("Sidebar shell", () => {
   })
 
   it("navigates and closes the drawer when a non-active conversation is selected", async () => {
-    // Two conversations so the selection actually changes the active one
-    // (clicking the already-active row early-returns and proves nothing).
     await sendMessage("first conversation")
-    awaitReply()
+    await awaitReply()
     await clickNewConversation()
 
     await user.click(
@@ -511,8 +712,6 @@ describe("Sidebar shell", () => {
   })
 
   it("moves focus to the close button when the mobile drawer opens", async () => {
-    // Open direction is jsdom-testable; focus *restore* on close depends on a
-    // visibility guard jsdom can't represent (no layout), so it's browser-verified.
     await user.click(
       within(getMain()).getByRole("button", { name: "Open menu" }),
     )
