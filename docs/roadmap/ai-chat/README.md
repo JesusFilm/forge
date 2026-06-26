@@ -14,10 +14,10 @@ from the main DS Year 1 roadmap.
 ## Status (June 26, 2026)
 
 - **Total tickets:** 12
-- ✅ **Complete:** 7
-- 🟡 **In progress:** 1
-- 🔵 **Not started:** 1
-- 🔴 **Blocked:** 3
+- ✅ **Complete:** 8
+- 🟡 **In progress:** 0
+- 🔵 **Not started:** 3
+- 🔴 **Blocked:** 1
 
 ## Feature Index
 
@@ -30,8 +30,8 @@ from the main DS Year 1 roadmap.
 | [feat-202](feat-202-seeker-rag-runtime-hardening.md)         | Seeker RAG runtime hardening                                | jian wei | P2       | 2026-06-18 | 2    | 🔵 not-started | —       |
 | [feat-203](feat-203-chat-sidebar-component-extraction.md)    | Chat sidebar component + behavior extraction                | jian wei | P2       | 2026-07-01 | 2    | ✅ complete    | #1368   |
 | [feat-204](feat-204-expose-seeker-mastra-service-route.md)   | Expose Seeker agent via internal Mastra SSE service route   | jian wei | P2       | 2026-06-24 | 3    | ✅ complete    | #1371   |
-| [feat-205](feat-205-chat-wire-seeker-route.md)               | Wire chat app to the Seeker Mastra route                    | jian wei | P1       | 2026-06-27 | 3    | 🟡 in-progress | —       |
+| [feat-205](feat-205-chat-wire-seeker-route.md)               | Wire chat app to the Seeker Mastra route                    | jian wei | P1       | 2026-06-27 | 3    | ✅ complete    | #TBD    |
 | [feat-206](feat-206-chat-introduce-react-testing-library.md) | Introduce React Testing Library to the chat app             | jian wei | P2       | 2026-07-03 | 2    | ✅ complete    | #1372   |
-| [feat-207](feat-207-chat-auth.md)                            | Chat app authentication                                     | jian wei | P1       | 2026-07-07 | 5    | 🔴 blocked     | —       |
-| [feat-208](feat-208-seeker-postgres-memory.md)               | Postgres-persisted Seeker memory + conversation persistence | jian wei | P2       | 2026-07-10 | 5    | 🔴 blocked     | —       |
+| [feat-207](feat-207-chat-auth.md)                            | Chat app authentication                                     | jian wei | P1       | 2026-07-07 | 5    | 🔵 not-started | —       |
+| [feat-208](feat-208-seeker-postgres-memory.md)               | Postgres-persisted Seeker memory + conversation persistence | jian wei | P2       | 2026-07-10 | 5    | 🔵 not-started | —       |
 | [feat-209](feat-209-chat-per-conversation-urls.md)           | Per-conversation URLs + sidebar history                     | jian wei | P2       | 2026-07-15 | 3    | 🔴 blocked     | —       |

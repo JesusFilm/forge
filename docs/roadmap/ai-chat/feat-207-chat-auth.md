@@ -3,7 +3,7 @@ id: "feat-207"
 title: "Chat app authentication"
 owner: "jian wei"
 priority: "P1"
-status: "blocked"
+status: "not-started"
 start_date: "2026-07-07"
 duration: 5
 depends_on:
