@@ -49,6 +49,7 @@ function NavCard({ item }: { item: NavItem }) {
           source={imageSource}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          contentPosition="top left"
           recyclingKey={`nav-${item.id}`}
         />
       )}

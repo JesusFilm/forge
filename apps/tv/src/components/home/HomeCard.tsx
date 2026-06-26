@@ -1,4 +1,4 @@
-// One Home rail card: 16:9 thumb + metaLabel chip, fixed width (exported for
+// One Home rail card: 2.13:1 thumb + metaLabel chip, fixed width (exported for
 // HomeRail's getItemLayout). Focus = white ring overlay + shadow on a separate
 // overflow-visible wrapper. onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
 
@@ -27,7 +27,8 @@ import {
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
-export const HOME_CARD_THUMB_HEIGHT = scale(225) // 16:9 of the width
+// 32:15 (2.13:1) of the 400 width — matches the cinematic source art (400×15/32).
+export const HOME_CARD_THUMB_HEIGHT = scale(187.5)
 
 // Android runs the focus tween on the native driver (off the JS thread, the
 // D-pad-move bottleneck on the weak SoC) and drops the JS shadow + hairline.
@@ -140,6 +141,7 @@ export const HomeCard = memo(function HomeCard({
                   source={{ uri: imageUrl }}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
+                  contentPosition="top left"
                   recyclingKey={`home-card-${card.id}`}
                   // Android only: de-prioritize decodes so they don't saturate
                   // the queue ahead of the focused card; memory-disk makes

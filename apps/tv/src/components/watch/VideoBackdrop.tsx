@@ -184,6 +184,7 @@ export function VideoBackdrop({
           source={{ uri: posterUrl }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          contentPosition="top left"
           recyclingKey={`backdrop-${posterUrl}`}
         />
       ) : (

@@ -91,5 +91,9 @@ const styles = StyleSheet.create({
     gap: scale(LINEAR_KEY_GAP),
     alignItems: "center",
     justifyContent: "space-between",
+    // Slack so the 1.1x focus pop isn't clipped by the ScrollView frame
+    // (space-between pins the end keys flush to the content edges).
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(16),
   },
 })

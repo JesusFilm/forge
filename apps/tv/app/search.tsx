@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   stackedBody: {
     flex: 1,
     paddingTop: scale(14),
-    gap: scale(14),
+    gap: scale(8),
   },
   // Left column sized to the keyboard's intrinsic width (it is
   // alignItems:flex-start internally).

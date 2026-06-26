@@ -15,7 +15,7 @@ import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CARD_WIDTH = scale(320)
-const CARD_HEIGHT = scale(180)
+const CARD_HEIGHT = scale(150) // 32:15 (2.13:1) of the 320 width — cinematic art
 const CARD_GAP = scale(24)
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -62,6 +62,7 @@ function VideoCarouselCard({
             source={thumbnailUrl}
             style={styles.thumbnail}
             contentFit="cover"
+            contentPosition="top left"
             recyclingKey={`vc-${item.id}`}
             accessibilityLabel={title}
           />
