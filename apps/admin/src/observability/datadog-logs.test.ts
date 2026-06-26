@@ -77,7 +77,7 @@ describe("formatConsoleArguments", () => {
 describe("buildDatadogSyslogMessage", () => {
   it("formats a syslog message with Datadog service tags and trace ids", () => {
     const message = buildDatadogSyslogMessage({
-      environment: "production",
+      environment: "prod",
       hostname: "admin-host",
       level: "error",
       message: "request failed",
@@ -95,7 +95,7 @@ describe("buildDatadogSyslogMessage", () => {
     expect(message).toContain('"status":"error"')
     expect(message).toContain('"service":"forge-admin"')
     expect(message).toContain(
-      '"ddtags":"env:production,service:forge-admin,version:abc123"',
+      '"ddtags":"env:prod,service:forge-admin,version:abc123"',
     )
     expect(message).toContain('"dd.trace_id":"123456789"')
     expect(message).toContain('"dd.span_id":"987654321"')

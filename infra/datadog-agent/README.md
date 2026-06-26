@@ -56,7 +56,7 @@ Then set app-specific unified service tags, for example Admin:
 
 ```bash
 DD_SERVICE=forge-admin
-DD_ENV=production
+DD_ENV=prod
 DD_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 ```
 
