@@ -18,9 +18,9 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-06-26 on branch `feat/chat-wire-seeker-route` — implemented and
-verified end-to-end locally; **PR #TBD** (pending; not yet committed/pushed at the
-time of writing). Plan:
+**Shipped:** 2026-06-26 via [PR #1384](https://github.com/JesusFilm/forge/pull/1384)
+(`feat(chat): wire chat app to the Seeker SSE route`) — verified end-to-end
+locally; awaiting merge. Plan:
 `docs/plans/2026-06-26-001-feat-chat-wire-seeker-route-plan.md`.
 
 **What landed.** A default-off flag (`SEEKER_CHAT_ENABLED`, read server-side in
