@@ -1,6 +1,6 @@
 // Video-details inline pills row (Claude Design handoff): [Play] [Language] [Subtitles]
-// [Share] [Download] left-aligned under the title; WATCH_THEME, a TVFocusGuideView (autoFocus).
-// Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share/Download R18/R19 open the QR LinkModal.
+// [Share] left-aligned under the title; WATCH_THEME, a TVFocusGuideView (autoFocus).
+// Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share R18 opens the QR LinkModal.
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
@@ -58,8 +58,8 @@ export function DetailsActionRow({
     playVideo(hls, title ?? undefined, undefined)
   }
 
-  // Share / Download continuation URL → QR fallback. Same public watch URL for
-  // both in v1 (the phone page exposes share + download); validated before use.
+  // Share continuation URL → QR fallback: the public watch URL, validated
+  // before use so the phone can pick the video up.
   const shareUrl = buildShareUrl(video, activeVariant?.languageSlug ?? null)
   const canShare = shareUrl != null && validateActionUrl(shareUrl)
 
@@ -103,15 +103,6 @@ export function DetailsActionRow({
             icon="share-outline"
             label="Share"
             onPress={() => openModal(shareUrl, "Scan to share on your phone")}
-          />
-        ) : null}
-        {canShare ? (
-          <SecondaryPill
-            icon="download-outline"
-            label="Download"
-            onPress={() =>
-              openModal(shareUrl, "Scan to download on your phone")
-            }
           />
         ) : null}
       </TVFocusGuideView>
