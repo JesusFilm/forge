@@ -241,6 +241,10 @@ function installIdleCallbackStub() {
   }
   const originalRequestIdleCallback = windowWithIdle.requestIdleCallback
   const originalCancelIdleCallback = windowWithIdle.cancelIdleCallback
+  const originalSetTimeout = window.setTimeout
+  const originalClearTimeout = window.clearTimeout
+  const previewDelayTimers = new Map<number, () => void>()
+  let previewDelayTimerId = 0
 
   Object.defineProperty(windowWithIdle, "requestIdleCallback", {
     configurable: true,
@@ -254,6 +258,29 @@ function installIdleCallbackStub() {
     value: vi.fn((handle: number) => {
       idleCallbacks.splice(Math.max(0, handle - 1), 1)
     }),
+  })
+  Object.defineProperty(window, "setTimeout", {
+    configurable: true,
+    value: vi.fn(
+      (callback: TimerHandler, timeout?: number, ...args: unknown[]) => {
+        if (timeout === 8000 && typeof callback === "function") {
+          const handle = ++previewDelayTimerId
+          previewDelayTimers.set(handle, () => callback(...args))
+          callback(...args)
+          return handle
+        }
+        return originalSetTimeout(callback, timeout, ...args)
+      },
+    ) as unknown as typeof window.setTimeout,
+  })
+  Object.defineProperty(window, "clearTimeout", {
+    configurable: true,
+    value: vi.fn((handle?: number) => {
+      if (typeof handle === "number" && previewDelayTimers.delete(handle)) {
+        return
+      }
+      return originalClearTimeout(handle)
+    }) as typeof window.clearTimeout,
   })
 
   return {
@@ -280,6 +307,8 @@ function installIdleCallbackStub() {
       } else {
         Reflect.deleteProperty(windowWithIdle, "cancelIdleCallback")
       }
+      window.setTimeout = originalSetTimeout
+      window.clearTimeout = originalClearTimeout
     },
   }
 }
