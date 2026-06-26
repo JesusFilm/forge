@@ -1,5 +1,7 @@
 import tracer from "dd-trace"
 
+import { configureDatadogLogForwarding } from "./datadog-logs"
+
 let configured = false
 
 export const DATADOG_GRAPHQL_CONFIG = {
@@ -21,4 +23,5 @@ export function configureDatadog(): void {
   })
 
   tracer.use("graphql", DATADOG_GRAPHQL_CONFIG)
+  configureDatadogLogForwarding()
 }

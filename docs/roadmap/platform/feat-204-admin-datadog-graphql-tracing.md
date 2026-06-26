@@ -40,8 +40,8 @@ replay samples, and GraphQL resource timings can be correlated to backend APM.
    Watch route snapshots.
 7. `infra/datadog-agent/` - repo-owned Datadog Agent service definition.
 8. `docs/observability/datadog.md` - operator setup and env variables.
-9. `apps/admin/railway.toml` - documents that Admin Railway deploy config is
-   dashboard-owned, not code-owned.
+9. `apps/admin/railway.toml` - Admin Railway config-as-code once the service's
+   Config-as-code Path points at this file.
 
 ## Grep These
 
@@ -81,8 +81,10 @@ replay samples, and GraphQL resource timings can be correlated to backend APM.
   or user identifiers.
 - Do not commit Datadog API keys, RUM client tokens, or generated Railway
   private domains.
-- `apps/admin/railway.toml` is dead config; production Railway changes must be
-  applied through the dashboard or Railway service config tooling.
+- `apps/admin/railway.toml` only applies after the Admin service's
+  Config-as-code Path is set to `apps/admin/railway.toml`.
+- Do not set `NODE_OPTIONS=--require dd-trace/init` as a global Railway service
+  variable; keep the Datadog preload scoped to the runtime start command.
 
 ## Verification
 
@@ -93,13 +95,14 @@ replay samples, and GraphQL resource timings can be correlated to backend APM.
   current-main errors in `src/services/experience-ai/*`,
   `src/mastra/workflows/multi-step-draft-workflow.test.ts`, and
   `packages/experience-schema` missing `zod` resolution.
-- Production deployment has `DD_SERVICE=forge-admin`, `DD_ENV=production`,
+- Production deployment has `DD_SERVICE=forge-admin`, `DD_ENV=prod`,
   `DD_VERSION=<git sha>`, `DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`, and
   Datadog agent connectivity.
 - Production `@forge/admin` process starts with Datadog loaded before GraphQL
-  modules, ideally via `NODE_OPTIONS=--require dd-trace/init`.
+  modules via the runtime start command's
+  `NODE_OPTIONS='--require dd-trace/init'`.
 - Production Admin RUM has `NEXT_PUBLIC_DATADOG_APPLICATION_ID`,
-  `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`, `NEXT_PUBLIC_DATADOG_ENV=production`, and
+  `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`, `NEXT_PUBLIC_DATADOG_ENV=prod`, and
   `NEXT_PUBLIC_DATADOG_VERSION=<same git sha as DD_VERSION>`.
 - Admin sourcemaps upload with `pnpm --filter @forge/admin datadog:sourcemaps`
   using `DATADOG_RELEASE_VERSION=<same git sha as DD_VERSION>`.
