@@ -4,6 +4,9 @@ import { withWorkflow } from "workflow/next"
 const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: true,
+  // Required for Datadog RUM stack traces to resolve to original sources after
+  // `pnpm --filter @forge/admin datadog:sourcemaps` uploads release artifacts.
+  productionBrowserSourceMaps: true,
   // Consume the raw-source `@forge/experience-schema` workspace package
   // (its `exports` point at `./src/index.ts`); Next must transpile it as
   // first-party code rather than treat it as a prebuilt node_modules dep.
