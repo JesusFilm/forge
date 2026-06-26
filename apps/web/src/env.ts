@@ -94,6 +94,16 @@ function datadogEnvFallback(): string | undefined {
   )
 }
 
+function datadogServerEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.DD_ENV ??
+      process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
 function datadogVersionFallback(): string | undefined {
   return (
     emptyToUndefined(process.env.NEXT_PUBLIC_DATADOG_VERSION) ??
@@ -101,6 +111,10 @@ function datadogVersionFallback(): string | undefined {
     emptyToUndefined(process.env.VERCEL_GIT_COMMIT_SHA) ??
     emptyToUndefined(process.env.GIT_COMMIT_SHA)
   )
+}
+
+function datadogServerVersionFallback(): string | undefined {
+  return emptyToUndefined(process.env.DD_VERSION) ?? datadogVersionFallback()
 }
 
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
@@ -215,6 +229,15 @@ export const env = createEnv({
     // serialized into browser JS or request headers from the client.
     YOUVERSION_APP_KEY: z.string().optional(),
     YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(3034),
+    // Optional server-side Datadog APM/log forwarding configuration. Keep
+    // NODE_OPTIONS scoped to Railway's start command; these vars only tell the
+    // tracer where to report and how to tag web spans/logs.
+    DD_AGENT_HOST: z.string().min(1).optional(),
+    DD_TRACE_AGENT_PORT: optionalPositiveIntDefault(8126),
+    DD_AGENT_SYSLOG_PORT: optionalPositiveIntDefault(514),
+    DD_ENV: z.string().min(1).optional(),
+    DD_SERVICE: z.string().min(1).optional(),
+    DD_VERSION: z.string().min(1).optional(),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -294,6 +317,12 @@ export const env = createEnv({
     WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
     YOUVERSION_APP_KEY: process.env.YOUVERSION_APP_KEY,
     YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
+    DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),
+    DD_TRACE_AGENT_PORT: process.env.DD_TRACE_AGENT_PORT,
+    DD_AGENT_SYSLOG_PORT: process.env.DD_AGENT_SYSLOG_PORT,
+    DD_ENV: datadogServerEnvFallback(),
+    DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
+    DD_VERSION: datadogServerVersionFallback(),
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_DATADOG_APPLICATION_ID:
