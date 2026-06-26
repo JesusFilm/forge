@@ -31,8 +31,12 @@ vi.mock("@datadog/browser-rum-react", () => ({
   reactPlugin: reactPluginMock,
 }))
 
-vi.mock("@/config/env", () => ({
-  env: mockEnv,
+vi.mock("@/config/env", () => {
+  throw new Error("DatadogRum must not import the server env module")
+})
+
+vi.mock("@/config/datadog-rum-env", () => ({
+  datadogRumEnv: mockEnv,
 }))
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
