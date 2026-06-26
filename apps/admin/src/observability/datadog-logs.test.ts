@@ -93,6 +93,7 @@ describe("buildDatadogSyslogMessage", () => {
     )
     expect(message).toContain('"message":"request failed"')
     expect(message).toContain('"status":"error"')
+    expect(message).toContain('"env":"prod"')
     expect(message).toContain('"service":"forge-admin"')
     expect(message).toContain(
       '"ddtags":"env:prod,service:forge-admin,version:abc123"',
