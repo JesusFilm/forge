@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 
-import { buildStubReply, STUB_REPLY_DELAY_MS } from "./chat-stub"
+import { streamReply } from "./chat-stub"
 import {
   createConversation,
   deriveTitle,
@@ -17,23 +17,28 @@ export type UseConversations = {
   draft: string
   pending: boolean
   pendingIds: ReadonlySet<string>
+  streamingMessageId: string | null
   setDraft: (value: string) => void
   send: (text: string) => void
   newConversation: () => void
   selectConversation: (id: string) => void
 }
 
-// Owns all conversation + reply state so the components stay presentational.
-// The reply-generation seam is still buildStubReply() in chat-stub.ts; this
-// hook only orchestrates timing and which conversation a reply lands in.
-//
-// In-flight replies are tracked PER CONVERSATION (an id set for rendering + a
-// timer map keyed by id), not as one global flag. Each conversation owns its
-// own pending reply, so the pulse cursor and disabled composer attach to the
-// conversation that is actually waiting — never to whichever one happens to be
-// active when the user switches mid-reply — and a slow reply in one
-// conversation never locks sending in another.
-export function useConversations(): UseConversations {
+/**
+ * Owns all conversation + reply state so the components stay presentational.
+ * `seekerEnabled` selects the reply source (Seeker proxy vs local stub) inside
+ * the streamReply seam. Returns the conversation list, the active conversation +
+ * draft, the per-conversation pending set, and the in-flight `streamingMessageId`
+ * (for the pulse), plus send/new/select actions.
+ *
+ * Reply lifecycle: append an empty assistant turn (pulse shows pre-first-token),
+ * feed tokens in as they arrive, finalize on the terminal result, and on failure
+ * keep the partial text + mark the turn. In-flight replies are tracked PER
+ * CONVERSATION via an AbortController map (not a global flag) so a slow reply in
+ * one conversation never locks sending in another; the slot is held across the
+ * full stream lifecycle and released in a `finally` so a throw can't wedge it.
+ */
+export function useConversations(seekerEnabled: boolean): UseConversations {
   const [conversations, setConversations] = useState<Conversation[]>(() => [
     createConversation(),
   ])
@@ -44,51 +49,65 @@ export function useConversations(): UseConversations {
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
-
-  // The SINGLE source of truth for in-flight replies, keyed by conversation
-  // id. Read synchronously in send() before the next render commits so a second
-  // submit into the same conversation can't double-send. `pendingIds` above is
-  // a derived snapshot of this map's keys (kept in sync via syncPendingIds), so
-  // rendering and the guard can never drift. The map is mutated but never
-  // reassigned — the unmount cleanup below relies on that.
-  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map(),
+  // The in-flight assistant message id per conversation — the explicit "this
+  // turn is streaming" signal the view reads (so it never re-derives streaming
+  // from Message field absence). Set on send, cleared when the turn settles.
+  const [streamingIds, setStreamingIds] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
   )
 
-  // Mirror of activeId that updates synchronously when the conversation
-  // changes, so send() captures the right target even if a switch and a send
-  // land in the same React batch (a render-closure read of activeId could be
-  // stale there).
+  // SINGLE source of truth for in-flight replies, keyed by conversation id. Read
+  // synchronously in send() so a second submit can't double-send; `pendingIds`
+  // is a derived snapshot of its keys. Mutated but never reassigned.
+  const controllersRef = useRef<Map<string, AbortController>>(new Map())
+
+  // Cleared on unmount so the fire-and-forget finally can skip its setState after
+  // teardown (the ref-map delete still runs unconditionally).
+  const mountedRef = useRef(true)
+
+  // Mirror of activeId that updates synchronously when the conversation changes,
+  // so send() captures the right target even if a switch and a send land in the
+  // same React batch.
   const activeIdRef = useRef(activeId)
 
   useEffect(() => {
-    // Capturing timersRef.current is safe because the map is mutated, never
-    // reassigned, so this local stays the live instance for the component's
-    // lifetime.
-    const timers = timersRef.current
+    const controllers = controllersRef.current
     return () => {
-      for (const timer of timers.values()) clearTimeout(timer)
-      timers.clear()
+      // Abort in-flight streams on unmount so their async callbacks don't fire
+      // setState after teardown.
+      mountedRef.current = false
+      for (const controller of controllers.values()) controller.abort()
+      controllers.clear()
     }
   }, [])
 
-  // pendingIds is derived from the timer map's keys — recomputed on every
-  // start/clear so the two never diverge. Both write paths (start + the
-  // finally below) go through these two helpers; nothing else touches the map.
+  // pendingIds derives from the controller map's keys — recomputed on every
+  // start/clear so the two never diverge. Both write paths go through these
+  // helpers; nothing else touches the map.
   function syncPendingIds() {
-    setPendingIds(new Set(timersRef.current.keys()))
+    setPendingIds(new Set(controllersRef.current.keys()))
   }
 
-  function startTimer(
+  function startReply(
     conversationId: string,
-    timer: ReturnType<typeof setTimeout>,
+    controller: AbortController,
+    assistantId: string,
   ) {
-    timersRef.current.set(conversationId, timer)
+    controllersRef.current.set(conversationId, controller)
+    setStreamingIds((prev) => new Map(prev).set(conversationId, assistantId))
     syncPendingIds()
   }
 
-  function clearTimer(conversationId: string) {
-    timersRef.current.delete(conversationId)
+  function clearReply(conversationId: string) {
+    // Release the slot unconditionally; skip the state sync after unmount so the
+    // fire-and-forget finally never setStates a torn-down tree.
+    controllersRef.current.delete(conversationId)
+    if (!mountedRef.current) return
+    setStreamingIds((prev) => {
+      const next = new Map(prev)
+      next.delete(conversationId)
+      return next
+    })
     syncPendingIds()
   }
 
@@ -109,16 +128,34 @@ export function useConversations(): UseConversations {
     )
   }
 
+  // Patch a single message in place (token append + terminal finalize/error).
+  function updateMessage(
+    conversationId: string,
+    messageId: string,
+    patch: (message: Message) => Message,
+  ) {
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              messages: conversation.messages.map((message) =>
+                message.id === messageId ? patch(message) : message,
+              ),
+            }
+          : conversation,
+      ),
+    )
+  }
+
   function send(text: string) {
     const trimmed = text.trim()
-    // Capture the target up front (from the synchronous ref, not the render
-    // closure) so the reply lands in the conversation that was active at send
-    // time even if the user switches while the stub is "thinking".
+    // Capture the target up front (from the synchronous ref) so the reply lands
+    // in the conversation active at send time even if the user switches mid-reply.
     const targetId = activeIdRef.current
-    // One in-flight reply per conversation: a second submit into the same
-    // conversation before it resolves is a no-op. Other conversations stay
-    // free to send in parallel.
-    if (!trimmed || timersRef.current.has(targetId)) return
+    // One in-flight reply per conversation: a second submit before it resolves
+    // is a no-op. Other conversations stay free to send in parallel.
+    if (!trimmed || controllersRef.current.has(targetId)) return
     setDraft("")
 
     appendMessage(targetId, {
@@ -127,29 +164,61 @@ export function useConversations(): UseConversations {
       content: trimmed,
     })
 
-    const timer = setTimeout(() => {
-      // Release the slot in finally so a throw in reply generation can never
-      // leave the conversation wedged (stuck pulse + double-send lock). Latent
-      // with the pure stub, but load-bearing once the Mastra call — which can
-      // reject — replaces buildStubReply. See the fire-and-forget slot-leak
-      // guard pattern in the root CLAUDE.md known-patterns list.
+    // Empty assistant turn — the pulse renders against it pre-first-token (R8),
+    // and tokens append into it as they stream (R9).
+    const assistantId = crypto.randomUUID()
+    appendMessage(targetId, { id: assistantId, role: "assistant", content: "" })
+
+    const controller = new AbortController()
+    startReply(targetId, controller, assistantId)
+
+    // Fire-and-forget: the whole body is wrapped so the slot releases on EVERY
+    // path (terminal result, error, abort) — see the slot-leak guard pattern.
+    void (async () => {
       try {
-        appendMessage(targetId, {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: buildStubReply(trimmed),
+        const result = await streamReply({
+          text: trimmed,
+          conversationId: targetId,
+          seekerEnabled,
+          signal: controller.signal,
+          onToken: (token) =>
+            updateMessage(targetId, assistantId, (message) => ({
+              ...message,
+              content: message.content + token,
+            })),
         })
+        // Aborted (unmount) → the tree is gone; skip the finalize setState. The
+        // finally below still releases the slot.
+        if (controller.signal.aborted) return
+        if (result.ok) {
+          updateMessage(targetId, assistantId, (message) => ({
+            ...message,
+            content: result.text,
+            sources: result.sources,
+            grounded: result.grounded,
+            engine: result.engine,
+          }))
+        } else {
+          // Keep whatever streamed (partialText); mark the failure so the UI
+          // renders a visible notice (R14/R17). The turn is still attributable
+          // to its engine (R20).
+          updateMessage(targetId, assistantId, (message) => ({
+            ...message,
+            content: result.partialText || message.content,
+            engine: seekerEnabled ? "seeker" : "stub",
+            error: result.reason,
+          }))
+        }
       } finally {
-        clearTimer(targetId)
+        clearReply(targetId)
       }
-    }, STUB_REPLY_DELAY_MS)
-    startTimer(targetId, timer)
+    })()
   }
 
   function newConversation() {
     const conversation = createConversation()
-    // Keep the synchronous mirror in lockstep with the state update so a send
-    // batched with this switch targets the new conversation.
+    // Keep the synchronous mirror in lockstep so a send batched with this switch
+    // targets the new conversation.
     activeIdRef.current = conversation.id
     setConversations((prev) => [conversation, ...prev])
     setActiveId(conversation.id)
@@ -157,8 +226,6 @@ export function useConversations(): UseConversations {
   }
 
   function selectConversation(id: string) {
-    // Guard on the synchronous mirror (not the render-closure activeId) so it
-    // stays consistent with how send() reads the active id.
     if (id === activeIdRef.current) return
     activeIdRef.current = id
     setActiveId(id)
@@ -174,10 +241,11 @@ export function useConversations(): UseConversations {
     activeId,
     activeConversation,
     draft,
-    // Pending state for the active pane is derived from the per-conversation
-    // set, so it is true only when the active conversation itself is waiting.
+    // Pending for the active pane is true only when the active conversation
+    // itself is waiting.
     pending: pendingIds.has(activeConversation.id),
     pendingIds,
+    streamingMessageId: streamingIds.get(activeConversation.id) ?? null,
     setDraft,
     send,
     newConversation,

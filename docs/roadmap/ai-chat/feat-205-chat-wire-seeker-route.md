@@ -3,7 +3,7 @@ id: "feat-205"
 title: "Wire chat app to the Seeker Mastra route"
 owner: "jian wei"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-27"
 duration: 3
 depends_on:
@@ -15,6 +15,58 @@ tags:
   - "web"
   - "ai-pipeline"
 ---
+
+## Resolution
+
+**Shipped:** 2026-06-26 via [PR #1384](https://github.com/JesusFilm/forge/pull/1384)
+(`feat(chat): wire chat app to the Seeker SSE route`) — verified end-to-end
+locally; awaiting merge. Plan:
+`docs/plans/2026-06-26-001-feat-chat-wire-seeker-route-plan.md`.
+
+**What landed.** A default-off flag (`SEEKER_CHAT_ENABLED`, read server-side in
+`page.tsx` via `force-dynamic`) selects the reply source: off → the existing
+client stub; on → a server-side SSE proxy (`apps/chat/src/app/api/seeker/route.ts`)
+that holds the Mastra bearer, SSRF-guards the base host (https + loopback
+exemption), bounds the call at 95s (> the route's 90s ceiling), forwards the
+browser `Conversation.id` as the Seeker `threadId` (a conscious v1 relaxation,
+re-plumbed at auth), and relays `/forge-seeker` frames to the browser —
+normalizing every failure to one terminal `error{reason}` frame. The reply seam
+(`chat-stub.ts` `streamReply`) became an async streaming contract; `use-conversations`
+was rebuilt around per-conversation `AbortController`s with full slot-release; the
+UI renders streaming tokens, a three-state grounded badge, a cited-sources list
+(untrusted-source https-only links, text-only), an engine marker, and a
+`role="alert"` failure notice. chat gained its first `env.ts` + `.env.example`.
+Verified locally end-to-end: streamed grounded answers with cited sources,
+multi-turn recall, and the failure path. The v1 accepted-risk posture
+(unauthenticated, un-rate-limited, world-reachable proxy) is implemented and
+documented in code, **not** "fixed" — that is deferred to the auth gate.
+
+**Compound docs.** Three learnings captured:
+
+- `docs/solutions/runtime-errors/nextjs-force-dynamic-runtime-env-flag-static-optimization-20260626.md`
+  — a runtime env flag in a static App Router server component bakes at build;
+  needs `force-dynamic`.
+- `docs/solutions/architecture-patterns/browser-sse-proxy-to-bearer-gated-internal-sse-20260626.md`
+  — the browser-restreaming SSE proxy pattern (parse-and-re-emit, classify HTTP
+  status before the stream parser, one client parse path, https+loopback SSRF).
+- `docs/solutions/architecture-patterns/mastra-agent-stream-auto-creates-thread-contract-20260626.md`
+  — `agent.stream({memory})` auto-creates the thread while `recall()` throws, so
+  forwarding a client id as `threadId` is safe.
+
+**Residual risk / follow-ups.** v1 is internal-dogfood only, gated by URL
+obscurity + a small trusted audience — a real inbound auth gate and a
+rate/concurrency cap are prerequisites before any public reach. AE4's exact 95s
+timeout behavior on the deployed Railway origin, and the happy-path browser check
+against prod, remain to confirm in a wired environment. Seeker memory is Mastra's
+in-memory store (lost on restart); client history resets on refresh.
+
+**Unblocked.** feat-205 was the **sole** `depends_on` of both
+[feat-207](feat-207-chat-auth.md) (chat auth — unlocks `resourceId = userId`,
+per-user flag targeting, and the server-minted `threadId` re-plumb) and
+[feat-208](feat-208-seeker-postgres-memory.md) (Postgres-persisted Seeker memory),
+and neither carries a non-dependency block — so both move from `blocked` to
+`not-started` once this lands on `main`. [feat-209](feat-209-chat-per-conversation-urls.md)
+stays blocked (it depends on feat-207 + feat-208, both still incomplete).
 
 ## Problem
 

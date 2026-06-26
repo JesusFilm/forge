@@ -3,7 +3,7 @@ id: "feat-208"
 title: "Postgres-persisted Seeker memory + conversation persistence"
 owner: "jian wei"
 priority: "P2"
-status: "blocked"
+status: "not-started"
 start_date: "2026-07-10"
 duration: 5
 depends_on:
