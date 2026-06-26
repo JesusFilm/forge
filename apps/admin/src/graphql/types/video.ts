@@ -399,8 +399,18 @@ builder.prismaObject("VideoRelation", {
   fields: (t) => ({
     id: t.exposeID("id"),
     order: t.exposeInt("order", { nullable: true }),
-    parent: t.relation("parent"),
-    child: t.relation("child"),
+    parent: t.prismaField({
+      type: "Video",
+      nullable: true,
+      resolve: (_query, relation, _args, ctx) =>
+        ctx.loaders.videoById.load(relation.parentId),
+    }),
+    child: t.prismaField({
+      type: "Video",
+      nullable: true,
+      resolve: (_query, relation, _args, ctx) =>
+        ctx.loaders.videoById.load(relation.childId),
+    }),
   }),
 })
 
