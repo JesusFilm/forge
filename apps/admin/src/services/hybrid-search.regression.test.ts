@@ -34,13 +34,27 @@ vi.mock("./hybrid-search-retrievers", () => ({
   searchExperienceKeyword: vi.fn(),
 }))
 
-vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
-  searchByKeywordWeighted: vi.fn().mockResolvedValue([]),
-  searchByTrigram: vi.fn().mockResolvedValue([]),
-  searchByExactTitle: vi.fn().mockResolvedValue([]),
-  MAX_EXACT_TITLE_TOKENS: 16,
-  tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
-}))
+vi.mock("./hybrid-search-keyword-first-retrievers", () => {
+  const searchByKeywordWeighted = vi.fn().mockResolvedValue([])
+  const searchByTrigram = vi.fn().mockResolvedValue([])
+  const searchByExactTitle = vi.fn().mockResolvedValue([])
+  const searchKeywordFirstVideoLexical = vi.fn(
+    async (prisma: unknown, params: unknown, timing: unknown) => ({
+      keywordWeighted: await searchByKeywordWeighted(prisma, params, timing),
+      trigram: await searchByTrigram(prisma, params, timing),
+      exactTitle: await searchByExactTitle(prisma, params, timing),
+    }),
+  )
+
+  return {
+    searchByKeywordWeighted,
+    searchByTrigram,
+    searchByExactTitle,
+    searchKeywordFirstVideoLexical,
+    MAX_EXACT_TITLE_TOKENS: 16,
+    tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
+  }
+})
 
 import {
   searchVideoSemantic,
