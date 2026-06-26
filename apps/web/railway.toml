@@ -22,7 +22,7 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' pnpm --filter @forge/web start"
+startCommand = "cd apps/web && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start"
 healthcheckPath = "/watch"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

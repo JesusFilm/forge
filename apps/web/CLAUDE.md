@@ -104,9 +104,10 @@ must set Datadog service env (`DD_SERVICE=forge-web`, `DD_ENV=prod`,
 `DD_VERSION=<git sha>`), point at the private Datadog Agent
 (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`, `DD_AGENT_SYSLOG_PORT=514`), and
 load the tracer before application modules through the `startCommand`:
-`NODE_OPTIONS='--require dd-trace/init' pnpm --filter @forge/web start`. Do not set
-`NODE_OPTIONS` as a global Railway service variable because service variables
-are also present during Railpack setup before dependencies are installed.
+`cd apps/web && NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start`.
+Do not set `NODE_OPTIONS` as a global Railway service variable because service
+variables are also present during Railpack setup before dependencies are
+installed.
 
 ## Feature flags
 
