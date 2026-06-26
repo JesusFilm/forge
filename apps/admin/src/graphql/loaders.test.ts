@@ -39,6 +39,7 @@ describe("createLoaders", () => {
       "experienceLocaleById",
       "languageById",
       "videoById",
+      "videoByIdWithQuery",
       "videoMuxPlaybackIdByIdAndLanguageSlug",
       "videoPrimaryDubDurationById",
     ])
@@ -103,6 +104,62 @@ describe("createLoaders", () => {
       loaders.experienceById.load("x1"), // duplicate; batched + cached
     ])
     expect(calls).toBe(1)
+  })
+
+  it("batches video loads that share a Pothos query selection", async () => {
+    const calls: Array<{ ids: string[]; query: object }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: {
+        findMany: async (args: { where: { id: { in: string[] } } }) => {
+          calls.push({ ids: args.where.id.in, query: args })
+          return args.where.id.in.map((id) => ({ id }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const query = { include: { images: true } }
+    await Promise.all([
+      loaders.videoByIdWithQuery.load({ id: "v1", query }),
+      loaders.videoByIdWithQuery.load({ id: "v2", query }),
+    ])
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.ids).toEqual(["v1", "v2"])
+    expect(calls[0]?.query).toMatchObject(query)
+  })
+
+  it("does not batch video loads with different Pothos query selections", async () => {
+    const calls: Array<{ ids: string[] }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: {
+        findMany: async (args: { where: { id: { in: string[] } } }) => {
+          calls.push({ ids: args.where.id.in })
+          return args.where.id.in.map((id) => ({ id }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    await Promise.all([
+      loaders.videoByIdWithQuery.load({
+        id: "v1",
+        query: { include: { images: true } },
+      }),
+      loaders.videoByIdWithQuery.load({
+        id: "v2",
+        query: { include: { locales: true } },
+      }),
+    ])
+
+    expect(calls).toHaveLength(2)
+    expect(calls.map((call) => call.ids)).toEqual([["v1"], ["v2"]])
   })
 })
 

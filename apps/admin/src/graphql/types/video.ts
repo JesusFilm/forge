@@ -403,19 +403,13 @@ builder.prismaObject("VideoRelation", {
       type: "Video",
       nullable: true,
       resolve: (query, relation, _args, ctx) =>
-        ctx.prisma.video.findUnique({
-          ...query,
-          where: { id: relation.parentId },
-        }),
+        ctx.loaders.videoByIdWithQuery.load({ id: relation.parentId, query }),
     }),
     child: t.prismaField({
       type: "Video",
       nullable: true,
       resolve: (query, relation, _args, ctx) =>
-        ctx.prisma.video.findUnique({
-          ...query,
-          where: { id: relation.childId },
-        }),
+        ctx.loaders.videoByIdWithQuery.load({ id: relation.childId, query }),
     }),
   }),
 })

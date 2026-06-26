@@ -49,6 +49,52 @@ export function createLoaders(prisma: PrismaClient) {
       return mapToInputOrder(ids, rows, (r) => r.id)
     }),
 
+    /**
+     * Hydrate Video rows by id while preserving Pothos Prisma's nested
+     * selection query. `VideoRelation.parent/child` need this: plain
+     * `videoById` batches well but discards nested selection preloading,
+     * while direct `findUnique({ ...query })` preserves the selection but
+     * creates one query per sibling. Grouping by the serialized query keeps
+     * both properties.
+     */
+    videoByIdWithQuery: new DataLoader<
+      VideoByIdWithQueryKey,
+      VideoRow | null,
+      string
+    >(
+      async (keys) => {
+        const groups = new Map<string, VideoByIdWithQueryKey[]>()
+        for (const key of keys) {
+          const groupKey = serializeVideoByIdWithQuerySelection(key.query)
+          groups.set(groupKey, [...(groups.get(groupKey) ?? []), key])
+        }
+
+        const rowsByLoaderKey = new Map<string, VideoRow | null>()
+        await Promise.all(
+          Array.from(groups.values()).map(async (group) => {
+            const ids = unique(group.map((key) => key.id))
+            const rows = await prisma.video.findMany({
+              ...withVideoIdSelected(group[0]?.query ?? {}),
+              where: { id: { in: ids } },
+            })
+            const rowsById = new Map(rows.map((row) => [row.id, row]))
+            for (const key of group) {
+              rowsByLoaderKey.set(
+                serializeVideoByIdWithQueryKey(key),
+                rowsById.get(key.id) ?? null,
+              )
+            }
+          }),
+        )
+
+        return keys.map(
+          (key) =>
+            rowsByLoaderKey.get(serializeVideoByIdWithQueryKey(key)) ?? null,
+        )
+      },
+      { cacheKeyFn: serializeVideoByIdWithQueryKey },
+    ),
+
     /** Hydrate Language rows by id. */
     languageById: new DataLoader<string, LanguageRow | null>(async (ids) => {
       const rows = await prisma.language.findMany({
@@ -210,6 +256,31 @@ const PRIMARY_DUB_PLAYBACK_SCAN_LIMIT = 5
 export type VideoMuxPlaybackKey = {
   videoId: string
   languageSlug: string | null
+}
+
+export type VideoByIdWithQueryKey = {
+  id: string
+  query: object
+}
+
+function serializeVideoByIdWithQuerySelection(query: object): string {
+  return JSON.stringify(query)
+}
+
+function serializeVideoByIdWithQueryKey(key: VideoByIdWithQueryKey): string {
+  return `${key.id}:${serializeVideoByIdWithQuerySelection(key.query)}`
+}
+
+function withVideoIdSelected(query: object): object {
+  const prismaQuery = query as { select?: Record<string, unknown> }
+  if (!prismaQuery.select) return query
+  return {
+    ...prismaQuery,
+    select: {
+      ...prismaQuery.select,
+      id: true,
+    },
+  }
 }
 
 function normalizeVideoMuxPlaybackKey(
