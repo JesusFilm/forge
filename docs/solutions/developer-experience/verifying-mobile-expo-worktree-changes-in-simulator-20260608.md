@@ -121,6 +121,14 @@ worktree's Metro logs `Recrawled this watch N times`. (Symlinked `node_modules` 
 fine for a one-off `tsc`/`eslint` pass; it's running a second **Metro** through it
 that triggers the watch contention.)
 
+**Two distinct `RCTFatal` causes — don't conflate them.** This one is a _Metro/watch_
+failure (symlinked `node_modules` -> cross-tree watch contention). A different
+`RCTFatal` with an identical all-native overlay comes from the _backend being down_:
+when local admin (`:3003`) is unreachable, the dev-client's GraphQL fetch escalates
+`Network request failed` to a fatal, and it persists via a wedged dev client + stale
+Metro cache (fix: restart admin + Metro `--clear` + reload). See
+`docs/solutions/runtime-errors/tv-rctfatal-network-request-failed-admin-down-20260626.md`.
+
 Two ways out, preferred order:
 
 1. **Real install in the worktree** — `pnpm install` there so it has isolated

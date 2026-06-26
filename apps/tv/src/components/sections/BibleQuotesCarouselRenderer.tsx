@@ -68,6 +68,7 @@ function QuoteCard({
           source={imageSource}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          contentPosition="top left"
           recyclingKey={`bqc-${quote.id}`}
         />
       )}

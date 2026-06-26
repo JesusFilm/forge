@@ -32,7 +32,7 @@ import {
 import { episodeHref, resolveEpisodePath } from "./episodeRouting"
 
 const CARD_WIDTH = scale(360)
-const THUMB_HEIGHT = scale(202) // 16:9-ish, matches UpNextRail
+const THUMB_HEIGHT = scale(168.75) // 32:15 (2.13:1), matches UpNextRail
 const ITEM_GAP = scale(30)
 
 const keyExtractor = (item: WatchEpisode, index: number) =>
@@ -186,6 +186,7 @@ const EpisodeCard = memo(function EpisodeCard({
                 source={{ uri: poster }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
+                contentPosition="top left"
                 recyclingKey={`episode-${episode.documentId}`}
               />
             ) : (

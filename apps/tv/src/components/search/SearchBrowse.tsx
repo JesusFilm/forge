@@ -1,11 +1,31 @@
+import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { ScrollView, StyleSheet, Text, View } from "react-native"
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
 import { CATEGORIES, type SearchCategory } from "./categories"
 import { SEARCH_PAGE_GUTTER, SEARCH_THEME } from "./searchTheme"
+import { useCategoryThumbnails } from "./useCategoryThumbnails"
+
+// Soft scrim over the blurred thumbnail: short, low-opacity dark bands feathered
+// at the top + bottom edges (bottom a touch stronger for title legibility) over a
+// wide clear middle. hexToRgba(...,0) for clear stops, never "transparent".
+const SCRIM_COLORS = [
+  hexToRgba("#000000", 0.24),
+  hexToRgba("#000000", 0.05),
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0.07),
+  hexToRgba("#000000", 0.4),
+] as const
+const SCRIM_LOCATIONS = [0, 0.16, 0.32, 0.68, 0.84, 1] as const
+
+// expo-image blurRadius isn't calibrated equally across platforms (the same
+// value blurs harder on Android), so tvOS bumps up to match Android TV — mirrors
+// apps/mobile's TopicCard.
+const THUMBNAIL_BLUR_RADIUS = Platform.OS === "ios" ? 12 : 4
 
 type Props = {
   recents: string[]
@@ -23,9 +43,9 @@ type Props = {
   fullBleed?: boolean
 }
 
-// Search-empty browse view: Recent searches + Browse-topics (static CATEGORIES) —
-// both local/static, so no GraphQL, works for the public app. Dropped a "Popular
-// experiences" rail that hit editor-gated Query.experiences and 401'd for public TV.
+// Search-empty browse view: Recent searches + Browse-topics (static CATEGORIES,
+// each backed by a blurred thumbnail of its first search result). Works for the
+// public app — only the anonymous `search` surface is used, no editor-gated query.
 export function SearchBrowse({
   recents,
   onRunQuery,
@@ -33,6 +53,7 @@ export function SearchBrowse({
   fullBleed,
 }: Props) {
   const showRecent = recents.length > 0
+  const thumbnails = useCategoryThumbnails()
 
   return (
     <ScrollView
@@ -68,6 +89,7 @@ export function SearchBrowse({
               <CategoryCard
                 category={cat}
                 onPress={() => onRunQuery(cat.searchTerm)}
+                thumbnailUrl={thumbnails[cat.searchTerm]}
               />
             </View>
           ))}
@@ -129,9 +151,11 @@ function RecentRow({
 function CategoryCard({
   category,
   onPress,
+  thumbnailUrl,
 }: {
   category: SearchCategory
   onPress: () => void
+  thumbnailUrl?: string | null
 }) {
   return (
     <FocusableCard
@@ -141,17 +165,41 @@ function CategoryCard({
       focusRing="white"
       style={styles.categoryCard}
     >
-      <LinearGradient
-        colors={[
-          hexToRgba(category.colors[0], 1),
-          hexToRgba(category.colors[1], 1),
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.categoryGradient}
-      >
-        <Text style={styles.categoryTitle}>{category.title}</Text>
-      </LinearGradient>
+      <View style={styles.categoryInner}>
+        <LinearGradient
+          colors={[
+            hexToRgba(category.colors[0], 1),
+            hexToRgba(category.colors[1], 1),
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Blurred art of the category's first search result, faint over the
+            brand gradient. Absent until the limit:1 query resolves (and forever
+            if none) so the gradient base keeps the card from ever being blank. */}
+        {thumbnailUrl != null ? (
+          <Image
+            source={thumbnailUrl}
+            style={[StyleSheet.absoluteFill, styles.categoryThumbnail]}
+            contentFit="cover"
+            blurRadius={THUMBNAIL_BLUR_RADIUS}
+            transition={400}
+            cachePolicy="memory-disk"
+            recyclingKey={category.searchTerm}
+          />
+        ) : null}
+        <LinearGradient
+          colors={[...SCRIM_COLORS]}
+          locations={[...SCRIM_LOCATIONS]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.categoryContent}>
+          <Text style={styles.categoryTitle}>{category.title}</Text>
+        </View>
+      </View>
     </FocusableCard>
   )
 }
@@ -242,8 +290,15 @@ const styles = StyleSheet.create({
     width: "100%",
     height: scale(210),
   },
-  categoryGradient: {
+  categoryInner: {
     flex: 1,
+  },
+  // Faint over the brand gradient — mirrors mobile's 0.3 thumbnail opacity.
+  categoryThumbnail: {
+    opacity: 0.3,
+  },
+  categoryContent: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
     padding: scale(22),
   },

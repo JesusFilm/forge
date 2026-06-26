@@ -29,7 +29,7 @@ import {
 } from "./useFocusAnimation"
 
 const CARD_WIDTH = scale(360)
-const THUMB_HEIGHT = scale(202) // 16:9-ish, matches the mockup
+const THUMB_HEIGHT = scale(168.75) // 32:15 (2.13:1), matches the cinematic art
 
 export function UpNextRail({ siblings }: { siblings: WatchSibling[] }) {
   const router = useRouter()
@@ -124,6 +124,7 @@ function EpisodeCard({
                 source={{ uri: poster }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
+                contentPosition="top left"
                 recyclingKey={`upnext-${sibling.documentId}`}
               />
             ) : (

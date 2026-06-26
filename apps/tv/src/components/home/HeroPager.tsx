@@ -328,6 +328,7 @@ function HeroArtworkCell({
           source={{ uri: url }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          contentPosition="top left"
           recyclingKey={url}
           onLoad={() => onLoaded(cell, url)}
         />

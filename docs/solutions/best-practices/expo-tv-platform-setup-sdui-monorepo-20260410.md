@@ -158,6 +158,8 @@ export function getGraphQLUrl(): string {
 
 This is a known Android emulator behavior — `10.0.2.2` maps to the host machine's loopback interface.
 
+**Use `localhost`, not `127.0.0.1`, in `EXPO_PUBLIC_GRAPHQL_URL` for simulator/emulator dev.** The swap above only matches the literal string `"localhost"`, so `127.0.0.1` silently bypasses it and breaks the Android emulator. `localhost` is correct for _both_ the Apple TV simulator (shares the Mac's loopback directly) and the Android emulator (swapped to `10.0.2.2`). A **physical** Apple TV cannot resolve `localhost`/`127.0.0.1` (they resolve to the TV itself) — point its `.env.local` at the Mac's LAN IP instead. `EXPO_PUBLIC_*` is inlined by Metro at startup, so restart Metro (`--clear`) after editing `.env.local`. See `docs/solutions/runtime-errors/tv-rctfatal-network-request-failed-admin-down-20260626.md` and the `tv-mobile-sim-local-admin-use-localhost` memory.
+
 ### 2. Separate App, Shared Logic
 
 Create `apps/tv/` as a new Expo app -- do NOT add TV as a platform target inside the mobile app. Touch UX assumptions (gestures, small screen, portrait) conflict with 10-foot TV UX (D-pad, focus rings, landscape).

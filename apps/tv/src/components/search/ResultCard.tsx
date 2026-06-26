@@ -88,6 +88,7 @@ export function ResultCard({
                 source={{ uri: imageUrl }}
                 style={styles.image}
                 contentFit="cover"
+                contentPosition="top left"
                 recyclingKey={`search-${result.type}-${result.id}`}
               />
             ) : (
@@ -123,9 +124,9 @@ export function ResultCard({
 const styles = StyleSheet.create({
   thumbShadow: {
     width: "100%",
-    // Design thumb is 400×225 — exactly 16:9 — expressed as a ratio so
-    // the fluid cell width keeps the art proportionate.
-    aspectRatio: 16 / 9,
+    // Match the cinematic thumbnails (mobileCinematicHigh = 1280×600 = 32:15)
+    // so cover doesn't side-crop the art; fluid cell width keeps it proportionate.
+    aspectRatio: 32 / 15,
     borderRadius: scale(16),
     // Solid bg gives the iOS shadow a clean opaque shape to project.
     backgroundColor: SEARCH_THEME.bg,

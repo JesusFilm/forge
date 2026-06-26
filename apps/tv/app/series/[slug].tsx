@@ -258,6 +258,7 @@ export default function SeriesScreen() {
                 source={{ uri: displayPoster }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
+                contentPosition="top left"
                 recyclingKey={`series-backdrop-${displayPoster}`}
               />
             ) : (

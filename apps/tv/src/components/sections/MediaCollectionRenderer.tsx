@@ -101,6 +101,7 @@ export function MediaCollectionRenderer({
                   source={thumbnailUrl}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
+                  contentPosition="top left"
                   recyclingKey={`mc-${item.id}-${index}`}
                   accessibilityLabel={item.video?.imageAlt ?? title}
                 />
