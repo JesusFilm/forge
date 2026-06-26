@@ -15,7 +15,7 @@
 // Per Unit 6 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import DataLoader from "dataloader"
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 
 export type Loaders = ReturnType<typeof createLoaders>
 
@@ -93,6 +93,38 @@ export function createLoaders(prisma: PrismaClient) {
         )
       },
       { cacheKeyFn: serializeVideoByIdWithQueryKey },
+    ),
+
+    /** Hydrate VideoRelation rows where the input Video is the child. */
+    videoParentsByChildId: new DataLoader<
+      VideoRelationVisibilityKey,
+      VideoRelationRow[],
+      string
+    >(
+      async (keys) =>
+        loadVideoRelationsByVideoId({
+          keys,
+          idField: "childId",
+          visibleRelationField: "parent",
+          prisma,
+        }),
+      { cacheKeyFn: serializeVideoRelationVisibilityKey },
+    ),
+
+    /** Hydrate VideoRelation rows where the input Video is the parent. */
+    videoChildrenByParentId: new DataLoader<
+      VideoRelationVisibilityKey,
+      VideoRelationRow[],
+      string
+    >(
+      async (keys) =>
+        loadVideoRelationsByVideoId({
+          keys,
+          idField: "parentId",
+          visibleRelationField: "child",
+          prisma,
+        }),
+      { cacheKeyFn: serializeVideoRelationVisibilityKey },
     ),
 
     /** Hydrate Language rows by id. */
@@ -263,6 +295,84 @@ export type VideoByIdWithQueryKey = {
   query: object
 }
 
+export type VideoRelationVisibilityKey = {
+  videoId: string
+  visibleOnly: boolean
+}
+
+const videoRelationOrderBy = [
+  { order: { sort: "asc" as const, nulls: "last" as const } },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+] satisfies Prisma.VideoRelationOrderByWithRelationInput[]
+
+async function loadVideoRelationsByVideoId({
+  keys,
+  idField,
+  visibleRelationField,
+  prisma,
+}: {
+  keys: readonly VideoRelationVisibilityKey[]
+  idField: "parentId" | "childId"
+  visibleRelationField: "parent" | "child"
+  prisma: PrismaClient
+}): Promise<VideoRelationRow[][]> {
+  const groupedKeys = new Map<boolean, VideoRelationVisibilityKey[]>()
+  for (const key of keys) {
+    groupedKeys.set(key.visibleOnly, [
+      ...(groupedKeys.get(key.visibleOnly) ?? []),
+      key,
+    ])
+  }
+
+  const rowsByLoaderKey = new Map<string, VideoRelationRow[]>()
+  await Promise.all(
+    Array.from(groupedKeys.entries()).map(async ([visibleOnly, group]) => {
+      const ids = unique(group.map((key) => key.videoId))
+      const rows = await prisma.videoRelation.findMany({
+        where: {
+          [idField]: { in: ids },
+          ...(visibleOnly
+            ? {
+                [visibleRelationField]: {
+                  deletedAt: null,
+                  locales: {
+                    some: { status: "PUBLISHED" as const, deletedAt: null },
+                  },
+                },
+              }
+            : {}),
+        },
+        orderBy: videoRelationOrderBy,
+      })
+
+      const rowsByVideoId = new Map<string, VideoRelationRow[]>()
+      for (const row of rows) {
+        const videoId = row[idField]
+        rowsByVideoId.set(videoId, [...(rowsByVideoId.get(videoId) ?? []), row])
+      }
+
+      for (const key of group) {
+        rowsByLoaderKey.set(
+          serializeVideoRelationVisibilityKey(key),
+          rowsByVideoId.get(key.videoId) ?? [],
+        )
+      }
+    }),
+  )
+
+  return keys.map(
+    (key) =>
+      rowsByLoaderKey.get(serializeVideoRelationVisibilityKey(key)) ?? [],
+  )
+}
+
+function serializeVideoRelationVisibilityKey(
+  key: VideoRelationVisibilityKey,
+): string {
+  return `${key.videoId}:${key.visibleOnly ? "public" : "all"}`
+}
+
 function serializeVideoByIdWithQuerySelection(query: object): string {
   return JSON.stringify(query)
 }
@@ -312,6 +422,9 @@ type ExperienceLocaleRow = Awaited<
   ReturnType<PrismaClient["experienceLocale"]["findMany"]>
 >[number]
 type VideoRow = Awaited<ReturnType<PrismaClient["video"]["findMany"]>>[number]
+type VideoRelationRow = Awaited<
+  ReturnType<PrismaClient["videoRelation"]["findMany"]>
+>[number]
 type LanguageRow = Awaited<
   ReturnType<PrismaClient["language"]["findMany"]>
 >[number]

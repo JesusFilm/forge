@@ -26,8 +26,9 @@ function makeFakePrisma(rowsByModel: Record<string, Array<{ id: string }>>) {
     experience: make("experience"),
     experienceLocale: make("experienceLocale"),
     video: make("video"),
+    videoRelation: { findMany: async () => [] },
     language: make("language"),
-    // Loose typing — DataLoader factory only touches the four above.
+    // Loose typing — each test provides only the delegates it exercises.
   } as unknown as Parameters<typeof createLoaders>[0]
 }
 
@@ -40,7 +41,9 @@ describe("createLoaders", () => {
       "languageById",
       "videoById",
       "videoByIdWithQuery",
+      "videoChildrenByParentId",
       "videoMuxPlaybackIdByIdAndLanguageSlug",
+      "videoParentsByChildId",
       "videoPrimaryDubDurationById",
     ])
   })
@@ -71,6 +74,7 @@ describe("createLoaders", () => {
       },
       experienceLocale: { findMany: async () => [] },
       video: { findMany: async () => [] },
+      videoRelation: { findMany: async () => [] },
       language: { findMany: async () => [] },
     } as unknown as Parameters<typeof createLoaders>[0]
 
@@ -118,6 +122,7 @@ describe("createLoaders", () => {
           return args.where.id.in.map((id) => ({ id }))
         },
       },
+      videoRelation: { findMany: async () => [] },
     } as unknown as Parameters<typeof createLoaders>[0]
 
     const loaders = createLoaders(prisma)
@@ -144,6 +149,7 @@ describe("createLoaders", () => {
           return args.where.id.in.map((id) => ({ id }))
         },
       },
+      videoRelation: { findMany: async () => [] },
     } as unknown as Parameters<typeof createLoaders>[0]
 
     const loaders = createLoaders(prisma)
@@ -160,6 +166,94 @@ describe("createLoaders", () => {
 
     expect(calls).toHaveLength(2)
     expect(calls.map((call) => call.ids)).toEqual([["v1"], ["v2"]])
+  })
+
+  it("batches parent relation rows by child id with public visibility", async () => {
+    const calls: Array<{ where: unknown }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoRelation: {
+        findMany: async (args: { where: { childId: { in: string[] } } }) => {
+          calls.push({ where: args.where })
+          return args.where.childId.in.map((childId) => ({
+            id: `rel-${childId}`,
+            parentId: `parent-${childId}`,
+            childId,
+          }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const rows = await Promise.all([
+      loaders.videoParentsByChildId.load({
+        videoId: "child-1",
+        visibleOnly: true,
+      }),
+      loaders.videoParentsByChildId.load({
+        videoId: "child-2",
+        visibleOnly: true,
+      }),
+    ])
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.where).toMatchObject({
+      childId: { in: ["child-1", "child-2"] },
+      parent: {
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
+      },
+    })
+    expect(rows.map((group) => group.map((row) => row.childId))).toEqual([
+      ["child-1"],
+      ["child-2"],
+    ])
+  })
+
+  it("batches child relation rows by parent id with editor visibility", async () => {
+    const calls: Array<{ where: unknown }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoRelation: {
+        findMany: async (args: {
+          where: { parentId: { in: string[] }; child?: unknown }
+        }) => {
+          calls.push({ where: args.where })
+          return args.where.parentId.in.map((parentId) => ({
+            id: `rel-${parentId}`,
+            parentId,
+            childId: `child-${parentId}`,
+          }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const rows = await Promise.all([
+      loaders.videoChildrenByParentId.load({
+        videoId: "parent-1",
+        visibleOnly: false,
+      }),
+      loaders.videoChildrenByParentId.load({
+        videoId: "parent-2",
+        visibleOnly: false,
+      }),
+    ])
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.where).toEqual({
+      parentId: { in: ["parent-1", "parent-2"] },
+    })
+    expect(rows.map((group) => group.map((row) => row.parentId))).toEqual([
+      ["parent-1"],
+      ["parent-2"],
+    ])
   })
 })
 

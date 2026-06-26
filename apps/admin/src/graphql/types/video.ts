@@ -393,7 +393,7 @@ builder.prismaObject("VideoStudyQuestion", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("VideoRelation", {
+const VideoRelationRef = builder.prismaObject("VideoRelation", {
   description:
     "Self-referential parent/child join between Videos (e.g. series→episode). Exposes the related parent/child Video plus its ordering position.",
   fields: (t) => ({
@@ -541,15 +541,27 @@ builder.prismaObject("Video", {
     bibleCitations: t.relation("bibleCitations", {
       query: { where: { deletedAt: null } },
     }),
-    parents: t.relation("parents", {
+    parents: t.field({
+      type: [VideoRelationRef],
+      nullable: true,
       description:
         "Parent Video-Video relations: rows where this Video appears on the CHILD side of the VideoRelation join. Traverse `parent { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
-      query: (_args, ctx) => videoParentsFilter(ctx.user),
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoParentsByChildId.load({
+          videoId: video.id,
+          visibleOnly: !isEditorOrAdmin(ctx.user),
+        }),
     }),
-    children: t.relation("children", {
+    children: t.field({
+      type: [VideoRelationRef],
+      nullable: true,
       description:
         "Child Video-Video relations: rows where this Video appears on the PARENT side of the VideoRelation join. Traverse `child { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
-      query: (_args, ctx) => videoChildrenFilter(ctx.user),
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoChildrenByParentId.load({
+          videoId: video.id,
+          visibleOnly: !isEditorOrAdmin(ctx.user),
+        }),
     }),
   }),
 })
