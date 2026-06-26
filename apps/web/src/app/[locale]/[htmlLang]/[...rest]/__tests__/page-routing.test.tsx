@@ -29,7 +29,6 @@ const {
   isWatchHideBibleQuotesEnabledMock,
   fetchYouVersionBibleQuotePassagesMock,
   isWatchQuestionPanelEnabledMock,
-  getInitialSubtitleTranscriptMock,
 } = vi.hoisted(() => ({
   resolveWatchRouteBySlugMock: vi.fn(),
   resolveSeriesEpisodeBySlugMock: vi.fn(),
@@ -56,7 +55,6 @@ const {
   isWatchHideBibleQuotesEnabledMock: vi.fn(async () => false),
   fetchYouVersionBibleQuotePassagesMock: vi.fn(),
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
-  getInitialSubtitleTranscriptMock: vi.fn(async () => null),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -77,10 +75,6 @@ vi.mock("@/lib/content", async () => {
 
 vi.mock("@/lib/watch-home", () => ({
   resolveWatchHome: resolveWatchHomeMock,
-}))
-
-vi.mock("@/lib/watch-transcript", () => ({
-  getInitialSubtitleTranscript: getInitialSubtitleTranscriptMock,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -178,8 +172,6 @@ beforeEach(() => {
   fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([])
   isWatchQuestionPanelEnabledMock.mockReset()
   isWatchQuestionPanelEnabledMock.mockResolvedValue(false)
-  getInitialSubtitleTranscriptMock.mockReset()
-  getInitialSubtitleTranscriptMock.mockResolvedValue(null)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -767,38 +759,32 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(seriesPageClientMock).not.toHaveBeenCalled()
   })
 
-  it("passes initial transcript cues and prunes client variant rows", async () => {
-    const initialTranscript = {
-      vttSrc: "https://cdn.example/storyclubs.vtt",
-      cues: [{ start: 1, end: 4, text: "Server cue" }],
-    }
-    getInitialSubtitleTranscriptMock.mockResolvedValue(
-      initialTranscript as never,
-    )
+  it("defers transcript cues and prunes client variant rows", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus", "english")
 
-    expect(getInitialSubtitleTranscriptMock).toHaveBeenCalledWith({
-      subtitles: watchVideoResult.video.subtitles,
-      audioSlug: "english",
-      durationSeconds: 30,
-    })
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
-      initialTranscript: unknown
-      video: { variants: unknown[] }
+      initialTranscript?: unknown
+      variant: { videoEdition: unknown }
+      video: { variants: Array<{ videoEdition: unknown }> }
       mergedBlocks: Array<{
         kind?: string
         playableLanguageCount?: number
-        video?: { variants: unknown[] }
+        variant?: { videoEdition: unknown }
+        video?: { variants: Array<{ videoEdition: unknown }> }
       }>
     }
-    expect(props.initialTranscript).toBe(initialTranscript)
+    expect(props.initialTranscript).toBeUndefined()
+    expect(props.variant.videoEdition).toBeNull()
     expect(props.video.variants).toHaveLength(1)
+    expect(props.video.variants[0]?.videoEdition).toBeNull()
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
     expect(hero?.playableLanguageCount).toBe(2)
+    expect(hero?.variant?.videoEdition).toBeNull()
     expect(hero?.video?.variants).toHaveLength(1)
+    expect(hero?.video?.variants[0]?.videoEdition).toBeNull()
   })
 
   it("renders a sanitized VideoObject JSON-LD script for playable videos", async () => {
