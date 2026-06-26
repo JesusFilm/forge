@@ -335,6 +335,7 @@ export function SiblingCarousel({
                 {href ? (
                   <Link
                     href={href}
+                    prefetch={false}
                     data-testid="sibling-carousel-item"
                     data-active={isActive ? "true" : "false"}
                     data-pending={isPending ? "true" : "false"}
