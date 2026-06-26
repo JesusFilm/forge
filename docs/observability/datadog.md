@@ -54,6 +54,9 @@ DD_SITE=datadoghq.com
 DD_APM_ENABLED=true
 DD_APM_NON_LOCAL_TRAFFIC=true
 DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+DD_LOGS_ENABLED=true
+DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+DD_BIND_HOST=::1
 ```
 
 Do not expose the Agent publicly. App services should use Railway private
@@ -69,6 +72,7 @@ Set these on the Admin production Railway service.
 # Datadog Agent transport
 DD_AGENT_HOST=${{@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN}}
 DD_TRACE_AGENT_PORT=8126
+DD_AGENT_SYSLOG_PORT=514
 
 # Datadog API / site
 DD_API_KEY=<Forge-production API key value>
@@ -102,6 +106,13 @@ phase, before `dd-trace` is guaranteed to exist. Admin's
 ```bash
 HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/admin/.next/standalone/apps/admin/server.js
 ```
+
+Admin forwards server console logs to the Agent with syslog over UDP on the
+private network. Railway does not expose sibling service stdout to the Agent
+container, so `DD_LOGS_INJECTION=true` alone is not enough; the app must also
+set `DD_AGENT_SYSLOG_PORT=514` and run code with `DD_AGENT_HOST` present. The
+forwarder preserves normal Railway stdout and sends a second copy to Datadog
+with `service`, `env`, `version`, and active trace/span ids when available.
 
 Because the Agent service name contains `/`, prefer Railway's variable
 autocomplete when setting `DD_AGENT_HOST`; it will insert the exact reference

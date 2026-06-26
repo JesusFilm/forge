@@ -1,0 +1,5 @@
+logs:
+  - type: udp
+    port: 514
+    service: forge-admin
+    source: nodejs
