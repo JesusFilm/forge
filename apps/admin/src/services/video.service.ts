@@ -313,6 +313,10 @@ type WatchRouteSnapshotPreferredVariantRow = {
   languageName: Prisma.JsonValue | null
 }
 
+type WatchRouteSnapshotCountRow = {
+  count: number
+}
+
 /**
  * Maximum coreIds accepted in a single `getByCoreIds` call. Mirrors
  * the receiver-side cap in manager's `admin-trigger-route.ts` so the
@@ -1078,6 +1082,27 @@ export class VideoService {
     return rows[0]?.id == null ? null : rows[0]
   }
 
+  private async countPlayableDubLanguagesForSnapshot(
+    videoId: string,
+  ): Promise<number> {
+    const rows = await this.prisma.$queryRaw<WatchRouteSnapshotCountRow[]>`
+      SELECT COUNT(DISTINCT vd.language_id)::int AS "count"
+      FROM "video_dub" vd
+      JOIN "language" l
+        ON l.id = vd.language_id
+       AND l.slug IS NOT NULL
+       AND l.deleted_at IS NULL
+      WHERE vd.video_id = ${videoId}
+        AND vd.language_id IS NOT NULL
+        AND vd.deleted_at IS NULL
+        AND vd.published = true
+        AND vd.hls IS NOT NULL
+        AND vd.hls <> ''
+    `
+
+    return rows[0]?.count ?? 0
+  }
+
   async list({ input: raw, query }: { input: VideoListInput; query: object }) {
     return this.prisma.video.findMany({
       ...query,
@@ -1239,67 +1264,55 @@ export class VideoService {
     })
     if (!root) return null
 
-    const [parentRelations, childRelations, rootImages, citations] =
-      await Promise.all([
-        this.prisma.videoRelation.findMany({
-          where: { childId: root.id, parent: visibleVideo },
-          orderBy: VIDEO_RELATION_ORDER_BY,
-          select: {
-            id: true,
-            parentId: true,
-            parent: {
-              select: {
-                id: true,
-                slug: true,
-                noIndex: true,
-                label: true,
-                primaryLanguageId: true,
-              },
+    const [parentRelations, childRelations, citations] = await Promise.all([
+      this.prisma.videoRelation.findMany({
+        where: { childId: root.id, parent: visibleVideo },
+        orderBy: VIDEO_RELATION_ORDER_BY,
+        select: {
+          id: true,
+          parentId: true,
+          parent: {
+            select: {
+              id: true,
+              slug: true,
+              noIndex: true,
+              label: true,
+              primaryLanguageId: true,
             },
           },
-        }),
-        this.prisma.videoRelation.findMany({
-          where: { parentId: root.id, child: visibleVideo },
-          orderBy: VIDEO_RELATION_ORDER_BY,
-          select: {
-            id: true,
-            childId: true,
-            child: {
-              select: {
-                id: true,
-                slug: true,
-                label: true,
-                primaryLanguageId: true,
-              },
+        },
+      }),
+      this.prisma.videoRelation.findMany({
+        where: { parentId: root.id, child: visibleVideo },
+        orderBy: VIDEO_RELATION_ORDER_BY,
+        select: {
+          id: true,
+          childId: true,
+          child: {
+            select: {
+              id: true,
+              slug: true,
+              label: true,
+              primaryLanguageId: true,
             },
           },
-        }),
-        this.prisma.videoImage.findMany({
-          where: { videoId: root.id, deletedAt: null },
-          select: {
-            id: true,
-            videoId: true,
-            url: true,
-            thumbnail: true,
-            mobileCinematicHigh: true,
-            mobileCinematicLow: true,
-          },
-        }),
-        this.prisma.bibleCitation.findMany({
-          where: { videoId: root.id, deletedAt: null },
-          orderBy: [{ order: "asc" }, { id: "asc" }],
-          select: {
-            id: true,
-            chapterStart: true,
-            chapterEnd: true,
-            verseStart: true,
-            verseEnd: true,
-            order: true,
-            osisId: true,
-            bibleBook: { select: { id: true, name: true } },
-          },
-        }),
-      ])
+        },
+      }),
+      this.prisma.bibleCitation.findMany({
+        where: { videoId: root.id, deletedAt: null },
+        orderBy: [{ order: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          chapterStart: true,
+          chapterEnd: true,
+          verseStart: true,
+          verseEnd: true,
+          order: true,
+          osisId: true,
+          bibleBook: { select: { id: true, name: true } },
+        },
+      }),
+    ])
 
     const parentIds = parentRelations.map((relation) => relation.parentId)
     const rootChildIds = childRelations.map((relation) => relation.childId)
@@ -1332,29 +1345,27 @@ export class VideoService {
     const allVideoIds = Array.from(new Set([root.id, ...relatedVideoIds]))
 
     const [
-      relatedImages,
+      imageRows,
       localeRows,
       studyQuestionRows,
       exactMuxRows,
       fallbackMuxRows,
       durationRows,
-      playableLanguageRows,
+      playableDubLanguageCount,
       preferredExact,
       preferredFallback,
     ] = await Promise.all([
-      relatedVideoIds.length === 0
-        ? []
-        : this.prisma.videoImage.findMany({
-            where: { videoId: { in: relatedVideoIds }, deletedAt: null },
-            select: {
-              id: true,
-              videoId: true,
-              url: true,
-              thumbnail: true,
-              mobileCinematicHigh: true,
-              mobileCinematicLow: true,
-            },
-          }),
+      this.prisma.videoImage.findMany({
+        where: { videoId: { in: allVideoIds }, deletedAt: null },
+        select: {
+          id: true,
+          videoId: true,
+          url: true,
+          thumbnail: true,
+          mobileCinematicHigh: true,
+          mobileCinematicLow: true,
+        },
+      }),
       this.prisma.videoLocale.findMany({
         where: {
           videoId: { in: allVideoIds },
@@ -1407,16 +1418,7 @@ export class VideoService {
       }),
       this.findPreferredPlayableMuxRows(relatedVideoIds),
       this.findPreferredPlayableDurationRows([root.id, ...rootChildIds]),
-      this.prisma.videoDub.findMany({
-        where: {
-          ...PLAYABLE_DUB_WHERE,
-          videoId: root.id,
-          languageId: { not: null },
-          language: { slug: { not: null }, deletedAt: null },
-        },
-        distinct: ["languageId"],
-        select: { languageId: true },
-      }),
+      this.countPlayableDubLanguagesForSnapshot(root.id),
       normalizedLanguageSlug == null
         ? null
         : this.prisma.videoDub.findFirst({
@@ -1451,7 +1453,6 @@ export class VideoService {
       this.findPreferredPlayableVariantRow(root.id),
     ])
 
-    const allImages = [...rootImages, ...relatedImages]
     const localeArgs = { locale, languageSlug: normalizedLanguageSlug }
     const exactMuxByVideoId = firstByVideoId(
       exactMuxRows.filter((row) => row.playbackId != null),
@@ -1482,7 +1483,7 @@ export class VideoService {
         documentId: child.id,
         slug: child.slug,
         label: child.label,
-        images: imageRowsForSnapshot(allImages, child.id),
+        images: imageRowsForSnapshot(imageRows, child.id),
         ...localeBucketsForSnapshot(localeRows, child.id, localeArgs),
         durationSeconds: includeDuration
           ? (durationByVideoId.get(child.id) ?? null)
@@ -1532,7 +1533,7 @@ export class VideoService {
       slug: root.slug,
       noIndex: root.noIndex,
       label: root.label,
-      images: imageRowsForSnapshot(allImages, root.id),
+      images: imageRowsForSnapshot(imageRows, root.id),
       primaryLanguage: root.primaryLanguage
         ? {
             coreId: root.primaryLanguage.coreId,
@@ -1546,7 +1547,7 @@ export class VideoService {
               slug: relation.parent.slug,
               noIndex: relation.parent.noIndex,
               label: relation.parent.label,
-              images: imageRowsForSnapshot(allImages, relation.parent.id),
+              images: imageRowsForSnapshot(imageRows, relation.parent.id),
               ...localeBucketsForSnapshot(
                 localeRows,
                 relation.parent.id,
@@ -1576,7 +1577,7 @@ export class VideoService {
       })),
       ...localeBucketsForSnapshot(localeRows, root.id, localeArgs),
       ...studyQuestionBucketsForSnapshot(studyQuestionRows, localeArgs),
-      playableDubLanguageCount: playableLanguageRows.length,
+      playableDubLanguageCount,
       preferredVariant: preferredVariant
         ? {
             documentId: preferredVariant.id,
