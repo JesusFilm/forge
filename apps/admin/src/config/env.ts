@@ -1,6 +1,8 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+import { normalizeDatadogEnv } from "./datadog-env"
+
 // Doppler sends empty strings for unconfigured vars. Zod's `.optional()`
 // only matches `undefined`, so `""` fails `.min(1)`. Coerce empties to
 // `undefined` before validation.
@@ -19,33 +21,19 @@ const DATADOG_SITE_VALUES = [
   "ap2.datadoghq.com",
 ] as const
 
-function normalizeDatadogEnv(value: string | undefined): string | undefined {
-  const normalized = emptyToUndefined(value)?.toLowerCase()
-
-  switch (normalized) {
-    case undefined:
-      return undefined
-    case "production":
-    case "prod":
-      return "prod"
-    case "staging":
-    case "stage":
-      return "stage"
-    case "preview":
-      return "preview"
-    case "development":
-    case "dev":
-      return "development"
-    case "test":
-      return "test"
-    default:
-      return normalized
-  }
-}
-
-function datadogEnvFallback(): string | undefined {
+function datadogPublicEnvFallback(): string | undefined {
   return normalizeDatadogEnv(
     process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
+function datadogServerEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.DD_ENV ??
+      process.env.NEXT_PUBLIC_DATADOG_ENV ??
       process.env.RAILWAY_ENVIRONMENT_NAME ??
       process.env.VERCEL_ENV ??
       process.env.NODE_ENV,
@@ -479,6 +467,11 @@ export const env = createEnv({
     OLLAMA_BASE_URL: z.string().url().optional(),
     OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
+    DD_AGENT_HOST: z.string().min(1).optional(),
+    DD_AGENT_SYSLOG_PORT: z.coerce.number().int().positive().optional(),
+    DD_ENV: z.string().min(1).optional(),
+    DD_SERVICE: z.string().min(1).optional(),
+    DD_VERSION: z.string().min(1).optional(),
   },
   client: {
     // Optional Datadog RUM configuration. Application id + client token gate
@@ -504,8 +497,13 @@ export const env = createEnv({
     NEXT_PUBLIC_DATADOG_SITE: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_SITE,
     ),
-    NEXT_PUBLIC_DATADOG_ENV: datadogEnvFallback(),
+    NEXT_PUBLIC_DATADOG_ENV: datadogPublicEnvFallback(),
     NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
+    DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),
+    DD_AGENT_SYSLOG_PORT: emptyToUndefined(process.env.DD_AGENT_SYSLOG_PORT),
+    DD_ENV: datadogServerEnvFallback(),
+    DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
+    DD_VERSION: datadogVersionFallback(),
     DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
     ADMIN_SESSION_SECRET: emptyToUndefined(process.env.ADMIN_SESSION_SECRET),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),

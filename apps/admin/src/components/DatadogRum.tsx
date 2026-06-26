@@ -4,7 +4,7 @@ import { datadogRum, type RumInitConfiguration } from "@datadog/browser-rum"
 import { reactPlugin } from "@datadog/browser-rum-react"
 import { useEffect, useRef } from "react"
 
-import { env } from "@/config/env"
+import { datadogRumEnv } from "@/config/datadog-rum-env"
 
 const DATADOG_SERVICE = "forge-admin"
 
@@ -20,18 +20,18 @@ const DATADOG_ALLOWED_TRACING_URLS = [
 ] satisfies NonNullable<RumInitConfiguration["allowedTracingUrls"]>
 
 export function getDatadogRumInitConfig(): RumInitConfiguration | null {
-  const applicationId = env.NEXT_PUBLIC_DATADOG_APPLICATION_ID
-  const clientToken = env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
+  const applicationId = datadogRumEnv.NEXT_PUBLIC_DATADOG_APPLICATION_ID
+  const clientToken = datadogRumEnv.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
 
   if (!applicationId || !clientToken) return null
 
   return {
     applicationId,
     clientToken,
-    site: env.NEXT_PUBLIC_DATADOG_SITE,
+    site: datadogRumEnv.NEXT_PUBLIC_DATADOG_SITE,
     service: DATADOG_SERVICE,
-    env: env.NEXT_PUBLIC_DATADOG_ENV,
-    version: env.NEXT_PUBLIC_DATADOG_VERSION,
+    env: datadogRumEnv.NEXT_PUBLIC_DATADOG_ENV,
+    version: datadogRumEnv.NEXT_PUBLIC_DATADOG_VERSION,
     sessionSampleRate: 100,
     sessionReplaySampleRate: 10,
     trackUserInteractions: true,

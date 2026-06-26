@@ -2,7 +2,8 @@
 
 // The chat empty state: display-serif prompt + a few starter questions. Copy
 // follows the Vigil charter (second person, no exclamation marks, no emoji).
-// The stub note stays so the dev context is honest while no agent is wired.
+// The intro line is flag-aware: it states the real reply source (Seeker vs the
+// dev stub) so a dogfooder is never told "no agent" while talking to Seeker.
 
 const STARTERS = [
   "I can't feel God anymore. Am I doing something wrong?",
@@ -11,15 +12,23 @@ const STARTERS = [
   "Is doubt a sin?",
 ] as const
 
-export function EmptyState({ onPick }: { onPick: (question: string) => void }) {
+export function EmptyState({
+  onPick,
+  seekerEnabled = false,
+}: {
+  onPick: (question: string) => void
+  seekerEnabled?: boolean
+}) {
   return (
     <div className="pt-20 pb-10">
       <h1 className="font-display text-[28px] leading-tight font-normal tracking-[-0.01em] text-linen">
         What would you like to ask?
       </h1>
       <p className="mt-3 max-w-[480px] text-[15px] leading-relaxed text-ash">
-        Scripture, doubt, prayer, next steps — ask anything. Replies come from a
-        stub for now; no agent is connected yet.
+        Scripture, doubt, prayer, next steps — ask anything.{" "}
+        {seekerEnabled
+          ? "Answers come from Seeker, grounded in cited sources."
+          : "Replies come from a stub for now; no agent is connected yet."}
       </p>
       <div className="mt-10 border-t border-linen/5">
         {STARTERS.map((question) => (

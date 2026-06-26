@@ -15,8 +15,12 @@ state lives in the client and resets on refresh.
 src/
   app/
     layout.tsx           Root layout; loads globals.css (server)
-    page.tsx             Renders <AppShell /> (server)
+    page.tsx             Reads isSeekerChatEnabled() (force-dynamic) → <AppShell seekerEnabled> (server)
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
+    api/
+      seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. Testable core handleSeekerProxyRequest
+  config/
+    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED flag + Mastra base URL/bearer/allowlist/timeout. isSeekerChatEnabled() + seekerTimeoutMs(). Boots clean with none set
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
@@ -29,16 +33,18 @@ src/
       icons.tsx          Inline line-icon components (panel/compose/menu/close) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational)
-      message-list.tsx   Renders turns (Embersoot user bubble / plain assistant text) + pending pulse cursor
+      message-list.tsx   Renders turns (Embersoot user bubble / plain assistant text) + streaming pulse (aria-live), grounded badge (3 states), engine marker, role="alert" failure notice
+      sources-list.tsx   Cited passages or explicit "No sources cited" state; untrusted RAG sources → https-only links (rel=noopener), text never HTML (feat-205)
       composer.tsx       Auto-growing textarea + 12px Vesper send-dot (no paper-airplane icon)
       empty-state.tsx    "What would you like to ask?" heading + starter questions
     brand/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
   lib/
-    chat-stub.ts         Reply-generation seam — the Mastra wiring replaces THIS file
+    chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins)
+    sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
-    conversations.ts     Message + Conversation types + createConversation / deriveTitle helpers
-    use-conversations.ts Client hook: send + per-conversation reply timers + per-conversation pending + double-send guard + new/select conversation
+    conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types + createConversation / deriveTitle
+    use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
     jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx)
@@ -55,12 +61,15 @@ public/                  Static assets served by URL (Next.js convention, matche
   class policy to `collapsedStyles`, and its rows to the `sidebar-*`
   sub-components (feat-203). State ownership stays in `AppShell` — the hook
   only derives presentation from the `collapsed`/`mobileOpen` flags.
-- **The stub seam:** reply generation is isolated in `lib/chat-stub.ts`. The
-  hook only orchestrates timing, the per-conversation pending/double-send guard,
-  and which conversation a reply lands in. The `Message` type lives in
-  `lib/conversations.ts` (NOT in the stub seam) so it survives the seam's
-  deletion; its `id`/`role`/`content` shape is AI-SDK-aligned so the eventual
-  swap renames nothing.
+- **The reply seam:** reply generation is isolated in `lib/chat-stub.ts`
+  (`streamReply` — stub path OR Seeker proxy, selected by the `seekerEnabled`
+  flag). The hook orchestrates the streaming lifecycle (append an empty assistant
+  turn, feed `onToken` into it, finalize/error on the terminal result), the
+  per-conversation pending/double-send guard, and which conversation a reply
+  lands in. The `Message` type + `SeekerSource` + `ReplyFailureReason` live in
+  `lib/conversations.ts` (NOT in the seam) so they survive the seam's deletion;
+  the `id`/`role`/`content` core is AI-SDK-aligned. See "Mastra Connection
+  (Seeker, feat-205)" below for the proxy + flag + accepted-risk detail.
 - **Sidebar is our own addition**, not from the design system — the Vigil
   system as handed to us is single-surface (it lists no conversation sidebar),
   so the rail was built from its tokens rather than copied from it. It is
@@ -88,69 +97,60 @@ raw hex/values (that's just code hygiene, not a design commitment).
   `#FFF`/`#000`, gradients (except the composer protection fade), cold blues,
   glassmorphism, and emoji.
 
-## Eventual Mastra Connection
+## Mastra Connection (Seeker, feat-205)
 
-This app will eventually talk to the agents in `apps/mastra`. The
-integration path is **undecided**: direct server-to-server (bearer, like
-admin's `MASTRA_BASE_URL` pattern) vs through the existing
-`apps/mastra-gateway` proxy (the repo's established browser-facing path —
-see `docs/solutions/platform/mastra-studio-gateway-auth-railway-pattern-20260522.md`).
-Do not wire either without a roadmap ticket that settles the path.
+The integration path is **settled**: direct server-to-server bearer (admin's
+`MASTRA_BASE_URL` pattern), NOT the `apps/mastra-gateway` browser-facing path.
+feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
+(see `docs/plans/2026-06-26-001-feat-chat-wire-seeker-route-plan.md` +
+`docs/brainstorms/2026-06-25-chat-wire-seeker-route-requirements.md`).
 
-`src/lib/chat-stub.ts` is the seam the real wiring replaces. The `Message` type
-lives in `src/lib/conversations.ts` (so it outlives the seam); its
-`id`/`role`/`content` shape is AI-SDK-aligned so the swap renames nothing.
+- **Flag-gated, default off.** `SEEKER_CHAT_ENABLED` (server env, read in
+  `page.tsx` via `force-dynamic`, passed as the `seekerEnabled` prop) selects the
+  reply source. Off/unset → the original client stub (`buildStubReply`); on →
+  messages stream from Seeker.
+- **The seam is `src/lib/chat-stub.ts`** (`streamReply` — stub path + Seeker
+  path), still the single swap point. The `Message` type + `SeekerSource` +
+  `ReplyFailureReason` live in `src/lib/conversations.ts` so they outlive the seam.
+- **The proxy** is `src/app/api/seeker/route.ts` (+ `src/lib/sse.ts` parser). It
+  holds the bearer server-side, SSRF-checks the base host + enforces `https:`,
+  `redirect:"error"`, bounds the call with `SEEKER_TIMEOUT_MS` (95s > Mastra's
+  90s ceiling), and normalizes every failure to one terminal `error{reason}` SSE
+  frame. Plain-string logging only.
+- **Accepted v1 risk:** the proxy is unauthenticated + un-rate-limited +
+  world-reachable, gated only by URL obscurity + a small trusted audience (NOT a
+  gate). Inbound auth + a rate/concurrency cap are prerequisites before the
+  audience widens — do not "fix" the open proxy without that work.
 
-### Acceptance criteria when the stub is replaced
-
-These are deferred hardening requirements, not stub work. The current stub
-(`buildStubReply`) is a synchronous, never-failing string function, so none of
-the failure modes below exist yet — but they all go live the moment a real,
-rejectable, possibly-hanging Mastra call replaces it. Carry these into the
-roadmap ticket that settles the integration path (above) as explicit
-`## Constraints` / `## Verification` items:
-
-1. **Surface reply failures to the user.** Today a throw in reply generation
-   escapes the `setTimeout` callback as an uncaught error — the slot is released
-   (the `try/finally` guard in `use-conversations.ts` is tested), but the user
-   sees the composer silently re-enable with no message. The replacement must
-   render a failure (an assistant/error-role turn or a per-conversation error
-   flag), not fail invisibly.
-2. **Bound the call with an outbound timeout.** A hanging downstream call would
-   leave the conversation permanently pending (the per-conversation double-send
-   guard blocks re-entry with no recovery). Wrap the call with a timeout
-   strictly below any Cloudflare/CDN ceiling and present a distinct
-   timeout message — see the root `CLAUDE.md` "outbound timeout MUST be shorter
-   than the upstream caller's budget" pattern.
-3. **Reshape the seam so the swap stays single-file.** The reply _timing_
-   (`setTimeout` + `STUB_REPLY_DELAY_MS`) currently lives in
-   `use-conversations.ts`, not in `chat-stub.ts`, so a naïve swap touches two
-   files. Prefer exporting an async `generateReply(text): Promise<string>` from
-   the seam that internalizes its own latency/abort, so the hook only `await`s a
-   promise and the Mastra swap becomes a true single-file replacement. NB: this
-   changes the hook's async model and the synchronous `app-shell.test.tsx`
-   timer/throw assertions, so do it _with_ the integration, not speculatively
-   against the stub.
+The three former "deferred hardening" criteria (surface failures, outbound
+timeout, single-file async seam) are now **implemented**: failures render a
+`role="alert"` notice keeping partial text; the call is timeout-bounded; the seam
+is async (`streamReply`) and the hook only awaits it.
 
 ## Intentionally Absent
 
-- No auth (lands later, alongside Cloudflare fronting)
-- No database or conversation persistence (conversations are client-only)
-- No API routes, server actions, or streaming
-- No real agent connection
-- No env vars — hence no `env.ts` validation scaffold
+- No auth on the chat origin or the `/api/seeker` proxy (lands later, alongside
+  Cloudflare fronting + a rate cap — see the accepted-risk note above)
+- No database or conversation persistence (conversations are client-only; Seeker
+  memory is Mastra's in-memory store, lost on its restart)
+- No browser-direct Mastra path / CORS (server-to-server bearer only)
 - No i18n, no design-system sharing with `apps/web`
+
+Now present (feat-205, behind the default-off flag): a validated `env.ts`, the
+`/api/seeker` App Router route handler, and SSE streaming.
 
 ## Key Conventions
 
 - Server Components by default. Client components are the ones holding hooks:
   `shell/app-shell.tsx`, `shell/sidebar.tsx`, `shell/use-sidebar-chrome.ts`,
   `chat/chat.tsx`, `chat/composer.tsx`, and `chat/empty-state.tsx`.
-  `chat/message-list.tsx` and the `shell/sidebar-{header,new-conversation,conversation-list}.tsx`
+  `chat/message-list.tsx`, `chat/sources-list.tsx`, and the
+  `shell/sidebar-{header,new-conversation,conversation-list}.tsx`
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import
   them (`shell/icons.tsx`, the stateless SVGs, is the same). `shell/sidebar-collapsed-styles.ts`
-  (a pure class-map function), `brand/*`, `lib/cn.ts`, and the `app/` entry files
+  (a pure class-map function), `brand/*`, `lib/cn.ts`, `lib/sse.ts`, the `app/`
+  entry files, and the server-only modules (`config/env.ts`, `app/api/seeker/route.ts`)
   stay server / framework-agnostic.
 - Strict TypeScript, `src/` layout, `@/*` path alias — config mirrors
   `apps/web` (the CI-proven template).
@@ -198,6 +198,10 @@ pnpm --filter @forge/chat lint
 pnpm --filter @forge/chat typecheck
 pnpm --filter @forge/chat test
 ```
+
+Env is optional: the app runs against the stub with no config. To dogfood Seeker
+locally, copy `.env.example` → `.env.local` and set `SEEKER_CHAT_ENABLED=true`
+plus the Mastra base URL + bearer (see `src/config/env.ts`).
 
 ## Deployment
 

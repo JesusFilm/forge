@@ -1,46 +1,27 @@
-# DEAD CONFIG — DO NOT EDIT EXPECTING IT TO TAKE EFFECT.
+# Railway only reads this file if the @forge/admin service's Config-as-code Path
+# is set to apps/admin/railway.toml. Without that service setting, this file is
+# ignored and the Railway dashboard remains canonical.
 #
-# Railway is configured for the @forge/admin service via the Railway
-# dashboard, NOT via this file. Deployment records show
-# `configFile: null` for every successful deploy of this service —
-# this `railway.toml` has never been read by Railway.
-#
-# The authoritative configuration lives at:
-#   project: forge   (98952497-a4d9-4714-8fe8-0cdbff3147c9)
-#   service: @forge/admin   (bdb15048-1ca9-4217-ae01-ef7cc19ca6f4)
-#   env:     production  (5f41e037-90e4-4674-a3ea-66bbd05fb3b4)
-#
-# Why this file is dead: Railway only auto-discovers a `railway.toml`
-# at the repository root. Per-service tomls in `apps/<service>/`
-# are silently ignored unless the service's "Config-as-code Path"
-# is explicitly pointed at them. That path was never set on this
-# service.
-#
-# How prod was silently broken for ~1 week (R2 → R4-extension):
-#   - apps/admin/CLAUDE.md and this file declared a chained
-#     `db:migrate:deploy && node ...standalone/server.js` startCommand.
-#   - Reality: the dashboard had a `pnpm --filter @forge/admin start`
-#     override that ran `next start` and skipped migrations.
-#   - Five PRs (R2, R3, R4, R0, R4-extension) shipped migrations that
-#     never applied to prod. Discovered 2026-04-29 when triggerSync
-#     wrote 0 rows across all 5 phases.
-#
-# Recovery + permanent fix: see
-#   docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md
-#   docs/plans/2026-04-29-004-fix-admin-prod-migration-recovery-plan.md
-#
-# Until "Config-as-code Path" is wired up on the service, every
-# deploy-config change for @forge/admin must go through the Railway
-# dashboard (or `mcp__railway__updateServiceTool` followed by
-# `mcp__railway__accept-deploy` — never `redeploy` alone). See
-# docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md.
-#
-# Current dashboard startCommand (set 2026-04-29 as part of the
-# recovery):
-#   pnpm --filter @forge/admin db:migrate:deploy && \
-#     HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js
-#
-# Phase 2 follow-up (deferred outside this PR's scope): wire
-# Config-as-code Path on the service to point at this file, then
-# repopulate the [build] / [deploy] blocks here. Until then, do NOT
-# re-add a startCommand to this file expecting it to be honored.
+# Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
+# service variables are present during Railpack/mise build setup, before
+# dependencies are installed. Keep the Datadog preload scoped to startCommand.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static"
+watchPatterns = [
+  "/apps/admin/**",
+  "/packages/experience-schema/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+]
+
+[deploy]
+preDeployCommand = "pnpm --filter @forge/admin db:migrate:deploy"
+startCommand = "HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/admin/.next/standalone/apps/admin/server.js"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

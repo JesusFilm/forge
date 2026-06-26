@@ -469,19 +469,26 @@ variables, slugs, bearer keys, cookies, IPs, or user identifiers.
 configured. The RUM service is `forge-admin`, matching backend APM for trace
 correlation. RUM traces only Admin GraphQL URLs and uses masked-input privacy.
 
+`src/observability/datadog-logs.ts` forwards server console logs to the shared
+Datadog Agent over syslog UDP when `DD_AGENT_HOST` is configured. It preserves
+normal Railway stdout, adds Datadog service/env/version fields, and attaches
+active trace/span ids when `dd-trace` has an active span. Keep this transport
+plain and opt-in; Railway does not let the Agent scrape sibling service stdout.
+
 The shared Railway Datadog Agent service definition lives in
 `infra/datadog-agent/`; operator setup and env variables are documented in
 `docs/observability/datadog.md`. Admin browser sourcemaps upload with
 `pnpm --filter @forge/admin datadog:sourcemaps`.
 
-Production Admin Railway config is dashboard-owned: `apps/admin/railway.toml`
-is documented dead config. For best Datadog auto-instrumentation, production
-must set Datadog service env (`DD_SERVICE=forge-admin`, `DD_ENV=production`,
-`DD_VERSION=<git sha>`), point at the private Datadog Agent
-(`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`), and load the tracer before
-application modules, ideally with `NODE_OPTIONS=--require dd-trace/init`.
-Confirm the effective Railway service config after any change rather than
-assuming this file was read.
+Production Admin Railway config lives in `apps/admin/railway.toml` once the
+service's Config-as-code Path is set to that file. For best Datadog
+auto-instrumentation, production must set Datadog service env
+(`DD_SERVICE=forge-admin`, `DD_ENV=prod`, `DD_VERSION=<git sha>`), point
+at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`,
+`DD_AGENT_SYSLOG_PORT=514`), and load the tracer before application modules through the `startCommand`:
+`NODE_OPTIONS='--require dd-trace/init' node ...server.js`. Do not set
+`NODE_OPTIONS` as a global Railway service variable because it is also present
+during Railpack/mise build setup.
 
 Use `pnpm --filter @forge/admin restore:video-db -- --target-env=development --in=<dump>`
 to restore into local or staging Postgres. The restore path reads
@@ -616,28 +623,26 @@ VIEWER/EDITOR role ladder.
 ## Deployment
 
 Railway service `@forge/admin` in project `forge` (Doppler project
-`forge-admin` of the same name). The service is **configured via the
-Railway dashboard, NOT via `apps/admin/railway.toml`** — that file is
-dead config until the service's "Config-as-code Path" is wired up
-(see `apps/admin/railway.toml` header comment + the solutions doc
-linked below).
+`forge-admin` of the same name). Set the service's Config-as-code Path to
+`apps/admin/railway.toml`; otherwise Railway ignores the per-service file and
+the dashboard remains canonical.
 
-**Authoritative dashboard configuration (as of 2026-04-29 recovery):**
+**Authoritative configuration:**
 
 | Field                      | Value                                                                                                                                                     |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Custom Start Command       | `pnpm --filter @forge/admin db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js`                                  |
+| Config-as-code Path        | `apps/admin/railway.toml`                                                                                                                                 |
+| Start Command              | `HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/admin/.next/standalone/apps/admin/server.js`                                           |
 | Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
-| Custom Pre-Deploy Command  | (not set — migrate is chained into startCommand)                                                                                                          |
+| Custom Pre-Deploy Command  | `pnpm --filter @forge/admin db:migrate:deploy`                                                                                                            |
 | Healthcheck Path           | `/api/health`                                                                                                                                             |
 | Healthcheck Timeout        | 60s                                                                                                                                                       |
 | Restart Policy Max Retries | 3                                                                                                                                                         |
 
-The chained `startCommand` runs Prisma migrations BEFORE the
-standalone Next.js server boots. If `migrate deploy` fails, the
-container crashes and `restartPolicy` retries up to 3 times before
-the deploy is marked FAILED (see Migrations section for failure-mode
-recovery). Other deployment caveats in
+The `preDeployCommand` runs Prisma migrations before the standalone Next.js
+server boots. If `migrate deploy` fails, the deploy is marked failed before
+serving traffic (see Migrations section for failure-mode recovery). Other
+deployment caveats in
 `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
 still apply: set `HOSTNAME=0.0.0.0` in the Railway dashboard (not
 `[deploy.env]`).
@@ -2570,7 +2575,7 @@ fresh DB-backed key**:
 
 ## Common pitfalls (grows with each unit)
 
-- **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
+- **Per-service `railway.toml` files are ignored until Config-as-code Path is set.** For Admin, set it to `apps/admin/railway.toml` before assuming code-owned config applies. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
 - **Railway MCP writes are staged, not applied** — `updateServiceTool` writes to a buffer; flush with `accept-deploy(environmentId)`, not `redeploy`. See `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
 - PostgreSQL 18 on Railway: `?::jsonb::text[]` cast unsupported. Use PG array

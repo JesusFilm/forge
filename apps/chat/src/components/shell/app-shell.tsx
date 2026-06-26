@@ -13,8 +13,16 @@ import { Sidebar, SIDEBAR_ID } from "./sidebar"
  * sidebar rail beside the chat pane. Sidebar presentation is in-memory only —
  * `collapsed` drives the desktop rail (full ↔ icon-only) and `mobileOpen`
  * drives the off-canvas drawer below `md`; the two flags are independent.
+ *
+ * `seekerEnabled` is the deployment-wide flag, read server-side in page.tsx and
+ * passed down (feat-205, R1/R2). It selects the reply source — the Seeker proxy
+ * vs the local stub — inside useConversations; nothing else here depends on it.
  */
-export function AppShell() {
+export function AppShell({
+  seekerEnabled = false,
+}: {
+  seekerEnabled?: boolean
+}) {
   const {
     conversations,
     activeId,
@@ -22,11 +30,12 @@ export function AppShell() {
     draft,
     pending,
     pendingIds,
+    streamingMessageId,
     setDraft,
     send,
     newConversation,
     selectConversation,
-  } = useConversations()
+  } = useConversations(seekerEnabled)
 
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -94,6 +103,8 @@ export function AppShell() {
           conversation={activeConversation}
           draft={draft}
           pending={pending}
+          streamingMessageId={streamingMessageId}
+          seekerEnabled={seekerEnabled}
           onDraftChange={setDraft}
           onSend={send}
         />

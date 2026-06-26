@@ -2,12 +2,17 @@ import { describe, expect, it, vi } from "vitest"
 
 const init = vi.fn()
 const use = vi.fn()
+const configureDatadogLogForwarding = vi.fn()
 
 vi.mock("dd-trace", () => ({
   default: {
     init,
     use,
   },
+}))
+
+vi.mock("./datadog-logs", () => ({
+  configureDatadogLogForwarding,
 }))
 
 const { configureDatadog, DATADOG_GRAPHQL_CONFIG } = await import("./datadog")
@@ -33,5 +38,6 @@ describe("configureDatadog", () => {
     })
     expect(use).toHaveBeenCalledTimes(1)
     expect(use).toHaveBeenCalledWith("graphql", DATADOG_GRAPHQL_CONFIG)
+    expect(configureDatadogLogForwarding).toHaveBeenCalledTimes(1)
   })
 })
