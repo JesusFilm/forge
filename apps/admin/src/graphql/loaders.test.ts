@@ -26,7 +26,11 @@ function makeFakePrisma(rowsByModel: Record<string, Array<{ id: string }>>) {
     experience: make("experience"),
     experienceLocale: make("experienceLocale"),
     video: make("video"),
+    videoImage: { findMany: async () => [] },
+    videoLocale: { findMany: async () => [] },
     videoRelation: { findMany: async () => [] },
+    videoStudyQuestion: { findMany: async () => [] },
+    bibleCitation: { findMany: async () => [] },
     language: make("language"),
     // Loose typing — each test provides only the delegates it exercises.
   } as unknown as Parameters<typeof createLoaders>[0]
@@ -39,12 +43,16 @@ describe("createLoaders", () => {
       "experienceById",
       "experienceLocaleById",
       "languageById",
+      "videoBibleCitationsByVideoId",
       "videoById",
       "videoByIdWithQuery",
       "videoChildrenByParentId",
+      "videoImagesByVideoId",
+      "videoLocalesByVideoIdAndFilter",
       "videoMuxPlaybackIdByIdAndLanguageSlug",
       "videoParentsByChildId",
       "videoPrimaryDubDurationById",
+      "videoStudyQuestionsByVideoIdAndFilter",
     ])
   })
 
