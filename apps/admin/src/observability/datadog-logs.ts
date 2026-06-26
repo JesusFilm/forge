@@ -95,6 +95,7 @@ export function buildDatadogSyslogMessage(input: SyslogPayloadInput): string {
   const payload = {
     ddsource: "nodejs",
     ddtags: tags.join(","),
+    env: input.environment,
     message: input.message,
     service: input.service,
     status,
