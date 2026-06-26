@@ -127,6 +127,90 @@ export function createLoaders(prisma: PrismaClient) {
       { cacheKeyFn: serializeVideoRelationVisibilityKey },
     ),
 
+    /** Hydrate non-deleted VideoImage rows by Video id. */
+    videoImagesByVideoId: new DataLoader<string, VideoImageRow[]>(async (ids) =>
+      loadRowsByVideoId({
+        ids,
+        findMany: (videoIds) =>
+          prisma.videoImage.findMany({
+            where: { videoId: { in: videoIds }, deletedAt: null },
+          }),
+      }),
+    ),
+
+    /** Hydrate visible VideoLocale rows by Video id and locale/language args. */
+    videoLocalesByVideoIdAndFilter: new DataLoader<
+      VideoLocaleFilterKey,
+      VideoLocaleRow[],
+      string
+    >(
+      async (keys) =>
+        loadVideoScopedRowsByFilter({
+          keys,
+          filterKey: serializeVideoLocaleFilter,
+          findMany: (videoIds, key) =>
+            prisma.videoLocale.findMany({
+              where: {
+                videoId: { in: videoIds },
+                deletedAt: null,
+                ...(key.locale != null ? { locale: key.locale } : {}),
+                ...(key.languageSlug != null
+                  ? { languageSlug: key.languageSlug }
+                  : {}),
+                ...(key.visibleOnly ? { status: "PUBLISHED" as const } : {}),
+              },
+              orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
+            }),
+        }),
+      { cacheKeyFn: serializeVideoLocaleFilterKey },
+    ),
+
+    /** Hydrate VideoStudyQuestion rows by Video id and locale/language args. */
+    videoStudyQuestionsByVideoIdAndFilter: new DataLoader<
+      VideoStudyQuestionFilterKey,
+      VideoStudyQuestionRow[],
+      string
+    >(
+      async (keys) =>
+        loadVideoScopedRowsByFilter({
+          keys,
+          filterKey: serializeVideoStudyQuestionFilter,
+          findMany: (videoIds, key) =>
+            prisma.videoStudyQuestion.findMany({
+              where: {
+                videoId: { in: videoIds },
+                deletedAt: null,
+                ...(key.locale != null
+                  ? { locale: key.locale }
+                  : key.languageSlug == null
+                    ? { primary: true }
+                    : {}),
+                ...(key.languageSlug != null
+                  ? { languageSlug: key.languageSlug }
+                  : {}),
+              },
+              orderBy: [
+                { order: "asc" },
+                { languageSlug: "asc" },
+                { id: "asc" },
+              ],
+            }),
+        }),
+      { cacheKeyFn: serializeVideoStudyQuestionFilterKey },
+    ),
+
+    /** Hydrate non-deleted BibleCitation rows by Video id. */
+    videoBibleCitationsByVideoId: new DataLoader<string, BibleCitationRow[]>(
+      async (ids) =>
+        loadRowsByVideoId({
+          ids,
+          findMany: (videoIds) =>
+            prisma.bibleCitation.findMany({
+              where: { videoId: { in: videoIds }, deletedAt: null },
+            }),
+        }),
+    ),
+
     /** Hydrate Language rows by id. */
     languageById: new DataLoader<string, LanguageRow | null>(async (ids) => {
       const rows = await prisma.language.findMany({
@@ -300,6 +384,87 @@ export type VideoRelationVisibilityKey = {
   visibleOnly: boolean
 }
 
+export type VideoLocaleFilterKey = {
+  videoId: string
+  locale: string | null
+  languageSlug: string | null
+  visibleOnly: boolean
+}
+
+export type VideoStudyQuestionFilterKey = {
+  videoId: string
+  locale: string | null
+  languageSlug: string | null
+}
+
+type VideoScopedRow = { videoId: string }
+
+type VideoScopedFilterKey = { videoId: string }
+
+async function loadRowsByVideoId<R extends VideoScopedRow>({
+  ids,
+  findMany,
+}: {
+  ids: readonly string[]
+  findMany: (videoIds: string[]) => Promise<R[]>
+}): Promise<R[][]> {
+  const videoIds = unique(ids as string[])
+  const rows = await findMany(videoIds)
+  const rowsByVideoId = groupRowsByVideoId(rows)
+  return ids.map((id) => rowsByVideoId.get(id) ?? [])
+}
+
+async function loadVideoScopedRowsByFilter<
+  K extends VideoScopedFilterKey,
+  R extends VideoScopedRow,
+>({
+  keys,
+  filterKey,
+  findMany,
+}: {
+  keys: readonly K[]
+  filterKey: (key: K) => string
+  findMany: (videoIds: string[], key: K) => Promise<R[]>
+}): Promise<R[][]> {
+  const groupedKeys = new Map<string, K[]>()
+  for (const key of keys) {
+    const groupKey = filterKey(key)
+    groupedKeys.set(groupKey, [...(groupedKeys.get(groupKey) ?? []), key])
+  }
+
+  const rowsByLoaderKey = new Map<string, R[]>()
+  await Promise.all(
+    Array.from(groupedKeys.values()).map(async (group) => {
+      const videoIds = unique(group.map((key) => key.videoId))
+      const rows = await findMany(videoIds, group[0]!)
+      const rowsByVideoId = groupRowsByVideoId(rows)
+      for (const key of group) {
+        rowsByLoaderKey.set(
+          `${key.videoId}:${filterKey(key)}`,
+          rowsByVideoId.get(key.videoId) ?? [],
+        )
+      }
+    }),
+  )
+
+  return keys.map(
+    (key) => rowsByLoaderKey.get(`${key.videoId}:${filterKey(key)}`) ?? [],
+  )
+}
+
+function groupRowsByVideoId<R extends VideoScopedRow>(
+  rows: R[],
+): Map<string, R[]> {
+  const rowsByVideoId = new Map<string, R[]>()
+  for (const row of rows) {
+    rowsByVideoId.set(row.videoId, [
+      ...(rowsByVideoId.get(row.videoId) ?? []),
+      row,
+    ])
+  }
+  return rowsByVideoId
+}
+
 const videoRelationOrderBy = [
   { order: { sort: "asc" as const, nulls: "last" as const } },
   { createdAt: "asc" as const },
@@ -373,6 +538,37 @@ function serializeVideoRelationVisibilityKey(
   return `${key.videoId}:${key.visibleOnly ? "public" : "all"}`
 }
 
+function normalizeNullableArg(value: string | null | undefined): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null
+}
+
+function serializeVideoLocaleFilter(key: VideoLocaleFilterKey): string {
+  return [
+    normalizeNullableArg(key.locale) ?? "",
+    normalizeNullableArg(key.languageSlug) ?? "",
+    key.visibleOnly ? "public" : "all",
+  ].join(":")
+}
+
+function serializeVideoLocaleFilterKey(key: VideoLocaleFilterKey): string {
+  return `${key.videoId}:${serializeVideoLocaleFilter(key)}`
+}
+
+function serializeVideoStudyQuestionFilter(
+  key: VideoStudyQuestionFilterKey,
+): string {
+  return [
+    normalizeNullableArg(key.locale) ?? "",
+    normalizeNullableArg(key.languageSlug) ?? "",
+  ].join(":")
+}
+
+function serializeVideoStudyQuestionFilterKey(
+  key: VideoStudyQuestionFilterKey,
+): string {
+  return `${key.videoId}:${serializeVideoStudyQuestionFilter(key)}`
+}
+
 function serializeVideoByIdWithQuerySelection(query: object): string {
   return JSON.stringify(query)
 }
@@ -424,6 +620,18 @@ type ExperienceLocaleRow = Awaited<
 type VideoRow = Awaited<ReturnType<PrismaClient["video"]["findMany"]>>[number]
 type VideoRelationRow = Awaited<
   ReturnType<PrismaClient["videoRelation"]["findMany"]>
+>[number]
+type VideoImageRow = Awaited<
+  ReturnType<PrismaClient["videoImage"]["findMany"]>
+>[number]
+type VideoLocaleRow = Awaited<
+  ReturnType<PrismaClient["videoLocale"]["findMany"]>
+>[number]
+type VideoStudyQuestionRow = Awaited<
+  ReturnType<PrismaClient["videoStudyQuestion"]["findMany"]>
+>[number]
+type BibleCitationRow = Awaited<
+  ReturnType<PrismaClient["bibleCitation"]["findMany"]>
 >[number]
 type LanguageRow = Awaited<
   ReturnType<PrismaClient["language"]["findMany"]>

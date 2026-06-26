@@ -249,46 +249,6 @@ builder.prismaObject("BibleBook", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("BibleCitation", {
-  description: "A Core-sourced Bible passage cited by a video.",
-  fields: (t) => ({
-    id: t.exposeID("id"),
-    coreId: t.exposeString("coreId", { nullable: true }),
-    osisId: t.exposeString("osisId", { nullable: true }),
-    order: t.exposeInt("order", { nullable: true }),
-    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
-    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
-    verseStart: t.exposeInt("verseStart", { nullable: true }),
-    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
-    bibleBook: t.relation("bibleBook"),
-  }),
-})
-
-/** @classification public-shape */
-builder.prismaObject("VideoImage", {
-  fields: (t) => ({
-    id: t.exposeID("id"),
-    url: t.exposeString("url", { nullable: true }),
-    width: t.exposeInt("width", { nullable: true }),
-    height: t.exposeInt("height", { nullable: true }),
-    aspectRatio: t.exposeString("aspectRatio", { nullable: true }),
-    mobileCinematicHigh: t.exposeString("mobileCinematicHigh", {
-      nullable: true,
-    }),
-    mobileCinematicLow: t.exposeString("mobileCinematicLow", {
-      nullable: true,
-    }),
-    mobileCinematicVeryLow: t.exposeString("mobileCinematicVeryLow", {
-      nullable: true,
-    }),
-    thumbnail: t.exposeString("thumbnail", { nullable: true }),
-    videoStill: t.exposeString("videoStill", { nullable: true }),
-    blurhash: t.exposeString("blurhash", { nullable: true }),
-    kind: t.exposeString("kind", { nullable: true }),
-  }),
-})
-
-/** @classification public-shape */
 builder.prismaObject("VideoSubtitle", {
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -356,7 +316,47 @@ builder.prismaObject("VideoDub", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("VideoLocale", {
+const BibleCitationRef = builder.prismaObject("BibleCitation", {
+  description: "A Core-sourced Bible passage cited by a video.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    coreId: t.exposeString("coreId", { nullable: true }),
+    osisId: t.exposeString("osisId", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
+    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
+    verseStart: t.exposeInt("verseStart", { nullable: true }),
+    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
+    bibleBook: t.relation("bibleBook"),
+  }),
+})
+
+/** @classification public-shape */
+const VideoImageRef = builder.prismaObject("VideoImage", {
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    url: t.exposeString("url", { nullable: true }),
+    width: t.exposeInt("width", { nullable: true }),
+    height: t.exposeInt("height", { nullable: true }),
+    aspectRatio: t.exposeString("aspectRatio", { nullable: true }),
+    mobileCinematicHigh: t.exposeString("mobileCinematicHigh", {
+      nullable: true,
+    }),
+    mobileCinematicLow: t.exposeString("mobileCinematicLow", {
+      nullable: true,
+    }),
+    mobileCinematicVeryLow: t.exposeString("mobileCinematicVeryLow", {
+      nullable: true,
+    }),
+    thumbnail: t.exposeString("thumbnail", { nullable: true }),
+    videoStill: t.exposeString("videoStill", { nullable: true }),
+    blurhash: t.exposeString("blurhash", { nullable: true }),
+    kind: t.exposeString("kind", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
+const VideoLocaleRef = builder.prismaObject("VideoLocale", {
   description: "Per-locale title/description/snippet/imageAlt for a Video.",
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -377,7 +377,7 @@ builder.prismaObject("VideoLocale", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("VideoStudyQuestion", {
+const VideoStudyQuestionRef = builder.prismaObject("VideoStudyQuestion", {
   description: "A per-locale Core-sourced study question attached to a video.",
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -516,30 +516,51 @@ builder.prismaObject("Video", {
       resolve: (video, _args, ctx) =>
         ctx.services.video.countPlayableDubLanguages({ videoId: video.id }),
     }),
-    locales: t.relation("locales", {
+    locales: t.field({
+      type: [VideoLocaleRef],
+      nullable: true,
       description:
         "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).",
       args: {
         locale: t.arg.string({ required: false }),
         languageSlug: t.arg.string({ required: false }),
       },
-      query: (args, ctx) => videoLocalesFilter(args, ctx.user),
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoLocalesByVideoIdAndFilter.load({
+          videoId: video.id,
+          locale: args.locale ?? null,
+          languageSlug: args.languageSlug ?? null,
+          visibleOnly: !isEditorOrAdmin(ctx.user),
+        }),
     }),
     dubs: t.relation("dubs", {
       query: { where: { deletedAt: null } },
     }),
-    images: t.relation("images", {
-      query: { where: { deletedAt: null } },
+    images: t.field({
+      type: [VideoImageRef],
+      nullable: true,
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoImagesByVideoId.load(video.id),
     }),
-    studyQuestions: t.relation("studyQuestions", {
+    studyQuestions: t.field({
+      type: [VideoStudyQuestionRef],
+      nullable: true,
       args: {
         locale: t.arg.string({ required: false }),
         languageSlug: t.arg.string({ required: false }),
       },
-      query: (args) => videoStudyQuestionsFilter(args),
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoStudyQuestionsByVideoIdAndFilter.load({
+          videoId: video.id,
+          locale: args.locale ?? null,
+          languageSlug: args.languageSlug ?? null,
+        }),
     }),
-    bibleCitations: t.relation("bibleCitations", {
-      query: { where: { deletedAt: null } },
+    bibleCitations: t.field({
+      type: [BibleCitationRef],
+      nullable: true,
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoBibleCitationsByVideoId.load(video.id),
     }),
     parents: t.field({
       type: [VideoRelationRef],
