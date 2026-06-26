@@ -54,17 +54,20 @@ vi.mock("next/link", () => ({
     href,
     onClick,
     onNavigate: _onNavigate,
+    prefetch,
     children,
     ...props
   }: {
     href: string
     onClick?: MouseEventHandler<HTMLAnchorElement>
     onNavigate?: unknown
+    prefetch?: boolean
     children: ReactNode
     [key: string]: unknown
   }) => (
     <a
       href={href}
+      data-prefetch={String(prefetch)}
       onClick={(event) => {
         onClick?.(event)
         event.preventDefault()
@@ -766,6 +769,7 @@ describe("SiblingCarousel — edge cases", () => {
     expect(active!.getAttribute("data-href")).toBe(
       "/jesus-collection.html/child-12-slug/english.html",
     )
+    expect(active!.getAttribute("data-prefetch")).toBe("false")
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
