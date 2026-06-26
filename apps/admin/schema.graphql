@@ -1091,6 +1091,10 @@ type Query {
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
   watchSetting(locale: String!): WatchSetting
+  """
+  Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.
+  """
+  watchVideoRouteSnapshotBySlug(languageSlug: String, locale: String!, slug: String!): WatchRouteSnapshot
 }
 
 """Quiz launcher button. Only valid inside SectionContent."""
@@ -1746,6 +1750,117 @@ type WatchLanguageInventoryLanguage {
   bcp47: String
   name: JSON
   slug: String!
+}
+
+"""
+Route-shaped Watch video snapshot assembled by the video service in bounded batches. Designed for the public Watch single-video cold path.
+"""
+type WatchRouteSnapshot {
+  bibleCitations: [WatchRouteSnapshotBibleCitation!]!
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  broadStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  children: [WatchRouteSnapshotChildRelation!]!
+  documentId: ID!
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  englishStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  exactStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  noIndex: Boolean
+  parents: [WatchRouteSnapshotParentRelation!]!
+  playableDubLanguageCount: Int!
+  preferredVariant: WatchRouteSnapshotPreferredVariant
+  primaryLanguage: WatchRouteSnapshotLanguage
+  slug: String
+}
+
+type WatchRouteSnapshotBibleBook {
+  documentId: ID!
+  name: JSON
+}
+
+type WatchRouteSnapshotBibleCitation {
+  bibleBook: WatchRouteSnapshotBibleBook
+  chapterEnd: Int
+  chapterStart: Int
+  documentId: ID!
+  order: Int
+  osisId: String
+  verseEnd: Int
+  verseStart: Int
+}
+
+type WatchRouteSnapshotChild {
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  documentId: ID!
+  durationSeconds: Int
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  muxPlaybackId: String
+  slug: String
+}
+
+type WatchRouteSnapshotChildRelation {
+  child: WatchRouteSnapshotChild
+}
+
+type WatchRouteSnapshotImage {
+  documentId: ID!
+  mobileCinematicHigh: String
+  mobileCinematicLow: String
+  thumbnail: String
+  url: String
+}
+
+type WatchRouteSnapshotLanguage {
+  bcp47: String
+  coreId: String
+  name: JSON
+  slug: String
+}
+
+type WatchRouteSnapshotLocale {
+  description: String
+  documentId: ID!
+  imageAlt: String
+  languageSlug: String
+  snippet: String
+  title: String
+}
+
+type WatchRouteSnapshotParent {
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  children: [WatchRouteSnapshotChildRelation!]!
+  documentId: ID!
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  noIndex: Boolean
+  slug: String
+}
+
+type WatchRouteSnapshotParentRelation {
+  parent: WatchRouteSnapshotParent
+}
+
+type WatchRouteSnapshotPreferredVariant {
+  documentId: ID!
+  duration: Int
+  hls: String
+  language: WatchRouteSnapshotLanguage
+  published: Boolean
+  slug: String
+}
+
+type WatchRouteSnapshotStudyQuestion {
+  documentId: ID!
+  languageSlug: String
+  order: Int
+  value: String
 }
 
 """Per-locale homepage configuration for PUBLIC consumer apps."""

@@ -183,6 +183,114 @@ export type WatchLanguageInventory = {
   subtitleOnlyVideos: WatchLanguageInventoryItem[]
 }
 
+export type WatchRouteSnapshotImage = {
+  documentId: string
+  url: string | null
+  thumbnail: string | null
+  mobileCinematicHigh: string | null
+  mobileCinematicLow: string | null
+}
+
+export type WatchRouteSnapshotLanguage = {
+  coreId: string | null
+  bcp47: string | null
+  slug?: string | null
+  name?: Prisma.JsonValue | null
+}
+
+export type WatchRouteSnapshotLocale = {
+  documentId: string
+  languageSlug: string | null
+  title: string | null
+  description: string | null
+  snippet: string | null
+  imageAlt: string | null
+}
+
+export type WatchRouteSnapshotChild = {
+  documentId: string
+  slug: string | null
+  label: VideoLabel | null
+  images: WatchRouteSnapshotImage[]
+  exactLocales: WatchRouteSnapshotLocale[]
+  broadLocales: WatchRouteSnapshotLocale[]
+  englishLocales: WatchRouteSnapshotLocale[]
+  durationSeconds: number | null
+  muxPlaybackId: string | null
+}
+
+export type WatchRouteSnapshotChildRelation = {
+  child: WatchRouteSnapshotChild | null
+}
+
+export type WatchRouteSnapshotParent = {
+  documentId: string
+  slug: string | null
+  noIndex: boolean | null
+  label: VideoLabel | null
+  images: WatchRouteSnapshotImage[]
+  exactLocales: WatchRouteSnapshotLocale[]
+  broadLocales: WatchRouteSnapshotLocale[]
+  englishLocales: WatchRouteSnapshotLocale[]
+  children: WatchRouteSnapshotChildRelation[]
+}
+
+export type WatchRouteSnapshotParentRelation = {
+  parent: WatchRouteSnapshotParent | null
+}
+
+export type WatchRouteSnapshotBibleBook = {
+  documentId: string
+  name: Prisma.JsonValue | null
+}
+
+export type WatchRouteSnapshotBibleCitation = {
+  documentId: string
+  chapterStart: number | null
+  chapterEnd: number | null
+  verseStart: number | null
+  verseEnd: number | null
+  order: number | null
+  osisId: string | null
+  bibleBook: WatchRouteSnapshotBibleBook | null
+}
+
+export type WatchRouteSnapshotStudyQuestion = {
+  documentId: string
+  languageSlug: string | null
+  value: string | null
+  order: number | null
+}
+
+export type WatchRouteSnapshotPreferredVariant = {
+  documentId: string
+  slug: string | null
+  published: boolean | null
+  hls: string | null
+  duration: number | null
+  language: WatchRouteSnapshotLanguage | null
+}
+
+export type WatchRouteSnapshot = {
+  documentId: string
+  slug: string | null
+  noIndex: boolean | null
+  label: VideoLabel | null
+  images: WatchRouteSnapshotImage[]
+  primaryLanguage: WatchRouteSnapshotLanguage | null
+  parents: WatchRouteSnapshotParentRelation[]
+  children: WatchRouteSnapshotChildRelation[]
+  bibleCitations: WatchRouteSnapshotBibleCitation[]
+  exactLocales: WatchRouteSnapshotLocale[]
+  broadLocales: WatchRouteSnapshotLocale[]
+  englishLocales: WatchRouteSnapshotLocale[]
+  exactStudyQuestions: WatchRouteSnapshotStudyQuestion[]
+  broadStudyQuestions: WatchRouteSnapshotStudyQuestion[]
+  englishStudyQuestions: WatchRouteSnapshotStudyQuestion[]
+  playableDubLanguageCount: number
+  preferredVariant: WatchRouteSnapshotPreferredVariant | null
+}
+
 /**
  * Maximum coreIds accepted in a single `getByCoreIds` call. Mirrors
  * the receiver-side cap in manager's `admin-trigger-route.ts` so the
@@ -205,6 +313,12 @@ const WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT = 12
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS = 10_000
 const WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS = 11_000
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS}ms'`
+
+const VIDEO_RELATION_ORDER_BY = [
+  { order: { sort: "asc" as const, nulls: "last" as const } },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+] satisfies Prisma.VideoRelationOrderByWithRelationInput[]
 
 const PLAYABLE_DUB_WHERE = {
   deletedAt: null,
@@ -625,6 +739,121 @@ function videoListOrderBy(
   return { updatedAt: "desc" }
 }
 
+function localeBucketsForSnapshot(
+  rows: Array<{
+    id: string
+    videoId: string
+    languageSlug: string | null
+    locale: string | null
+    title: string | null
+    description: string | null
+    snippet: string | null
+    imageAlt: string | null
+  }>,
+  videoId: string,
+  {
+    locale,
+    languageSlug,
+  }: {
+    locale: string
+    languageSlug: string | null
+  },
+) {
+  const forVideo = rows.filter((row) => row.videoId === videoId)
+  const mapRow = (row: (typeof rows)[number]): WatchRouteSnapshotLocale => ({
+    documentId: row.id,
+    languageSlug: row.languageSlug,
+    title: row.title,
+    description: row.description,
+    snippet: row.snippet,
+    imageAlt: row.imageAlt,
+  })
+
+  return {
+    exactLocales: forVideo
+      .filter(
+        (row) =>
+          row.locale === locale &&
+          (languageSlug == null || row.languageSlug === languageSlug),
+      )
+      .map(mapRow),
+    broadLocales: forVideo.filter((row) => row.locale === locale).map(mapRow),
+    englishLocales: forVideo.filter((row) => row.locale === "en").map(mapRow),
+  }
+}
+
+function studyQuestionBucketsForSnapshot(
+  rows: Array<{
+    id: string
+    languageSlug: string | null
+    locale: string | null
+    text: string
+    order: number | null
+  }>,
+  {
+    locale,
+    languageSlug,
+  }: {
+    locale: string
+    languageSlug: string | null
+  },
+) {
+  const mapRow = (
+    row: (typeof rows)[number],
+  ): WatchRouteSnapshotStudyQuestion => ({
+    documentId: row.id,
+    languageSlug: row.languageSlug,
+    value: row.text,
+    order: row.order,
+  })
+
+  return {
+    exactStudyQuestions: rows
+      .filter(
+        (row) =>
+          row.locale === locale &&
+          (languageSlug == null || row.languageSlug === languageSlug),
+      )
+      .map(mapRow),
+    broadStudyQuestions: rows
+      .filter((row) => row.locale === locale)
+      .map(mapRow),
+    englishStudyQuestions: rows
+      .filter((row) => row.locale === "en")
+      .map(mapRow),
+  }
+}
+
+function imageRowsForSnapshot(
+  rows: Array<{
+    id: string
+    videoId: string
+    url: string | null
+    thumbnail: string | null
+    mobileCinematicHigh: string | null
+    mobileCinematicLow: string | null
+  }>,
+  videoId: string,
+): WatchRouteSnapshotImage[] {
+  return rows
+    .filter((row) => row.videoId === videoId)
+    .map((row) => ({
+      documentId: row.id,
+      url: row.url,
+      thumbnail: row.thumbnail,
+      mobileCinematicHigh: row.mobileCinematicHigh,
+      mobileCinematicLow: row.mobileCinematicLow,
+    }))
+}
+
+function firstByVideoId<T extends { videoId: string }>(rows: T[]) {
+  const byVideoId = new Map<string, T>()
+  for (const row of rows) {
+    if (!byVideoId.has(row.videoId)) byVideoId.set(row.videoId, row)
+  }
+  return byVideoId
+}
+
 export class VideoService {
   constructor(private prisma: PrismaClient) {}
 
@@ -752,6 +981,506 @@ export class VideoService {
     })
 
     return rows.length
+  }
+
+  async getWatchRouteSnapshotBySlug({
+    slug,
+    locale,
+    languageSlug,
+    user,
+  }: {
+    slug: string
+    locale: string
+    languageSlug?: string | null
+    user: Principal | null
+  }): Promise<WatchRouteSnapshot | null> {
+    const normalizedLanguageSlug =
+      typeof languageSlug === "string" && languageSlug.length > 0
+        ? languageSlug
+        : null
+    const visibleVideo: Prisma.VideoWhereInput = isEditorOrAdmin(user)
+      ? { deletedAt: null }
+      : {
+          deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        }
+
+    const root = await this.prisma.video.findFirst({
+      where: { slug, deletedAt: null },
+      select: {
+        id: true,
+        slug: true,
+        noIndex: true,
+        label: true,
+        primaryLanguageId: true,
+        primaryLanguage: { select: { coreId: true, bcp47: true } },
+      },
+    })
+    if (!root) return null
+
+    const [parentRelations, childRelations, rootImages, citations] =
+      await Promise.all([
+        this.prisma.videoRelation.findMany({
+          where: { childId: root.id, parent: visibleVideo },
+          orderBy: VIDEO_RELATION_ORDER_BY,
+          select: {
+            id: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                slug: true,
+                noIndex: true,
+                label: true,
+                primaryLanguageId: true,
+              },
+            },
+          },
+        }),
+        this.prisma.videoRelation.findMany({
+          where: { parentId: root.id, child: visibleVideo },
+          orderBy: VIDEO_RELATION_ORDER_BY,
+          select: {
+            id: true,
+            childId: true,
+            child: {
+              select: {
+                id: true,
+                slug: true,
+                label: true,
+                primaryLanguageId: true,
+              },
+            },
+          },
+        }),
+        this.prisma.videoImage.findMany({
+          where: { videoId: root.id, deletedAt: null },
+          select: {
+            id: true,
+            videoId: true,
+            url: true,
+            thumbnail: true,
+            mobileCinematicHigh: true,
+            mobileCinematicLow: true,
+          },
+        }),
+        this.prisma.bibleCitation.findMany({
+          where: { videoId: root.id, deletedAt: null },
+          orderBy: [{ order: "asc" }, { id: "asc" }],
+          select: {
+            id: true,
+            chapterStart: true,
+            chapterEnd: true,
+            verseStart: true,
+            verseEnd: true,
+            order: true,
+            osisId: true,
+            bibleBook: { select: { id: true, name: true } },
+          },
+        }),
+      ])
+
+    const parentIds = parentRelations.map((relation) => relation.parentId)
+    const rootChildIds = childRelations.map((relation) => relation.childId)
+    const parentChildRelations =
+      parentIds.length === 0
+        ? []
+        : await this.prisma.videoRelation.findMany({
+            where: { parentId: { in: parentIds }, child: visibleVideo },
+            orderBy: VIDEO_RELATION_ORDER_BY,
+            select: {
+              id: true,
+              parentId: true,
+              childId: true,
+              child: {
+                select: {
+                  id: true,
+                  slug: true,
+                  label: true,
+                  primaryLanguageId: true,
+                },
+              },
+            },
+          })
+
+    const relatedVideoIds = [
+      ...parentIds,
+      ...rootChildIds,
+      ...parentChildRelations.map((relation) => relation.childId),
+    ]
+    const allVideoIds = Array.from(new Set([root.id, ...relatedVideoIds]))
+
+    const [
+      relatedImages,
+      localeRows,
+      studyQuestionRows,
+      exactMuxRows,
+      fallbackMuxVideos,
+      rootDurationRows,
+      childDurationVideos,
+      playableLanguageRows,
+      preferredExact,
+      preferredFallbackVideos,
+    ] = await Promise.all([
+      relatedVideoIds.length === 0
+        ? []
+        : this.prisma.videoImage.findMany({
+            where: { videoId: { in: relatedVideoIds }, deletedAt: null },
+            select: {
+              id: true,
+              videoId: true,
+              url: true,
+              thumbnail: true,
+              mobileCinematicHigh: true,
+              mobileCinematicLow: true,
+            },
+          }),
+      this.prisma.videoLocale.findMany({
+        where: {
+          videoId: { in: allVideoIds },
+          deletedAt: null,
+          ...(isEditorOrAdmin(user) ? {} : { status: "PUBLISHED" as const }),
+          OR: [
+            { locale },
+            { locale: "en" },
+            ...(normalizedLanguageSlug == null
+              ? []
+              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+          ],
+        },
+        orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          videoId: true,
+          locale: true,
+          languageSlug: true,
+          title: true,
+          description: true,
+          snippet: true,
+          imageAlt: true,
+        },
+      }),
+      this.prisma.videoStudyQuestion.findMany({
+        where: {
+          videoId: root.id,
+          deletedAt: null,
+          OR: [
+            { locale },
+            { locale: "en" },
+            ...(normalizedLanguageSlug == null
+              ? []
+              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+          ],
+        },
+        orderBy: [{ order: "asc" }, { languageSlug: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          locale: true,
+          languageSlug: true,
+          text: true,
+          order: true,
+        },
+      }),
+      normalizedLanguageSlug == null || relatedVideoIds.length === 0
+        ? []
+        : this.prisma.videoDub.findMany({
+            where: {
+              videoId: { in: relatedVideoIds },
+              ...PLAYABLE_DUB_WHERE,
+              language: { slug: normalizedLanguageSlug, deletedAt: null },
+              muxVideo: { playbackId: { not: null }, deletedAt: null },
+            },
+            orderBy: [{ duration: "desc" }, { id: "asc" }],
+            select: {
+              videoId: true,
+              muxVideo: { select: { playbackId: true } },
+            },
+          }),
+      relatedVideoIds.length === 0
+        ? []
+        : this.prisma.video.findMany({
+            where: { id: { in: relatedVideoIds }, deletedAt: null },
+            select: {
+              id: true,
+              primaryLanguageId: true,
+              dubs: {
+                where: {
+                  published: true,
+                  hls: { not: null },
+                  deletedAt: null,
+                  muxVideo: { playbackId: { not: null }, deletedAt: null },
+                },
+                orderBy: [{ duration: "desc" }, { id: "asc" }],
+                take: 8,
+                select: {
+                  languageId: true,
+                  muxVideo: { select: { playbackId: true } },
+                },
+              },
+            },
+          }),
+      this.prisma.videoDub.findMany({
+        where: {
+          videoId: root.id,
+          published: true,
+          hls: { not: null },
+          deletedAt: null,
+          duration: { gt: 0 },
+        },
+        orderBy: [{ duration: "desc" }],
+        take: 8,
+        select: { languageId: true, duration: true },
+      }),
+      rootChildIds.length === 0
+        ? []
+        : this.prisma.video.findMany({
+            where: { id: { in: rootChildIds }, deletedAt: null },
+            select: {
+              id: true,
+              primaryLanguageId: true,
+              dubs: {
+                where: {
+                  published: true,
+                  hls: { not: null },
+                  deletedAt: null,
+                  duration: { gt: 0 },
+                },
+                orderBy: [{ duration: "desc" }],
+                take: 8,
+                select: { languageId: true, duration: true },
+              },
+            },
+          }),
+      this.prisma.videoDub.findMany({
+        where: {
+          ...PLAYABLE_DUB_WHERE,
+          videoId: root.id,
+          languageId: { not: null },
+          language: { slug: { not: null }, deletedAt: null },
+        },
+        distinct: ["languageId"],
+        select: { languageId: true },
+      }),
+      normalizedLanguageSlug == null
+        ? null
+        : this.prisma.videoDub.findFirst({
+            where: {
+              ...PLAYABLE_DUB_WHERE,
+              videoId: root.id,
+              language: {
+                deletedAt: null,
+                OR: [
+                  { slug: normalizedLanguageSlug },
+                  { bcp47: normalizedLanguageSlug },
+                ],
+              },
+            },
+            orderBy: [{ duration: "desc" }, { id: "asc" }],
+            select: {
+              id: true,
+              slug: true,
+              published: true,
+              hls: true,
+              duration: true,
+              language: {
+                select: {
+                  coreId: true,
+                  bcp47: true,
+                  slug: true,
+                  name: true,
+                },
+              },
+            },
+          }),
+      this.prisma.video.findMany({
+        where: { id: root.id, deletedAt: null },
+        select: {
+          id: true,
+          primaryLanguageId: true,
+          dubs: {
+            where: PLAYABLE_DUB_WHERE,
+            orderBy: [{ duration: "desc" }, { id: "asc" }],
+            take: 8,
+            select: {
+              id: true,
+              slug: true,
+              published: true,
+              hls: true,
+              duration: true,
+              languageId: true,
+              language: {
+                select: {
+                  coreId: true,
+                  bcp47: true,
+                  slug: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ])
+
+    const allImages = [...rootImages, ...relatedImages]
+    const localeArgs = { locale, languageSlug: normalizedLanguageSlug }
+    const exactMuxByVideoId = firstByVideoId(
+      exactMuxRows
+        .map((row) => ({
+          videoId: row.videoId,
+          playbackId: row.muxVideo?.playbackId ?? null,
+        }))
+        .filter((row) => row.playbackId != null),
+    )
+    const fallbackMuxByVideoId = new Map<string, string | null>()
+    for (const video of fallbackMuxVideos) {
+      const primaryDub = video.primaryLanguageId
+        ? video.dubs.find((dub) => dub.languageId === video.primaryLanguageId)
+        : undefined
+      fallbackMuxByVideoId.set(
+        video.id,
+        primaryDub?.muxVideo?.playbackId ??
+          video.dubs[0]?.muxVideo?.playbackId ??
+          null,
+      )
+    }
+    const rootPrimaryDuration = root.primaryLanguageId
+      ? rootDurationRows.find(
+          (dub) => dub.languageId === root.primaryLanguageId,
+        )
+      : undefined
+    const durationByVideoId = new Map<string, number | null>()
+    durationByVideoId.set(
+      root.id,
+      rootPrimaryDuration?.duration ?? rootDurationRows[0]?.duration ?? null,
+    )
+    for (const video of childDurationVideos) {
+      const primaryDub = video.primaryLanguageId
+        ? video.dubs.find((dub) => dub.languageId === video.primaryLanguageId)
+        : undefined
+      durationByVideoId.set(
+        video.id,
+        primaryDub?.duration ?? video.dubs[0]?.duration ?? null,
+      )
+    }
+
+    const makeChild = (
+      child: {
+        id: string
+        slug: string | null
+        label: VideoLabel | null
+      } | null,
+      includeDuration: boolean,
+    ): WatchRouteSnapshotChild | null => {
+      if (!child) return null
+      const playbackId =
+        exactMuxByVideoId.get(child.id)?.playbackId ??
+        fallbackMuxByVideoId.get(child.id) ??
+        null
+      return {
+        documentId: child.id,
+        slug: child.slug,
+        label: child.label,
+        images: imageRowsForSnapshot(allImages, child.id),
+        ...localeBucketsForSnapshot(localeRows, child.id, localeArgs),
+        durationSeconds: includeDuration
+          ? (durationByVideoId.get(child.id) ?? null)
+          : null,
+        muxPlaybackId: playbackId,
+      }
+    }
+
+    const parentChildrenByParentId = new Map<
+      string,
+      WatchRouteSnapshotChildRelation[]
+    >()
+    for (const relation of parentChildRelations) {
+      const child = makeChild(relation.child, false)
+      const children = parentChildrenByParentId.get(relation.parentId) ?? []
+      children.push({ child })
+      parentChildrenByParentId.set(relation.parentId, children)
+    }
+
+    const preferredVideo = preferredFallbackVideos[0] ?? null
+    const preferredFallback = preferredVideo
+      ? preferredVideo.primaryLanguageId
+        ? (preferredVideo.dubs.find(
+            (dub) => dub.languageId === preferredVideo.primaryLanguageId,
+          ) ??
+          preferredVideo.dubs[0] ??
+          null)
+        : (preferredVideo.dubs[0] ?? null)
+      : null
+    const preferredVariant = preferredExact ?? preferredFallback
+
+    return {
+      documentId: root.id,
+      slug: root.slug,
+      noIndex: root.noIndex,
+      label: root.label,
+      images: imageRowsForSnapshot(allImages, root.id),
+      primaryLanguage: root.primaryLanguage
+        ? {
+            coreId: root.primaryLanguage.coreId,
+            bcp47: root.primaryLanguage.bcp47,
+          }
+        : null,
+      parents: parentRelations.map((relation) => ({
+        parent: relation.parent
+          ? {
+              documentId: relation.parent.id,
+              slug: relation.parent.slug,
+              noIndex: relation.parent.noIndex,
+              label: relation.parent.label,
+              images: imageRowsForSnapshot(allImages, relation.parent.id),
+              ...localeBucketsForSnapshot(
+                localeRows,
+                relation.parent.id,
+                localeArgs,
+              ),
+              children: parentChildrenByParentId.get(relation.parent.id) ?? [],
+            }
+          : null,
+      })),
+      children: childRelations.map((relation) => ({
+        child: makeChild(relation.child, true),
+      })),
+      bibleCitations: citations.map((citation) => ({
+        documentId: citation.id,
+        chapterStart: citation.chapterStart,
+        chapterEnd: citation.chapterEnd,
+        verseStart: citation.verseStart,
+        verseEnd: citation.verseEnd,
+        order: citation.order,
+        osisId: citation.osisId,
+        bibleBook: citation.bibleBook
+          ? {
+              documentId: citation.bibleBook.id,
+              name: citation.bibleBook.name,
+            }
+          : null,
+      })),
+      ...localeBucketsForSnapshot(localeRows, root.id, localeArgs),
+      ...studyQuestionBucketsForSnapshot(studyQuestionRows, localeArgs),
+      playableDubLanguageCount: playableLanguageRows.length,
+      preferredVariant: preferredVariant
+        ? {
+            documentId: preferredVariant.id,
+            slug: preferredVariant.slug,
+            published: preferredVariant.published,
+            hls: preferredVariant.hls,
+            duration: preferredVariant.duration,
+            language: preferredVariant.language
+              ? {
+                  coreId: preferredVariant.language.coreId,
+                  bcp47: preferredVariant.language.bcp47,
+                  slug: preferredVariant.language.slug,
+                  name: preferredVariant.language.name,
+                }
+              : null,
+          }
+        : null,
+    }
   }
 
   async listMapperCatalogVariants({

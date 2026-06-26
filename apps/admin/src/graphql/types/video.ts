@@ -20,6 +20,18 @@ import type {
   WatchLanguageInventoryCounts,
   WatchLanguageInventoryItem,
   WatchLanguageInventoryLanguage,
+  WatchRouteSnapshot,
+  WatchRouteSnapshotBibleBook,
+  WatchRouteSnapshotBibleCitation,
+  WatchRouteSnapshotChild,
+  WatchRouteSnapshotChildRelation,
+  WatchRouteSnapshotImage,
+  WatchRouteSnapshotLanguage,
+  WatchRouteSnapshotLocale,
+  WatchRouteSnapshotParent,
+  WatchRouteSnapshotParentRelation,
+  WatchRouteSnapshotPreferredVariant,
+  WatchRouteSnapshotStudyQuestion,
   VideoMapperCatalogConnection,
   VideoMapperCatalogItem,
   VideoMapperCatalogPageInfo,
@@ -899,6 +911,320 @@ WatchLanguageInventoryRef.implement({
   }),
 })
 
+// WatchRouteSnapshot* — public, route-shaped read model for the hot
+// /watch/[collection]/[video]/[language] page. It deliberately mirrors the
+// web's cold route DTO instead of exposing a nested Prisma graph.
+
+const WatchRouteSnapshotImageRef = builder.objectRef<WatchRouteSnapshotImage>(
+  "WatchRouteSnapshotImage",
+)
+
+WatchRouteSnapshotImageRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    url: t.exposeString("url", { nullable: true }),
+    thumbnail: t.exposeString("thumbnail", { nullable: true }),
+    mobileCinematicHigh: t.exposeString("mobileCinematicHigh", {
+      nullable: true,
+    }),
+    mobileCinematicLow: t.exposeString("mobileCinematicLow", {
+      nullable: true,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotLanguageRef =
+  builder.objectRef<WatchRouteSnapshotLanguage>("WatchRouteSnapshotLanguage")
+
+WatchRouteSnapshotLanguageRef.implement({
+  fields: (t) => ({
+    coreId: t.exposeString("coreId", { nullable: true }),
+    bcp47: t.exposeString("bcp47", { nullable: true }),
+    slug: t.exposeString("slug", { nullable: true }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      resolve: (row) => row.name ?? null,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotLocaleRef = builder.objectRef<WatchRouteSnapshotLocale>(
+  "WatchRouteSnapshotLocale",
+)
+
+WatchRouteSnapshotLocaleRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    description: t.exposeString("description", { nullable: true }),
+    snippet: t.exposeString("snippet", { nullable: true }),
+    imageAlt: t.exposeString("imageAlt", { nullable: true }),
+  }),
+})
+
+const WatchRouteSnapshotChildRef = builder.objectRef<WatchRouteSnapshotChild>(
+  "WatchRouteSnapshotChild",
+)
+
+const WatchRouteSnapshotChildRelationRef =
+  builder.objectRef<WatchRouteSnapshotChildRelation>(
+    "WatchRouteSnapshotChildRelation",
+  )
+
+WatchRouteSnapshotChildRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    label: t.field({
+      type: VideoLabelEnum,
+      nullable: true,
+      resolve: (row) => row.label,
+    }),
+    images: t.field({
+      type: [WatchRouteSnapshotImageRef],
+      nullable: false,
+      resolve: (row) => row.images,
+    }),
+    exactLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.exactLocales,
+    }),
+    broadLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.broadLocales,
+    }),
+    englishLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.englishLocales,
+    }),
+    durationSeconds: t.exposeInt("durationSeconds", { nullable: true }),
+    muxPlaybackId: t.exposeString("muxPlaybackId", { nullable: true }),
+  }),
+})
+
+WatchRouteSnapshotChildRelationRef.implement({
+  fields: (t) => ({
+    child: t.field({
+      type: WatchRouteSnapshotChildRef,
+      nullable: true,
+      resolve: (row) => row.child,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotParentRef = builder.objectRef<WatchRouteSnapshotParent>(
+  "WatchRouteSnapshotParent",
+)
+
+const WatchRouteSnapshotParentRelationRef =
+  builder.objectRef<WatchRouteSnapshotParentRelation>(
+    "WatchRouteSnapshotParentRelation",
+  )
+
+WatchRouteSnapshotParentRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    noIndex: t.exposeBoolean("noIndex", { nullable: true }),
+    label: t.field({
+      type: VideoLabelEnum,
+      nullable: true,
+      resolve: (row) => row.label,
+    }),
+    images: t.field({
+      type: [WatchRouteSnapshotImageRef],
+      nullable: false,
+      resolve: (row) => row.images,
+    }),
+    exactLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.exactLocales,
+    }),
+    broadLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.broadLocales,
+    }),
+    englishLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.englishLocales,
+    }),
+    children: t.field({
+      type: [WatchRouteSnapshotChildRelationRef],
+      nullable: false,
+      resolve: (row) => row.children,
+    }),
+  }),
+})
+
+WatchRouteSnapshotParentRelationRef.implement({
+  fields: (t) => ({
+    parent: t.field({
+      type: WatchRouteSnapshotParentRef,
+      nullable: true,
+      resolve: (row) => row.parent,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotBibleBookRef =
+  builder.objectRef<WatchRouteSnapshotBibleBook>("WatchRouteSnapshotBibleBook")
+
+WatchRouteSnapshotBibleBookRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      resolve: (row) => row.name,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotBibleCitationRef =
+  builder.objectRef<WatchRouteSnapshotBibleCitation>(
+    "WatchRouteSnapshotBibleCitation",
+  )
+
+WatchRouteSnapshotBibleCitationRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
+    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
+    verseStart: t.exposeInt("verseStart", { nullable: true }),
+    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+    osisId: t.exposeString("osisId", { nullable: true }),
+    bibleBook: t.field({
+      type: WatchRouteSnapshotBibleBookRef,
+      nullable: true,
+      resolve: (row) => row.bibleBook,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotStudyQuestionRef =
+  builder.objectRef<WatchRouteSnapshotStudyQuestion>(
+    "WatchRouteSnapshotStudyQuestion",
+  )
+
+WatchRouteSnapshotStudyQuestionRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    value: t.exposeString("value", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+  }),
+})
+
+const WatchRouteSnapshotPreferredVariantRef =
+  builder.objectRef<WatchRouteSnapshotPreferredVariant>(
+    "WatchRouteSnapshotPreferredVariant",
+  )
+
+WatchRouteSnapshotPreferredVariantRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    published: t.exposeBoolean("published", { nullable: true }),
+    hls: t.exposeString("hls", { nullable: true }),
+    duration: t.exposeInt("duration", { nullable: true }),
+    language: t.field({
+      type: WatchRouteSnapshotLanguageRef,
+      nullable: true,
+      resolve: (row) => row.language,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotRef =
+  builder.objectRef<WatchRouteSnapshot>("WatchRouteSnapshot")
+
+WatchRouteSnapshotRef.implement({
+  description:
+    "Route-shaped Watch video snapshot assembled by the video service in bounded batches. Designed for the public Watch single-video cold path.",
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    noIndex: t.exposeBoolean("noIndex", { nullable: true }),
+    label: t.field({
+      type: VideoLabelEnum,
+      nullable: true,
+      resolve: (row) => row.label,
+    }),
+    images: t.field({
+      type: [WatchRouteSnapshotImageRef],
+      nullable: false,
+      resolve: (row) => row.images,
+    }),
+    primaryLanguage: t.field({
+      type: WatchRouteSnapshotLanguageRef,
+      nullable: true,
+      resolve: (row) => row.primaryLanguage,
+    }),
+    parents: t.field({
+      type: [WatchRouteSnapshotParentRelationRef],
+      nullable: false,
+      resolve: (row) => row.parents,
+    }),
+    children: t.field({
+      type: [WatchRouteSnapshotChildRelationRef],
+      nullable: false,
+      resolve: (row) => row.children,
+    }),
+    bibleCitations: t.field({
+      type: [WatchRouteSnapshotBibleCitationRef],
+      nullable: false,
+      resolve: (row) => row.bibleCitations,
+    }),
+    exactLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.exactLocales,
+    }),
+    broadLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.broadLocales,
+    }),
+    englishLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.englishLocales,
+    }),
+    exactStudyQuestions: t.field({
+      type: [WatchRouteSnapshotStudyQuestionRef],
+      nullable: false,
+      resolve: (row) => row.exactStudyQuestions,
+    }),
+    broadStudyQuestions: t.field({
+      type: [WatchRouteSnapshotStudyQuestionRef],
+      nullable: false,
+      resolve: (row) => row.broadStudyQuestions,
+    }),
+    englishStudyQuestions: t.field({
+      type: [WatchRouteSnapshotStudyQuestionRef],
+      nullable: false,
+      resolve: (row) => row.englishStudyQuestions,
+    }),
+    playableDubLanguageCount: t.exposeInt("playableDubLanguageCount", {
+      nullable: false,
+    }),
+    preferredVariant: t.field({
+      type: WatchRouteSnapshotPreferredVariantRef,
+      nullable: true,
+      resolve: (row) => row.preferredVariant,
+    }),
+  }),
+})
+
 // Root queries — PUBLIC since consumer-migration U2 (2026-05-11).
 builder.queryFields((t) => ({
   video: t.prismaField({
@@ -927,6 +1253,25 @@ builder.queryFields((t) => ({
       ctx.services.video.getBySlug({
         slug: args.slug,
         query,
+      }),
+  }),
+  watchVideoRouteSnapshotBySlug: t.field({
+    type: WatchRouteSnapshotRef,
+    nullable: true,
+    authScopes: { public: true },
+    description:
+      "Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.",
+    args: {
+      slug: t.arg.string({ required: true }),
+      locale: t.arg.string({ required: true }),
+      languageSlug: t.arg.string({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getWatchRouteSnapshotBySlug({
+        slug: args.slug,
+        locale: args.locale,
+        languageSlug: args.languageSlug,
+        user: ctx.user,
       }),
   }),
   videoDub: t.prismaField({
