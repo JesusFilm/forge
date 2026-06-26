@@ -40,6 +40,11 @@ import {
 
 const PICKER_RESULT_LIMIT = 60
 
+type ResolvedShortsVideo = ShortsVideoResolution & {
+  playbackId: string
+  slug: string | null
+}
+
 export type ShortsCreatePrefill = {
   coreId?: string
   startSec?: number
@@ -93,7 +98,7 @@ function ClipScrubber({
   prefill,
   onBack,
 }: {
-  resolution: ShortsVideoResolution & { playbackId: string }
+  resolution: ResolvedShortsVideo
   prefill: ShortsCreatePrefill
   onBack: () => void
 }) {
@@ -174,6 +179,7 @@ function ClipScrubber({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             coreId: resolution.coreId,
+            ...(resolution.slug ? { sourceSlug: resolution.slug } : {}),
             clip: { startSec, endSec },
             ...(title.trim().length > 0 ? { title: title.trim() } : {}),
           }),
@@ -198,7 +204,15 @@ function ClipScrubber({
         setIsSubmitting(false)
       }
     },
-    [canSubmit, endSec, resolution.coreId, router, startSec, title],
+    [
+      canSubmit,
+      endSec,
+      resolution.coreId,
+      resolution.slug,
+      router,
+      startSec,
+      title,
+    ],
   )
 
   return (
@@ -348,9 +362,7 @@ export function ShortsCreateScreen({
   const [query, setQuery] = useState("")
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const [rowIssues, setRowIssues] = useState<Record<string, string>>({})
-  const [selected, setSelected] = useState<
-    (ShortsVideoResolution & { playbackId: string }) | null
-  >(null)
+  const [selected, setSelected] = useState<ResolvedShortsVideo | null>(null)
   const prefillAttemptedRef = useRef(false)
 
   useEffect(() => {
@@ -373,47 +385,54 @@ export function ShortsCreateScreen({
     return () => controller.abort()
   }, [])
 
-  const resolveVideo = useCallback(async (coreId: string) => {
-    setResolvingId(coreId)
-    try {
-      const response = await apiFetch(
-        `/api/shorts/videos/${encodeURIComponent(coreId)}`,
-        { cache: "no-store" },
-      )
-      const payload = (await response.json().catch(() => ({}))) as
-        | ShortsVideoResolution
-        | { error?: string; reason?: string }
+  const resolveVideo = useCallback(
+    async (coreId: string, slug?: string | null) => {
+      setResolvingId(coreId)
+      try {
+        const response = await apiFetch(
+          `/api/shorts/videos/${encodeURIComponent(coreId)}`,
+          { cache: "no-store" },
+        )
+        const payload = (await response.json().catch(() => ({}))) as
+          | ShortsVideoResolution
+          | { error?: string; reason?: string }
 
-      if (!response.ok) {
-        const failure = payload as { error?: string; reason?: string }
+        if (!response.ok) {
+          const failure = payload as { error?: string; reason?: string }
+          setRowIssues((current) => ({
+            ...current,
+            [coreId]:
+              failure.error ??
+              `Could not resolve this video (${failure.reason ?? response.status}).`,
+          }))
+          return
+        }
+
+        const resolution = payload as ShortsVideoResolution
+        if (!resolution.eligible || resolution.playbackId === null) {
+          setRowIssues((current) => ({
+            ...current,
+            [coreId]: describeIneligibility(resolution.reason),
+          }))
+          return
+        }
+
+        setSelected({
+          ...resolution,
+          playbackId: resolution.playbackId,
+          slug: slug ?? null,
+        })
+      } catch {
         setRowIssues((current) => ({
           ...current,
-          [coreId]:
-            failure.error ??
-            `Could not resolve this video (${failure.reason ?? response.status}).`,
+          [coreId]: "Could not resolve this video — retry.",
         }))
-        return
+      } finally {
+        setResolvingId(null)
       }
-
-      const resolution = payload as ShortsVideoResolution
-      if (!resolution.eligible || resolution.playbackId === null) {
-        setRowIssues((current) => ({
-          ...current,
-          [coreId]: describeIneligibility(resolution.reason),
-        }))
-        return
-      }
-
-      setSelected({ ...resolution, playbackId: resolution.playbackId })
-    } catch {
-      setRowIssues((current) => ({
-        ...current,
-        [coreId]: "Could not resolve this video — retry.",
-      }))
-    } finally {
-      setResolvingId(null)
-    }
-  }, [])
+    },
+    [],
+  )
 
   // Clone flow: resolve the prefilled coreId straight away (once).
   useEffect(() => {
@@ -431,6 +450,7 @@ export function ShortsCreateScreen({
         : videos.filter(
             (video) =>
               video.title.toLowerCase().includes(needle) ||
+              (video.slug ?? "").toLowerCase().includes(needle) ||
               video.id.toLowerCase().includes(needle),
           )
     return matches.slice(0, PICKER_RESULT_LIMIT)
@@ -475,7 +495,7 @@ export function ShortsCreateScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="jobs-input"
-              placeholder="Title or core ID"
+              placeholder="Title, slug, or core ID"
               autoFocus
             />
           </label>
@@ -517,7 +537,9 @@ export function ShortsCreateScreen({
                             type="button"
                             className="jobs-step-artifact-link shorts-picker-video-button"
                             disabled={issue != null || resolvingId !== null}
-                            onClick={() => void resolveVideo(video.id)}
+                            onClick={() =>
+                              void resolveVideo(video.id, video.slug)
+                            }
                             title={issue ?? `Select ${video.title}`}
                           >
                             {video.imageUrl ? (

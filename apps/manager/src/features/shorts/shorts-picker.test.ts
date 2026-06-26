@@ -15,12 +15,14 @@ describe("flattenPickerVideos", () => {
               {
                 id: "nua-easter-trailer",
                 title: "NUA Easter Trailer",
+                slug: "nua-easter-trailer",
                 imageUrl: "https://example.test/trailer.jpg",
                 label: "EPISODE",
               },
               {
                 id: "nua-collection",
                 title: "NUA Fresh Perspective",
+                slug: "nua-fresh-perspective",
                 imageUrl: null,
                 label: "COLLECTION",
               },
@@ -31,12 +33,14 @@ describe("flattenPickerVideos", () => {
           {
             id: "standalone-video",
             title: "Standalone Video",
+            slug: "standalone-video",
             imageUrl: null,
             label: "shortFilm",
           },
           {
             id: "standalone-collection",
             title: "Standalone Collection",
+            slug: "standalone-collection",
             imageUrl: null,
             label: "collection",
           },
@@ -58,6 +62,7 @@ describe("flattenPickerVideos", () => {
               {
                 id: "video-1",
                 title: "Video",
+                slug: "video-slug",
                 imageUrl: null,
                 label: "episode",
               },
@@ -68,6 +73,7 @@ describe("flattenPickerVideos", () => {
           {
             id: "video-1",
             title: "Video",
+            slug: "video-slug",
             imageUrl: null,
             label: "episode",
           },
@@ -77,6 +83,7 @@ describe("flattenPickerVideos", () => {
       {
         id: "video-1",
         title: "Video",
+        slug: "video-slug",
         imageUrl: null,
         label: "episode",
       },
