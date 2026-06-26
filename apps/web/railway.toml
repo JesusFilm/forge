@@ -8,7 +8,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/web build && cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/web build"
 watchPatterns = [
   "/apps/web/**",
   "/packages/admin-graphql/**",
@@ -22,7 +22,7 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/web/.next/standalone/apps/web/server.js"
+startCommand = "HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' pnpm --filter @forge/web start"
 healthcheckPath = "/watch"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
