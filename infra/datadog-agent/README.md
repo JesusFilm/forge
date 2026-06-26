@@ -9,7 +9,7 @@ Create one Railway service in the existing `forge` project and production
 environment:
 
 ```text
-datadog-agent-production
+@forge/datadog-agent
 ```
 
 Configure the service to deploy from this repository with config-as-code path:
@@ -39,9 +39,13 @@ Each instrumented Railway app should point its tracer at this service's private
 domain:
 
 ```bash
-DD_AGENT_HOST=${{datadog-agent-production.RAILWAY_PRIVATE_DOMAIN}}
+DD_AGENT_HOST=${{@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN}}
 DD_TRACE_AGENT_PORT=8126
 ```
+
+Because the service name contains `/`, prefer Railway's variable autocomplete
+when setting `DD_AGENT_HOST`; it will insert the exact reference syntax Railway
+expects for `@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN`.
 
 Then set app-specific unified service tags, for example Admin:
 

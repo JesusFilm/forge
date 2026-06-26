@@ -15,13 +15,13 @@ Scope: `infra/`.
 
 - `infra/datadog-agent/` defines the shared production Datadog Agent Railway
   service used by Forge apps for backend APM traces and runtime metrics.
-- Deploy it as a private Railway service named `datadog-agent-production` with
+- Deploy it as a private Railway service named `@forge/datadog-agent` with
   config-as-code path `infra/datadog-agent/railway.toml`.
 - Do not generate or document a public Railway domain for the Agent.
 - Apps should reach it over Railway private networking with:
 
 ```bash
-DD_AGENT_HOST=${{datadog-agent-production.RAILWAY_PRIVATE_DOMAIN}}
+DD_AGENT_HOST=${{@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN}}
 DD_TRACE_AGENT_PORT=8126
 ```
 

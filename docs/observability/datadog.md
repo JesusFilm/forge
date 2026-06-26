@@ -37,7 +37,7 @@ Create one Railway service in the existing `forge` project production
 environment:
 
 ```text
-datadog-agent-production
+@forge/datadog-agent
 ```
 
 Configure the service to deploy this repo with config-as-code path:
@@ -67,7 +67,7 @@ Set these on the Admin production Railway service.
 
 ```bash
 # Datadog Agent transport
-DD_AGENT_HOST=${{datadog-agent-production.RAILWAY_PRIVATE_DOMAIN}}
+DD_AGENT_HOST=${{@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN}}
 DD_TRACE_AGENT_PORT=8126
 
 # Datadog API / site
@@ -95,6 +95,10 @@ DATADOG_SITE=datadoghq.com
 DATADOG_RELEASE_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 ```
 
+Because the Agent service name contains `/`, prefer Railway's variable
+autocomplete when setting `DD_AGENT_HOST`; it will insert the exact reference
+syntax Railway expects for `@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN`.
+
 Keep release identity aligned:
 
 ```bash
@@ -116,7 +120,7 @@ The upload script uses service `forge-admin`, release version
 
 ## Future app pattern
 
-Reuse the `Forge-production` API key and `datadog-agent-production` Railway
+Reuse the `Forge-production` API key and `@forge/datadog-agent` Railway
 service for production Forge apps. Give each app its own service name:
 
 ```text

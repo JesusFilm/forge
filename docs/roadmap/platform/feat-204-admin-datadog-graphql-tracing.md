@@ -50,7 +50,7 @@ replay samples, and GraphQL resource timings can be correlated to backend APM.
 - `DATADOG_GRAPHQL_CONFIG`
 - `DatadogRum`
 - `NEXT_PUBLIC_DATADOG`
-- `datadog-agent-production`
+- `@forge/datadog-agent`
 - `preferredPlayableDub`
 - `videoBySlug`
 
