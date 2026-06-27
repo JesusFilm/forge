@@ -5,6 +5,8 @@ import {
   WATCH_CANONICAL_ORIGIN,
   asContentSlug,
   asLocaleSlug,
+  languagesIndexPath,
+  languageVideosIndexPath,
   localizedHomeAbsolute,
   localizedHomePath,
   parseWatchPath,
@@ -136,8 +138,22 @@ describe("watchEpisodePath", () => {
 })
 
 describe("videosIndexPath", () => {
-  it("returns /videos (no .html)", () => {
-    expect(videosIndexPath()).toBe("/videos")
+  it("returns the canonical /languages path for compatibility", () => {
+    expect(videosIndexPath()).toBe("/languages")
+  })
+})
+
+describe("languagesIndexPath", () => {
+  it("returns /languages (no .html)", () => {
+    expect(languagesIndexPath()).toBe("/languages")
+  })
+})
+
+describe("languageVideosIndexPath", () => {
+  it("returns /lang.html/videos", () => {
+    expect(languageVideosIndexPath(portugueseBrazil)).toBe(
+      "/portuguese-brazil.html/videos",
+    )
   })
 })
 
@@ -221,8 +237,19 @@ describe("parseWatchPath", () => {
     })
   })
 
-  it("parses /videos as videos", () => {
-    expect(parseWatchPath("/videos")).toEqual({ kind: "videos" })
+  it("parses /languages as languages", () => {
+    expect(parseWatchPath("/languages")).toEqual({ kind: "languages" })
+  })
+
+  it("parses legacy /videos as languages", () => {
+    expect(parseWatchPath("/videos")).toEqual({ kind: "languages" })
+  })
+
+  it("parses /spanish-latin-american.html/videos as language videos", () => {
+    expect(parseWatchPath("/spanish-latin-american.html/videos")).toEqual({
+      kind: "language-videos",
+      lang: "spanish-latin-american",
+    })
   })
 
   it("parses /search with q from URLSearchParams (proxy.ts caller)", () => {
@@ -316,6 +343,15 @@ describe("parseWatchPath", () => {
       series: "lumo-the-gospel-of-john",
       episode: "wedding-in-cana",
       lang: "english",
+    })
+  })
+
+  it("inverts languageVideosIndexPath", () => {
+    const emitted = languageVideosIndexPath(portugueseBrazil)
+    const parsed = parseWatchPath(emitted)
+    expect(parsed).toEqual({
+      kind: "language-videos",
+      lang: "portuguese-brazil",
     })
   })
 })

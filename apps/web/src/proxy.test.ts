@@ -120,6 +120,14 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     )
   })
 
+  it("canonicalizes language video indexes without suffixing /videos", async () => {
+    const response = await proxy(makeRequest("/spanish-latin-american/videos"))
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toContain(
+      "/spanish-latin-american.html/videos",
+    )
+  })
+
   it("appends missing .html on bare locale segment → 307", async () => {
     const response = await proxy(makeRequest("/jesus.html/english"))
     expect(response.status).toBe(307)
@@ -315,10 +323,14 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
 })
 
 describe("proxy — internal locale/htmlLang rewrites", () => {
-  it("keeps root and videos public while internally defaulting to /en/en", async () => {
+  it("keeps root and language indexes public while internally adding locale/htmlLang", async () => {
     for (const [publicPath, internalPath] of [
       ["/", "/en/en"],
-      ["/videos", "/en/en/videos"],
+      ["/languages", "/en/en/languages"],
+      [
+        "/spanish-latin-american.html/videos",
+        "/es/es-419/spanish-latin-american.html/videos",
+      ],
     ] as const) {
       const response = await proxy(
         makeRequest(publicPath, { acceptLanguage: "es-ES,es;q=0.9" }),
@@ -327,6 +339,13 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       expect(response.status).not.toBe(308)
       expect(rewritePath(response)).toBe(internalPath)
     }
+  })
+
+  it("redirects legacy /videos to /languages", async () => {
+    const response = await proxy(makeRequest("/videos"))
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toContain("/languages")
+    expect(rewritePath(response)).toBeNull()
   })
 
   it("redirects deprecated /search into the root search modal without synthetic .html", async () => {
@@ -505,7 +524,12 @@ describe("proxy — visible internal-prefix policy", () => {
     for (const [visible, canonical] of [
       ["/en", "/"],
       ["/en/en", "/"],
-      ["/en/en/videos", "/videos"],
+      ["/en/en/videos", "/languages"],
+      ["/en/en/languages", "/languages"],
+      [
+        "/es/es-419/spanish-latin-american.html/videos",
+        "/spanish-latin-american.html/videos",
+      ],
       [
         "/es/es-419/jesus.html/spanish-latin-american.html",
         "/jesus.html/spanish-latin-american.html",

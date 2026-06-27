@@ -226,6 +226,30 @@ describe("Rule 4: per-segment .html append → 307", () => {
     })
   })
 
+  it("keeps language video indexes in /lang.html/videos shape", () => {
+    expect(
+      canonical({ rawPathname: "/spanish-latin-american/videos" }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("strips a stale suffix from language video index /videos segment", () => {
+    expect(
+      canonical({
+        rawPathname: "/spanish-latin-american.html/videos.html",
+      }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+  })
+
   it("appends .html on 3-segment missing first + last (episode stays bare)", () => {
     expect(canonical({ rawPathname: "/jesus/the-beginning/english" })).toEqual({
       kind: "redirect",
@@ -263,9 +287,18 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
-  it("does NOT fire for /videos (exempt)", () => {
-    expect(canonical({ rawPathname: "/videos" })).toEqual({
+  it("does NOT fire for /languages (exempt)", () => {
+    expect(canonical({ rawPathname: "/languages" })).toEqual({
       kind: "canonical",
+    })
+  })
+
+  it("redirects legacy /videos to /languages", () => {
+    expect(canonical({ rawPathname: "/videos" })).toEqual({
+      kind: "redirect",
+      pathname: "/languages",
+      status: 307,
+      cache: "short",
     })
   })
 
@@ -417,7 +450,7 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/jesus.html/the-beginning/russian.html",
     "/russian.html",
     "/portuguese-brazil.html",
-    "/videos",
+    "/languages",
   ]
 
   for (const url of canonicalUrls) {
