@@ -761,6 +761,60 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
   it("defers transcript cues and prunes client variant rows", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const carouselChildren = [
+      {
+        documentId: "chapter-1",
+        slug: "chapter-1",
+        title: "Chapter 1",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "chapter-pb-1",
+      },
+      {
+        documentId: "chapter-2",
+        slug: "chapter-2",
+        title: "Chapter 2",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "chapter-pb-2",
+      },
+    ]
+    const watchVideo = watchVideoResult.video as unknown as {
+      children: typeof carouselChildren
+      parents: Array<{
+        documentId: string
+        slug: string
+        title: string
+        noIndex: boolean
+        label: string
+        images: unknown[]
+        children: typeof carouselChildren
+      }>
+      studyQuestions: Array<{
+        documentId: string
+        value: string
+        order: number
+      }>
+      bibleCitations: ReturnType<typeof makeBibleCitations>
+    }
+    watchVideo.children = carouselChildren
+    watchVideo.parents = [
+      {
+        documentId: "parent-1",
+        slug: "jesus",
+        title: "Jesus",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: carouselChildren,
+      },
+    ]
+    watchVideo.studyQuestions = [
+      { documentId: "sq-1", value: "What changed?", order: 1 },
+    ]
+    watchVideo.bibleCitations = makeBibleCitations()
     mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus", "english")
@@ -768,23 +822,49 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       initialTranscript?: unknown
       variant: { videoEdition: unknown }
-      video: { variants: Array<{ videoEdition: unknown }> }
+      video: {
+        parents: unknown[]
+        children: unknown[]
+        variants: Array<{ videoEdition: unknown }>
+        studyQuestions: unknown[]
+        bibleCitations: unknown[]
+      }
       mergedBlocks: Array<{
         kind?: string
         playableLanguageCount?: number
         variant?: { videoEdition: unknown }
-        video?: { variants: Array<{ videoEdition: unknown }> }
+        video?: {
+          parents: unknown[]
+          children: unknown[]
+          variants: Array<{ videoEdition: unknown }>
+          studyQuestions: unknown[]
+          bibleCitations: unknown[]
+        }
+        canonicalParent?: { children: unknown[] }
       }>
     }
     expect(props.initialTranscript).toBeUndefined()
     expect(props.variant.videoEdition).toBeNull()
+    expect(props.video.parents).toEqual([])
+    expect(props.video.children).toEqual([])
+    expect(props.video.studyQuestions).toEqual([])
+    expect(props.video.bibleCitations).toEqual([])
     expect(props.video.variants).toHaveLength(1)
     expect(props.video.variants[0]?.videoEdition).toBeNull()
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
     expect(hero?.playableLanguageCount).toBe(2)
     expect(hero?.variant?.videoEdition).toBeNull()
+    expect(hero?.video?.parents).toEqual([])
+    expect(hero?.video?.children).toEqual([])
     expect(hero?.video?.variants).toHaveLength(1)
     expect(hero?.video?.variants[0]?.videoEdition).toBeNull()
+    const body = props.mergedBlocks.find((block) => block.kind === "WatchBody")
+    expect(body?.video?.parents).toEqual([])
+    expect(body?.video?.children).toEqual([])
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.children).toHaveLength(2)
   })
 
   it("renders a sanitized VideoObject JSON-LD script for playable videos", async () => {
