@@ -85,7 +85,15 @@ function pruneWatchVideoForClient(
     video.variants.find(
       (variant) => variant.documentId === selectedVariant.documentId,
     ) ?? selectedVariant
-  return { ...video, variants: [pruneWatchVariantForClient(selected)] }
+  return {
+    ...video,
+    parents: [],
+    children: [],
+    childDubLanguages: [],
+    variants: [pruneWatchVariantForClient(selected)],
+    studyQuestions: [],
+    bibleCitations: [],
+  }
 }
 
 function pruneWatchVariantForClient(variant: WatchVariant): WatchVariant {

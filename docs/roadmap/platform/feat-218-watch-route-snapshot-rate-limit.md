@@ -1,7 +1,7 @@
 ---
 id: feat-218
 title: Raise internal Watch route snapshot GraphQL rate budget
-status: in-progress
+status: complete
 lane: platform
 depends_on:
   - feat-217
