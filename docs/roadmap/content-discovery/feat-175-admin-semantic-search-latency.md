@@ -71,12 +71,17 @@ diversity while losing recall, and degrade semantic relevance.
 - [ ] Close this ticket if the safe slice meets the agreed user-visible latency
       target and preserves result quality; only move to HNSW-first work if the
       timing logs show semantic SQL remains the dominant bottleneck.
+- [ ] Evaluate the internal `semantic-hnsw-prototype` mode against
+      `semantic-only` with repeated production canaries before considering any
+      default-path change.
 
 ## Deferred Follow-Up
 
-- [ ] Prototype HNSW-first transcript windows only with a recall, diversity,
-      and duplicate-heavy Mastra no-regression proof against the current
-      default path.
+- [x] Add an internal-only HNSW-first transcript-window prototype plus a parity
+      harness; keep it out of public/default search modes.
+- [ ] Promote HNSW-first transcript windows only with recall, diversity, and
+      duplicate-heavy Mastra no-regression proof against the current default
+      path.
 - [ ] Prove any HNSW-first rewrite uses HNSW on production-shaped data with
       `EXPLAIN (ANALYZE, BUFFERS)` and end-to-end Admin GraphQL timing under
       representative cold/warm cache states.

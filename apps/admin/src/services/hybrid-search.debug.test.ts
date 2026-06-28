@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("./hybrid-search-retrievers", () => ({
   searchVideoSemantic: vi.fn(),
+  searchVideoSemanticHnswPrototype: vi.fn(),
   searchVideoKeyword: vi.fn(),
   searchExperienceSemantic: vi.fn(),
   searchExperienceKeyword: vi.fn(),

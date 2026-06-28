@@ -20,6 +20,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("./hybrid-search-retrievers", () => ({
   searchVideoSemantic: vi.fn(),
+  searchVideoSemanticHnswPrototype: vi.fn(),
   searchVideoKeyword: vi.fn(),
   searchExperienceSemantic: vi.fn(),
   searchExperienceKeyword: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock("./hybrid-search-keyword-first-retrievers", () => {
 
 import {
   searchVideoSemantic,
+  searchVideoSemanticHnswPrototype,
   searchVideoKeyword,
   searchExperienceSemantic,
   searchExperienceKeyword,
@@ -98,6 +100,7 @@ async function delayMs(ms: number): Promise<void> {
 
 function setupAllRetrieversEmpty() {
   vi.mocked(searchVideoSemantic).mockResolvedValue([])
+  vi.mocked(searchVideoSemanticHnswPrototype).mockResolvedValue([])
   vi.mocked(searchVideoKeyword).mockResolvedValue([])
   vi.mocked(searchExperienceSemantic).mockResolvedValue([])
   vi.mocked(searchExperienceKeyword).mockResolvedValue([])
@@ -157,6 +160,8 @@ describe("HybridSearchService keyword-first branch", () => {
       },
       expect.any(Object),
     )
+    expect(searchVideoSemantic).toHaveBeenCalled()
+    expect(searchVideoSemanticHnswPrototype).not.toHaveBeenCalled()
   })
 
   it("starts keyword-first lexical retrievers while query embedding is pending", async () => {
@@ -185,6 +190,7 @@ describe("HybridSearchService keyword-first branch", () => {
     await searchPromise
 
     expect(searchVideoSemantic).toHaveBeenCalled()
+    expect(searchVideoSemanticHnswPrototype).not.toHaveBeenCalled()
   })
 
   it("does not charge embedding wait time to db retrieval timing", async () => {

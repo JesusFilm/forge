@@ -155,6 +155,29 @@ describe("POST /api/internal/search-eval/search", () => {
     expect(recordSearchTraceSafely).not.toHaveBeenCalled()
   })
 
+  it("passes the HNSW prototype mode through as an internal eval mode", async () => {
+    const response = await POST(
+      request({
+        query: "Jesus",
+        locale: "en",
+        limit: 10,
+        mode: "semantic-hnsw-prototype",
+        contentType: "video",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(search).toHaveBeenCalledWith({
+      query: "Jesus",
+      locale: "en",
+      limit: 10,
+      offset: undefined,
+      mode: "semantic-hnsw-prototype",
+      allowInternalEvalModes: true,
+      contentTypes: ["video"],
+    })
+  })
+
   it("resolves a public language slug before running Admin search", async () => {
     languageFindFirst.mockResolvedValueOnce({ bcp47: "es" })
 
