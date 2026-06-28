@@ -62,6 +62,18 @@ export const VIDEO_SEMANTIC_HNSW_EF_SEARCH = 200
 export const VIDEO_SEMANTIC_HNSW_MAX_SCAN_TUPLES = 20_000
 export const VIDEO_SEMANTIC_HNSW_TRANSACTION_TIMEOUT_MS = 20_000
 
+type PgSetConfigRow = { set_config: string }
+
+async function setLocalHnswConfig(
+  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
+  name: string,
+  value: string,
+): Promise<void> {
+  await tx.$queryRaw<PgSetConfigRow[]>`
+    SELECT set_config(${name}, ${value}, true)
+  `
+}
+
 export function calculateVideoSemanticMixedScore(
   sourceScores: readonly number[],
 ): number {
@@ -499,9 +511,17 @@ export async function searchVideoSemanticHnswPrototype(
 
   const evidenceRows = await prisma.$transaction(
     async (tx) => {
-      await tx.$executeRaw`SET LOCAL hnsw.ef_search = ${VIDEO_SEMANTIC_HNSW_EF_SEARCH}`
-      await tx.$executeRaw`SET LOCAL hnsw.iterative_scan = relaxed_order`
-      await tx.$executeRaw`SET LOCAL hnsw.max_scan_tuples = ${VIDEO_SEMANTIC_HNSW_MAX_SCAN_TUPLES}`
+      await setLocalHnswConfig(
+        tx,
+        "hnsw.ef_search",
+        String(VIDEO_SEMANTIC_HNSW_EF_SEARCH),
+      )
+      await setLocalHnswConfig(tx, "hnsw.iterative_scan", "relaxed_order")
+      await setLocalHnswConfig(
+        tx,
+        "hnsw.max_scan_tuples",
+        String(VIDEO_SEMANTIC_HNSW_MAX_SCAN_TUPLES),
+      )
 
       return recordSearchDbTiming(
         timing,

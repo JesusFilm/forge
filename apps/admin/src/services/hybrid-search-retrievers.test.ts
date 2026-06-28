@@ -88,6 +88,17 @@ function sqlBetween(sql: string, start: string, end: string): string {
   return sql.slice(startIndex, endIndex)
 }
 
+function mockHnswPrototypeQueryRows(
+  prisma: ReturnType<typeof mockPrisma>,
+  rows: unknown[],
+) {
+  prisma.$queryRaw
+    .mockResolvedValueOnce([{ set_config: "200" }])
+    .mockResolvedValueOnce([{ set_config: "relaxed_order" }])
+    .mockResolvedValueOnce([{ set_config: "20000" }])
+    .mockResolvedValueOnce(rows)
+}
+
 describe("searchVideoSemantic", () => {
   let prisma: ReturnType<typeof mockPrisma>
 
@@ -502,7 +513,7 @@ describe("searchVideoSemanticHnswPrototype", () => {
   })
 
   it("returns the same RankedItem-shaped rows as the default semantic retriever", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([
+    mockHnswPrototypeQueryRows(prisma, [
       {
         video_id: "vid-hnsw",
         video_core_id: "core-hnsw",
@@ -543,7 +554,7 @@ describe("searchVideoSemanticHnswPrototype", () => {
   })
 
   it("records a prototype-specific semantic-video DB timing", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([])
+    mockHnswPrototypeQueryRows(prisma, [])
     const timing = new SearchTimingRecorder()
 
     await searchVideoSemanticHnswPrototype(
@@ -567,7 +578,7 @@ describe("searchVideoSemanticHnswPrototype", () => {
   })
 
   it("sets HNSW scan knobs inside the transaction before querying", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([])
+    mockHnswPrototypeQueryRows(prisma, [])
 
     await searchVideoSemanticHnswPrototype(prisma, {
       queryEmbedding: "[0.1,0.2]",
@@ -580,20 +591,37 @@ describe("searchVideoSemanticHnswPrototype", () => {
       expect.objectContaining({ maxWait: 5000, timeout: 20_000 }),
     )
     expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled()
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(3)
-    expect(prisma.$executeRaw.mock.calls[0]?.[1]).toBe(
-      VIDEO_SEMANTIC_HNSW_EF_SEARCH,
-    )
-    expect(prisma.$executeRaw.mock.calls[1]?.[0].join("")).toContain(
-      "SET LOCAL hnsw.iterative_scan = relaxed_order",
-    )
-    expect(prisma.$executeRaw.mock.calls[2]?.[1]).toBe(
-      VIDEO_SEMANTIC_HNSW_MAX_SCAN_TUPLES,
-    )
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(4)
+
+    const settingCalls = prisma.$queryRaw.mock.calls.slice(0, 3) as Array<
+      [TemplateStringsArray, string, string]
+    >
+    expect(settingCalls).toHaveLength(3)
+    expect(
+      settingCalls.map((call) => (call[0] as TemplateStringsArray).join("")),
+    ).toEqual([
+      expect.stringContaining("SELECT set_config("),
+      expect.stringContaining("SELECT set_config("),
+      expect.stringContaining("SELECT set_config("),
+    ])
+    for (const call of settingCalls) {
+      expect(call[0].join("")).toContain("true")
+    }
+    expect(settingCalls.map((call) => call[1])).toEqual([
+      "hnsw.ef_search",
+      "hnsw.iterative_scan",
+      "hnsw.max_scan_tuples",
+    ])
+    expect(settingCalls.map((call) => call[2])).toEqual([
+      String(VIDEO_SEMANTIC_HNSW_EF_SEARCH),
+      "relaxed_order",
+      String(VIDEO_SEMANTIC_HNSW_MAX_SCAN_TUPLES),
+    ])
   })
 
   it("uses an HNSW-first transcript window before per-video collapse", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([])
+    mockHnswPrototypeQueryRows(prisma, [])
 
     await searchVideoSemanticHnswPrototype(prisma, {
       queryEmbedding: "[0.1,0.2]",
@@ -630,7 +658,7 @@ describe("searchVideoSemanticHnswPrototype", () => {
   })
 
   it("keeps default semantic gates and bounded hydration in the prototype SQL", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([])
+    mockHnswPrototypeQueryRows(prisma, [])
 
     await searchVideoSemanticHnswPrototype(prisma, {
       queryEmbedding: "[0.1,0.2]",
