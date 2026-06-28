@@ -149,6 +149,23 @@ import { HeroPlayer } from "@/components/watch/HeroPlayer"
 
 type TestMockPlayer = NonNullable<typeof mockPlayerRef.current>
 
+function expectMuxPosterUrl(
+  value: string | null,
+  playbackId: string,
+  expectedWidth?: string,
+) {
+  expect(value).not.toBeNull()
+  const url = new URL(value!)
+  expect(url.origin).toBe("https://image.mux.com")
+  expect(url.pathname).toBe(`/${playbackId}/thumbnail.webp`)
+  expect(url.searchParams.get("time")).toBe("2")
+  if (expectedWidth !== undefined) {
+    expect(url.searchParams.get("width")).toBe(expectedWidth)
+  } else {
+    expect(url.searchParams.has("width")).toBe(false)
+  }
+}
+
 function makeTestPlayer(
   overrides: Partial<TestMockPlayer> = {},
 ): TestMockPlayer {
@@ -362,9 +379,8 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-poster"]',
     ) as HTMLImageElement
     expect(poster).not.toBeNull()
-    expect(poster.getAttribute("src")).toBe(
-      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280&time=2",
-    )
+    expectMuxPosterUrl(poster.getAttribute("src"), "playback-id-123", "1280")
+    expect(poster.getAttribute("srcset")).toContain("width=640")
     expect(poster.getAttribute("loading")).toBe("eager")
     expect(poster.getAttribute("fetchpriority")).toBe("high")
     expect(muxVideoMock).not.toHaveBeenCalled()
@@ -511,9 +527,7 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-overlay-title"]')
         ?.textContent,
     ).toBe("Jesus")
-    expect(poster.getAttribute("src")).toBe(
-      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280&time=2",
-    )
+    expectMuxPosterUrl(poster.getAttribute("src"), "playback-id-123", "1280")
     expect(poster.parentElement?.getAttribute("data-cover-transition")).toBe(
       "none",
     )
@@ -567,9 +581,7 @@ describe("HeroPlayer — initial mount", () => {
 
     expect(layer?.getAttribute("data-cover-loading")).toBe("false")
     expect(layer?.getAttribute("data-cover-transition")).toBe("none")
-    expect(poster.getAttribute("src")).toBe(
-      "https://image.mux.com/route-playback-456/thumbnail.webp?width=1280&time=2",
-    )
+    expectMuxPosterUrl(poster.getAttribute("src"), "route-playback-456", "1280")
     expect(poster.getAttribute("class")).not.toContain(
       "watch-hero-cover-reveal",
     )
@@ -672,11 +684,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(props.muted).toBe(true)
     expect(props.loop).toBe(true)
     expect(props.preload).toBe("metadata")
-    // Must match the server-rendered <link rel="preload"> URL exactly so the
-    // MuxVideo poster reuses the LCP poster request.
-    expect(props.poster).toBe(
-      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280&time=2",
-    )
+    expectMuxPosterUrl(props.poster as string, "playback-id-123")
     expect(props.disableTracking).toBe(false)
     expect(props.disableCookies).toBe(true)
     expect(props.metadata).toMatchObject({

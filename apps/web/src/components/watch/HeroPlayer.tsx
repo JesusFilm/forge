@@ -13,7 +13,7 @@ import {
   type ReactNode,
 } from "react"
 import { flushSync } from "react-dom"
-import Image from "next/image"
+import Image, { type ImageLoaderProps } from "next/image"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
@@ -118,6 +118,7 @@ const HERO_HLS_CONFIG = {
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
 const HERO_POSTER_TIME_SECONDS = 2
+const HERO_POSTER_MAX_WIDTH = 1280
 const WATCH_NOW_LINK_CLASS =
   "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
 
@@ -125,8 +126,24 @@ function buildHeroPosterUrl(
   playbackId: string | undefined,
 ): string | undefined {
   return playbackId
-    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&time=${HERO_POSTER_TIME_SECONDS}`
+    ? `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.webp?time=${HERO_POSTER_TIME_SECONDS}`
     : undefined
+}
+
+function isMuxImageUrl(url: string | null | undefined): boolean {
+  if (!url) return false
+  try {
+    return new URL(url).hostname === "image.mux.com"
+  } catch {
+    return false
+  }
+}
+
+function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
+  const url = new URL(src)
+  url.searchParams.set("width", String(Math.min(width, HERO_POSTER_MAX_WIDTH)))
+  url.searchParams.set("time", String(HERO_POSTER_TIME_SECONDS))
+  return url.toString()
 }
 
 function buildHeroPlaybackFallbackHref(playbackId: string | undefined): string {
@@ -922,6 +939,7 @@ export function HeroPlayer({
   const showPendingPosterTransition =
     showOptimisticPoster && optimisticVisual?.loading === true
   const posterIdentity = visualHeroPosterUrl ?? "none"
+  const shouldOptimizeMuxPoster = isMuxImageUrl(visualHeroPosterUrl)
   const coverLoading =
     showPendingPosterTransition || (playerActivated && !videoReady)
   const showPosterBlackBridge =
@@ -1112,12 +1130,16 @@ export function HeroPlayer({
               <Image
                 data-testid="hero-player-poster"
                 src={visualHeroPosterUrl}
+                loader={
+                  shouldOptimizeMuxPoster ? muxHeroPosterLoader : undefined
+                }
                 alt=""
                 aria-hidden="true"
                 fill
-                unoptimized
+                unoptimized={!shouldOptimizeMuxPoster}
                 loading="eager"
                 fetchPriority="high"
+                preload={shouldOptimizeMuxPoster}
                 sizes="100vw"
                 className={`object-cover ${posterImageMotionClass}`}
               />

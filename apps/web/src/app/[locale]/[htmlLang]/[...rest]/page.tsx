@@ -508,7 +508,6 @@ async function renderEpisode(shape: {
     resolved.selectedVariant,
   )
   if (!mergedBlocks.length) return <ExperienceEmpty />
-  const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
   const metadataModel = buildWatchVideoMetadataModel({
     video: resolved.video,
     selectedVariant: resolved.selectedVariant,
@@ -520,14 +519,6 @@ async function renderEpisode(shape: {
   return (
     <>
       <WatchVideoStructuredData model={metadataModel} />
-      {lcpPlaybackId ? (
-        <link
-          rel="preload"
-          as="image"
-          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
-          fetchPriority="high"
-        />
-      ) : null}
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
         mergedBlocks={clientMergedBlocks}
@@ -596,8 +587,6 @@ async function renderVideo(shape: {
       watchVideo.video,
       watchVideo.selectedVariant,
     )
-    const lcpPlaybackId =
-      watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     const metadataModel = buildWatchVideoMetadataModel({
       video: watchVideo.video,
       selectedVariant: watchVideo.selectedVariant,
@@ -607,14 +596,6 @@ async function renderVideo(shape: {
     return (
       <>
         <WatchVideoStructuredData model={metadataModel} />
-        {lcpPlaybackId ? (
-          <link
-            rel="preload"
-            as="image"
-            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280&time=2`}
-            fetchPriority="high"
-          />
-        ) : null}
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
           mergedBlocks={clientMergedBlocks}
