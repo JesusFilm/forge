@@ -14,7 +14,8 @@ vi.mock("@/config/env", () => ({
   env: { NODE_ENV: "test" } as { NODE_ENV?: string },
 }))
 
-const { identifyForRateLimit } = await import("@/graphql/plugins/rate-limit")
+const { identifyForRateLimit, rateLimitConfigByField } =
+  await import("@/graphql/plugins/rate-limit")
 
 function makeRequest(headers: Record<string, string> = {}): Request {
   return new Request("http://localhost/api/graphql", { headers })
@@ -248,5 +249,22 @@ describe("identifyForRateLimit", () => {
       infoSpy.mockRestore()
       debugSpy.mockRestore()
     }
+  })
+})
+
+describe("rateLimitConfigByField", () => {
+  it("gives the watch route snapshot query a higher budget without broadening the generic query rule", () => {
+    expect(rateLimitConfigByField).toContainEqual({
+      type: "Query",
+      field: "watchVideoRouteSnapshotBySlug",
+      max: 300,
+      window: "1m",
+    })
+    expect(rateLimitConfigByField).toContainEqual({
+      type: "Query",
+      field: "!(watchVideoRouteSnapshotBySlug)",
+      max: 60,
+      window: "1m",
+    })
   })
 })

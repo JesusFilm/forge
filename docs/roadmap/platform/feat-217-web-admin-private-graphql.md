@@ -1,7 +1,7 @@
 ---
 id: feat-217
 title: Route Web Admin GraphQL over Railway private networking
-status: in-progress
+status: complete
 lane: platform
 depends_on:
   - feat-216
@@ -28,5 +28,16 @@ critical path for every uncached Watch render.
 
 1. `pnpm --filter @forge/web test -- env`
 2. Production `@forge/web` deploy succeeds with
-   `ADMIN_GRAPHQL_URL=http://forgeadmin.railway.internal:8080/api/graphql`.
+   `ADMIN_GRAPHQL_URL=http://${{@forge/admin.RAILWAY_PRIVATE_DOMAIN}}:8080/api/graphql`,
+   resolving to `http://forgeadmin.railway.internal:8080/api/graphql`.
 3. Re-run Watch single-video page and Admin snapshot latency probes.
+
+## Outcome
+
+- Merged PR #1403 to allow `.railway.internal` Admin GraphQL URLs.
+- Updated production `@forge/web` to use Railway's dynamic service reference
+  for Admin's private domain.
+- Removed stale `INTERNAL_GRAPHQL_URL` and `NEXT_PUBLIC_GRAPHQL_URL` production
+  variables from `@forge/web`.
+- Verified a fresh page probe at roughly 0.55s TTFB / 0.75s total after the
+  private-route deployment.
