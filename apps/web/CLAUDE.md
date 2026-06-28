@@ -31,7 +31,11 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 
 Required env vars (both flipped from `.optional()` in U13):
 
-- `ADMIN_GRAPHQL_URL` — admin's GraphQL endpoint. Host-allowlist rejects `auth.jesusfilm.org` (PR #909 trap).
+- `ADMIN_GRAPHQL_URL` — admin's GraphQL endpoint. Production Web should use
+  Railway private networking, e.g.
+  `http://forgeadmin.railway.internal:8080/api/graphql`, so SSR/RSC calls avoid
+  public DNS, Cloudflare, and TLS hops. Host-allowlist rejects
+  `auth.jesusfilm.org` (PR #909 trap).
 - `WEB_ADMIN_API_KEYS` — single key or CSV; web reads the first entry as the outbound bearer so traffic identifies as `consumer:<key>` at admin's rate limiter.
 
 `REVALIDATION_SECRET` remains required for the `/api/revalidate` route. `STRAPI_PREVIEW_SECRET` remains required for the `/api/preview` Next draft-mode entry token (Strapi-era surface that hasn't migrated yet; out of data-layer scope).
