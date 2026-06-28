@@ -149,3 +149,34 @@ describe("web env — Datadog RUM config", () => {
     expect(env.NEXT_PUBLIC_DATADOG_VERSION).toBe("railway-sha")
   })
 })
+
+describe("web env — Admin GraphQL URL", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    useBaseEnv()
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("allows Railway private-network Admin GraphQL URLs", async () => {
+    process.env.ADMIN_GRAPHQL_URL =
+      "http://forgeadmin.railway.internal:8080/api/graphql"
+
+    const { env } = await import("./env")
+
+    expect(env.ADMIN_GRAPHQL_URL).toBe(
+      "http://forgeadmin.railway.internal:8080/api/graphql",
+    )
+  })
+
+  it("still rejects known non-GraphQL jesusfilm.org hosts", async () => {
+    process.env.ADMIN_GRAPHQL_URL = "https://auth.jesusfilm.org/api/graphql"
+
+    await expect(import("./env")).rejects.toThrow(
+      "Invalid environment variables",
+    )
+  })
+})

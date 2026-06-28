@@ -119,6 +119,7 @@ function datadogServerVersionFallback(): string | undefined {
 
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
   ".jesusfilm.org",
+  ".railway.internal",
   ".railway.app",
   ".local",
 ] as const
