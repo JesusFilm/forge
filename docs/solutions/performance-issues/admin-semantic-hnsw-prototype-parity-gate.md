@@ -41,7 +41,8 @@ The prototype:
 - keeps the existing transcript provenance, language, visibility, display,
   image, dub, and row-mapping rules after that window;
 - records a distinct `semantic-video-hnsw.query` DB timing label;
-- uses transaction-scoped pgvector settings so `SET LOCAL` applies to the query;
+- uses transaction-scoped `set_config(..., true)` pgvector settings so Prisma can
+  bind values safely and keep them local to the query transaction;
 - ships with a parity script that compares `semantic-only` and
   `semantic-hnsw-prototype` result signatures through the internal eval-search
   route.
