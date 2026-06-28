@@ -73,13 +73,26 @@ export function identifyForRateLimit(ctx: ContextShape): string {
   return `public:${getClientIp(ctx.request)}`
 }
 
+export const rateLimitConfigByField = [
+  {
+    type: "Query",
+    field: "watchVideoRouteSnapshotBySlug",
+    max: 300,
+    window: "1m",
+  },
+  {
+    type: "Query",
+    field: "!(watchVideoRouteSnapshotBySlug)",
+    max: 60,
+    window: "1m",
+  },
+  { type: "Mutation", field: "*", max: 30, window: "1m" },
+]
+
 export const rateLimitPlugin = useRateLimiter({
   identifyFn: (context) => identifyForRateLimit(context as ContextShape),
   store: createRateLimitStore(),
-  configByField: [
-    { type: "Query", field: "*", max: 60, window: "1m" },
-    { type: "Mutation", field: "*", max: 30, window: "1m" },
-  ],
+  configByField: rateLimitConfigByField,
 })
 
 function createRateLimitStore() {
