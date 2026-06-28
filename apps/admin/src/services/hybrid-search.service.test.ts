@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("./hybrid-search-retrievers", () => ({
   searchVideoSemantic: vi.fn(),
+  searchVideoSemanticHnswPrototype: vi.fn(),
   searchVideoKeyword: vi.fn(),
   searchExperienceSemantic: vi.fn(),
   searchExperienceKeyword: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("./embeddings.service", () => ({
 import { generateExperienceEmbedding } from "./embeddings.service"
 import {
   searchVideoSemantic,
+  searchVideoSemanticHnswPrototype,
   searchVideoKeyword,
   searchExperienceSemantic,
   searchExperienceKeyword,
@@ -101,6 +103,7 @@ function failingEmbedder(error = new Error("provider down")): QueryEmbedder {
 
 function setupDefaultRetrievers() {
   vi.mocked(searchVideoSemantic).mockResolvedValue([])
+  vi.mocked(searchVideoSemanticHnswPrototype).mockResolvedValue([])
   vi.mocked(searchVideoKeyword).mockResolvedValue([])
   vi.mocked(searchExperienceSemantic).mockResolvedValue([])
   vi.mocked(searchExperienceKeyword).mockResolvedValue([])
@@ -526,6 +529,36 @@ describe("HybridSearchService", () => {
 
     expect(searchVideoSemantic).toHaveBeenCalled()
     expect(searchVideoKeyword).toHaveBeenCalled()
+    expect(searchExperienceSemantic).not.toHaveBeenCalled()
+    expect(searchExperienceKeyword).not.toHaveBeenCalled()
+  })
+
+  it("dispatches the HNSW prototype only for internal semantic eval mode", async () => {
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger,
+    })
+
+    await service.search({
+      query: "test",
+      locale: "en",
+      mode: "semantic-hnsw-prototype",
+      allowInternalEvalModes: true,
+      contentTypes: ["video"],
+    })
+
+    expect(searchVideoSemanticHnswPrototype).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        queryEmbedding: "[0.1,0.2,0.3]",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
+    expect(searchVideoSemantic).not.toHaveBeenCalled()
+    expect(searchVideoKeyword).not.toHaveBeenCalled()
     expect(searchExperienceSemantic).not.toHaveBeenCalled()
     expect(searchExperienceKeyword).not.toHaveBeenCalled()
   })
@@ -1205,11 +1238,30 @@ describe("normalizeMode", () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
+  it("recognizes 'semantic-hnsw-prototype' only for internal eval callers", () => {
+    const warn = vi.fn()
+    expect(
+      normalizeMode(
+        "semantic-hnsw-prototype",
+        { warn },
+        { allowInternalEvalModes: true },
+      ),
+    ).toBe("semantic-hnsw-prototype")
+    expect(warn).not.toHaveBeenCalled()
+  })
+
   it("treats public 'semantic-only' as unknown and falls back to hybrid", () => {
     const warn = vi.fn()
     expect(normalizeMode("semantic-only", { warn })).toBe("hybrid")
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn.mock.calls[0]![0]).toContain("mode=semantic-only")
+  })
+
+  it("treats public 'semantic-hnsw-prototype' as unknown and falls back to hybrid", () => {
+    const warn = vi.fn()
+    expect(normalizeMode("semantic-hnsw-prototype", { warn })).toBe("hybrid")
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0]![0]).toContain("mode=semantic-hnsw-prototype")
   })
 
   it("is case-sensitive — 'HYBRID' / 'Keyword-First' are unknown", () => {

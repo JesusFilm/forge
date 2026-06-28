@@ -32,6 +32,7 @@ import {
 import { recordAttempt, recordFailure } from "./hybrid-search-health"
 import {
   searchVideoSemantic,
+  searchVideoSemanticHnswPrototype,
   searchVideoKeyword,
   searchExperienceSemantic,
   searchExperienceKeyword,
@@ -167,7 +168,11 @@ export type SearchResultDebug = {
  * stays a nullable string so `normalizeMode` can warn-and-fall-back on
  * unknown values without breaking clients on rollouts of new modes.
  */
-export type SearchPipelineMode = "hybrid" | "keyword-first" | "semantic-only"
+export type SearchPipelineMode =
+  | "hybrid"
+  | "keyword-first"
+  | "semantic-only"
+  | "semantic-hnsw-prototype"
 
 /**
  * Sanitizer for user-supplied values that get interpolated into
@@ -203,6 +208,12 @@ export function normalizeMode(
   if (raw === "keyword-first") return "keyword-first"
   if (raw === "semantic-only" && options.allowInternalEvalModes === true) {
     return "semantic-only"
+  }
+  if (
+    raw === "semantic-hnsw-prototype" &&
+    options.allowInternalEvalModes === true
+  ) {
+    return "semantic-hnsw-prototype"
   }
   logger.warn(
     `[search] event=search_unknown_mode mode=${sanitizeForLog(raw)} falling_back=hybrid`,
@@ -865,7 +876,9 @@ export class HybridSearchService {
     const pipelineMode = normalizeMode(params.mode, this.logger, {
       allowInternalEvalModes: params.allowInternalEvalModes,
     })
-    const semanticOnly = pipelineMode === "semantic-only"
+    const semanticOnly =
+      pipelineMode === "semantic-only" ||
+      pipelineMode === "semantic-hnsw-prototype"
     const limit = Math.min(
       Math.max(1, params.limit ?? DEFAULT_LIMIT),
       MAX_LIMIT,
@@ -1063,7 +1076,9 @@ export class HybridSearchService {
             ? timedRetrieval(
                 "semantic-video",
                 () =>
-                  searchVideoSemantic(
+                  (pipelineMode === "semantic-hnsw-prototype"
+                    ? searchVideoSemanticHnswPrototype
+                    : searchVideoSemantic)(
                     this.prisma,
                     {
                       queryEmbedding: queryEmbeddingText,

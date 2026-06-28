@@ -40,6 +40,7 @@
     "trigger-enrichment": "tsx src/scripts/trigger-enrichment.ts",
     "workflow:setup:postgres": "workflow-postgres-setup",
     "chat-ratings:list": "tsx src/scripts/list-chat-ratings.ts",
+    "search:hnsw-parity": "tsx src/scripts/search-hnsw-parity.ts",
     "index:local-video-embeddings": "tsx src/scripts/index-local-video-candidate-embeddings.ts",
     "mastra:dev": "mastra dev --dir src/mastra-playground",
     "smoke:draft-workflow": "tsx --env-file=.env src/scripts/smoke-mastra-draft-workflow.ts",
