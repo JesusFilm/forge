@@ -306,10 +306,10 @@ export function SiblingCarousel({
               "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
               isActive
                 ? "opacity-100"
-                : "opacity-70 hover:outline-4 hover:outline-offset-[-4px] hover:outline-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                : "opacity-70 hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
               isPending &&
                 !isActive &&
-                "opacity-100 outline-4 outline-offset-[-4px] outline-brand-red shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                "opacity-100 shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
             )
 
             // Card contents are identical whether the card is a routable
@@ -409,9 +409,25 @@ export function SiblingCarousel({
 
                 <div
                   aria-hidden="true"
+                  data-testid="sibling-carousel-hover-outline"
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-50 rounded-lg opacity-0 shadow-[0_0_22px_rgba(239,68,68,0.32)] transition-opacity duration-200",
+                    !isActive &&
+                      "group-hover:opacity-100 group-focus-visible:opacity-100",
+                    isPending && "opacity-100",
+                  )}
+                >
+                  <span className="absolute inset-x-0 top-0 h-[4px] rounded-t-lg bg-brand-red" />
+                  <span className="absolute inset-y-0 left-0 w-[4px] rounded-l-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(120,20,20,0.88)_78%,rgba(0,0,0,0.92)_100%)]" />
+                  <span className="absolute inset-y-0 right-0 w-[4px] rounded-r-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(120,20,20,0.88)_78%,rgba(0,0,0,0.92)_100%)]" />
+                  <span className="absolute inset-x-0 bottom-0 h-[4px] rounded-b-lg bg-black/90" />
+                </div>
+
+                <div
+                  aria-hidden="true"
                   data-testid="sibling-carousel-active-outline"
                   className={cn(
-                    "pointer-events-none absolute inset-0 z-50 rounded-lg border-4 border-white transition-[opacity,transform] duration-300 ease-out",
+                    "pointer-events-none absolute inset-0 z-[60] rounded-lg border-4 border-white transition-[opacity,transform] duration-300 ease-out",
                     isActive
                       ? "scale-100 opacity-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.45)]"
                       : "scale-[0.985] opacity-0",

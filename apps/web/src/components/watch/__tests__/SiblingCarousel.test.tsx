@@ -288,7 +288,7 @@ describe("SiblingCarousel — happy path", () => {
     expect(activeOutline).not.toBeNull()
     expect(activeOutline?.className).toContain("absolute")
     expect(activeOutline?.className).toContain("inset-0")
-    expect(activeOutline?.className).toContain("z-50")
+    expect(activeOutline?.className).toContain("z-[60]")
     expect(activeOutline?.className).toContain("border-4")
     expect(activeOutline?.className).toContain("border-white")
     expect(activeOutline?.className).toContain("transition-[opacity,transform]")
@@ -353,8 +353,22 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(inactive?.className).not.toContain("border-transparent")
     expect(inactive?.className).toContain("opacity-70")
-    expect(inactive?.className).toContain("hover:outline-brand-red")
     expect(inactive?.className).toContain("hover:opacity-100")
+    const hoverOutline = inactive?.querySelector(
+      "[data-testid='sibling-carousel-hover-outline']",
+    )
+    expect(hoverOutline?.className).toContain("z-50")
+    expect(hoverOutline?.className).toContain("rounded-lg")
+    expect(hoverOutline?.className).toContain("group-hover:opacity-100")
+    const outlineSegments = hoverOutline?.querySelectorAll("span")
+    expect(outlineSegments).toHaveLength(4)
+    expect(outlineSegments?.[0]?.className).toContain("h-[4px]")
+    expect(outlineSegments?.[0]?.className).toContain("bg-brand-red")
+    expect(outlineSegments?.[1]?.className).toContain(
+      "bg-[linear-gradient(to_bottom",
+    )
+    expect(outlineSegments?.[1]?.className).toContain("rgba(0,0,0,0.92)_100%")
+    expect(outlineSegments?.[3]?.className).toContain("bg-black/90")
 
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
