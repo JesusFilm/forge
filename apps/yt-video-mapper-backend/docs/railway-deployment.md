@@ -50,7 +50,14 @@ Required for production:
 - `JOB_RESULT_RETENTION_HOURS=168`
 - `JOB_RUNNING_STALE_MINUTES=30`
 - `MATCH_JOB_WORKER_ENABLED=true`
+- `MATCH_JOB_CLEANER_ENABLED=true`
 - `MATCH_JOB_WORKER_POLL_INTERVAL_MS=1000`
+
+The Match Job Cleaner has fixed timing policy rather than production tuning
+knobs: it runs every minute and expires queued jobs that have remained
+unclaimed for 30 minutes. `MATCH_JOB_CLEANER_ENABLED=false` is an operational
+kill switch for rollout or incident response only; it should not be used to
+change expiry behavior.
 
 Required when running catalog sync:
 
@@ -91,6 +98,54 @@ Expected results:
 - `POST /match-jobs` with the valid mapper token returns `202` and a `jobId`.
 - With `MATCH_JOB_WORKER_ENABLED=true`, polling that job should leave
   `queued` without a manual `/process` call.
+- If a job remains queued for 30 minutes, a cleaner tick marks it terminal and
+  polling returns `{ "jobId": "...", "status": "expired", "errorCode":
+  "job_expired" }`.
+
+Verify the schema migration and cleaner state through Railway Postgres:
+
+```sql
+SELECT enumlabel
+FROM pg_enum
+WHERE enumtypid = 'match_job_status'::regtype
+ORDER BY enumsortorder;
+
+SELECT indexname
+FROM pg_indexes
+WHERE tablename = 'mapper_match_job'
+  AND indexname IN (
+    'mapper_match_job_status_queued_at_idx',
+    'mapper_match_job_expired_upload_cleanup_idx'
+  )
+ORDER BY indexname;
+
+SELECT status, count(*) AS jobs
+FROM mapper_match_job
+GROUP BY status
+ORDER BY status;
+
+SELECT count(*) AS overdue_queued_jobs
+FROM mapper_match_job
+WHERE status = 'queued'
+  AND queued_at <= now() - interval '30 minutes';
+
+SELECT count(*) AS expired_jobs_with_uploads
+FROM mapper_match_job
+WHERE status = 'expired'
+  AND (
+    upload_storage_key IS NOT NULL
+    OR upload_content_type IS NOT NULL
+    OR upload_byte_length IS NOT NULL
+  );
+
+SELECT name, locked_until, owner_token IS NOT NULL AS has_owner_token
+FROM mapper_match_job_cleaner_lease;
+```
+
+Expected migration checks: `expired` is present in `match_job_status`; both
+queue-cleaner indexes exist; `overdue_queued_jobs` trends to zero while the
+cleaner is enabled; `expired_jobs_with_uploads` trends to zero unless storage
+cleanup is failing.
 
 ## Catalog Sync
 
@@ -166,15 +221,43 @@ or large media payloads into tickets or commits.
 
 ## Queue Cleanup
 
-The worker is the primary queue cleanup path. After deploying or restarting a
-build with `MATCH_JOB_WORKER_ENABLED=true`, it claims queued jobs and stale
-running jobs through the same durable repository path used by the manual
+The worker is the primary processing path. After deploying or restarting a
+build with `MATCH_JOB_WORKER_ENABLED=true`, it claims fresh queued jobs and
+stale running jobs through the same durable repository path used by the manual
 process endpoint.
+
+The Match Job Cleaner is the abandoned-queue cleanup path. It starts
+independently from `MATCH_JOB_WORKER_ENABLED` when
+`MATCH_JOB_CLEANER_ENABLED=true`, runs every minute, and expires queued jobs
+that have stayed unclaimed for 30 minutes. Existing queued rows that are
+already overdue when a deploy lands are expired on the first cleaner pass. Each
+expired row keeps its job ID and returns the explicit `job_expired` polling
+response, but the cleaner removes raw upload bytes and clears upload fields
+after deletion succeeds.
+
+Cleaner logs use safe counters:
+
+- `event=cleaner_tick expiredJobs=... uploadCleanupSucceeded=...
+  uploadCleanupFailed=... expiredUploadRetries=...
+  remainingExpiredUploads=...`
+- `event=upload_cleanup_failed ...` indicates expired rows still have upload
+  fields and need the retry path or operator inspection.
+- `event=repeated_cleanup_failures ...` should be treated as an alert signal
+  during deploy smoke or incident review.
 
 If the backlog must be inspected or discarded instead of processed, use
 authenticated Railway/Postgres access to query `mapper_match_job` by `status`.
 The public API does not expose a queue listing endpoint, so a bearer token alone
 can process only known `jobId` values.
+
+Forward-only rollback for cleaner incidents:
+
+- Set `MATCH_JOB_CLEANER_ENABLED=false` and redeploy if cleaner ticks must stop.
+- Leave the `expired` enum value and cleaner lease table in place; Postgres enum
+  removal is not part of rollback.
+- Keep the worker enabled only if fresh queued jobs should continue processing.
+- Re-enable `MATCH_JOB_CLEANER_ENABLED=true` once logs and SQL checks show the
+  cleaner can safely resume.
 
 ## 2026-06-09 Provisioning Notes
 

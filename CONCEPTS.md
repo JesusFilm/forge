@@ -92,6 +92,23 @@ The worker is intentionally bounded: it handles one Match Job at a time in a
 service process, preserving the durable queue semantics without adding an
 external queue service.
 
+### Expired Match Job
+
+A Match Job that remained queued past the yt-video-mapper queue expiry window
+without being claimed by a worker or operator.
+
+An Expired Match Job is terminal: its raw upload is removed, but its lightweight
+job row remains pollable until normal result retention so callers can distinguish
+queue expiry from an unknown job.
+
+### Match Job Cleaner
+
+The yt-video-mapper cleanup process that expires abandoned queued Match Jobs and
+removes their raw uploads independently of client polling.
+
+The cleaner owns queue-age expiry only; running-job recovery remains the Match
+Job Worker's stale-running reclaim path.
+
 ### Match Candidate
 
 A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.

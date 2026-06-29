@@ -76,6 +76,18 @@ more work. Set `MATCH_JOB_WORKER_ENABLED=false` to disable the loop for an
 operator session, and tune `MATCH_JOB_WORKER_POLL_INTERVAL_MS` only when the
 default 1 second idle poll is too chatty or too slow.
 
+The server also starts a Match Job Cleaner. It runs every minute, expires
+queued jobs that have remained unclaimed for 30 minutes, deletes their raw
+uploads, and keeps the lightweight job row pollable as:
+
+```json
+{ "jobId": "job-id", "status": "expired", "errorCode": "job_expired" }
+```
+
+Running jobs are not expired by the cleaner; stale running jobs remain owned by
+the worker reclaim path. The manual process endpoint can still rescue an
+overdue queued job until the cleaner marks it `expired`.
+
 Before production smoke tests can return non-empty candidates, run:
 
 ```sh
