@@ -55,32 +55,61 @@ describe("handleRequest", () => {
 
   it("starts the match job worker with the route service", () => {
     const service = {} as MatchJobService
-    const stop = vi.fn()
-    const startedWith: MatchJobService[] = []
+    const stopWorker = vi.fn()
+    const stopCleaner = vi.fn()
+    const workerStartedWith: MatchJobService[] = []
+    const cleanerStartedWith: MatchJobService[] = []
 
     const runtime = createServerRuntime({
       matchJobService: service,
       workerEnabled: true,
       startMatchJobWorkerImpl: (matchJobService) => {
-        startedWith.push(matchJobService)
-        return { stop }
+        workerStartedWith.push(matchJobService)
+        return { stop: stopWorker }
+      },
+      startMatchJobCleanerImpl: (matchJobService) => {
+        cleanerStartedWith.push(matchJobService)
+        return { stop: stopCleaner }
       },
     })
 
-    expect(runtime.worker).toEqual({ stop })
-    expect(startedWith).toEqual([service])
+    expect(runtime.worker).toEqual({ stop: stopWorker })
+    expect(runtime.cleaner).toEqual({ stop: stopCleaner })
+    expect(workerStartedWith).toEqual([service])
+    expect(cleanerStartedWith).toEqual([service])
   })
 
-  it("can disable the match job worker", () => {
+  it("can disable the match job worker without disabling the cleaner", () => {
     const startMatchJobWorkerImpl = vi.fn()
+    const startMatchJobCleanerImpl = vi.fn(() => ({ stop: vi.fn() }))
 
     const runtime = createServerRuntime({
       matchJobService: {} as MatchJobService,
       workerEnabled: false,
       startMatchJobWorkerImpl,
+      startMatchJobCleanerImpl,
     })
 
     expect(runtime.worker).toBeNull()
+    expect(runtime.cleaner).toEqual({ stop: expect.any(Function) })
     expect(startMatchJobWorkerImpl).not.toHaveBeenCalled()
+    expect(startMatchJobCleanerImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("can disable the match job cleaner without disabling the worker", () => {
+    const startMatchJobWorkerImpl = vi.fn(() => ({ stop: vi.fn() }))
+    const startMatchJobCleanerImpl = vi.fn()
+
+    const runtime = createServerRuntime({
+      matchJobService: {} as MatchJobService,
+      cleanerEnabled: false,
+      startMatchJobWorkerImpl,
+      startMatchJobCleanerImpl,
+    })
+
+    expect(runtime.worker).toEqual({ stop: expect.any(Function) })
+    expect(runtime.cleaner).toBeNull()
+    expect(startMatchJobWorkerImpl).toHaveBeenCalledTimes(1)
+    expect(startMatchJobCleanerImpl).not.toHaveBeenCalled()
   })
 })
