@@ -411,12 +411,17 @@ export function SiblingCarousel({
                   aria-hidden="true"
                   data-testid="sibling-carousel-hover-outline"
                   className={cn(
-                    "pointer-events-none absolute inset-0 z-50 rounded-lg bg-[linear-gradient(135deg,rgba(239,68,68,0.95)_0%,rgba(255,255,255,0.7)_42%,rgba(239,68,68,0.95)_100%)] p-[4px] opacity-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2),0_0_22px_rgba(239,68,68,0.35)] transition-opacity duration-200 [mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)] [mask-composite:exclude] [-webkit-mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)] [-webkit-mask-composite:xor]",
+                    "pointer-events-none absolute inset-0 z-50 rounded-lg opacity-0 shadow-[0_0_22px_rgba(239,68,68,0.32)] transition-opacity duration-200",
                     !isActive &&
                       "group-hover:opacity-100 group-focus-visible:opacity-100",
                     isPending && "opacity-100",
                   )}
-                />
+                >
+                  <span className="absolute inset-x-0 top-0 h-[4px] rounded-t-lg bg-brand-red" />
+                  <span className="absolute inset-y-0 left-0 w-[4px] rounded-l-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(120,20,20,0.88)_78%,rgba(0,0,0,0.92)_100%)]" />
+                  <span className="absolute inset-y-0 right-0 w-[4px] rounded-r-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(120,20,20,0.88)_78%,rgba(0,0,0,0.92)_100%)]" />
+                  <span className="absolute inset-x-0 bottom-0 h-[4px] rounded-b-lg bg-black/90" />
+                </div>
 
                 <div
                   aria-hidden="true"
