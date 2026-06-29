@@ -21,6 +21,10 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .optional()
     .default("true"),
+  MATCH_JOB_CLEANER_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("true"),
   MATCH_JOB_WORKER_POLL_INTERVAL_MS: z.coerce
     .number()
     .int()
@@ -65,6 +69,9 @@ export const env = envSchema.parse({
   ),
   MATCH_JOB_WORKER_ENABLED: emptyToUndefined(
     process.env.MATCH_JOB_WORKER_ENABLED,
+  ),
+  MATCH_JOB_CLEANER_ENABLED: emptyToUndefined(
+    process.env.MATCH_JOB_CLEANER_ENABLED,
   ),
   MATCH_JOB_WORKER_POLL_INTERVAL_MS: emptyToUndefined(
     process.env.MATCH_JOB_WORKER_POLL_INTERVAL_MS,

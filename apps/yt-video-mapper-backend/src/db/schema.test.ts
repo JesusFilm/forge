@@ -5,6 +5,13 @@ const schema = readFileSync(
   new URL("../../prisma/schema.prisma", import.meta.url),
   "utf8",
 )
+const expiryMigration = readFileSync(
+  new URL(
+    "../../prisma/migrations/20260629000100_add_expired_match_job_status/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+)
 
 describe("mapper Prisma schema", () => {
   it("keeps the public Core identifiers unique in the catalog map", () => {
@@ -45,6 +52,31 @@ describe("mapper Prisma schema", () => {
       '@@unique([jobId, coreId, videoVariantId], map: "mapper_match_candidate_job_variant_key")',
     )
     expect(schema).toContain("@@index([coreId])")
+  })
+
+  it("supports expiring queued match jobs and coordinating cleaner passes", () => {
+    expect(schema).toContain('EXPIRED  @map("expired")')
+    expect(schema).toContain("@@index([status, queuedAt])")
+    expect(schema).toContain("model MatchJobCleanerLease")
+    expect(schema).toContain('ownerToken  String   @map("owner_token")')
+    expect(schema).toContain('@@map("mapper_match_job_cleaner_lease")')
+  })
+
+  it("keeps the queued-expiry migration deploy-safe and retry-friendly", () => {
+    expect(expiryMigration).toContain(
+      "ALTER TYPE \"match_job_status\" ADD VALUE 'expired'",
+    )
+    expect(expiryMigration).toContain(
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS "mapper_match_job_status_queued_at_idx"',
+    )
+    expect(expiryMigration).toContain(
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS "mapper_match_job_expired_upload_cleanup_idx"',
+    )
+    expect(expiryMigration).toContain("WHERE \"status\" = 'expired'")
+    expect(expiryMigration).toContain('"owner_token" TEXT NOT NULL')
+    expect(expiryMigration).not.toContain(
+      '"updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP',
+    )
   })
 
   it("keeps evidence internal and attached to jobs and candidates", () => {

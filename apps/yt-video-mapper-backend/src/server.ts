@@ -15,6 +15,7 @@ import {
 } from "./services/media-signature-matcher.js"
 import { FileSystemUploadStorage } from "./services/upload-storage.js"
 import { DeterministicUploadSignalExtractor } from "./services/upload-signal-extraction.js"
+import { startMatchJobCleaner, type MatchJobCleaner } from "./cleaner.js"
 import { startMatchJobWorker, type MatchJobWorker } from "./worker.js"
 
 export type ServerDependencies = {
@@ -26,7 +27,9 @@ export type ServerDependencies = {
 
 export type ServerRuntimeOptions = ServerDependencies & {
   workerEnabled?: boolean
+  cleanerEnabled?: boolean
   startMatchJobWorkerImpl?: typeof startMatchJobWorker
+  startMatchJobCleanerImpl?: typeof startMatchJobCleaner
 }
 
 export type ServerRuntime = {
@@ -35,6 +38,7 @@ export type ServerRuntime = {
     response: ServerResponse,
   ) => Promise<void>
   worker: MatchJobWorker | null
+  cleaner: MatchJobCleaner | null
 }
 
 export function createHandleRequest({
@@ -74,7 +78,9 @@ export const handleRequest = createHandleRequest()
 export function createServerRuntime({
   matchJobService = createDefaultMatchJobService(),
   workerEnabled = env.MATCH_JOB_WORKER_ENABLED === "true",
+  cleanerEnabled = env.MATCH_JOB_CLEANER_ENABLED === "true",
   startMatchJobWorkerImpl = startMatchJobWorker,
+  startMatchJobCleanerImpl = startMatchJobCleaner,
   ...dependencies
 }: ServerRuntimeOptions = {}): ServerRuntime {
   return {
@@ -83,6 +89,7 @@ export function createServerRuntime({
       matchJobService,
     }),
     worker: workerEnabled ? startMatchJobWorkerImpl(matchJobService) : null,
+    cleaner: cleanerEnabled ? startMatchJobCleanerImpl(matchJobService) : null,
   }
 }
 
@@ -96,7 +103,10 @@ export function startServer(port = env.PORT): void {
       sendJson(response, 500, { error: "internal_error" })
     })
   })
-    .on("close", () => runtime.worker?.stop())
+    .on("close", () => {
+      runtime.worker?.stop()
+      runtime.cleaner?.stop()
+    })
     .listen(port, () => {
       console.log(`yt-video-mapper-backend listening on :${port}`)
     })
