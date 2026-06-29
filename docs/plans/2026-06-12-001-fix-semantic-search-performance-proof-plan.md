@@ -204,10 +204,11 @@ Deferred to follow-up work:
   - `apps/admin/src/services/hybrid-search-retrievers.ts`
   - `apps/admin/src/services/hybrid-search-retrievers.test.ts`
   - `apps/admin/src/services/transcript-embedding-ingest.contract.test.ts`
-  - `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`
-- **Approach:** Keep `semantic-video` as one retriever and keep scene/transcript
-  evidence mixing in service code. Inside SQL, preserve the existing
-  best-evidence-per-video source winners for the default path, union those
+  - `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`
+- **Approach:** Keep `semantic-video` as one retriever. After feat-192, preserve
+  the transcript-backed semantic-video topology and do not reintroduce scene
+  retrieval as a fallback. Inside SQL, preserve the existing
+  best-evidence-per-video winner shape for the default path, union those
   winners, and only then hydrate image URL, playback ID, and `embedding::text`
   for the bounded survivor set. Resolve matching requested-language ids once
   rather than scanning `language` inside each lateral lookup, but keep all ids
@@ -395,7 +396,7 @@ Deferred to follow-up work:
 - `docs/plans/2026-06-09-001-feat-web-search-keyword-first-plan.md`
 - `docs/plans/2026-05-21-001-feat-mixed-scene-transcript-video-semantic-search-plan.md`
 - `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`
-- `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`
+- `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`
 - `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`
 - `docs/solutions/architecture-patterns/provider-bound-content-embedding-backfill-gate-pattern.md`
 - `docs/search-eval-reports/2026-06-03-ai-gateway-local-gate-summary.md`

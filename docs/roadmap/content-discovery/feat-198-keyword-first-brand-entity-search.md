@@ -3,7 +3,7 @@ id: "feat-198"
 title: "Keyword-first brand and entity search ranking"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-06-22"
 duration: 4
 depends_on:

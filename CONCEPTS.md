@@ -171,6 +171,13 @@ The response-side state that says whether semantic retrieval actually contribute
 
 A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.
 
+### Semantic-Video Retriever
+
+The Admin video semantic retrieval family that contributes one ranked video list
+to search fusion. The name is a compatibility label: after enriched transcript
+realignment, its runtime evidence comes from transcript chunks rather than scene
+embeddings.
+
 ### AI Gateway
 
 The project-owned embedding provider surface that produces vectors for Content Embeddings. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
@@ -198,6 +205,15 @@ Manager artifacts are repair inputs, not the same thing as Admin's searchable ve
 A searchable segment of a video transcript stored separately from the transcript parent so retrieval and embedding workflows can operate at segment granularity.
 
 Deleting transcript chunks removes Admin's transcript search index for those segments but does not delete the transcript identity or Manager's source artifacts.
+
+### Enriched Transcript Chunk
+
+A Transcript Chunk whose embedded text includes the transcript excerpt plus
+search-oriented metadata such as time range, felt needs, Bible references,
+summary, tone, audience cues, and spiritual context.
+
+The enriched input and the structured fields are both stored so search
+relevance can be debugged without falling back to legacy scene artifacts.
 
 ### Source Transcript Scripture Correction
 

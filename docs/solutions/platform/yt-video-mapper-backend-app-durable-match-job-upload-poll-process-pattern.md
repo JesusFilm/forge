@@ -197,7 +197,7 @@ Prototype caveats to address before large-scale operation:
 - [Local embed pipeline + manager-trigger parity pattern](./local-embed-pipeline-pattern-20260429.md)
 - [Backfill Worker Pattern - Next.js Manager with CMS Queue](./backfill-worker-pattern-manager-20260407.md)
 - [Admin manager enrichment trigger endpoint](./admin-manager-enrichment-trigger-endpoint-20260506.md)
-- [Admin video semantic search: mix scene and transcript evidence inside one retriever](./admin-mixed-video-semantic-evidence-pattern-20260521.md)
+- [Admin semantic-video retrieval is transcript-backed after feat-192](../architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md)
 - [Optional Railway S3 with local fallback storage](./optional-railway-s3-local-fallback.md)
 - [Composing N-way RRF safely with heterogeneous content types](../best-practices/rrf-fusion-heterogeneous-content-types-20260415.md)
 - [In-memory slot reservation for fire-and-forget routes](../best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md)
