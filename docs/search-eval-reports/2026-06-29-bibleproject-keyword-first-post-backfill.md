@@ -43,99 +43,99 @@ The `Thanks to BibleProject` alias was discovered from current BibleProject corp
 
 ### `Bible Project`
 
-| Rank | Title | Slug | Score | BP evidence | Rescue evidence |
-| ---: | --- | --- | ---: | --- | --- |
-| 1 | The BibleProject Collection | `the-bibleproject-collection` | 0.750 | yes | no |
-| 2 | Jesus Fulfills the Law | `jesus-fulfills-the-law` | 0.473 | yes | no |
-| 3 | Advent Series | `advent-series` | 0.470 | yes | no |
-| 4 | The Lord's Prayer | `the-lord-prayer-bp` | 0.464 | yes | no |
-| 5 | Intro to Sermon on the Mount | `intro-to-sermon-on-the-mount` | 0.459 | yes | no |
+| Rank | Title                        | Slug                           | Score | BP evidence | Rescue evidence |
+| ---: | ---------------------------- | ------------------------------ | ----: | ----------- | --------------- |
+|    1 | The BibleProject Collection  | `the-bibleproject-collection`  | 0.750 | yes         | no              |
+|    2 | Jesus Fulfills the Law       | `jesus-fulfills-the-law`       | 0.473 | yes         | no              |
+|    3 | Advent Series                | `advent-series`                | 0.470 | yes         | no              |
+|    4 | The Lord's Prayer            | `the-lord-prayer-bp`           | 0.464 | yes         | no              |
+|    5 | Intro to Sermon on the Mount | `intro-to-sermon-on-the-mount` | 0.459 | yes         | no              |
 
 Pass note: collection and known BibleProject rows dominate the top slots. Leakage note: Rescue Project rows still appear at ranks 14, 15, 17, and 18, above a later known BibleProject row at rank 16.
 
 ### `the Bible project`
 
-| Rank | Title | Slug | Score | BP evidence | Rescue evidence |
-| ---: | --- | --- | ---: | --- | --- |
-| 1 | The BibleProject Collection | `the-bibleproject-collection` | 0.750 | yes | no |
-| 2 | Relationship Trumps Fame | `relationship-trumps-fame` | 0.441 | no | no |
-| 3 | Gospel Part 4 - Call to Repentance | `gospel-part-4-call-to-repentance` | 0.392 | no | yes |
-| 4 | Gospel Part 2 - Jesus | `gospel-part-2-jesus` | 0.386 | no | yes |
-| 5 | The Lord's Prayer | `the-lord-prayer-bp` | 0.246 | yes | no |
+| Rank | Title                              | Slug                               | Score | BP evidence | Rescue evidence |
+| ---: | ---------------------------------- | ---------------------------------- | ----: | ----------- | --------------- |
+|    1 | The BibleProject Collection        | `the-bibleproject-collection`      | 0.750 | yes         | no              |
+|    2 | Relationship Trumps Fame           | `relationship-trumps-fame`         | 0.441 | no          | no              |
+|    3 | Gospel Part 4 - Call to Repentance | `gospel-part-4-call-to-repentance` | 0.392 | no          | yes             |
+|    4 | Gospel Part 2 - Jesus              | `gospel-part-2-jesus`              | 0.386 | no          | yes             |
+|    5 | The Lord's Prayer                  | `the-lord-prayer-bp`               | 0.246 | yes         | no              |
 
 Fail note: the collection is first, but Rescue Project rows at ranks 3 and 4 outrank known BibleProject corpus rows starting at rank 5.
 
 ### `BibleProject`
 
-| Rank | Title | Slug | Score | BP evidence | Rescue evidence |
-| ---: | --- | --- | ---: | --- | --- |
-| 1 | The BibleProject Collection | `the-bibleproject-collection` | 0.667 | yes | no |
-| 2 | The Lord's Prayer | `the-lord-prayer-bp` | 0.328 | yes | no |
-| 3 | Jesus Fulfills the Law | `jesus-fulfills-the-law` | 0.323 | yes | no |
-| 4 | The Choice | `the-choice` | 0.318 | yes | no |
-| 5 | Wealth and Worry | `wealth-and-worry` | 0.313 | yes | no |
+| Rank | Title                       | Slug                          | Score | BP evidence | Rescue evidence |
+| ---: | --------------------------- | ----------------------------- | ----: | ----------- | --------------- |
+|    1 | The BibleProject Collection | `the-bibleproject-collection` | 0.667 | yes         | no              |
+|    2 | The Lord's Prayer           | `the-lord-prayer-bp`          | 0.328 | yes         | no              |
+|    3 | Jesus Fulfills the Law      | `jesus-fulfills-the-law`      | 0.323 | yes         | no              |
+|    4 | The Choice                  | `the-choice`                  | 0.318 | yes         | no              |
+|    5 | Wealth and Worry            | `wealth-and-worry`            | 0.313 | yes         | no              |
 
 Pass note: joined CamelCase brand intent is strong. No Rescue Project rows appeared in the top 20.
 
 ### `BibleProject Collection`
 
-| Rank | Title | Slug | Score | BP evidence | Rescue evidence |
-| ---: | --- | --- | ---: | --- | --- |
-| 1 | The BibleProject Collection | `the-bibleproject-collection` | 0.667 | yes | no |
-| 2 | StoryClubs: Jesus Calms the Storm | `storyclubs-jesus-calms-the-storm` | 0.167 | no | no |
-| 3 | Finding A Video | `finding-a-video` | 0.164 | no | no |
-| 4 | Getting Started Is Easy | `getting-started-is-easy` | 0.161 | no | no |
-| 5 | Jesus Vision - John | `jesus-vision-john` | 0.159 | no | no |
+| Rank | Title                             | Slug                               | Score | BP evidence | Rescue evidence |
+| ---: | --------------------------------- | ---------------------------------- | ----: | ----------- | --------------- |
+|    1 | The BibleProject Collection       | `the-bibleproject-collection`      | 0.667 | yes         | no              |
+|    2 | StoryClubs: Jesus Calms the Storm | `storyclubs-jesus-calms-the-storm` | 0.167 | no          | no              |
+|    3 | Finding A Video                   | `finding-a-video`                  | 0.164 | no          | no              |
+|    4 | Getting Started Is Easy           | `getting-started-is-easy`          | 0.161 | no          | no              |
+|    5 | Jesus Vision - John               | `jesus-vision-john`                | 0.159 | no          | no              |
 
 Mixed note: exact collection alias ranks the collection first, but generic semantic fill starts immediately at rank 2 instead of continuing with BibleProject children.
 
 ### `The BibleProject Collection`
 
-| Rank | Title | Slug | Score | BP evidence | Rescue evidence |
-| ---: | --- | --- | ---: | --- | --- |
-| 1 | The BibleProject Collection | `the-bibleproject-collection` | 0.667 | yes | no |
-| 2 | The Story of the Bible (Episode 2) | `bp-story-of-bible-episode-2` | 0.328 | yes | no |
-| 3 | StoryClubs: Jesus Calms the Storm | `storyclubs-jesus-calms-the-storm` | 0.167 | no | no |
-| 4 | Jesus Vision - John | `jesus-vision-john` | 0.164 | no | no |
-| 5 | Venia | `venia` | 0.159 | no | no |
+| Rank | Title                              | Slug                               | Score | BP evidence | Rescue evidence |
+| ---: | ---------------------------------- | ---------------------------------- | ----: | ----------- | --------------- |
+|    1 | The BibleProject Collection        | `the-bibleproject-collection`      | 0.667 | yes         | no              |
+|    2 | The Story of the Bible (Episode 2) | `bp-story-of-bible-episode-2`      | 0.328 | yes         | no              |
+|    3 | StoryClubs: Jesus Calms the Storm  | `storyclubs-jesus-calms-the-storm` | 0.167 | no          | no              |
+|    4 | Jesus Vision - John                | `jesus-vision-john`                | 0.164 | no          | no              |
+|    5 | Venia                              | `venia`                            | 0.159 | no          | no              |
 
 Mixed note: the collection and one known child lead, but generic semantic fill starts at rank 3.
 
 ### `Thanks to BibleProject`
 
-| Rank | Title | Slug | Score | BP evidence | Rescue evidence |
-| ---: | --- | --- | ---: | --- | --- |
-| 1 | StoryClubs: Jesus Calms the Storm | `storyclubs-jesus-calms-the-storm` | 0.500 | no | no |
-| 2 | The BibleProject Collection | `the-bibleproject-collection` | 0.500 | yes | no |
-| 3 | Jesus Vision - John | `jesus-vision-john` | 0.492 | no | no |
-| 4 | The Lord's Prayer | `the-lord-prayer-bp` | 0.492 | yes | no |
-| 5 | Jesus Fulfills the Law | `jesus-fulfills-the-law` | 0.484 | yes | no |
+| Rank | Title                             | Slug                               | Score | BP evidence | Rescue evidence |
+| ---: | --------------------------------- | ---------------------------------- | ----: | ----------- | --------------- |
+|    1 | StoryClubs: Jesus Calms the Storm | `storyclubs-jesus-calms-the-storm` | 0.500 | no          | no              |
+|    2 | The BibleProject Collection       | `the-bibleproject-collection`      | 0.500 | yes         | no              |
+|    3 | Jesus Vision - John               | `jesus-vision-john`                | 0.492 | no          | no              |
+|    4 | The Lord's Prayer                 | `the-lord-prayer-bp`               | 0.492 | yes         | no              |
+|    5 | Jesus Fulfills the Law            | `jesus-fulfills-the-law`           | 0.484 | yes         | no              |
 
 Fail note: a source-credit alias still lets an unrelated semantic hit tie and sort above the collection.
 
 ### `Bible Project videos`
 
-| Rank | Title | Slug | Score | BP evidence | Rescue evidence |
-| ---: | --- | --- | ---: | --- | --- |
-| 1 | Getting Started Is Easy | `getting-started-is-easy` | 0.333 | no | no |
-| 2 | Meod / Strength | `meod-strength` | 0.333 | yes | no |
-| 3 | The BibleProject Collection | `the-bibleproject-collection` | 0.333 | yes | no |
-| 4 | Finding A Video | `finding-a-video` | 0.328 | no | no |
-| 5 | Seeing Opportunities | `seeing-opportunities` | 0.323 | no | no |
+| Rank | Title                       | Slug                          | Score | BP evidence | Rescue evidence |
+| ---: | --------------------------- | ----------------------------- | ----: | ----------- | --------------- |
+|    1 | Getting Started Is Easy     | `getting-started-is-easy`     | 0.333 | no          | no              |
+|    2 | Meod / Strength             | `meod-strength`               | 0.333 | yes         | no              |
+|    3 | The BibleProject Collection | `the-bibleproject-collection` | 0.333 | yes         | no              |
+|    4 | Finding A Video             | `finding-a-video`             | 0.328 | no          | no              |
+|    5 | Seeing Opportunities        | `seeing-opportunities`        | 0.323 | no          | no              |
 
 Fail note: brand-plus-modifier intent is not protected. Generic "videos/app usage" results outrank the collection.
 
 ## Pass/Fail Summary
 
-| Case | Result |
-| --- | --- |
-| `Bible Project` | Pass for top slot and top-12 corpus dominance; fail for later Rescue interleaving above a known BibleProject row. |
-| `the Bible project` | Fail. Collection is first, but Rescue Project rows outrank known BibleProject corpus rows. |
-| `BibleProject` | Pass. |
-| `BibleProject Collection` | Mixed. Collection is first; entity set is not filled before generic semantic results. |
-| `The BibleProject Collection` | Mixed. Collection and one known child lead; generic semantic fill starts too early. |
-| `Thanks to BibleProject` | Fail. Unrelated semantic result ties and sorts above the collection. |
-| `Bible Project videos` | Fail. Generic video/app results outrank the collection. |
+| Case                          | Result                                                                                                            |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `Bible Project`               | Pass for top slot and top-12 corpus dominance; fail for later Rescue interleaving above a known BibleProject row. |
+| `the Bible project`           | Fail. Collection is first, but Rescue Project rows outrank known BibleProject corpus rows.                        |
+| `BibleProject`                | Pass.                                                                                                             |
+| `BibleProject Collection`     | Mixed. Collection is first; entity set is not filled before generic semantic results.                             |
+| `The BibleProject Collection` | Mixed. Collection and one known child lead; generic semantic fill starts too early.                               |
+| `Thanks to BibleProject`      | Fail. Unrelated semantic result ties and sorts above the collection.                                              |
+| `Bible Project videos`        | Fail. Generic video/app results outrank the collection.                                                           |
 
 ## Concrete Relevance Issues
 

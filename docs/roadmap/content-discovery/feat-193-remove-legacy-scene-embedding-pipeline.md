@@ -8,6 +8,7 @@ start_date: "2026-06-24"
 duration: 3
 depends_on:
   - "feat-192"
+  - "feat-198"
 blocks: []
 tags:
   - "admin"
@@ -21,14 +22,16 @@ tags:
 
 ## Scope
 
-After enriched transcript search has passed eval and production backfill
-coverage is healthy, remove the legacy scene embedding pipeline that is no
-longer consumed by semantic search or recommendation lists.
+After enriched transcript search has passed the transcript-only eval guardrail
+and keyword-first relevance is no longer relying on scene evidence, remove the
+legacy scene embedding pipeline that is no longer consumed by semantic search
+or recommendation lists.
 
 This is the deletion follow-up for feat-192. feat-192 stops scene embedding
 consumption while leaving the old code in place; this ticket deletes the dead
 scene-embedding path and cleans up naming/docs that still imply scene retrieval
-is active.
+is active. This is intentionally a code cleanup slice, not a database-retention
+or embedding-backfill-operations slice; those stay in `feat-199`.
 
 ## Cleanup Targets
 
@@ -50,7 +53,10 @@ is active.
 
 ## Acceptance Criteria
 
-- Enriched transcript semantic search eval has passed the agreed promotion gate.
+- Enriched transcript semantic search eval has passed the agreed promotion gate,
+  using the completed transcript-only eval work as the guardrail.
+- `feat-198` has removed the remaining search-quality reason to keep scene code
+  available as a fallback.
 - No production search or recommendation path calls scene embedding retrieval,
   scene embedding ingestion, or scene embedding backfill code.
 - Dead scene embedding code and tests are removed, not merely bypassed.
@@ -58,3 +64,5 @@ is active.
   or is removed in the same cleanup.
 - Operator docs, roadmap notes, and code comments describe transcript-backed
   search/recommendations without implying scene embeddings are still active.
+- Historical `video_scene` / `video_scene_locale` rows remain in place unless a
+  separately approved retention migration exists.
