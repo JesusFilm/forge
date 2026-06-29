@@ -358,7 +358,9 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-hover-outline']",
     )
     expect(hoverOutline?.className).toContain("z-50")
-    expect(hoverOutline?.className).toContain("border-brand-red")
+    expect(hoverOutline?.className).toContain("bg-[linear-gradient")
+    expect(hoverOutline?.className).toContain("p-[4px]")
+    expect(hoverOutline?.className).toContain("[mask-composite:exclude]")
     expect(hoverOutline?.className).toContain("group-hover:opacity-100")
 
     const label = container.querySelector(
