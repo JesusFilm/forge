@@ -47,6 +47,13 @@ a documented deferred release gate in `apps/mastra/CLAUDE.md` and feat-204.
   boundaries unchanged.
 - Genuinely useful only once `resourceId = userId` exists — pairs with feat-207
   (auth), though it can land technically under the shared default resource first.
+- **Consider (non-binding):** decide whether seeker memory needs a retention/prune
+  policy at all (thread TTL and/or per-thread message cap) — or whether we simply
+  keep all conversations indefinitely, which is a valid choice. This is the residue
+  of feat-202's deferred in-memory eviction (item ②): moving to Postgres eliminates
+  the heap-OOM risk, leaving only ordinary table growth. Not a release gate — flag
+  the question for this ticket's own brainstorm. See
+  `docs/brainstorms/2026-06-29-seeker-rag-runtime-hardening-requirements.md`.
 
 ## Verification
 
