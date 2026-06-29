@@ -70,6 +70,38 @@ export class PrismaMatchJobRepository implements MatchJobRepository {
     return this.get(jobId)
   }
 
+  async claimNextQueued(
+    startedAt: Date,
+    staleStartedBefore: Date,
+  ): Promise<MatchJobRecord | null> {
+    return this.db.$transaction(async (tx) => {
+      const candidate = await tx.matchJob.findFirst({
+        where: processableWhere(staleStartedBefore),
+        orderBy: [{ queuedAt: "asc" }, { createdAt: "asc" }],
+        select: { id: true },
+      })
+
+      if (!candidate) return null
+
+      const claimed = await tx.matchJob.updateMany({
+        where: {
+          id: candidate.id,
+          ...processableWhere(staleStartedBefore),
+        },
+        data: {
+          status: PrismaMatchJobStatus.RUNNING,
+          startedAt,
+          safeErrorCode: null,
+        },
+      })
+
+      if (claimed.count === 0) return null
+
+      const job = await tx.matchJob.findUnique({ where: { id: candidate.id } })
+      return job ? fromPrismaJob(job) : null
+    })
+  }
+
   async update(
     jobId: string,
     patch: Partial<Omit<MatchJobRecord, "id">>,
@@ -113,6 +145,18 @@ export class PrismaMatchJobRepository implements MatchJobRepository {
     })
 
     return candidates.map(fromPrismaCandidate)
+  }
+}
+
+function processableWhere(staleStartedBefore: Date) {
+  return {
+    OR: [
+      { status: PrismaMatchJobStatus.QUEUED },
+      {
+        status: PrismaMatchJobStatus.RUNNING,
+        startedAt: { lte: staleStartedBefore },
+      },
+    ],
   }
 }
 

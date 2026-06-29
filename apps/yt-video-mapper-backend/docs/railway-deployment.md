@@ -49,6 +49,8 @@ Required for production:
 - `MATCH_RESULT_LIMIT=3`
 - `JOB_RESULT_RETENTION_HOURS=168`
 - `JOB_RUNNING_STALE_MINUTES=30`
+- `MATCH_JOB_WORKER_ENABLED=true`
+- `MATCH_JOB_WORKER_POLL_INTERVAL_MS=1000`
 
 Required when running catalog sync:
 
@@ -87,6 +89,8 @@ Expected results:
 - `POST /match-jobs` without a bearer token returns `401`.
 - `POST /match-jobs` with an invalid bearer token returns `401`.
 - `POST /match-jobs` with the valid mapper token returns `202` and a `jobId`.
+- With `MATCH_JOB_WORKER_ENABLED=true`, polling that job should leave
+  `queued` without a manual `/process` call.
 
 ## Catalog Sync
 
@@ -133,7 +137,8 @@ pnpm --filter @forge/yt-video-mapper-backend index:media
 ```
 
 Then submit an authenticated `/match-jobs` upload using a sample expected to
-overlap indexed official media, process the job, and poll it:
+overlap indexed official media, and poll it until the worker returns a terminal
+result:
 
 ```bash
 MAPPER_BASE_URL="https://forgeyt-video-mapper-backend-production.up.railway.app"
@@ -143,16 +148,33 @@ curl -sS -X POST "$MAPPER_BASE_URL/match-jobs" \
   -H "Content-Type: video/mp4" \
   --data-binary "@sample.mp4"
 
-curl -sS -X POST "$MAPPER_BASE_URL/match-jobs/$JOB_ID/process" \
-  -H "Authorization: Bearer $MAPPER_API_TOKEN"
-
 curl -sS "$MAPPER_BASE_URL/match-jobs/$JOB_ID" \
+  -H "Authorization: Bearer $MAPPER_API_TOKEN"
+```
+
+If a specific job needs operator recovery, the manual process endpoint remains
+available:
+
+```bash
+curl -sS -X POST "$MAPPER_BASE_URL/match-jobs/$JOB_ID/process" \
   -H "Authorization: Bearer $MAPPER_API_TOKEN"
 ```
 
 The public response must contain only `coreId`, `videoVariantId`, `confidence`,
 and `matchStrength` for each candidate. Do not paste bearer tokens, signed URLs,
 or large media payloads into tickets or commits.
+
+## Queue Cleanup
+
+The worker is the primary queue cleanup path. After deploying or restarting a
+build with `MATCH_JOB_WORKER_ENABLED=true`, it claims queued jobs and stale
+running jobs through the same durable repository path used by the manual
+process endpoint.
+
+If the backlog must be inspected or discarded instead of processed, use
+authenticated Railway/Postgres access to query `mapper_match_job` by `status`.
+The public API does not expose a queue listing endpoint, so a bearer token alone
+can process only known `jobId` values.
 
 ## 2026-06-09 Provisioning Notes
 

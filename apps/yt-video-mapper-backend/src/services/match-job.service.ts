@@ -53,6 +53,10 @@ export type MatchJobRepository = {
     startedAt: Date,
     staleStartedBefore: Date,
   ): Promise<MatchJobRecord | null>
+  claimNextQueued(
+    startedAt: Date,
+    staleStartedBefore: Date,
+  ): Promise<MatchJobRecord | null>
   update(
     jobId: string,
     patch: Partial<Omit<MatchJobRecord, "id">>,
@@ -130,6 +134,22 @@ export class MatchJobService {
     )
     if (!job) return
 
+    await this.processClaimedJob(job)
+  }
+
+  async processNextJob(): Promise<MatchJobRecord | null> {
+    const startedAt = this.now()
+    const job = await this.repository.claimNextQueued(
+      startedAt,
+      addMinutes(startedAt, -env.JOB_RUNNING_STALE_MINUTES),
+    )
+    if (!job) return null
+
+    await this.processClaimedJob(job)
+    return job
+  }
+
+  private async processClaimedJob(job: MatchJobRecord): Promise<void> {
     try {
       if (!job.uploadStorageKey || !job.uploadContentType) {
         throw new SafeMatchJobError("upload_not_found")
@@ -228,6 +248,19 @@ export class InMemoryMatchJobRepository implements MatchJobRepository {
     return { ...updated }
   }
 
+  async claimNextQueued(
+    startedAt: Date,
+    staleStartedBefore: Date,
+  ): Promise<MatchJobRecord | null> {
+    const job = Array.from(this.jobs.values())
+      .filter((candidate) => isProcessable(candidate, staleStartedBefore))
+      .sort((a, b) => a.queuedAt.getTime() - b.queuedAt.getTime())[0]
+
+    if (!job) return null
+
+    return this.claimQueued(job.id, startedAt, staleStartedBefore)
+  }
+
   async update(
     jobId: string,
     patch: Partial<Omit<MatchJobRecord, "id">>,
@@ -258,6 +291,16 @@ export class InMemoryMatchJobRepository implements MatchJobRepository {
       ...candidate,
     }))
   }
+}
+
+function isProcessable(job: MatchJobRecord, staleStartedBefore: Date): boolean {
+  if (job.status === "queued") return true
+
+  return (
+    job.status === "running" &&
+    job.startedAt !== undefined &&
+    job.startedAt <= staleStartedBefore
+  )
 }
 
 function addHours(date: Date, hours: number): Date {

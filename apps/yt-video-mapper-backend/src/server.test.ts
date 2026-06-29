@@ -1,6 +1,7 @@
 import { Writable } from "node:stream"
-import { describe, expect, it } from "vitest"
-import { handleRequest } from "./server.js"
+import { describe, expect, it, vi } from "vitest"
+import { createServerRuntime, handleRequest } from "./server.js"
+import type { MatchJobService } from "./services/match-job.service.js"
 
 class TestResponse extends Writable {
   statusCode = 200
@@ -50,5 +51,36 @@ describe("handleRequest", () => {
       statusCode: 404,
       body: { error: "not_found" },
     })
+  })
+
+  it("starts the match job worker with the route service", () => {
+    const service = {} as MatchJobService
+    const stop = vi.fn()
+    const startedWith: MatchJobService[] = []
+
+    const runtime = createServerRuntime({
+      matchJobService: service,
+      workerEnabled: true,
+      startMatchJobWorkerImpl: (matchJobService) => {
+        startedWith.push(matchJobService)
+        return { stop }
+      },
+    })
+
+    expect(runtime.worker).toEqual({ stop })
+    expect(startedWith).toEqual([service])
+  })
+
+  it("can disable the match job worker", () => {
+    const startMatchJobWorkerImpl = vi.fn()
+
+    const runtime = createServerRuntime({
+      matchJobService: {} as MatchJobService,
+      workerEnabled: false,
+      startMatchJobWorkerImpl,
+    })
+
+    expect(runtime.worker).toBeNull()
+    expect(startMatchJobWorkerImpl).not.toHaveBeenCalled()
   })
 })
