@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "@prisma/client"
 
+vi.mock("next/server", () => ({
+  after: vi.fn((callback: () => unknown) => callback()),
+}))
+
 import {
   buildWatchChapterCarouselMuxLqipUrl,
   buildWatchChapterCarouselMuxThumbnailUrl,
@@ -8,6 +12,7 @@ import {
   buildWatchHeroPosterMuxThumbnailUrl,
   getOrCreateWatchChapterCarouselMuxBlurDataUrl,
   getOrCreateWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
 } from "./mux-image-derivative.service"
 
 function makePrisma({
@@ -102,6 +107,79 @@ describe("mux-image-derivative.service", () => {
         }),
       }),
     )
+  })
+
+  it("returns null for a missing derivative and schedules generation in the background", async () => {
+    const bytes = new Uint8Array([9, 10, 11, 12])
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        headers: new Headers({ "content-type": "image/jpeg" }),
+        arrayBuffer: async () => bytes.buffer,
+      })),
+    )
+    const prisma = makePrisma()
+
+    await expect(
+      getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+        prisma,
+        muxVideoId: "mux-video-1",
+        playbackId: "playback-1",
+      }),
+    ).resolves.toBeNull()
+
+    await vi.waitFor(() => {
+      expect(prisma.muxImageDerivative.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            muxVideoId: "mux-video-1",
+            blurDataUrl: "data:image/jpeg;base64,CQoLDA==",
+          }),
+        }),
+      )
+    })
+  })
+
+  it("dedupes matching background generations", async () => {
+    type FetchResponse = {
+      ok: true
+      headers: Headers
+      arrayBuffer: () => Promise<ArrayBuffer>
+    }
+    let resolveFetch!: (value: FetchResponse) => void
+    const fetchPromise = new Promise<FetchResponse>((resolve) => {
+      resolveFetch = resolve
+    })
+    const fetchMock = vi.fn(() => fetchPromise)
+    vi.stubGlobal("fetch", fetchMock)
+    const prisma = makePrisma()
+
+    await Promise.all([
+      getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+        prisma,
+        muxVideoId: "mux-video-1",
+        playbackId: "playback-1",
+      }),
+      getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+        prisma,
+        muxVideoId: "mux-video-1",
+        playbackId: "playback-1",
+      }),
+    ])
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    resolveFetch({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
+    })
+    await vi.waitFor(() => {
+      expect(prisma.muxImageDerivative.upsert).toHaveBeenCalledTimes(1)
+    })
   })
 
   it("stores the hero poster blur under the hero recipe", async () => {

@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto"
+import { after } from "next/server"
 import type { PrismaClient } from "@prisma/client"
 
 const FETCH_TIMEOUT_MS = 3000
 const MAX_LQIP_BYTES = 64 * 1024
+const BACKGROUND_GENERATION_CONCURRENCY = 4
 
 export const WATCH_CHAPTER_CAROUSEL_MUX_IMAGE_PURPOSE = "watch-chapter-carousel"
 export const WATCH_HERO_POSTER_MUX_IMAGE_PURPOSE = "watch-hero-poster"
@@ -61,6 +63,10 @@ const WATCH_HERO_POSTER_RECIPE = {
   },
 } satisfies MuxImageRecipe
 
+const pendingBackgroundGenerations = new Map<string, Promise<void>>()
+const backgroundGenerationQueue: Array<() => void> = []
+let activeBackgroundGenerations = 0
+
 export function muxImageDerivativeParamsHash(recipe: MuxImageRecipe): string {
   return createHash("sha256")
     .update(JSON.stringify(recipe))
@@ -107,6 +113,23 @@ export async function getOrCreateWatchChapterCarouselMuxBlurDataUrl({
   })
 }
 
+export async function getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+  prisma,
+  muxVideoId,
+  playbackId,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  playbackId: string
+}): Promise<string | null> {
+  return getOrScheduleMuxBlurDataUrl({
+    prisma,
+    muxVideoId,
+    playbackId,
+    recipe: WATCH_CHAPTER_CAROUSEL_RECIPE,
+  })
+}
+
 export async function getOrCreateWatchHeroPosterMuxBlurDataUrl({
   prisma,
   muxVideoId,
@@ -124,6 +147,41 @@ export async function getOrCreateWatchHeroPosterMuxBlurDataUrl({
   })
 }
 
+export async function getOrScheduleWatchHeroPosterMuxBlurDataUrl({
+  prisma,
+  muxVideoId,
+  playbackId,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  playbackId: string
+}): Promise<string | null> {
+  return getOrScheduleMuxBlurDataUrl({
+    prisma,
+    muxVideoId,
+    playbackId,
+    recipe: WATCH_HERO_POSTER_RECIPE,
+  })
+}
+
+async function getOrScheduleMuxBlurDataUrl({
+  prisma,
+  muxVideoId,
+  playbackId,
+  recipe,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  playbackId: string
+  recipe: MuxImageRecipe
+}): Promise<string | null> {
+  const existing = await getStoredMuxBlurDataUrl({ prisma, muxVideoId, recipe })
+  if (existing) return existing
+
+  scheduleMuxBlurDataUrlGeneration({ prisma, muxVideoId, playbackId, recipe })
+  return null
+}
+
 async function getOrCreateMuxBlurDataUrl({
   prisma,
   muxVideoId,
@@ -135,19 +193,10 @@ async function getOrCreateMuxBlurDataUrl({
   playbackId: string
   recipe: MuxImageRecipe
 }): Promise<string | null> {
-  const paramsHash = muxImageDerivativeParamsHash(recipe)
-  const existing = await prisma.muxImageDerivative.findUnique({
-    where: {
-      muxVideoId_purpose_paramsHash: {
-        muxVideoId,
-        purpose: recipe.purpose,
-        paramsHash,
-      },
-    },
-    select: { blurDataUrl: true },
-  })
-  if (existing?.blurDataUrl) return existing.blurDataUrl
+  const existing = await getStoredMuxBlurDataUrl({ prisma, muxVideoId, recipe })
+  if (existing) return existing
 
+  const paramsHash = muxImageDerivativeParamsHash(recipe)
   const sourceUrl = buildMuxThumbnailUrl(playbackId, recipe.source)
   const lqipUrl = buildMuxThumbnailUrl(playbackId, recipe.lqip)
   const blurDataUrl = await fetchImageAsDataUrl(lqipUrl)
@@ -180,6 +229,96 @@ async function getOrCreateMuxBlurDataUrl({
   })
 
   return row.blurDataUrl
+}
+
+async function getStoredMuxBlurDataUrl({
+  prisma,
+  muxVideoId,
+  recipe,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  recipe: MuxImageRecipe
+}): Promise<string | null> {
+  const paramsHash = muxImageDerivativeParamsHash(recipe)
+  const existing = await prisma.muxImageDerivative.findUnique({
+    where: {
+      muxVideoId_purpose_paramsHash: {
+        muxVideoId,
+        purpose: recipe.purpose,
+        paramsHash,
+      },
+    },
+    select: { blurDataUrl: true },
+  })
+  return existing?.blurDataUrl ?? null
+}
+
+function scheduleMuxBlurDataUrlGeneration({
+  prisma,
+  muxVideoId,
+  playbackId,
+  recipe,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  playbackId: string
+  recipe: MuxImageRecipe
+}): void {
+  const generation = enqueueMuxBlurDataUrlGeneration({
+    key: `${muxVideoId}:${recipe.purpose}:${muxImageDerivativeParamsHash(recipe)}`,
+    run: () =>
+      getOrCreateMuxBlurDataUrl({ prisma, muxVideoId, playbackId, recipe }),
+  })
+
+  try {
+    after(() => generation)
+  } catch {
+    void generation
+  }
+}
+
+function enqueueMuxBlurDataUrlGeneration({
+  key,
+  run,
+}: {
+  key: string
+  run: () => Promise<string | null>
+}): Promise<void> {
+  const pending = pendingBackgroundGenerations.get(key)
+  if (pending) return pending
+
+  const generation = new Promise<void>((resolve) => {
+    backgroundGenerationQueue.push(() => {
+      activeBackgroundGenerations += 1
+      void run()
+        .catch((error) => {
+          console.warn("[mux-image-derivative] background generation failed", {
+            key,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
+        .finally(() => {
+          activeBackgroundGenerations -= 1
+          pendingBackgroundGenerations.delete(key)
+          resolve()
+          drainBackgroundGenerationQueue()
+        })
+    })
+    drainBackgroundGenerationQueue()
+  })
+
+  pendingBackgroundGenerations.set(key, generation)
+  return generation
+}
+
+function drainBackgroundGenerationQueue(): void {
+  while (
+    activeBackgroundGenerations < BACKGROUND_GENERATION_CONCURRENCY &&
+    backgroundGenerationQueue.length > 0
+  ) {
+    backgroundGenerationQueue.shift()?.()
+  }
 }
 
 function buildMuxThumbnailUrl(

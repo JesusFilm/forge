@@ -51,6 +51,7 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
     ? "watch-study-questions-item"
     : "watch-study-questions-placeholder"
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [collapsingIndex, setCollapsingIndex] = useState<number | null>(null)
   // Reset the open row whenever the prompts reference changes (e.g., when
   // the user navigates to a sibling video and the same component instance
   // receives a new prompts array). Using React's "adjusting state in
@@ -61,6 +62,7 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
   if (prevPrompts !== prompts) {
     setPrevPrompts(prompts)
     setOpenIndex(null)
+    setCollapsingIndex(null)
   }
 
   return (
@@ -112,9 +114,18 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
             chatLabel={t("chatWithPerson")}
             askBibleLabel={t("askBibleQuestion")}
             isOpen={openIndex === index}
-            onToggle={() =>
-              setOpenIndex((prev) => (prev === index ? null : index))
+            isCollapsing={collapsingIndex === index}
+            onCollapseComplete={() =>
+              setCollapsingIndex((prev) => (prev === index ? null : prev))
             }
+            onToggle={() => {
+              if (openIndex != null && openIndex !== index) {
+                setCollapsingIndex(openIndex)
+              } else if (openIndex === index) {
+                setCollapsingIndex(index)
+              }
+              setOpenIndex((prev) => (prev === index ? null : index))
+            }}
           />
         ))}
       </ul>
@@ -129,6 +140,8 @@ function StudyQuestionRow({
   chatLabel,
   askBibleLabel,
   isOpen,
+  isCollapsing,
+  onCollapseComplete,
   onToggle,
 }: {
   testId: string
@@ -140,21 +153,22 @@ function StudyQuestionRow({
   /** Localized "Ask a Bible question" CTA label. */
   askBibleLabel: string
   isOpen: boolean
+  isCollapsing: boolean
+  onCollapseComplete: () => void
   onToggle: () => void
 }) {
   const panelId = `${useId()}-panel`
   const panelContentRef = useRef<HTMLDivElement>(null)
-  const [renderPanel, setRenderPanel] = useState(isOpen)
   const [panelHeight, setPanelHeight] = useState(0)
-  const panelVisible = isOpen || renderPanel
+  const panelVisible = isOpen || isCollapsing
 
   useEffect(() => {
-    if (isOpen || !renderPanel) return
+    if (isOpen || !isCollapsing) return
     const timeout = window.setTimeout(() => {
-      setRenderPanel(false)
+      onCollapseComplete()
     }, PANEL_COLLAPSE_ANIMATION_MS)
     return () => window.clearTimeout(timeout)
-  }, [isOpen, renderPanel])
+  }, [isOpen, isCollapsing, onCollapseComplete])
 
   useEffect(() => {
     if (!panelVisible) return
@@ -179,10 +193,7 @@ function StudyQuestionRow({
     <li data-testid={testId} className="border-b border-stone-500/20">
       <button
         type="button"
-        onClick={() => {
-          if (isOpen) setRenderPanel(true)
-          onToggle()
-        }}
+        onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={panelId}
         data-testid={`${testId}-trigger`}

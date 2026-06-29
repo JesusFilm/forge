@@ -10,7 +10,7 @@ import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
-import { getOrCreateWatchHeroPosterMuxBlurDataUrl } from "@/services/mux-image-derivative.service"
+import { getOrScheduleWatchHeroPosterMuxBlurDataUrl } from "@/services/mux-image-derivative.service"
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
@@ -336,7 +336,7 @@ builder.prismaObject("VideoDub", {
           select: { id: true, playbackId: true },
         })
         if (!muxVideo?.playbackId) return null
-        return getOrCreateWatchHeroPosterMuxBlurDataUrl({
+        return getOrScheduleWatchHeroPosterMuxBlurDataUrl({
           prisma: ctx.prisma,
           muxVideoId: muxVideo.id,
           playbackId: muxVideo.playbackId,

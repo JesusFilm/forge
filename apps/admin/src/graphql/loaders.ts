@@ -15,12 +15,11 @@
 // Per Unit 6 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import DataLoader from "dataloader"
-import pLimit from "p-limit"
 import { Prisma, type PrismaClient } from "@prisma/client"
 
 import {
-  getOrCreateWatchChapterCarouselMuxBlurDataUrl,
-  getOrCreateWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxBlurDataUrl,
 } from "@/services/mux-image-derivative.service"
 
 export type Loaders = ReturnType<typeof createLoaders>
@@ -442,23 +441,20 @@ export function createLoaders(prisma: PrismaClient) {
           )
         }
 
-        const limit = pLimit(4)
         const values = await Promise.all(
-          normalizedKeys.map((key) =>
-            limit(async () => {
-              const muxVideo =
-                exactByKey.get(serializeVideoMuxThumbnailBlurKey(key)) ??
-                fallbackByVideoId.get(key.videoId) ??
-                null
-              if (!muxVideo) return null
+          normalizedKeys.map((key) => {
+            const muxVideo =
+              exactByKey.get(serializeVideoMuxThumbnailBlurKey(key)) ??
+              fallbackByVideoId.get(key.videoId) ??
+              null
+            if (!muxVideo) return null
 
-              return getOrCreateWatchChapterCarouselMuxBlurDataUrl({
-                prisma,
-                muxVideoId: muxVideo.id,
-                playbackId: muxVideo.playbackId,
-              })
-            }),
-          ),
+            return getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+              prisma,
+              muxVideoId: muxVideo.id,
+              playbackId: muxVideo.playbackId,
+            })
+          }),
         )
 
         return values
@@ -543,23 +539,20 @@ export function createLoaders(prisma: PrismaClient) {
           )
         }
 
-        const limit = pLimit(4)
         const values = await Promise.all(
-          normalizedKeys.map((key) =>
-            limit(async () => {
-              const muxVideo =
-                exactByKey.get(serializeVideoMuxThumbnailBlurKey(key)) ??
-                fallbackByVideoId.get(key.videoId) ??
-                null
-              if (!muxVideo) return null
+          normalizedKeys.map((key) => {
+            const muxVideo =
+              exactByKey.get(serializeVideoMuxThumbnailBlurKey(key)) ??
+              fallbackByVideoId.get(key.videoId) ??
+              null
+            if (!muxVideo) return null
 
-              return getOrCreateWatchHeroPosterMuxBlurDataUrl({
-                prisma,
-                muxVideoId: muxVideo.id,
-                playbackId: muxVideo.playbackId,
-              })
-            }),
-          ),
+            return getOrScheduleWatchHeroPosterMuxBlurDataUrl({
+              prisma,
+              muxVideoId: muxVideo.id,
+              playbackId: muxVideo.playbackId,
+            })
+          }),
         )
 
         return values

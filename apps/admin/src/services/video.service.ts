@@ -17,13 +17,12 @@ import {
   type VideoLabel,
   type VideoSource,
 } from "@prisma/client"
-import pLimit from "p-limit"
 import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import {
-  getOrCreateWatchChapterCarouselMuxBlurDataUrl,
-  getOrCreateWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxBlurDataUrl,
 } from "@/services/mux-image-derivative.service"
 import { ForbiddenError } from "./errors"
 
@@ -1515,18 +1514,17 @@ export class VideoService {
     }
     const blurDataUrlByVideoId = new Map<string, string | null>()
     const heroBlurDataUrlByVideoId = new Map<string, string | null>()
-    const blurLimit = pLimit(4)
     await Promise.all(
       Array.from(muxByVideoId.entries()).map(([videoId, muxRow]) =>
-        blurLimit(async () => {
+        (async () => {
           if (!muxRow.muxVideoId || !muxRow.playbackId) return
           const [blurDataUrl, heroBlurDataUrl] = await Promise.all([
-            getOrCreateWatchChapterCarouselMuxBlurDataUrl({
+            getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
               prisma: this.prisma,
               muxVideoId: muxRow.muxVideoId,
               playbackId: muxRow.playbackId,
             }),
-            getOrCreateWatchHeroPosterMuxBlurDataUrl({
+            getOrScheduleWatchHeroPosterMuxBlurDataUrl({
               prisma: this.prisma,
               muxVideoId: muxRow.muxVideoId,
               playbackId: muxRow.playbackId,
@@ -1534,7 +1532,7 @@ export class VideoService {
           ])
           blurDataUrlByVideoId.set(videoId, blurDataUrl)
           heroBlurDataUrlByVideoId.set(videoId, heroBlurDataUrl)
-        }),
+        })(),
       ),
     )
 
@@ -1618,7 +1616,7 @@ export class VideoService {
 
     const preferredVariantHeroBlurDataUrl =
       preferredVariantMux?.muxVideoId && preferredVariantMux.playbackId
-        ? await getOrCreateWatchHeroPosterMuxBlurDataUrl({
+        ? await getOrScheduleWatchHeroPosterMuxBlurDataUrl({
             prisma: this.prisma,
             muxVideoId: preferredVariantMux.muxVideoId,
             playbackId: preferredVariantMux.playbackId,
