@@ -163,7 +163,7 @@ to one best evidence row per video before candidate-window ordering.
     candidate-window tie-breakers, then apply `candidateLimit`.
   - final select: hydrate deterministic display title, image, dub playback, and
     embedding text for survivors.
-- **Patterns to follow:** `docs/solutions/performance-issues/admin-search-result-preserving-latency-optimization.md`; `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`; `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`.
+- **Patterns to follow:** `docs/solutions/performance-issues/admin-search-result-preserving-latency-optimization.md`; `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`; `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`.
 - **Test scenarios:**
   - Mocked rows still map to identical `VideoSemanticResult` fields.
   - SQL places `JOIN video` and display-locale selection after the best
@@ -215,7 +215,7 @@ to one best evidence row per video before candidate-window ordering.
   follow-up scope that prototypes an adaptive nearest-neighbor window with a
   distinct-video floor, duplicate-heavy regression prompts, and Mastra search
   eval proof before it can ship.
-- **Patterns to follow:** `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`.
+- **Patterns to follow:** `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`.
 - **Test scenarios:** Test expectation: none -- this unit is a go/no-go
   decision based on production measurement.
 - **Verification:** The roadmap ticket either moves closer to completion or
@@ -277,7 +277,7 @@ to one best evidence row per video before candidate-window ordering.
 - `docs/plans/2026-06-25-001-perf-admin-search-hydration-semantic-cache-plan.md`
 - `docs/solutions/performance-issues/admin-search-result-preserving-latency-optimization.md`
 - `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`
-- `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`
+- `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`
 - `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`
 - `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`
 - `apps/admin/AGENTS.md`

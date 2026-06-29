@@ -129,7 +129,7 @@ flowchart TB
   - `apps/admin/src/services/transcript-embedding-ingest.contract.test.ts`
 - **Approach:** Keep transcript-only retrieval and per-video best evidence semantics. Apply only equivalence-preserving query-shape changes, such as binding the query vector once in a CTE and reusing it for score and ordering, or removing redundant final joins when selected evidence data is already available. Keep the stable `semantic-video.query` DB timing label for comparison.
 - **Technical design:** HNSW-first nearest-neighbor windows are out of scope for this PR because they can alter distinct-video recall before per-video collapse.
-- **Patterns to follow:** `docs/roadmap/content-discovery/feat-175-admin-semantic-search-latency.md`; `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`; `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`; `docs/solutions/database-issues/set-local-requires-transaction-for-pgvector-search.md`; `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`.
+- **Patterns to follow:** `docs/roadmap/content-discovery/feat-175-admin-semantic-search-latency.md`; `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`; `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`; `docs/solutions/database-issues/set-local-requires-transaction-for-pgvector-search.md`; `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`.
 - **Test scenarios:**
   - SQL still contains transcript evidence only and no scene source.
   - Locale, published visibility, non-null embedding, and Qwen-compatible provenance gates remain present.
@@ -214,7 +214,7 @@ flowchart TB
 - `docs/solutions/performance-issues/admin-search-stage-db-timing-instrumentation-20260624.md`
 - `docs/solutions/integration-issues/semantic-search-video-card-display-metadata-hydration.md`
 - `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`
-- `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`
+- `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`
 - `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`
 - `docs/solutions/database-issues/set-local-requires-transaction-for-pgvector-search.md`
 - `docs/solutions/best-practices/openrouter-only-embedding-provider-contract.md`
