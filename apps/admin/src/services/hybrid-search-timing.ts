@@ -4,7 +4,6 @@ export type SearchTimingPipelineMode =
   | "hybrid"
   | "keyword-first"
   | "semantic-only"
-  | "semantic-hnsw-prototype"
 
 export type SearchTimingStatus = "fulfilled" | "rejected" | "skipped"
 

@@ -38,11 +38,12 @@ published-locale visibility before the candidate limit while moving display
 locale selection after the limit, because broad `video_locale.locale` is not a
 unique row identity.
 
-An HNSW-first raw nearest-neighbor window remains a possible follow-up
-performance lever only if the safe slice and instrumentation show the semantic
-SQL still dominates. It must be gated: if one long video contributes many top
-chunks, a pre-dedup row window can collapse to too few distinct videos, preserve
-diversity while losing recall, and degrade semantic relevance.
+An HNSW-first raw nearest-neighbor window was prototyped behind an internal eval
+mode, fixed, and then removed after production canaries showed no meaningful
+end-to-end latency improvement for the added complexity. If this idea is ever
+revisited, it must be proved with randomized A/B canaries plus
+`EXPLAIN (ANALYZE, BUFFERS)` before any prototype is merged again. Do not track
+it as an active roadmap follow-up.
 
 ## What To Build
 
@@ -69,22 +70,17 @@ diversity while losing recall, and degrade semantic relevance.
       image/playback null-rate deltas. Exclude degraded keyword-only responses
       from semantic-latency success counts.
 - [ ] Close this ticket if the safe slice meets the agreed user-visible latency
-      target and preserves result quality; only move to HNSW-first work if the
-      timing logs show semantic SQL remains the dominant bottleneck.
-- [ ] Evaluate the internal `semantic-hnsw-prototype` mode against
-      `semantic-only` with repeated production canaries before considering any
-      default-path change.
+      target and preserves result quality; HNSW-first is not an active follow-up.
+- [x] Evaluate and remove the internal `semantic-hnsw-prototype` mode after
+      repeated production canaries showed parity but no meaningful end-to-end
+      latency win.
 
 ## Deferred Follow-Up
 
 - [x] Add an internal-only HNSW-first transcript-window prototype plus a parity
       harness; keep it out of public/default search modes.
-- [ ] Promote HNSW-first transcript windows only with recall, diversity, and
-      duplicate-heavy Mastra no-regression proof against the current default
-      path.
-- [ ] Prove any HNSW-first rewrite uses HNSW on production-shaped data with
-      `EXPLAIN (ANALYZE, BUFFERS)` and end-to-end Admin GraphQL timing under
-      representative cold/warm cache states.
+- [x] Remove the HNSW-first runtime prototype and parity script after prod
+      canaries did not justify the complexity.
 - [ ] Treat scene evidence as separate scope: restoring mixed scene/transcript
       semantic-video retrieval would require updating
       `hybrid-search-retrievers.ts`, transcript-only regression tests, Mastra
