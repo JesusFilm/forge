@@ -430,6 +430,24 @@ export const env = createEnv({
       .int()
       .positive()
       .default(75_000),
+    // Persona-aware variant generation (persona-variants v1). When "true", the
+    // operator script calls the standalone `/forge-experience-variant` route
+    // (reusing MASTRA_BASE_URL + MASTRA_SERVICE_API_KEY) to generate one tailored
+    // experience per persona. Remote-only, like the section path. Opt-in
+    // scaffolding: optional + defaulted so an unprovisioned env still boots.
+    EXPERIENCE_AI_REMOTE_VARIANTS: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Outbound HTTP budget per persona-variant call. MUST stay strictly LARGER
+    // than mastra's internal multi-step budget (TIME_BUDGET_MS.multiStepWorkflow,
+    // 180s) so the mastra-side timeout wins the race (same invariant as
+    // MASTRA_DRAFT_TIMEOUT_MS).
+    MASTRA_VARIANTS_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200_000),
     // Flag-gated streaming chat cutover (consolidation U9). When "true",
     // `runMastraChat` relays the token stream from the standalone
     // `/forge-experience-chat` route instead of running the agent in-process;
@@ -702,6 +720,12 @@ export const env = createEnv({
     ),
     MASTRA_SECTION_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_SECTION_TIMEOUT_MS,
+    ),
+    EXPERIENCE_AI_REMOTE_VARIANTS: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_VARIANTS,
+    ),
+    MASTRA_VARIANTS_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_VARIANTS_TIMEOUT_MS,
     ),
     EXPERIENCE_AI_REMOTE_CHAT: emptyToUndefined(
       process.env.EXPERIENCE_AI_REMOTE_CHAT,
