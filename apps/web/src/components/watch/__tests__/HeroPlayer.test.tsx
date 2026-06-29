@@ -145,7 +145,10 @@ function setSearchParams(query: string) {
   mockSearchParams.current = new URLSearchParams(query)
 }
 
-import { HeroPlayer } from "@/components/watch/HeroPlayer"
+import {
+  getHeroPosterBlurDataURL,
+  HeroPlayer,
+} from "@/components/watch/HeroPlayer"
 
 type TestMockPlayer = NonNullable<typeof mockPlayerRef.current>
 
@@ -213,7 +216,11 @@ afterEach(() => {
   container.remove()
 })
 
-function makeBlock(): WatchHeroPlayerBlock {
+function makeBlock({
+  muxHeroPosterBlurDataUrl = null,
+}: {
+  muxHeroPosterBlurDataUrl?: string | null
+} = {}): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
     video: {
@@ -228,6 +235,7 @@ function makeBlock(): WatchHeroPlayerBlock {
       published: true,
       hls: "https://cdn.example/jesus.m3u8",
       muxVideo: { playbackId: "playback-id-123" },
+      muxHeroPosterBlurDataUrl,
       language: {
         coreId: "529",
         bcp47: "en",
@@ -389,6 +397,41 @@ describe("HeroPlayer — initial mount", () => {
     ).toBeNull()
   })
 
+  it("uses the hero-specific Mux blur placeholder for the committed hero poster", () => {
+    const blurDataURL = "data:image/webp;base64,BQYHCA=="
+    const heroPosterUrl =
+      "https://image.mux.com/playback-id-123/thumbnail.webp?time=2"
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ muxHeroPosterBlurDataUrl: blurDataURL })}
+        />,
+      )
+    })
+
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    expect(poster).not.toBeNull()
+    expect(
+      getHeroPosterBlurDataURL({
+        heroPosterUrl,
+        muxHeroPosterBlurDataUrl: blurDataURL,
+        shouldOptimizeMuxPoster: true,
+        visualHeroPosterUrl: heroPosterUrl,
+      }),
+    ).toBe(blurDataURL)
+    expect(
+      getHeroPosterBlurDataURL({
+        heroPosterUrl,
+        muxHeroPosterBlurDataUrl: blurDataURL,
+        shouldOptimizeMuxPoster: false,
+        visualHeroPosterUrl: "https://cdn.test/clicked.jpg",
+      }),
+    ).toBeNull()
+  })
+
   it("renders optimistic title and poster on the pre-reveal shell only", () => {
     act(() => {
       root.render(
@@ -471,7 +514,7 @@ describe("HeroPlayer — initial mount", () => {
     ).not.toBeNull()
   })
 
-  it("bridges a pending optimistic poster through black without pulsing the cover", () => {
+  it("shows a pending optimistic poster immediately without a black bridge", () => {
     act(() => {
       root.render(
         <HeroPlayer
@@ -480,6 +523,7 @@ describe("HeroPlayer — initial mount", () => {
             title: "Clicked Chapter",
             label: "SEGMENT",
             posterUrl: "https://cdn.test/clicked.jpg",
+            posterBlurDataUrl: "data:image/jpeg;base64,AQIDBA==",
             loading: true,
             transitionKey: "chapter-2",
           }}
@@ -498,11 +542,13 @@ describe("HeroPlayer — initial mount", () => {
     )
 
     expect(layer?.getAttribute("data-cover-loading")).toBe("true")
-    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("none")
     expect(poster.getAttribute("src")).toBe("https://cdn.test/clicked.jpg")
-    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
+    expect(poster.getAttribute("class")).not.toContain(
+      "watch-hero-cover-reveal",
+    )
     expect(poster.getAttribute("class")).not.toContain("pulse")
-    expect(bridge).not.toBeNull()
+    expect(bridge).toBeNull()
   })
 
   it("blacks out the current cover before optimistic title and poster swap", () => {
@@ -1748,7 +1794,7 @@ describe("HeroPlayer — fade timer", () => {
     vi.useRealTimers()
   })
 
-  it("starts at 30%, ignores pointer movement for 5s, then video mouse movement wakes the dim rail", async () => {
+  it("starts fully visible, ignores pointer movement for 5s, then video mouse movement wakes the rail", async () => {
     await revealChrome()
     if (mockPlayerRef.current) mockPlayerRef.current.paused = false
     const chrome = container.querySelector(
@@ -1757,7 +1803,7 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-visible")).toBe("true")
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       window.dispatchEvent(
@@ -1776,7 +1822,7 @@ describe("HeroPlayer — fade timer", () => {
 
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       chrome.dispatchEvent(makePointerEvent("pointermove"))
@@ -1784,7 +1830,7 @@ describe("HeroPlayer — fade timer", () => {
 
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       vi.advanceTimersByTime(5001)
@@ -1806,7 +1852,7 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-visible")).toBe("true")
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       chrome.dispatchEvent(makePointerEvent("pointermove"))
@@ -1831,7 +1877,7 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.className).toContain("opacity-0")
   })
 
-  it("keeps the top language button mounted during the 30% grace state and publishes hidden opacity after 5s", async () => {
+  it("keeps the top language button mounted during the visible grace state and publishes hidden opacity after 5s", async () => {
     const visibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
     const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
     const onVisibility = (event: Event) => {
@@ -1868,7 +1914,7 @@ describe("HeroPlayer — fade timer", () => {
       })
 
       expect(languageEvents.at(-1)?.visible).toBe(true)
-      expect(visibilityEvents.some((event) => event.opacity === 0.3)).toBe(true)
+      expect(visibilityEvents.some((event) => event.opacity === 1)).toBe(true)
 
       await act(async () => {
         vi.advanceTimersByTime(5001)
@@ -1979,7 +2025,7 @@ describe("HeroPlayer — fade timer", () => {
     })
 
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       vi.advanceTimersByTime(5001)

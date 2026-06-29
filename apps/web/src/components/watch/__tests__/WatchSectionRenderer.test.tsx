@@ -464,6 +464,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       title: "Clicked Child",
       label: "SEGMENT",
       posterUrl: "https://cdn.test/clicked.jpg",
+      posterBlurDataUrl: null,
       loading: true,
       transitionKey: "child-2",
     })

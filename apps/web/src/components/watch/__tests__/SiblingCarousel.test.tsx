@@ -29,12 +29,16 @@ vi.mock("next/image", () => ({
     fill: _fill,
     sizes: _sizes,
     className,
+    placeholder,
+    blurDataURL,
   }: {
     src: string
     alt: string
     fill?: boolean
     sizes?: string
     className?: string
+    placeholder?: string
+    blurDataURL?: string
   }) => (
     // A `<div>` stand-in (not `<img>`) sidesteps the next/no-img-element
     // lint rule while still letting us assert on `data-src` and the
@@ -44,6 +48,8 @@ vi.mock("next/image", () => ({
       data-testid="next-image-mock"
       data-src={src}
       data-alt={alt}
+      data-placeholder={placeholder ?? ""}
+      data-blur-data-url={blurDataURL ?? ""}
       className={className}
     />
   ),
@@ -140,6 +146,8 @@ function makeChild(
     thumb?: boolean
     image?: ImageVariantFields
     muxPlaybackId?: string | null
+    muxThumbnailBlurDataUrl?: string | null
+    muxHeroPosterBlurDataUrl?: string | null
   } = {},
 ) {
   // When `opts.image` is supplied, use it verbatim — lets tests assert on
@@ -161,6 +169,8 @@ function makeChild(
     images,
     durationSeconds: null,
     muxPlaybackId: opts.muxPlaybackId ?? null,
+    muxThumbnailBlurDataUrl: opts.muxThumbnailBlurDataUrl ?? null,
+    muxHeroPosterBlurDataUrl: opts.muxHeroPosterBlurDataUrl ?? null,
   }
 }
 
@@ -388,6 +398,42 @@ describe("SiblingCarousel — happy path", () => {
     )
   })
 
+  it("uses the stored Mux thumbnail LQIP only for Mux thumbnails", () => {
+    const blurDataURL = "data:image/jpeg;base64,AQIDBA=="
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          makeChild(1, {
+            muxPlaybackId: "mux-playback-1",
+            muxThumbnailBlurDataUrl: blurDataURL,
+          }),
+          makeChild(2, {
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,SHOULD_NOT_USE",
+          }),
+        ],
+      } as never,
+      currentVideoDocumentId: "child-1",
+    }
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const images = container.querySelectorAll("[data-testid='next-image-mock']")
+    expect(images[0]?.getAttribute("data-src")).toBe(
+      "https://image.mux.com/mux-playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+    expect(images[0]?.getAttribute("data-placeholder")).toBe("blur")
+    expect(images[0]?.getAttribute("data-blur-data-url")).toBe(blurDataURL)
+    expect(images[1]?.getAttribute("data-src")).toBe("https://cdn.test/2.jpg")
+    expect(images[1]?.getAttribute("data-placeholder")).toBe("")
+    expect(images[1]?.getAttribute("data-blur-data-url")).toBe("")
+  })
+
   it("preserves the Anticipate collection segment for all 29 Pilate page chapters", () => {
     const children = pilatePageChapterSlugs.map((slug, index) => ({
       ...makeChild(index + 1),
@@ -535,8 +581,62 @@ describe("SiblingCarousel — happy path", () => {
       slug: "child-2-slug",
       label: "Label 2",
       posterUrl: "https://cdn.test/2.jpg",
+      posterBlurDataUrl: null,
       sourceCarouselIndex: expect.any(Number),
     })
+  })
+
+  it("emits the full hero Mux poster for optimistic chapter transitions", () => {
+    const onChapterNavigateIntent = vi.fn()
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          makeChild(1),
+          makeChild(2, {
+            muxPlaybackId: "mux playback 2",
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,CARD==",
+            muxHeroPosterBlurDataUrl: "data:image/webp;base64,HERO==",
+          }),
+        ],
+      } as never,
+      currentVideoDocumentId: "child-1",
+    }
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(onChapterNavigateIntent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        posterUrl:
+          "https://image.mux.com/mux%20playback%202/thumbnail.webp?time=2",
+        posterBlurDataUrl: "data:image/webp;base64,HERO==",
+      }),
+    )
   })
 
   it("uses controlled pending state when the parent supplies it", () => {

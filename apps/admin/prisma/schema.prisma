@@ -1055,10 +1055,33 @@ model MuxVideo {
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
 
-  dubs VideoDub[]
+  dubs             VideoDub[]
+  imageDerivatives MuxImageDerivative[]
 
   @@index([deletedAt])
   @@map("mux_video")
+}
+
+/// Generated image metadata for a specific Mux thumbnail recipe. Unlike
+/// VideoImage.blurhash, these rows describe derived Mux images such as the
+/// Watch chapter carousel smart-crop thumbnail.
+model MuxImageDerivative {
+  id          String   @id @default(cuid())
+  muxVideoId  String   @map("mux_video_id")
+  muxVideo    MuxVideo @relation(fields: [muxVideoId], references: [id], onDelete: Cascade)
+  purpose     String
+  paramsHash  String   @map("params_hash")
+  params      Json     @default("{}")
+  sourceUrl   String   @map("source_url")
+  lqipUrl     String   @map("lqip_url")
+  blurDataUrl String   @map("blur_data_url")
+  generatedAt DateTime @default(now()) @map("generated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([muxVideoId, purpose, paramsHash])
+  @@index([purpose])
+  @@map("mux_image_derivative")
 }
 
 /// A book of the Bible. Synced from Core.

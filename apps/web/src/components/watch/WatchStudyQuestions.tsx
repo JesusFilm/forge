@@ -8,7 +8,7 @@
 // placeholder row shown when there are no editorial prompts uses the same
 // fallback. Mirrors core/apps/watch's DiscussionQuestions/Question.tsx.
 
-import { useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { ChevronDown, Mail as MailIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -24,6 +24,7 @@ const CHAT_WITH_PERSON_URL =
 const ASK_BIBLE_QUESTION_URL =
   "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
 const ASK_YOURS_URL = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
+const PANEL_COLLAPSE_ANIMATION_MS = 300
 
 function WatchQuestionIcon() {
   return (
@@ -31,7 +32,7 @@ function WatchQuestionIcon() {
       aria-hidden="true"
       viewBox="0 0 24 24"
       fill="currentColor"
-      className="mt-1 size-6 shrink-0 text-white opacity-20"
+      className="mt-0 size-6 shrink-0 text-white opacity-20 md:size-7"
     >
       <path
         fillRule="evenodd"
@@ -85,7 +86,12 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
           aria-label={t("askYours")}
           data-testid="watch-study-questions-ask-yours"
           render={
-            <a href={ASK_YOURS_URL} target="_blank" rel="noopener noreferrer" />
+            <a
+              href={ASK_YOURS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ cursor: "pointer" }}
+            />
           }
         >
           <MessageCircleIcon />
@@ -137,17 +143,52 @@ function StudyQuestionRow({
   onToggle: () => void
 }) {
   const panelId = `${useId()}-panel`
+  const panelContentRef = useRef<HTMLDivElement>(null)
+  const [renderPanel, setRenderPanel] = useState(isOpen)
+  const [panelHeight, setPanelHeight] = useState(0)
+  const panelVisible = isOpen || renderPanel
+
+  useEffect(() => {
+    if (isOpen || !renderPanel) return
+    const timeout = window.setTimeout(() => {
+      setRenderPanel(false)
+    }, PANEL_COLLAPSE_ANIMATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [isOpen, renderPanel])
+
+  useEffect(() => {
+    if (!panelVisible) return
+
+    const content = panelContentRef.current
+    if (!content) return
+
+    if (isOpen) {
+      const frame = window.requestAnimationFrame(() => {
+        setPanelHeight(content.scrollHeight)
+      })
+      return () => window.cancelAnimationFrame(frame)
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      setPanelHeight(0)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [isOpen, panelVisible, fallbackBody, chatLabel, askBibleLabel])
+
   return (
     <li data-testid={testId} className="border-b border-stone-500/20">
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => {
+          if (isOpen) setRenderPanel(true)
+          onToggle()
+        }}
         aria-expanded={isOpen}
         aria-controls={panelId}
         data-testid={`${testId}-trigger`}
         className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-0 py-4 text-left text-sm font-medium transition-all outline-none hover:no-underline focus-visible:ring-[3px] focus-visible:ring-white/40"
       >
-        <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-left">
+        <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-left md:grid-cols-[1.75rem_minmax(0,1fr)]">
           <WatchQuestionIcon />
           <h3 className="text-base leading-[1.6] font-normal text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
             {question}
@@ -156,60 +197,68 @@ function StudyQuestionRow({
         <span className="hidden shrink-0 text-stone-400 transition-colors group-hover:text-white sm:block">
           <ChevronDown
             aria-hidden="true"
-            className={`size-4 translate-y-0.5 transition-transform duration-200 ${
+            className={`size-6 transition-transform duration-200 md:size-7 ${
               isOpen ? "rotate-180" : ""
             }`}
           />
         </span>
       </button>
-      {isOpen && (
+      {panelVisible ? (
         <div
           id={panelId}
           data-testid={`${testId}-panel`}
-          className="pt-2 pr-2 pb-6 pl-12"
+          aria-hidden={!isOpen}
+          className={`overflow-hidden transition-[height] duration-300 ease-out ${
+            isOpen ? "" : "pointer-events-none"
+          }`}
+          style={{ height: panelHeight }}
         >
-          <p
-            data-testid={`${testId}-fallback-body`}
-            className="leading-relaxed font-normal text-stone-200/80"
-          >
-            {fallbackBody}
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button
-              variant="pill"
-              nativeButton={false}
-              className={WATCH_PILL_BUTTON_CLASS}
-              data-testid="watch-study-questions-chat-cta"
-              render={
-                <a
-                  href={CHAT_WITH_PERSON_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
+          <div ref={panelContentRef} className="pt-2 pr-2 pb-6 pl-12">
+            <p
+              data-testid={`${testId}-fallback-body`}
+              className="leading-relaxed font-normal text-stone-200/80"
             >
-              <MessageCircleIcon />
-              <span>{chatLabel}</span>
-            </Button>
-            <Button
-              variant="pill"
-              nativeButton={false}
-              className={WATCH_PILL_BUTTON_CLASS}
-              data-testid="watch-study-questions-ask-bible-cta"
-              render={
-                <a
-                  href={ASK_BIBLE_QUESTION_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-            >
-              <MailIcon className="size-4" aria-hidden="true" />
-              <span>{askBibleLabel}</span>
-            </Button>
+              {fallbackBody}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button
+                variant="pill"
+                nativeButton={false}
+                className={WATCH_PILL_BUTTON_CLASS}
+                data-testid="watch-study-questions-chat-cta"
+                render={
+                  <a
+                    href={CHAT_WITH_PERSON_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    tabIndex={isOpen ? undefined : -1}
+                  />
+                }
+              >
+                <MessageCircleIcon />
+                <span>{chatLabel}</span>
+              </Button>
+              <Button
+                variant="pill"
+                nativeButton={false}
+                className={WATCH_PILL_BUTTON_CLASS}
+                data-testid="watch-study-questions-ask-bible-cta"
+                render={
+                  <a
+                    href={ASK_BIBLE_QUESTION_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    tabIndex={isOpen ? undefined : -1}
+                  />
+                }
+              >
+                <MailIcon className="size-4" aria-hidden="true" />
+                <span>{askBibleLabel}</span>
+              </Button>
+            </div>
           </div>
         </div>
-      )}
+      ) : null}
     </li>
   )
 }

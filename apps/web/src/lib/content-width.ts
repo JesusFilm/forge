@@ -20,10 +20,9 @@ export const WATCH_PAGE_LEFT_EDGE_CLASSES =
   "left-10 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]"
 export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
   "right-10 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]"
+export const SEARCH_OVERLAY_FIELD_WIDTH_CLASSES = "mx-auto w-full max-w-[810px]"
 export const WATCH_PAGE_SEARCH_FIELD_CLASSES =
-  "right-44 left-4 sm:left-36 md:left-48 md:right-52 xl:left-[max(15rem,calc((100vw-1920px)/2+15rem))] xl:right-[max(15rem,calc((100vw-1920px)/2+15rem))]"
-export const WATCH_PAGE_MOBILE_SEARCH_RIGHT_CLASSES =
-  "right-24 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem+3.5rem))]"
+  "left-1/2 w-[calc(100%-2rem)] max-w-[810px] -translate-x-1/2 sm:w-[calc(100%-3rem)]"
 export const WATCH_PAGE_CONTENT_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} ${WATCH_PAGE_RAIL_PADDING_CLASSES}`
 
 /**

@@ -7,6 +7,7 @@ export type WatchChapterNavigationIntent = {
   slug: string
   label: string | null
   posterUrl: string | null
+  posterBlurDataUrl?: string | null
   sourceCarouselIndex?: number | null
 }
 
@@ -14,6 +15,7 @@ export type WatchChapterOptimisticVisual = {
   title: string | null
   label: string | null
   posterUrl: string | null
+  posterBlurDataUrl?: string | null
   loading?: boolean
   transitionKey?: string | null
 }

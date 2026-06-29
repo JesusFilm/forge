@@ -45,6 +45,7 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import { resolveMuxHeroPosterUrl } from "@/lib/url"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -128,9 +129,7 @@ const WATCH_NOW_LINK_CLASS =
 function buildHeroPosterUrl(
   playbackId: string | undefined,
 ): string | undefined {
-  return playbackId
-    ? `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.webp?time=${HERO_POSTER_TIME_SECONDS}`
-    : undefined
+  return resolveMuxHeroPosterUrl(playbackId) ?? undefined
 }
 
 function isMuxImageUrl(url: string | null | undefined): boolean {
@@ -140,6 +139,22 @@ function isMuxImageUrl(url: string | null | undefined): boolean {
   } catch {
     return false
   }
+}
+
+export function getHeroPosterBlurDataURL({
+  heroPosterUrl,
+  muxHeroPosterBlurDataUrl,
+  shouldOptimizeMuxPoster,
+  visualHeroPosterUrl,
+}: {
+  heroPosterUrl: string | undefined
+  muxHeroPosterBlurDataUrl: string | null | undefined
+  shouldOptimizeMuxPoster: boolean
+  visualHeroPosterUrl: string | undefined
+}): string | null {
+  return visualHeroPosterUrl === heroPosterUrl && shouldOptimizeMuxPoster
+    ? (muxHeroPosterBlurDataUrl ?? null)
+    : null
 }
 
 function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
@@ -199,6 +214,7 @@ const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 export function HeroPlayer({
   block,
   onPlayerReady,
+  onPlayerActivated,
   onLanguageClick,
   playableLanguageCount,
   darkenOverlay = false,
@@ -210,6 +226,7 @@ export function HeroPlayer({
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onPlayerActivated?: () => void
   onLanguageClick?: () => void
   playableLanguageCount?: number
   darkenOverlay?: boolean
@@ -351,6 +368,11 @@ export function HeroPlayer({
       publishChromeVisibility({ visible: true, opacity: 1 })
     }
   }, [chromeRevealed, publishChromeVisibility])
+
+  useEffect(() => {
+    if (!chromeRevealed) return
+    onPlayerActivated?.()
+  }, [chromeRevealed, onPlayerActivated])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -947,19 +969,27 @@ export function HeroPlayer({
     showOptimisticPoster && optimisticVisual?.loading === true
   const posterIdentity = visualHeroPosterUrl ?? "none"
   const shouldOptimizeMuxPoster = isMuxImageUrl(visualHeroPosterUrl)
+  const optimisticPosterBlurDataURL = showOptimisticPoster
+    ? (optimisticVisual?.posterBlurDataUrl ?? null)
+    : null
+  const heroPosterBlurDataURL =
+    optimisticPosterBlurDataURL ??
+    getHeroPosterBlurDataURL({
+      heroPosterUrl,
+      muxHeroPosterBlurDataUrl: variant.muxHeroPosterBlurDataUrl,
+      shouldOptimizeMuxPoster,
+      visualHeroPosterUrl,
+    })
   const coverLoading =
     showPendingPosterTransition || (playerActivated && !videoReady)
-  const showPosterBlackBridge =
-    visualHeroPosterUrl != null && showPendingPosterTransition
+  const showPosterBlackBridge = false
   const posterLayerKey = posterIdentity
   const posterOpacityClass =
     playerFrameRevealed && !showOptimisticPoster ? "opacity-0" : "opacity-100"
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-[1000ms]"
-  const posterImageMotionClass = showPosterBlackBridge
-    ? "watch-hero-cover-reveal"
-    : ""
+  const posterImageMotionClass = ""
   const coverBlackoutMotionClass =
     coverBlackoutPhase === "revealing"
       ? "watch-hero-cover-black-bridge"
@@ -1149,6 +1179,12 @@ export function HeroPlayer({
                 fetchPriority="high"
                 preload={shouldOptimizeMuxPoster}
                 sizes="100vw"
+                {...(heroPosterBlurDataURL
+                  ? {
+                      placeholder: "blur" as const,
+                      blurDataURL: heroPosterBlurDataURL,
+                    }
+                  : {})}
                 className={`object-cover ${posterImageMotionClass}`}
               />
               {!chromeRevealed ? (

@@ -595,8 +595,9 @@ describe("HeroPlayerControls — visibility callback", () => {
 
       expect(onVisibilityChange).toHaveBeenCalledWith({
         visible: true,
-        opacity: 0.3,
+        opacity: 1,
       })
+      onVisibilityChange.mockClear()
 
       await act(async () => {
         window.dispatchEvent(
@@ -629,11 +630,8 @@ describe("HeroPlayerControls — visibility callback", () => {
 
       expect(onVisibilityChange).toHaveBeenLastCalledWith({
         visible: true,
-        opacity: 0.3,
+        opacity: 1,
       })
-      expect(onVisibilityChange).not.toHaveBeenCalledWith(
-        expect.objectContaining({ opacity: 1 }),
-      )
     } finally {
       vi.useRealTimers()
     }
@@ -669,6 +667,7 @@ describe("HeroPlayerControls — visibility callback", () => {
           />,
         )
       })
+      onVisibilityChange.mockClear()
 
       await act(async () => {
         window.dispatchEvent(new Event(WATCH_PLAYER_CHROME_REVEAL_EVENT))

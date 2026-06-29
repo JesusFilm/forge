@@ -5,10 +5,10 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
   CONTENT_WIDTH_CLASSES,
+  SEARCH_OVERLAY_FIELD_WIDTH_CLASSES,
   WATCH_PAGE_CONTENT_CLASSES,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
-  WATCH_PAGE_MOBILE_SEARCH_RIGHT_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
   WATCH_PAGE_SEARCH_FIELD_CLASSES,
@@ -114,21 +114,21 @@ describe("content-width.ts — watch page rail lockstep", () => {
     })
   }
 
-  it("clamps fixed header chrome to the 1920px watch frame on wide screens", () => {
+  it("clamps fixed edge header chrome to the 1920px watch frame on wide screens", () => {
     expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
       "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
     )
     expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
       "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
     )
-    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain(
-      "xl:left-[max(15rem,calc((100vw-1920px)/2+15rem))]",
-    )
-    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain(
-      "xl:right-[max(15rem,calc((100vw-1920px)/2+15rem))]",
-    )
-    expect(WATCH_PAGE_MOBILE_SEARCH_RIGHT_CLASSES).toContain(
-      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem+3.5rem))]",
-    )
+  })
+
+  it("keeps the closed floating search pill the same width as the overlay field", () => {
+    expect(SEARCH_OVERLAY_FIELD_WIDTH_CLASSES).toContain("max-w-[810px]")
+    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("left-1/2")
+    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("-translate-x-1/2")
+    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("max-w-[810px]")
+    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("w-[calc(100%-2rem)]")
+    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("sm:w-[calc(100%-3rem)]")
   })
 })

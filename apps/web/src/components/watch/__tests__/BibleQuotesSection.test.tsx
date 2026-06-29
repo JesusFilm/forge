@@ -448,6 +448,10 @@ describe("BibleQuotesSection — Share button", () => {
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(shareBtn!.className).toContain(token)
     }
+    expect(shareBtn!.className).toContain("cursor-pointer")
+    expect(shareBtn!.className).toContain("[&_*]:pointer-events-none")
+    expect(shareBtn!.className).toContain("[&_*]:cursor-pointer")
+    expect((shareBtn as HTMLElement).style.cursor).toBe("pointer")
     expect(header!.querySelector("h2")?.className).toBe(
       WATCH_SECTION_EYEBROW_CLASS,
     )
@@ -506,6 +510,10 @@ describe("BibleQuotesSection — Share button", () => {
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(link!.className).toContain(token)
     }
+    expect(link!.className).toContain("cursor-pointer")
+    expect(link!.className).toContain("[&_*]:pointer-events-none")
+    expect(link!.className).toContain("[&_*]:cursor-pointer")
+    expect(link!.style.cursor).toBe("pointer")
 
     const clickEvent = new MouseEvent("click", {
       bubbles: true,

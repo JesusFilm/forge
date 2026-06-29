@@ -297,6 +297,7 @@ export function WatchPageClient({
   const tDownloadButton = useTranslations("DownloadButton")
   const routeWarmPromisesRef = useRef(new Map<string, Promise<void>>())
   const pendingChapterHrefRef = useRef<string | null>(null)
+  const [chapterAutoplayEnabled, setChapterAutoplayEnabled] = useState(false)
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
   const validPendingChapter =
@@ -318,6 +319,10 @@ export function WatchPageClient({
     const promise = warmWatchChapterRoute(href)
     routeWarmPromisesRef.current.set(href, promise)
     return promise
+  }, [])
+
+  const handlePlayerActivated = useCallback(() => {
+    setChapterAutoplayEnabled(true)
   }, [])
 
   const handleChapterNavigateIntent = useCallback(
@@ -344,12 +349,15 @@ export function WatchPageClient({
             JSON.stringify(preserveState),
           )
         }
-        router.push(appendAutoplaySignal(intent.href) as Route, {
+        const nextHref = chapterAutoplayEnabled
+          ? appendAutoplaySignal(intent.href)
+          : intent.href
+        router.push(nextHref as Route, {
           scroll: false,
         })
       })
     },
-    [router, warmChapterRoute],
+    [chapterAutoplayEnabled, router, warmChapterRoute],
   )
 
   const coverBlackoutKey = null
@@ -632,6 +640,7 @@ export function WatchPageClient({
         downloadPending={downloadPending}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
+        onPlayerActivated={handlePlayerActivated}
         locale={locale}
         languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}

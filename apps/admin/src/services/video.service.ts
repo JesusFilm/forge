@@ -17,9 +17,14 @@ import {
   type VideoLabel,
   type VideoSource,
 } from "@prisma/client"
+import pLimit from "p-limit"
 import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
+import {
+  getOrCreateWatchChapterCarouselMuxBlurDataUrl,
+  getOrCreateWatchHeroPosterMuxBlurDataUrl,
+} from "@/services/mux-image-derivative.service"
 import { ForbiddenError } from "./errors"
 
 /**
@@ -217,6 +222,8 @@ export type WatchRouteSnapshotChild = {
   englishLocales: WatchRouteSnapshotLocale[]
   durationSeconds: number | null
   muxPlaybackId: string | null
+  muxThumbnailBlurDataUrl: string | null
+  muxHeroPosterBlurDataUrl: string | null
 }
 
 export type WatchRouteSnapshotChildRelation = {
@@ -269,6 +276,7 @@ export type WatchRouteSnapshotPreferredVariant = {
   hls: string | null
   duration: number | null
   language: WatchRouteSnapshotLanguage | null
+  muxHeroPosterBlurDataUrl: string | null
 }
 
 export type WatchRouteSnapshot = {
@@ -293,6 +301,7 @@ export type WatchRouteSnapshot = {
 
 type WatchRouteSnapshotMuxRow = {
   videoId: string
+  muxVideoId: string | null
   playbackId: string | null
 }
 
@@ -311,6 +320,8 @@ type WatchRouteSnapshotPreferredVariantRow = {
   languageBcp47: string | null
   languageSlug: string | null
   languageName: Prisma.JsonValue | null
+  muxVideoId: string | null
+  playbackId: string | null
 }
 
 type WatchRouteSnapshotCountRow = {
@@ -891,10 +902,11 @@ export class VideoService {
     return this.prisma.$queryRaw<WatchRouteSnapshotMuxRow[]>`
       SELECT
         v.id AS "videoId",
+        COALESCE(primary_dub.mux_video_id, fallback_dub.mux_video_id) AS "muxVideoId",
         COALESCE(primary_dub.playback_id, fallback_dub.playback_id) AS "playbackId"
       FROM "video" v
       LEFT JOIN LATERAL (
-        SELECT mv.playback_id
+        SELECT mv.id AS mux_video_id, mv.playback_id
         FROM "video_dub" vd
         JOIN "mux_video" mv
           ON mv.id = vd.mux_video_id
@@ -911,7 +923,7 @@ export class VideoService {
         LIMIT 1
       ) primary_dub ON true
       LEFT JOIN LATERAL (
-        SELECT mv.playback_id
+        SELECT mv.id AS mux_video_id, mv.playback_id
         FROM "video_dub" vd
         JOIN "mux_video" mv
           ON mv.id = vd.mux_video_id
@@ -942,10 +954,11 @@ export class VideoService {
     return this.prisma.$queryRaw<WatchRouteSnapshotMuxRow[]>`
       SELECT
         v.id AS "videoId",
+        exact_dub.mux_video_id AS "muxVideoId",
         exact_dub.playback_id AS "playbackId"
       FROM "video" v
       LEFT JOIN LATERAL (
-        SELECT mv.playback_id
+        SELECT mv.id AS mux_video_id, mv.playback_id
         FROM "video_dub" vd
         JOIN "language" l
           ON l.id = vd.language_id
@@ -1024,7 +1037,9 @@ export class VideoService {
         COALESCE(primary_dub.language_core_id, fallback_dub.language_core_id) AS "languageCoreId",
         COALESCE(primary_dub.language_bcp47, fallback_dub.language_bcp47) AS "languageBcp47",
         COALESCE(primary_dub.language_slug, fallback_dub.language_slug) AS "languageSlug",
-        COALESCE(primary_dub.language_name, fallback_dub.language_name) AS "languageName"
+        COALESCE(primary_dub.language_name, fallback_dub.language_name) AS "languageName",
+        COALESCE(primary_dub.mux_video_id, fallback_dub.mux_video_id) AS "muxVideoId",
+        COALESCE(primary_dub.playback_id, fallback_dub.playback_id) AS "playbackId"
       FROM "video" v
       LEFT JOIN LATERAL (
         SELECT
@@ -1033,11 +1048,17 @@ export class VideoService {
           vd.published,
           vd.hls,
           vd.duration,
+          mv.id AS mux_video_id,
+          mv.playback_id,
           l.core_id AS language_core_id,
           l.bcp47 AS language_bcp47,
           l.slug AS language_slug,
           l.name AS language_name
         FROM "video_dub" vd
+        LEFT JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.deleted_at IS NULL
+         AND mv.playback_id IS NOT NULL
         LEFT JOIN "language" l
           ON l.id = vd.language_id
          AND l.deleted_at IS NULL
@@ -1058,11 +1079,17 @@ export class VideoService {
           vd.published,
           vd.hls,
           vd.duration,
+          mv.id AS mux_video_id,
+          mv.playback_id,
           l.core_id AS language_core_id,
           l.bcp47 AS language_bcp47,
           l.slug AS language_slug,
           l.name AS language_name
         FROM "video_dub" vd
+        LEFT JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.deleted_at IS NULL
+         AND mv.playback_id IS NOT NULL
         LEFT JOIN "language" l
           ON l.id = vd.language_id
          AND l.deleted_at IS NULL
@@ -1440,6 +1467,14 @@ export class VideoService {
               published: true,
               hls: true,
               duration: true,
+              muxVideoId: true,
+              muxVideo: {
+                select: {
+                  id: true,
+                  playbackId: true,
+                  deletedAt: true,
+                },
+              },
               language: {
                 select: {
                   coreId: true,
@@ -1457,14 +1492,51 @@ export class VideoService {
     const exactMuxByVideoId = firstByVideoId(
       exactMuxRows.filter((row) => row.playbackId != null),
     )
-    const fallbackMuxByVideoId = new Map<string, string | null>()
+    const fallbackMuxByVideoId = new Map<
+      string,
+      WatchRouteSnapshotMuxRow | null
+    >()
     for (const row of fallbackMuxRows) {
-      fallbackMuxByVideoId.set(row.videoId, row.playbackId)
+      fallbackMuxByVideoId.set(row.videoId, row)
     }
     const durationByVideoId = new Map<string, number | null>()
     for (const row of durationRows) {
       durationByVideoId.set(row.videoId, row.duration)
     }
+    const muxByVideoId = new Map<string, WatchRouteSnapshotMuxRow>()
+    for (const videoId of relatedVideoIds) {
+      const muxRow =
+        exactMuxByVideoId.get(videoId) ??
+        fallbackMuxByVideoId.get(videoId) ??
+        null
+      if (muxRow?.muxVideoId && muxRow.playbackId) {
+        muxByVideoId.set(videoId, muxRow)
+      }
+    }
+    const blurDataUrlByVideoId = new Map<string, string | null>()
+    const heroBlurDataUrlByVideoId = new Map<string, string | null>()
+    const blurLimit = pLimit(4)
+    await Promise.all(
+      Array.from(muxByVideoId.entries()).map(([videoId, muxRow]) =>
+        blurLimit(async () => {
+          if (!muxRow.muxVideoId || !muxRow.playbackId) return
+          const [blurDataUrl, heroBlurDataUrl] = await Promise.all([
+            getOrCreateWatchChapterCarouselMuxBlurDataUrl({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
+            getOrCreateWatchHeroPosterMuxBlurDataUrl({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
+          ])
+          blurDataUrlByVideoId.set(videoId, blurDataUrl)
+          heroBlurDataUrlByVideoId.set(videoId, heroBlurDataUrl)
+        }),
+      ),
+    )
 
     const makeChild = (
       child: {
@@ -1475,10 +1547,8 @@ export class VideoService {
       includeDuration: boolean,
     ): WatchRouteSnapshotChild | null => {
       if (!child) return null
-      const playbackId =
-        exactMuxByVideoId.get(child.id)?.playbackId ??
-        fallbackMuxByVideoId.get(child.id) ??
-        null
+      const muxRow = muxByVideoId.get(child.id) ?? null
+      const playbackId = muxRow?.playbackId ?? null
       return {
         documentId: child.id,
         slug: child.slug,
@@ -1489,6 +1559,9 @@ export class VideoService {
           ? (durationByVideoId.get(child.id) ?? null)
           : null,
         muxPlaybackId: playbackId,
+        muxThumbnailBlurDataUrl: blurDataUrlByVideoId.get(child.id) ?? null,
+        muxHeroPosterBlurDataUrl:
+          heroBlurDataUrlByVideoId.get(child.id) ?? null,
       }
     }
 
@@ -1527,6 +1600,30 @@ export class VideoService {
                 slug: preferredVariant.languageSlug,
                 name: preferredVariant.languageName,
               }
+
+    const preferredVariantMux =
+      preferredVariant == null
+        ? null
+        : "playbackId" in preferredVariant
+          ? {
+              muxVideoId: preferredVariant.muxVideoId,
+              playbackId: preferredVariant.playbackId,
+            }
+          : preferredVariant.muxVideo?.deletedAt == null
+            ? {
+                muxVideoId: preferredVariant.muxVideoId,
+                playbackId: preferredVariant.muxVideo?.playbackId ?? null,
+              }
+            : null
+
+    const preferredVariantHeroBlurDataUrl =
+      preferredVariantMux?.muxVideoId && preferredVariantMux.playbackId
+        ? await getOrCreateWatchHeroPosterMuxBlurDataUrl({
+            prisma: this.prisma,
+            muxVideoId: preferredVariantMux.muxVideoId,
+            playbackId: preferredVariantMux.playbackId,
+          })
+        : null
 
     return {
       documentId: root.id,
@@ -1586,6 +1683,7 @@ export class VideoService {
             hls: preferredVariant.hls,
             duration: preferredVariant.duration,
             language: preferredVariantLanguage,
+            muxHeroPosterBlurDataUrl: preferredVariantHeroBlurDataUrl,
           }
         : null,
     }

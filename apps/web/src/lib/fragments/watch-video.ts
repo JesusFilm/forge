@@ -174,6 +174,7 @@ export const watchVideoDubDetailFragment = adminGraphql(`
     published
     hls
     duration
+    muxHeroPosterBlurDataUrl
     language {
       coreId
       bcp47
@@ -284,6 +285,8 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
                 slug
                 label
                 muxPlaybackId
+                muxThumbnailBlurDataUrl
+                muxHeroPosterBlurDataUrl
                 images {
                   documentId
                   url
@@ -316,6 +319,8 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
             slug
             label
             muxPlaybackId
+            muxThumbnailBlurDataUrl
+            muxHeroPosterBlurDataUrl
             durationSeconds
             images {
               documentId
@@ -403,6 +408,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           published
           hls
           duration
+          muxHeroPosterBlurDataUrl
           language {
             coreId
             bcp47
@@ -450,6 +456,8 @@ export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
             child {
               documentId: id
               muxPlaybackId(languageSlug: $languageSlug)
+              muxThumbnailBlurDataUrl(languageSlug: $languageSlug)
+              muxHeroPosterBlurDataUrl(languageSlug: $languageSlug)
             }
           }
         }
@@ -458,6 +466,8 @@ export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
         child {
           documentId: id
           muxPlaybackId(languageSlug: $languageSlug)
+          muxThumbnailBlurDataUrl(languageSlug: $languageSlug)
+          muxHeroPosterBlurDataUrl(languageSlug: $languageSlug)
         }
       }
     }

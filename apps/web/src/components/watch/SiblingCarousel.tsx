@@ -27,7 +27,11 @@ import {
   tryAsLocaleSlug,
   watchEpisodePath,
 } from "@/lib/routes"
-import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrl,
+  resolvePosterUrl,
+} from "@/lib/url"
 import {
   WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
   type WatchChapterCarouselPreserveState,
@@ -211,7 +215,7 @@ export function SiblingCarousel({
     // chapter clicks teleport the rail so the clicked item snapped into the
     // first position, which felt like a page reload.
     api.scrollTo(visualActiveIndex)
-  }, [api, visualActiveIndex])
+  }, [api, pendingActiveIndex, visualActiveIndex])
 
   if (children.length < 2) return null
 
@@ -277,9 +281,13 @@ export function SiblingCarousel({
             // entirely: it's a misshaped Cloudflare Images URL (missing the
             // variant path segment) that returns 400, so a "last resort"
             // fallback to it only ever produces broken images.
-            const thumb =
-              resolveMuxFrameThumbnailUrl(child.muxPlaybackId) ??
-              resolvePosterUrl(child.images?.[0])
+            const muxThumb = resolveMuxFrameThumbnailUrl(child.muxPlaybackId)
+            const thumb = muxThumb ?? resolvePosterUrl(child.images?.[0])
+            const heroPoster = resolveMuxHeroPosterUrl(child.muxPlaybackId)
+            const blurDataURL =
+              muxThumb != null ? child.muxThumbnailBlurDataUrl : null
+            const heroBlurDataURL =
+              heroPoster != null ? child.muxHeroPosterBlurDataUrl : null
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
             const href =
@@ -315,6 +323,12 @@ export function SiblingCarousel({
                     fill
                     sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    {...(blurDataURL
+                      ? {
+                          placeholder: "blur" as const,
+                          blurDataURL,
+                        }
+                      : {})}
                     // Native lazy-loading. Browser still fetches
                     // above-fold cards immediately (lazy only defers
                     // far-from-viewport). Avoids the head-preload
@@ -457,7 +471,8 @@ export function SiblingCarousel({
                           title: child.title ?? null,
                           slug: child.slug,
                           label: child.label ?? null,
-                          posterUrl: thumb,
+                          posterUrl: heroPoster ?? thumb,
+                          posterBlurDataUrl: heroBlurDataURL,
                           sourceCarouselIndex:
                             api?.selectedScrollSnap() ?? null,
                         },

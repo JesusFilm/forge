@@ -37,6 +37,7 @@ export function WatchSectionRenderer({
   downloadPending,
   modalCallbacks,
   onPlayerReady,
+  onPlayerActivated,
   locale,
   languageSlug,
   shareHref,
@@ -54,6 +55,7 @@ export function WatchSectionRenderer({
   downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onPlayerActivated?: () => void
   locale?: string
   languageSlug?: string
   shareHref?: string
@@ -96,6 +98,7 @@ export function WatchSectionRenderer({
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
+          onPlayerActivated={onPlayerActivated}
           locale={locale}
           languageSlug={languageSlug}
           shareHref={shareHref}
@@ -140,6 +143,7 @@ export function WatchSectionRenderer({
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
+                  onPlayerActivated={onPlayerActivated}
                   locale={locale}
                   languageSlug={languageSlug}
                   shareHref={shareHref}
@@ -168,6 +172,7 @@ function WatchBlockEntry({
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
+  onPlayerActivated,
   locale,
   languageSlug,
   shareHref,
@@ -187,6 +192,7 @@ function WatchBlockEntry({
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onPlayerActivated?: () => void
   locale?: string
   languageSlug?: string
   shareHref?: string
@@ -208,6 +214,7 @@ function WatchBlockEntry({
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
+        onPlayerActivated={onPlayerActivated}
         locale={locale}
         languageSlug={languageSlug}
         shareHref={shareHref}
@@ -232,6 +239,7 @@ function SyntheticBlock({
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
+  onPlayerActivated,
   locale,
   languageSlug,
   shareHref,
@@ -250,6 +258,7 @@ function SyntheticBlock({
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onPlayerActivated?: () => void
   locale?: string
   languageSlug?: string
   shareHref?: string
@@ -266,6 +275,7 @@ function SyntheticBlock({
           title: pendingChapter.title,
           label: pendingChapter.label,
           posterUrl: pendingChapter.posterUrl,
+          posterBlurDataUrl: pendingChapter.posterBlurDataUrl ?? null,
           loading: true,
           transitionKey: pendingChapter.targetVideoDocumentId,
         }
@@ -280,6 +290,7 @@ function SyntheticBlock({
         <HeroPlayer
           block={block}
           onPlayerReady={onPlayerReady}
+          onPlayerActivated={onPlayerActivated}
           onLanguageClick={modalCallbacks?.openLanguage}
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
