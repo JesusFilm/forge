@@ -25,6 +25,7 @@ function makeChild(documentId: string, slug: string, title: string) {
     images: [{ url: `https://cdn.example/${slug}.jpg` }],
     durationSeconds: null,
     muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   }
 }
 

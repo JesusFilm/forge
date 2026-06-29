@@ -1136,11 +1136,13 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     const mobileSearchButton = document.querySelector(
       '[data-testid="floating-search-mobile-button"]',
     )
+    expect(mobileSearchButton).toBeNull()
     expect(searchButton?.className).toContain("opacity-100")
     expect(searchButton?.className).toContain("cursor-text")
     expect(searchButton?.className).not.toContain("cursor-pointer")
-    expect(searchButton?.className).toContain("hidden")
-    expect(searchButton?.className).toContain("sm:flex")
+    expect(searchButton?.className).toContain("flex")
+    expect(searchButton?.className).not.toContain("hidden")
+    expect(searchButton?.className).not.toContain("sm:flex")
     expect(searchButton?.className).toContain(
       "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
     )
@@ -1148,20 +1150,15 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
       "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
     )
     expect(searchButton?.className).toContain("items-center")
-    expect(searchButton?.className).toContain("left-4")
-    expect(searchButton?.className).toContain("right-44")
-    expect(searchButton?.className).toContain("sm:left-36")
-    expect(searchButton?.className).toContain("md:right-52")
-    expect(searchButton?.className).toContain("xl:right-60")
-    expect(searchButton?.className).not.toContain("-translate-x-1/2")
-    expect(searchButton?.className).not.toContain("max-w-[810px]")
+    expect(searchButton?.className).toContain("left-1/2")
+    expect(searchButton?.className).toContain("-translate-x-1/2")
+    expect(searchButton?.className).toContain("w-[calc(100%-2rem)]")
+    expect(searchButton?.className).toContain("sm:w-[calc(100%-3rem)]")
+    expect(searchButton?.className).toContain("max-w-[810px]")
+    expect(searchButton?.className).not.toContain("right-44")
+    expect(searchButton?.className).not.toContain("md:right-52")
     expect(searchButton?.className).toContain("hover:bg-white")
     expect(searchButton?.className).toContain("hover:text-stone-950")
-    expect(mobileSearchButton).not.toBeNull()
-    expect(mobileSearchButton?.className).toContain("sm:hidden")
-    expect(mobileSearchButton?.className).toContain("cursor-pointer")
-    expect(mobileSearchButton?.className).toContain("right-24")
-    expect(mobileSearchButton?.textContent).toBe("")
     expect(
       searchButton?.querySelector('[data-testid="floating-search-icon"]'),
     ).not.toBeNull()
@@ -1176,14 +1173,12 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     })
 
     expect(searchButton?.className).toContain("opacity-0")
-    expect(mobileSearchButton?.className).toContain("opacity-0")
 
     act(() => {
       dispatchChromeVisibility(true)
     })
 
     expect(searchButton?.className).toContain("opacity-100")
-    expect(mobileSearchButton?.className).toContain("opacity-100")
   })
 
   it("keeps the floating search bar visible during unmuted playback while the player chrome is up", () => {
@@ -1206,7 +1201,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
       '[data-testid="floating-search-mobile-button"]',
     )
     expect(searchButton?.className).toContain("opacity-100")
-    expect(mobileSearchButton?.className).toContain("opacity-100")
+    expect(mobileSearchButton).toBeNull()
   })
 
   it("dims the floating search bar when player chrome publishes 30% opacity", () => {
@@ -1230,8 +1225,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     )
     expect(searchButton?.className).toContain("opacity-30")
     expect(searchButton?.className).toContain("pointer-events-auto")
-    expect(mobileSearchButton?.className).toContain("opacity-30")
-    expect(mobileSearchButton?.className).toContain("pointer-events-auto")
+    expect(mobileSearchButton).toBeNull()
   })
 
   it("keeps the floating search bar dimmed and asks the player to brighten while hovering during player dim state", () => {
@@ -1264,7 +1258,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     })
 
     expect(searchButton?.className).toContain("opacity-30")
-    expect(mobileSearchButton?.className).toContain("opacity-30")
+    expect(mobileSearchButton).toBeNull()
     expect(revealListener).toHaveBeenCalled()
     window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
@@ -1295,7 +1289,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     })
 
     expect(searchButton?.className).toContain("opacity-0")
-    expect(mobileSearchButton?.className).toContain("opacity-0")
+    expect(mobileSearchButton).toBeNull()
     expect(hoverZone?.className).toContain("pointer-events-auto")
 
     act(() => {
@@ -1303,14 +1297,12 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     })
 
     expect(searchButton?.className).toContain("opacity-100")
-    expect(mobileSearchButton?.className).toContain("opacity-100")
 
     act(() => {
       window.dispatchEvent(new MouseEvent("pointermove", { clientY: 200 }))
     })
 
     expect(searchButton?.className).toContain("opacity-0")
-    expect(mobileSearchButton?.className).toContain("opacity-0")
     expect(revealListener).toHaveBeenCalled()
     window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
@@ -1338,6 +1330,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(languageButton?.className).toContain("fixed")
     expect(languageButton?.className).toContain("right-10")
     expect(languageButton?.className).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(languageButton?.className).toContain(
       "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
     )
     expect(languageButton?.className).toContain(
@@ -1354,6 +1349,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     ).toBeNull()
 
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.className).toContain(
+      "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
     expect(logo?.className).toContain(
       "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
     )
@@ -1543,8 +1541,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlay?.contains(close)).toBe(true)
     expect(overlay?.className).toContain("h-dvh")
     expect(overlay?.className).toContain("min-h-dvh")
-    expect(topBar?.className).toContain("pt-6")
-    expect(topBar?.className).toContain("sm:pt-12")
+    expect(topBar?.className).toContain(
+      "pt-[calc(env(safe-area-inset-top,0px)+2rem)]",
+    )
+    expect(topBar?.className).toContain(
+      "md:pt-[calc(env(safe-area-inset-top,0px)+3rem)]",
+    )
+    expect(topBar?.className).not.toContain("sm:pt-12")
     expect(mobileLogo?.className).toContain("mb-6")
     expect(mobileLogo?.className).not.toContain("absolute")
     expect(mobileLogoImage?.getAttribute("src")).toBe(
@@ -1562,6 +1565,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayField).not.toBeNull()
     expect(overlayField?.className).toContain("rounded-[35px]")
     expect(overlayField?.className).toContain("bg-white")
+    expect(overlayField?.parentElement?.className).toContain("max-w-[810px]")
     expect(
       document.querySelector('[data-testid="search-overlay-input-icon"]'),
     ).not.toBeNull()

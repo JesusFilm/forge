@@ -29,7 +29,10 @@ const MuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
 
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
-import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  WATCH_PAGE_LEFT_RAIL_CLASSES,
+} from "@/lib/content-width"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import { videoLabelMessageKey } from "@/lib/video-labels"
@@ -42,6 +45,7 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import { resolveMuxHeroPosterUrl } from "@/lib/url"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -125,9 +129,7 @@ const WATCH_NOW_LINK_CLASS =
 function buildHeroPosterUrl(
   playbackId: string | undefined,
 ): string | undefined {
-  return playbackId
-    ? `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.webp?time=${HERO_POSTER_TIME_SECONDS}`
-    : undefined
+  return resolveMuxHeroPosterUrl(playbackId) ?? undefined
 }
 
 function isMuxImageUrl(url: string | null | undefined): boolean {
@@ -137,6 +139,22 @@ function isMuxImageUrl(url: string | null | undefined): boolean {
   } catch {
     return false
   }
+}
+
+export function getHeroPosterBlurDataURL({
+  heroPosterUrl,
+  muxHeroPosterBlurDataUrl,
+  shouldOptimizeMuxPoster,
+  visualHeroPosterUrl,
+}: {
+  heroPosterUrl: string | undefined
+  muxHeroPosterBlurDataUrl: string | null | undefined
+  shouldOptimizeMuxPoster: boolean
+  visualHeroPosterUrl: string | undefined
+}): string | null {
+  return visualHeroPosterUrl === heroPosterUrl && shouldOptimizeMuxPoster
+    ? (muxHeroPosterBlurDataUrl ?? null)
+    : null
 }
 
 function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
@@ -196,6 +214,7 @@ const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 export function HeroPlayer({
   block,
   onPlayerReady,
+  onPlayerActivated,
   onLanguageClick,
   playableLanguageCount,
   darkenOverlay = false,
@@ -207,6 +226,7 @@ export function HeroPlayer({
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onPlayerActivated?: () => void
   onLanguageClick?: () => void
   playableLanguageCount?: number
   darkenOverlay?: boolean
@@ -350,6 +370,11 @@ export function HeroPlayer({
   }, [chromeRevealed, publishChromeVisibility])
 
   useEffect(() => {
+    if (!chromeRevealed) return
+    onPlayerActivated?.()
+  }, [chromeRevealed, onPlayerActivated])
+
+  useEffect(() => {
     if (typeof window === "undefined") return
     const currentPlayer = playerRef.current
     window.dispatchEvent(
@@ -380,7 +405,9 @@ export function HeroPlayer({
   // hero — the viewport/aspect-ratio height class below pins the layout, this
   // hides the empty box behind a spinner until there's something to show.
   const [videoReady, setVideoReady] = useState(false)
-  const [playerFrameRevealed, setPlayerFrameRevealed] = useState(false)
+  const [playerFrameRevealed, setPlayerFrameRevealed] = useState(
+    autoplayParam === "1",
+  )
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
   }, [])
@@ -625,13 +652,10 @@ export function HeroPlayer({
       // Otherwise visible = the wrapper's own height.
       const viewportHeight = window.innerHeight
       const visibleVideoHeight = Math.min(heroHeight, viewportHeight)
-      // The body section sits right after the hero in flow at doc-y =
-      // heroHeight plus the current bottom margin; in the muted-preview
-      // layout that margin is negative so the episode rail starts above
-      // the hero's natural bottom edge.
-      // Body covers everything BELOW that line; the unobscured part of
-      // the visible video is from the wrapper's visible top down to
-      // that line.
+      // Body covers everything BELOW its viewport top; the unobscured
+      // part of the visible video is from the wrapper's visible top down
+      // to that line. Prefer the real body position so layout wrappers
+      // around the hero chrome/backdrop cannot drift this calculation.
       const wrapper = wrapperRef.current
       const computedMarginBottom = wrapper
         ? Number.parseFloat(window.getComputedStyle(wrapper).marginBottom)
@@ -639,7 +663,14 @@ export function HeroPlayer({
       const bodyOverlap = Number.isFinite(computedMarginBottom)
         ? Math.max(0, -computedMarginBottom)
         : 0
-      const bodyTopInViewport = heroHeight - bodyOverlap - window.scrollY
+      const bodyZone = document.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement | null
+      const measuredBodyTop = bodyZone?.getBoundingClientRect().top
+      const bodyTopInViewport =
+        typeof measuredBodyTop === "number" && Number.isFinite(measuredBodyTop)
+          ? measuredBodyTop
+          : heroHeight - bodyOverlap - window.scrollY
       const unobscuredHeight = Math.max(
         0,
         Math.min(visibleVideoHeight, bodyTopInViewport),
@@ -761,18 +792,16 @@ export function HeroPlayer({
         setChromeRevealed(true)
         setAutoplayBlocked(false)
       })
-      .catch((err: unknown) => {
+      .catch(() => {
         // Browser blocked unmuted play (no MEI grant). Player is still
         // muted (we never set it false), so the existing muted-preview
         // + "Watch now" pill flow takes over — the user can still
         // commit playback manually.
         //
-        // Under MuxVideo (bare <video>) the same condition also catches
-        // initial autoplay-muted rejections — `NotAllowedError` is the
-        // standard signal for autoplay refusal.
-        if (isAutoplayBlockedError(err)) {
-          setAutoplayBlocked(true)
-        }
+        // Some browser/media shims reject with a generic Error rather
+        // than a named NotAllowedError. Either way, restore the explicit
+        // user-action fallback so the page is never left with hidden chrome.
+        setAutoplayBlocked(true)
       })
     // Intentionally omits chromeRevealed and setChromeRevealed: the ref
     // guard above is the idempotency lock; chromeRevealed in deps would
@@ -910,7 +939,7 @@ export function HeroPlayer({
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
-    setPlayerFrameRevealed(false)
+    setPlayerFrameRevealed(autoplayParam === "1")
     setPlayerActivated(autoplayParam === "1" || heroPosterUrl == null)
   }
   // Variant-scope the autoplay one-shot — without this, a same-component
@@ -940,19 +969,27 @@ export function HeroPlayer({
     showOptimisticPoster && optimisticVisual?.loading === true
   const posterIdentity = visualHeroPosterUrl ?? "none"
   const shouldOptimizeMuxPoster = isMuxImageUrl(visualHeroPosterUrl)
+  const optimisticPosterBlurDataURL = showOptimisticPoster
+    ? (optimisticVisual?.posterBlurDataUrl ?? null)
+    : null
+  const heroPosterBlurDataURL =
+    optimisticPosterBlurDataURL ??
+    getHeroPosterBlurDataURL({
+      heroPosterUrl,
+      muxHeroPosterBlurDataUrl: variant.muxHeroPosterBlurDataUrl,
+      shouldOptimizeMuxPoster,
+      visualHeroPosterUrl,
+    })
   const coverLoading =
     showPendingPosterTransition || (playerActivated && !videoReady)
-  const showPosterBlackBridge =
-    visualHeroPosterUrl != null && showPendingPosterTransition
+  const showPosterBlackBridge = false
   const posterLayerKey = posterIdentity
   const posterOpacityClass =
     playerFrameRevealed && !showOptimisticPoster ? "opacity-0" : "opacity-100"
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-[1000ms]"
-  const posterImageMotionClass = showPosterBlackBridge
-    ? "watch-hero-cover-reveal"
-    : ""
+  const posterImageMotionClass = ""
   const coverBlackoutMotionClass =
     coverBlackoutPhase === "revealing"
       ? "watch-hero-cover-black-bridge"
@@ -977,6 +1014,7 @@ export function HeroPlayer({
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
+  const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
   const effectivePreviewBodyOverlapPx = chromeRevealed
@@ -1141,6 +1179,12 @@ export function HeroPlayer({
                 fetchPriority="high"
                 preload={shouldOptimizeMuxPoster}
                 sizes="100vw"
+                {...(heroPosterBlurDataURL
+                  ? {
+                      placeholder: "blur" as const,
+                      blurDataURL: heroPosterBlurDataURL,
+                    }
+                  : {})}
                 className={`object-cover ${posterImageMotionClass}`}
               />
               {!chromeRevealed ? (
@@ -1259,9 +1303,9 @@ export function HeroPlayer({
       <div
         ref={setOverlayAnchor}
         data-testid="hero-player-overlay-anchor"
-        className="relative z-10 h-0 w-full"
+        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES}`}
       >
-        {!chromeRevealed
+        {!chromeRevealed && !suppressPreRevealOverlay
           ? (overlay ?? (
               <div
                 data-testid="hero-player-overlay"

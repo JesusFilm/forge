@@ -29,12 +29,16 @@ vi.mock("next/image", () => ({
     fill: _fill,
     sizes: _sizes,
     className,
+    placeholder,
+    blurDataURL,
   }: {
     src: string
     alt: string
     fill?: boolean
     sizes?: string
     className?: string
+    placeholder?: string
+    blurDataURL?: string
   }) => (
     // A `<div>` stand-in (not `<img>`) sidesteps the next/no-img-element
     // lint rule while still letting us assert on `data-src` and the
@@ -44,6 +48,8 @@ vi.mock("next/image", () => ({
       data-testid="next-image-mock"
       data-src={src}
       data-alt={alt}
+      data-placeholder={placeholder ?? ""}
+      data-blur-data-url={blurDataURL ?? ""}
       className={className}
     />
   ),
@@ -108,6 +114,7 @@ vi.mock("next-intl", () => ({
 }))
 
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
+import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -139,6 +146,8 @@ function makeChild(
     thumb?: boolean
     image?: ImageVariantFields
     muxPlaybackId?: string | null
+    muxThumbnailBlurDataUrl?: string | null
+    muxHeroPosterBlurDataUrl?: string | null
   } = {},
 ) {
   // When `opts.image` is supplied, use it verbatim — lets tests assert on
@@ -160,6 +169,8 @@ function makeChild(
     images,
     durationSeconds: null,
     muxPlaybackId: opts.muxPlaybackId ?? null,
+    muxThumbnailBlurDataUrl: opts.muxThumbnailBlurDataUrl ?? null,
+    muxHeroPosterBlurDataUrl: opts.muxHeroPosterBlurDataUrl ?? null,
   }
 }
 
@@ -271,7 +282,19 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    expect(active!.className).toContain("border-white")
+    const activeOutline = active!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(activeOutline).not.toBeNull()
+    expect(activeOutline?.className).toContain("absolute")
+    expect(activeOutline?.className).toContain("inset-0")
+    expect(activeOutline?.className).toContain("z-50")
+    expect(activeOutline?.className).toContain("border-4")
+    expect(activeOutline?.className).toContain("border-white")
+    expect(activeOutline?.className).toContain("transition-[opacity,transform]")
+    expect(activeOutline?.className).toContain("duration-300")
+    expect(activeOutline?.className).toContain("opacity-100")
+    expect(active!.className).not.toContain("border-4")
     expect(active!.className).toContain("aspect-video")
     expect(active!.className).not.toContain("translate-x-10")
     expect(active!.className).not.toContain("md:translate-x-0")
@@ -375,6 +398,42 @@ describe("SiblingCarousel — happy path", () => {
     )
   })
 
+  it("uses the stored Mux thumbnail LQIP only for Mux thumbnails", () => {
+    const blurDataURL = "data:image/jpeg;base64,AQIDBA=="
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          makeChild(1, {
+            muxPlaybackId: "mux-playback-1",
+            muxThumbnailBlurDataUrl: blurDataURL,
+          }),
+          makeChild(2, {
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,SHOULD_NOT_USE",
+          }),
+        ],
+      } as never,
+      currentVideoDocumentId: "child-1",
+    }
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const images = container.querySelectorAll("[data-testid='next-image-mock']")
+    expect(images[0]?.getAttribute("data-src")).toBe(
+      "https://image.mux.com/mux-playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+    expect(images[0]?.getAttribute("data-placeholder")).toBe("blur")
+    expect(images[0]?.getAttribute("data-blur-data-url")).toBe(blurDataURL)
+    expect(images[1]?.getAttribute("data-src")).toBe("https://cdn.test/2.jpg")
+    expect(images[1]?.getAttribute("data-placeholder")).toBe("")
+    expect(images[1]?.getAttribute("data-blur-data-url")).toBe("")
+  })
+
   it("preserves the Anticipate collection segment for all 29 Pilate page chapters", () => {
     const children = pilatePageChapterSlugs.map((slug, index) => ({
       ...makeChild(index + 1),
@@ -457,9 +516,20 @@ describe("SiblingCarousel — happy path", () => {
     expect(target!.getAttribute("data-pending")).toBe("true")
     expect(target!.getAttribute("data-active")).toBe("true")
     expect(target!.getAttribute("aria-busy")).toBe("true")
-    expect(target!.className).toContain("border-white")
+    const targetOutline = target!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(targetOutline).not.toBeNull()
+    expect(targetOutline?.className).toContain("border-4")
+    expect(targetOutline?.className).toContain("border-white")
+    expect(targetOutline?.className).toContain("opacity-100")
+    expect(target!.className).not.toContain("border-4")
     expect(previousCurrent!.getAttribute("data-active")).toBe("false")
-    expect(previousCurrent!.className).not.toContain("border-white")
+    const previousOutline = previousCurrent!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(previousOutline).not.toBeNull()
+    expect(previousOutline?.className).toContain("opacity-0")
     expect(
       target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
     ).not.toBeNull()
@@ -511,7 +581,62 @@ describe("SiblingCarousel — happy path", () => {
       slug: "child-2-slug",
       label: "Label 2",
       posterUrl: "https://cdn.test/2.jpg",
+      posterBlurDataUrl: null,
+      sourceCarouselIndex: expect.any(Number),
     })
+  })
+
+  it("emits the full hero Mux poster for optimistic chapter transitions", () => {
+    const onChapterNavigateIntent = vi.fn()
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          makeChild(1),
+          makeChild(2, {
+            muxPlaybackId: "mux playback 2",
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,CARD==",
+            muxHeroPosterBlurDataUrl: "data:image/webp;base64,HERO==",
+          }),
+        ],
+      } as never,
+      currentVideoDocumentId: "child-1",
+    }
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(onChapterNavigateIntent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        posterUrl:
+          "https://image.mux.com/mux%20playback%202/thumbnail.webp?time=2",
+        posterBlurDataUrl: "data:image/webp;base64,HERO==",
+      }),
+    )
   })
 
   it("uses controlled pending state when the parent supplies it", () => {
@@ -777,6 +902,69 @@ describe("SiblingCarousel — edge cases", () => {
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("12 of 15")
     expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
+  })
+
+  it("consumes preserved chapter-navigation carousel state on the target page", async () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "child-4",
+      }),
+    )
+
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(6, 3)} languageSlug="english" />,
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(
+      window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY),
+    ).toBeNull()
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-4-slug/english.html",
+    )
+  })
+
+  it("prefers preserved carousel scroll index over source chapter index", async () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "child-4",
+        sourceCarouselIndex: 2,
+      }),
+    )
+
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(6, 3)} languageSlug="english" />,
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(
+      window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY),
+    ).toBeNull()
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-4-slug/english.html",
+    )
   })
 
   it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {

@@ -39,6 +39,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     pendingChapter,
     coverBlackoutKey,
+    onPlayerActivated,
     onChapterNavigateIntent,
   }: {
     pendingChapter?: {
@@ -47,6 +48,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       posterUrl: string | null
     } | null
     coverBlackoutKey?: string | null
+    onPlayerActivated?: () => void
     onChapterNavigateIntent?: (intent: {
       href: string
       languageSlug: string
@@ -56,30 +58,41 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       slug: string
       label: string | null
       posterUrl: string | null
+      sourceCarouselIndex?: number | null
     }) => void
   }) => (
-    <button
-      type="button"
-      data-testid="watch-section-renderer"
-      data-pending-target={pendingChapter?.targetVideoDocumentId ?? ""}
-      data-pending-title={pendingChapter?.title ?? ""}
-      data-pending-poster={pendingChapter?.posterUrl ?? ""}
-      data-cover-blackout-key={coverBlackoutKey ?? ""}
-      onClick={() => {
-        onChapterNavigateIntent?.({
-          href: "/parent.html/child-2/english.html",
-          languageSlug: "english",
-          sourceVideoDocumentId: "video-1",
-          targetVideoDocumentId: "child-2",
-          title: "Clicked Child",
-          slug: "child-2",
-          label: "SEGMENT",
-          posterUrl: "https://cdn.test/clicked.jpg",
-        })
-      }}
-    >
-      Renderer
-    </button>
+    <>
+      <button
+        type="button"
+        data-testid="watch-section-renderer"
+        data-pending-target={pendingChapter?.targetVideoDocumentId ?? ""}
+        data-pending-title={pendingChapter?.title ?? ""}
+        data-pending-poster={pendingChapter?.posterUrl ?? ""}
+        data-cover-blackout-key={coverBlackoutKey ?? ""}
+        onClick={() => {
+          onChapterNavigateIntent?.({
+            href: "/parent.html/child-2/english.html",
+            languageSlug: "english",
+            sourceVideoDocumentId: "video-1",
+            targetVideoDocumentId: "child-2",
+            title: "Clicked Child",
+            slug: "child-2",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+            sourceCarouselIndex: 3,
+          })
+        }}
+      >
+        Renderer
+      </button>
+      <button
+        type="button"
+        data-testid="activate-player"
+        onClick={() => onPlayerActivated?.()}
+      >
+        Activate player
+      </button>
+    </>
   ),
 }))
 
@@ -90,10 +103,7 @@ vi.mock("@/lib/watch-interaction-loader", () => ({
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
-import {
-  WATCH_CHAPTER_POSTER_BLACKOUT_MS,
-  WATCH_CHAPTER_POSTER_REVEAL_MS,
-} from "@/components/watch/chapter-navigation"
+import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
 import type { MergedWatchBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -208,11 +218,7 @@ async function clickChapterAndFlushNavigation() {
   act(() => {
     ;(renderer() as HTMLButtonElement).click()
   })
-  act(() => {
-    vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_BLACKOUT_MS)
-  })
   await act(async () => {
-    vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_REVEAL_MS)
     await Promise.resolve()
     await Promise.resolve()
   })
@@ -220,7 +226,6 @@ async function clickChapterAndFlushNavigation() {
 
 describe("WatchPageClient chapter navigation", () => {
   it("validates pending chapter state and self-invalidates after route commit", async () => {
-    vi.useFakeTimers()
     renderWatchPage()
 
     const renderer = () =>
@@ -240,26 +245,15 @@ describe("WatchPageClient chapter navigation", () => {
     expect(routerPrefetchMock).toHaveBeenCalledWith(
       "/parent.html/child-2/english.html",
     )
-    expect(renderer()?.getAttribute("data-pending-target")).toBe("")
-    expect(renderer()?.getAttribute("data-pending-title")).toBe("")
-    expect(renderer()?.getAttribute("data-cover-blackout-key")).toContain(
-      "child-2:",
-    )
-    expect(routerPushMock).not.toHaveBeenCalled()
-
-    act(() => {
-      vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_BLACKOUT_MS)
-    })
-
     expect(renderer()?.getAttribute("data-pending-target")).toBe("child-2")
     expect(renderer()?.getAttribute("data-pending-title")).toBe("Clicked Child")
     expect(renderer()?.getAttribute("data-pending-poster")).toBe(
       "https://cdn.test/clicked.jpg",
     )
+    expect(renderer()?.getAttribute("data-cover-blackout-key")).toBe("")
     expect(routerPushMock).not.toHaveBeenCalled()
 
     await act(async () => {
-      vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_REVEAL_MS)
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -269,6 +263,17 @@ describe("WatchPageClient chapter navigation", () => {
         scroll: false,
       },
     )
+    expect(
+      JSON.parse(
+        window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY) ??
+          "{}",
+      ),
+    ).toEqual({
+      languageSlug: "english",
+      sourceVideoDocumentId: "video-1",
+      targetVideoDocumentId: "child-2",
+      sourceCarouselIndex: 3,
+    })
 
     window.history.replaceState(
       {},
@@ -283,7 +288,6 @@ describe("WatchPageClient chapter navigation", () => {
   })
 
   it("waits for the background route warm before pushing", async () => {
-    vi.useFakeTimers()
     const response = deferred<{ text: () => Promise<string> }>()
     const body = deferred<string>()
     Object.defineProperty(window, "fetch", {
@@ -299,15 +303,11 @@ describe("WatchPageClient chapter navigation", () => {
       ;(renderer() as HTMLButtonElement).click()
     })
 
-    act(() => {
-      vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_BLACKOUT_MS)
-    })
-
     expect(renderer()?.getAttribute("data-pending-target")).toBe("child-2")
+    expect(renderer()?.getAttribute("data-cover-blackout-key")).toBe("")
     expect(routerPushMock).not.toHaveBeenCalled()
 
     await act(async () => {
-      vi.advanceTimersByTime(WATCH_CHAPTER_POSTER_REVEAL_MS)
       await Promise.resolve()
     })
 
@@ -335,8 +335,7 @@ describe("WatchPageClient chapter navigation", () => {
     )
   })
 
-  it("keeps route-change scrolling enabled for chapter clicks below the top", async () => {
-    vi.useFakeTimers()
+  it("keeps scroll position stable for chapter clicks below the top", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
       value: 240,
@@ -348,7 +347,28 @@ describe("WatchPageClient chapter navigation", () => {
     expect(routerPushMock).toHaveBeenCalledWith(
       "/parent.html/child-2/english.html",
       {
-        scroll: true,
+        scroll: false,
+      },
+    )
+  })
+
+  it("preserves autoplay across chapter clicks only after the player is activated", async () => {
+    renderWatchPage()
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="activate-player"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    await clickChapterAndFlushNavigation()
+
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/parent.html/child-2/english.html?autoplay=1",
+      {
+        scroll: false,
       },
     )
   })

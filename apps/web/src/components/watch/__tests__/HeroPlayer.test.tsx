@@ -145,7 +145,10 @@ function setSearchParams(query: string) {
   mockSearchParams.current = new URLSearchParams(query)
 }
 
-import { HeroPlayer } from "@/components/watch/HeroPlayer"
+import {
+  getHeroPosterBlurDataURL,
+  HeroPlayer,
+} from "@/components/watch/HeroPlayer"
 
 type TestMockPlayer = NonNullable<typeof mockPlayerRef.current>
 
@@ -213,7 +216,11 @@ afterEach(() => {
   container.remove()
 })
 
-function makeBlock(): WatchHeroPlayerBlock {
+function makeBlock({
+  muxHeroPosterBlurDataUrl = null,
+}: {
+  muxHeroPosterBlurDataUrl?: string | null
+} = {}): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
     video: {
@@ -228,6 +235,7 @@ function makeBlock(): WatchHeroPlayerBlock {
       published: true,
       hls: "https://cdn.example/jesus.m3u8",
       muxVideo: { playbackId: "playback-id-123" },
+      muxHeroPosterBlurDataUrl,
       language: {
         coreId: "529",
         bcp47: "en",
@@ -389,6 +397,41 @@ describe("HeroPlayer — initial mount", () => {
     ).toBeNull()
   })
 
+  it("uses the hero-specific Mux blur placeholder for the committed hero poster", () => {
+    const blurDataURL = "data:image/webp;base64,BQYHCA=="
+    const heroPosterUrl =
+      "https://image.mux.com/playback-id-123/thumbnail.webp?time=2"
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ muxHeroPosterBlurDataUrl: blurDataURL })}
+        />,
+      )
+    })
+
+    const poster = container.querySelector(
+      '[data-testid="hero-player-poster"]',
+    ) as HTMLImageElement
+    expect(poster).not.toBeNull()
+    expect(
+      getHeroPosterBlurDataURL({
+        heroPosterUrl,
+        muxHeroPosterBlurDataUrl: blurDataURL,
+        shouldOptimizeMuxPoster: true,
+        visualHeroPosterUrl: heroPosterUrl,
+      }),
+    ).toBe(blurDataURL)
+    expect(
+      getHeroPosterBlurDataURL({
+        heroPosterUrl,
+        muxHeroPosterBlurDataUrl: blurDataURL,
+        shouldOptimizeMuxPoster: false,
+        visualHeroPosterUrl: "https://cdn.test/clicked.jpg",
+      }),
+    ).toBeNull()
+  })
+
   it("renders optimistic title and poster on the pre-reveal shell only", () => {
     act(() => {
       root.render(
@@ -471,7 +514,7 @@ describe("HeroPlayer — initial mount", () => {
     ).not.toBeNull()
   })
 
-  it("bridges a pending optimistic poster through black without pulsing the cover", () => {
+  it("shows a pending optimistic poster immediately without a black bridge", () => {
     act(() => {
       root.render(
         <HeroPlayer
@@ -480,6 +523,7 @@ describe("HeroPlayer — initial mount", () => {
             title: "Clicked Chapter",
             label: "SEGMENT",
             posterUrl: "https://cdn.test/clicked.jpg",
+            posterBlurDataUrl: "data:image/jpeg;base64,AQIDBA==",
             loading: true,
             transitionKey: "chapter-2",
           }}
@@ -498,11 +542,13 @@ describe("HeroPlayer — initial mount", () => {
     )
 
     expect(layer?.getAttribute("data-cover-loading")).toBe("true")
-    expect(layer?.getAttribute("data-cover-transition")).toBe("black-bridge")
+    expect(layer?.getAttribute("data-cover-transition")).toBe("none")
     expect(poster.getAttribute("src")).toBe("https://cdn.test/clicked.jpg")
-    expect(poster.getAttribute("class")).toContain("watch-hero-cover-reveal")
+    expect(poster.getAttribute("class")).not.toContain(
+      "watch-hero-cover-reveal",
+    )
     expect(poster.getAttribute("class")).not.toContain("pulse")
-    expect(bridge).not.toBeNull()
+    expect(bridge).toBeNull()
   })
 
   it("blacks out the current cover before optimistic title and poster swap", () => {
@@ -810,6 +856,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLDivElement
     expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("max-w-[1920px]")
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-x-clip")
@@ -845,6 +892,7 @@ describe("HeroPlayer — initial mount", () => {
     })
 
     expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("max-w-[1920px]")
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-hidden")
@@ -1746,7 +1794,7 @@ describe("HeroPlayer — fade timer", () => {
     vi.useRealTimers()
   })
 
-  it("starts at 30%, ignores pointer movement for 5s, then video mouse movement wakes the dim rail", async () => {
+  it("starts fully visible, ignores pointer movement for 5s, then video mouse movement wakes the rail", async () => {
     await revealChrome()
     if (mockPlayerRef.current) mockPlayerRef.current.paused = false
     const chrome = container.querySelector(
@@ -1755,7 +1803,7 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-visible")).toBe("true")
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       window.dispatchEvent(
@@ -1774,7 +1822,7 @@ describe("HeroPlayer — fade timer", () => {
 
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       chrome.dispatchEvent(makePointerEvent("pointermove"))
@@ -1782,7 +1830,7 @@ describe("HeroPlayer — fade timer", () => {
 
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       vi.advanceTimersByTime(5001)
@@ -1804,7 +1852,7 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-visible")).toBe("true")
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       chrome.dispatchEvent(makePointerEvent("pointermove"))
@@ -1829,7 +1877,7 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.className).toContain("opacity-0")
   })
 
-  it("keeps the top language button mounted during the 30% grace state and publishes hidden opacity after 5s", async () => {
+  it("keeps the top language button mounted during the visible grace state and publishes hidden opacity after 5s", async () => {
     const visibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
     const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
     const onVisibility = (event: Event) => {
@@ -1866,7 +1914,7 @@ describe("HeroPlayer — fade timer", () => {
       })
 
       expect(languageEvents.at(-1)?.visible).toBe(true)
-      expect(visibilityEvents.some((event) => event.opacity === 0.3)).toBe(true)
+      expect(visibilityEvents.some((event) => event.opacity === 1)).toBe(true)
 
       await act(async () => {
         vi.advanceTimersByTime(5001)
@@ -1977,7 +2025,7 @@ describe("HeroPlayer — fade timer", () => {
     })
 
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
-    expect(chrome.className).toContain("opacity-30")
+    expect(chrome.className).toContain("opacity-100")
 
     await act(async () => {
       vi.advanceTimersByTime(5001)
@@ -2255,6 +2303,53 @@ describe("HeroPlayer — pause when scrolled past the hero", () => {
     }
   })
 
+  it("uses the measured body zone top when deciding whether the body covers the video", async () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      value: 800,
+      configurable: true,
+    })
+    const bodyZone = document.createElement("section")
+    bodyZone.dataset.testid = "watch-body-zone"
+    bodyZone.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 280,
+          bottom: 1000,
+          height: 720,
+          left: 0,
+          right: 1200,
+          width: 1200,
+          x: 0,
+          y: 280,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    )
+    document.body.appendChild(bodyZone)
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1000)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // Fallback math at scrollY=0 would not pause, but the measured body
+      // top says 520px of the 800px visible video is covered.
+      await scrollTo(0)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+      bodyZone.remove()
+      Object.defineProperty(window, "innerHeight", {
+        value: originalInnerHeight,
+        configurable: true,
+      })
+    }
+  })
+
   it("pins the exact 60% boundary: scrollY=680 pauses, scrollY=679 does not", async () => {
     // Boundary value pins the >= comparison and the OBSCURED_PAUSE_THRESHOLD
     // constant at 0.6. With heroHeight=1000, viewport=800, the exact threshold
@@ -2309,6 +2404,8 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
     expect(backdrop).not.toBeNull()
     expect(anchor).not.toBeNull()
     expect(wrapper).not.toBeNull()
+    expect(anchor?.className).toContain("max-w-[1920px]")
+    expect(wrapper?.className).not.toContain("max-w-[1920px]")
     // Portal target — chrome bar AND its backing gradient live under the
     // zero-height anchor that scrolls with the body section, not under
     // the sticky hero wrapper. Backdrop must travel with the chrome so
@@ -2820,6 +2917,13 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
+    expect(
+      container.querySelector('[data-testid="hero-player-poster-layer"]')
+        ?.className,
+    ).toContain("opacity-0")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
     await fireCanPlay()
     // play() default mock returns Promise.resolve() — wait for the .then
     // microtask so setChromeRevealed commits.
@@ -2875,6 +2979,9 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
       '[data-testid="hero-player-wrapper"]',
     )
     expect(wrapper?.getAttribute("data-chrome-revealed")).toBe("false")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).not.toBeNull()
   })
 
   it("is a no-op when ?autoplay=1 is absent (no play attempt, player stays muted)", async () => {

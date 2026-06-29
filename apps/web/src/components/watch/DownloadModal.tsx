@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import Image from "next/image"
 import {
   Check,
@@ -15,7 +16,10 @@ import { useTranslations } from "next-intl"
 import { formatDuration as formatDurationShared } from "@/lib/format-duration"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { TERMS_OF_USE_PARAGRAPHS } from "@/lib/terms-of-use"
+import {
+  TERMS_OF_USE_CANONICAL_URL,
+  TERMS_OF_USE_PARAGRAPHS,
+} from "@/lib/terms-of-use"
 import { cn } from "@/lib/utils"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
@@ -49,6 +53,8 @@ export type DownloadModalProps = {
   videoSlug: string
   onClose: () => void
 }
+
+const SIZE_DROPDOWN_ANIMATION_MS = 160
 
 // Probe the same-origin download proxy for a `Content-Length` when the
 // CMS-provided `size` is missing or zero. Returns null on any failure so
@@ -127,6 +133,12 @@ export function DownloadModal({
   const [tosAgreed, setTosAgreed] = useState(false)
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [dropdownMounted, setDropdownMounted] = useState(false)
+  const [dropdownRect, setDropdownRect] = useState<{
+    left: number
+    top: number
+    width: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
@@ -181,12 +193,30 @@ export function DownloadModal({
   const canDownload = tosAgreed && selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
 
+  const updateDropdownRect = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    setDropdownRect({
+      left: rect.left,
+      top: rect.bottom + 8,
+      width: rect.width,
+    })
+  }, [])
+
+  const closeDropdown = useCallback(() => {
+    if (dropdownOpen) setDropdownMounted(true)
+    setDropdownOpen(false)
+  }, [dropdownOpen])
+
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
         setTosAgreed(false)
         setSelectedTier(null)
         setDropdownOpen(false)
+        setDropdownMounted(false)
+        setDropdownRect(null)
         setError(null)
         setAuthChecking(false)
         setTermsOpen(false)
@@ -252,12 +282,23 @@ export function DownloadModal({
     return () => controller.abort()
   }, [open, tiers, variantId, videoSlug])
 
+  useEffect(() => {
+    if (dropdownOpen) return
+    if (!dropdownMounted) return
+    const timeout = window.setTimeout(() => {
+      setDropdownMounted(false)
+      setDropdownRect(null)
+    }, SIZE_DROPDOWN_ANIMATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [dropdownMounted, dropdownOpen])
+
   // Click-outside / Escape-first close for the custom dropdown. Without
   // this, clicking elsewhere in the modal leaves the listbox open
   // forever, and pressing Escape dismisses the entire dialog instead of
   // collapsing only the dropdown.
   useEffect(() => {
     if (!dropdownOpen) return
+    updateDropdownRect()
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node | null
       if (!target) return
@@ -267,24 +308,31 @@ export function DownloadModal({
       ) {
         return
       }
-      setDropdownOpen(false)
+      closeDropdown()
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         // Stop propagation so base-ui's dialog Escape handler doesn't
         // also fire and close the entire modal.
         event.stopPropagation()
-        setDropdownOpen(false)
+        closeDropdown()
         triggerRef.current?.focus()
       }
     }
+    function handleViewportChange() {
+      updateDropdownRect()
+    }
     document.addEventListener("pointerdown", handlePointerDown, true)
     document.addEventListener("keydown", handleKeyDown, true)
+    window.addEventListener("resize", handleViewportChange)
+    window.addEventListener("scroll", handleViewportChange, true)
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true)
       document.removeEventListener("keydown", handleKeyDown, true)
+      window.removeEventListener("resize", handleViewportChange)
+      window.removeEventListener("scroll", handleViewportChange, true)
     }
-  }, [dropdownOpen])
+  }, [closeDropdown, dropdownOpen, updateDropdownRect])
 
   async function handleDownload() {
     if (!selected) return
@@ -449,7 +497,15 @@ export function DownloadModal({
                     ref={triggerRef}
                     id={dropdownId}
                     type="button"
-                    onClick={() => setDropdownOpen((v) => !v)}
+                    onClick={() => {
+                      if (dropdownOpen) {
+                        closeDropdown()
+                        return
+                      }
+                      updateDropdownRect()
+                      setDropdownMounted(false)
+                      setDropdownOpen(true)
+                    }}
                     data-testid="watch-download-modal-size-trigger"
                     data-open={dropdownOpen ? "true" : "false"}
                     aria-haspopup="listbox"
@@ -480,61 +536,79 @@ export function DownloadModal({
                       )}
                     />
                   </button>
-                  {dropdownOpen ? (
-                    <ul
-                      ref={listRef}
-                      id={dropdownListId}
-                      role="listbox"
-                      aria-labelledby={dropdownId}
-                      data-testid="watch-download-modal-size-list"
-                      className="relative z-50 mt-2 w-full overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md"
-                    >
-                      {tiers.map((t) => {
-                        const isSelected = effectiveTier === t.tier
-                        return (
-                          <li key={t.tier}>
-                            <button
-                              type="button"
-                              role="option"
-                              aria-selected={isSelected}
-                              data-testid="watch-download-modal-size-option"
-                              data-tier={t.tier}
-                              data-size-bytes={resolveSize(t.download) ?? ""}
-                              onClick={() => {
-                                setSelectedTier(t.tier)
-                                setDropdownOpen(false)
-                              }}
-                              className={cn(
-                                "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-sm transition",
-                                isSelected
-                                  ? "bg-brand-red text-white"
-                                  : "text-stone-100 hover:bg-white/10",
-                              )}
-                            >
-                              <Check
-                                size={16}
-                                className={
-                                  isSelected ? "opacity-100" : "opacity-0"
-                                }
-                              />
-                              <span className="font-semibold">
-                                {tierLabel(t.tier)}
-                              </span>
-                              <SizeLabel
-                                bytes={resolveSize(t.download)}
-                                className={cn(
-                                  "text-xs",
-                                  isSelected
-                                    ? "text-white/80"
-                                    : "text-stone-400",
-                                )}
-                              />
-                            </button>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  ) : null}
+                  {(dropdownOpen || dropdownMounted) &&
+                  dropdownRect != null &&
+                  typeof document !== "undefined"
+                    ? createPortal(
+                        <ul
+                          ref={listRef}
+                          id={dropdownListId}
+                          role="listbox"
+                          aria-labelledby={dropdownId}
+                          data-testid="watch-download-modal-size-list"
+                          data-open={dropdownOpen ? "true" : "false"}
+                          className={cn(
+                            "fixed z-[1000] max-h-72 origin-top overflow-y-auto rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-150 ease-out",
+                            dropdownOpen
+                              ? "translate-y-0 scale-100 opacity-100"
+                              : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0",
+                          )}
+                          style={{
+                            left: dropdownRect.left,
+                            top: dropdownRect.top,
+                            width: dropdownRect.width,
+                          }}
+                        >
+                          {tiers.map((t) => {
+                            const isSelected = effectiveTier === t.tier
+                            return (
+                              <li key={t.tier}>
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isSelected}
+                                  data-testid="watch-download-modal-size-option"
+                                  data-tier={t.tier}
+                                  data-size-bytes={
+                                    resolveSize(t.download) ?? ""
+                                  }
+                                  onClick={() => {
+                                    setSelectedTier(t.tier)
+                                    closeDropdown()
+                                  }}
+                                  className={cn(
+                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-sm transition",
+                                    isSelected
+                                      ? "bg-brand-red text-white"
+                                      : "text-stone-100 hover:bg-white/10",
+                                  )}
+                                >
+                                  <Check
+                                    size={16}
+                                    className={
+                                      isSelected ? "opacity-100" : "opacity-0"
+                                    }
+                                  />
+                                  <span className="font-semibold">
+                                    {tierLabel(t.tier)}
+                                  </span>
+                                  <SizeLabel
+                                    bytes={resolveSize(t.download)}
+                                    className={cn(
+                                      "text-xs",
+                                      isSelected
+                                        ? "text-white/80"
+                                        : "text-stone-400",
+                                    )}
+                                  />
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>,
+                        document.body,
+                      )
+                    : null}
                 </div>
               </div>
             )}
@@ -562,7 +636,7 @@ export function DownloadModal({
                 type="button"
                 onClick={() => setTermsOpen(true)}
                 data-testid="watch-download-modal-tos-trigger"
-                className="cursor-pointer font-normal text-brand-red underline decoration-brand-red/40 underline-offset-4 hover:decoration-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
+                className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
               >
                 {t("termsOfUse")}
               </button>
@@ -633,26 +707,61 @@ type TermsOfUseDialogProps = {
 function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
   const t = useTranslations("DownloadModal")
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onCancel()
+  useEffect(() => {
+    if (!open) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        event.stopPropagation()
+        onCancel()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown, true)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true)
+    }
+  }, [onCancel, open])
+
+  if (!open || typeof document === "undefined") return null
+
+  function stopNestedDialogEvent(event: { stopPropagation: () => void }) {
+    event.stopPropagation()
+  }
+
+  return createPortal(
+    <div
+      aria-hidden="false"
+      data-testid="watch-download-modal-terms-overlay"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 supports-backdrop-filter:backdrop-blur-sm"
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onCancel()
+      }}
+      onPointerDown={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
       }}
     >
-      <DialogContent
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="watch-download-modal-terms-title"
         data-testid="watch-download-modal-terms-dialog"
-        showCloseButton={false}
-        overlayClassName="bg-black/60 supports-backdrop-filter:backdrop-blur-sm"
         className="flex max-h-[85vh] flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 sm:max-w-2xl"
+        onClick={stopNestedDialogEvent}
+        onPointerDown={stopNestedDialogEvent}
       >
         <div className="flex items-start justify-between px-8 pt-8 pb-4">
-          <DialogTitle
+          <h2
+            id="watch-download-modal-terms-title"
             data-testid="watch-download-modal-terms-title"
             className="text-2xl font-bold text-stone-50 sm:text-3xl"
           >
             {t("termsOfUse")}
-          </DialogTitle>
+          </h2>
           {/*
             Raw <button> (not <Button variant="...">): the circular
             stone-700 X-close shape has no matching variant in the
@@ -687,24 +796,46 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
           ))}
         </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-stone-700/50 px-8 py-5">
-          <button
-            type="button"
-            onClick={onCancel}
-            data-testid="watch-download-modal-terms-cancel"
-            className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/50"
+        <div
+          data-testid="watch-download-modal-terms-footer"
+          className="flex flex-col gap-4 border-t border-stone-700/50 px-8 py-5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p
+            data-testid="watch-download-modal-terms-canonical-notice"
+            className="max-w-lg text-xs leading-relaxed text-stone-400"
           >
-            {t("cancel")}
-          </button>
-          <Button
-            variant="pill"
-            onClick={onAccept}
-            data-testid="watch-download-modal-terms-accept"
-          >
-            {t("accept")}
-          </Button>
+            We include these terms here to make them easy to review. You can
+            always find the most current version at{" "}
+            <a
+              href={TERMS_OF_USE_CANONICAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer text-stone-200 underline decoration-stone-500 underline-offset-2 hover:text-white hover:decoration-white"
+            >
+              {TERMS_OF_USE_CANONICAL_URL}
+            </a>
+            .
+          </p>
+          <div className="flex shrink-0 items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              data-testid="watch-download-modal-terms-cancel"
+              className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/50"
+            >
+              {t("cancel")}
+            </button>
+            <Button
+              variant="pill"
+              onClick={onAccept}
+              data-testid="watch-download-modal-terms-accept"
+            >
+              {t("accept")}
+            </Button>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </section>
+    </div>,
+    document.body,
   )
 }

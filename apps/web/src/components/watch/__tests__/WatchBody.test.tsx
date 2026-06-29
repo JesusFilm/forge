@@ -42,6 +42,7 @@ afterEach(() => {
   act(() => {
     root.unmount()
   })
+  vi.useRealTimers()
   container.remove()
 })
 
@@ -505,6 +506,10 @@ describe("WatchBody — modal trigger integration", () => {
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(ay!.className).toContain(token)
     }
+    expect(ay!.className).toContain("cursor-pointer")
+    expect(ay!.className).toContain("[&_*]:pointer-events-none")
+    expect(ay!.className).toContain("[&_*]:cursor-pointer")
+    expect(ay!.style.cursor).toBe("pointer")
     // noopener prevents window.opener access; noreferrer additionally
     // strips the Referer header on the cross-origin navigation.
     const rel = ay!.getAttribute("rel") ?? ""
@@ -532,6 +537,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
 
     const icon = trigger.querySelector("svg[viewBox='0 0 24 24']")
     expect(icon?.getAttribute("class")).toContain("size-6")
+    expect(icon?.getAttribute("class")).toContain("md:size-7")
+    expect(icon?.getAttribute("class")).toContain("mt-0")
     expect(icon?.getAttribute("class")).toContain("opacity-20")
 
     const question = trigger.querySelector("h3")
@@ -541,8 +548,9 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     expect(question?.className).not.toContain("sm:pr-4")
 
     const chevron = trigger.querySelector("span svg")
-    expect(chevron?.getAttribute("class")).toContain("size-4")
-    expect(chevron?.getAttribute("class")).toContain("translate-y-0.5")
+    expect(chevron?.getAttribute("class")).toContain("size-6")
+    expect(chevron?.getAttribute("class")).toContain("md:size-7")
+    expect(chevron?.getAttribute("class")).not.toContain("translate-y-0.5")
   })
 
   it("each prompt row carries a trigger button with aria-expanded=false by default", () => {
@@ -562,8 +570,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
       expect(trigger).not.toBeNull()
       expect(trigger!.tagName.toLowerCase()).toBe("button")
       expect(trigger!.getAttribute("aria-expanded")).toBe("false")
-      // Panel is unmounted while collapsed so closed rows stay free of
-      // fallback body text.
+      // Panel starts unmounted while collapsed so closed rows stay free of
+      // fallback body text until they have been opened once.
       expect(
         item.querySelector('[data-testid="watch-study-questions-item-panel"]'),
       ).toBeNull()
@@ -633,6 +641,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
   })
 
   it("only one row is open at a time — clicking a second row closes the first", () => {
+    vi.useFakeTimers()
+
     act(() => {
       root.render(<WatchStudyQuestions prompts={["First?", "Second?"]} />)
     })
@@ -655,9 +665,24 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     const panels = container.querySelectorAll(
       '[data-testid="watch-study-questions-item-panel"]',
     )
-    expect(panels.length).toBe(1)
+    expect(panels.length).toBe(2)
     expect(triggers[0]?.getAttribute("aria-expanded")).toBe("false")
     expect(triggers[1]?.getAttribute("aria-expanded")).toBe("true")
+    expect(panels[0]?.getAttribute("aria-hidden")).toBe("true")
+    expect(panels[0]?.className).toContain("transition-[height]")
+    expect(panels[0]?.className).toContain("pointer-events-none")
+    expect((panels[0] as HTMLElement | undefined)?.style.height).toBe("0px")
+    expect(panels[1]?.getAttribute("aria-hidden")).toBe("false")
+    expect(panels[1]?.className).toContain("transition-[height]")
+
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    const settledPanels = container.querySelectorAll(
+      '[data-testid="watch-study-questions-item-panel"]',
+    )
+    expect(settledPanels.length).toBe(1)
+    expect(settledPanels[0]?.getAttribute("aria-hidden")).toBe("false")
   })
 
   it("resets openIndex when the prompts array reference changes — stale index never reveals a different question's panel", () => {
@@ -702,6 +727,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
   })
 
   it("clicking an open row's trigger again collapses it (toggle off)", () => {
+    vi.useFakeTimers()
+
     act(() => {
       root.render(<WatchStudyQuestions prompts={["A?"]} />)
     })
@@ -717,6 +744,23 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
       trigger.click()
     })
     expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    const closingPanel = container.querySelector(
+      '[data-testid="watch-study-questions-item-panel"]',
+    )
+    expect(closingPanel).not.toBeNull()
+    expect(closingPanel?.getAttribute("aria-hidden")).toBe("true")
+    expect(closingPanel?.className).toContain("transition-[height]")
+    expect(closingPanel?.className).toContain("pointer-events-none")
+    expect((closingPanel as HTMLElement | null)?.style.height).toBe("0px")
+
+    const closingLinks = closingPanel!.querySelectorAll("a")
+    for (const link of closingLinks) {
+      expect(link.getAttribute("tabindex")).toBe("-1")
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
     expect(
       container.querySelector(
         '[data-testid="watch-study-questions-item-panel"]',

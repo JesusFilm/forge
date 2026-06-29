@@ -10,6 +10,7 @@ import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+import { getOrScheduleWatchHeroPosterMuxBlurDataUrl } from "@/services/mux-image-derivative.service"
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
@@ -321,6 +322,27 @@ builder.prismaObject("VideoDub", {
     language: t.relation("language", { nullable: true }),
     videoEdition: t.relation("videoEdition", { nullable: true }),
     muxVideo: t.relation("muxVideo", { nullable: true }),
+    muxHeroPosterBlurDataUrl: t.string({
+      nullable: true,
+      description:
+        "Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+      resolve: async (dub, _args, ctx) => {
+        const muxVideo = await ctx.prisma.muxVideo.findFirst({
+          where: {
+            dubs: { some: { id: dub.id } },
+            playbackId: { not: null },
+            deletedAt: null,
+          },
+          select: { id: true, playbackId: true },
+        })
+        if (!muxVideo?.playbackId) return null
+        return getOrScheduleWatchHeroPosterMuxBlurDataUrl({
+          prisma: ctx.prisma,
+          muxVideoId: muxVideo.id,
+          playbackId: muxVideo.playbackId,
+        })
+      },
+    }),
     downloads: t.relation("downloads", {
       query: { where: { deletedAt: null } },
     }),
@@ -491,6 +513,32 @@ builder.prismaObject("Video", {
       },
       resolve: (video, args, ctx) =>
         ctx.loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+    muxThumbnailBlurDataUrl: t.string({
+      nullable: true,
+      description:
+        "Base64 LQIP data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxThumbnailBlurDataUrlByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+    muxHeroPosterBlurDataUrl: t.string({
+      nullable: true,
+      description:
+        "Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxHeroPosterBlurDataUrlByIdAndLanguageSlug.load({
           videoId: video.id,
           languageSlug: args.languageSlug ?? null,
         }),
@@ -1004,6 +1052,12 @@ WatchRouteSnapshotChildRef.implement({
     }),
     durationSeconds: t.exposeInt("durationSeconds", { nullable: true }),
     muxPlaybackId: t.exposeString("muxPlaybackId", { nullable: true }),
+    muxThumbnailBlurDataUrl: t.exposeString("muxThumbnailBlurDataUrl", {
+      nullable: true,
+    }),
+    muxHeroPosterBlurDataUrl: t.exposeString("muxHeroPosterBlurDataUrl", {
+      nullable: true,
+    }),
   }),
 })
 
@@ -1140,6 +1194,9 @@ WatchRouteSnapshotPreferredVariantRef.implement({
       type: WatchRouteSnapshotLanguageRef,
       nullable: true,
       resolve: (row) => row.language,
+    }),
+    muxHeroPosterBlurDataUrl: t.exposeString("muxHeroPosterBlurDataUrl", {
+      nullable: true,
     }),
   }),
 })
