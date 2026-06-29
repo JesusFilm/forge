@@ -27,7 +27,7 @@ related:
   - "docs/solutions/platform/mastra-embedding-workflow-ownership-pattern.md"
   - "docs/solutions/platform/mastra-transcript-embedding-workflow-pattern.md"
   - "docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md"
-  - "docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md"
+  - "docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md"
   - "docs/solutions/architecture-patterns/parity-bearer-narrow-carveout-pattern-20260513.md"
 applies_when:
   - "Moving generated scene vectors out of Manager or Admin provider calls"

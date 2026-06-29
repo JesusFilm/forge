@@ -24,7 +24,7 @@ related:
   - "docs/solutions/platform/mastra-embedding-workflow-ownership-pattern.md"
   - "docs/solutions/platform/mastra-scene-embedding-workflow-pattern.md"
   - "docs/solutions/platform/mastra-transcript-embedding-workflow-pattern.md"
-  - "docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md"
+  - "docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md"
 applies_when:
   - "Moving ExperienceLocale embedding generation out of Admin provider calls"
   - "Adding a Mastra workflow that writes vectors into Admin-owned pgvector tables"
@@ -171,4 +171,4 @@ git diff --check
 
 - `docs/solutions/platform/mastra-scene-embedding-workflow-pattern.md`
 - `docs/solutions/platform/mastra-transcript-embedding-workflow-pattern.md`
-- `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`
+- `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`

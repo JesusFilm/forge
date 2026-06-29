@@ -1,7 +1,7 @@
 ---
 title: "Transcript embedding backfills need cancellable resume batches"
 date: "2026-06-19"
-last_updated: "2026-06-22"
+last_updated: "2026-06-29"
 category: workflow-issues
 module: apps/admin transcript embedding backfill
 problem_type: workflow_issue
@@ -16,10 +16,10 @@ tags:
   - useworkflow
   - transcript-embeddings
   - backfill
+  - graphile
   - cancellation
   - resume
   - railway
-  - timeout
 ---
 
 # Transcript embedding backfills need cancellable resume batches
@@ -719,13 +719,178 @@ Graphile boundary, no duplicate `step_started` events appear for the resumed
 run, and legacy or incomplete `1_jf-0-0` language rows continue through Mastra
 and Admin ingest.
 
+### Operational checkpoint: 2026-06-25 stale flow locks after deploy
+
+The all-language production run later paused after a normal Railway deployment
+replaced `@forge/admin/worker`. The last healthy step completed at
+2026-06-25 22:27:50 UTC, immediately after a
+`transcript_index_target_deferred` log for `1_jf6111-0-0` with remaining
+targets. The old deployment then received `SIGTERM`; the new deployment
+started, ran migrations, and logged `[world-postgres] Re-enqueued 2 active
+run(s) on startup`.
+
+The pause was not an AI Gateway outage and not a transcript target failure.
+Workflow storage showed:
+
+- The transcript run `wrun_01KVV2F0VYT6TH1AY22V7B3SB8` was still `running`.
+- All 3,326 recorded transcript steps were `completed`.
+- The last event stayed at `step_completed` for the latest
+  `stepConfirmTranscriptEmbeddingIngests`.
+- The active worker heartbeat was fresh but idle.
+- Two Graphile `workflow_flows` jobs, ids `37850` and `37851`, were locked by
+  old worker ids for the same run id. One was the normal post-step
+  continuation and one was the startup re-enqueue continuation.
+
+Graphile Worker 0.16 clears stale locks automatically only after four hours:
+
+```sql
+locked_at < now() - interval '4 hours'
+```
+
+For an active production backfill, waiting four hours is unnecessary when the
+locked jobs are provably stale, scoped to one run, and the current worker is
+alive. The targeted recovery mirrored Graphile's own stale-lock reset, but
+narrowed the predicate to the two `workflow_flows` jobs for the known transcript
+run:
+
+```sql
+WITH stale AS (
+  SELECT j.id, j.job_queue_id
+  FROM graphile_worker._private_jobs j
+  JOIN graphile_worker._private_tasks t ON t.id = j.task_id
+  WHERE j.id IN (37850, 37851)
+    AND t.identifier = 'workflow_flows'
+    AND j.locked_by IS NOT NULL
+    AND j.locked_at < now() - interval '20 minutes'
+    AND (
+      convert_from(decode(j.payload->>'data', 'base64'), 'utf8')::jsonb
+        ->> 'runId'
+    ) = 'wrun_01KVV2F0VYT6TH1AY22V7B3SB8'
+)
+UPDATE graphile_worker._private_jobs j
+SET locked_at = NULL,
+    locked_by = NULL,
+    run_at = greatest(j.run_at, now())
+FROM stale
+WHERE j.id = stale.id;
+```
+
+The private job rows had `job_queue_id = null`, so no queue rows needed to be
+unlocked. After the unlock, the same Workflow run created
+`stepProcessTranscriptEmbeddingGroups` at 2026-06-25 22:54:23 UTC, then
+completed process and confirm-ingest steps and scheduled the next process step.
+That proved the existing run resumed instead of restarting or re-enumerating
+healthy rows.
+
+Use this recovery only when all of these are true:
+
+- The active worker heartbeat is fresh and `current_job` is empty or unrelated.
+- The transcript Workflow run is still `running`, but its latest event is old.
+- All latest transcript steps are `completed`; there is no failed step to
+  investigate first.
+- Locked Graphile jobs decode to the same expected `runId`.
+- The lock age is long enough to be stale relative to the deployment cutover,
+  not merely a currently executing step.
+- The recovery updates only those decoded stale jobs and preserves `attempts`,
+  payloads, and run state.
+
+After unlocking, prove recovery from storage, not hope: `workflow_steps` should
+gain a new process or confirm step on the same run id, failed-step count should
+stay zero, and any remaining locked job should be a live `workflow_steps` job
+whose lock age is seconds or a normal in-flight provider wait.
+
+### Operational checkpoint: 2026-06-28 duplicate step locks after restart
+
+The same all-language production run later stalled after a worker restart while
+one `stepProcessTranscriptEmbeddingGroups` step was running. The run id was
+still `wrun_01KVV2F0VYT6TH1AY22V7B3SB8`, and the latest database write stayed
+at 2026-06-28 23:43:20 UTC. No transcript or chunk rows were updated in the
+following checks, and the latest step remained `running` past the normal step
+budget.
+
+This was a different failure shape from the stale `workflow_flows` lock. The
+worker heartbeat was fresh, but Graphile had duplicate locked `workflow_steps`
+jobs for the same step id and idempotency key:
+
+- job `56918`, attempts `3/3`, locked before restart
+- job `56922`, attempts `1/3`, locked after restart
+
+The Workflow event log for that step had one `step_created` and one
+`step_started`, with no terminal event yet. Source reads were not the likely
+root cause because subtitle reads, Manager artifact reads, and Mastra launches
+all have explicit timeouts. The more likely root cause was the
+useworkflow/Graphile task layer around restart boundaries: the provider's
+in-memory idempotency and in-flight maps do not survive process replacement, so
+a restart can leave duplicate locked task rows for the same Workflow step.
+
+Do not use the stale-flow private unlock recipe for this shape. Retrying or
+unlocking a still-running `workflow_steps` task can duplicate `step_started`
+events and corrupt the run history. The safer operational path is:
+
+1. Cancel the wedged run through Workflow's native cancel command.
+2. Verify the run reaches terminal `cancelled` state and records
+   `run_cancelled`.
+3. Restart `@forge/admin/worker` so the old locked jobs cannot continue in the
+   replaced process.
+4. Trigger the existing Admin GraphQL backfill with `mode: MODEL_UPGRADE`, no
+   `coreIds`, and no `languages`.
+5. Verify the replacement run has `languageFilter=null`, `totalTargets=211037`,
+   and `already_enriched_healthy` skip logs before treating it as resumed.
+
+On 2026-06-28, the replacement all-language run was
+`wrun_01KW8AMG5Y4FF6HWZ7ZHQ8X2J3`. It started at
+2026-06-28 23:57:01 UTC. Early checks showed hundreds of completed steps, zero
+failed steps, one normal in-flight step, and rapid
+`transcript_index_skipped` logs with `reason="already_enriched_healthy"`.
+That proves the replacement run was not re-embedding healthy rows from scratch;
+it was using the existing `MODEL_UPGRADE` health guard to move forward over the
+already completed corpus.
+
+### Operational checkpoint: 2026-06-29 replacement run completion
+
+The replacement all-language run completed cleanly on 2026-06-29 at
+20:15:33 UTC. Treat this as the completion proof for the June 2026 enriched
+transcript backfill, not the cancelled predecessor run.
+
+Final Workflow storage audit:
+
+- Run id: `wrun_01KW8AMG5Y4FF6HWZ7ZHQ8X2J3`.
+- Status: terminal `completed`.
+- Steps: 4,893 completed out of 4,893 total.
+- Failed, pending, running, and stale steps: 0.
+- Duplicate recent transcript groups: 0.
+- Worker failure signals during the completion audit: 0.
+
+Final Admin storage audit:
+
+- Replacement-run writes: 22,069 transcript rows and 41,605 chunk rows.
+- Writes since the original backfill window began: 153,522 transcript rows and
+  188,981 chunk rows.
+- Search-visible current transcript chunks: 280,107 rows matching the gateway
+  `embeddings` provider/model/dimension contract.
+- Legacy OpenAI transcript parents and chunks: 0.
+
+Late source-data skips were coverage gaps, not Workflow failures. The observed
+skip reasons were mostly `dub_without_timed_text` with a smaller number of
+`subtitle_missing` targets. Those should feed source coverage and Manager
+enrichment follow-up work, but they do not make the all-language embedding run
+failed.
+
+Scene embedding rows still existed after completion, but the runtime
+`semantic-video` and recommendation paths were already transcript-backed. Scene
+rows are therefore a storage/code-retention cleanup problem, not active search
+relevance for feat-192.
+
 ## Cleanup and Versioning Strategy
 
 Successful enriched transcript writes are upserts on the transcript identity
 and chunk identity, so a successful target should not create duplicate
-transcript rows. The cleanup problem after the all-language run is therefore
-not "delete duplicates"; it is "remove or exclude legacy/incomplete rows that
-remain search-visible after the v2 backfill."
+transcript rows. After the completed replacement run there were no legacy
+OpenAI transcript parents or chunks left in the search-visible transcript
+contract, so no destructive transcript cleanup was needed for search
+correctness. The remaining cleanup problem is narrower: classify source gaps
+and eventually remove or exclude obsolete scene/storage artifacts that are no
+longer consumed by search.
 
 Use this sequence after the run reaches a terminal state:
 

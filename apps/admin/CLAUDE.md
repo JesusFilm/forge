@@ -1473,11 +1473,12 @@ AND embedding IS NOT NULL` grows as expected.
 ## Hybrid search (R4 of admin migration playbook)
 
 Admin owns public hybrid search — semantic + keyword retrieval fused via
-Reciprocal Rank Fusion — over the `Video`/`VideoLocale`/`VideoScene[Locale]`
-and `Experience`/`ExperienceLocale` corpora. Matches the contract of
-apps/cms `/api/search` + `/api/search/health` byte-for-byte (modulo
-cuid-string ids) so apps/web + apps/mobile can swap base URL at R8
-cutover with zero response-shape drift.
+Reciprocal Rank Fusion — over the `Video`/`VideoLocale` transcript-backed video
+semantic corpus and `Experience`/`ExperienceLocale` corpora. It originally
+matched apps/cms `/api/search` + `/api/search/health` byte-for-byte (modulo
+cuid-string ids) for the R8 cutover, then feat-192 moved video semantic
+evidence to enriched transcript chunks while preserving the public response
+shape.
 
 - **Shared service:** `src/services/hybrid-search.service.ts`
   (`HybridSearchService`). One `search(params)` entry point called by
@@ -1486,12 +1487,12 @@ cutover with zero response-shape drift.
   `MAX_LIMIT = 50`.
 - **Retrievers:** `src/services/hybrid-search-retrievers.ts` exports
   four functions. Each is a thin `$queryRaw` caller.
-  - `searchVideoSemantic` — pgvector cosine over
-    `VideoSceneLocale.embedding` and `VideoTranscriptChunk.embedding`,
-    locale/language-filtered, mixed inside one `semantic-video`
-    retriever. It performs bounded scene + transcript scans, collapses
-    to one candidate per video before RRF, and lets the winning raw
-    evidence own `snippet`/`startSeconds`/`embeddingText`. Resolves
+  - `searchVideoSemantic` — pgvector cosine over enriched
+    `VideoTranscriptChunk.embedding`, language-filtered and provenance-gated
+    to the accepted gateway transcript contract, inside the existing
+    `semantic-video` retriever. It collapses transcript chunks to one
+    candidate per video before RRF and lets the winning chunk own
+    `snippet`/`startSeconds`/`embeddingText`. Resolves
     `playbackId` via a LATERAL lookup on `video_dub → mux_video` keyed
     by `(video_edition_id, language.bcp47 = locale)`. When no dub
     matches, playbackId is NULL and the row still returns.
@@ -1516,12 +1517,11 @@ description`, same `'simple'` config as cms, locale + status gate.
   `cosineSimilarityFromText`. Line-for-line port of cms's `fusion.ts`
   with `resultId: string` (admin cuids) instead of cms's integer ids.
   Experience rows skip all three dedup layers.
-- **Mixed evidence inside `semantic-video`.** Transcript chunks are NOT
-  a fifth RRF list. `VideoTranscriptChunk.embedding` is mixed with
-  scene evidence inside `searchVideoSemantic`, then a single ranked
-  video semantic list flows into the existing RRF pipeline. This avoids
-  double-counting videos that match both scene and transcript evidence
-  while preserving the public REST/GraphQL response shape.
+- **Transcript-backed evidence inside `semantic-video`.** Transcript chunks are
+  NOT a fifth RRF list, and scene embeddings are no longer runtime search
+  evidence. `VideoTranscriptChunk.embedding` feeds the single ranked video
+  semantic list that flows into the existing RRF pipeline, preserving public
+  REST/GraphQL response shape without double-counting legacy scene rows.
 - **Video imageUrl resolves via LATERAL on `VideoImage`.** Both
   retrievers (semantic + keyword) emit
   `COALESCE(mobile_cinematic_high, url)` from the per-video
@@ -1837,18 +1837,21 @@ shape drift.
 - **Retriever:** `src/services/scene-recommendations-retriever.ts`
   exports four `$queryRaw` helpers:
   - `resolveSlugToVideoId(slug)` — non-deleted `video.slug` → cuid.
-  - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-scene or
-    per-video input embeddings in the requested locale.
+  - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-chunk or
+    per-video transcript input embeddings in the requested locale. The
+    `sceneIndex` argument is a compatibility alias for transcript
+    `chunk_index`.
   - `getRelatedVideoIds(videoId)` — self + parent + child via the
     `video_relation` table.
   - `queryScenesSimilar(queryEmbedding, locale, excludeIds, limit)` —
-    DISTINCT ON over `video_scene_locale.embedding`, locale-filtered
-    via the 3-hop `VideoDub(edition, language)` chain, with
+    DISTINCT ON over `video_transcript_chunk.embedding`, locale-filtered
+    through the transcript parent/chunk language columns and the 3-hop
+    `VideoDub(edition, language)` chain, with
     `v.deleted_at IS NULL + video_locale.status='published'` consumer
     visibility. Playback is resolved via LATERAL + **INNER JOIN** on
     dub/mux so rows without a resolvable playback are filtered out
-    (preserves cms's non-null `playbackId` contract; distinct from R4
-    hybrid search which uses LEFT JOIN).
+    (preserves cms's non-null `playbackId` contract; distinct from hybrid
+    search which uses LEFT JOIN).
 - **Dedup:** 3-layer video dedup (coreId prefix, exact title, embedding
   cosine > 0.95) via the shared `dedupeByVideoIdentity` primitive in
   `src/services/video-dedup.ts`. Same primitive R4 hybrid-search uses.

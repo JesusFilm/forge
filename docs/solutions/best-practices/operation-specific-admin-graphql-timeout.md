@@ -131,4 +131,4 @@ Review checklist:
 - [Outbound timeout must be shorter than the caller's upstream budget](./outbound-timeout-shorter-than-caller-budget-20260506.md)
 - [Forge Algolia Search Modal Pattern](../architecture-patterns/forge-algolia-search-modal-20260610.md)
 - [Admin hybrid search (R4) - port pattern](../platform/admin-hybrid-search-r4-pattern.md)
-- [Admin video semantic search: mix scene and transcript evidence inside one retriever](../platform/admin-mixed-video-semantic-evidence-pattern-20260521.md)
+- [Admin semantic-video retrieval is transcript-backed after feat-192](../architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md)
