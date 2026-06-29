@@ -1,6 +1,12 @@
 "use client"
 
-import { type MouseEvent, useCallback, useEffect, useState } from "react"
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
@@ -22,7 +28,55 @@ import {
   watchEpisodePath,
 } from "@/lib/routes"
 import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
-import type { WatchChapterNavigationIntent } from "./chapter-navigation"
+import {
+  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  type WatchChapterCarouselPreserveState,
+  type WatchChapterNavigationIntent,
+} from "./chapter-navigation"
+
+function consumePreservedCarouselIndex({
+  children,
+  currentVideoDocumentId,
+  languageSlug,
+}: {
+  children: Array<{ documentId: string }>
+  currentVideoDocumentId: string
+  languageSlug: string
+}): number | null {
+  if (typeof window === "undefined") return null
+
+  const raw = window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+  if (!raw) return null
+
+  window.sessionStorage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+
+  let state: WatchChapterCarouselPreserveState
+  try {
+    state = JSON.parse(raw) as WatchChapterCarouselPreserveState
+  } catch {
+    return null
+  }
+
+  if (
+    state.languageSlug !== languageSlug ||
+    state.targetVideoDocumentId !== currentVideoDocumentId
+  ) {
+    return null
+  }
+
+  const sourceIndex = children.findIndex(
+    (child) => child.documentId === state.sourceVideoDocumentId,
+  )
+  if (
+    typeof state.sourceCarouselIndex === "number" &&
+    Number.isInteger(state.sourceCarouselIndex) &&
+    state.sourceCarouselIndex >= 0 &&
+    state.sourceCarouselIndex < children.length
+  ) {
+    return state.sourceCarouselIndex
+  }
+  return sourceIndex >= 0 ? sourceIndex : null
+}
 
 export function SiblingCarousel({
   block,
@@ -114,7 +168,20 @@ export function SiblingCarousel({
     pendingActiveIndex >= 0 ? pendingActiveIndex : activeIndex
   const isParentMode = visualActiveIndex < 0
   const clipIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
-  const initialCarouselIndex = visualActiveIndex >= 0 ? visualActiveIndex : 0
+  const [initialCarouselState] = useState(() => {
+    const preservedIndex = consumePreservedCarouselIndex({
+      children,
+      currentVideoDocumentId,
+      languageSlug,
+    })
+    return {
+      index: preservedIndex ?? (visualActiveIndex >= 0 ? visualActiveIndex : 0),
+      deferInitialAutoScroll: preservedIndex != null,
+    }
+  })
+  const deferInitialAutoScrollRef = useRef(
+    initialCarouselState.deferInitialAutoScroll,
+  )
 
   // Snap to the visually active item whenever it changes (or when `api`
   // first becomes available). Pending navigation can temporarily move the
@@ -123,7 +190,27 @@ export function SiblingCarousel({
   useEffect(() => {
     if (!api) return
     if (visualActiveIndex < 0) return
-    api.scrollTo(visualActiveIndex, true)
+    if (pendingActiveIndex >= 0) return
+    if (deferInitialAutoScrollRef.current) {
+      deferInitialAutoScrollRef.current = false
+      let secondFrame = 0
+      // The target route mounts at the source chapter's carousel position.
+      // Wait until after that commit paints, then animate the clicked chapter
+      // into the lead position so it reads as one post-transition movement.
+      const firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          api.scrollTo(visualActiveIndex)
+        })
+      })
+      return () => {
+        window.cancelAnimationFrame(firstFrame)
+        if (secondFrame !== 0) window.cancelAnimationFrame(secondFrame)
+      }
+    }
+    // Let Embla animate the active-card change. Passing `jump: true` made
+    // chapter clicks teleport the rail so the clicked item snapped into the
+    // first position, which felt like a page reload.
+    api.scrollTo(visualActiveIndex)
   }, [api, visualActiveIndex])
 
   if (children.length < 2) return null
@@ -176,7 +263,7 @@ export function SiblingCarousel({
         opts={{
           align: "start",
           containScroll: "trimSnaps",
-          startIndex: initialCarouselIndex,
+          startIndex: initialCarouselState.index,
         }}
         setApi={setApi}
         className="w-full pl-10 md:pl-0"
@@ -210,7 +297,7 @@ export function SiblingCarousel({
             const cardClassName = cn(
               "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
               isActive
-                ? "border-4 border-white"
+                ? "opacity-100"
                 : "opacity-70 hover:outline-4 hover:outline-offset-[-4px] hover:outline-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
               isPending &&
                 !isActive &&
@@ -306,6 +393,17 @@ export function SiblingCarousel({
                   className="pointer-events-none absolute inset-0 z-40 rounded-lg border border-white opacity-40 mix-blend-soft-light"
                 />
 
+                <div
+                  aria-hidden="true"
+                  data-testid="sibling-carousel-active-outline"
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-50 rounded-lg border-4 border-white transition-[opacity,transform] duration-300 ease-out",
+                    isActive
+                      ? "scale-100 opacity-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.45)]"
+                      : "scale-[0.985] opacity-0",
+                  )}
+                />
+
                 {/* Visually-hidden active marker — preserves the existing
                     `sibling-carousel-playing-now` testid and gives screen
                     readers a labeled "Playing now" affordance even though
@@ -360,6 +458,8 @@ export function SiblingCarousel({
                           slug: child.slug,
                           label: child.label ?? null,
                           posterUrl: thumb,
+                          sourceCarouselIndex:
+                            api?.selectedScrollSnap() ?? null,
                         },
                         isActive,
                       )

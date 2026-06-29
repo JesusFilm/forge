@@ -108,6 +108,7 @@ vi.mock("next-intl", () => ({
 }))
 
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
+import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -271,7 +272,19 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    expect(active!.className).toContain("border-white")
+    const activeOutline = active!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(activeOutline).not.toBeNull()
+    expect(activeOutline?.className).toContain("absolute")
+    expect(activeOutline?.className).toContain("inset-0")
+    expect(activeOutline?.className).toContain("z-50")
+    expect(activeOutline?.className).toContain("border-4")
+    expect(activeOutline?.className).toContain("border-white")
+    expect(activeOutline?.className).toContain("transition-[opacity,transform]")
+    expect(activeOutline?.className).toContain("duration-300")
+    expect(activeOutline?.className).toContain("opacity-100")
+    expect(active!.className).not.toContain("border-4")
     expect(active!.className).toContain("aspect-video")
     expect(active!.className).not.toContain("translate-x-10")
     expect(active!.className).not.toContain("md:translate-x-0")
@@ -457,9 +470,20 @@ describe("SiblingCarousel — happy path", () => {
     expect(target!.getAttribute("data-pending")).toBe("true")
     expect(target!.getAttribute("data-active")).toBe("true")
     expect(target!.getAttribute("aria-busy")).toBe("true")
-    expect(target!.className).toContain("border-white")
+    const targetOutline = target!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(targetOutline).not.toBeNull()
+    expect(targetOutline?.className).toContain("border-4")
+    expect(targetOutline?.className).toContain("border-white")
+    expect(targetOutline?.className).toContain("opacity-100")
+    expect(target!.className).not.toContain("border-4")
     expect(previousCurrent!.getAttribute("data-active")).toBe("false")
-    expect(previousCurrent!.className).not.toContain("border-white")
+    const previousOutline = previousCurrent!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(previousOutline).not.toBeNull()
+    expect(previousOutline?.className).toContain("opacity-0")
     expect(
       target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
     ).not.toBeNull()
@@ -511,6 +535,7 @@ describe("SiblingCarousel — happy path", () => {
       slug: "child-2-slug",
       label: "Label 2",
       posterUrl: "https://cdn.test/2.jpg",
+      sourceCarouselIndex: expect.any(Number),
     })
   })
 
@@ -777,6 +802,69 @@ describe("SiblingCarousel — edge cases", () => {
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("12 of 15")
     expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
+  })
+
+  it("consumes preserved chapter-navigation carousel state on the target page", async () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "child-4",
+      }),
+    )
+
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(6, 3)} languageSlug="english" />,
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(
+      window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY),
+    ).toBeNull()
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-4-slug/english.html",
+    )
+  })
+
+  it("prefers preserved carousel scroll index over source chapter index", async () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "child-4",
+        sourceCarouselIndex: 2,
+      }),
+    )
+
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(6, 3)} languageSlug="english" />,
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(
+      window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY),
+    ).toBeNull()
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-4-slug/english.html",
+    )
   })
 
   it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {

@@ -11,8 +11,8 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
 import {
-  WATCH_CHAPTER_POSTER_BLACKOUT_MS,
-  WATCH_CHAPTER_POSTER_REVEAL_MS,
+  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  type WatchChapterCarouselPreserveState,
   type WatchChapterNavigationIntent,
 } from "@/components/watch/chapter-navigation"
 // Modals are user-triggered (download / language picker / share). Split
@@ -190,13 +190,17 @@ type LanguageOptionsState =
   | { status: "ready"; variants: LanguagePickerVariant[] }
   | { status: "error"; variants: LanguagePickerVariant[] }
 
-type ChapterCoverTransition = {
-  intent: WatchChapterNavigationIntent
-  key: string
-  phase: "covering" | "revealing"
-}
-
 const WATCH_CHAPTER_ROUTE_WARM_TIMEOUT_MS = 10_000
+
+function appendAutoplaySignal(href: string): string {
+  try {
+    const url = new URL(href, "http://watch.local")
+    url.searchParams.set("autoplay", "1")
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return href.includes("?") ? `${href}&autoplay=1` : `${href}?autoplay=1`
+  }
+}
 
 async function warmWatchChapterRoute(href: string): Promise<void> {
   if (typeof window === "undefined") return
@@ -292,10 +296,9 @@ export function WatchPageClient({
   const videoSlug = video.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
   const routeWarmPromisesRef = useRef(new Map<string, Promise<void>>())
+  const pendingChapterHrefRef = useRef<string | null>(null)
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
-  const [chapterCoverTransition, setChapterCoverTransition] =
-    useState<ChapterCoverTransition | null>(null)
   const validPendingChapter =
     pendingChapter != null &&
     pendingChapter.languageSlug === currentLanguageSlug &&
@@ -317,60 +320,40 @@ export function WatchPageClient({
     return promise
   }, [])
 
-  useEffect(() => {
-    if (chapterCoverTransition == null) return
-
-    let cancelled = false
-    const delay =
-      chapterCoverTransition.phase === "covering"
-        ? WATCH_CHAPTER_POSTER_BLACKOUT_MS
-        : WATCH_CHAPTER_POSTER_REVEAL_MS
-    const timer = window.setTimeout(() => {
-      if (chapterCoverTransition.phase === "covering") {
-        playerRef.current?.pause()
-        setPendingChapter(chapterCoverTransition.intent)
-        setChapterCoverTransition({
-          ...chapterCoverTransition,
-          phase: "revealing",
-        })
-        return
-      }
-
-      const { intent } = chapterCoverTransition
-      const routeWarmPromise = warmChapterRoute(intent.href)
-      void routeWarmPromise.finally(() => {
-        if (cancelled) return
-        router.push(intent.href as Route, { scroll: window.scrollY > 1 })
-      })
-    }, delay)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-    }
-  }, [chapterCoverTransition, router, warmChapterRoute])
-
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
-      warmChapterRoute(intent.href)
+      pendingChapterHrefRef.current = intent.href
+      setPendingChapter(intent)
+      const routeWarmPromise = warmChapterRoute(intent.href)
       try {
         router.prefetch(intent.href as Route)
       } catch {
         // The explicit HTML warm above is the real navigation gate.
       }
-      setPendingChapter(null)
-      setChapterCoverTransition({
-        intent,
-        key: `${intent.targetVideoDocumentId}:${Date.now()}`,
-        phase: "covering",
+      void routeWarmPromise.finally(() => {
+        if (pendingChapterHrefRef.current !== intent.href) return
+        if (typeof window !== "undefined") {
+          const preserveState: WatchChapterCarouselPreserveState = {
+            languageSlug: intent.languageSlug,
+            sourceVideoDocumentId: intent.sourceVideoDocumentId,
+            targetVideoDocumentId: intent.targetVideoDocumentId,
+            sourceCarouselIndex: intent.sourceCarouselIndex ?? null,
+          }
+          window.sessionStorage.setItem(
+            WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+            JSON.stringify(preserveState),
+          )
+        }
+        router.push(appendAutoplaySignal(intent.href) as Route, {
+          scroll: false,
+        })
       })
     },
     [router, warmChapterRoute],
   )
 
-  const coverBlackoutKey =
-    chapterCoverTransition != null ? chapterCoverTransition.key : null
-  const coverBlackoutPhase = chapterCoverTransition?.phase ?? null
+  const coverBlackoutKey = null
+  const coverBlackoutPhase = null
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 

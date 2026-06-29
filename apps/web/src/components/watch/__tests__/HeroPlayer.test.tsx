@@ -810,6 +810,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLDivElement
     expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("max-w-[1920px]")
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-x-clip")
@@ -845,6 +846,7 @@ describe("HeroPlayer — initial mount", () => {
     })
 
     expect(wrapper.className).toContain("h-[min(100svh,56.25vw)]")
+    expect(wrapper.className).not.toContain("max-w-[1920px]")
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-hidden")
@@ -2255,6 +2257,53 @@ describe("HeroPlayer — pause when scrolled past the hero", () => {
     }
   })
 
+  it("uses the measured body zone top when deciding whether the body covers the video", async () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      value: 800,
+      configurable: true,
+    })
+    const bodyZone = document.createElement("section")
+    bodyZone.dataset.testid = "watch-body-zone"
+    bodyZone.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 280,
+          bottom: 1000,
+          height: 720,
+          left: 0,
+          right: 1200,
+          width: 1200,
+          x: 0,
+          y: 280,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    )
+    document.body.appendChild(bodyZone)
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1000)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // Fallback math at scrollY=0 would not pause, but the measured body
+      // top says 520px of the 800px visible video is covered.
+      await scrollTo(0)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+      bodyZone.remove()
+      Object.defineProperty(window, "innerHeight", {
+        value: originalInnerHeight,
+        configurable: true,
+      })
+    }
+  })
+
   it("pins the exact 60% boundary: scrollY=680 pauses, scrollY=679 does not", async () => {
     // Boundary value pins the >= comparison and the OBSCURED_PAUSE_THRESHOLD
     // constant at 0.6. With heroHeight=1000, viewport=800, the exact threshold
@@ -2309,6 +2358,8 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
     expect(backdrop).not.toBeNull()
     expect(anchor).not.toBeNull()
     expect(wrapper).not.toBeNull()
+    expect(anchor?.className).toContain("max-w-[1920px]")
+    expect(wrapper?.className).not.toContain("max-w-[1920px]")
     // Portal target — chrome bar AND its backing gradient live under the
     // zero-height anchor that scrolls with the body section, not under
     // the sticky hero wrapper. Backdrop must travel with the chrome so
@@ -2820,6 +2871,13 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
+    expect(
+      container.querySelector('[data-testid="hero-player-poster-layer"]')
+        ?.className,
+    ).toContain("opacity-0")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
     await fireCanPlay()
     // play() default mock returns Promise.resolve() — wait for the .then
     // microtask so setChromeRevealed commits.
@@ -2875,6 +2933,9 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
       '[data-testid="hero-player-wrapper"]',
     )
     expect(wrapper?.getAttribute("data-chrome-revealed")).toBe("false")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).not.toBeNull()
   })
 
   it("is a no-op when ?autoplay=1 is absent (no play attempt, player stays muted)", async () => {

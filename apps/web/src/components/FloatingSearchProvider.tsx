@@ -23,7 +23,10 @@ import {
   FloatingSearchPinnedContext,
   type FloatingSearchPinnedContextValue,
 } from "./FloatingSearchContext"
-import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
+import {
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
+} from "@/lib/content-width"
 import { loadWatchInteraction } from "@/lib/watch-interaction-loader"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -360,7 +363,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           title={t("changeAudioLanguage")}
           inert={headerChromeHidden || undefined}
           aria-hidden={headerChromeHidden || undefined}
-          className={`fixed right-10 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+          className={`fixed ${WATCH_PAGE_RIGHT_EDGE_CLASSES} z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
             pinned
               ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
               : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
@@ -388,7 +391,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setQuery("")
           setSearchResetToken((token) => token + 1)
         }}
-        className={`fixed ${WATCH_PAGE_LEFT_RAIL_CLASSES} z-50 flex h-[52px] items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
+        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} z-50 flex h-[52px] items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
           pinned
             ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
             : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"

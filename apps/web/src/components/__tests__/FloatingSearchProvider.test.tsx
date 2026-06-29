@@ -1152,7 +1152,9 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(searchButton?.className).toContain("right-44")
     expect(searchButton?.className).toContain("sm:left-36")
     expect(searchButton?.className).toContain("md:right-52")
-    expect(searchButton?.className).toContain("xl:right-60")
+    expect(searchButton?.className).toContain(
+      "xl:right-[max(15rem,calc((100vw-1920px)/2+15rem))]",
+    )
     expect(searchButton?.className).not.toContain("-translate-x-1/2")
     expect(searchButton?.className).not.toContain("max-w-[810px]")
     expect(searchButton?.className).toContain("hover:bg-white")
@@ -1161,6 +1163,9 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(mobileSearchButton?.className).toContain("sm:hidden")
     expect(mobileSearchButton?.className).toContain("cursor-pointer")
     expect(mobileSearchButton?.className).toContain("right-24")
+    expect(mobileSearchButton?.className).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem+3.5rem))]",
+    )
     expect(mobileSearchButton?.textContent).toBe("")
     expect(
       searchButton?.querySelector('[data-testid="floating-search-icon"]'),
@@ -1338,6 +1343,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(languageButton?.className).toContain("fixed")
     expect(languageButton?.className).toContain("right-10")
     expect(languageButton?.className).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(languageButton?.className).toContain(
       "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
     )
     expect(languageButton?.className).toContain(
@@ -1354,6 +1362,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     ).toBeNull()
 
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.className).toContain(
+      "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
     expect(logo?.className).toContain(
       "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
     )

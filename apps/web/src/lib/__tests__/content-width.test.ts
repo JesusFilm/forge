@@ -6,8 +6,12 @@ import {
   CAROUSEL_END_SPACER,
   CONTENT_WIDTH_CLASSES,
   WATCH_PAGE_CONTENT_CLASSES,
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
+  WATCH_PAGE_MOBILE_SEARCH_RIGHT_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
+  WATCH_PAGE_SEARCH_FIELD_CLASSES,
 } from "@/lib/content-width"
 
 // Lockstep invariant: at every breakpoint, the negative bleed margin, the
@@ -109,4 +113,22 @@ describe("content-width.ts — watch page rail lockstep", () => {
       expect(WATCH_PAGE_LEFT_RAIL_CLASSES).toContain(rail.left)
     })
   }
+
+  it("clamps fixed header chrome to the 1920px watch frame on wide screens", () => {
+    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
+      "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain(
+      "xl:left-[max(15rem,calc((100vw-1920px)/2+15rem))]",
+    )
+    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain(
+      "xl:right-[max(15rem,calc((100vw-1920px)/2+15rem))]",
+    )
+    expect(WATCH_PAGE_MOBILE_SEARCH_RIGHT_CLASSES).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem+3.5rem))]",
+    )
+  })
 })

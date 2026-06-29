@@ -113,7 +113,8 @@ export function WatchSectionRenderer({
           className="relative w-full text-white"
         >
           <div
-            className="relative mx-auto w-full overflow-hidden backdrop-blur-2xl md:max-w-[1920px]"
+            data-testid="watch-body-backdrop"
+            className="relative w-full overflow-hidden backdrop-blur-2xl"
             style={{
               backgroundColor: "rgb(var(--color-section-default) / 0.35)",
             }}

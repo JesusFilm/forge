@@ -819,7 +819,7 @@ export function HeroPlayerControls({
     <div
       aria-hidden="true"
       data-testid="hero-player-chrome-backdrop"
-      className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[28vh] min-h-36 max-h-72 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
+      className={`pointer-events-none absolute bottom-0 left-1/2 z-0 h-[28vh] min-h-36 w-screen max-w-none -translate-x-1/2 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
         chromeOpacityClass
       }`}
       style={
