@@ -34,7 +34,7 @@ turn a transaction-scoped fix into a syntax error.
 
 - A pgvector setting call before the search query appears to succeed, but the
   following query runs without the intended setting.
-- The Admin HNSW prototype returned zero results and logged
+- The former Admin HNSW prototype returned zero results and logged
   `ERROR: syntax error at or near "$1"` before the timed retrieval query ran.
 - Timing reports can look fast when the retriever rejected early; count those as
   failed retrievals, not search speed wins.
@@ -131,7 +131,7 @@ pgvector HNSW knobs):
 ## Related
 
 - `apps/admin/src/services/experience.search.ts` — the fixed search
-- `apps/admin/src/services/hybrid-search-retrievers.ts` — HNSW prototype uses
-  transaction-local `set_config` for pgvector tuning
 - `docs/solutions/performance-issues/admin-semantic-hnsw-prototype-parity-gate.md`
+  - former HNSW prototype that used transaction-local `set_config` before it
+    was removed for insufficient end-to-end latency benefit
 - PostgreSQL docs on `SET LOCAL` and `set_config`

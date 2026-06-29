@@ -12,12 +12,9 @@ import {
   calculateVideoSemanticMixedScore,
   mixVideoSemanticEvidenceRows,
   searchVideoSemantic,
-  searchVideoSemanticHnswPrototype,
   searchVideoKeyword,
   searchExperienceSemantic,
   searchExperienceKeyword,
-  VIDEO_SEMANTIC_HNSW_EF_SEARCH,
-  VIDEO_SEMANTIC_HNSW_MAX_SCAN_TUPLES,
 } from "./hybrid-search-retrievers"
 import { SearchTimingRecorder } from "./hybrid-search-timing"
 
@@ -86,17 +83,6 @@ function sqlBetween(sql: string, start: string, end: string): string {
   const endIndex = sql.indexOf(end, startIndex + start.length)
   expect(endIndex).toBeGreaterThan(-1)
   return sql.slice(startIndex, endIndex)
-}
-
-function mockHnswPrototypeQueryRows(
-  prisma: ReturnType<typeof mockPrisma>,
-  rows: unknown[],
-) {
-  prisma.$queryRaw
-    .mockResolvedValueOnce([{ set_config: "200" }])
-    .mockResolvedValueOnce([{ set_config: "relaxed_order" }])
-    .mockResolvedValueOnce([{ set_config: "20000" }])
-    .mockResolvedValueOnce(rows)
 }
 
 describe("searchVideoSemantic", () => {
@@ -502,198 +488,6 @@ describe("searchVideoSemantic", () => {
     expect(sql).not.toContain("nearest_transcript_chunks")
     expect(sql).not.toContain("source_distance")
     expect(prisma.$transaction).not.toHaveBeenCalled()
-  })
-})
-
-describe("searchVideoSemanticHnswPrototype", () => {
-  let prisma: ReturnType<typeof mockPrisma>
-
-  beforeEach(() => {
-    prisma = mockPrisma()
-  })
-
-  it("returns the same RankedItem-shaped rows as the default semantic retriever", async () => {
-    mockHnswPrototypeQueryRows(prisma, [
-      {
-        video_id: "vid-hnsw",
-        video_core_id: "core-hnsw",
-        video_slug: "hnsw-story",
-        video_title: "HNSW Story",
-        image_url: null,
-        evidence_id: "chunk-hnsw",
-        evidence_source: "transcript",
-        scene_description: "A matched transcript chunk",
-        start_seconds: 12,
-        playback_id: "mux-hnsw",
-        source_score: 0.83,
-        similarity: 0.83,
-        embedding_text: "[0.1,0.2]",
-      },
-    ])
-
-    const rows = await searchVideoSemanticHnswPrototype(prisma, {
-      queryEmbedding: "[0.1,0.2]",
-      locale: "en",
-      limit: 10,
-    })
-
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({
-      resultType: "video",
-      resultId: "vid-hnsw",
-      videoCoreId: "core-hnsw",
-      videoSlug: "hnsw-story",
-      videoTitle: "HNSW Story",
-      imageUrl: null,
-      sceneDescription: "A matched transcript chunk",
-      startSeconds: 12,
-      playbackId: "mux-hnsw",
-      similarity: 0.83,
-      embeddingText: "[0.1,0.2]",
-    })
-  })
-
-  it("records a prototype-specific semantic-video DB timing", async () => {
-    mockHnswPrototypeQueryRows(prisma, [])
-    const timing = new SearchTimingRecorder()
-
-    await searchVideoSemanticHnswPrototype(
-      prisma,
-      {
-        queryEmbedding: "[0.1,0.2]",
-        locale: "en",
-        limit: 10,
-      },
-      timing,
-    )
-
-    expect(timing.snapshotDbTimings()).toEqual([
-      expect.objectContaining({
-        label: "semantic-video-hnsw.query",
-        status: "fulfilled",
-        resultCount: 0,
-        elapsedMs: expect.any(Number),
-      }),
-    ])
-  })
-
-  it("sets HNSW scan knobs inside the transaction before querying", async () => {
-    mockHnswPrototypeQueryRows(prisma, [])
-
-    await searchVideoSemanticHnswPrototype(prisma, {
-      queryEmbedding: "[0.1,0.2]",
-      locale: "en",
-      limit: 10,
-    })
-
-    expect(prisma.$transaction).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.objectContaining({ maxWait: 5000, timeout: 20_000 }),
-    )
-    expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled()
-    expect(prisma.$executeRaw).not.toHaveBeenCalled()
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(4)
-
-    const settingCalls = prisma.$queryRaw.mock.calls.slice(0, 3) as Array<
-      [TemplateStringsArray, string, string]
-    >
-    expect(settingCalls).toHaveLength(3)
-    expect(
-      settingCalls.map((call) => (call[0] as TemplateStringsArray).join("")),
-    ).toEqual([
-      expect.stringContaining("SELECT set_config("),
-      expect.stringContaining("SELECT set_config("),
-      expect.stringContaining("SELECT set_config("),
-    ])
-    for (const call of settingCalls) {
-      expect(call[0].join("")).toContain("true")
-    }
-    expect(settingCalls.map((call) => call[1])).toEqual([
-      "hnsw.ef_search",
-      "hnsw.iterative_scan",
-      "hnsw.max_scan_tuples",
-    ])
-    expect(settingCalls.map((call) => call[2])).toEqual([
-      String(VIDEO_SEMANTIC_HNSW_EF_SEARCH),
-      "relaxed_order",
-      String(VIDEO_SEMANTIC_HNSW_MAX_SCAN_TUPLES),
-    ])
-  })
-
-  it("uses an HNSW-first transcript window before per-video collapse", async () => {
-    mockHnswPrototypeQueryRows(prisma, [])
-
-    await searchVideoSemanticHnswPrototype(prisma, {
-      queryEmbedding: "[0.1,0.2]",
-      locale: "en",
-      limit: 60,
-    })
-
-    const sql = latestRawSqlWithFragments(prisma)
-    expect(sql).toContain("nearest_transcript_chunks AS MATERIALIZED")
-    expect(sql).toContain("FROM video_transcript_chunk vtc")
-    expect(sql).toContain("ORDER BY vtc.embedding <=> qe.embedding")
-    expect(sql).toContain("SELECT DISTINCT ON (video_id)")
-
-    const nearestWindow = sqlBetween(
-      sql,
-      "nearest_transcript_chunks AS MATERIALIZED",
-      "best_transcript_per_video AS",
-    )
-    expect(nearestWindow).toContain("LIMIT")
-    expect(nearestWindow).toContain("source_distance")
-
-    const bestTranscript = sqlBetween(
-      sql,
-      "best_transcript_per_video AS",
-      "visible_semantic_candidates AS",
-    )
-    expect(bestTranscript).toContain("FROM nearest_transcript_chunks")
-    expect(bestTranscript).toContain("source_distance ASC")
-    expect(bestTranscript).not.toContain("video_locale")
-
-    const values = latestRawValues(prisma)
-    expect(values).toContain(1200)
-    expect(values).toContain(120)
-  })
-
-  it("keeps default semantic gates and bounded hydration in the prototype SQL", async () => {
-    mockHnswPrototypeQueryRows(prisma, [])
-
-    await searchVideoSemanticHnswPrototype(prisma, {
-      queryEmbedding: "[0.1,0.2]",
-      locale: "fr",
-      limit: 10,
-    })
-
-    const sql = latestRawSqlWithFragments(prisma)
-    expect(sql).toContain("vtc.embedding IS NOT NULL")
-    expect(sql).toContain("vt.embedding_provider")
-    expect(sql).toContain("vt.embedding_native_dimensions")
-    expect(sql).toContain("vt.embedding_transform_version IS NULL")
-    expect(sql).toContain("vtc.language =")
-    expect(sql).toContain("vt.language =")
-    expect(sql).toContain("v.deleted_at IS NULL")
-    expect(sql).toContain("WHERE EXISTS")
-    expect(sql).toContain("FROM video_locale vl_visible")
-    expect(sql).toContain("vl_visible.status = 'published'")
-    expect(sql).toContain("vl_visible.deleted_at IS NULL")
-
-    const transcriptSource = sqlBetween(
-      sql,
-      "transcript_source AS",
-      "requested_language AS MATERIALIZED",
-    )
-    expect(transcriptSource).not.toContain("video_locale")
-    expect(transcriptSource).not.toContain("embedding::text")
-
-    const hydratedTail = sql.slice(
-      sql.indexOf("requested_language AS MATERIALIZED"),
-    )
-    expect(hydratedTail).toContain("FROM video_locale vl_display")
-    expect(hydratedTail).toContain("FROM video_dub vd")
-    expect(hydratedTail).toContain("FROM video_image vi2")
-    expect(hydratedTail).toContain("vtc_final.embedding::text")
   })
 })
 
