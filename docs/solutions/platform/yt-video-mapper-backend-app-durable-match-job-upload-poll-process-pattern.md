@@ -1,6 +1,7 @@
 ---
 title: "yt-video-mapper backend app durable match job upload poll process pattern"
 date: 2026-06-09
+last_updated: 2026-06-29
 category: platform
 module: apps/yt-video-mapper-backend
 problem_type: architecture_pattern
@@ -40,8 +41,9 @@ comes from Forge `Video.coreId` and `videoVariantId` comes from Forge
 
 The first backend slice therefore has to be more than a synchronous demo route.
 Video processing is slow, large, and probabilistic; the app needs durable job
-state, a transient upload location, a worker/operator drain path, and internal
-evidence storage before the real visual/audio/text matchers are swapped in.
+state, a transient upload location, an autonomous worker with an operator drain
+fallback, and internal evidence storage before the real visual/audio/text
+matchers are swapped in.
 
 ## Guidance
 
@@ -51,13 +53,16 @@ Build the app around an async upload job lifecycle:
    queued `MatchJob`, and returns `202` with `{ jobId, status }`.
 2. `GET /match-jobs/:jobId` polls job state. Once complete, it returns only
    `{ candidates }` so the public contract stays focused on attribution.
-3. `POST /match-jobs/:jobId/process` lets an authenticated worker or operator
-   drain a job explicitly. Runtime defaults should keep auto-processing off;
-   tests can opt into auto-processing when useful.
+3. The server starts a bounded worker loop by default. The loop claims the
+   oldest queued or stale-running job, processes one job at a time, and polls
+   when the queue is empty.
+4. `POST /match-jobs/:jobId/process` remains available for authenticated
+   operator recovery of a specific job. Tests and operator sessions can disable
+   the background loop when deterministic control is needed.
 
 Use a Prisma-backed repository as the production default and keep in-memory
-repositories test-only. The job claim should be atomic and recover stale running
-jobs:
+repositories test-only. Both the manual process path and the worker path should
+share the same atomic claim semantics and recover stale running jobs:
 
 ```typescript
 await db.matchJob.updateMany({
@@ -130,8 +135,11 @@ callers to use.
 
 Durable async state prevents the usual prototype failure mode where a large
 upload either blocks the HTTP request until it times out or disappears if the
-process restarts. A worker drain endpoint also makes the app deployable before a
-full queue runner exists.
+process restarts. The autonomous worker prevents the subtler production failure
+where `/health` passes and job creation returns `202`, but every submission sits
+in `queued` forever because no consumer is running. The manual drain endpoint
+still gives operators a targeted recovery tool without making the public API
+list or mutate the whole queue.
 
 Keeping evidence internal lets the team inspect and tune the matcher without
 committing every diagnostic detail to the public API. That matters for future
@@ -155,7 +163,8 @@ Good route shape:
 
 ```text
 POST /match-jobs                  -> 202 { jobId, status }
-POST /match-jobs/:jobId/process   -> authenticated worker drain
+worker loop                       -> claims queued/stale-running jobs
+POST /match-jobs/:jobId/process   -> authenticated operator recovery
 GET  /match-jobs/:jobId           -> queued/running/failed envelope
 GET  /match-jobs/:jobId           -> { candidates } when complete
 ```
@@ -163,7 +172,8 @@ GET  /match-jobs/:jobId           -> { candidates } when complete
 Avoid these shortcuts:
 
 - Defaulting production runtime to an in-memory repository.
-- Letting job processing rely only on fire-and-forget auto-processing.
+- Shipping durable queued jobs without an autonomous consumer or an explicit
+  operator drain plan.
 - Keying fusion by `videoVariantId` without the parent `coreId`.
 - Exposing internal visual/audio/text evidence in the public response before
   the API contract calls for it.

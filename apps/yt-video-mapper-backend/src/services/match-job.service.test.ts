@@ -142,6 +142,105 @@ describe("MatchJobService", () => {
     })
   })
 
+  it("processes the oldest queued job when draining the queue", async () => {
+    const storage = new InMemoryUploadStorage()
+    const repository = new InMemoryMatchJobRepository()
+    let now = new Date("2026-06-08T00:00:00.000Z")
+    const service = createService({
+      repository,
+      storage,
+      matcher: new StubMatcher([candidate]),
+      now: () => now,
+    })
+
+    const first = await service.createUploadJob({
+      bytes: Buffer.from("first-video"),
+      contentType: "video/mp4",
+    })
+    now = new Date("2026-06-08T00:01:00.000Z")
+    const second = await service.createUploadJob({
+      bytes: Buffer.from("second-video"),
+      contentType: "video/mp4",
+    })
+    now = new Date("2026-06-08T00:02:00.000Z")
+
+    await expect(service.processNextJob()).resolves.toMatchObject({
+      id: first.id,
+    })
+
+    await expect(service.getJobResult(first.id)).resolves.toEqual({
+      candidates: [candidate],
+    })
+    await expect(service.getJobResult(second.id)).resolves.toEqual({
+      jobId: second.id,
+      status: "queued",
+    })
+  })
+
+  it("reclaims stale running jobs when draining the queue", async () => {
+    const storage = new InMemoryUploadStorage()
+    const storedUpload = await storage.put({
+      bytes: Buffer.from("stale-video"),
+      contentType: "video/mp4",
+    })
+    const repository = new InMemoryMatchJobRepository()
+    await repository.create({
+      id: "job-stale",
+      status: "running",
+      uploadStorageKey: storedUpload.key,
+      uploadContentType: storedUpload.contentType,
+      uploadByteLength: storedUpload.byteLength,
+      resultLimit: 3,
+      queuedAt: new Date("2026-06-08T00:00:00.000Z"),
+      startedAt: new Date("2026-06-08T00:00:00.000Z"),
+    })
+    const service = createService({
+      repository,
+      storage,
+      matcher: new StubMatcher([candidate]),
+      now: () => new Date("2026-06-08T00:45:00.000Z"),
+    })
+
+    await expect(service.processNextJob()).resolves.toMatchObject({
+      id: "job-stale",
+    })
+
+    await expect(service.getJobResult("job-stale")).resolves.toEqual({
+      candidates: [candidate],
+    })
+  })
+
+  it("does not claim fresh running jobs when draining the queue", async () => {
+    const storage = new InMemoryUploadStorage()
+    const storedUpload = await storage.put({
+      bytes: Buffer.from("fresh-video"),
+      contentType: "video/mp4",
+    })
+    const repository = new InMemoryMatchJobRepository()
+    await repository.create({
+      id: "job-fresh",
+      status: "running",
+      uploadStorageKey: storedUpload.key,
+      uploadContentType: storedUpload.contentType,
+      uploadByteLength: storedUpload.byteLength,
+      resultLimit: 3,
+      queuedAt: new Date("2026-06-08T00:00:00.000Z"),
+      startedAt: new Date("2026-06-08T00:20:00.000Z"),
+    })
+    const service = createService({
+      repository,
+      storage,
+      matcher: new StubMatcher([candidate]),
+      now: () => new Date("2026-06-08T00:45:00.000Z"),
+    })
+
+    await expect(service.processNextJob()).resolves.toBeNull()
+    await expect(service.getJobResult("job-fresh")).resolves.toEqual({
+      jobId: "job-fresh",
+      status: "running",
+    })
+  })
+
   it("keeps running jobs from being claimed by duplicate processors", async () => {
     const repository = new InMemoryMatchJobRepository()
     const job = await repository.create({
@@ -238,24 +337,22 @@ describe("MatchJobService", () => {
 })
 
 function createService({
+  repository = new InMemoryMatchJobRepository(),
   storage = new InMemoryUploadStorage(),
   extractor = new StubExtractor({
     visualHashes: [],
     audioFingerprints: [],
   }),
   matcher = new StubMatcher([]),
+  now = () => new Date("2026-06-08T00:00:00.000Z"),
 }: {
+  repository?: InMemoryMatchJobRepository
   storage?: InMemoryUploadStorage
   extractor?: UploadSignalExtractor
   matcher?: Matcher
+  now?: () => Date
 } = {}) {
-  return new MatchJobService(
-    new InMemoryMatchJobRepository(),
-    storage,
-    extractor,
-    matcher,
-    () => new Date("2026-06-08T00:00:00.000Z"),
-  )
+  return new MatchJobService(repository, storage, extractor, matcher, now)
 }
 
 class StubExtractor implements UploadSignalExtractor {

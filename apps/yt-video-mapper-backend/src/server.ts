@@ -15,12 +15,26 @@ import {
 } from "./services/media-signature-matcher.js"
 import { FileSystemUploadStorage } from "./services/upload-storage.js"
 import { DeterministicUploadSignalExtractor } from "./services/upload-signal-extraction.js"
+import { startMatchJobWorker, type MatchJobWorker } from "./worker.js"
 
 export type ServerDependencies = {
   matchJobService?: MatchJobService
   autoProcessMatchJobs?: boolean
   maxUploadBytes?: number
   apiToken?: string
+}
+
+export type ServerRuntimeOptions = ServerDependencies & {
+  workerEnabled?: boolean
+  startMatchJobWorkerImpl?: typeof startMatchJobWorker
+}
+
+export type ServerRuntime = {
+  handleRequest: (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) => Promise<void>
+  worker: MatchJobWorker | null
 }
 
 export function createHandleRequest({
@@ -57,17 +71,35 @@ export function createHandleRequest({
 
 export const handleRequest = createHandleRequest()
 
+export function createServerRuntime({
+  matchJobService = createDefaultMatchJobService(),
+  workerEnabled = env.MATCH_JOB_WORKER_ENABLED === "true",
+  startMatchJobWorkerImpl = startMatchJobWorker,
+  ...dependencies
+}: ServerRuntimeOptions = {}): ServerRuntime {
+  return {
+    handleRequest: createHandleRequest({
+      ...dependencies,
+      matchJobService,
+    }),
+    worker: workerEnabled ? startMatchJobWorkerImpl(matchJobService) : null,
+  }
+}
+
 export function startServer(port = env.PORT): void {
   assertRuntimeEnv()
+  const runtime = createServerRuntime()
 
   createServer((request, response) => {
-    void handleRequest(request, response).catch((error: unknown) => {
+    void runtime.handleRequest(request, response).catch((error: unknown) => {
       console.error(error)
       sendJson(response, 500, { error: "internal_error" })
     })
-  }).listen(port, () => {
-    console.log(`yt-video-mapper-backend listening on :${port}`)
   })
+    .on("close", () => runtime.worker?.stop())
+    .listen(port, () => {
+      console.log(`yt-video-mapper-backend listening on :${port}`)
+    })
 }
 
 export function createDefaultMatchJobService(): MatchJobService {

@@ -79,6 +79,19 @@ reprocessing the whole catalog.
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
 
+A Match Job moves from queued to running only after a worker or operator claims
+it. Stale running jobs can be reclaimed so a crashed process does not leave the
+request permanently stuck.
+
+### Match Job Worker
+
+The mapper process-local consumer that claims queued or stale running Match Jobs
+and processes them through the same attribution path used by operator recovery.
+
+The worker is intentionally bounded: it handles one Match Job at a time in a
+service process, preserving the durable queue semantics without adding an
+external queue service.
+
 ### Match Candidate
 
 A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
