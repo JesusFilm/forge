@@ -128,6 +128,34 @@ describe("mapper Prisma schema", () => {
     ).toEqual([
       "bad_enum_use adds enum value 'expired' and references it again in the same migration; split dependent SQL into the next migration.",
     ])
+
+    expect(
+      findDeployTransactionViolations({
+        name: "bad_schema_qualified_enum_use",
+        sql: `
+          ALTER TYPE "public"."match_job_status" ADD VALUE 'expired';
+          CREATE INDEX "mapper_match_job_expired_idx"
+          ON "mapper_match_job"("queued_at")
+          WHERE "status" = 'expired';
+        `,
+      }),
+    ).toEqual([
+      "bad_schema_qualified_enum_use adds enum value 'expired' and references it again in the same migration; split dependent SQL into the next migration.",
+    ])
+
+    expect(
+      findDeployTransactionViolations({
+        name: "bad_dollar_quoted_enum_use",
+        sql: `
+          ALTER TYPE "match_job_status" ADD VALUE $$expired$$;
+          CREATE INDEX "mapper_match_job_expired_idx"
+          ON "mapper_match_job"("queued_at")
+          WHERE "status" = $$expired$$::match_job_status;
+        `,
+      }),
+    ).toEqual([
+      "bad_dollar_quoted_enum_use adds enum value 'expired' and references it again in the same migration; split dependent SQL into the next migration.",
+    ])
   })
 
   it("ignores unsafe-looking migration text inside SQL comments", () => {
@@ -138,6 +166,11 @@ describe("mapper Prisma schema", () => {
           -- CREATE INDEX CONCURRENTLY would fail here if executed.
           ALTER TYPE "match_job_status" ADD VALUE 'archived';
           -- WHERE "status" = 'archived' belongs in a later migration.
+          /*
+            CREATE INDEX CONCURRENTLY would also fail here if executed.
+            ALTER TYPE "match_job_status" ADD VALUE 'deleted';
+            WHERE "status" = 'deleted' belongs in a later migration.
+          */
         `,
       }),
     ).toEqual([])
@@ -161,7 +194,7 @@ describe("mapper Prisma schema", () => {
   })
 })
 
-interface MigrationSql {
+type MigrationSql = {
   name: string
   sql: string
 }
@@ -186,10 +219,10 @@ function findDeployTransactionViolations(migration: MigrationSql): string[] {
   )
 
   for (const match of enumAdds) {
-    const enumValue = match.groups?.value
+    const enumValue = enumValueFromMatch(match)
     if (!enumValue) continue
 
-    if (quotedSqlLiteralRegex(enumValue).test(sqlWithoutEnumAddStatements)) {
+    if (sqlLiteralRegex(enumValue).test(sqlWithoutEnumAddStatements)) {
       violations.push(
         `${migration.name} adds enum value '${enumValue}' and references it again in the same migration; split dependent SQL into the next migration.`,
       )
@@ -199,15 +232,42 @@ function findDeployTransactionViolations(migration: MigrationSql): string[] {
   return violations
 }
 
-const enumAddValueRegex =
-  /\bALTER\s+TYPE\s+(?:"[^"]+"|[a-z_][\w$.]*)\s+ADD\s+VALUE\s+(?:IF\s+NOT\s+EXISTS\s+)?'(?<value>(?:''|[^'])*)'/gi
+const sqlIdentifierRegexSource = String.raw`(?:"(?:""|[^"])+"|[a-z_][\w$]*)`
+const qualifiedSqlIdentifierRegexSource = String.raw`${sqlIdentifierRegexSource}(?:\s*\.\s*${sqlIdentifierRegexSource})*`
+const singleQuotedSqlLiteralRegexSource = String.raw`'(?<singleQuotedValue>(?:''|[^'])*)'`
+const emptyDollarQuotedSqlLiteralRegexSource = String.raw`\$\$(?<emptyDollarQuotedValue>[\s\S]*?)\$\$`
+const taggedDollarQuotedSqlLiteralRegexSource = String.raw`\$(?<dollarTag>[A-Za-z_][\w$]*)\$(?<taggedDollarQuotedValue>[\s\S]*?)\$\k<dollarTag>\$`
+
+const enumAddValueRegex = new RegExp(
+  String.raw`\bALTER\s+TYPE\s+${qualifiedSqlIdentifierRegexSource}\s+ADD\s+VALUE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:${singleQuotedSqlLiteralRegexSource}|${emptyDollarQuotedSqlLiteralRegexSource}|${taggedDollarQuotedSqlLiteralRegexSource})`,
+  "gi",
+)
 
 function stripSqlComments(sql: string): string {
   return sql.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--.*$/gm, "")
 }
 
-function quotedSqlLiteralRegex(value: string): RegExp {
-  return new RegExp(`'${escapeRegExp(value)}'`, "i")
+function enumValueFromMatch(match: RegExpMatchArray): string | undefined {
+  const singleQuotedValue = match.groups?.singleQuotedValue
+
+  if (singleQuotedValue !== undefined) {
+    return singleQuotedValue.replace(/''/g, "'")
+  }
+
+  return (
+    match.groups?.emptyDollarQuotedValue ??
+    match.groups?.taggedDollarQuotedValue
+  )
+}
+
+function sqlLiteralRegex(value: string): RegExp {
+  const singleQuotedValue = escapeRegExp(value.replace(/'/g, "''"))
+  const dollarQuotedValue = escapeRegExp(value)
+
+  return new RegExp(
+    String.raw`(?:'${singleQuotedValue}'|\$\$${dollarQuotedValue}\$\$|\$([A-Za-z_][\w$]*)\$${dollarQuotedValue}\$\1\$)`,
+    "i",
+  )
 }
 
 function escapeRegExp(value: string): string {
