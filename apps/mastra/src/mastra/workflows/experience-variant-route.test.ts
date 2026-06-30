@@ -37,19 +37,23 @@ function makeMastra(
   }),
 ) {
   const startCalls: Array<{ inputData: unknown }> = []
+  const workflowIds: string[] = []
   const mastra: DraftWorkflowMastra = {
-    getWorkflowById: () => ({
-      createRun: async () => ({
-        start: (args: { inputData: unknown }) => {
-          startCalls.push(args)
-          return start(args)
-        },
-        cancel: async () => {},
-        runId: "run-1",
-      }),
-    }),
+    getWorkflowById: (id: string) => {
+      workflowIds.push(id)
+      return {
+        createRun: async () => ({
+          start: (args: { inputData: unknown }) => {
+            startCalls.push(args)
+            return start(args)
+          },
+          cancel: async () => {},
+          runId: "run-1",
+        }),
+      }
+    },
   }
-  return { mastra, startCalls }
+  return { mastra, startCalls, workflowIds }
 }
 
 function body(topic: string, personaId: string) {
@@ -75,6 +79,20 @@ describe("handleExperienceVariantRouteRequest", () => {
     const inputData = startCalls[0]?.inputData as { prompt?: string }
     expect(inputData.prompt).toContain("Grieving")
     expect(inputData.prompt).toContain("Easter")
+  })
+
+  it("runs the quick-draft workflow, not the 5-step multi-step pipeline", async () => {
+    const { mastra, workflowIds } = makeMastra()
+    const outcome = await handleExperienceVariantRouteRequest({
+      authHeader: AUTH,
+      serviceKeys: SERVICE_KEYS,
+      readJson: async () => body("Easter", "grieving"),
+      getMastra: () => mastra,
+    })
+    expect(outcome.status).toBe(200)
+    // Persona fan-out delegates to quick-draft for reliability on slow models.
+    expect(workflowIds).toContain("quick-draft")
+    expect(workflowIds).not.toContain("multi-step-draft")
   })
 
   it("rejects a missing/invalid bearer with 401", async () => {

@@ -4,10 +4,14 @@
  * Admin loads candidates once and POSTs `{ topic, locale, candidates,
  * exemplar?, personaId }` per persona. This handler resolves the persona from
  * the Mastra-owned library, composes it into the editor prompt (U3), and runs
- * the SAME `multi-step-draft` generation path the draft route uses — by
- * delegating to `handleExperienceDraftRouteRequest`. The only additions over a
- * plain draft are persona resolution and carrying `personaId` back in the
- * envelope, so the budget, timeout, and error classification stay single-sourced.
+ * the `quick-draft` generation path (plan → draft) by delegating to
+ * `handleExperienceDraftRouteRequest` with `mode: "quick"`. Quick-draft is one
+ * short generation rather than the 5-step plan→skeleton→fill→critique→revise
+ * pipeline, so it stays well inside the budget and avoids per-node fill
+ * failures on slower chat models — the right reliability tradeoff for fanning
+ * out one draft per persona. The only additions over a plain draft are persona
+ * resolution and carrying `personaId` back in the envelope, so the budget,
+ * timeout, and error classification stay single-sourced.
  *
  * Reuses `MASTRA_SERVICE_API_KEYS` (no new credential). Plain-string logging
  * only (Railway logsV2 silences JSON.stringify payloads from this runtime path).
@@ -118,12 +122,14 @@ export async function handleExperienceVariantRouteRequest({
   const prompt = buildPersonaTopicPrompt(topic, persona)
 
   // Delegate to the shared draft generation path (same budget + error
-  // classification), feeding the persona-composed prompt.
+  // classification), feeding the persona-composed prompt. `mode: "quick"`
+  // runs the one-shot quick-draft workflow rather than the 5-step pipeline,
+  // for reliable per-persona fan-out on slower chat models.
   const draftOutcome = await handleExperienceDraftRouteRequest({
     authHeader,
     serviceKeys,
     readJson: () =>
-      Promise.resolve({ prompt, locale, candidates, exemplar, mode: "multi" }),
+      Promise.resolve({ prompt, locale, candidates, exemplar, mode: "quick" }),
     getMastra,
     budgetMs,
   })
