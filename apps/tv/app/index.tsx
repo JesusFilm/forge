@@ -8,7 +8,6 @@ import {
   useState,
 } from "react"
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -25,6 +24,7 @@ import { advanceByDelta } from "../src/components/home/heroPagerState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
 import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
@@ -340,12 +340,14 @@ export default function HomeScreen() {
 
   // ── Loading state (no model yet — initial load or a retry) ──
   if (screenState === "loading") {
+    // Non-focusable skeleton in place of the spinner (KTD2): it makes no focus
+    // claim, so when the content branch mounts the hero's hasTVPreferredFocus
+    // takes focus exactly as today. Shows only when model == null (cold load);
+    // a warm cache-first re-entry returns a model and skips straight to content.
     return (
       <View style={styles.screen}>
         {topBar}
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={WATCH_THEME.accent} />
-        </View>
+        <HomeSkeleton />
       </View>
     )
   }
