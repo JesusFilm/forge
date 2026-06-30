@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent"
 
+import { STEP_CAPS } from "../budgets"
 import { getSeekerMemory } from "../memory"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
 
@@ -69,4 +70,14 @@ export const seekerAgent = new Agent({
     retrieveAnswer: retrieveAnswerTool,
   },
   memory: getSeekerMemory(),
+  // Step-budget floor (feat-202). The bearer-gated `/forge-seeker` route sets
+  // `maxSteps: STEP_CAPS.toolCallingTurn` at its call site, but the built-in,
+  // code-unauthenticated `/api/agents/seekerAgent` surface (reachable by any
+  // in-network caller) carries no budget. Setting it on `defaultOptions` (the
+  // vNext field `.stream()`/`.generate()` deep-merge in, NOT the unused
+  // `defaultStreamOptionsLegacy`) gives that path a runaway-loop ceiling.
+  // Reuses the route's SAME shared constant so the two paths can't diverge.
+  // It is a DEFAULT floor, not an un-overridable ceiling: deep-merge lets an
+  // explicit per-call `maxSteps` win — the same property the route's budget has.
+  defaultOptions: { maxSteps: STEP_CAPS.toolCallingTurn },
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { STEP_CAPS } from "../budgets"
 import { getSeekerMemory } from "../memory"
 import { seekerAgent } from "./seeker-agent"
 
@@ -68,5 +69,17 @@ describe("seeker agent", () => {
   it("attaches the seeker memory singleton", async () => {
     const memory = await seekerAgent.getMemory()
     expect(memory).toBe(getSeekerMemory())
+  })
+
+  it("applies a default maxSteps floor reusing the route's shared constant", async () => {
+    // feat-202: the built-in /api/agents/seekerAgent surface carries no per-call
+    // budget, so the constructor default is the only ceiling on the step
+    // dimension there. getDefaultOptions() resolves the same `defaultOptions`
+    // field the vNext stream()/generate() path deep-merges in, so this proves
+    // the floor takes effect when no per-call maxSteps is passed. Asserting
+    // against STEP_CAPS.toolCallingTurn (not a literal 8) pins it to the SAME
+    // constant the /forge-seeker route uses, so the two paths can't drift apart.
+    const options = await seekerAgent.getDefaultOptions()
+    expect(options.maxSteps).toBe(STEP_CAPS.toolCallingTurn)
   })
 })

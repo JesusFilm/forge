@@ -31,6 +31,12 @@ const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
 const DEFAULT_JESUSFILM_RAG_USER_AGENT = "forge-mastra-jesusfilm-rag/1.0"
 const DEFAULT_JESUSFILM_RAG_TIMEOUT_MS = 5_000
+// 2 MiB ceiling on the buffered RAG response body (feat-202). Sized ~8x above a
+// generous legitimate topK=5 payload (≈ max passage text × 5 + citation
+// overhead) so a valid retrieval is never rejected, while bounding the heap a
+// misbehaving upstream can claim before the byte-cap aborts the stream. Override
+// via JESUSFILM_RAG_MAX_RESPONSE_BYTES; never required at boot.
+const DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES = 2_097_152
 const DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL =
   DEFAULT_SUBTITLE_ENRICHMENT_MODEL
 const DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS =
@@ -72,6 +78,8 @@ export type JesusfilmRagConfig = {
   apiKey?: string
   timeoutMs: number
   userAgent: string
+  /** Max bytes buffered from the RAG response body before the read aborts. */
+  maxResponseBytes: number
 }
 
 const envSchema = z.object({
@@ -262,6 +270,23 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default(DEFAULT_JESUSFILM_RAG_USER_AGENT),
+  // Byte-cap on the buffered RAG response body (feat-202). `.optional()` with a
+  // runtime fallback in `getJesusfilmRagConfig()` — NOT a required-at-boot var
+  // (KTD5: stays out of the production `missing` list in assertMastraRuntimeEnv).
+  // Unset → DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES (2 MiB). The 16 MiB `.max()`
+  // ceiling fails LOUD (boot-time parse error) on an over-range operator typo
+  // like "99999999999" rather than silently widening the cap to ~93 GB and
+  // defeating the OOM guard this var exists to provide — a fail-open footgun on a
+  // safety control. 16 MiB is 8× the default: ample headroom for a legitimate
+  // raise if passages grow, while bounding the ~2× transient peak per in-flight
+  // read so even the widest sanctioned config stays survivable on the shared
+  // process. Mirrors the sibling JESUSFILM_RAG_TIMEOUT_MS `.max(30_000)`.
+  JESUSFILM_RAG_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(16_777_216)
+    .optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -486,6 +511,9 @@ export const env = envSchema.parse({
   JESUSFILM_RAG_BASE_URL: emptyToUndefined(process.env.JESUSFILM_RAG_BASE_URL),
   JESUSFILM_RAG_TIMEOUT_MS: emptyToUndefined(
     process.env.JESUSFILM_RAG_TIMEOUT_MS,
+  ),
+  JESUSFILM_RAG_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.JESUSFILM_RAG_MAX_RESPONSE_BYTES,
   ),
   JESUSFILM_RAG_USER_AGENT: emptyToUndefined(
     process.env.JESUSFILM_RAG_USER_AGENT,
@@ -713,6 +741,11 @@ export function getJesusfilmRagConfig(): JesusfilmRagConfig {
     apiKey: env.JESUSFILM_RAG_API_KEY,
     timeoutMs: env.JESUSFILM_RAG_TIMEOUT_MS,
     userAgent: env.JESUSFILM_RAG_USER_AGENT,
+    // `.optional()` schema + runtime fallback: keeps the knob out of the
+    // boot-time `missing` list while always handing the client a concrete cap.
+    maxResponseBytes:
+      env.JESUSFILM_RAG_MAX_RESPONSE_BYTES ??
+      DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES,
   }
 }
 

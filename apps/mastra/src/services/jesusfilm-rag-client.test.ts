@@ -10,6 +10,10 @@ const testConfig: JesusfilmRagConfig = {
   apiKey: "rag-key",
   timeoutMs: 5_000,
   userAgent: "forge-test-rag/1.0",
+  // Default production ceiling (2 MiB). Every existing fixture is well under it,
+  // so these tests double as under-cap regression guards that the byte-capped
+  // read is transparent below the limit.
+  maxResponseBytes: 2_097_152,
 }
 
 function jsonResponse(
@@ -508,6 +512,255 @@ describe("jesusfilm-rag client", () => {
 
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.results).toHaveLength(5)
+  })
+
+  it("maps an over-cap success body to parse_error (real over-cap, not a mocked branch)", async () => {
+    // A structurally VALID JSON body that is larger than a deliberately tiny
+    // cap. The byte counter trips before the body is parsed, so it rides the
+    // existing parse_error path — exercised against a real Response stream.
+    const big = JSON.stringify({
+      results: Array.from({ length: 50 }, (_, index) => ({
+        ...rankedResultWithTitle,
+        chunkId: `chunk-${index}`,
+      })),
+    })
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(big, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    )
+
+    const result = await searchJesusfilmRag({
+      query: "x",
+      config: { ...testConfig, maxResponseBytes: 64 },
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+    })
+    // Leak control: no body content bled into the typed failure.
+    expect(JSON.stringify(result)).not.toContain("Jesus invites everyone")
+  })
+
+  it("aborts the stream on over-cap — proves reader.cancel() fires, not just the return value", async () => {
+    // The load-bearing R2 test: assert the ABORT mechanism fired, not merely
+    // that the result is parse_error. The body is an unbounded stream that would
+    // emit far more than the cap if fully drained; a regression deleting
+    // reader.cancel() (bare `return undefined` after the loop) would still
+    // return parse_error but would NOT set this flag — reopening the OOM vector.
+    let cancelled = false
+    const oneKib = new Uint8Array(1024)
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(oneKib)
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(stream, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    )
+
+    const result = await searchJesusfilmRag({
+      query: "x",
+      config: { ...testConfig, maxResponseBytes: 4_096 },
+      fetchImpl,
+    })
+
+    expect(cancelled).toBe(true)
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+    })
+  })
+
+  it("byte-bounds the error path too: over-cap error body yields no upstreamReason", async () => {
+    // A multi-GB *error* body OOMs the shared process identically to a success
+    // body, so readUpstreamReason is byte-bounded as well. An over-cap error
+    // body returns undefined from the capped read → no reason extracted, but the
+    // status-based classification (rejected, 400) is unchanged.
+    const big = JSON.stringify({ error: "x".repeat(5_000) })
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(big, {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    )
+
+    const result = await searchJesusfilmRag({
+      query: "x",
+      config: { ...testConfig, maxResponseBytes: 64 },
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      status: 400,
+    })
+    // The capped read returned undefined, so no reason was extracted.
+    if (!result.ok) expect(result.upstreamReason).toBeUndefined()
+  })
+
+  it("treats a null-body response as parse_error without throwing", async () => {
+    // `new Response(null).body === null`; the helper returns undefined for the
+    // missing stream → the success site maps it to parse_error gracefully.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(null, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    )
+
+    const result = await searchJesusfilmRag({
+      query: "x",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+    })
+  })
+
+  it("accepts a body exactly at the cap but rejects one byte over (boundary)", async () => {
+    const body = JSON.stringify({ results: [] })
+    const byteLength = new TextEncoder().encode(body).byteLength
+
+    const atCap = await searchJesusfilmRag({
+      query: "x",
+      config: { ...testConfig, maxResponseBytes: byteLength },
+      fetchImpl: vi.fn<typeof fetch>(() =>
+        Promise.resolve(
+          new Response(body, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      ),
+    })
+    expect(atCap).toEqual({ ok: true, results: [] })
+
+    const overCap = await searchJesusfilmRag({
+      query: "x",
+      config: { ...testConfig, maxResponseBytes: byteLength - 1 },
+      fetchImpl: vi.fn<typeof fetch>(() =>
+        Promise.resolve(
+          new Response(body, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      ),
+    })
+    expect(overCap).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+    })
+  })
+
+  it("aborts the stream on an over-cap error body too — proves cancel() fires on the error path", async () => {
+    // The error-path read (readUpstreamReason) must be byte-bounded by the SAME
+    // abort mechanism as the success body, proven independently: if the error
+    // read were ever split into a separate uncapped helper, this test fails even
+    // though the success-path abort test would still pass.
+    let cancelled = false
+    const oneKib = new Uint8Array(1024)
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(oneKib)
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(stream, {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    )
+
+    const result = await searchJesusfilmRag({
+      query: "x",
+      config: { ...testConfig, maxResponseBytes: 4_096 },
+      fetchImpl,
+    })
+
+    expect(cancelled).toBe(true)
+    expect(result).toEqual({
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      status: 400,
+    })
+    if (!result.ok) expect(result.upstreamReason).toBeUndefined()
+  })
+
+  it("reassembles a multi-chunk under-cap body correctly (offset loop)", async () => {
+    // Exercises the merged.set(chunk, offset) reassembly across >1 chunk — the
+    // single-chunk fixtures above never run the offset arithmetic. A real stream
+    // emits the JSON in three separate chunks, all under the default cap.
+    const payload = { results: [rankedResultWithTitle, rankedResultNullTitle] }
+    const bytes = new TextEncoder().encode(JSON.stringify(payload))
+    const third = Math.ceil(bytes.byteLength / 3)
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.subarray(0, third))
+        controller.enqueue(bytes.subarray(third, third * 2))
+        controller.enqueue(bytes.subarray(third * 2))
+        controller.close()
+      },
+    })
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(stream, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    )
+
+    const result = await searchJesusfilmRag({
+      query: "x",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.results).toHaveLength(2)
+      expect(result.results[0].citation.url).toBe(
+        "https://example.org/who-is-jesus",
+      )
+    }
   })
 
   it("caps a >300-codepoint upstream error reason, codepoint-safe", async () => {

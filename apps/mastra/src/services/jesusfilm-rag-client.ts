@@ -117,10 +117,78 @@ function safeReason(value: unknown): string | undefined {
     : `${codepoints.slice(0, 297).join("")}...`
 }
 
+/**
+ * Read and JSON-parse a response body, bounded at `maxBytes` (feat-202). Streams
+ * the body with a running byte counter rather than trusting `Content-Length`
+ * (absent or spoofable); the instant the counter exceeds `maxBytes` it cancels
+ * the reader — aborting the underlying socket so a misbehaving upstream can't
+ * keep filling the heap — and returns `undefined`. Both ingress reads in this
+ * file go through here so neither can buffer a multi-GB body into the single
+ * Node process that runs every Mastra agent and workflow.
+ *
+ * Returns `undefined` on EVERY failure mode (absent body, read error, over-cap,
+ * decode error, JSON parse error), which preserves this file's prior
+ * `.catch(() => undefined)` no-throw behaviour: an over-cap body rides the
+ * EXISTING graceful paths — `parse_error` at the success site,
+ * "no reason"/status-classified at the error site — through to the agent's
+ * `unavailable` status, never a throw. The catch swallows silently and MUST NOT
+ * log the caught error: a `JSON.parse` `SyntaxError` can embed raw body
+ * fragments, and logging it would breach the NO-THROW LEAK CONTROL invariant
+ * (query, bearer, and raw body never reach a throw, a log, or the typed result).
+ */
+async function readJsonBodyCapped(
+  response: Response,
+  maxBytes: number,
+): Promise<unknown> {
+  const stream = response.body
+  if (!stream) return undefined
+  // `reader` is acquired INSIDE the try and released in a guarded `finally` so
+  // BOTH ends of the no-throw boundary are structural, not dependent on timing:
+  // a `getReader()` throw (e.g. a double-locked body) is swallowed to undefined,
+  // and `releaseLock()` (which throws if a read is still pending) can never
+  // escape and mask the graceful return. Keeps NO-THROW LEAK CONTROL intact even
+  // under a future edit that disturbs the current no-pending-read invariant.
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+  try {
+    reader = stream.getReader()
+    const chunks: Uint8Array[] = []
+    let total = 0
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > maxBytes) {
+        // Abort the underlying stream (not merely stop reading) so the socket
+        // stops filling the heap. The over-cap body then degrades gracefully.
+        await reader.cancel()
+        return undefined
+      }
+      chunks.push(value)
+    }
+    const merged = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      merged.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return JSON.parse(new TextDecoder().decode(merged))
+  } catch {
+    return undefined
+  } finally {
+    try {
+      reader?.releaseLock()
+    } catch {
+      // Cleanup must never escape — see the no-throw boundary note above.
+    }
+  }
+}
+
 async function readUpstreamReason(
   response: Response,
+  maxBytes: number,
 ): Promise<string | undefined> {
-  const body = await response.json().catch(() => undefined)
+  const body = await readJsonBodyCapped(response, maxBytes)
   if (!body || typeof body !== "object" || Array.isArray(body)) return undefined
   const record = body as { error?: unknown; message?: unknown }
   return safeReason(record.error) ?? safeReason(record.message)
@@ -211,10 +279,13 @@ export async function searchJesusfilmRag({
   }
 
   if (!response.ok) {
-    return failureForStatus(response.status, await readUpstreamReason(response))
+    return failureForStatus(
+      response.status,
+      await readUpstreamReason(response, config.maxResponseBytes),
+    )
   }
 
-  const body = await response.json().catch(() => undefined)
+  const body = await readJsonBodyCapped(response, config.maxResponseBytes)
   const parsed = SearchResponseSchema.safeParse(body)
   if (!parsed.success) {
     // Genuinely malformed or missing a required consumed field. The raw Zod
