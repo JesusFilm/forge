@@ -910,6 +910,139 @@ describe("multiStepDraftWorkflow (real step bodies)", () => {
         // videoHero's heading threaded forward (coherence).
         expect(sawPriorHeading).toEqual([false, true, true])
       })
+
+      it("titles from the TOPIC line for persona prompts (no steering leak)", async () => {
+        const { mastra } = makeFillMastra()
+        const personaInput = {
+          ...PLAN_INPUT,
+          // Persona-composed prompt: steering instructions FIRST, subject on a
+          // TOPIC line. The synthesized title must be the subject, not the
+          // steering text.
+          prompt:
+            "TARGET AUDIENCE — write this experience specifically for: Grieving\nNeeds comfort before anything else.\n\nTOPIC: Easter",
+        }
+        const skeletonOut = await executeSkeletonStep({
+          inputData: personaInput,
+          mastra: mastra as never,
+          abortSignal: undefined,
+        })
+        const result = await executeFillStep({
+          inputData: skeletonOut,
+          mastra: mastra as never,
+          abortSignal: undefined,
+        })
+        expect(result.draft.title).toBe("Easter")
+        expect(result.draft.title).not.toContain("TARGET AUDIENCE")
+      })
+
+      // A fill mastra whose fill agent returns INVALID (non-JSON) output for
+      // the listed block types and valid JSON otherwise — drives the resilient
+      // per-node retry-then-skip path. Mirrors the real "agent output was not
+      // valid JSON" failure a weak model produces on a block it can't author.
+      function makeResilientFillMastra(badTypes: Set<string>): {
+        mastra: { getAgentById: ReturnType<typeof vi.fn> }
+      } {
+        const fillSpy = vi.fn(async (prompt: string) => {
+          const type = /type "(\w+)"/.exec(prompt)?.[1] ?? ""
+          if (badTypes.has(type)) {
+            return { text: `I cannot produce valid JSON for ${type}.` }
+          }
+          if (type === "videoHero") {
+            return {
+              text: JSON.stringify({
+                t: "videoHero",
+                candidateRef: "v01",
+                heading: "H",
+                subheading: "S",
+              }),
+            }
+          }
+          if (type === "cta") {
+            return {
+              text: JSON.stringify({
+                t: "cta",
+                heading: "C",
+                body: "B",
+                buttonLabel: "Go",
+              }),
+            }
+          }
+          return {
+            text: JSON.stringify({
+              t: "text",
+              heading: "T",
+              contentParagraphs: ["P"],
+            }),
+          }
+        })
+        const mastra = {
+          getAgentById: vi.fn((id: string) => {
+            if (id === "experience-skeleton") {
+              return {
+                generate: vi.fn(async () => ({
+                  text: JSON.stringify(VALID_SKELETON),
+                })),
+              }
+            }
+            if (id === "experience-fill") return { generate: fillSpy }
+            throw new Error(`unexpected agent id ${id}`)
+          }),
+        }
+        return { mastra }
+      }
+
+      it("skips a node that fails all attempts and still assembles a valid draft (resilient fill)", async () => {
+        const warnSpy = vi
+          .spyOn(console, "warn")
+          .mockImplementation(() => undefined)
+        // cta fails every attempt; videoHero + section(text) survive.
+        const { mastra } = makeResilientFillMastra(new Set(["cta"]))
+        const skeletonOut = await executeSkeletonStep({
+          inputData: PLAN_INPUT,
+          mastra: mastra as never,
+          abortSignal: undefined,
+        })
+        const result = await executeFillStep({
+          inputData: skeletonOut,
+          mastra: mastra as never,
+          abortSignal: undefined,
+        })
+        // The bad cta was dropped; the page still validates with the rest.
+        expect(DraftExperienceSchema.safeParse(result.draft).success).toBe(true)
+        expect(result.draft.blocks.map((b) => b.t)).toEqual([
+          "videoHero",
+          "section",
+        ])
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("fill_node_skipped type=cta"),
+        )
+        warnSpy.mockRestore()
+      })
+
+      it("fails the fill step when too many nodes are skipped to meet the block minimum", async () => {
+        const warnSpy = vi
+          .spyOn(console, "warn")
+          .mockImplementation(() => undefined)
+        // videoHero AND cta fail → only the section's text child survives = one
+        // top-level block, below GENERATION_MIN_BLOCKS, so the assembled draft
+        // fails the schema floor rather than emitting a degenerate page.
+        const { mastra } = makeResilientFillMastra(
+          new Set(["videoHero", "cta"]),
+        )
+        const skeletonOut = await executeSkeletonStep({
+          inputData: PLAN_INPUT,
+          mastra: mastra as never,
+          abortSignal: undefined,
+        })
+        await expect(
+          executeFillStep({
+            inputData: skeletonOut,
+            mastra: mastra as never,
+            abortSignal: undefined,
+          }),
+        ).rejects.toMatchObject({ name: "WorkflowStepError", step: "fill" })
+        warnSpy.mockRestore()
+      })
     })
 
     describe("workflow chain symmetry", () => {
