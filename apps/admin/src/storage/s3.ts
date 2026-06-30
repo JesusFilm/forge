@@ -183,8 +183,8 @@ export async function writeArtifact(
  * future intra-admin artifact use case.
  *
  * **Do NOT use this helper to read manager-produced artifacts** —
- * scene-analysis.json and transcript.json live in manager's bucket,
- * not admin's. Use {@link readManagerArtifact} for those.
+ * manager-produced artifacts live in manager's bucket, not admin's.
+ * Use {@link readManagerArtifact} for those.
  */
 export async function readArtifact(
   assetId: string,
@@ -211,9 +211,8 @@ export async function readArtifact(
 // ---------------------------------------------------------------------------
 // Manager artifacts S3 backend — read-only by design.
 //
-// Admin's scene and transcript backfills read `{assetId}/scene-analysis.json`
-// and `{assetId}/transcript.json` produced by apps/manager. Those artifacts
-// live in manager's own
+// Admin's transcript backfill reads `{assetId}/transcript.json` produced by
+// apps/manager. Those artifacts live in manager's own
 // Railway bucket, NOT admin's RAILWAY_S3_* (cms-storage) bucket — admin's
 // reads must be routed there.
 //

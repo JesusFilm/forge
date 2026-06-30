@@ -54,11 +54,11 @@ export const env = createEnv({
     ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
     // Admin embed-trigger proxy (plan 006) — manager exposes
-    // /api/admin-embeds/{scene,transcript} which forward to admin's
-    // GraphQL trigger mutations using the bearer key below. Both vars
-    // are optional at boot so manager keeps starting in environments
-    // that don't have the proxy configured; the route handlers throw
-    // a clean 500 with a clear message if invoked without these set.
+    // /api/admin-embeds/transcript, which forwards to admin's GraphQL
+    // trigger mutation using the bearer key below. Both vars are optional
+    // at boot so manager keeps starting in environments that don't have the
+    // proxy configured; the route handler throws a clean 500 with a clear
+    // message if invoked without these set.
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 

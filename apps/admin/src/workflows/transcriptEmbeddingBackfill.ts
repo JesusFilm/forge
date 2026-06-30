@@ -213,9 +213,9 @@ export type BackfillOutcome =
     }
 
 /**
- * One entry per upstream gap surfaced by this run. Mirrors the R1
- * (scene-embedding) shape — see that file for the dedup-by-assetId +
- * sort-ascending rationale. The R2 workflow stamps every entry with
+ * One entry per upstream gap surfaced by this run. The workflow dedupes
+ * by assetId and sorts ascending so operator reports are stable across
+ * retries. The R2 workflow stamps every entry with
  * `kind: "transcript"` so PR2's trigger endpoint dispatches the
  * transcript pipeline (vs scene-analysis). Only
  * `skipped { reason: "artifact_missing" }` outcomes feed this list;

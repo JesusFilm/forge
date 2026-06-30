@@ -52,7 +52,6 @@ export type PermissionKey =
   | "write:experiences"
   | "write:videos"
   | "write:media-assets"
-  | "write:scene-embeddings"
   | "write:transcript-embeddings"
   | "write:experience-embeddings"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
@@ -108,8 +107,6 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // Core-sourced; only ADMIN may override (also flips source='manager').
   "write:videos": "ADMIN",
   "write:media-assets": "EDITOR",
-  // Derived-column trigger (scene-embedding backfill). ADMIN-only.
-  "write:scene-embeddings": "ADMIN",
   // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
   "write:transcript-embeddings": "ADMIN",
   // Experience-embedding backfill (admin-native). Enumerates
@@ -197,8 +194,8 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * allowed to satisfy. This role is minted by `createContext` when an
  * incoming request carries a valid bearer key matching
  * `WORKFLOW_API_KEYS`. It is intentionally narrower than ADMIN — the
- * bearer-auth path is for service-to-service trigger calls (apps/manager
- * → admin's embed-backfill mutations), NOT a generic admin session.
+ * bearer-auth path is for service-to-service trigger calls, NOT a
+ * generic admin session.
  *
  * **Adding a key here widens the bearer caller's blast radius.** It also
  * widens the manager proxy's reach: any user with the Strapi "Manager"
@@ -210,7 +207,6 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * editorial tier ladder is bypassed for this role.
  */
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
-  "write:scene-embeddings",
   "write:transcript-embeddings",
   // feat-119 PR2: the `pnpm trigger-enrichment` CLI authenticates
   // with `WORKFLOW_API_KEYS` (mints `WORKFLOW_TRIGGER`) when an

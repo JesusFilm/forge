@@ -47,12 +47,12 @@ Use the emitted JSON as the required Admin backfill gate:
 ```bash
 pnpm --filter @forge/admin run-embeds \
   --pipeline=all \
-  --scene-mode=model-upgrade \
   --transcript-mode=model-upgrade \
   --experience-mode=model-upgrade \
   --gate-report=docs/search-eval-reports/<reportId>.json
 ```
 
-`--pipeline=all` refuses gate reports outside this directory and rejects
-minimal, stale, or synthetic JSON that is missing the embedded comparison
-report, orchestrator summary, zero-failure totals, or provider provenance.
+`--pipeline=all` now runs transcript plus experience content embeddings.
+It refuses gate reports outside this directory and rejects minimal, stale, or
+synthetic JSON that is missing the embedded comparison report, orchestrator
+summary, zero-failure totals, or provider provenance.

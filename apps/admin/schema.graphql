@@ -853,7 +853,7 @@ type Mutation {
     mode: String
   ): JSON
   """
-  Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerSceneEmbeddingBackfill` / `triggerTranscriptEmbeddingBackfill` (feat-119 PR1). ADMIN-only.
+  Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerTranscriptEmbeddingBackfill`. ADMIN-only.
   """
   triggerManagerEnrichment(
     """
@@ -876,25 +876,6 @@ type Mutation {
   """
   triggerMediaImageEnrichment(id: ID!): MediaAsset
   """
-  Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. One target per (video, edition, locale) where the locale set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
-  """
-  triggerSceneEmbeddingBackfill(
-    """Restrict to these coreIds. Omitted = all mapped videos."""
-    coreIds: [String!]
-    """
-    Restrict to these BCP-47 tags. Omitted = every locale that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. Filters on the `VideoSceneLocale.locale` storage row — i.e. which language-specific scene description + embedding to (re)write. Contrast with `triggerTranscriptEmbeddingBackfill(languages)`, which filters on the Video's source transcription language (a different semantic axis despite the similar arg name).
-    """
-    locales: [String!]
-    """
-    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
-    """
-    mappingS3Key: String = "admin-migrations/core-id-mapping.json"
-    """
-    Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing scene vectors.
-    """
-    mode: SceneBackfillMode
-  ): JSON
-  """
   Enqueue a Core sync run. ADMIN only. Returns workflow dispatch metadata.
   """
   triggerSync(
@@ -911,11 +892,11 @@ type Mutation {
     """Restrict to these coreIds. Omitted = all mapped videos."""
     coreIds: [String!]
     """
-    Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` (not `locales` as in `triggerSceneEmbeddingBackfill`) because the filter axis is source transcription language, not per-locale publish state.
+    Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` because the filter axis is source transcription language, not per-locale publish state.
     """
     languages: [String!]
     """
-    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`, shared with scene-embedding backfill). Defaults to admin-migrations/core-id-mapping.json.
+    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
     """
@@ -1123,16 +1104,6 @@ type RelatedQuestionsBlock {
   questions: [RelatedQuestionItem!]!
   sectionKey: String
   t: String
-}
-
-"""
-Overwrite intent for Mastra scene embedding backfills. Idempotent is the default.
-"""
-enum SceneBackfillMode {
-  FORCE
-  IDEMPOTENT
-  MODEL_UPGRADE
-  REPAIR
 }
 
 """
