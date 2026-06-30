@@ -26,16 +26,22 @@ const FIELD_SOLID_CLASS = "bg-white text-stone-950"
 
 export function FloatingSearchFieldButton({
   display,
+  mobileDisplay,
   isPlaceholder,
   className,
   iconTestId = "floating-search-icon",
   ...props
 }: {
   display: string
+  mobileDisplay?: string
   isPlaceholder: boolean
   className?: string
   iconTestId?: string
 } & ComponentProps<"button">) {
+  const textClassName = `min-w-0 truncate transition-colors duration-300 group-hover:text-stone-950 ${
+    isPlaceholder ? "text-white/90" : "text-white"
+  }`
+
   return (
     <button
       type="button"
@@ -47,13 +53,14 @@ export function FloatingSearchFieldButton({
         data-testid={iconTestId}
         className={iconClassName("glass")}
       />
-      <span
-        className={`min-w-0 truncate transition-colors duration-300 group-hover:text-stone-950 ${
-          isPlaceholder ? "text-white/90" : "text-white"
-        }`}
-      >
-        {display}
-      </span>
+      {mobileDisplay ? (
+        <>
+          <span className={`${textClassName} md:hidden`}>{mobileDisplay}</span>
+          <span className={`${textClassName} hidden md:inline`}>{display}</span>
+        </>
+      ) : (
+        <span className={textClassName}>{display}</span>
+      )}
     </button>
   )
 }
