@@ -1,7 +1,6 @@
-// SYNC: ported from apps/mobile/src/hooks/useWatchHome.ts. The lean bulk fetch +
-// pure model build are identical; TV's model drops the carousel/pager machinery
-// (see ../lib/watchHome/model.ts). Adds the stale-while-revalidate snapshot (U3):
-// paint the prior launch's home model instantly while the live fetch revalidates.
+// SYNC: ported from apps/mobile/src/hooks/useWatchHome.ts; TV's model drops the
+// carousel/pager machinery (see ../lib/watchHome/model.ts). Adds the SWR snapshot
+// (U3): paint the prior launch's model instantly while the live fetch revalidates.
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"

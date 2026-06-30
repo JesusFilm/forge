@@ -1,8 +1,6 @@
-// SYNC: ported from apps/mobile/src/hooks/useBibleVerses.ts (web: BibleQuotesSection.tsx).
-// bibleCitations carry only references, so verse text is fetched client-side per citation
-// from wldeh/bible-api on jsdelivr; this hook ONLY resolves text (keyed by documentId). TV is hardcoded English, so the version is pinned to en-webbe.
-// A module-scope cache (bibleVerseFetch) dedupes repeat/duplicate citations so each
-// unique verse hits the CDN at most once across mounts.
+// SYNC: ported from apps/mobile/src/hooks/useBibleVerses.ts. Verse text is fetched
+// client-side per citation from wldeh/bible-api on jsdelivr (keyed by documentId,
+// version pinned en-webbe); a module-scope cache (bibleVerseFetch) dedupes across mounts.
 
 import { useEffect, useState } from "react"
 

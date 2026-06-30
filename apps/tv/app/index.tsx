@@ -340,10 +340,9 @@ export default function HomeScreen() {
 
   // ── Loading state (no model yet — initial load or a retry) ──
   if (screenState === "loading") {
-    // Non-focusable skeleton in place of the spinner (KTD2): it makes no focus
-    // claim, so when the content branch mounts the hero's hasTVPreferredFocus
-    // takes focus exactly as today. Shows only when model == null (cold load);
-    // a warm cache-first re-entry returns a model and skips straight to content.
+    // Non-focusable skeleton (KTD2): no focus claim, so the hero's
+    // hasTVPreferredFocus takes over when the content branch mounts. Shown only
+    // when model == null (cold load); a warm re-entry skips straight to content.
     return (
       <View style={styles.screen}>
         {topBar}

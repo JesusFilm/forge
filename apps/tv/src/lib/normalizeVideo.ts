@@ -111,11 +111,10 @@ export type WatchVideoRecord = {
 }
 
 // Series screen's record: shared video record (trailer = series' own playable dub
-// as streamingUrl/variants) plus episode rail and language union. Produced only by
-// normalizeSeries so the base record stays untouched for WatchSessionProvider/watch screen.
+// as streamingUrl/variants) plus the episode rail. The language union is fetched
+// lazily (GET_SERIES_LANGUAGES, U1), not carried on the record.
 export type WatchSeriesRecord = WatchVideoRecord & {
   episodes: WatchEpisode[]
-  languages: WatchChildLanguage[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -463,10 +462,6 @@ export function normalizeSeries(
   const result: WatchSeriesRecord = {
     ...buildWatchVideoRecord(raw),
     episodes: buildEpisodes(raw),
-    // The language union moved to the lazy GET_SERIES_LANGUAGES query (KTD1); the
-    // lean series record no longer carries it, so the screen sources languages
-    // from that query's own state and record.languages stays empty.
-    languages: [],
   }
   normalizeSeriesCache.set(raw, result)
   return result

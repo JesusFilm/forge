@@ -28,4 +28,13 @@ describe("normalizeChildDubLanguages (lazy series language union)", () => {
     ])
     expect(out.map((l) => l.bcp47)).toEqual(["fr", null])
   })
+
+  // The truthy-name branch resolves the JSON locale map via pickLocalizedName —
+  // the path the old normalizeSeries tests covered before U1 moved this out.
+  it("resolves a JSON locale-map name to the localized string", () => {
+    const out = normalizeChildDubLanguages([
+      { slug: "en", name: { en: "English" }, bcp47: "en" },
+    ])
+    expect(out[0]).toEqual({ slug: "en", name: "English", bcp47: "en" })
+  })
 })

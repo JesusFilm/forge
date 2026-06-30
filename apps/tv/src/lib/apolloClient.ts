@@ -34,11 +34,9 @@ let _client: ApolloClient | undefined
 export function getApolloClient(): ApolloClient {
   if (_client) return _client
 
-  // The bearer rides ONLY on the gated Search operation: a bearer'd request
-  // rate-limit-buckets as consumer:<key> on admin (one shared bucket for the
-  // whole fleet), while anonymous public queries bucket per device IP. The prod
-  // token stays unprovisioned until admin lands fleet-aware (consumer:<key>:<ip>)
-  // bucketing — see the perf-sweep plan (U7).
+  // Bearer rides ONLY on the Search op: attaching it globally merges the fleet
+  // into one consumer:<key> 60/min bucket (public ops bucket per device IP). Prod
+  // token embargoed until admin lands fleet-aware bucketing (U7).
   const authLink = new ApolloLink((operation, forward) => {
     const auth = authHeadersForOperation(operation.operationName, getApiToken())
     if (Object.keys(auth).length > 0) {

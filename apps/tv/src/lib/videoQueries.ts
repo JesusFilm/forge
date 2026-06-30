@@ -227,10 +227,8 @@ export type SeriesVideoData = ResultOf<typeof GET_SERIES_BY_SLUG>
 
 // ── Series language union (lazy, secondary) ─────────────────────────
 // childDubLanguages alone, fetched after the lean GET_SERIES_BY_SLUG so the hero
-// and episode rail render first. Selects the same Video entity (documentId: id)
-// and feeds the language panel + hero count from its OWN state — never through
-// the lean query's record (KTD1: the lean read stays referentially stable so the
-// dub memo never re-walks the ~2,200 dubs).
+// and rail render first; feeds the panel + count from its OWN state, never the
+// lean record (KTD1 keeps the lean read stable so the dub memo never re-walks).
 export const GET_SERIES_LANGUAGES = graphql(`
   query GetSeriesLanguages($slug: String!) {
     videoBySlug(slug: $slug) {

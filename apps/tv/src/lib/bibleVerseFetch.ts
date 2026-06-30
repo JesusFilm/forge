@@ -1,8 +1,6 @@
-// The cross-mount verse cache + dedupe for useBibleVerses, mirroring the
-// module-scope thumbnailCache (search) and the ensureDubMedia ledger
-// (dubMediaFetch). RN's fetch ignores `cache`, so a JS Map is the dedupe lever:
-// a repeat mount of the same citation set then issues zero network requests, and
-// duplicate citations within one set collapse to a single fetch.
+// Cross-mount verse cache + dedupe for useBibleVerses, mirroring the module-scope
+// thumbnailCache (search) and the ensureDubMedia ledger (dubMediaFetch). RN's
+// fetch ignores `cache`, so a JS Map is the dedupe lever.
 
 const BIBLE_API_BASE = "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles"
 
@@ -29,10 +27,9 @@ export function cacheVerse(url: string, text: string): void {
 
 export type CitationUrl = { documentId: string; url: string | null }
 
-// Split resolved citation URLs into text already in cache (keyed by documentId,
-// the hook's return shape) and the deduplicated set of URLs still to fetch.
-// A `null` url means the citation is unfetchable (bad book/chapter) and is
-// silently dropped — the card falls back to reference-only.
+// Split resolved citation URLs into text already in cache (keyed by documentId)
+// and the deduplicated set still to fetch. A null url (unfetchable book/chapter)
+// is dropped — the card falls back to reference-only.
 export function partitionVerses(citations: readonly CitationUrl[]): {
   resolved: Record<string, string>
   toFetch: Set<string>

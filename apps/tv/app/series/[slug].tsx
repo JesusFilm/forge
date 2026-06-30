@@ -90,7 +90,7 @@ export default function SeriesScreen() {
 
   // The language union (childDubLanguages) is fetched separately so the hero and
   // episode rail above don't wait on the ~835KB server aggregation. It feeds the
-  // panel + hero count from its OWN state; record.languages stays empty (KTD1).
+  // panel + hero count from its OWN state; the record carries no languages (KTD1).
   const { data: langData } = useQuery(GET_SERIES_LANGUAGES, {
     variables: { slug: decodedSlug },
     skip: !decodedSlug,

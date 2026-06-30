@@ -585,15 +585,9 @@ describe("normalizeSeries — episodes (own children)", () => {
   })
 })
 
-describe("normalizeSeries — language union moved to the lazy query (U1)", () => {
-  // childDubLanguages is no longer fetched on the lean series query, so
-  // normalizeSeries never populates languages even when the fixture carries the
-  // field. The screen sources languages from GET_SERIES_LANGUAGES via
-  // normalizeChildDubLanguages (union/dedupe logic lives in normalizeLanguages.test).
-  it("always yields empty languages from the lean record", () => {
-    expect(normalizeSeries(makeRawSeries())!.languages).toEqual([])
-  })
-})
+// The language union moved off WatchSeriesRecord entirely (U1): it is fetched by
+// GET_SERIES_LANGUAGES and normalized via normalizeChildDubLanguages — see
+// normalizeLanguages.test.ts. normalizeSeries no longer produces languages.
 
 describe("normalizeSeries — memoization (WeakMap on raw reference)", () => {
   it("re-normalizing the same raw reference returns the memoized record", () => {
