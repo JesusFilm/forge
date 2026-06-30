@@ -3,10 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { getApolloClient } from "./apolloClient"
 import { SEMANTIC_SEARCH, type SearchResult } from "./queries"
 import { sanitizeQuery as sanitizeQueryImpl } from "./sanitizeQuery"
+import { meetsMinQueryLength } from "./searchGate"
 
-/** Debounce window from last query change to auto-submit. Longer than
- *  web's 300 ms because TV input is slower; fewer round trips. */
-const DEFAULT_DEBOUNCE_MS = 600
+/** Debounce window from last query change to auto-submit. Raised from 600 ms so
+ *  fewer in-progress prefixes each fire a server-side cold embedding. */
+const DEFAULT_DEBOUNCE_MS = 900
 
 /** Force the UI out of 'loading' if the Apollo link/cache pipeline drops
  *  the response without resolving. Set below Apollo's 15 s fetch timeout
@@ -261,6 +262,11 @@ export function useSemanticSearch(
       skipNextDebounceRef.current = false
       return
     }
+
+    // Below the minimum length, don't fire: a 1-2 char prefix would pay a cold
+    // embedding for almost no signal. The immediate paths above (submit /
+    // runQuery / retry) bypass this and still fire for short known terms.
+    if (!meetsMinQueryLength(query)) return
 
     timerRef.current = setTimeout(() => {
       timerRef.current = null
