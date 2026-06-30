@@ -15,13 +15,13 @@ import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_SIZE = scale(340)
+const CARD_SIZE = scale(570)
 const CARD_GAP = scale(24)
 
-// At 5+ cards the row overflows the 1920-wide canvas, so a centered list
-// pushes the first card's left edge off-screen. Left-align past this count
-// so the first card is fully visible (matching the VideoCarousel rail).
-const LEFT_ALIGN_THRESHOLD = 5
+// At 4+ cards the row overflows the 1920 canvas — floor((1920 - 2*80 + CARD_GAP)/(CARD_SIZE + CARD_GAP)) + 1
+// with the px values (570/24/80) = 4 — so a centered list pushes the first card
+// off-screen. Re-derive this when CARD_SIZE or CARD_GAP changes.
+const LEFT_ALIGN_THRESHOLD = 4
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,17 +68,17 @@ function QuoteCard({
           source={imageSource}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
-          contentPosition="top left"
+          contentPosition="center"
           recyclingKey={`bqc-${quote.id}`}
         />
       )}
-      <LinearGradient
-        colors={[hexToRgba(bgColor, 0), bgColor]}
-        locations={[0, 0.6]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
       <View style={styles.cardContent}>
+        <LinearGradient
+          colors={[hexToRgba(bgColor, 0), bgColor]}
+          locations={[0, 0.6]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         {quote.attribution != null && quote.attribution.length > 0 && (
           <Text style={styles.attribution} numberOfLines={1}>
             {quote.attribution.toUpperCase()}
@@ -108,37 +108,34 @@ export function BibleQuotesCarouselRenderer({
   const heading = section.bqcHeading as string | null
   const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
   const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
-  // 5+ cards left-align the rail (see listContentLeftAligned below); only then
-  // is the first card flush against the screen's left edge, so only then should
-  // its focus-scale anchor to the left. A centered short rail keeps it centered.
+  // 4+ cards overflow the canvas → the rail left-aligns (listContentLeftAligned).
+  // Cards still scale from center: left-anchoring the first card grew it rightward
+  // into card 2 (painted on top), clipping the focused edge.
   const leftAligned = quotes.length >= LEFT_ALIGN_THRESHOLD
 
-  const renderItem = useCallback(
-    ({ item, index }: { item: QuoteItem; index: number }) => {
-      const hasValidCta =
-        item.ctaLabel != null &&
-        item.ctaLink != null &&
-        validateActionUrl(item.ctaLink)
-      const validCtaLink = hasValidCta ? item.ctaLink : null
-      const validCtaLabel = hasValidCta ? (item.ctaLabel ?? null) : null
+  const renderItem = useCallback(({ item }: { item: QuoteItem }) => {
+    const hasValidCta =
+      item.ctaLabel != null &&
+      item.ctaLink != null &&
+      validateActionUrl(item.ctaLink)
+    const validCtaLink = hasValidCta ? item.ctaLink : null
+    const validCtaLabel = hasValidCta ? (item.ctaLabel ?? null) : null
 
-      return (
-        <View style={styles.cardWrapper}>
-          <QuoteCard
-            quote={item}
-            ctaLabel={validCtaLabel}
-            focusAnchor={leftAligned && index === 0 ? "left" : "center"}
-            onPress={() => {
-              if (validCtaLink != null) {
-                setSelectedCtaUrl(validCtaLink)
-              }
-            }}
-          />
-        </View>
-      )
-    },
-    [leftAligned],
-  )
+    return (
+      <View style={styles.cardWrapper}>
+        <QuoteCard
+          quote={item}
+          ctaLabel={validCtaLabel}
+          focusAnchor="center"
+          onPress={() => {
+            if (validCtaLink != null) {
+              setSelectedCtaUrl(validCtaLink)
+            }
+          }}
+        />
+      </View>
+    )
+  }, [])
 
   const keyExtractor = useCallback(
     (item: QuoteItem, index: number) => `bqc-${item.id}-${index}`,
@@ -217,10 +214,17 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     overflow: "hidden",
   },
+  // Scrim gradient fades within the text block (not the whole card) so short
+  // quotes don't get a tall dark band; paddingTop is the fade headroom above
+  // the first line.
   cardContent: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
-    padding: scale(20),
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: scale(20),
+    paddingTop: scale(64),
+    paddingBottom: scale(20),
   },
   attribution: {
     fontFamily: "System",
@@ -240,11 +244,12 @@ const styles = StyleSheet.create({
   },
   quoteText: {
     fontFamily: "System",
-    fontSize: Math.round(scale(18)),
+    // Match the watch "About" body (aboutText): size 25, full-white, lh 37.
+    fontSize: Math.round(scale(25)),
     fontWeight: "400",
     fontStyle: "italic",
-    color: "rgba(255,255,255,0.9)",
-    lineHeight: Math.round(scale(26)),
+    color: "#ffffff",
+    lineHeight: Math.round(scale(37)),
   },
   ctaButton: {
     marginTop: scale(12),
