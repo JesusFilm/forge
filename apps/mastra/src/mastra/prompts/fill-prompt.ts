@@ -39,6 +39,7 @@ Rules:
    - bibleQuotesCarousel: { "t": "bibleQuotesCarousel", "heading": "...", "quotes": [{ "reference": "John 20:19-29", "text": "..." }] }. Use "reference", NOT "verseReference".
    - cta: { "t": "cta", "heading": "...", "body": "...", "buttonLabel": "Watch Video" }
    - mediaCollection: { "t": "mediaCollection", "title": "...", "items": [{ "candidateRef": "v01", "titleOverride": "..." }] }
+   - relatedQuestions: { "t": "relatedQuestions", "heading": "...", "questions": [{ "question": "Did the resurrection really happen?", "answer": "A written, plain-text answer in 1-3 sentences." }] }. Each item needs a written "answer"; questions are text Q&A, NOT video references — NEVER put "candidateRef" on a question.
 
 3. VIDEO + SCRIPTURE REFERENCES. When the block needs a video, call searchVideos and use the candidate "ref" (like "v01") verbatim in "candidateRef" — never invent refs. When the block needs Scripture, call lookupBibleVerse rather than paraphrasing.
 

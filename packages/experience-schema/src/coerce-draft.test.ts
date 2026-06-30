@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import { coerceDraftEnvelope } from "./coerce-draft"
-import { DraftExperienceSchema } from "./experience-ai.schemas"
+import {
+  DraftExperienceSchema,
+  DraftRelatedQuestionsBlockSchema,
+  DraftVideoCarouselBlockSchema,
+} from "./experience-ai.schemas"
 
 /**
  * Unit tests for the deterministic, pure, LOSSY pre-validation coercion
@@ -317,5 +321,129 @@ describe("coerceDraftEnvelope", () => {
     const blocks = (draft as { blocks: Array<{ t: string }> }).blocks
     expect(blocks[0].t).toBe("text")
     expect(DraftExperienceSchema.safeParse(draft).success).toBe(true)
+  })
+})
+
+/**
+ * relatedQuestions `questions[]` item coercion. The block-level unknown-key
+ * strip does NOT recurse into nested item arrays, so a model that misapplies
+ * the video-item pattern to questions (stray `candidateRef`, missing
+ * `answer`) used to slip a `.strict()` item violation past coercion and crash
+ * the fill step. These assert the items are cleaned so the block passes the
+ * SAME fill-gate schema the fill step validates against.
+ */
+describe("coerceDraftEnvelope — relatedQuestions item coercion", () => {
+  // Coerce one block via the envelope, the way the fill step does.
+  function coerceBlock(block: unknown) {
+    const { draft, coercions } = coerceDraftEnvelope({ blocks: [block] })
+    const coercedBlock = (draft as { blocks: unknown[] }).blocks[0]
+    return { coercedBlock, coercions }
+  }
+
+  it("strips a stray candidateRef from a question item, keeping the item valid", () => {
+    const { coercedBlock, coercions } = coerceBlock({
+      t: "relatedQuestions",
+      heading: "Common questions",
+      questions: [
+        {
+          question: "Did the resurrection really happen?",
+          answer: "Yes — multiple eyewitness accounts attest to it.",
+          candidateRef: "v01",
+        },
+      ],
+    })
+
+    expect(coercions.some((c) => c.kind === "unknown_key_stripped")).toBe(true)
+    expect(
+      DraftRelatedQuestionsBlockSchema.safeParse(coercedBlock).success,
+    ).toBe(true)
+    const item = (coercedBlock as { questions: Array<Record<string, unknown>> })
+      .questions[0]
+    expect(item).toEqual({
+      question: "Did the resurrection really happen?",
+      answer: "Yes — multiple eyewitness accounts attest to it.",
+    })
+  })
+
+  it("drops a question item missing its answer (logs invalid_item_dropped), keeps the valid one", () => {
+    const { coercedBlock, coercions } = coerceBlock({
+      t: "relatedQuestions",
+      questions: [
+        { question: "No answer here", candidateRef: "v02" },
+        { question: "Good one", answer: "A real, written answer." },
+      ],
+    })
+
+    expect(coercions.some((c) => c.kind === "invalid_item_dropped")).toBe(true)
+    expect(
+      DraftRelatedQuestionsBlockSchema.safeParse(coercedBlock).success,
+    ).toBe(true)
+    expect((coercedBlock as { questions: unknown[] }).questions).toEqual([
+      { question: "Good one", answer: "A real, written answer." },
+    ])
+  })
+
+  it("leaves a clean relatedQuestions block unchanged (no coercions)", () => {
+    const { coercedBlock, coercions } = coerceBlock({
+      t: "relatedQuestions",
+      questions: [{ question: "Q?", answer: "A." }],
+    })
+
+    expect(coercions).toEqual([])
+    expect(
+      DraftRelatedQuestionsBlockSchema.safeParse(coercedBlock).success,
+    ).toBe(true)
+  })
+})
+
+/**
+ * The same nested-item coercion generalizes to every item-bearing block. This
+ * pins the exact videoCarousel failure observed in live generation: the model
+ * misapplied mediaCollection's `labelOverride` to a videoCarousel item (where
+ * it is not a valid key), which the block-level strip did not reach.
+ */
+describe("coerceDraftEnvelope — videoCarousel item coercion", () => {
+  function coerceBlock(block: unknown) {
+    const { draft, coercions } = coerceDraftEnvelope({ blocks: [block] })
+    const coercedBlock = (draft as { blocks: unknown[] }).blocks[0]
+    return { coercedBlock, coercions }
+  }
+
+  it("strips a stray labelOverride from videoCarousel items, keeping them valid", () => {
+    const { coercedBlock, coercions } = coerceBlock({
+      t: "videoCarousel",
+      heading: "Watch more",
+      items: [
+        { candidateRef: "v01", titleOverride: "Part 1", labelOverride: "New" },
+        { candidateRef: "v02", labelOverride: "Featured" },
+      ],
+    })
+
+    expect(coercions.some((c) => c.kind === "unknown_key_stripped")).toBe(true)
+    expect(DraftVideoCarouselBlockSchema.safeParse(coercedBlock).success).toBe(
+      true,
+    )
+    expect((coercedBlock as { items: unknown[] }).items).toEqual([
+      { candidateRef: "v01", titleOverride: "Part 1" },
+      { candidateRef: "v02" },
+    ])
+  })
+
+  it("drops a videoCarousel item missing its required candidateRef", () => {
+    const { coercedBlock, coercions } = coerceBlock({
+      t: "videoCarousel",
+      items: [
+        { titleOverride: "Orphaned — no candidateRef" },
+        { candidateRef: "v03" },
+      ],
+    })
+
+    expect(coercions.some((c) => c.kind === "invalid_item_dropped")).toBe(true)
+    expect(DraftVideoCarouselBlockSchema.safeParse(coercedBlock).success).toBe(
+      true,
+    )
+    expect((coercedBlock as { items: unknown[] }).items).toEqual([
+      { candidateRef: "v03" },
+    ])
   })
 })
