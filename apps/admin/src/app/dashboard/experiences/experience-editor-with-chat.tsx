@@ -18,6 +18,8 @@ import {
   type ExperienceChatPanelActions,
 } from "@/app/dashboard/experiences/experience-editor/experience-chat-panel"
 import { getSuggestedPrompts } from "@/app/dashboard/experiences/experience-editor/experience-chat-suggested-prompts"
+import { PersonaVariantButton } from "@/app/dashboard/experiences/persona-variant-button"
+import type { GenerateVariantActionResult } from "@/app/dashboard/experiences/generate-variant-action"
 
 type ExperienceEditorProps = Parameters<typeof ExperienceEditor>[0]
 
@@ -51,6 +53,14 @@ export type ExperienceEditorWithChatProps = Omit<
    * "Generate section from video" control. Optional, like generateDraftAction.
    */
   generateSectionAction?: ChatGenerateSectionAction
+  /**
+   * "Create persona version" — duplicates this experience as a new DRAFT
+   * re-toned for a chosen audience persona. Optional; the button only renders
+   * when the AI variant surface is wired.
+   */
+  generateVariantAction?: (input: {
+    personaId: string
+  }) => Promise<GenerateVariantActionResult>
 }
 
 function collectVideoIdsFromBlocks(blocks: readonly unknown[]): string[] {
@@ -80,6 +90,7 @@ export function ExperienceEditorWithChat({
   loadVideosByIdsAction,
   generateDraftAction,
   generateSectionAction,
+  generateVariantAction,
   ...editorProps
 }: ExperienceEditorWithChatProps) {
   const controllerRef = useRef<ExperienceCanvasController | null>(null)
@@ -198,6 +209,11 @@ export function ExperienceEditorWithChat({
         generateSectionAction={generateSectionAction}
       />
       <div className="flex min-w-0 flex-1 flex-col">
+        {generateVariantAction && (
+          <div className="border-b border-[var(--color-hairline)] px-4 py-2">
+            <PersonaVariantButton action={generateVariantAction} />
+          </div>
+        )}
         <ExperienceEditor
           {...editorProps}
           videoLibrary={videoLibrary}

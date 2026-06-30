@@ -727,11 +727,21 @@ function synthesizeScalars(input: PlanStepOutput): {
   metaDescription: string
 } {
   const prompt = input.prompt.trim()
-  const title = (prompt.split(/[.!?\n]/)[0] || prompt || "Untitled experience")
+  // Persona/variant prompts lead with audience-steering instructions and carry
+  // the real subject on a "TOPIC: ..." line (see buildPersonaTopicPrompt).
+  // Prefer that line for the title so the steering text never leaks into the
+  // page title; plain editor prompts (no TOPIC line) fall back to the first line.
+  const topicLine = /^TOPIC:\s*(.+)$/m.exec(prompt)?.[1]?.trim()
+  const titleSource = topicLine || prompt
+  const title = (
+    titleSource.split(/[.!?\n]/)[0] ||
+    titleSource ||
+    "Untitled experience"
+  )
     .trim()
     .slice(0, 120)
   const planFirstSentence = (input.plan || "").trim().split(/[.!?\n]/)[0] || ""
-  const metaSource = planFirstSentence || prompt || title
+  const metaSource = planFirstSentence || titleSource || title
   const metaDescription = metaSource.trim().slice(0, 200) || title
   return {
     title: title || "Untitled experience",
@@ -899,6 +909,56 @@ async function fillSingleNode(
 }
 
 /**
+ * Per-node attempt cap for the resilient fill loop. Each fillable node gets up
+ * to this many fresh generations before it is SKIPPED (dropped from the page)
+ * rather than failing the whole workflow. Env-overridable for experiments;
+ * default 2 (one retry) bounds the extra wall-clock against the workflow budget.
+ */
+const FILL_NODE_ATTEMPTS = Math.max(
+  1,
+  Number(process.env.MASTRA_FILL_NODE_ATTEMPTS) || 2,
+)
+
+/**
+ * Fill one fillable node with bounded retries, returning `null` when every
+ * attempt fails its per-node schema. This is the resilient "generate each task,
+ * keep what succeeds" loop: a weak model that reliably mis-fills one rich block
+ * (e.g. `card` without a title) no longer kills the whole page — that block is
+ * dropped and the blocks it CAN produce still assemble into a valid draft. The
+ * final `DraftExperienceSchema` gate (with `GENERATION_MIN_BLOCKS`) is the floor:
+ * if too many nodes are skipped, the assembled draft legitimately fails there.
+ *
+ * Abort propagates immediately (the run is being cancelled). A non-
+ * `WorkflowStepError` (unexpected code error) also propagates — only the typed,
+ * per-node generation failure is recoverable-by-skip.
+ */
+async function fillNodeWithRetries(
+  ctx: StepContext<SkeletonStepOutput>,
+  node: SkeletonNode,
+  priorBlocks: readonly unknown[],
+): Promise<Record<string, unknown> | null> {
+  for (let attempt = 1; attempt <= FILL_NODE_ATTEMPTS; attempt += 1) {
+    try {
+      return await fillSingleNode(ctx, node, priorBlocks)
+    } catch (error) {
+      if (ctx.abortSignal?.aborted) throw error
+      if (!(error instanceof WorkflowStepError)) throw error
+      if (attempt < FILL_NODE_ATTEMPTS) {
+        console.warn(
+          `[draft-workflow] event=fill_node_retry type=${node.type} attempt=${attempt}/${FILL_NODE_ATTEMPTS}`,
+        )
+        continue
+      }
+      console.warn(
+        `[draft-workflow] event=fill_node_skipped type=${node.type} attempts=${FILL_NODE_ATTEMPTS}`,
+      )
+      return null
+    }
+  }
+  return null
+}
+
+/**
  * Assemble one skeleton node into a Draft block, filling content SEQUENTIALLY
  * in document order. `accumulator` is the running flat list of every block
  * filled so far (top-level + nested), used as coherence context for each
@@ -914,13 +974,17 @@ async function assembleNode(
   ctx: StepContext<SkeletonStepOutput>,
   node: SkeletonNode,
   accumulator: unknown[],
-): Promise<Record<string, unknown>> {
+): Promise<Record<string, unknown> | null> {
   if (node.type === "section") {
     const content: Record<string, unknown>[] = []
     for (const child of node.children ?? []) {
       const childBlock = await assembleNode(ctx, child, accumulator)
-      content.push(childBlock)
+      // Skipped child (failed all attempts) → drop it from this section.
+      if (childBlock !== null) content.push(childBlock)
     }
+    // A section whose every child was skipped has no content to render — drop
+    // the empty shell rather than emit a hollow section.
+    if (content.length === 0) return null
     const shell: Record<string, unknown> = { t: "section", content }
     if (node.sectionRef) shell.sectionRef = node.sectionRef
     return shell
@@ -929,15 +993,18 @@ async function assembleNode(
     const slots: Array<{ content: Record<string, unknown>[] }> = []
     for (const child of node.children ?? []) {
       const childBlock = await assembleNode(ctx, child, accumulator)
-      slots.push({ content: [childBlock] })
+      if (childBlock !== null) slots.push({ content: [childBlock] })
     }
+    if (slots.length === 0) return null
     const shell: Record<string, unknown> = { t: "container", slots }
     if (node.sectionRef) shell.sectionRef = node.sectionRef
     return shell
   }
-  // Leaf — fill its content, threading the running accumulator so this fill can
-  // see every block written before it (coherence).
-  const filled = await fillSingleNode(ctx, node, accumulator)
+  // Leaf — fill its content with bounded retries, threading the running
+  // accumulator so this fill can see every block written before it (coherence).
+  // `null` means every attempt failed its schema: skip this block.
+  const filled = await fillNodeWithRetries(ctx, node, accumulator)
+  if (filled === null) return null
   accumulator.push(filled)
   return filled
 }
@@ -953,7 +1020,8 @@ export async function executeFillStep(
   // blocks filled before it via the shared accumulator.
   for (const node of skeleton.nodes) {
     const block = await assembleNode(ctx, node, accumulator)
-    blocks.push(block)
+    // Skipped top-level node (failed all attempts, or an emptied shell) → drop.
+    if (block !== null) blocks.push(block)
   }
   const scalars = synthesizeScalars(ctx.inputData)
   // Run the assembled draft through the SAME coercion + DraftExperienceSchema

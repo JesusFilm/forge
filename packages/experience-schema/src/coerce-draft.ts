@@ -37,9 +37,15 @@
 import { z } from "zod"
 
 import {
+  DraftBibleQuoteItemSchema,
   DraftBlockSchema,
   DraftContainerContentBlockSchema,
+  DraftInfoBlockItemSchema,
+  DraftMediaCollectionItemSchema,
+  DraftNavigationCarouselItemSchema,
+  DraftRelatedQuestionItemSchema,
   DraftSectionContentBlockSchema,
+  DraftVideoCarouselItemSchema,
 } from "./experience-ai.schemas"
 
 // ---------------------------------------------------------------------------
@@ -53,6 +59,7 @@ export type CoercionKind =
   | "misscoped_block_dropped"
   | "non_object_block_dropped"
   | "default_filled"
+  | "invalid_item_dropped"
 
 export type Coercion = {
   /** Stable kind identifier for log/event grouping. */
@@ -291,6 +298,17 @@ function coerceBlock(
     out.slots = coerceContainerSlots(raw.slots, `${path}.slots`, sink)
   }
 
+  // --- Nested item-array coercion (block-level strip doesn't recurse) ---
+  const itemArray = ITEM_ARRAY_BY_TYPE.get(canonical)
+  if (itemArray && Array.isArray(out[itemArray.field])) {
+    out[itemArray.field] = coerceItemArray(
+      out[itemArray.field] as unknown[],
+      itemArray.itemSchema,
+      `${path}.${itemArray.field}`,
+      sink,
+    )
+  }
+
   // --- Safe default mirrors --------------------------------------------
   applySafeDefaults(canonical, out, path, sink)
 
@@ -343,6 +361,100 @@ function coerceContainerSlots(
     )
     return { ...slot, content: coercedContent }
   })
+}
+
+/**
+ * Blocks that carry a nested array of `.strict()` item objects, keyed by the
+ * canonical block type. The block-level unknown-key strip in `coerceBlock`
+ * does NOT recurse into these arrays, so a model that (mis)applies one block's
+ * item pattern to another — a stray `candidateRef` on a relatedQuestions item,
+ * a `labelOverride` on a videoCarousel item — slips a `.strict()` item
+ * violation past coercion and crashes the fill step. Each entry's `itemSchema`
+ * is the SAME strict schema the fill/draft validator uses, so we never
+ * hand-transcribe the allowed keys.
+ */
+const ITEM_ARRAY_BLOCKS: ReadonlyArray<{
+  type: string
+  field: string
+  itemSchema: z.ZodObject
+}> = [
+  {
+    type: "bibleQuotesCarousel",
+    field: "quotes",
+    itemSchema: DraftBibleQuoteItemSchema,
+  },
+  { type: "infoBlocks", field: "blocks", itemSchema: DraftInfoBlockItemSchema },
+  {
+    type: "mediaCollection",
+    field: "items",
+    itemSchema: DraftMediaCollectionItemSchema,
+  },
+  {
+    type: "navigationCarousel",
+    field: "items",
+    itemSchema: DraftNavigationCarouselItemSchema,
+  },
+  {
+    type: "relatedQuestions",
+    field: "questions",
+    itemSchema: DraftRelatedQuestionItemSchema,
+  },
+  {
+    type: "videoCarousel",
+    field: "items",
+    itemSchema: DraftVideoCarouselItemSchema,
+  },
+]
+
+const ITEM_ARRAY_BY_TYPE = new Map(
+  ITEM_ARRAY_BLOCKS.map((entry) => [entry.type, entry] as const),
+)
+
+/**
+ * Coerce a nested item array against its strict item schema. Strips unknown
+ * keys (derived from the schema's `shape`, no hand-transcription), then drops
+ * any item that still fails the item schema — so one malformed item never
+ * fails the whole block (lossy + logged, like every other coercion). Survivors
+ * are guaranteed to satisfy `itemSchema`.
+ */
+function coerceItemArray(
+  raw: unknown[],
+  itemSchema: z.ZodObject,
+  path: string,
+  sink: Sink,
+): Record<string, unknown>[] {
+  const allowedKeys = new Set(Object.keys(itemSchema.shape))
+  const out: Record<string, unknown>[] = []
+  raw.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`
+    if (!isPlainObject(item)) {
+      sink.push({
+        kind: "invalid_item_dropped",
+        detail: `dropped non-object item at ${itemPath}`,
+      })
+      return
+    }
+    const cleaned: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(item)) {
+      if (allowedKeys.has(key)) {
+        cleaned[key] = value
+      } else {
+        sink.push({
+          kind: "unknown_key_stripped",
+          detail: `stripped unknown key '${key}' from item at ${itemPath}`,
+        })
+      }
+    }
+    if (!itemSchema.safeParse(cleaned).success) {
+      sink.push({
+        kind: "invalid_item_dropped",
+        detail: `dropped item failing its schema at ${itemPath}`,
+      })
+      return
+    }
+    out.push(cleaned)
+  })
+  return out
 }
 
 /**

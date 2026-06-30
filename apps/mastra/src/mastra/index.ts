@@ -34,6 +34,7 @@ import {
   handleExperienceDraftRouteRequest,
   type DraftWorkflowMastra,
 } from "./workflows/experience-draft-route"
+import { handleExperienceVariantRouteRequest } from "./workflows/experience-variant-route"
 import {
   handleExperienceSectionRouteRequest,
   type SectionAgentMastra,
@@ -326,6 +327,24 @@ export const mastra = new Mastra({
             // all present at runtime; the real Mastra's `getWorkflowById` has a
             // narrower id-union param than `(id: string)`, so the structural
             // types don't unify. Tests inject a fully-typed fake.
+            getMastra: () => mastra as unknown as DraftWorkflowMastra,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-variant", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceVariantRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Same narrow workflow surface as the draft route (it delegates to
+            // the draft generation path); the thunk resolves post-construction.
             getMastra: () => mastra as unknown as DraftWorkflowMastra,
           })
 

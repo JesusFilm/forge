@@ -10,6 +10,7 @@ import {
 } from "@/app/dashboard/experiences/experience-chat-actions"
 import { runGenerateDraftAction } from "@/app/dashboard/experiences/generate-draft-action"
 import { runGenerateSectionAction } from "@/app/dashboard/experiences/generate-section-action"
+import { runGenerateVariantAction } from "@/app/dashboard/experiences/generate-variant-action"
 import {
   loadVideoRows,
   videoIdsFromExperienceBlocks,
@@ -626,6 +627,19 @@ export default async function ExperienceEditorPage({
     )
   }
 
+  async function generateVariantAction(input: { personaId: string }) {
+    "use server"
+    const user = await requireSession()
+    return runGenerateVariantAction(
+      { prisma, user },
+      {
+        sourceLocaleId: selectedLocale.id,
+        locale: selectedLocale.locale,
+        personaId: input.personaId,
+      },
+    )
+  }
+
   return (
     <ExperienceEditorWithChat
       key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${selectedLocale.status}`}
@@ -673,6 +687,7 @@ export default async function ExperienceEditorPage({
       restoreAction={restoreRevisionAction}
       generateDraftAction={generateDraftAction}
       generateSectionAction={generateSectionAction}
+      generateVariantAction={generateVariantAction}
     />
   )
 }
