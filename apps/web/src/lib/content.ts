@@ -158,6 +158,11 @@ export type WatchChild = {
   // back server-side to a primary/longest playable Mux dub. Lets the carousel
   // render frame thumbnails without projecting every child's dubs.
   muxPlaybackId: string | null
+  // Base64 LQIP for the exact Watch carousel Mux thumbnail recipe, generated
+  // and stored admin-side. Only applies when muxPlaybackId is present.
+  muxThumbnailBlurDataUrl: string | null
+  // Base64 LQIP for the exact Watch hero poster Mux thumbnail recipe.
+  muxHeroPosterBlurDataUrl?: string | null
 }
 
 export type WatchParent = {
@@ -195,6 +200,7 @@ export type WatchVariant = {
   language: WatchVariantLanguage | null
   downloads: WatchVariantDownload[]
   muxVideo: { playbackId: string | null } | null
+  muxHeroPosterBlurDataUrl?: string | null
   videoEdition?: {
     subtitles: {
       documentId: string | null
@@ -471,6 +477,7 @@ type AdminVideoVariantRaw = {
       }[]
     | null
   muxVideo?: { playbackId?: string | null } | null
+  muxHeroPosterBlurDataUrl?: string | null
   videoEdition?: { subtitles?: AdminSubtitleRaw[] | null } | null
 }
 
@@ -480,6 +487,8 @@ type AdminChildRelationRaw = {
     slug?: string | null
     label?: string | null
     muxPlaybackId?: string | null
+    muxThumbnailBlurDataUrl?: string | null
+    muxHeroPosterBlurDataUrl?: string | null
     locales?: AdminLocaleRaw[] | null
     images?: AdminImageRaw[] | null
     durationSeconds?: number | null
@@ -693,6 +702,8 @@ function normalizeChild(
     images: normalizeImages(child.images),
     durationSeconds: child.durationSeconds ?? null,
     muxPlaybackId: child.muxPlaybackId ?? null,
+    muxThumbnailBlurDataUrl: child.muxThumbnailBlurDataUrl ?? null,
+    muxHeroPosterBlurDataUrl: child.muxHeroPosterBlurDataUrl ?? null,
   }
 }
 
@@ -721,6 +732,8 @@ function normalizeParent(
           label: c.label ?? null,
           images: normalizeImages(c.images),
           muxPlaybackId: c.muxPlaybackId ?? null,
+          muxThumbnailBlurDataUrl: c.muxThumbnailBlurDataUrl ?? null,
+          muxHeroPosterBlurDataUrl: c.muxHeroPosterBlurDataUrl ?? null,
           // Nested children inside `parent.children` feed only the
           // SiblingCarousel (thumbnails + titles), which never reads a
           // runtime. The fragment doesn't project durationSeconds here, so
@@ -764,6 +777,7 @@ function normalizeVariant(
       })
       .filter((d): d is WatchVariantDownload => d != null),
     muxVideo: v.muxVideo ? { playbackId: v.muxVideo.playbackId ?? null } : null,
+    muxHeroPosterBlurDataUrl: v.muxHeroPosterBlurDataUrl ?? null,
     videoEdition: v.videoEdition
       ? {
           subtitles: (v.videoEdition.subtitles ?? []).map((subtitle) => ({

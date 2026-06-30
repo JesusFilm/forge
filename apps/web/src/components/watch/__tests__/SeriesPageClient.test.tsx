@@ -187,6 +187,7 @@ function makeChildren(count: number): Series["children"] {
     images: [],
     durationSeconds: null,
     muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   })) as Series["children"]
 }
 

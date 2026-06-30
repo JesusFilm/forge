@@ -81,6 +81,38 @@ describe("match jobs route", () => {
     })
   })
 
+  it("polls expired jobs with the explicit expiry error code", async () => {
+    const repository = new InMemoryMatchJobRepository()
+    const storage = new InMemoryUploadStorage()
+    let now = new Date("2026-06-08T00:00:00.000Z")
+    const service = new MatchJobService(
+      repository,
+      storage,
+      new StubExtractor({
+        visualHashes: ["frame-a"],
+        audioFingerprints: ["audio-a"],
+      }),
+      new StubMatcher([candidate]),
+      () => now,
+    )
+    const job = await service.createUploadJob({
+      bytes: Buffer.from("video"),
+      contentType: "video/mp4",
+    })
+    now = new Date("2026-06-08T00:31:00.000Z")
+    await service.cleanExpiredQueuedJobs()
+    const { request } = createHarness({ service })
+
+    await expect(request("GET", `/match-jobs/${job.id}`)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        jobId: job.id,
+        status: "expired",
+        errorCode: "job_expired",
+      },
+    })
+  })
+
   it("polls complete jobs with ranked public candidates", async () => {
     const { request, service } = createHarness()
     const created = await request("POST", "/match-jobs", Buffer.from("video"))
@@ -113,6 +145,40 @@ describe("match jobs route", () => {
       statusCode: 200,
       body: {
         candidates: [candidate],
+      },
+    })
+  })
+
+  it("returns the expired terminal payload from the manual process endpoint", async () => {
+    const repository = new InMemoryMatchJobRepository()
+    const storage = new InMemoryUploadStorage()
+    let now = new Date("2026-06-08T00:00:00.000Z")
+    const service = new MatchJobService(
+      repository,
+      storage,
+      new StubExtractor({
+        visualHashes: ["frame-a"],
+        audioFingerprints: ["audio-a"],
+      }),
+      new StubMatcher([candidate]),
+      () => now,
+    )
+    const job = await service.createUploadJob({
+      bytes: Buffer.from("video"),
+      contentType: "video/mp4",
+    })
+    now = new Date("2026-06-08T00:31:00.000Z")
+    await service.cleanExpiredQueuedJobs()
+    const { request } = createHarness({ service })
+
+    await expect(
+      request("POST", `/match-jobs/${job.id}/process`),
+    ).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        jobId: job.id,
+        status: "expired",
+        errorCode: "job_expired",
       },
     })
   })

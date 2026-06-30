@@ -1241,9 +1241,17 @@ type Video {
   locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
   """
+  Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxHeroPosterBlurDataUrl(languageSlug: String): String
+  """
   Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.
   """
   muxPlaybackId(languageSlug: String): String
+  """
+  Base64 LQIP data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxThumbnailBlurDataUrl(languageSlug: String): String
   noIndex: Boolean
   origin: VideoOrigin
   """
@@ -1328,6 +1336,10 @@ type VideoDub {
   id: ID
   language: Language
   lengthInMilliseconds: String
+  """
+  Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxHeroPosterBlurDataUrl: String
   muxVideo: MuxVideo
   published: Boolean
   share: String
@@ -1799,7 +1811,9 @@ type WatchRouteSnapshotChild {
   exactLocales: [WatchRouteSnapshotLocale!]!
   images: [WatchRouteSnapshotImage!]!
   label: VideoLabel
+  muxHeroPosterBlurDataUrl: String
   muxPlaybackId: String
+  muxThumbnailBlurDataUrl: String
   slug: String
 }
 
@@ -1852,6 +1866,7 @@ type WatchRouteSnapshotPreferredVariant {
   duration: Int
   hls: String
   language: WatchRouteSnapshotLanguage
+  muxHeroPosterBlurDataUrl: String
   published: Boolean
   slug: String
 }

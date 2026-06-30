@@ -7,6 +7,9 @@ const envKeys = [
   "ADMIN_GRAPHQL_URL",
   "ADMIN_SERVICE_BEARER_TOKEN",
   "MAPPER_API_TOKEN",
+  "MATCH_JOB_WORKER_ENABLED",
+  "MATCH_JOB_CLEANER_ENABLED",
+  "MATCH_JOB_WORKER_POLL_INTERVAL_MS",
   "MEDIA_SIGNATURE_ALGORITHM_VERSION",
   "MEDIA_INDEX_PAGE_SIZE",
   "MEDIA_INDEX_MAX_FETCH_BYTES",
@@ -74,6 +77,9 @@ describe("runtime env", () => {
 
   it("defaults media indexing settings and treats empty resume cursor as unset", async () => {
     const { env } = await loadEnv({
+      MATCH_JOB_WORKER_ENABLED: "",
+      MATCH_JOB_CLEANER_ENABLED: "",
+      MATCH_JOB_WORKER_POLL_INTERVAL_MS: "",
       MEDIA_SIGNATURE_ALGORITHM_VERSION: "",
       MEDIA_INDEX_PAGE_SIZE: "",
       MEDIA_INDEX_MAX_FETCH_BYTES: "",
@@ -82,6 +88,9 @@ describe("runtime env", () => {
       MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: "",
     })
 
+    expect(env.MATCH_JOB_WORKER_ENABLED).toBe("true")
+    expect(env.MATCH_JOB_CLEANER_ENABLED).toBe("true")
+    expect(env.MATCH_JOB_WORKER_POLL_INTERVAL_MS).toBe(1_000)
     expect(env.MEDIA_SIGNATURE_ALGORITHM_VERSION).toBe(
       "official-media-signature-v1",
     )
@@ -90,6 +99,18 @@ describe("runtime env", () => {
     expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(15_000)
     expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBeUndefined()
     expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBeUndefined()
+  })
+
+  it("parses worker and cleaner settings without boolean coercion", async () => {
+    const { env } = await loadEnv({
+      MATCH_JOB_WORKER_ENABLED: "false",
+      MATCH_JOB_CLEANER_ENABLED: "false",
+      MATCH_JOB_WORKER_POLL_INTERVAL_MS: "2500",
+    })
+
+    expect(env.MATCH_JOB_WORKER_ENABLED).toBe("false")
+    expect(env.MATCH_JOB_CLEANER_ENABLED).toBe("false")
+    expect(env.MATCH_JOB_WORKER_POLL_INTERVAL_MS).toBe(2_500)
   })
 
   it("parses media indexing overrides", async () => {

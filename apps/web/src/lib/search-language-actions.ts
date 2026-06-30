@@ -1,7 +1,6 @@
 "use server"
 
 import { headers } from "next/headers"
-import { unstable_cache } from "next/cache"
 import { adminGraphql } from "@forge/admin-graphql"
 
 import client from "@/lib/admin-client"
@@ -69,11 +68,11 @@ const PAGE_SIZE = 500
 const MAX_LANGUAGE_PAGES = 10
 const SEARCH_LANGUAGE_METADATA_CACHE_TTL_SECONDS = 5 * 60
 
-const fetchCachedSearchLanguageMetadata = unstable_cache(
-  fetchSearchLanguageMetadataUncached,
-  ["watch-search-language-metadata"],
-  { revalidate: SEARCH_LANGUAGE_METADATA_CACHE_TTL_SECONDS },
-)
+let cachedSearchLanguageMetadata: {
+  expiresAt: number
+  metadata: SearchLanguageMetadata
+} | null = null
+let pendingSearchLanguageMetadata: Promise<SearchLanguageMetadata> | null = null
 
 export async function getSearchLanguageOptions(
   input: {
@@ -189,6 +188,37 @@ async function fetchSearchLanguageMetadataUncached(): Promise<SearchLanguageMeta
     languages,
     countries,
   }
+}
+
+async function fetchCachedSearchLanguageMetadata(): Promise<SearchLanguageMetadata> {
+  if (process.env.NODE_ENV === "test") {
+    return fetchSearchLanguageMetadataUncached()
+  }
+
+  const now = Date.now()
+  if (
+    cachedSearchLanguageMetadata &&
+    cachedSearchLanguageMetadata.expiresAt > now
+  ) {
+    return cachedSearchLanguageMetadata.metadata
+  }
+
+  if (!pendingSearchLanguageMetadata) {
+    pendingSearchLanguageMetadata = fetchSearchLanguageMetadataUncached()
+      .then((metadata) => {
+        cachedSearchLanguageMetadata = {
+          expiresAt:
+            Date.now() + SEARCH_LANGUAGE_METADATA_CACHE_TTL_SECONDS * 1000,
+          metadata,
+        }
+        return metadata
+      })
+      .finally(() => {
+        pendingSearchLanguageMetadata = null
+      })
+  }
+
+  return pendingSearchLanguageMetadata
 }
 
 function compact<T>(

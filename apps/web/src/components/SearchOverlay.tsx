@@ -29,6 +29,7 @@ import { VideoCard } from "./search/VideoCard"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { CATEGORIES } from "@/lib/search-categories"
+import { SEARCH_OVERLAY_FIELD_WIDTH_CLASSES } from "@/lib/content-width"
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import {
   MAX_SEARCH_LANGUAGE_FILTERS,
@@ -652,15 +653,15 @@ export function SearchOverlay() {
           input. Outer padding (px-4 sm:px-6) matches the
           floating searchbar's side margin (w-[calc(100%-2rem)]
           sm:w-[calc(100%-3rem)]) so the input's position and size on open
-          match the bar's exactly. `pt-12` mirrors the header bar's
-          unpinned `top-12` position so the modal input does not jump
-          vertically when opened. The wrapper is `pointer-events-none` so
-          scroll wheel events over the empty edges pass through to the
-          body; the pill + logo + close button re-enable pointer events
-          on themselves. */}
+          match the bar's exactly. The padding-top mirrors the header bar's
+          unpinned top offset, including safe-area inset and the md breakpoint,
+          so the modal input does not drift vertically when opened. The wrapper
+          is `pointer-events-none` so scroll wheel events over the empty edges
+          pass through to the body; the pill + logo + close button re-enable
+          pointer events on themselves. */}
       <div
         data-testid="search-overlay-top-bar"
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-6 sm:px-6 sm:pt-12"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:px-6 md:pt-[calc(env(safe-area-inset-top,0px)+3rem)]"
       >
         <Link
           href={"/" as Route}
@@ -685,7 +686,7 @@ export function SearchOverlay() {
         </Link>
         <div
           onClick={(e) => e.stopPropagation()}
-          className="pointer-events-auto mx-auto w-full max-w-[810px]"
+          className={`pointer-events-auto ${SEARCH_OVERLAY_FIELD_WIDTH_CLASSES}`}
         >
           <FloatingSearchFieldInput
             ref={inputRef}

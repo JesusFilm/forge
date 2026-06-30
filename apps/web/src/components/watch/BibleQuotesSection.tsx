@@ -241,6 +241,7 @@ export function BibleQuotesSection({
             onClick={handleShareLinkClick}
             aria-label={t("share")}
             data-testid="watch-share-button"
+            style={{ cursor: "pointer" }}
           >
             <ExternalLink size={16} />
             <span>{t("share")}</span>
@@ -252,6 +253,7 @@ export function BibleQuotesSection({
             onClick={onShareClick}
             aria-label={t("share")}
             data-testid="watch-share-button"
+            style={{ cursor: "pointer" }}
           >
             <ExternalLink size={16} />
             <span>{t("share")}</span>

@@ -79,6 +79,36 @@ reprocessing the whole catalog.
 
 An asynchronous attribution request that owns an uploaded media input until the mapper can process it and return ranked results.
 
+A Match Job moves from queued to running only after a worker or operator claims
+it. Stale running jobs can be reclaimed so a crashed process does not leave the
+request permanently stuck.
+
+### Match Job Worker
+
+The mapper process-local consumer that claims queued or stale running Match Jobs
+and processes them through the same attribution path used by operator recovery.
+
+The worker is intentionally bounded: it handles one Match Job at a time in a
+service process, preserving the durable queue semantics without adding an
+external queue service.
+
+### Expired Match Job
+
+A Match Job that remained queued past the yt-video-mapper queue expiry window
+without being claimed by a worker or operator.
+
+An Expired Match Job is terminal: its raw upload is removed, but its lightweight
+job row remains pollable until normal result retention so callers can distinguish
+queue expiry from an unknown job.
+
+### Match Job Cleaner
+
+The yt-video-mapper cleanup process that expires abandoned queued Match Jobs and
+removes their raw uploads independently of client polling.
+
+The cleaner owns queue-age expiry only; running-job recovery remains the Match
+Job Worker's stale-running reclaim path.
+
 ### Match Candidate
 
 A ranked possible attribution produced by a Match Job, pairing a source Video with its likely Dub and a confidence judgment.
@@ -158,6 +188,13 @@ The response-side state that says whether semantic retrieval actually contribute
 
 A vector representation of localized content used for semantic retrieval across videos, scenes, transcripts, and experiences. Content Embeddings are only comparable when the query vector and stored document vectors come from the same provider contract and transform behavior.
 
+### Semantic-Video Retriever
+
+The Admin video semantic retrieval family that contributes one ranked video list
+to search fusion. The name is a compatibility label: after enriched transcript
+realignment, its runtime evidence comes from transcript chunks rather than scene
+embeddings.
+
 ### AI Gateway
 
 The project-owned embedding provider surface that produces vectors for Content Embeddings. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
@@ -185,6 +222,15 @@ Manager artifacts are repair inputs, not the same thing as Admin's searchable ve
 A searchable segment of a video transcript stored separately from the transcript parent so retrieval and embedding workflows can operate at segment granularity.
 
 Deleting transcript chunks removes Admin's transcript search index for those segments but does not delete the transcript identity or Manager's source artifacts.
+
+### Enriched Transcript Chunk
+
+A Transcript Chunk whose embedded text includes the transcript excerpt plus
+search-oriented metadata such as time range, felt needs, Bible references,
+summary, tone, audience cues, and spiritual context.
+
+The enriched input and the structured fields are both stored so search
+relevance can be debugged without falling back to legacy scene artifacts.
 
 ### Source Transcript Scripture Correction
 

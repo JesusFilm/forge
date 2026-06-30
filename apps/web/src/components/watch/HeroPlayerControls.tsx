@@ -32,7 +32,6 @@ import {
 } from "./chrome-icons"
 
 const TOP_SCROLL_CHROME_REVEAL_THRESHOLD_PX = 8
-const CHROME_DIMMED_OPACITY = 0.3
 const CHROME_IDLE_HIDE_DELAY_MS = 4000
 const CHROME_INITIAL_POINTER_LOCK_MS = 5000
 
@@ -141,17 +140,13 @@ export function HeroPlayerControls({
   }, [chromeVisibility])
 
   const chromeOpacity =
-    chromeVisibility === "bright"
-      ? 1
-      : chromeVisibility === "dim"
-        ? CHROME_DIMMED_OPACITY
-        : 0
+    chromeVisibility === "bright" ? 1 : chromeVisibility === "dim" ? 1 : 0
   const chromeVisible = chromeVisibility !== "hidden"
   const chromeOpacityClass =
     chromeVisibility === "bright"
       ? "opacity-100"
       : chromeVisibility === "dim"
-        ? "opacity-30"
+        ? "opacity-100"
         : "opacity-0"
 
   useEffect(() => {
@@ -819,7 +814,7 @@ export function HeroPlayerControls({
     <div
       aria-hidden="true"
       data-testid="hero-player-chrome-backdrop"
-      className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[28vh] min-h-36 max-h-72 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
+      className={`pointer-events-none absolute bottom-0 left-1/2 z-0 h-[28vh] min-h-36 w-screen max-w-none -translate-x-1/2 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
         chromeOpacityClass
       }`}
       style={

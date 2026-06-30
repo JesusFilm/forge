@@ -93,6 +93,7 @@ afterEach(() => {
   container.remove()
   // Drop any portal nodes left over from previous renders.
   document.body.innerHTML = ""
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -368,8 +369,60 @@ describe("DownloadModal — quality bucketing", () => {
     })
 
     const list = $('[data-testid="watch-download-modal-size-list"]')
-    expect(list?.className).toContain("relative")
+    expect(list?.parentElement).toBe(document.body)
+    expect(list?.className).toContain("fixed")
+    expect(list?.className).toContain("max-h-72")
+    expect(list?.className).toContain("transition-[opacity,transform]")
+    expect(list?.className).toContain("duration-150")
+    expect(list?.className).toContain("opacity-100")
+    expect(list?.className).not.toContain("relative")
     expect(list?.className).not.toContain("absolute")
+  })
+
+  it("animates the file size dropdown closed before unmounting it", () => {
+    vi.useFakeTimers()
+
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[
+            makeDownload({ documentId: "fhd", quality: "fhd" }),
+            makeDownload({ documentId: "hd", quality: "hd" }),
+          ]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const trigger = $(
+      '[data-testid="watch-download-modal-size-trigger"]',
+    ) as HTMLButtonElement
+
+    act(() => {
+      trigger.click()
+    })
+
+    const openList = $('[data-testid="watch-download-modal-size-list"]')
+    expect(openList?.getAttribute("data-open")).toBe("true")
+    expect(openList?.className).toContain("opacity-100")
+
+    act(() => {
+      trigger.click()
+    })
+
+    const closingList = $('[data-testid="watch-download-modal-size-list"]')
+    expect(closingList).not.toBeNull()
+    expect(closingList?.getAttribute("data-open")).toBe("false")
+    expect(closingList?.className).toContain("opacity-0")
+    expect(closingList?.className).toContain("scale-[0.98]")
+    expect(closingList?.className).toContain("-translate-y-1")
+
+    act(() => {
+      vi.advanceTimersByTime(160)
+    })
+
+    expect($('[data-testid="watch-download-modal-size-list"]')).toBeNull()
   })
 })
 
@@ -413,8 +466,13 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     expect(label?.className).toContain("font-normal")
     expect(label?.className).not.toContain("font-semibold")
     expect(trigger?.className).toContain("font-normal")
+    expect(trigger?.className).toContain("inline")
+    expect(trigger?.className).toContain("align-baseline")
+    expect(trigger?.className).toContain("leading-inherit")
     expect(trigger?.className).toContain("underline")
     expect(trigger?.className).toContain("decoration-brand-red/40")
+    expect(trigger?.className).toContain("underline-offset-2")
+    expect(trigger?.className).not.toContain("underline-offset-4")
   })
 
   it("enables Download when ToS is checked (size already defaulted to Highest)", () => {
@@ -697,6 +755,29 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
     expect(
       $('[data-testid="watch-download-modal-terms-body"]')?.textContent,
     ).toContain("PLEASE CAREFULLY REVIEW THE TERMS OF USE")
+    const canonicalNotice = $(
+      '[data-testid="watch-download-modal-terms-canonical-notice"]',
+    )
+    expect(
+      $('[data-testid="watch-download-modal-terms-footer"]')?.contains(
+        canonicalNotice,
+      ),
+    ).toBe(true)
+    expect(
+      $('[data-testid="watch-download-modal-terms-body"]')?.contains(
+        canonicalNotice,
+      ),
+    ).toBe(false)
+    expect(canonicalNotice?.textContent).toContain("make them easy to review")
+    expect(canonicalNotice?.textContent).toContain("most current version")
+    const canonicalLink = canonicalNotice?.querySelector("a")
+    expect(canonicalLink?.getAttribute("href")).toBe(
+      "https://www.jesusfilm.org/terms-of-use/",
+    )
+    expect(canonicalLink?.getAttribute("target")).toBe("_blank")
+    const rel = canonicalLink?.getAttribute("rel") ?? ""
+    expect(rel).toContain("noopener")
+    expect(rel).toContain("noreferrer")
     // Opening the dialog must NOT prematurely tick the ToS checkbox —
     // only Accept does that.
     const checkbox = $(
@@ -741,6 +822,46 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
       '[data-testid="watch-download-modal-tos"]',
     ) as HTMLInputElement
     expect(checkboxAfter.checked).toBe(false)
+  })
+
+  it("clicking outside the nested Terms dialog closes only the nested dialog", () => {
+    const onClose = vi.fn()
+
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={onClose}
+        />,
+      )
+    })
+
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-tos-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(
+      $('[data-testid="watch-download-modal-terms-dialog"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      ;(
+        $('[data-testid="watch-download-modal-terms-overlay"]') as HTMLElement
+      ).click()
+    })
+
+    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
+    expect($('[data-testid="watch-download-modal"]')).not.toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    const checkbox = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+    expect(checkbox.checked).toBe(false)
   })
 
   it("Accept ticks the ToS checkbox and closes the nested dialog", () => {

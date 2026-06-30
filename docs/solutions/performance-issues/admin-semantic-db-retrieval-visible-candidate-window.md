@@ -152,6 +152,6 @@ survivor show?" with a deterministic tie-breaker.
 - `docs/solutions/performance-issues/admin-search-result-preserving-latency-optimization.md`
 - `docs/solutions/performance-issues/admin-search-stage-db-timing-instrumentation-20260624.md`
 - `docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md`
-- `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`
+- `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`
 - `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`
 - `docs/solutions/database-issues/stable-admin-search-dub-hydration-ordering.md`

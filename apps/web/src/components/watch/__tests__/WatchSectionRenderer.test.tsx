@@ -361,6 +361,11 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     // here so a future refactor doesn't silently regress.
     const bodyZone = container.querySelector("[data-testid='watch-body-zone']")
     expect(bodyZone).not.toBeNull()
+    const bodyBackdrop = bodyZone!.querySelector(
+      "[data-testid='watch-body-backdrop']",
+    )
+    expect(bodyBackdrop?.getAttribute("class")).toContain("w-full")
+    expect(bodyBackdrop?.getAttribute("class")).not.toContain("max-w-[1920px]")
     const siblingInsideBody = bodyZone!.querySelector(
       "[data-block-type='SiblingCarousel']",
     )
@@ -459,6 +464,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       title: "Clicked Child",
       label: "SEGMENT",
       posterUrl: "https://cdn.test/clicked.jpg",
+      posterBlurDataUrl: null,
       loading: true,
       transitionKey: "child-2",
     })
