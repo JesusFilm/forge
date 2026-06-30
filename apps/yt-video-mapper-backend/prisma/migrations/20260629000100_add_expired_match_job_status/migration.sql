@@ -2,11 +2,11 @@
 ALTER TYPE "match_job_status" ADD VALUE 'expired';
 
 -- Support cleaner scans for queued jobs crossing the expiry threshold.
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "mapper_match_job_status_queued_at_idx"
+CREATE INDEX IF NOT EXISTS "mapper_match_job_status_queued_at_idx"
 ON "mapper_match_job"("status", "queued_at");
 
 -- Support sparse retries for expired rows whose raw upload cleanup failed.
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "mapper_match_job_expired_upload_cleanup_idx"
+CREATE INDEX IF NOT EXISTS "mapper_match_job_expired_upload_cleanup_idx"
 ON "mapper_match_job"("queued_at", "id")
 WHERE "status" = 'expired'
   AND (
