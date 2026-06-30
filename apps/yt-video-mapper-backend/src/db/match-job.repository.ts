@@ -6,14 +6,22 @@ import {
   type PrismaClient,
 } from "../generated/prisma/index.js"
 import type {
+  ExpiredUploadCursor,
+  ExpireQueuedJobsBatch,
+  MatchJobCleanerRepository,
   MatchJobRecord,
   MatchJobRepository,
   MatchJobStatus,
   StoredMatchCandidate,
 } from "../services/match-job.service.js"
+import { JOB_EXPIRED_ERROR_CODE } from "../services/match-job.service.js"
 import type { PublicMatchCandidate } from "../domain/match.js"
 
-export class PrismaMatchJobRepository implements MatchJobRepository {
+const MATCH_JOB_CLEANER_LEASE_NAME = "match_job_cleaner"
+
+export class PrismaMatchJobRepository
+  implements MatchJobRepository, MatchJobCleanerRepository
+{
   constructor(private readonly db: PrismaClient) {}
 
   async create(job: MatchJobRecord): Promise<MatchJobRecord> {
@@ -73,11 +81,12 @@ export class PrismaMatchJobRepository implements MatchJobRepository {
   async claimNextQueued(
     startedAt: Date,
     staleStartedBefore: Date,
+    queuedExpiresAt?: Date,
   ): Promise<MatchJobRecord | null> {
     return this.db.$transaction(async (tx) => {
       const candidate = await tx.matchJob.findFirst({
-        where: processableWhere(staleStartedBefore),
-        orderBy: [{ queuedAt: "asc" }, { createdAt: "asc" }],
+        where: processableWhere(staleStartedBefore, queuedExpiresAt),
+        orderBy: [{ queuedAt: "asc" }, { id: "asc" }],
         select: { id: true },
       })
 
@@ -86,7 +95,7 @@ export class PrismaMatchJobRepository implements MatchJobRepository {
       const claimed = await tx.matchJob.updateMany({
         where: {
           id: candidate.id,
-          ...processableWhere(staleStartedBefore),
+          ...processableWhere(staleStartedBefore, queuedExpiresAt),
         },
         data: {
           status: PrismaMatchJobStatus.RUNNING,
@@ -99,6 +108,127 @@ export class PrismaMatchJobRepository implements MatchJobRepository {
 
       const job = await tx.matchJob.findUnique({ where: { id: candidate.id } })
       return job ? fromPrismaJob(job) : null
+    })
+  }
+
+  async expireQueuedBefore(
+    queuedAtOrBefore: Date,
+    limit: number,
+  ): Promise<ExpireQueuedJobsBatch> {
+    return this.db.$transaction(async (tx) => {
+      const candidates = await tx.matchJob.findMany({
+        where: queuedExpiredWhere(queuedAtOrBefore),
+        orderBy: [{ queuedAt: "asc" }, { id: "asc" }],
+        take: limit,
+        select: { id: true },
+      })
+      const candidateIds = candidates.map(({ id }) => id)
+
+      if (candidateIds.length === 0) {
+        return {
+          jobs: [],
+          scannedCount: 0,
+        }
+      }
+
+      await tx.matchJob.updateMany({
+        where: {
+          id: { in: candidateIds },
+          ...queuedExpiredWhere(queuedAtOrBefore),
+        },
+        data: {
+          status: PrismaMatchJobStatus.EXPIRED,
+          safeErrorCode: JOB_EXPIRED_ERROR_CODE,
+        },
+      })
+
+      const expiredJobs = await tx.matchJob.findMany({
+        where: {
+          id: { in: candidateIds },
+          status: PrismaMatchJobStatus.EXPIRED,
+          safeErrorCode: JOB_EXPIRED_ERROR_CODE,
+        },
+        orderBy: [{ queuedAt: "asc" }, { id: "asc" }],
+      })
+
+      return {
+        jobs: expiredJobs.map(fromPrismaJob),
+        scannedCount: candidates.length,
+      }
+    })
+  }
+
+  async listExpiredWithUploads(
+    limit: number,
+    after?: ExpiredUploadCursor,
+  ): Promise<MatchJobRecord[]> {
+    const jobs = await this.db.matchJob.findMany({
+      where: expiredWithUploadsWhere(after),
+      orderBy: [{ queuedAt: "asc" }, { id: "asc" }],
+      take: limit,
+    })
+
+    return jobs.map(fromPrismaJob)
+  }
+
+  async clearUploadFields(jobId: string): Promise<void> {
+    await this.db.matchJob.updateMany({
+      where: {
+        id: jobId,
+        status: PrismaMatchJobStatus.EXPIRED,
+      },
+      data: {
+        uploadStorageKey: null,
+        uploadContentType: null,
+        uploadByteLength: null,
+      },
+    })
+  }
+
+  async countExpiredWithUploads(): Promise<number> {
+    return this.db.matchJob.count({
+      where: expiredWithUploadsWhere(),
+    })
+  }
+
+  async tryAcquireCleanerLease(
+    now: Date,
+    lockedUntil: Date,
+    ownerToken: string,
+  ): Promise<boolean> {
+    const refreshed = await this.db.matchJobCleanerLease.updateMany({
+      where: {
+        name: MATCH_JOB_CLEANER_LEASE_NAME,
+        lockedUntil: { lte: now },
+      },
+      data: { lockedUntil, ownerToken },
+    })
+
+    if (refreshed.count > 0) return true
+
+    try {
+      await this.db.matchJobCleanerLease.create({
+        data: {
+          name: MATCH_JOB_CLEANER_LEASE_NAME,
+          lockedUntil,
+          ownerToken,
+        },
+      })
+      return true
+    } catch (error) {
+      if (isUniqueConstraintError(error)) return false
+      throw error
+    }
+  }
+
+  async releaseCleanerLease(now: Date, ownerToken: string): Promise<void> {
+    await this.db.matchJobCleanerLease.updateMany({
+      where: {
+        name: MATCH_JOB_CLEANER_LEASE_NAME,
+        ownerToken,
+        lockedUntil: { gt: now },
+      },
+      data: { lockedUntil: now },
     })
   }
 
@@ -148,14 +278,53 @@ export class PrismaMatchJobRepository implements MatchJobRepository {
   }
 }
 
-function processableWhere(staleStartedBefore: Date) {
+function processableWhere(
+  staleStartedBefore: Date,
+  queuedExpiresAt: Date | undefined,
+) {
   return {
     OR: [
-      { status: PrismaMatchJobStatus.QUEUED },
+      {
+        status: PrismaMatchJobStatus.QUEUED,
+        ...(queuedExpiresAt ? { queuedAt: { gt: queuedExpiresAt } } : {}),
+      },
       {
         status: PrismaMatchJobStatus.RUNNING,
         startedAt: { lte: staleStartedBefore },
       },
+    ],
+  }
+}
+
+function queuedExpiredWhere(queuedAtOrBefore: Date) {
+  return {
+    status: PrismaMatchJobStatus.QUEUED,
+    queuedAt: { lte: queuedAtOrBefore },
+  }
+}
+
+function expiredWithUploadsWhere(after?: ExpiredUploadCursor) {
+  return {
+    status: PrismaMatchJobStatus.EXPIRED,
+    ...(after
+      ? {
+          AND: [
+            {
+              OR: [
+                { queuedAt: { gt: after.queuedAt } },
+                {
+                  queuedAt: after.queuedAt,
+                  id: { gt: after.id },
+                },
+              ],
+            },
+          ],
+        }
+      : {}),
+    OR: [
+      { uploadStorageKey: { not: null } },
+      { uploadContentType: { not: null } },
+      { uploadByteLength: { not: null } },
     ],
   }
 }
@@ -214,6 +383,7 @@ function toPrismaStatus(status: MatchJobStatus): PrismaMatchJobStatus {
     running: PrismaMatchJobStatus.RUNNING,
     complete: PrismaMatchJobStatus.COMPLETE,
     failed: PrismaMatchJobStatus.FAILED,
+    expired: PrismaMatchJobStatus.EXPIRED,
   } satisfies Record<MatchJobStatus, PrismaMatchJobStatus>
 
   return map[status]
@@ -225,9 +395,19 @@ function fromPrismaStatus(status: PrismaMatchJobStatus): MatchJobStatus {
     [PrismaMatchJobStatus.RUNNING]: "running",
     [PrismaMatchJobStatus.COMPLETE]: "complete",
     [PrismaMatchJobStatus.FAILED]: "failed",
+    [PrismaMatchJobStatus.EXPIRED]: "expired",
   } satisfies Record<PrismaMatchJobStatus, MatchJobStatus>
 
   return map[status]
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  )
 }
 
 function toPrismaStrength(

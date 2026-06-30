@@ -716,6 +716,9 @@ describe("Mastra env", () => {
       apiKey: undefined,
       timeoutMs: 5_000,
       userAgent: "forge-mastra-jesusfilm-rag/1.0",
+      // feat-202: `.optional()` knob falls back to the 2 MiB default at the
+      // accessor — no boot requirement, so a fresh deploy still gets a cap.
+      maxResponseBytes: 2_097_152,
     })
   })
 
@@ -735,13 +738,16 @@ describe("Mastra env", () => {
     )
   })
 
-  it("projects all five RAG fields through getJesusfilmRagConfig when set", async () => {
+  it("projects all RAG fields through getJesusfilmRagConfig when set", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
     vi.stubEnv("JESUSFILM_RAG_API_KEY", "rag-key")
     vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
     vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "2500")
     vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "forge-test-rag/9.9")
+    // feat-202: prove the optional byte-cap override projects through (coerced
+    // from string), not just the accessor default.
+    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "1048576")
 
     const { getJesusfilmRagConfig } = await import("./env")
 
@@ -750,6 +756,7 @@ describe("Mastra env", () => {
       apiKey: "rag-key",
       timeoutMs: 2_500,
       userAgent: "forge-test-rag/9.9",
+      maxResponseBytes: 1_048_576,
     })
   })
 
@@ -836,6 +843,15 @@ describe("Mastra env", () => {
   it("rejects a RAG timeout above the schema cap at parse", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "30001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a RAG max-response-bytes above the 16 MiB schema cap at parse", async () => {
+    // Fail LOUD on an over-range operator typo rather than silently widening the
+    // OOM guard. 16_777_217 is one byte over the 16 MiB ceiling.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "16777217")
 
     await expect(import("./env")).rejects.toThrow()
   })

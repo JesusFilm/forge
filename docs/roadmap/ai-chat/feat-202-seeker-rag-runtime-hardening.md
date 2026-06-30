@@ -3,7 +3,7 @@ id: "feat-202"
 title: "Seeker RAG runtime hardening — RAG response byte-cap + agent step-budget floor"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-18"
 duration: 1
 depends_on: []
@@ -12,6 +12,21 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-06-29 via [PR #1420](https://github.com/JesusFilm/forge/pull/1420). Single-PR arc.
+
+**What landed.** Built ① the RAG response byte-cap and ③ the agent step-budget floor; deliberately deferred ② in-memory `Memory` eviction to feat-208 (the Postgres move eliminates the heap-OOM risk rather than relocating it) and left `firecrawl-client.ts`'s identical gap to its owners. The byte-cap is a streamed, byte-counted read (`readJsonBodyCapped`) applied to **both** reads in `jesusfilm-rag-client.ts` (success body + `readUpstreamReason`): it aborts the stream (`reader.cancel()`) past a 2 MiB default ceiling and degrades over-cap into the **existing** `parse_error → unavailable` path — no throw, no new branch — with a structural no-throw boundary (reader acquired inside `try`, `releaseLock()` guarded in `finally`) to keep `NO-THROW LEAK CONTROL` intact. The cap knob `JESUSFILM_RAG_MAX_RESPONSE_BYTES` is `.optional()` with a runtime fallback — zero new required-at-boot env vars. The step floor sets `defaultOptions: { maxSteps: STEP_CAPS.toolCallingTurn }` on the seeker `Agent` (the vNext field, verified against the vendored `@mastra/core@1.36.0` runtime), reusing the `/forge-seeker` route's shared constant so the two paths can't diverge; plus an honor-system `/forge-seeker`-not-`/api/agents` routing-convention note in `apps/mastra/CLAUDE.md`. 765 tests green; typecheck + lint clean.
+
+**Compound docs.** Created [`buffered-http-response-byte-cap-oom-guard-20260629.md`](../../solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md); added a worked-instance row to [`mocked-shape-vs-real-contract-discipline-20260506.md`](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) and a space-axis cross-reference to [`outbound-timeout-shorter-than-caller-budget-20260506.md`](../../solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md); registered the pattern in root `CLAUDE.md` "Known Patterns".
+
+**Residual risk / follow-ups.**
+
+- A body-read abort _after_ a 200 (the request `AbortSignal` firing mid-body) is classified as `parse_error` (non-retryable) rather than `timeout` — **pre-existing** behavior (the prior `await response.json().catch(() => undefined)` had identical semantics), left unchanged: fixing it would alter the typed result-union the brief froze.
+- `firecrawl-client.ts` carries the identical uncapped-read OOM gap — accepted, left to its owners.
+- The direct `/api/agents/seekerAgent` path keeps no wall-clock bound and no auth; containment stays the network/gateway boundary.
+- In-memory `Memory` eviction is deferred to **feat-208** (Postgres-persisted seeker memory), which eliminates the heap-OOM risk rather than relocating it.
 
 ## Problem
 
