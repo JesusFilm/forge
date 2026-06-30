@@ -67,10 +67,10 @@ describe("mapper Prisma schema", () => {
       "ALTER TYPE \"match_job_status\" ADD VALUE 'expired'",
     )
     expect(expiryMigration).toContain(
-      'CREATE INDEX CONCURRENTLY IF NOT EXISTS "mapper_match_job_status_queued_at_idx"',
+      'CREATE INDEX IF NOT EXISTS "mapper_match_job_status_queued_at_idx"',
     )
     expect(expiryMigration).toContain(
-      'CREATE INDEX CONCURRENTLY IF NOT EXISTS "mapper_match_job_expired_upload_cleanup_idx"',
+      'CREATE INDEX IF NOT EXISTS "mapper_match_job_expired_upload_cleanup_idx"',
     )
     expect(expiryMigration).toContain("WHERE \"status\" = 'expired'")
     expect(expiryMigration).toContain('"owner_token" TEXT NOT NULL')
