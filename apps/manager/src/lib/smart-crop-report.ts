@@ -3,7 +3,7 @@
 // The `smartCrop` metadata artifact entry mirrors live phase data for the UI:
 // `{ kind: "metadata", data: SmartCropJobReport }`. Pure module (no env, no
 // services) so it is importable from client components, API routes, and the
-// durable workflow body alike. Mirrors lib/scene-embedding-sync-report.ts.
+// durable workflow body alike.
 
 import type {
   JobArtifactManifest,

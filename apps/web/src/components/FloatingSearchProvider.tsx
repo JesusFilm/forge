@@ -86,7 +86,10 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       onClick: null,
     })
   const [headerHovered, setHeaderHovered] = useState(false)
+  const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
+  const [headerOverHero, setHeaderOverHero] = useState(true)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastScrollYRef = useRef(0)
 
   const setOpen = useCallback((next: boolean) => {
     if (closingTimerRef.current) {
@@ -151,6 +154,50 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       if (frame !== 0) window.cancelAnimationFrame(frame)
     }
   }, [open])
+
+  useEffect(() => {
+    if (open) return
+    if (typeof window === "undefined") return
+
+    let frame = 0
+    const updateHeaderScrollState = () => {
+      const currentY = window.scrollY
+      const hero = document.querySelector<HTMLElement>(
+        '[data-testid="hero-player-wrapper"], [data-testid="series-hero-static"]',
+      )
+      const heroBottom = hero
+        ? Math.max(hero.offsetHeight, hero.getBoundingClientRect().height)
+        : Math.max(window.innerHeight, 1)
+      const overHero = currentY < heroBottom - 24
+      const scrollingUp = currentY < lastScrollYRef.current - 4
+      const scrollingDown = currentY > lastScrollYRef.current + 4
+
+      setHeaderOverHero(overHero)
+      if (overHero || scrollingUp || currentY < 24) {
+        setHeaderScrollVisible(true)
+      } else if (scrollingDown) {
+        setHeaderScrollVisible(false)
+      }
+
+      lastScrollYRef.current = currentY
+    }
+    const onScroll = () => {
+      if (frame !== 0) return
+      frame = window.requestAnimationFrame(() => {
+        updateHeaderScrollState()
+        frame = 0
+      })
+    }
+
+    updateHeaderScrollState()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+      if (frame !== 0) window.cancelAnimationFrame(frame)
+    }
+  }, [open, pathname])
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return
@@ -245,6 +292,9 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       setPlayerChromeOpacity(1)
       setPlayerPlaybackState({ playing: false, muted: true, preview: false })
       setHeaderHovered(false)
+      setHeaderScrollVisible(true)
+      setHeaderOverHero(true)
+      lastScrollYRef.current = window.scrollY
     })
     return () => window.cancelAnimationFrame(frame)
   }, [pathname])
@@ -252,19 +302,38 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
-  const headerBackdropHidden = modalChromeHidden || !playerPlaybackState.preview
+  const headerBackdropHidden = modalChromeHidden
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
   const effectiveHeaderHovered = headerHoverZoneActive && headerHovered
   const headerChromeOpacity =
     effectiveHeaderHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
-  const headerChromeHidden = modalChromeHidden || headerChromeOpacity <= 0
+  const headerChromeUnavailable = modalChromeHidden || headerChromeOpacity <= 0
+  const headerChromeHidden = headerChromeUnavailable || !headerScrollVisible
   const headerChromeDimmed = !headerChromeHidden && headerChromeOpacity < 1
-  const searchChromeVisible = !headerChromeHidden
+  const searchChromeVisible = !headerChromeUnavailable
   const searchChromeDimmed = headerChromeDimmed
   const headerCanBrightenLocally = playerChromeOpacity <= 0
   const headerPointerRevealAllowed = playerChromeOpacity < 1
+  const headerSurfaceSolid = !headerOverHero || pinned
+  const headerTopClass = pinned
+    ? "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+    : "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
+  const headerMotionClass = headerChromeUnavailable
+    ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
+    : !headerScrollVisible
+      ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-100"
+      : headerChromeDimmed
+        ? "pointer-events-auto translate-y-0 opacity-30"
+        : "pointer-events-auto translate-y-0 opacity-100"
+  const headerBackdropMotionClass = headerChromeUnavailable
+    ? "-translate-y-[calc(100%+2rem)] opacity-0"
+    : !headerScrollVisible
+      ? "-translate-y-[calc(100%+2rem)] opacity-100"
+      : headerSurfaceSolid
+        ? "translate-y-0 opacity-100 md:-translate-y-[72%]"
+        : "translate-y-0 opacity-100"
 
   const revealPlayerChromeFromHeader = useCallback(() => {
     if (typeof window === "undefined") return
@@ -336,82 +405,71 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       <div
         aria-hidden="true"
         data-testid="floating-header-backdrop"
-        className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(6rem+env(safe-area-inset-top,0px))] bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)] transition-opacity duration-300 ease-out md:h-[calc(8rem+env(safe-area-inset-top,0px))] ${
-          headerBackdropHidden ? "opacity-0" : "opacity-100"
-        }`}
+        className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none ${
+          headerSurfaceSolid
+            ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
+            : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
+        } ${headerBackdropHidden ? "opacity-0" : headerBackdropMotionClass}`}
       />
       <div
         aria-hidden="true"
         data-testid="floating-header-hover-zone"
         onPointerEnter={handleHeaderPointerEnter}
-        className={`fixed inset-x-0 top-0 z-[45] h-[calc(6.75rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] ${
+        className={`fixed inset-x-0 top-0 z-[45] h-[calc(5.5rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] ${
           headerHoverZoneActive ? "pointer-events-auto" : "pointer-events-none"
         }`}
       />
-      <FloatingSearchBar
-        open={open}
-        closing={closing}
-        query={query}
-        onOpen={openSearch}
-      />
-      {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
-        <button
-          type="button"
-          data-testid="floating-header-language-button"
-          onClick={headerLanguageSwitcher.onClick}
-          aria-label={t("changeAudioLanguage")}
-          title={t("changeAudioLanguage")}
-          inert={headerChromeHidden || undefined}
-          aria-hidden={headerChromeHidden || undefined}
-          className={`fixed ${WATCH_PAGE_RIGHT_EDGE_CLASSES} z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
-            pinned
-              ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
-              : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
-          } ${
-            headerChromeHidden
-              ? "opacity-0 pointer-events-none"
-              : headerChromeDimmed
-                ? "opacity-30"
-                : "opacity-100"
-          }`}
-        >
-          <Globe
-            aria-hidden
-            className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
-          />
-        </button>
-      ) : null}
-      <Link
-        href={"/" as Route}
-        aria-label={t("home")}
-        data-testid="floating-header-logo"
+      <header
+        data-testid="floating-header"
         inert={headerChromeHidden || undefined}
         aria-hidden={headerChromeHidden || undefined}
-        onClick={() => {
-          setQuery("")
-          setSearchResetToken((token) => token + 1)
-        }}
-        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} z-50 flex h-[52px] items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
-          pinned
-            ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
-            : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
-        } ${
-          headerChromeHidden
-            ? "opacity-0 pointer-events-none"
-            : headerChromeDimmed
-              ? "opacity-30"
-              : "opacity-100"
-        }`}
+        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 flex h-[52px] items-center gap-3 transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:gap-5 ${headerMotionClass}`}
       >
-        <Image
-          src="/watch/images/jesusfilm-sign.svg"
-          alt="JesusFilm"
-          width={70}
-          height={70}
-          unoptimized
-          className="h-auto max-w-[42px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
-        />
-      </Link>
+        <Link
+          href={"/" as Route}
+          aria-label={t("home")}
+          data-testid="floating-header-logo"
+          onClick={() => {
+            setQuery("")
+            setSearchResetToken((token) => token + 1)
+          }}
+          className="flex h-11 w-11 shrink-0 items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 md:h-[52px] md:w-12"
+        >
+          <Image
+            src="/watch/images/jesusfilm-sign.svg"
+            alt="JesusFilm"
+            width={70}
+            height={70}
+            unoptimized
+            className="h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+          />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <FloatingSearchBar
+            open={open}
+            closing={closing}
+            query={query}
+            onOpen={openSearch}
+          />
+        </div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-end md:h-[52px] md:w-12">
+          {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
+            <button
+              type="button"
+              data-testid="floating-header-language-button"
+              onClick={headerLanguageSwitcher.onClick}
+              aria-label={t("changeAudioLanguage")}
+              title={t("changeAudioLanguage")}
+              className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:h-[52px] md:w-12"
+            >
+              <Globe
+                aria-hidden
+                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+              />
+            </button>
+          ) : null}
+        </div>
+      </header>
       {searchControllerEnabled ? (
         <LazyFloatingSearchController
           open={open}

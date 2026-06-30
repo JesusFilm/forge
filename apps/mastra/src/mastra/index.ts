@@ -34,6 +34,7 @@ import {
   handleExperienceDraftRouteRequest,
   type DraftWorkflowMastra,
 } from "./workflows/experience-draft-route"
+import { handleExperienceVariantRouteRequest } from "./workflows/experience-variant-route"
 import {
   handleExperienceSectionRouteRequest,
   type SectionAgentMastra,
@@ -50,10 +51,6 @@ import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
-import {
-  handleSceneEmbeddingRouteRequest,
-  sceneEmbeddingWorkflow,
-} from "./workflows/scene-embedding"
 import {
   experienceEmbeddingWorkflow,
   handleExperienceEmbeddingRouteRequest,
@@ -170,7 +167,6 @@ export const mastra = new Mastra({
   },
   workflows: {
     transcriptEmbeddingWorkflow,
-    sceneEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
     offlineSearchEvalWorkflow,
@@ -266,25 +262,24 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-scene-embeddings", {
+        method: "POST",
+        handler: (c) =>
+          c.json(
+            {
+              error: "Legacy scene embedding workflow has been retired",
+              reason: "legacy_scene_embedding_pipeline_removed",
+              retryable: false,
+              replacement:
+                "Search uses transcript embeddings; historical scene data is retained for feat-199.",
+            },
+            410,
+          ),
+      }),
       registerApiRoute("/forge-firecrawl-web-data", {
         method: "POST",
         handler: async (c) => {
           const outcome = await handleFirecrawlWebDataRouteRequest({
-            authHeader: c.req.header("authorization"),
-            serviceKeys,
-            readJson: () => c.req.json(),
-          })
-
-          return new Response(JSON.stringify(outcome.body), {
-            status: outcome.status,
-            headers: { "content-type": "application/json" },
-          })
-        },
-      }),
-      registerApiRoute("/forge-scene-embeddings", {
-        method: "POST",
-        handler: async (c) => {
-          const outcome = await handleSceneEmbeddingRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
@@ -326,6 +321,24 @@ export const mastra = new Mastra({
             // all present at runtime; the real Mastra's `getWorkflowById` has a
             // narrower id-union param than `(id: string)`, so the structural
             // types don't unify. Tests inject a fully-typed fake.
+            getMastra: () => mastra as unknown as DraftWorkflowMastra,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-variant", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceVariantRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Same narrow workflow surface as the draft route (it delegates to
+            // the draft generation path); the thunk resolves post-construction.
             getMastra: () => mastra as unknown as DraftWorkflowMastra,
           })
 

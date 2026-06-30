@@ -61,6 +61,7 @@ let root: Root
 beforeEach(() => {
   vi.clearAllMocks()
   navigationMocks.pathname = "/"
+  setScrollY(0)
   window.history.replaceState(null, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -122,6 +123,22 @@ function dispatchLanguageSwitcher(detail: WatchHeaderLanguageSwitcherDetail) {
       { detail },
     ),
   )
+}
+
+function setScrollY(value: number) {
+  Object.defineProperty(window, "scrollY", {
+    configurable: true,
+    value,
+  })
+}
+
+async function dispatchScrollAndFlush() {
+  await act(async () => {
+    window.dispatchEvent(new Event("scroll"))
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve())
+    })
+  })
 }
 
 function searchResult(
@@ -395,17 +412,37 @@ describe("FloatingSearchProvider — header backdrop", () => {
     expect(backdrop?.className).toContain("z-40")
     expect(backdrop?.className).toContain("pointer-events-none")
     expect(backdrop?.className).toContain(
-      "h-[calc(6rem+env(safe-area-inset-top,0px))]",
+      "h-[calc(4.75rem+env(safe-area-inset-top,0px))]",
     )
     expect(backdrop?.className).toContain(
       "md:h-[calc(8rem+env(safe-area-inset-top,0px))]",
     )
-    expect(backdrop?.className).toContain("backdrop-blur-[10px]")
+    expect(backdrop?.className).toContain("backdrop-blur-[14px]")
     expect(backdrop?.className).toContain("bg-[linear-gradient")
     expect(backdrop?.className).toContain("opacity-100")
   })
 
-  it("hides the header backdrop outside preview mode", () => {
+  it("moves the desktop gradient upward in compact header mode", () => {
+    setScrollY(100)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const backdrop = document.querySelector(
+      '[data-testid="floating-header-backdrop"]',
+    )
+    expect(backdrop?.className).toContain("bg-black/72")
+    expect(backdrop?.className).toContain("md:bg-[linear-gradient")
+    expect(backdrop?.className).toContain("md:shadow-none")
+    expect(backdrop?.className).toContain("md:backdrop-blur-none")
+    expect(backdrop?.className).toContain("md:-translate-y-[72%]")
+  })
+
+  it("keeps the frosted header backdrop outside preview mode", () => {
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -427,7 +464,7 @@ describe("FloatingSearchProvider — header backdrop", () => {
       dispatchPlaybackState({ playing: false, muted: false, preview: false })
     })
 
-    expect(backdrop?.className).toContain("opacity-0")
+    expect(backdrop?.className).toContain("opacity-100")
   })
 })
 
@@ -1133,32 +1170,48 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     const searchButton = document.querySelector(
       '[data-testid="floating-search-desktop-button"]',
     )
+    const header = document.querySelector('[data-testid="floating-header"]')
     const mobileSearchButton = document.querySelector(
       '[data-testid="floating-search-mobile-button"]',
     )
     expect(mobileSearchButton).toBeNull()
+    expect(header?.className).toContain("fixed")
+    expect(header?.className).toContain("left-5")
+    expect(header?.className).toContain("right-5")
+    expect(header?.className).toContain(
+      "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(header?.className).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(header?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
+    )
+    expect(header?.className).toContain(
+      "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
+    )
+    expect(header?.className).toContain("h-[52px]")
+    expect(header?.className).toContain("items-center")
+    expect(header?.className).toContain("gap-3")
+    expect(header?.className).toContain("translate-y-0")
     expect(searchButton?.className).toContain("opacity-100")
     expect(searchButton?.className).toContain("cursor-text")
     expect(searchButton?.className).not.toContain("cursor-pointer")
     expect(searchButton?.className).toContain("flex")
     expect(searchButton?.className).not.toContain("hidden")
     expect(searchButton?.className).not.toContain("sm:flex")
-    expect(searchButton?.className).toContain(
-      "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
-    )
-    expect(searchButton?.className).toContain(
-      "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
-    )
     expect(searchButton?.className).toContain("items-center")
-    expect(searchButton?.className).toContain("left-1/2")
-    expect(searchButton?.className).toContain("-translate-x-1/2")
-    expect(searchButton?.className).toContain("w-[calc(100%-2rem)]")
-    expect(searchButton?.className).toContain("sm:w-[calc(100%-3rem)]")
-    expect(searchButton?.className).toContain("max-w-[810px]")
+    expect(searchButton?.className).toContain("w-full")
+    expect(searchButton?.className).not.toContain("fixed")
     expect(searchButton?.className).not.toContain("right-44")
     expect(searchButton?.className).not.toContain("md:right-52")
     expect(searchButton?.className).toContain("hover:bg-white")
     expect(searchButton?.className).toContain("hover:text-stone-950")
+    const searchLabels = searchButton?.querySelectorAll("span")
+    expect(searchLabels?.[0]?.textContent).toBe("Search")
+    expect(searchLabels?.[0]?.className).toContain("md:hidden")
+    expect(searchLabels?.[1]?.textContent).toBe("Search or browse topics…")
+    expect(searchLabels?.[1]?.className).toContain("hidden md:inline")
     expect(
       searchButton?.querySelector('[data-testid="floating-search-icon"]'),
     ).not.toBeNull()
@@ -1173,12 +1226,14 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     })
 
     expect(searchButton?.className).toContain("opacity-0")
+    expect(header?.className).toContain("-translate-y-[calc(100%+2rem)]")
 
     act(() => {
       dispatchChromeVisibility(true)
     })
 
     expect(searchButton?.className).toContain("opacity-100")
+    expect(header?.className).toContain("translate-y-0")
   })
 
   it("keeps the floating search bar visible during unmuted playback while the player chrome is up", () => {
@@ -1306,6 +1361,48 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(revealListener).toHaveBeenCalled()
     window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
+
+  it("slides the header away after scrolling past the hero and restores it when scrolling up", async () => {
+    setScrollY(0)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>
+            <section data-testid="hero-player-wrapper">Hero</section>
+          </main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const hero = document.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLElement
+    Object.defineProperty(hero, "offsetTop", { configurable: true, value: 0 })
+    Object.defineProperty(hero, "offsetHeight", {
+      configurable: true,
+      value: 600,
+    })
+
+    const header = document.querySelector('[data-testid="floating-header"]')
+    expect(header?.className).toContain("translate-y-0")
+    await dispatchScrollAndFlush()
+
+    setScrollY(700)
+    await dispatchScrollAndFlush()
+
+    expect(header?.className).toContain("opacity-100")
+    expect(header?.className).toContain("-translate-y-[calc(100%+2rem)]")
+    expect(
+      document.querySelector('[data-testid="floating-header-backdrop"]')
+        ?.className,
+    ).toContain("-translate-y-[calc(100%+2rem)]")
+
+    setScrollY(650)
+    await dispatchScrollAndFlush()
+
+    expect(header?.className).toContain("opacity-100")
+    expect(header?.className).toContain("translate-y-0")
+  })
 })
 
 describe("FloatingSearchProvider — language switcher chrome", () => {
@@ -1326,20 +1423,24 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement | null
+    const header = document.querySelector('[data-testid="floating-header"]')
     expect(languageButton).not.toBeNull()
-    expect(languageButton?.className).toContain("fixed")
-    expect(languageButton?.className).toContain("right-10")
-    expect(languageButton?.className).toContain(
+    expect(header?.className).toContain("fixed")
+    expect(header?.className).toContain("right-5")
+    expect(header?.className).toContain(
       "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
     )
-    expect(languageButton?.className).toContain(
-      "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
+    expect(header?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
     )
-    expect(languageButton?.className).toContain(
+    expect(header?.className).toContain(
       "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
     )
-    expect(languageButton?.className).toContain("h-[52px]")
-    expect(languageButton?.className).toContain("z-50")
+    expect(languageButton?.className).toContain("h-11")
+    expect(languageButton?.className).toContain("w-11")
+    expect(languageButton?.className).toContain("md:h-[52px]")
+    expect(languageButton?.className).toContain("md:w-12")
+    expect(header?.className).toContain("z-50")
     expect(languageButton?.className).toContain("cursor-pointer")
     expect(languageButton?.querySelector("svg")?.className.baseVal).toContain(
       "drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]",
@@ -1349,20 +1450,16 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     ).toBeNull()
 
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
-    expect(logo?.className).toContain(
+    expect(header?.className).toContain("left-5")
+    expect(header?.className).toContain(
       "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
     )
-    expect(logo?.className).toContain(
-      "top-[calc(env(safe-area-inset-top,0px)+2rem)]",
-    )
-    expect(logo?.className).toContain(
-      "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
-    )
-    expect(logo?.className).toContain("h-[52px]")
+    expect(logo?.className).toContain("h-11")
+    expect(logo?.className).toContain("md:h-[52px]")
     expect(logo?.className).toContain("flex")
     expect(logo?.className).not.toContain("hidden")
     expect(logo?.querySelector("img")?.getAttribute("class")).toContain(
-      "max-w-[42px]",
+      "max-w-[38px]",
     )
     expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
       "/watch/images/jesusfilm-sign.svg",
@@ -1426,7 +1523,10 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
     )
-    expect(languageButton?.className).toContain("opacity-0")
+    const header = document.querySelector('[data-testid="floating-header"]')
+    expect(header?.className).toContain("opacity-0")
+    expect(header?.className).toContain("-translate-y-[calc(100%+2rem)]")
+    expect(languageButton).not.toBeNull()
     expect(
       document.querySelector('[data-testid="floating-header-animated-icon"]'),
     ).toBeNull()
@@ -1450,10 +1550,11 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     )
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
-    expect(languageButton?.className).toContain("opacity-30")
-    expect(languageButton?.className).not.toContain("pointer-events-none")
-    expect(logo?.className).toContain("opacity-30")
-    expect(logo?.className).not.toContain("pointer-events-none")
+    const header = document.querySelector('[data-testid="floating-header"]')
+    expect(header?.className).toContain("opacity-30")
+    expect(header?.className).not.toContain("pointer-events-none")
+    expect(languageButton).not.toBeNull()
+    expect(logo).not.toBeNull()
   })
 })
 

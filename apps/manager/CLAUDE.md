@@ -2,7 +2,7 @@
 
 ## What this app does
 
-AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; subtitle translation/retiming execution also belongs to Mastra. Manager supplies source artifacts and optional video context, owns job state, displays returned validation/correction summaries, records validation/correction artifacts in manifests, and keeps Mux subtitle sync. Scripture-context detection, gospel-aware subtitle prompt guidance, subtitle scripture accuracy validation, source transcript scripture correction judgment, and optional Bible-source calls stay in Mastra; Manager only applies deterministic exact-match source corrections returned by Mastra.
+AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript and experience embedding generation belongs to Mastra; subtitle translation/retiming execution also belongs to Mastra. Scene embedding sync into Admin is retired, while scene analysis may still produce non-search source artifacts. Manager supplies source artifacts and optional video context, owns job state, displays returned validation/correction summaries, records validation/correction artifacts in manifests, and keeps Mux subtitle sync. Scripture-context detection, gospel-aware subtitle prompt guidance, subtitle scripture accuracy validation, source transcript scripture correction judgment, and optional Bible-source calls stay in Mastra; Manager only applies deterministic exact-match source corrections returned by Mastra.
 
 ## Source
 
@@ -80,21 +80,19 @@ Local mock-mode smoke tests can use the seeded credentials:
 - email: `manager@forge.test`
 - password: `mock-manager-password`
 
-## Triggering admin embedding backfills (plan 006)
+## Triggering admin embedding backfills
 
-Manager exposes two REST endpoints that proxy to apps/admin's
-`triggerSceneEmbeddingBackfill` /
-`triggerTranscriptEmbeddingBackfill` GraphQL mutations:
+Manager exposes one REST endpoint that proxies to apps/admin's active
+`triggerTranscriptEmbeddingBackfill` GraphQL mutation:
 
-- `POST /api/admin-embeds/scene` — body `{ mappingS3Key?, coreIds?,
-locales? }`
 - `POST /api/admin-embeds/transcript` — body `{ mappingS3Key?,
 coreIds?, languages? }`
 
-Admin owns the destination Postgres schema (`video_scene_locale`,
-`video_transcript`, `video_transcript_chunk`); manager only carries
-the trigger surface. Proxy ensures behaviour parity by definition —
-single workflow, single source of truth.
+Admin owns the destination Postgres schema (`video_transcript`,
+`video_transcript_chunk`); manager only carries the trigger surface.
+Proxy ensures behaviour parity by definition -- single workflow, single
+source of truth. The legacy scene embedding proxy is retired; Manager
+scene-analysis artifacts must not be synced into Admin scene embeddings.
 
 **Auth (manager-side):** `authenticateRequest` — same Strapi JWT
 cookie or `MANAGER_API_KEY` bearer used by every other manager API
@@ -104,7 +102,8 @@ route.
 ${ADMIN_EMBED_TRIGGER_API_KEY}` against admin's GraphQL endpoint.
 Admin validates via its `WORKFLOW_API_KEYS` allowlist and mints a
 request-bound `WORKFLOW_TRIGGER` principal that satisfies only
-`write:scene-embeddings` + `write:transcript-embeddings`.
+`write:transcript-embeddings` and the other active workflow-trigger
+permissions in Admin.
 
 **Env on `forge-manager` Doppler:**
 

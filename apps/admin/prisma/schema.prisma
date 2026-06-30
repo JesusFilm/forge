@@ -1476,11 +1476,13 @@ model VideoScene {
   @@map("video_scene")
 }
 
-/// Per-locale scene description + embedding. `embedding` is NULL until the
-/// sceneEmbeddingBackfill workflow runs. NEVER exposed in GraphQL (the
-/// Pothos type in `src/graphql/types/video.ts` omits this field, and
-/// `schema.test.ts` asserts no embed/vector/similarity field leaks). Search
-/// uses raw SQL with `<=>` cosine distance + the partial HNSW index.
+/// Per-locale scene description plus historical scene embedding metadata.
+/// The scene embedding writer is retired; rows are retained for historical
+/// and non-search scene data until feat-199 decides retention/migration.
+/// Search and recommendation retrieval are transcript-backed. NEVER expose
+/// the vector field in GraphQL (the Pothos type in `src/graphql/types/video.ts`
+/// omits it, and `schema.test.ts` asserts no embed/vector/similarity field
+/// leaks).
 model VideoSceneLocale {
   id                        String                       @id @default(cuid())
   videoSceneId              String                       @map("video_scene_id")
@@ -1502,8 +1504,8 @@ model VideoSceneLocale {
   embeddingProvider         String?                      @map("embedding_provider")
   embeddingNativeDimensions Int?                         @map("embedding_native_dimensions")
   embeddingTransformVersion String?                      @map("embedding_transform_version")
-  /// Compact provenance for Mastra-written scene embeddings. Nullable so
-  /// legacy rows written before the Mastra migration remain searchable.
+  /// Compact provenance for historical Mastra-written scene embeddings.
+  /// Nullable for legacy rows written before the Mastra migration.
   sourceArtifactKey         String?                      @map("source_artifact_key")
   sourceArtifactVersion     String?                      @map("source_artifact_version")
   sourceContentHash         String?                      @map("source_content_hash")

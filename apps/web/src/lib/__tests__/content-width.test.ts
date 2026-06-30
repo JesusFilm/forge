@@ -11,7 +11,6 @@ import {
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
-  WATCH_PAGE_SEARCH_FIELD_CLASSES,
 } from "@/lib/content-width"
 
 // Lockstep invariant: at every breakpoint, the negative bleed margin, the
@@ -101,7 +100,7 @@ describe("content-width.ts — bleed/padding lockstep", () => {
 
 describe("content-width.ts — watch page rail lockstep", () => {
   const rails = [
-    { padding: "px-10", left: "left-10" },
+    { padding: "px-5", left: "left-5" },
     { padding: "md:px-16", left: "md:left-16" },
     { padding: "xl:px-24", left: "xl:left-24" },
   ]
@@ -123,12 +122,9 @@ describe("content-width.ts — watch page rail lockstep", () => {
     )
   })
 
-  it("keeps the closed floating search pill the same width as the overlay field", () => {
+  it("keeps the search overlay field capped to the shared desktop width", () => {
     expect(SEARCH_OVERLAY_FIELD_WIDTH_CLASSES).toContain("max-w-[810px]")
-    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("left-1/2")
-    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("-translate-x-1/2")
-    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("max-w-[810px]")
-    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("w-[calc(100%-2rem)]")
-    expect(WATCH_PAGE_SEARCH_FIELD_CLASSES).toContain("sm:w-[calc(100%-3rem)]")
+    expect(SEARCH_OVERLAY_FIELD_WIDTH_CLASSES).toContain("mx-auto")
+    expect(SEARCH_OVERLAY_FIELD_WIDTH_CLASSES).toContain("w-full")
   })
 })

@@ -365,6 +365,8 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       "[data-testid='watch-body-backdrop']",
     )
     expect(bodyBackdrop?.getAttribute("class")).toContain("w-full")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("overflow-visible")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("md:overflow-hidden")
     expect(bodyBackdrop?.getAttribute("class")).not.toContain("max-w-[1920px]")
     const siblingInsideBody = bodyZone!.querySelector(
       "[data-block-type='SiblingCarousel']",

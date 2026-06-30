@@ -168,7 +168,6 @@ const DRY_RUN_SUPPRESSED_OPERATIONS = [
   "syncTranslatedSubtitlesToMux",
   "applySubtitleOverride",
   "syncEmbeddingArtifact",
-  "syncSceneAnalysisEmbeddings",
 ] as const
 
 function summarizeDryRun(wouldEnqueueCount: number): string {

@@ -332,13 +332,13 @@ describe("BibleQuotesSection — citations + promo", () => {
     const bleed = container.querySelector(
       '[data-testid="watch-bible-quotes-carousel-bleed"]',
     )
-    expect(bleed?.className).toContain("-mx-10")
-    expect(bleed?.className).toContain("w-[calc(100%+5rem)]")
+    expect(bleed?.className).toContain("-mx-5")
+    expect(bleed?.className).toContain("w-[calc(100%+2.5rem)]")
     expect(bleed?.className).toContain("md:mx-0")
     const content = container.querySelector(
       '[data-testid="watch-bible-quotes-list"]',
     )
-    expect(content?.className).toContain("pl-10")
+    expect(content?.className).toContain("pl-5")
     expect(content?.className).toContain("md:pl-0")
 
     // The two citation items render the formatted reference labels.

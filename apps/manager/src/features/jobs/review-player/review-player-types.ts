@@ -1,6 +1,5 @@
 import type {
   MuxSyncComparison,
-  SceneEmbeddingSyncReport,
   SubtitleValidationStepSummary,
 } from "@/types/job"
 import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
@@ -134,7 +133,6 @@ export type JobReviewContext = {
   after: JobReviewSnapshot
   compare: {
     muxSyncComparison?: MuxSyncComparison
-    sceneEmbeddingSync?: SceneEmbeddingSyncReport
   }
 }
 

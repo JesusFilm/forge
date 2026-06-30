@@ -29,12 +29,14 @@ See the origin docs for full context:
 
 ## Embedding ownership
 
-Mastra owns background transcript, scene, and experience embedding generation:
+Mastra owns background transcript and experience embedding generation:
 provider calls, provider-result validation, retries, workflow diagnostics, and
-Studio observability. Admin owns type-specific ingest routes, target
-resolution, vector storage, publication gates, pgvector indexes, public search
-contracts, and retrieval. Keep the transcript, scene, and experience ingest
-contracts separate; do not add a generic embedding blob endpoint.
+Studio observability. Admin owns the remaining type-specific ingest routes,
+target resolution, vector storage, publication gates, pgvector indexes, public
+search contracts, and retrieval. The legacy scene embedding writer and Admin
+scene ingest route are retired; historical scene rows stay in Postgres until
+feat-199 decides retention/migration. Scene analysis artifacts are non-search
+source artifacts, not a scene-vector pipeline.
 Coordinated all-content content-vector replacement uses
 `run-embeds --pipeline=all` only after a passed Mastra content search-eval gate
 report from `docs/search-eval-reports/`.
@@ -1015,182 +1017,27 @@ stats.errors === 0 && seenCoreIds.size > 0`, the phase soft-deletes
   `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`
   to re-measure before changing the value.
 
-## Scene embeddings (R1 of admin migration playbook)
+## Scene embeddings (retired writer path)
 
-Admin owns scene-level embeddings in its own Postgres. Source data is
-apps/manager's `{assetId}/scene-analysis.json` S3 artifact (the
-multimodal scene-analysis pipeline). Mastra owns scene embedding generation,
-provider retries, run diagnostics, and Studio observability. Admin launches
-Mastra for each scene target, then accepts the final scene-specific payload at
-`/api/internal/mastra/scene-embeddings` and stores it in `VideoScene` +
-`VideoSceneLocale`. Admin remains the owner of pgvector storage, partial HNSW
-indexes, target resolution, public search contracts, and search retrieval.
+Feat-193 retired the scene embedding writer pipeline. Do not reintroduce
+Admin scene embedding backfills, `triggerSceneEmbeddingBackfill`, Mastra
+`/forge-scene-embeddings`, `/api/internal/mastra/scene-embeddings`,
+`MASTRA_SCENE_INGEST_API_KEYS`, `SCENE_EMBEDDING_CONCURRENCY`, or
+`write:scene-embeddings`.
 
-- **Schema:** `VideoScene` attaches to `VideoEdition` (timecodes follow
-  the edition's cut, matching `VideoSubtitle`). Per-locale descriptions
-  - embeddings live on `VideoSceneLocale`. `embedding` is
-    `Unsupported("vector(1536)")?` and NEVER exposed via GraphQL
-    (enforced by `schema.test.ts` "no embed/vector/similarit" assertion).
-- **Partial HNSW indexes** per-locale (`en`, `es`, `fr`) plus a global
-  NULL-excluded fallback. Per-locale indexes guard against the pgvector
-  "HNSW + WHERE locale = ?" planner bypass.
-- **Storage writer:** `src/services/scene-embedding.service.ts`
-  (`writeSceneEmbeddingPayload`). Idempotent upsert on
-  `(videoEditionId, sceneIndex)` and `(videoSceneId, locale)`. Raw SQL
-  `::vector` write inside a Prisma `$transaction`. ABAC-gated via
-  `canWriteDerived`.
-- **Mastra ingest endpoint:** `src/app/api/internal/mastra/scene-embeddings`
-  accepts only scene-shaped payloads from `MASTRA_SCENE_INGEST_API_KEYS`;
-  no generic embedding blob endpoint. Payloads carry compact provenance:
-  source artifact/version/content hash, locale, model/dimensions, generation
-  mode, Mastra run id, and generated timestamp. Vectors and raw source text are
-  never exposed through GraphQL or normal route summaries.
-- **Backfill workflow:**
-  `src/workflows/sceneEmbeddingBackfill.ts` — useworkflow job that
-  enumerates one target per `(video, edition, bcp47)` triple. The
-  locale set is data-derived at enumeration time from the union of
-  each video's primary language + edition-level subtitle languages +
-  edition-level dub languages. No hardcoded locale list — an earlier
-  prototype used `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped per
-  `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
-  Per-target error isolation; `artifact_missing` errors skip and Mastra/Admin
-  ingest failures fail but don't halt the run. Safe to re-run with
-  `idempotent`, `repair`, `force`, or `model-upgrade` modes.
-- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
-  enumerated `(video, edition, locale)` targets by `(video, edition)`
-  and parallelises over GROUPS via
-  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) + Promise.allSettled`
-  — never bare `Promise.all`. Per-locale work inside a group runs
-  sequentially with the artifact in scope. See
-  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`
-  (the WHY) and
-  `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`
-  (the canonical HOW). The concurrency-cap test still asserts
-  `observedMaxInFlight === N` — a regression to sequential `for…of`
-  yields `1` and trips the assertion.
-- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
-  the workflow fetches `scene-analysis.json` ONCE per `(video, edition)`
-  group via `readSceneAnalysisArtifact(...)` and passes the loaded JSON
-  down to each per-locale Mastra launch. S3 reads collapse from N×L (per
-  locale) to N (per group). Group-level artifact-load failures cascade
-  to per-locale outcomes with the right classification
-  (`artifact_missing` → skipped; everything else → failed) so the
-  report's succeeded/skipped/failed triple stays meaningful.
-- **Mastra workflow (feat-133):** `apps/mastra` workflow id
-  `scene-embedding` accepts scene-analysis source data, validates scene order
-  and provider response shape, batches descriptions through the configured
-  embedding provider, then submits the final vectors to Admin ingest. Workflow
-  failures throw so failed runs are visible in Mastra Studio rather than hidden
-  behind successful `{ ok: false }` step outputs.
-- Tune concurrency via the `SCENE_EMBEDDING_CONCURRENCY` env var on
-  `forge-admin` Doppler. Default `5` matches admin's documented Prisma
-  `connection_limit=10` so a backfill leaves headroom for concurrent
-  GraphQL/REST traffic; local dev can crank to `20+` via the env
-  override. Per-target progress streams as `scene_index_complete` /
-  `scene_index_skipped` / `scene_index_failed` JSON log events; the
-  workflow also emits a single `event=start` log at dispatch carrying
-  the resolved concurrency AND `groupCount` (Stage 2's reshape
-  surfaces the artifact-fetch fan-in for any trigger path).
-- **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:scene-embeddings`). Stage 2's
-  reshape is internal to execution, but the JSON report shape is
-  additive over Stage 1 (`missingArtifacts`, `retrySelection`,
-  `groupedFailures`, and failed-outcome `failureCategory` may appear).
-  `outcomes[]` ordering remains documented as non-deterministic per
-  `Promise.allSettled`.
-- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
-  AWS S3 `NoSuchKey` errors classify as `skipped { reason: "artifact_missing" }`
-  via the typed-error helper `isArtifactMissing` in
-  `manager-artifacts.service.ts` (typed `error.name` first, legacy
-  `error.Code` second, tightened regex backstop third). Re-running
-  the embed workflow does NOT produce the artifact — the operator
-  must explicitly trigger enrichment via PR2's
-  `triggerManagerEnrichment` mutation. The workflow report carries a
-  `missingArtifacts: ReadonlyArray<{ assetId, coreId, kind }>` field
-  (deduped by `assetId`, sorted ascending) so an operator can pipe
-  it into `pnpm trigger-enrichment --from-report=<path>` (PR2).
-  Only `skipped { artifact_missing }` outcomes feed the list — `failed`
-  outcomes are real failures, not upstream gaps. See
-  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
-- **Scene retry recovery from prior reports:** for `pnpm run-embeds`,
-  `--pipeline=scene --from-report=<path>` extracts failed
-  `reports.scene.outcomes[]` from a prior `run-embeds.complete` report,
-  dedupes exact `(coreId, videoEditionId, locale)` selectors, and retries
-  only those targets. The workflow reconciles selectors against current
-  enumeration and fails closed when selectors are stale. The final report
-  includes `retrySelection` counts plus `groupedFailures`, which
-  collapses noisy per-locale failures by asset, edition, and category
-  (`dns_failed`, `timeout`, `prisma_transaction`, `provider_validation`,
-  etc.). Use this for transient infrastructure/provider recovery rather
-  than blindly rerunning the full catalog.
-- **Bulk SQL writes (Stage 3 — feat-117):** the per-target write batch
-  collapses from a per-row `videoSceneLocale.upsert()` + per-row
-  `$executeRaw … UPDATE … embedding` loop into THREE bulk statements
-  inside the same per-target `prisma.$transaction`:
-  1. Bulk parent INSERT with client-generated ids:
-     `INSERT INTO video_scene … SELECT * FROM unnest(...) ON CONFLICT
-(video_edition_id, scene_index) DO NOTHING`. Ids are bound as a
-     `text[]` literal via `toPgArray` (extended Stage 3 to emit the
-     unquoted `NULL` token for nullish elements). `randomUUID()` from
-     `node:crypto` is the id source — `VideoScene.id` is `String @id`
-     in Prisma (`@default(cuid())` is the schema default; nothing in
-     the DB enforces cuid shape). Avoids adding a runtime cuid dep.
-  2. ONE follow-up SELECT recovers the full `scene_index → id` map for
-     ALL incoming sceneIndexes (both freshly-inserted AND pre-existing
-     parents). `RETURNING id` alone is insufficient because
-     `ON CONFLICT DO NOTHING` doesn't return rows for existing matches,
-     and the rerun path needs ids for those too.
-  3. Bulk locale `INSERT … unnest(...) ON CONFLICT (video_scene_id,
-locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
-     SELECT seam (`u.embedding_text::vector(1536)`) — Way A discipline,
-     NOT `::vector(1536)[]` on the parameter. The `text[]` columns
-     (`themes`, `bible_verses`, `demographics`, `spiritual_context`,
-     all `String[]` in `schema.prisma` — NOT jsonb) are bound as
-     `JSON.stringify`'d strings inside a `text[]` literal and unfolded
-     per-row via `ARRAY(SELECT jsonb_array_elements_text(u.<col>_json::jsonb))`.
-     Length-equality preflight asserts ALL parallel arrays match
-     `prepared.length` BEFORE invoking `$executeRaw`. PG18's
-     `unnest(arr1, arr2, ...)` silently NULL-pads unequal-length arrays —
-     the preflight is the regression guard. See
-     `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+Historical `VideoScene` and `VideoSceneLocale` tables/rows remain in place
+until the deferred retention/migration work is explicitly approved. This
+cleanup only removes code paths that create, refresh, ingest, sync, or search
+against scene embedding vectors.
 
-**Operational runbook:**
+Manager may still produce scene-analysis artifacts for non-search product
+uses, and Admin may still read scene descriptions as non-vector context where a
+current owner exists. Search, recommendations, and Experience AI semantic
+candidate retrieval must stay transcript-backed; any remaining `video_scene`
+or `video_scene_locale` read needs a non-search justification.
 
-1. Refresh the coreId → cms video id mapping into admin's own Railway
-   S3 bucket (the one wired to `RAILWAY_S3_*`):
-   `pnpm --filter @forge/admin refresh:core-id-mapping`. The CLI
-   dumps from cms and uploads to
-   `admin-migrations/core-id-mapping.json`. Re-run when cms's catalog
-   grows (Strapi SERIAL ids don't change, so existing entries stay
-   valid).
-2. Ensure both S3 env blocks are set on the `forge-admin` Railway
-   service:
-   - `RAILWAY_S3_*` → admin's write bucket
-     (`cms-storage-jbpuckp0lmqap`, Railway bucket resource
-     `17368fd5-23e7-45bb-b007-e3f843b3d710`). Used for the coreId
-     mapping snapshot and any other `admin-migrations/*` writes.
-   - `MANAGER_ARTIFACTS_S3_*` → manager's bucket
-     (`forgemanagerartifacts-xtgld8`, Railway bucket resource
-     `b1c705c6-5add-48a0-a153-5ef40f876a4f`). Read-only;
-     `{assetId}/scene-analysis.json` + `{assetId}/transcript.json`.
-
-   Also ensure `MASTRA_BASE_URL` and `MASTRA_SERVICE_API_KEY` are set
-   so Admin can launch the scene embedding workflow. Mastra owns the
-   scene embedding provider credentials and calls Admin back through
-   the scene-specific ingest endpoint.
-
-3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
-   defaults to `admin-migrations/core-id-mapping.json`; override for
-   dry runs or ad-hoc snapshots. Omitted `locales` means "every
-   locale that exists for the videos" (union of primary / subtitle /
-   dub languages per edition). Restrict with `coreIds` or `locales`
-   (strict inclusion list — no silent fallback).
-4. Verify: `SELECT COUNT(*) FROM video_scene_locale WHERE embedding IS NOT NULL`
-   grows as expected; `SELECT DISTINCT video_edition_id FROM video_scene`
-   enumerates the indexed editions.
-
-The primary learnings doc is
-`docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md`.
+The old implementation notes live in historical plans/solution docs only as
+archival context. They are not an operational runbook.
 
 ## Transcript embeddings (Mastra-owned generation)
 
@@ -1581,9 +1428,9 @@ error_class=… message=…`. Process-local counters in
    satisfy live query embedding readiness.
 3. Canary diff vs cms: for a fixed query set × locales, compare
    `admin/api/search?q=…&locale=…` to `cms/api/search?q=…&locale=…`.
-   Top-10 should overlap within ranking ±1. Drift signals either a
-   data-readiness gap (R1 scene backfill not yet run on prod) or an
-   SQL-invariant drift to investigate.
+   Top-10 should overlap within ranking ±1. Drift signals transcript
+   embedding readiness, provider-provenance mismatch, catalog publication
+   visibility, or a current SQL-invariant drift to investigate.
 4. Verify GIN indexes are used:
    `EXPLAIN ANALYZE SELECT COUNT(*) FROM video_locale WHERE
 to_tsvector('simple', coalesce(title,'') || ' ' ||
@@ -1898,24 +1745,32 @@ public: true }`. `VideoNotFoundError` soft-swallowed to `[]` so the
 
 **Operational runbook:**
 
-1. Ensure R1 scene embeddings are backfilled for the locales you care
-   about (prod readiness). `SELECT COUNT(*) FROM video_scene_locale
-WHERE locale = 'en' AND embedding IS NOT NULL` should be non-zero
-   before canary diffs.
+1. Ensure transcript chunk embeddings are backfilled for the locales you care
+   about (prod readiness): `SELECT COUNT(*) FROM video_transcript_chunk vtc
+JOIN video_transcript vt ON vt.id = vtc.transcript_id
+WHERE vtc.language = 'en'
+  AND vtc.embedding IS NOT NULL
+  AND vt.embedding_provider = 'jesus-film-ai-gateway'
+  AND vt.model = 'embeddings'
+  AND vt.dimensions = 1536
+  AND vt.embedding_native_dimensions = 1536
+  AND vt.embedding_transform_version IS NULL
+  AND vtc.model = 'embeddings'
+  AND vtc.dimensions = 1536;` should be non-zero before canary diffs.
 2. Canary diff vs cms. For a fixed set of `(slug, locale)` seeds,
    compare `admin/api/scene-embedding/recommendations?slug=…&locale=…`
    to `cms/api/scene-embedding/recommendations?videoId=…&locale=…`.
    Top-10 should overlap within ±1 ranking position for seeds with
-   published dubs in the requested locale. Divergence signals either
-   R1 data-readiness gap or an SQL-invariant drift to investigate.
+   published dubs in the requested locale. Divergence signals either a
+   transcript data-readiness/provenance gap or an SQL-invariant drift to
+   investigate.
 3. Rate-limit monitoring. The `"recommendations"` Redis bucket is new.
    Add to dashboards alongside `"search"` / `"search-health"`.
-4. Verify HNSW index usage:
-   `EXPLAIN ANALYZE SELECT vs.video_id FROM video_scene_locale vsl
-JOIN video_scene vs ON vs.id = vsl.video_scene_id
-WHERE vsl.embedding IS NOT NULL AND vsl.locale = 'en'
-ORDER BY vsl.embedding <=> '[...]'::vector LIMIT 10;` should show
-   the partial HNSW index (same one R1 provisioned).
+4. Verify the transcript vector path with `EXPLAIN ANALYZE` over
+   `video_transcript_chunk` joined to `video_transcript` using the same
+   provider/model/dimension predicates as search and recommendation
+   services. Do not diagnose recommendation readiness from scene-vector
+   indexes; the compatibility endpoint is transcript-backed.
 
 **Common things to remember:**
 
@@ -1975,7 +1830,6 @@ path and the Cloudflare 524 edge timeout. Per
    MASTRA_BASE_URL=...
    MASTRA_SERVICE_API_KEY=...
    MASTRA_TRANSCRIPT_INGEST_API_KEYS=...
-   MASTRA_SCENE_INGEST_API_KEYS=...
    MASTRA_EXPERIENCE_INGEST_API_KEYS=...
    ```
 
@@ -1987,12 +1841,11 @@ path and the Cloudflare 524 edge timeout. Per
    ```bash
    DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
    pnpm --filter @forge/admin run-embeds --pipeline=transcript
-   #   --pipeline=scene|transcript|experience|both|all     (required)
-   #   # both = scene + transcript; all = scene + transcript + experience
+   #   --pipeline=transcript|experience|both|all     (required)
+   #   # both = transcript legacy alias; all = transcript + experience
    #   --core-id=<id>          (repeatable; restrict to specific videos)
-   #   --locale=<bcp47>        (repeatable; R1 filter)
+   #   --locale=<bcp47>        (repeatable; experience filter)
    #   --language=<bcp47>      (repeatable; transcript filter)
-   #   --scene-mode=idempotent|repair|force|model-upgrade
    #   --transcript-mode=idempotent|repair|force|model-upgrade
    #   --experience-mode=idempotent|repair|force|model-upgrade
    #   --experience-id=<id>    (repeatable; experience filter)
@@ -2000,16 +1853,15 @@ path and the Cloudflare 524 edge timeout. Per
    #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
    ```
 
-   Direct-invokes `runSceneEmbeddingBackfill`,
-   `runTranscriptEmbeddingBackfill`, or `runExperienceEmbeddingBackfill`
+   Direct-invokes `runTranscriptEmbeddingBackfill` or
+   `runExperienceEmbeddingBackfill`
    against the in-process Prisma singleton, mirroring `pnpm run-sync`.
-   Per-pipeline error isolation; structured JSON output. Scene,
-   transcript, and experience runs launch Mastra, which generates vectors
-   and calls Admin ingest; Admin keeps vector storage and search retrieval
-   authority.
+   Per-pipeline error isolation; structured JSON output. Transcript and
+   experience runs launch Mastra, which generates vectors and calls Admin
+   ingest; Admin keeps vector storage and search retrieval authority.
 
-   `--pipeline=all` is the AI Gateway content replacement path. It runs scene,
-   transcript, and experience branches, and it refuses to start until
+   `--pipeline=all` is the AI Gateway content replacement path. It runs
+   transcript and experience branches, and it refuses to start until
    `--gate-report` points at a sanitized
    `content-search-eval-gate-report` whose gate is backfill-ready, judged,
    calibrated, passed, has zero loss/search/judge/disagreement failures, and
@@ -2027,43 +1879,22 @@ path and the Cloudflare 524 edge timeout. Per
    DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
    pnpm --filter @forge/admin run-embeds \
      --pipeline=all \
-     --scene-mode=model-upgrade \
      --transcript-mode=model-upgrade \
      --experience-mode=model-upgrade \
      --gate-report=docs/search-eval-reports/<id>.json \
      --report-out=.tmp/prod-embeds/content-ai-gateway-backfill.json
    ```
 
-   Scene-including runs perform a preflight before indexing: admin S3
-   reachability, manager artifact S3 reachability, mapping load, and
-   (when `--from-report` provides a sample asset) one sample
-   scene-analysis artifact read. Infrastructure failures such as DNS,
-   timeout, bucket/auth errors, or mapping read failures fail before
-   target enumeration; a sample `artifact_missing` is only a warning
-   because missing artifacts are an enrichment gap, not storage outage.
-
-4. **Retry only failed scene outcomes from a prior report:**
-
-   ```bash
-   DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
-   pnpm --filter @forge/admin run-embeds \
-     --pipeline=scene \
-     --from-report=.tmp/prod-embeds/prod-scene-report.json \
-     --report-out=.tmp/prod-embeds/prod-scene-retry-$(date +%Y%m%d%H%M%S).json
-   ```
-
-   `--from-report` is scene-only and mutually exclusive with broad
-   `--core-id`, `--locale`, and `--language` filters. It retries exact
-   failed `(coreId, videoEditionId, locale)` targets from the report
-   after preflight, preserving the one-artifact-read-per-edition group
-   behavior. If `retrySelection.unmatched > 0`, treat the report as
-   stale and inspect the unmatched selectors before proceeding.
+4. **Do not retry scene outcomes from prior reports:** `--pipeline=scene`,
+   `--scene-mode`, and `--from-report` are retired with the scene embedding
+   writer path. Historical scene embedding reports are archival; do not use
+   them as an operational retry source.
 
 **Local DB is the destination.** `DATABASE_URL` is the only safety
 guard — there is no in-script check that detects a prod URL. Mirrors
 `run-sync.ts`'s posture; operator discipline applies.
 
-**Long-running invocations.** R1 + R2 runs across the full local
+**Long-running invocations.** Full transcript/experience runs across the local
 catalogue can take many minutes — the CLI blocks in-process. If you
 need to walk away from the terminal, use `tmux` / `screen` / `nohup`
 so a session disconnect doesn't kill the run mid-flight:
@@ -2124,22 +1955,21 @@ separate `run-embeds` operation after cleanup.
 
 ## Triggering embeds from manager
 
-Manager exposes thin REST proxies that forward to admin's existing
-GraphQL trigger mutations. Same workflow runs end-to-end on admin's
-side — manager owns presentation, admin owns execution. No workflow
-duplication; data ownership stays with admin.
+Manager exposes a thin REST proxy that forwards to admin's active
+transcript embedding GraphQL trigger mutation. Same workflow runs end-to-end
+on admin's side -- manager owns presentation, admin owns execution. No
+workflow duplication; data ownership stays with admin.
 
 **Endpoints (manager-side):**
 
-- `POST manager/api/admin-embeds/scene` — body `{ mappingS3Key?,
-coreIds?, locales? }`. Proxies to admin's
-  `triggerSceneEmbeddingBackfill`.
 - `POST manager/api/admin-embeds/transcript` — body `{ mappingS3Key?,
 coreIds?, languages? }`. Proxies to admin's
   `triggerTranscriptEmbeddingBackfill`.
 
-Both gate manager-side via `authenticateRequest` (Strapi JWT cookie
-or `MANAGER_API_KEY` bearer) before forwarding.
+The proxy gates manager-side via `authenticateRequest` (Strapi JWT cookie
+or `MANAGER_API_KEY` bearer) before forwarding. The old
+`POST manager/api/admin-embeds/scene` route and
+`triggerSceneEmbeddingBackfill` mutation are retired.
 
 **Admin-side auth posture (plan 006):** admin's GraphQL context
 mints a request-bound `WORKFLOW_TRIGGER` principal when an incoming
@@ -2147,9 +1977,8 @@ request carries `Authorization: Bearer <key>` matching one of the
 keys in `WORKFLOW_API_KEYS` (the same env var the workflow callback
 endpoint validates with HMAC). The `WORKFLOW_TRIGGER` role
 satisfies a narrow allowlist defined in `src/auth/permissions.ts`
-(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently:
+(`WORKFLOW_TRIGGER_PERMISSIONS`) -- currently:
 
-- `write:scene-embeddings` — `triggerSceneEmbeddingBackfill`
 - `write:transcript-embeddings` — `triggerTranscriptEmbeddingBackfill`
 - `write:experience-embeddings` — `triggerExperienceEmbeddingBackfill`
 - `write:manager-enrichment-trigger` — `triggerManagerEnrichment` (feat-119 PR2)

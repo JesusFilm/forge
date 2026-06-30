@@ -271,7 +271,7 @@ export function SeriesPageClient({
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900/80 px-10 pt-10 pb-6 text-stone-100 backdrop-blur-2xl backdrop-saturate-150 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24"
+          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900/80 px-5 pt-10 pb-6 text-stone-100 backdrop-blur-2xl backdrop-saturate-150 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24"
         >
           {description ? (
             <div className="md:col-span-3">

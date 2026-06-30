@@ -233,21 +233,6 @@ export type MastraStepCorrelation = {
   languages?: string[]
 }
 
-export type SceneEmbeddingSyncStatus =
-  | "source_ready"
-  | "skipped_empty"
-  | "failed"
-  | "unsupported"
-
-export type SceneEmbeddingSyncReport = {
-  domain: "scene_embeddings"
-  status: SceneEmbeddingSyncStatus
-  reason?: string
-  generatedSceneCount: number
-  indexableSceneCount: number
-  skippedEmptySceneIndexes?: number[]
-}
-
 export type MuxSyncStatus =
   | "synced"
   | "skipped_existing_mux_data"
