@@ -348,20 +348,6 @@ export const GET_WATCH_EXPERIENCE = graphql(
   ],
 )
 
-// ── Watch setting (public homepage resolution) ──────────────────────
-// Mirrors mobile GET_WATCH_SETTING: resolves the homepage Experience slug via
-// PUBLIC watchSetting (home renders it via PUBLIC experienceBySlug). Replaced
-// LIST_EXPERIENCES, which hit editor-gated Query.experiences and 401'd for TV.
-export const GET_WATCH_SETTING = graphql(`
-  query GetWatchSetting($locale: String!) {
-    watchSetting(locale: $locale) {
-      homepageExperience {
-        slug
-      }
-    }
-  }
-`)
-
 // ── Semantic search query ─────────────────────────────────────────
 // Mirrors mobile SEMANTIC_SEARCH. We omit `searchMode` since TV renders
 // keyword-fallback results identically (no degraded-mode UX). $locale is String!
