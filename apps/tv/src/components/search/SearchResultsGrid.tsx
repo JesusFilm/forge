@@ -64,7 +64,11 @@ export function SearchResultsGrid({
     [router],
   )
 
-  if (state === "loading") {
+  // "loading" = a search is in flight. "idle" while the grid is mounted means a
+  // query is typed (hasQuery gated it in at >=3 chars) but the debounce hasn't
+  // fired runSearch yet — show the same indicator so the pane never flashes blank
+  // (U5). The indicator is non-focusable, so D-pad focus stays on the keyboard.
+  if (state === "loading" || state === "idle") {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={WATCH_THEME.accent} />
@@ -86,13 +90,6 @@ export function SearchResultsGrid({
 
   if (state === "empty") {
     return <EmptyState query={query} />
-  }
-
-  if (state === "idle") {
-    // /search renders SearchBrowse (U7) in this branch — the grid is
-    // only visible once a query is non-empty. Return null as a defensive
-    // fallback in case a caller renders the grid in idle state directly.
-    return null
   }
 
   if (state === "ready") {
