@@ -136,9 +136,10 @@ function Carousel({
 
 function CarouselContent({
   className,
+  viewportClassName,
   onWheel,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { viewportClassName?: string }) {
   const { carouselRef, orientation, api } = useCarousel()
 
   function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
@@ -164,7 +165,7 @@ function CarouselContent({
   return (
     <div
       ref={carouselRef}
-      className="overflow-x-clip overflow-y-visible"
+      className={cn("overflow-x-clip overflow-y-visible", viewportClassName)}
       data-slot="carousel-content"
       onWheel={handleWheel}
     >

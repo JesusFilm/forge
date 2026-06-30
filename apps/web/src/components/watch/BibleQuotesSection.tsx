@@ -263,7 +263,7 @@ export function BibleQuotesSection({
 
       <div
         data-testid="watch-bible-quotes-carousel-bleed"
-        className="-mx-10 w-[calc(100%+5rem)] md:mx-0 md:w-full"
+        className="-mx-5 w-[calc(100%+2.5rem)] md:mx-0 md:w-full"
       >
         <Carousel
           aria-label={t("title")}
@@ -273,7 +273,7 @@ export function BibleQuotesSection({
         >
           <CarouselContent
             data-testid="watch-bible-quotes-list"
-            className="-ml-4 pl-10 md:pl-0"
+            className="-ml-4 pl-5 md:pl-0"
           >
             {bibleCitations.map((citation, i) => (
               <CarouselItem

@@ -14,15 +14,15 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
  * Watch-page rail: aligns floating chrome, hero overlay text, carousel, and
  * body content on the same left edge.
  */
-export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-10 md:px-16 xl:px-24"
-export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-10 md:left-16 xl:left-24"
+export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-5 md:px-16 xl:px-24"
+export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-5 md:left-16 xl:left-24"
 export const WATCH_PAGE_LEFT_EDGE_CLASSES =
   "left-10 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]"
 export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
   "right-10 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]"
 export const SEARCH_OVERLAY_FIELD_WIDTH_CLASSES = "mx-auto w-full max-w-[810px]"
 export const WATCH_PAGE_SEARCH_FIELD_CLASSES =
-  "left-1/2 w-[calc(100%-2rem)] max-w-[810px] -translate-x-1/2 sm:w-[calc(100%-3rem)]"
+  "left-[6rem] right-[6rem] w-auto max-w-none translate-x-0 md:left-1/2 md:right-auto md:w-[calc(100%-3rem)] md:max-w-[810px] md:-translate-x-1/2"
 export const WATCH_PAGE_CONTENT_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} ${WATCH_PAGE_RAIL_PADDING_CLASSES}`
 
 /**

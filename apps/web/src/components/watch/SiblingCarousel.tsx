@@ -236,10 +236,10 @@ export function SiblingCarousel({
     <section
       data-block-type="SiblingCarousel"
       data-mode={isParentMode ? "parent" : "chapter"}
-      className="relative -mx-10 w-[calc(100%+5rem)] pt-2 pb-2 md:mx-0 md:w-full"
+      className="relative -mx-5 w-[calc(100%+2.5rem)] pt-2 pb-2 md:mx-0 md:w-full"
       aria-label={ariaLabel}
     >
-      <header className="mb-4 px-10 md:px-0">
+      <header className="mb-4 px-5 md:px-0">
         <p className="text-sm font-normal text-stone-300">
           <span className="font-medium text-stone-100">{parentTitle}</span>
           <span className="px-2 text-stone-500">·</span>
@@ -270,9 +270,9 @@ export function SiblingCarousel({
           startIndex: initialCarouselState.index,
         }}
         setApi={setApi}
-        className="w-full pl-10 md:pl-0"
+        className="w-full pl-5 md:pl-0"
       >
-        <CarouselContent>
+        <CarouselContent viewportClassName="overflow-x-visible md:overflow-x-clip">
           {children.map((child, index) => {
             const isActive = index === visualActiveIndex
             // Prefer a Mux frame from the current watch language when admin

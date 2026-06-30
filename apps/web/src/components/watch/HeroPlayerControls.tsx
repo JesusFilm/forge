@@ -30,6 +30,12 @@ import {
   PauseIcon,
   PlayIcon,
 } from "./chrome-icons"
+import {
+  buildMuxStoryboardJsonUrl,
+  findStoryboardTile,
+  parseMuxStoryboard,
+  type MuxStoryboard,
+} from "./mux-storyboard"
 
 const TOP_SCROLL_CHROME_REVEAL_THRESHOLD_PX = 8
 const CHROME_IDLE_HIDE_DELAY_MS = 4000
@@ -73,6 +79,7 @@ export function HeroPlayerControls({
   playerRef,
   wrapperRef,
   overlayAnchor,
+  playbackId,
   onLanguageClick,
   showLanguageButton,
   onVisibilityChange,
@@ -89,6 +96,7 @@ export function HeroPlayerControls({
    * so this is null for one render at most before the ref callback fires.
    */
   overlayAnchor: HTMLDivElement | null
+  playbackId?: string
   /** Click handler for the in-chrome globe (mirrors the top-right globe). */
   onLanguageClick?: () => void
   /**
@@ -125,6 +133,9 @@ export function HeroPlayerControls({
   const [volumeOpen, setVolumeOpen] = useState(false)
   const [volumeDragging, setVolumeDragging] = useState(false)
   const [timelineDragging, setTimelineDragging] = useState(false)
+  const [previewPct, setPreviewPct] = useState<number | null>(null)
+  const [storyboard, setStoryboard] = useState<MuxStoryboard | null>(null)
+  const [pendingSeekTime, setPendingSeekTime] = useState<number | null>(null)
   // Local scrub position (0..1) used by the visual thumb during a drag so
   // the cursor can lead the player's actual seek-resolved time without
   // visible lag. `null` outside of a drag — falls back to currentTime.
@@ -155,6 +166,11 @@ export function HeroPlayerControls({
       opacity: chromeOpacity,
     })
   }, [chromeOpacity, chromeVisible, onVisibilityChange])
+
+  useEffect(() => {
+    if (chromeVisible) return
+    setPreviewPct(null)
+  }, [chromeVisible])
 
   useEffect(() => {
     window.dispatchEvent(
@@ -195,6 +211,7 @@ export function HeroPlayerControls({
   // pointermove fires at 60-120 Hz on most browsers, and HLS / Mux Player
   // cannot process that many seeks per second without visible jerk.
   const scrubPctRef = useRef<number | null>(null)
+  const pendingSeekTimeRef = useRef<number | null>(null)
   const scrubRafRef = useRef<number | null>(null)
   // Snapshot of the timeline's bounding rect captured at pointerdown. Re-using
   // this for the entire drag prevents thumb oscillation when the volume
@@ -229,6 +246,10 @@ export function HeroPlayerControls({
   useEffect(() => {
     timelineDraggingRef.current = timelineDragging
   }, [timelineDragging])
+
+  useEffect(() => {
+    pendingSeekTimeRef.current = pendingSeekTime
+  }, [pendingSeekTime])
 
   useEffect(() => {
     pointerRevealLockedRef.current = true
@@ -324,7 +345,17 @@ export function HeroPlayerControls({
       setMuted(!!player.muted)
       const v = player.volume
       setVolume(Number.isFinite(v) ? v : 1)
-      setCurrentTime(player.currentTime)
+      const nextCurrentTime = player.currentTime
+      setCurrentTime(nextCurrentTime)
+      const pending = pendingSeekTimeRef.current
+      if (
+        pending != null &&
+        Number.isFinite(nextCurrentTime) &&
+        Math.abs(nextCurrentTime - pending) <= 0.5
+      ) {
+        pendingSeekTimeRef.current = null
+        setPendingSeekTime(null)
+      }
       const d = player.duration
       setDuration(Number.isFinite(d) ? d : 0)
       const b = player.buffered
@@ -355,6 +386,28 @@ export function HeroPlayerControls({
       events.forEach((e) => player.removeEventListener(e, sync))
     }
   }, [player])
+
+  useEffect(() => {
+    setStoryboard(null)
+    if (!playbackId) return
+
+    const controller = new AbortController()
+    const loadStoryboard = async () => {
+      try {
+        const response = await fetch(buildMuxStoryboardJsonUrl(playbackId), {
+          signal: controller.signal,
+        })
+        if (!response.ok) return
+        const parsed = parseMuxStoryboard(await response.json())
+        if (!controller.signal.aborted) setStoryboard(parsed)
+      } catch {
+        if (!controller.signal.aborted) setStoryboard(null)
+      }
+    }
+
+    void loadStoryboard()
+    return () => controller.abort()
+  }, [playbackId])
 
   // Fullscreen state now comes from useIsFullscreen() above — no
   // component-local listener needed.
@@ -608,7 +661,10 @@ export function HeroPlayerControls({
     (pct: number) => {
       const p = playerRef.current
       if (!p || !duration) return
-      p.currentTime = pct * duration
+      const nextTime = pct * duration
+      pendingSeekTimeRef.current = nextTime
+      setPendingSeekTime(nextTime)
+      p.currentTime = nextTime
     },
     [playerRef, duration],
   )
@@ -632,7 +688,10 @@ export function HeroPlayerControls({
       if (!p) return
       const d = p.duration
       if (!Number.isFinite(d) || d <= 0) return
-      p.currentTime = pct * d
+      const nextTime = pct * d
+      pendingSeekTimeRef.current = nextTime
+      setPendingSeekTime(nextTime)
+      p.currentTime = nextTime
     })
   }, [playerRef])
 
@@ -670,6 +729,7 @@ export function HeroPlayerControls({
       const pct = computeScrubPct(e.clientX)
       scrubPctRef.current = pct
       setScrubPct(pct)
+      setPreviewPct(pct)
       seekToPct(pct)
     },
     [playerRef, computeScrubPct, seekToPct],
@@ -677,8 +737,9 @@ export function HeroPlayerControls({
 
   const handleTimelinePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!timelineDraggingRef.current) return
       const pct = computeScrubPct(e.clientX)
+      setPreviewPct(pct)
+      if (!timelineDraggingRef.current) return
       // Visual update fires every move — instant cursor-following thumb.
       scrubPctRef.current = pct
       setScrubPct(pct)
@@ -714,6 +775,7 @@ export function HeroPlayerControls({
       if (wasDragging && finalPct != null && p) seekToPct(finalPct)
       setTimelineDragging(false)
       setScrubPct(null)
+      if (finalPct != null) setPreviewPct(finalPct)
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
@@ -729,6 +791,16 @@ export function HeroPlayerControls({
     },
     [playerRef, seekToPct],
   )
+
+  const handleTimelinePointerLeave = useCallback(() => {
+    if (timelineDraggingRef.current) return
+    setPreviewPct(null)
+  }, [])
+
+  const handleTimelineBlur = useCallback(() => {
+    if (timelineDraggingRef.current) return
+    setPreviewPct(null)
+  }, [])
 
   // If the OS revokes pointer capture mid-drag (page hidden, touch preempted,
   // container collapses), pointerup never fires — reset the drag flag, drop
@@ -777,18 +849,25 @@ export function HeroPlayerControls({
       const arrowStep = e.shiftKey ? 10 : 5
       const pageStep = 30
       const cur = p.currentTime
+      let nextTime: number | null = null
       if (e.key === "ArrowRight") {
-        p.currentTime = Math.min(duration, cur + arrowStep)
+        nextTime = Math.min(duration, cur + arrowStep)
       } else if (e.key === "ArrowLeft") {
-        p.currentTime = Math.max(0, cur - arrowStep)
+        nextTime = Math.max(0, cur - arrowStep)
       } else if (e.key === "PageUp") {
-        p.currentTime = Math.min(duration, cur + pageStep)
+        nextTime = Math.min(duration, cur + pageStep)
       } else if (e.key === "PageDown") {
-        p.currentTime = Math.max(0, cur - pageStep)
+        nextTime = Math.max(0, cur - pageStep)
       } else if (e.key === "Home") {
-        p.currentTime = 0
+        nextTime = 0
       } else if (e.key === "End") {
-        p.currentTime = duration
+        nextTime = duration
+      }
+      if (nextTime != null) {
+        pendingSeekTimeRef.current = nextTime
+        setPendingSeekTime(nextTime)
+        setPreviewPct(Math.min(1, Math.max(0, nextTime / duration)))
+        p.currentTime = nextTime
       }
     },
     [playerRef, duration],
@@ -799,9 +878,29 @@ export function HeroPlayerControls({
   // the seek resolves). This is what makes the cursor "lead" the player
   // without visible lag.
   const displayTime =
-    timelineDragging && scrubPct != null ? scrubPct * duration : currentTime
+    timelineDragging && scrubPct != null
+      ? scrubPct * duration
+      : (pendingSeekTime ?? currentTime)
   const progressPct =
     duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0
+  const previewTime =
+    previewPct != null && duration > 0 ? previewPct * duration : null
+  const previewTile =
+    storyboard && previewTime != null
+      ? findStoryboardTile(storyboard, previewTime)
+      : null
+  const previewStoryboard = previewTile ? storyboard : null
+  const previewLeftPct =
+    previewPct == null ? 0 : Math.min(96, Math.max(4, previewPct * 100))
+  const previewWidthPx = previewStoryboard ? previewStoryboard.tileWidth / 2 : 0
+  const previewHeightPx = previewStoryboard
+    ? previewStoryboard.tileHeight / 2
+    : 0
+
+  const handleTimelineFocus = useCallback(() => {
+    if (duration <= 0) return
+    setPreviewPct(Math.min(1, Math.max(0, displayTime / duration)))
+  }, [displayTime, duration])
 
   // Dark gradient that sits BEHIND the chrome bar so the white icons stay
   // legible. It used to live inside the sticky hero wrapper, but the
@@ -847,7 +946,7 @@ export function HeroPlayerControls({
         }
       }}
       onPointerLeave={() => setHoveringControls(false)}
-      className={`absolute inset-x-0 bottom-0 z-10 flex w-full items-center gap-3 pb-6 transition-opacity duration-300 md:gap-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
+      className={`absolute inset-x-0 bottom-0 z-10 flex w-full flex-wrap items-center gap-x-2 gap-y-0 pb-3 transition-opacity duration-300 md:flex-nowrap md:gap-x-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
         chromeOpacityClass
       }`}
     >
@@ -877,24 +976,76 @@ export function HeroPlayerControls({
         onPointerMove={handleTimelinePointerMove}
         onPointerUp={handleTimelinePointerUp}
         onPointerCancel={handleTimelinePointerUp}
+        onPointerLeave={handleTimelinePointerLeave}
         onLostPointerCapture={handleTimelineLostPointerCapture}
+        onFocus={handleTimelineFocus}
+        onBlur={handleTimelineBlur}
         onKeyDown={handleTimelineKey}
-        className="group relative h-1 min-w-0 flex-1 cursor-pointer touch-pan-y rounded-full bg-white/20 transition-colors duration-150 hover:bg-white/30 focus:bg-white/30 focus:ring-2 focus:ring-white/60 focus:outline-none"
+        className="group/timeline relative order-first flex h-5 min-w-0 basis-full cursor-pointer touch-pan-y items-center focus-visible:outline-none md:order-none md:h-8 md:flex-1 md:basis-auto"
       >
-        <div
-          className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
-          style={{ width: `${bufferedPct}%` }}
-        />
-        <div
-          className="absolute inset-y-0 left-0 rounded-l-full bg-brand-red"
-          style={{ width: `${progressPct}%` }}
-        />
-        <div
-          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-red shadow transition group-hover:opacity-100 group-focus:opacity-100 ${
-            timelineDragging ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ left: `${progressPct}%` }}
-        />
+        {previewTile && previewStoryboard ? (
+          <div
+            data-testid="hero-chrome-timeline-preview"
+            className="pointer-events-none absolute bottom-5 z-20 overflow-hidden rounded-md shadow-2xl ring-1 ring-white/20 md:bottom-7"
+            style={
+              {
+                "--hero-preview-left": `clamp(${previewWidthPx / 2}px, ${previewLeftPct}%, calc(100% - ${
+                  previewWidthPx / 2
+                }px))`,
+                left: "var(--hero-preview-left)",
+                width: `${previewWidthPx}px`,
+                transform: "translateX(-50%)",
+              } as CSSProperties
+            }
+          >
+            <div
+              className="relative overflow-hidden"
+              style={{
+                width: `${previewWidthPx}px`,
+                height: `${previewHeightPx}px`,
+              }}
+            >
+              <div
+                aria-hidden="true"
+                className="origin-top-left"
+                style={{
+                  width: `${previewStoryboard.tileWidth}px`,
+                  height: `${previewStoryboard.tileHeight}px`,
+                  backgroundImage: `url("${previewStoryboard.url}")`,
+                  backgroundPosition: `-${previewTile.x}px -${previewTile.y}px`,
+                  transform: "scale(0.5)",
+                }}
+              />
+              <div
+                data-testid="hero-chrome-timeline-preview-time"
+                className="absolute right-1 bottom-1 rounded bg-black/65 px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums text-white shadow-sm backdrop-blur-[2px]"
+                style={{
+                  textShadow: "0 1px 2px rgba(0,0,0,0.75)",
+                }}
+              >
+                {formatTime(previewTime ?? 0)}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        <div className="relative h-1 w-full rounded-full bg-white/20 transition-colors duration-150 group-hover/timeline:bg-white/30 group-focus-visible/timeline:bg-white/30 group-focus-visible/timeline:ring-1 group-focus-visible/timeline:ring-brand-red/70 group-focus-visible/timeline:ring-offset-2 group-focus-visible/timeline:ring-offset-black/40">
+          <div
+            className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
+            style={{ width: `${bufferedPct}%` }}
+          />
+          <div
+            className="absolute inset-y-0 left-0 rounded-l-full bg-brand-red"
+            style={{ width: `${progressPct}%` }}
+          />
+          <div
+            className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-red shadow transition group-hover/timeline:opacity-100 group-focus-visible/timeline:opacity-100 ${
+              timelineDragging || previewPct != null
+                ? "opacity-100"
+                : "opacity-0"
+            }`}
+            style={{ left: `${progressPct}%` }}
+          />
+        </div>
       </div>
 
       <div
@@ -905,6 +1056,12 @@ export function HeroPlayerControls({
       >
         {formatTime(displayTime)} / {formatTime(duration)}
       </div>
+
+      <div
+        aria-hidden="true"
+        data-testid="hero-chrome-mobile-spacer"
+        className="flex-1 md:hidden"
+      />
 
       <div
         className="relative flex shrink-0 items-center"
