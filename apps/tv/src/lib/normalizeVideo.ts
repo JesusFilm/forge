@@ -111,11 +111,10 @@ export type WatchVideoRecord = {
 }
 
 // Series screen's record: shared video record (trailer = series' own playable dub
-// as streamingUrl/variants) plus episode rail and language union. Produced only by
-// normalizeSeries so the base record stays untouched for WatchSessionProvider/watch screen.
+// as streamingUrl/variants) plus the episode rail. The language union is fetched
+// lazily (GET_SERIES_LANGUAGES, U1), not carried on the record.
 export type WatchSeriesRecord = WatchVideoRecord & {
   episodes: WatchEpisode[]
-  languages: WatchChildLanguage[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -415,11 +414,23 @@ function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
   return dedupeByDocumentId(episodes)
 }
 
+// One child-dub language as it arrives from the (now lazy) GET_SERIES_LANGUAGES
+// query — `name` is a JSON locale map resolved client-side.
+export type RawChildDubLanguage = {
+  slug: string | null
+  name: unknown
+  bcp47: string | null
+}
+
 // Language union, keyed on the unique slug (never bcp47 — ko/ko-kmr collide).
-function buildLanguages(raw: RawSeriesVideo): WatchChildLanguage[] {
+// Exported so the series screen normalizes the lazy GET_SERIES_LANGUAGES result
+// into its OWN state, independent of the lean series record (KTD1).
+export function normalizeChildDubLanguages(
+  raw: readonly RawChildDubLanguage[] | null | undefined,
+): WatchChildLanguage[] {
   const seen = new Set<string>()
   const languages: WatchChildLanguage[] = []
-  for (const lang of raw.childDubLanguages ?? []) {
+  for (const lang of raw ?? []) {
     const slug = lang.slug
     if (slug == null || slug === "" || seen.has(slug)) continue
     seen.add(slug)
@@ -451,7 +462,6 @@ export function normalizeSeries(
   const result: WatchSeriesRecord = {
     ...buildWatchVideoRecord(raw),
     episodes: buildEpisodes(raw),
-    languages: buildLanguages(raw),
   }
   normalizeSeriesCache.set(raw, result)
   return result

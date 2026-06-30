@@ -4,6 +4,7 @@ import type { DocumentNode } from "graphql"
 import {
   GET_VIDEO_BY_SLUG,
   GET_SERIES_BY_SLUG,
+  GET_SERIES_LANGUAGES,
   GET_VIDEO_DUB,
   watchVideoFragment,
   watchDubMediaFragment,
@@ -19,6 +20,7 @@ function asSdl(doc: unknown): string {
 const bulkSdl = asSdl(GET_VIDEO_BY_SLUG)
 const seriesSdl = asSdl(GET_SERIES_BY_SLUG)
 const dubSdl = asSdl(GET_VIDEO_DUB)
+const languagesSdl = asSdl(GET_SERIES_LANGUAGES)
 const bulkFragmentSdl = asSdl(watchVideoFragment)
 const dubFragmentSdl = asSdl(watchDubMediaFragment)
 
@@ -97,7 +99,7 @@ describe("GET_VIDEO_BY_SLUG (lean bulk video + dub list)", () => {
   })
 })
 
-describe("GET_SERIES_BY_SLUG (series detail: own children + language union)", () => {
+describe("GET_SERIES_BY_SLUG (series detail: lean — own children, no language union)", () => {
   it("queries videoBySlug(slug:) and spreads the lean SeriesWatchVideo fragment", () => {
     expect(seriesOpSdl).toMatch(/videoBySlug\(slug:\s*\$slug\)/)
     expect(seriesOpSdl).toContain("...SeriesWatchVideo")
@@ -144,9 +146,11 @@ describe("GET_SERIES_BY_SLUG (series detail: own children + language union)", ()
     }
   })
 
-  it("selects childDubLanguages (slug, name, bcp47)", () => {
-    expect(seriesOpSdl).toContain("childDubLanguages")
-    expect(seriesOpSdl).toContain("bcp47")
+  // U1 over-fetch guard: childDubLanguages — the ~835 KB server aggregation —
+  // moved to the lazy GET_SERIES_LANGUAGES query. It must NOT creep back onto the
+  // initial fetch, or the series screen pays the aggregation on first paint again.
+  it("does NOT select childDubLanguages (moved to GET_SERIES_LANGUAGES)", () => {
+    expect(seriesSdl).not.toContain("childDubLanguages")
   })
 
   // Payload guard: the series' own dub list comes from the WatchVideo spread
@@ -160,6 +164,29 @@ describe("GET_SERIES_BY_SLUG (series detail: own children + language union)", ()
   it("EXCLUDES per-dub media everywhere in the document", () => {
     expect(seriesSdl).not.toContain("downloads")
     expect(seriesSdl).not.toContain("subtitles")
+  })
+})
+
+describe("GET_SERIES_LANGUAGES (lazy secondary language union — U1)", () => {
+  it("selects childDubLanguages (slug, name, bcp47) on videoBySlug", () => {
+    expect(languagesSdl).toMatch(/videoBySlug\(slug:\s*\$slug\)/)
+    expect(languagesSdl).toContain("childDubLanguages")
+    for (const field of ["slug", "name", "bcp47"]) {
+      expect(languagesSdl).toContain(field)
+    }
+  })
+
+  // Same Video entity (documentId: id) so the union normalizes alongside the lean
+  // record; only $slug is needed (name is a JSON locale map resolved client-side).
+  it("selects the id and declares only $slug", () => {
+    expect(languagesSdl).toContain("documentId: id")
+    expect(languagesSdl).toContain("$slug: String!")
+    expect(languagesSdl).not.toContain("$locale")
+  })
+
+  it("carries no episode or dub weight (just the union)", () => {
+    expect(languagesSdl).not.toContain("variants")
+    expect(languagesSdl).not.toContain("children")
   })
 })
 

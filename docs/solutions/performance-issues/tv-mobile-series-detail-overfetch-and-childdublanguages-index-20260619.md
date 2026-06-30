@@ -1,7 +1,7 @@
 ---
 title: TV/mobile series-detail 10s render — shared-fragment over-fetch + an un-indexed childDubLanguages aggregation (local timing hides prod cost)
 date: 2026-06-19
-last_updated: 2026-06-19
+last_updated: 2026-06-30
 category: performance-issues
 module: apps/tv, apps/mobile, apps/admin
 problem_type: performance_issue
@@ -23,6 +23,7 @@ tags:
   - childDubLanguages
   - admin-handoff
   - local-vs-prod-latency
+  - query-split-bytes-vs-latency
 ---
 
 ## Problem
@@ -112,6 +113,41 @@ TV (first paint and the language panel). Optional follow-ups: a server-side
 `published` filter / pagination on `dubs`, and a cheap `childDubLanguagesCount`
 field so the hero "N languages" count doesn't require the full list.
 
+## Phase 2 — lazy-load `childDubLanguages`, and benchmark which list dominates (2026-06-30, PR #1424)
+
+After the phase-1 trim, `GET_SERIES_BY_SLUG` (slug `jesus`) measured **835.6 KB / 884 ms
+warm** (prod, warm median of 10). Two heavy per-language lists remained:
+`childDubLanguages` (the language union) and `variants: dubs`. The open question —
+_which one dominates the 835 KB?_ — cannot be read off the query; it was settled only
+by benchmarking each list separately.
+
+U1 (apps/tv) lazy-loaded `childDubLanguages` off the initial fetch into a secondary
+`GetSeriesLanguages` query (`apps/tv/src/lib/videoQueries.ts`), sourcing the hero count +
+language panel from that query's own state so the lean record stays referentially stable
+(the WeakMap-memoized `normalizeSeries` never re-walks the dub list on cache-first
+re-entry).
+
+**Measured (prod, slug `jesus`, warm median of 10):**
+
+| Operation                               | resp KB | warm median | warm TTFB | cold   | p95    |
+| --------------------------------------- | ------- | ----------- | --------- | ------ | ------ |
+| `GetSeriesBySlug` — before (both lists) | 835.6   | 884 ms      | 741 ms    | 842 ms | 943 ms |
+| `GetSeriesBySlug` — after, lean (U1)    | 693     | **630 ms**  | 489 ms    | 588 ms | 711 ms |
+| `GetSeriesLanguages` — after, lazy (U1) | 142.6   | 674 ms      | 641 ms    | 680 ms | 913 ms |
+
+**The split resolved the open question — and bytes vs latency live in _different_ lists:**
+
+- `childDubLanguages` is only **~142.6 KB**, but it carried the **latency** (its unindexed
+  `DISTINCT-ON` aggregation). Moving it off the blocking fetch cut warm latency
+  **−254 ms / −29%** (884 → 630 ms) — the hero + episode rail paint without waiting on it.
+- `variants: dubs` (~**693 KB**, still on the lean query) is the **byte** hog — but cheap to
+  serve now that phase-1 dropped its per-dub `muxVideo` resolution. So the payload fell only
+  **−17%** (835.6 → 693 KB).
+
+The intuitively-guilty field — named "languages," with the visible aggregation cost — was the
+**latency** driver but the **byte** minor. The next, higher-value payload follow-up (trim
+`variants: dubs`) was identifiable **only** from this per-field split.
+
 ## The META lesson
 
 1. **A shared GraphQL fragment is over-fetch the moment a second screen reuses it
@@ -124,3 +160,11 @@ field so the hero "N languages" count doesn't require the full list.
 3. **Know where the deployed app's endpoint actually comes from.** Here it's EAS
    server-side env, not any file in the repo — so the only locally-configured
    endpoint (`127.0.0.1:3003`) was never the one users hit.
+4. **Bytes and latency can live in different sub-lists — benchmark each, don't guess
+   which to defer.** After the phase-1 trim, `childDubLanguages` (~142 KB) carried the
+   latency while `variants: dubs` (~693 KB) carried the bytes; lazy-loading the
+   latency-dominant list won −29% latency but only −17% payload. Before splitting a query
+   that has 2+ heavy lists, measure `size_download` **and** `time_total` per field (warm
+   median vs prod, e.g. `curl -w '%{size_download} %{time_total}'`) — an aggregation field
+   (`DISTINCT-ON`/`GROUP BY`/union) is the latency suspect, a flat per-row list is the byte
+   suspect, and they are usually not the same field.

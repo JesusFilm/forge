@@ -186,9 +186,10 @@ export const seriesWatchVideoFragment = graphql(`
 `)
 
 // ── Series detail query ─────────────────────────────────────────────
-// SYNC: mirrors apps/mobile/src/lib/queries.ts GET_SERIES_BY_SLUG. Adds two series-only
-// selections atop the lean fragment: OWN `children` (episode rail) + `childDubLanguages`
-// (panel). Children select card fields only, never dubs/variants (else 9.5MB again).
+// SYNC: mirrors apps/mobile/src/lib/queries.ts GET_SERIES_BY_SLUG, plus the OWN
+// `children` (episode rail). The childDubLanguages union — the ~835KB server
+// aggregation — is split into GET_SERIES_LANGUAGES below so the hero + rail paint
+// without waiting on it. Children select card fields only, never dubs/variants.
 export const GET_SERIES_BY_SLUG = graphql(
   `
     query GetSeriesBySlug($locale: String!, $slug: String!) {
@@ -216,11 +217,6 @@ export const GET_SERIES_BY_SLUG = graphql(
             }
           }
         }
-        childDubLanguages {
-          slug
-          name
-          bcp47
-        }
       }
     }
   `,
@@ -228,6 +224,25 @@ export const GET_SERIES_BY_SLUG = graphql(
 )
 
 export type SeriesVideoData = ResultOf<typeof GET_SERIES_BY_SLUG>
+
+// ── Series language union (lazy, secondary) ─────────────────────────
+// childDubLanguages alone, fetched after the lean GET_SERIES_BY_SLUG so the hero
+// and rail render first; feeds the panel + count from its OWN state, never the
+// lean record (KTD1 keeps the lean read stable so the dub memo never re-walks).
+export const GET_SERIES_LANGUAGES = graphql(`
+  query GetSeriesLanguages($slug: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
+      childDubLanguages {
+        slug
+        name
+        bcp47
+      }
+    }
+  }
+`)
+
+export type SeriesLanguagesData = ResultOf<typeof GET_SERIES_LANGUAGES>
 
 // ── Per-dub media (lazy) ────────────────────────────────────────────
 // The downloads + subtitles left out of WatchVideo, fetched per dub on demand

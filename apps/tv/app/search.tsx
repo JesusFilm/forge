@@ -17,6 +17,7 @@ import { scale } from "../src/lib/scale"
 import type { SearchResult } from "../src/lib/queries"
 import type { SearchState } from "../src/lib/search"
 import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
+import { meetsMinQueryLength } from "../src/lib/searchGate"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
@@ -49,7 +50,7 @@ export default function SearchScreen() {
     addRecent(lastSubmittedQuery)
   }, [state, results.length, lastSubmittedQuery, addRecent])
 
-  // Recent / Category click runs a fresh search immediately, bypassing the 600ms
+  // Recent / Category click runs a fresh search immediately, bypassing the 900ms
   // debounce. Thread the sanitized value through runQuery directly: submit() closes
   // over stale `query` until the next render, so the lag would search the prior one.
   const runQueryImmediate = useCallback(
@@ -61,10 +62,10 @@ export default function SearchScreen() {
     [runQuery],
   )
 
-  // Trim so a whitespace-only query falls back to SearchBrowse, not an empty
-  // pane — matching useSemanticSearch's trimmed-length fetch gate (keeps the two
-  // gates in lockstep; defensive for future input sources).
-  const hasQuery = query.trim().length > 0
+  // Under the min length the browse view stays mounted (no blank/stale pane);
+  // the SAME gate the debounce path uses, so results appear exactly when search
+  // fires. Whitespace-only trims to empty and also falls back to SearchBrowse.
+  const hasQuery = meetsMinQueryLength(query)
   const meta = resolveSearchMeta(state, results.length)
 
   const bodyProps: SearchBodyProps = {

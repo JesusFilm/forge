@@ -1,5 +1,5 @@
 // Series-screen language picker (U4): lists the child-dub language UNION
-// (record.languages), setting the dub an opened episode starts in. Rows are NEVER
+// (from GET_SERIES_LANGUAGES), setting the dub an opened episode starts in. Rows are NEVER
 // trailer-disabled (AE9). Same virtualization as LanguagePanel; SCREEN owns closing.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -24,7 +24,7 @@ export function SeriesLanguagePanel({
   onClose,
 }: {
   visible: boolean
-  /** The series' language union (normalizeSeries' record.languages). */
+  /** The series' language union (from GET_SERIES_LANGUAGES). */
   languages: WatchChildLanguage[]
   /**
    * Slug marked active (check + initial scroll/focus target). Screen passes
