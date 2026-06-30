@@ -408,7 +408,6 @@ describe("permission matrix completeness", () => {
       "write:experiences",
       "write:videos",
       "write:media-assets",
-      "write:scene-embeddings",
       "write:transcript-embeddings",
       "write:experience-embeddings",
       "write:manager-enrichment-trigger",
@@ -446,9 +445,9 @@ describe("permission matrix completeness", () => {
 
   it("write:experience-embeddings is ADMIN-only", () => {
     // Admin-native experience-embedding backfill. Mirrors the
-    // write:scene-embeddings / write:transcript-embeddings tier gates
-    // so a regression that widens the key (e.g. flips to EDITOR) fails
-    // loudly here and not just at the mutation boundary.
+    // write:transcript-embeddings tier gate so a regression that widens
+    // the key (e.g. flips to EDITOR) fails loudly here and not just at
+    // the mutation boundary.
     expect(hasPermission(ADMIN, "write:experience-embeddings")).toBe(true)
     expect(hasPermission(EDITOR_ALICE, "write:experience-embeddings")).toBe(
       false,
@@ -463,9 +462,8 @@ describe("permission matrix completeness", () => {
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
-    // Mirror the existing write:scene-embeddings tier gate so a
-    // regression that widens the key (e.g. flips to EDITOR) fails
-    // loudly here and not just at the mutation boundary.
+    // A regression that widens the key (e.g. flips to EDITOR) should
+    // fail loudly here and not just at the mutation boundary.
     expect(hasPermission(ADMIN, "write:transcript-embeddings")).toBe(true)
     expect(hasPermission(EDITOR_ALICE, "write:transcript-embeddings")).toBe(
       false,
@@ -493,12 +491,6 @@ describe("permission matrix completeness", () => {
       id: null,
       role: "WORKFLOW_TRIGGER",
     }
-
-    it("satisfies write:scene-embeddings", () => {
-      expect(hasPermission(WORKFLOW_TRIGGER, "write:scene-embeddings")).toBe(
-        true,
-      )
-    })
 
     it("satisfies write:transcript-embeddings", () => {
       expect(
@@ -536,7 +528,6 @@ describe("permission matrix completeness", () => {
       // key is added to WORKFLOW_TRIGGER_PERMISSIONS without updating
       // the allowedKeys list.
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
-        "write:scene-embeddings",
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
         "write:experience-embeddings",
@@ -554,7 +545,6 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
@@ -591,7 +581,6 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
@@ -632,7 +621,6 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
@@ -681,7 +669,6 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
@@ -718,7 +705,6 @@ describe("permission matrix completeness", () => {
       // WORKFLOW_TRIGGER — the two principal types share the bearer
       // surface but not the permission surface).
       const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
-      expect(hasPermission(bearer, "write:scene-embeddings")).toBe(false)
       expect(hasPermission(bearer, "write:transcript-embeddings")).toBe(false)
       expect(hasPermission(bearer, "write:manager-enrichment-trigger")).toBe(
         false,

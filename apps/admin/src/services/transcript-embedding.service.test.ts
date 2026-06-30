@@ -152,8 +152,7 @@ describe("indexEditionTranscript", () => {
 
   it("returns zero counts for an empty artifact without touching the DB", async () => {
     const { prisma, videoTranscriptUpsert, executeRaw } = buildStubPrisma()
-    // Mirror the symmetry of scene-embedding's empty-artifact test: even
-    // though R2 reuses vectors verbatim from the artifact (the embedding
+    // Even though R2 reuses vectors verbatim from the artifact (the embedding
     // provider isn't imported into the transcript indexer at all), spy on
     // the embeddings module to lock the invariant. A regression that
     // accidentally re-introduced a provider call on R2 would fire this

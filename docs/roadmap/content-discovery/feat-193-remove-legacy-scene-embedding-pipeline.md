@@ -3,12 +3,11 @@ id: "feat-193"
 title: "Remove Legacy Scene Embedding Pipeline"
 owner: "nisal"
 priority: "P1"
-status: "planned"
+status: "complete"
 start_date: "2026-06-24"
 duration: 3
 depends_on:
   - "feat-192"
-  - "feat-198"
 blocks: []
 tags:
   - "admin"
@@ -22,16 +21,23 @@ tags:
 
 ## Scope
 
-After enriched transcript search has passed the transcript-only eval guardrail
-and keyword-first relevance is no longer relying on scene evidence, remove the
-legacy scene embedding pipeline that is no longer consumed by semantic search
-or recommendation lists.
+After enriched transcript search has passed the transcript-only eval guardrail,
+remove the legacy scene embedding pipeline that is no longer consumed by
+semantic search or recommendation lists.
 
 This is the deletion follow-up for feat-192. feat-192 stops scene embedding
 consumption while leaving the old code in place; this ticket deletes the dead
 scene-embedding path and cleans up naming/docs that still imply scene retrieval
 is active. This is intentionally a code cleanup slice, not a database-retention
 or embedding-backfill-operations slice; those stay in `feat-199`.
+
+Release contract: this intentionally removes the
+`triggerSceneEmbeddingBackfill` GraphQL mutation and generated
+`@forge/admin-graphql` field rather than keeping a deprecated mutation. Legacy
+HTTP entry points with external callers return stable `410` tombstones with
+`reason: "legacy_scene_embedding_pipeline_removed"`. Coordinate release notes
+and client audits around that breaking GraphQL removal, then revoke retired
+scene-ingest secrets after deploy verification.
 
 ## Cleanup Targets
 
@@ -55,8 +61,6 @@ or embedding-backfill-operations slice; those stay in `feat-199`.
 
 - Enriched transcript semantic search eval has passed the agreed promotion gate,
   using the completed transcript-only eval work as the guardrail.
-- `feat-198` has removed the remaining search-quality reason to keep scene code
-  available as a fallback.
 - No production search or recommendation path calls scene embedding retrieval,
   scene embedding ingestion, or scene embedding backfill code.
 - Dead scene embedding code and tests are removed, not merely bypassed.

@@ -26,19 +26,19 @@ Origin documents:
   validation, and safe health/smoke surfaces.
 - The transcript embedding workflow owns transcript chunk planning and embedding
   provider calls, then submits vectors to Admin's transcript ingest.
-- The scene embedding workflow owns scene description embedding provider calls,
-  retry/failure visibility, and Studio diagnostics, then submits vectors to
-  Admin's scene-specific ingest. Admin remains the owner of pgvector storage,
-  indexes, target resolution, public search contracts, and search retrieval.
 - The experience embedding workflow follows the same ownership split: Mastra
   generates and validates vectors, Admin stores them and serves retrieval.
+- The scene embedding workflow and Admin scene ingest endpoint are retired.
+  `/forge-scene-embeddings` exists only as a 410 tombstone; do not add a
+  scene vector writer or scene vector provider configuration. Manager
+  scene-analysis artifacts are a separate non-search concern.
 - The eval query generation workflow is offline only. It reads compact Admin
   trace/catalog context over authenticated HTTP, generates catalog-derived,
   locale-quality, and trace-sampled candidates, and stores staged candidates
   back in Admin. It must not enter the live search path or promote candidates
   into permanent regression gates.
-- Transcript, scene, and experience workflows share provider-result validation
-  for count alignment, finite vector values, and configured dimensions. Invalid
+- Transcript and experience workflows share provider-result validation for
+  count alignment, finite vector values, and configured dimensions. Invalid
   provider output must throw inside the workflow so Studio records a failed run.
 - AI Gateway content embeddings request the normal OpenAI-compatible embedding
   response and require the configured native dimensions before Admin ingest.
@@ -46,9 +46,9 @@ Origin documents:
   `dimensions` through LiteLLM and does not apply a client transform. Keep the
   shared 4096-to-1536 truncate/re-normalize helper for future gateway variants
   that truly return 4096.
-- Transcript, scene, and experience workflows share Admin ingest transport
-  behavior but keep separate Admin endpoints, local schemas, and type-specific
-  payload parsing. Do not replace them with a generic embedding blob route.
+- Transcript and experience workflows share Admin ingest transport behavior but
+  keep separate Admin endpoints, local schemas, and type-specific payload
+  parsing. Do not replace them with a generic embedding blob route.
 - Generation mode semantics are shared across embedding workflows: omitted means
   idempotent; explicit `repair`, `force`, and `model-upgrade` request rewrites.
 - Firecrawl web data access is Mastra-owned through bounded search/scrape
@@ -149,8 +149,6 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `OPENAI_EMBEDDINGS_BASE_URL`                 | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                                                                                                                                                                                                                                                                |
 | `TRANSCRIPT_EMBEDDING_MODEL`                 | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                                                                                                                                                                                         |
 | `TRANSCRIPT_EMBEDDING_PROVIDER`              | Provider stamp for transcript embeddings. Defaults to `openai`.                                                                                                                                                                                                                                                                                             |
-| `SCENE_EMBEDDING_MODEL`                      | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                                                                                                                                                                                              |
-| `SCENE_EMBEDDING_PROVIDER`                   | Provider stamp for scene embeddings. Defaults to `openai`.                                                                                                                                                                                                                                                                                                  |
 | `EXPERIENCE_EMBEDDING_MODEL`                 | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                                                                                                                                                                                         |
 | `EXPERIENCE_EMBEDDING_PROVIDER`              | Provider stamp for experience embeddings. Defaults to `openai`.                                                                                                                                                                                                                                                                                             |
 | `EVAL_QUERY_GENERATION_MODEL`                | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.                                                                                                                                                                                                                                             |
@@ -171,8 +169,6 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `RAILWAY_S3_SECRET_ACCESS_KEY`               | Shared artifact bucket secret key for subtitle enrichment writes.                                                                                                                                                                                                                                                                                           |
 | `ADMIN_TRANSCRIPT_INGEST_URL`                | Admin internal transcript ingest endpoint. Required in production runtime.                                                                                                                                                                                                                                                                                  |
 | `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`     | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                                                                                                                                                                                                                                                      |
-| `ADMIN_SCENE_INGEST_URL`                     | Admin internal scene ingest endpoint. Required in production runtime.                                                                                                                                                                                                                                                                                       |
-| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`          | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                                                                                                                                                                                                                                                           |
 | `ADMIN_EXPERIENCE_INGEST_URL`                | Admin internal experience ingest endpoint. Required in production runtime.                                                                                                                                                                                                                                                                                  |
 | `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`     | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                                                                                                                                                                                                                                                      |
 | `ADMIN_SEARCH_TRACE_SAMPLE_URL`              | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                                                                                                                                                                                                                                                   |

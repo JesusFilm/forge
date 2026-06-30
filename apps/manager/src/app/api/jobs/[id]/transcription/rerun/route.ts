@@ -49,7 +49,6 @@ function pruneArtifactsForTranscriptionRerun(
   delete nextArtifacts.chapters
   delete nextArtifacts.metadata
   delete nextArtifacts.embeddings
-  delete nextArtifacts.sceneEmbeddingSync
   delete nextArtifacts.translations
   delete nextArtifacts.muxSync
   delete nextArtifacts["transcript-raw"]

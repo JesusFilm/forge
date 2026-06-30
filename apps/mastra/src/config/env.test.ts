@@ -23,7 +23,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -31,10 +30,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -56,7 +51,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -64,10 +58,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
@@ -86,7 +76,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -94,10 +83,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -152,7 +137,7 @@ describe("Mastra env", () => {
     expect(getMastraStorageDir()).toBe("/data/mastra")
   })
 
-  it("defaults transcript, scene, and experience embedding model and provider settings", async () => {
+  it("defaults transcript and experience embedding model and provider settings", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS", "")
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_BASE_URL", "")
@@ -170,8 +155,6 @@ describe("Mastra env", () => {
     vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_MODEL", "")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_PROVIDER", "")
-    vi.stubEnv("SCENE_EMBEDDING_MODEL", "")
-    vi.stubEnv("SCENE_EMBEDDING_PROVIDER", "")
     vi.stubEnv("EXPERIENCE_EMBEDDING_MODEL", "")
     vi.stubEnv("EXPERIENCE_EMBEDDING_PROVIDER", "")
     vi.stubEnv("EVAL_QUERY_GENERATION_MODEL", "")
@@ -185,8 +168,6 @@ describe("Mastra env", () => {
 
     expect(env.TRANSCRIPT_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
     expect(env.TRANSCRIPT_EMBEDDING_PROVIDER).toBe("openai")
-    expect(env.SCENE_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
-    expect(env.SCENE_EMBEDDING_PROVIDER).toBe("openai")
     expect(env.EXPERIENCE_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
     expect(env.EXPERIENCE_EMBEDDING_PROVIDER).toBe("openai")
     expect(env.EVAL_QUERY_GENERATION_MODEL).toBe("anthropic/claude-haiku-4-5")
@@ -224,9 +205,9 @@ describe("Mastra env", () => {
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
     vi.stubEnv("AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS", "90000")
 
-    const { getSceneEmbeddingProviderConfig } = await import("./env")
+    const { getTranscriptEmbeddingProviderConfig } = await import("./env")
 
-    expect(getSceneEmbeddingProviderConfig()).toMatchObject({
+    expect(getTranscriptEmbeddingProviderConfig()).toMatchObject({
       provider: "jesus-film-ai-gateway",
       timeoutMs: 90_000,
     })
@@ -257,7 +238,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -265,10 +245,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -288,7 +264,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -296,10 +271,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -321,7 +292,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -329,10 +299,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -355,7 +321,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -363,10 +328,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -394,17 +355,10 @@ describe("Mastra env", () => {
 
     const {
       getExperienceEmbeddingProviderConfig,
-      getSceneEmbeddingProviderConfig,
       getTranscriptEmbeddingProviderConfig,
     } = await import("./env")
 
     expect(getTranscriptEmbeddingProviderConfig()).toEqual({
-      apiKey: "openrouter-key",
-      baseUrl: "https://openrouter.ai/api/v1",
-      model: "openai/text-embedding-3-small",
-      provider: "openai",
-    })
-    expect(getSceneEmbeddingProviderConfig()).toEqual({
       apiKey: "openrouter-key",
       baseUrl: "https://openrouter.ai/api/v1",
       model: "openai/text-embedding-3-small",
@@ -453,7 +407,6 @@ describe("Mastra env", () => {
     const {
       getContentEmbeddingsProviderMode,
       getExperienceEmbeddingProviderConfig,
-      getSceneEmbeddingProviderConfig,
       getTranscriptEmbeddingProviderConfig,
     } = await import("./env")
 
@@ -468,7 +421,6 @@ describe("Mastra env", () => {
       expectedNativeDimensions: 1536,
     }
     expect(getTranscriptEmbeddingProviderConfig()).toEqual(expected)
-    expect(getSceneEmbeddingProviderConfig()).toEqual(expected)
     expect(getExperienceEmbeddingProviderConfig()).toEqual(expected)
   })
 
@@ -507,7 +459,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -515,10 +466,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -540,7 +487,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -548,10 +494,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -576,7 +518,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -584,10 +525,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -612,7 +549,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -620,10 +556,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -644,7 +576,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -652,10 +583,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -680,7 +607,6 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
-    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_EXPERIENCE_INGEST_URL",
       "https://admin.internal/api/internal/mastra/experience-embeddings",
@@ -688,10 +614,6 @@ describe("Mastra env", () => {
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
-    )
-    vi.stubEnv(
-      "ADMIN_SCENE_INGEST_URL",
-      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",

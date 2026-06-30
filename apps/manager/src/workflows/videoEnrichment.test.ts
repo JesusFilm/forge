@@ -11,7 +11,6 @@ const {
   getJobMock,
   mergeJobArtifactsMock,
   metadataMock,
-  sceneEmbeddingSyncMock,
   analyzeAllScenesMock,
   persistedJobArtifacts,
   mastraSubtitleEnrichmentMock,
@@ -32,7 +31,6 @@ const {
   getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
   metadataMock: vi.fn(),
-  sceneEmbeddingSyncMock: vi.fn(),
   analyzeAllScenesMock: vi.fn(),
   persistedJobArtifacts: {} as Record<string, unknown>,
   mastraSubtitleEnrichmentMock: vi.fn(),
@@ -89,10 +87,6 @@ vi.mock("@/services/sceneAnalysis", () => ({
   analyzeAllScenes: analyzeAllScenesMock,
 }))
 
-vi.mock("@/services/sceneEmbeddingSync", () => ({
-  syncSceneAnalysisEmbeddings: sceneEmbeddingSyncMock,
-}))
-
 vi.mock("@/services/mux", () => ({
   getMuxAsset: getMuxAssetMock,
   getPlaybackUrl: (playbackId: string) =>
@@ -146,7 +140,6 @@ describe("runVideoEnrichment", () => {
     getJobMock.mockReset()
     mergeJobArtifactsMock.mockReset()
     metadataMock.mockReset()
-    sceneEmbeddingSyncMock.mockReset()
     analyzeAllScenesMock.mockReset()
     audioCleanupMock.mockReset()
     runAudioCleanupMock.mockReset()
@@ -222,14 +215,6 @@ describe("runVideoEnrichment", () => {
       totalInputTokens: 12,
       totalOutputTokens: 4,
     })
-    sceneEmbeddingSyncMock.mockResolvedValue({
-      domain: "scene_embeddings",
-      status: "source_ready",
-      videoDocumentId: "video-doc-1",
-      generatedSceneCount: 1,
-      indexableSceneCount: 1,
-    })
-
     for (const key of Object.keys(persistedJobArtifacts)) {
       delete persistedJobArtifacts[key]
     }
@@ -1313,7 +1298,7 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
-  it("persists scene embedding sync metadata when optional scene analysis is enabled", async () => {
+  it("runs optional scene analysis without syncing scene embeddings", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -1374,31 +1359,9 @@ describe("runVideoEnrichment", () => {
         videoLabel: "unknown",
       }),
     )
-    expect(sceneEmbeddingSyncMock).toHaveBeenCalledWith({
-      assetId: "asset-1",
-      videoDocumentId: "video-doc-1",
-      muxAssetId: "mux-1",
-      playbackId: "play-1",
-      language: "en",
-      analysisResult: expect.objectContaining({
-        scenes: [expect.objectContaining({ sceneIndex: 0 })],
-      }),
-    })
-    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
-      "job-1",
-      {
-        sceneEmbeddingSync: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            domain: "scene_embeddings",
-            status: "source_ready",
-          }),
-        },
-      },
-    ])
   })
 
-  it("records failed scene embedding sync reports without failing the enrichment job", async () => {
+  it("does not fail the enrichment job when optional scene analysis fails", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -1430,50 +1393,40 @@ describe("runVideoEnrichment", () => {
       metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
       artifactKeys: ["embeddings"],
     })
-    sceneEmbeddingSyncMock.mockResolvedValue({
-      domain: "scene_embeddings",
-      status: "failed",
-      reason: "video_not_found",
-      generatedSceneCount: 1,
-      indexableSceneCount: 1,
-      videoDocumentId: "video-doc-1",
-    })
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    analyzeAllScenesMock.mockRejectedValueOnce(new Error("scene analysis boom"))
 
-    await expect(
-      runVideoEnrichment({
-        jobId: "job-1",
+    try {
+      await expect(
+        runVideoEnrichment({
+          jobId: "job-1",
+          assetId: "asset-1",
+          muxAssetId: "mux-1",
+          language: "en",
+          translateTo: ["en"],
+          runSceneAnalysis: true,
+          videoDocumentId: "video-doc-1",
+        }),
+      ).resolves.toMatchObject({
         assetId: "asset-1",
-        muxAssetId: "mux-1",
         language: "en",
-        translateTo: ["en"],
-        runSceneAnalysis: true,
-        videoDocumentId: "video-doc-1",
-      }),
-    ).resolves.toMatchObject({
-      assetId: "asset-1",
-      language: "en",
-    })
+      })
 
-    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
-      "job-1",
-      {
-        sceneEmbeddingSync: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            domain: "scene_embeddings",
-            status: "failed",
-            reason: "video_not_found",
-          }),
-        },
-      },
-    ])
-    expect(updateJobMock.mock.calls).toContainEqual([
-      "job-1",
-      expect.objectContaining({
-        status: "completed",
-        currentStep: undefined,
-      }),
-    ])
+      expect(updateJobMock.mock.calls).toContainEqual([
+        "job-1",
+        expect.objectContaining({
+          status: "completed",
+          currentStep: undefined,
+        }),
+      ])
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("scene_analysis_failed_in_enrichment"),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it("still runs embeddings with transcript-only fallback when metadata fails", async () => {

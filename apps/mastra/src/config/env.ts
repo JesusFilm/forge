@@ -85,14 +85,12 @@ export type JesusfilmRagConfig = {
 const envSchema = z.object({
   ADMIN_EXPERIENCE_INGEST_URL: z.string().url().optional(),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
-  ADMIN_MASTRA_SCENE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_SEARCH_EVAL_API_KEY: z.string().min(1).optional(),
   ADMIN_SEARCH_EVAL_CANDIDATES_URL: z.string().url().optional(),
   ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL: z.string().url().optional(),
   ADMIN_SEARCH_EVAL_SEARCH_URL: z.string().url().optional(),
   ADMIN_SEARCH_TRACE_SAMPLE_URL: z.string().url().optional(),
-  ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
   // Standalone chat agent tool callbacks → admin (consolidation U8). Base URL
   // of admin; the client appends `/api/internal/agent-tools/{tool}`. Bearer is
@@ -334,11 +332,6 @@ const envSchema = z.object({
   SMART_CROP_IMAGE_URL_ALLOWED_HOSTS: z.string().min(1).optional(),
   SMART_CROP_PLAN_MODEL: z.string().min(1).optional(),
   SMART_CROP_QA_MODEL: z.string().min(1).optional(),
-  SCENE_EMBEDDING_MODEL: z
-    .string()
-    .min(1)
-    .default("openai/text-embedding-3-small"),
-  SCENE_EMBEDDING_PROVIDER: z.string().min(1).default("openai"),
   TRANSCRIPT_EMBEDDING_MODEL: z
     .string()
     .min(1)
@@ -352,9 +345,6 @@ export const env = envSchema.parse({
   ),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,
-  ),
-  ADMIN_MASTRA_SCENE_INGEST_API_KEY: emptyToUndefined(
-    process.env.ADMIN_MASTRA_SCENE_INGEST_API_KEY,
   ),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY,
@@ -374,7 +364,6 @@ export const env = envSchema.parse({
   ADMIN_SEARCH_TRACE_SAMPLE_URL: emptyToUndefined(
     process.env.ADMIN_SEARCH_TRACE_SAMPLE_URL,
   ),
-  ADMIN_SCENE_INGEST_URL: emptyToUndefined(process.env.ADMIN_SCENE_INGEST_URL),
   ADMIN_TRANSCRIPT_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_TRANSCRIPT_INGEST_URL,
   ),
@@ -553,10 +542,6 @@ export const env = envSchema.parse({
   ),
   SMART_CROP_PLAN_MODEL: emptyToUndefined(process.env.SMART_CROP_PLAN_MODEL),
   SMART_CROP_QA_MODEL: emptyToUndefined(process.env.SMART_CROP_QA_MODEL),
-  SCENE_EMBEDDING_MODEL: emptyToUndefined(process.env.SCENE_EMBEDDING_MODEL),
-  SCENE_EMBEDDING_PROVIDER: emptyToUndefined(
-    process.env.SCENE_EMBEDDING_PROVIDER,
-  ),
   TRANSCRIPT_EMBEDDING_MODEL: emptyToUndefined(
     process.env.TRANSCRIPT_EMBEDDING_MODEL,
   ),
@@ -653,15 +638,10 @@ export function assertMastraRuntimeEnv() {
       env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,
     ],
     [
-      "ADMIN_MASTRA_SCENE_INGEST_API_KEY",
-      env.ADMIN_MASTRA_SCENE_INGEST_API_KEY,
-    ],
-    [
       "ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY",
       env.ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY,
     ],
     ["ADMIN_EXPERIENCE_INGEST_URL", env.ADMIN_EXPERIENCE_INGEST_URL],
-    ["ADMIN_SCENE_INGEST_URL", env.ADMIN_SCENE_INGEST_URL],
     ["ADMIN_TRANSCRIPT_INGEST_URL", env.ADMIN_TRANSCRIPT_INGEST_URL],
     ["DATABASE_URL", env.DATABASE_URL],
     ["FIRECRAWL_API_KEY", env.FIRECRAWL_API_KEY],
@@ -826,13 +806,6 @@ export function getTranscriptEmbeddingProviderConfig() {
   return getContentEmbeddingProviderConfig(
     env.TRANSCRIPT_EMBEDDING_MODEL,
     env.TRANSCRIPT_EMBEDDING_PROVIDER,
-  )
-}
-
-export function getSceneEmbeddingProviderConfig() {
-  return getContentEmbeddingProviderConfig(
-    env.SCENE_EMBEDDING_MODEL,
-    env.SCENE_EMBEDDING_PROVIDER,
   )
 }
 

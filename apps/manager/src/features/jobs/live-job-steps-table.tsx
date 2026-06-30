@@ -13,7 +13,6 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react"
-import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import {
   getTranscriptionRoutingReport,
   getUnresolvedElevenLabsFailureReason,
@@ -43,11 +42,6 @@ import {
   type LiveJobsDetailRealtimeController,
 } from "./live-jobs-realtime"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
-import {
-  hasSceneEmbeddingSyncIssue,
-  SceneEmbeddingSyncInlineDetails,
-  shouldExpandSceneEmbeddingSyncByDefault,
-} from "./scene-embedding-sync-card"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
 import { CollapsibleStepRow } from "./collapsible-step-row"
 
@@ -629,21 +623,13 @@ export function LiveJobStepsTable({
     createInitialLiveJobsRealtimeSnapshot(initialJob),
   )
   const job = realtimeSnapshot.state
-  const sceneEmbeddingSyncReport = useMemo(
-    () => getSceneEmbeddingSyncReport(job.artifacts),
-    [job.artifacts],
-  )
   const transcriptionRoutingReport = useMemo(
     () => getTranscriptionRoutingReport(job.artifacts),
     [job.artifacts],
   )
   const [expandedSteps, setExpandedSteps] = useState<
     Partial<Record<WorkflowStepName, boolean>>
-  >(() => ({
-    embeddings: shouldExpandSceneEmbeddingSyncByDefault(
-      getSceneEmbeddingSyncReport(initialJob.artifacts),
-    ),
-  }))
+  >({})
   const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
     null,
   )
@@ -728,17 +714,6 @@ export function LiveJobStepsTable({
     },
     [onJobUpdate],
   )
-
-  useEffect(() => {
-    if (shouldExpandSceneEmbeddingSyncByDefault(sceneEmbeddingSyncReport)) {
-      setExpandedSteps((current) => ({ ...current, embeddings: true }))
-      return
-    }
-
-    if (!hasSceneEmbeddingSyncIssue(sceneEmbeddingSyncReport)) {
-      setExpandedSteps((current) => ({ ...current, embeddings: false }))
-    }
-  }, [sceneEmbeddingSyncReport])
 
   const handleToggleStep = useCallback((stepName: WorkflowStepName) => {
     setExpandedSteps((current) => ({
@@ -926,12 +901,8 @@ export function LiveJobStepsTable({
                   ? step.details?.transcriptCorrection
                   : undefined
               const hasMastraDetails = mastraCorrelation != null
-              const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
-                sceneEmbeddingSyncReport,
-              )
               const hasEmbeddingDetails =
-                step.name === "embeddings" &&
-                (hasSceneEmbeddingDetails || hasMastraDetails)
+                step.name === "embeddings" && hasMastraDetails
               const hasTranslationDetails =
                 step.name === "translation" &&
                 (translationFailures.length > 0 ||
@@ -975,11 +946,7 @@ export function LiveJobStepsTable({
               let detailRowClassName: string | undefined
 
               if (hasEmbeddingDetails) {
-                inlineSummary = hasSceneEmbeddingDetails ? (
-                  <span className="jobs-step-inline-summary-text">
-                    Scene sync needs attention.
-                  </span>
-                ) : mastraSummary ? (
+                inlineSummary = mastraSummary ? (
                   <span className="jobs-step-inline-summary-note">
                     {mastraSummary}
                   </span>
@@ -988,9 +955,6 @@ export function LiveJobStepsTable({
                   <>
                     {mastraCorrelation ? (
                       <MastraStepInlineDetails mastra={mastraCorrelation} />
-                    ) : null}
-                    {hasSceneEmbeddingDetails ? (
-                      <SceneEmbeddingSyncInlineDetails job={job} />
                     ) : null}
                   </>
                 )

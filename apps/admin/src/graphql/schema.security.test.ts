@@ -31,7 +31,6 @@ describe("embedding exclusion — field name scan", () => {
   const ALLOWED_ACTION_FIELDS = new Set([
     "Mutation.triggerExperienceEmbedding",
     "Mutation.triggerExperienceEmbeddingBackfill",
-    "Mutation.triggerSceneEmbeddingBackfill",
     "Mutation.triggerTranscriptEmbeddingBackfill",
     // R5 scene recommendations: `similarity` is a computed Float exposed
     // by cms's identical type. The field carries a scalar number, not an

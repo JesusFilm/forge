@@ -69,8 +69,8 @@ export const watchCanonicalOriginEnvSchema = httpOriginEnvSchema(
 
 /**
  * Shared schema fragment for env vars representing a positive-int
- * concurrency cap (e.g. `SCENE_EMBEDDING_CONCURRENCY`,
- * `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so test code and the
+ * concurrency cap (e.g. `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so
+ * test code and the
  * `run-embeds` CLI can parse via the same shape rather than
  * hand-rolling a parallel parser. Contract: undefined → undefined,
  * positive int (coerced from string) → number, anything else throws.
@@ -202,11 +202,8 @@ export const env = createEnv({
     // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
     // must not automatically gain direct vector-write capability.
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: z.string().min(1).optional(),
-    // Narrow receiver-side CSV for Mastra -> Admin scene vector ingest.
-    // Kept separate from transcript ingest and workflow launch credentials.
-    MASTRA_SCENE_INGEST_API_KEYS: z.string().min(1).optional(),
     // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
-    // Kept separate from transcript/scene ingest and workflow launch credentials.
+    // Kept separate from transcript ingest and workflow launch credentials.
     MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
     // Narrow receiver-side CSV for the standalone Mastra chat agent's tool
     // callbacks (consolidation U7): search-videos / lookup-bible-verse /
@@ -271,22 +268,20 @@ export const env = createEnv({
       .int()
       .positive()
       .optional(),
-    // Per-target concurrency caps for the R1 / R2 embed-backfill
-    // workflows (sceneEmbeddingBackfill / transcriptEmbeddingBackfill).
-    // Each workflow uses `p-limit(N) + Promise.allSettled` to fan out
-    // the per-target loop; one rejection never aborts siblings (cf.
+    // Per-target concurrency cap for transcript embed backfills. The workflow
+    // uses `p-limit(N) + Promise.allSettled` to fan out the per-target loop;
+    // one rejection never aborts siblings (cf.
     // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md).
-    // Default at the call site is 10. Tune up locally (20+); tune down
-    // in prod (start at 5, ramp after observation).
-    SCENE_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
+    // Default at the call site is 10. Tune up locally (20+); tune down in prod
+    // (start at 5, ramp after observation).
     TRANSCRIPT_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).optional(),
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-    // Manager artifacts bucket — admin reads {assetId}/scene-analysis.json
-    // and {assetId}/transcript.json from apps/manager's S3 bucket via
+    // Manager artifacts bucket — admin reads manager-produced artifacts such as
+    // {assetId}/transcript.json from apps/manager's S3 bucket via
     // readManagerArtifact() in src/storage/s3.ts. Distinct from
     // RAILWAY_S3_*, which is admin's own write bucket (cms-storage,
     // used for admin-migrations/core-id-mapping.json etc.). Read-only
@@ -316,11 +311,6 @@ export const env = createEnv({
     MASTRA_GATEWAY_BASE_URL: z.string().url().optional(),
     MASTRA_GATEWAY_ADMIN_API_KEY: z.string().min(1).optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(120_000),
-    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
       .positive()
@@ -584,9 +574,6 @@ export const env = createEnv({
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
     ),
-    MASTRA_SCENE_INGEST_API_KEYS: emptyToUndefined(
-      process.env.MASTRA_SCENE_INGEST_API_KEYS,
-    ),
     MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
     ),
@@ -624,9 +611,6 @@ export const env = createEnv({
     ),
     WORKFLOW_POSTGRES_MAX_POOL_SIZE: emptyToUndefined(
       process.env.WORKFLOW_POSTGRES_MAX_POOL_SIZE,
-    ),
-    SCENE_EMBEDDING_CONCURRENCY: emptyToUndefined(
-      process.env.SCENE_EMBEDDING_CONCURRENCY,
     ),
     TRANSCRIPT_EMBEDDING_CONCURRENCY: emptyToUndefined(
       process.env.TRANSCRIPT_EMBEDDING_CONCURRENCY,
@@ -671,9 +655,6 @@ export const env = createEnv({
     ),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
-    ),
-    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
-      process.env.MASTRA_SCENE_EMBEDDING_TIMEOUT_MS,
     ),
     MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS,
@@ -796,7 +777,6 @@ const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
   "VIDEO_MAPPER_ADMIN_API_KEYS",
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
-  "MASTRA_SCENE_INGEST_API_KEYS",
   "MASTRA_EXPERIENCE_INGEST_API_KEYS",
   "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
@@ -874,7 +854,6 @@ assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   VIDEO_MAPPER_ADMIN_API_KEYS: env.VIDEO_MAPPER_ADMIN_API_KEYS,
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
-  MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
   MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
   ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,

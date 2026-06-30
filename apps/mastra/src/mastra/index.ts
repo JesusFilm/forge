@@ -52,10 +52,6 @@ import {
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
 import {
-  handleSceneEmbeddingRouteRequest,
-  sceneEmbeddingWorkflow,
-} from "./workflows/scene-embedding"
-import {
   experienceEmbeddingWorkflow,
   handleExperienceEmbeddingRouteRequest,
 } from "./workflows/experience-embedding"
@@ -171,7 +167,6 @@ export const mastra = new Mastra({
   },
   workflows: {
     transcriptEmbeddingWorkflow,
-    sceneEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
     offlineSearchEvalWorkflow,
@@ -267,25 +262,24 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-scene-embeddings", {
+        method: "POST",
+        handler: (c) =>
+          c.json(
+            {
+              error: "Legacy scene embedding workflow has been retired",
+              reason: "legacy_scene_embedding_pipeline_removed",
+              retryable: false,
+              replacement:
+                "Search uses transcript embeddings; historical scene data is retained for feat-199.",
+            },
+            410,
+          ),
+      }),
       registerApiRoute("/forge-firecrawl-web-data", {
         method: "POST",
         handler: async (c) => {
           const outcome = await handleFirecrawlWebDataRouteRequest({
-            authHeader: c.req.header("authorization"),
-            serviceKeys,
-            readJson: () => c.req.json(),
-          })
-
-          return new Response(JSON.stringify(outcome.body), {
-            status: outcome.status,
-            headers: { "content-type": "application/json" },
-          })
-        },
-      }),
-      registerApiRoute("/forge-scene-embeddings", {
-        method: "POST",
-        handler: async (c) => {
-          const outcome = await handleSceneEmbeddingRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

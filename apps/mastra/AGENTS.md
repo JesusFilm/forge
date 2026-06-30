@@ -7,8 +7,6 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Runs the self-hosted Mastra Server runtime for Forge agents and workflows.
 - Owns transcript embedding chunk planning and provider calls, then submits
   transcript vectors to Admin ingest.
-- Owns scene embedding provider calls and workflow diagnostics, then submits
-  scene vectors to Admin's scene-specific ingest endpoint.
 - Owns experience embedding provider calls and workflow diagnostics, then
   submits experience vectors to Admin's experience-specific ingest endpoint.
 - Owns offline eval query generation for catalog-derived, locale-quality, and
@@ -43,16 +41,19 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   `/forge-transcript-scripture-correction`: detects likely Bible-story source
   transcripts and returns bounded correction candidates/flag-only findings.
   Manager applies deterministic exact-match corrections and writes artifacts.
-- All embedding workflows share provider-result validation for count alignment,
-  finite vector values, and configured dimensions before calling Admin.
+- Transcript and experience embedding workflows share provider-result
+  validation for count alignment, finite vector values, and configured
+  dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
   embedding response and require the configured native dimensions before Admin
   ingest. Current production gateway output is native 1536, so Mastra does not
   pass `dimensions` through LiteLLM and does not apply a client transform; keep
   the shared 4096-to-1536 truncate/re-normalize helper for future gateway
   variants that truly return 4096.
-- All embedding workflows use the shared Admin ingest client behavior but keep
-  separate transcript, scene, and experience endpoints and payload schemas.
+- Transcript and experience embedding workflows use the shared Admin ingest
+  client behavior but keep separate endpoints and payload schemas. The scene
+  embedding workflow/Admin ingest path is retired; scene analysis artifacts are
+  non-search source artifacts.
 - Generation modes are consistent across embedding workflows: omitted means
   idempotent; explicit repair, force, and model-upgrade request rewrites.
 - Builds Studio assets with `mastra build --studio` and serves them from the
