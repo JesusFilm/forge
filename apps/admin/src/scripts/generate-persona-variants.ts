@@ -220,9 +220,40 @@ function parseArgs(argv: readonly string[]): RunPersonaVariantsArgs {
   return { topic, locale, personaIds, concurrency }
 }
 
+/**
+ * Bounded retry around one variant launch. The route marks `generation_failed`
+ * and transport hiccups `retryable: true`, and the generator is
+ * non-deterministic — a fresh attempt frequently produces a conformant draft
+ * where the prior one slipped a schema violation. Retries only while the result
+ * is `retryable`; fail-fast reasons (`config_missing`, `auth_failed`,
+ * `invalid_input`) return on the first attempt. Override the cap with
+ * `VARIANT_GENERATION_ATTEMPTS` (default 3).
+ */
+async function launchVariantWithRetry(
+  input: Parameters<typeof launchMastraExperienceVariant>[0],
+  attempts: number,
+): Promise<MastraExperienceVariantLaunchResult> {
+  let result = await launchMastraExperienceVariant(input)
+  for (
+    let attempt = 2;
+    attempt <= attempts && !result.ok && result.retryable;
+    attempt += 1
+  ) {
+    process.stdout.write(
+      `  … retry ${attempt - 1}/${attempts - 1} for ${input.personaId} (was ${result.reason})\n`,
+    )
+    result = await launchMastraExperienceVariant(input)
+  }
+  return result
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   assertNotProdUrl(process.env.DATABASE_URL)
+  const generationAttempts = Math.max(
+    1,
+    Number(process.env.VARIANT_GENERATION_ATTEMPTS) || 3,
+  )
 
   const { prisma } = await import("@/db/client")
   const { ExperienceService } = await import("@/services/experience.service")
@@ -240,7 +271,8 @@ async function main(): Promise<void> {
 
     const { outcomes, observedMaxInFlight } = await runPersonaVariants(args, {
       candidates,
-      launchVariant: (input) => launchMastraExperienceVariant(input),
+      launchVariant: (input) =>
+        launchVariantWithRetry(input, generationAttempts),
       normalize: (draft) => normalizeExperienceDraft(draft, [...candidates]),
       persist: async ({ slug, title, metaDescription, blocks, locale }) => {
         // Idempotent: drop a prior staged variant with the same slug.
