@@ -1,6 +1,8 @@
 // SYNC: ported from apps/mobile/src/hooks/useBibleVerses.ts (web: BibleQuotesSection.tsx).
 // bibleCitations carry only references, so verse text is fetched client-side per citation
 // from wldeh/bible-api on jsdelivr; this hook ONLY resolves text (keyed by documentId). TV is hardcoded English, so the version is pinned to en-webbe.
+// A module-scope cache (bibleVerseFetch) dedupes repeat/duplicate citations so each
+// unique verse hits the CDN at most once across mounts.
 
 import { useEffect, useState } from "react"
 
@@ -9,6 +11,12 @@ import {
   formatScripture,
   isFetchedScripture,
 } from "../lib/bibleVerses"
+import {
+  buildVerseUrl,
+  cacheVerse,
+  getCachedVerse,
+  partitionVerses,
+} from "../lib/bibleVerseFetch"
 import type { WatchBibleCitation } from "../lib/normalizeVideo"
 
 // WEBBE renders the divine name as "the LORD" (NIV/ESV convention) rather than
@@ -33,23 +41,35 @@ export function useBibleVerses(
   useEffect(() => {
     if (citations.length === 0) return
 
+    // Resolve each citation to its verse URL (null = unfetchable book/chapter).
+    const citationUrls = citations.map((c) => {
+      if (c.bookName == null || c.chapterStart == null) {
+        return { documentId: c.documentId, url: null }
+      }
+      const bookSlug = bookSlugForApi(c.bookName)
+      if (bookSlug == null) return { documentId: c.documentId, url: null }
+      const verse = c.verseStart ?? 1
+      return {
+        documentId: c.documentId,
+        url: buildVerseUrl(BIBLE_API_VERSION, bookSlug, c.chapterStart, verse),
+      }
+    })
+
+    // Seed from the module cache; only the deduped uncached URLs hit the network.
+    const { resolved, toFetch } = partitionVerses(citationUrls)
+    if (toFetch.size === 0) {
+      setVerses(resolved)
+      return
+    }
+
     let cancelled = false
     // One controller per in-flight fetch so a single slow verse only kills its
     // own request (timeout) and unmount aborts whatever is still running.
     const controllers = new Set<AbortController>()
 
     void (async () => {
-      const fetched: Record<string, string> = {}
-
       await Promise.all(
-        citations.map(async (c) => {
-          if (c.bookName == null || c.chapterStart == null) return
-          const bookSlug = bookSlugForApi(c.bookName)
-          if (bookSlug == null) return
-
-          const verse = c.verseStart ?? 1
-          const url = `https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/${BIBLE_API_VERSION}/books/${bookSlug}/chapters/${c.chapterStart}/verses/${verse}.json`
-
+        [...toFetch].map(async (url) => {
           const controller = new AbortController()
           controllers.add(controller)
           const timeoutId = setTimeout(() => {
@@ -63,8 +83,9 @@ export function useBibleVerses(
             if (cancelled || !res.ok) return
             const data: unknown = await res.json()
             if (cancelled) return
+            // Cache only on success, so a failed/aborted fetch retries next mount.
             if (isFetchedScripture(data)) {
-              fetched[c.documentId] = formatScripture(data.text)
+              cacheVerse(url, formatScripture(data.text))
             }
           } catch (error) {
             // AbortError = timeout or unmount — expected; the card stays
@@ -80,9 +101,16 @@ export function useBibleVerses(
         }),
       )
 
-      if (!cancelled) {
-        setVerses(fetched)
+      if (cancelled) return
+      // Merge cache-seeded text with whatever just landed, keyed by documentId
+      // (two citations may resolve to the same verse URL).
+      const merged: Record<string, string> = { ...resolved }
+      for (const { documentId, url } of citationUrls) {
+        if (url == null || merged[documentId] != null) continue
+        const text = getCachedVerse(url)
+        if (text != null) merged[documentId] = text
       }
+      setVerses(merged)
     })()
 
     return () => {
