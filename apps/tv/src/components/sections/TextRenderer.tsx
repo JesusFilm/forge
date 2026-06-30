@@ -65,10 +65,10 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     fontFamily: "System",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(24)),
     fontWeight: "400",
-    color: COLORS.muted,
-    lineHeight: scale(33),
+    color: COLORS.text,
+    lineHeight: Math.round(scale(36)),
   },
   paragraphSpacing: {
     marginBottom: scale(16),
