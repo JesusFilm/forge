@@ -16,8 +16,14 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
-import { GET_SERIES_BY_SLUG } from "../../src/lib/videoQueries"
-import { normalizeSeries } from "../../src/lib/normalizeVideo"
+import {
+  GET_SERIES_BY_SLUG,
+  GET_SERIES_LANGUAGES,
+} from "../../src/lib/videoQueries"
+import {
+  normalizeChildDubLanguages,
+  normalizeSeries,
+} from "../../src/lib/normalizeVideo"
 import type { WatchChildLanguage } from "../../src/lib/normalizeVideo"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { useSeriesLanguage } from "../../src/contexts/SeriesLanguageContext"
@@ -82,16 +88,31 @@ export default function SeriesScreen() {
     [data?.videoBySlug],
   )
 
+  // The language union (childDubLanguages) is fetched separately so the hero and
+  // episode rail above don't wait on the ~835KB server aggregation. It feeds the
+  // panel + hero count from its OWN state; record.languages stays empty (KTD1).
+  const { data: langData } = useQuery(GET_SERIES_LANGUAGES, {
+    variables: { slug: decodedSlug },
+    skip: !decodedSlug,
+    fetchPolicy: "cache-first",
+  })
+  const seriesLanguages = useMemo(
+    () => normalizeChildDubLanguages(langData?.videoBySlug?.childDubLanguages),
+    [langData?.videoBySlug?.childDubLanguages],
+  )
+  const languagesLoaded = langData?.videoBySlug?.childDubLanguages !== undefined
+
   // Seed: instant first paint (title + artwork) from data carried by the list
   // surface. Sanitized — a crafted deep link can't reach the image loader.
   const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
 
   // Leaf bounce (R1): replace (not push) so Menu pops to pre-series origin,
-  // once-guarded; seed carries through encoded. Completeness = series-only
-  // childDubLanguages key present (`!loading` can't tell partial from complete).
+  // once-guarded; seed carries through encoded. Completeness = the lean query's
+  // own `children` key present (childDubLanguages moved to a lazy query, so it no
+  // longer signals completeness); `!loading` can't tell partial from complete.
   const bounce = resolveLeafBounce(
     record,
-    data?.videoBySlug?.childDubLanguages !== undefined,
+    data?.videoBySlug?.children !== undefined,
   )
   const bouncedRef = useRef(false)
   useEffect(() => {
@@ -179,9 +200,9 @@ export default function SeriesScreen() {
   const selectedLanguage = useMemo(
     () =>
       selectedSlug != null
-        ? (record?.languages.find((lang) => lang.slug === selectedSlug) ?? null)
+        ? (seriesLanguages.find((lang) => lang.slug === selectedSlug) ?? null)
         : null,
-    [record?.languages, selectedSlug],
+    [seriesLanguages, selectedSlug],
   )
   const languageName =
     selectedLanguage != null
@@ -204,6 +225,13 @@ export default function SeriesScreen() {
     ? (record?.label ?? "SERIES")
     : "SERIES"
   const episodeCount = record?.episodes.length ?? 0
+  // While the lazy language query is in flight, omit the count slot rather than
+  // flashing "0 languages" (the union is never 0 once loaded); it fills in when
+  // GET_SERIES_LANGUAGES resolves.
+  const languageCount =
+    languagesLoaded && seriesLanguages.length > 0
+      ? seriesLanguages.length
+      : null
   const heroMeta = buildMetadataLine(
     episodeCount > 0
       ? episodeCount === 1
@@ -211,7 +239,7 @@ export default function SeriesScreen() {
         : `${episodeCount} episodes`
       : null,
     null,
-    record?.languages.length ?? null,
+    languageCount,
   )
   const descriptionText = record?.description ?? null
 
@@ -367,7 +395,7 @@ export default function SeriesScreen() {
           funnels through closeLanguagePanel — one close, one refocusKey bump. */}
       <SeriesLanguagePanel
         visible={languagePanelVisible}
-        languages={record?.languages ?? NO_LANGUAGES}
+        languages={seriesLanguages.length > 0 ? seriesLanguages : NO_LANGUAGES}
         activeSlug={selectedSlug ?? trailer?.languageSlug ?? null}
         onSelect={handleLanguageSelect}
         onClose={closeLanguagePanel}

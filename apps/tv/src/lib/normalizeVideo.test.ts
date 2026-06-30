@@ -438,8 +438,9 @@ function makeEpisodeRel(
   }
 }
 
-// makeRawSeries layers the series-only selections (own children +
-// childDubLanguages) over the base fixture. The series documentId stays
+// makeRawSeries layers the series-only selection (own children) over the base
+// fixture. childDubLanguages moved to the lazy GET_SERIES_LANGUAGES query (U1), so
+// it is no longer part of the lean series record. The series documentId stays
 // "vid-1", so a child with documentId "vid-1" is a self-reference.
 function makeRawSeries(overrides: Record<string, unknown> = {}) {
   return {
@@ -448,10 +449,6 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
     children: [
       makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2),
       makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
-    ],
-    childDubLanguages: [
-      { slug: "english", name: { en: "English" }, bcp47: "en" },
-      { slug: "spanish", name: { en: "Spanish", es: "Español" }, bcp47: "es" },
     ],
     ...overrides,
   } as Parameters<typeof normalizeSeries>[0]
@@ -588,35 +585,13 @@ describe("normalizeSeries — episodes (own children)", () => {
   })
 })
 
-describe("normalizeSeries — languages (childDubLanguages union)", () => {
-  it("maps the language union with localized names, keyed on slug", () => {
-    const result = normalizeSeries(makeRawSeries())!
-    expect(result.languages).toEqual([
-      { slug: "english", name: "English", bcp47: "en" },
-      { slug: "spanish", name: "Spanish", bcp47: "es" },
-    ])
-  })
-
-  it("dedupes on slug and skips entries with a missing/empty slug", () => {
-    const result = normalizeSeries(
-      makeRawSeries({
-        childDubLanguages: [
-          { slug: "english", name: { en: "English" }, bcp47: "en" },
-          { slug: "english", name: { en: "English (dup)" }, bcp47: "en" },
-          { slug: null, name: { en: "Ghost" }, bcp47: "xx" },
-          { slug: "", name: { en: "Empty" }, bcp47: "yy" },
-        ],
-      }),
-    )!
-    expect(result.languages).toEqual([
-      { slug: "english", name: "English", bcp47: "en" },
-    ])
-  })
-
-  it("yields empty languages when childDubLanguages is missing", () => {
-    expect(
-      normalizeSeries(makeRawSeries({ childDubLanguages: null }))!.languages,
-    ).toEqual([])
+describe("normalizeSeries — language union moved to the lazy query (U1)", () => {
+  // childDubLanguages is no longer fetched on the lean series query, so
+  // normalizeSeries never populates languages even when the fixture carries the
+  // field. The screen sources languages from GET_SERIES_LANGUAGES via
+  // normalizeChildDubLanguages (union/dedupe logic lives in normalizeLanguages.test).
+  it("always yields empty languages from the lean record", () => {
+    expect(normalizeSeries(makeRawSeries())!.languages).toEqual([])
   })
 })
 
