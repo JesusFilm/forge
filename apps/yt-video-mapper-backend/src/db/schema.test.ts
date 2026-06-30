@@ -12,6 +12,13 @@ const expiryMigration = readFileSync(
   ),
   "utf8",
 )
+const expiredUploadCleanupIndexMigration = readFileSync(
+  new URL(
+    "../../prisma/migrations/20260629000200_add_expired_upload_cleanup_index/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+)
 
 describe("mapper Prisma schema", () => {
   it("keeps the public Core identifiers unique in the catalog map", () => {
@@ -69,10 +76,12 @@ describe("mapper Prisma schema", () => {
     expect(expiryMigration).toContain(
       'CREATE INDEX IF NOT EXISTS "mapper_match_job_status_queued_at_idx"',
     )
-    expect(expiryMigration).toContain(
+    expect(expiredUploadCleanupIndexMigration).toContain(
       'CREATE INDEX IF NOT EXISTS "mapper_match_job_expired_upload_cleanup_idx"',
     )
-    expect(expiryMigration).toContain("WHERE \"status\" = 'expired'")
+    expect(expiredUploadCleanupIndexMigration).toContain(
+      "WHERE \"status\" = 'expired'",
+    )
     expect(expiryMigration).toContain('"owner_token" TEXT NOT NULL')
     expect(expiryMigration).not.toContain(
       '"updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP',
