@@ -198,6 +198,7 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `JESUSFILM_RAG_API_KEY`                      | Per-consumer bearer token Mastra presents to the RAG. Optional; absent → tool returns `unavailable` (`config_missing`) at runtime. Never required at boot.                                                                                                                                                                                                  |
 | `JESUSFILM_RAG_ALLOWED_HOSTS`                | CSV host allowlist for the RAG base URL. No default. In production, a set base URL requires https AND its host in this list, else boot throws (fail-closed security guard).                                                                                                                                                                                 |
 | `JESUSFILM_RAG_TIMEOUT_MS`                   | Single-attempt RAG request timeout. Defaults to `5000`, schema-capped at `30000`.                                                                                                                                                                                                                                                                           |
+| `JESUSFILM_RAG_MAX_RESPONSE_BYTES`           | Byte-cap on the buffered RAG response body (feat-202), applied to both the success and error-path reads. Streamed byte counter aborts the stream past the cap → graceful `unavailable`. Optional, defaults to `2097152` (2 MiB), schema-capped at 16 MiB (`16777216`). Never required at boot.                                                              |
 | `JESUSFILM_RAG_USER_AGENT`                   | User agent identifying this consumer in RAG access logs. Defaults to `forge-mastra-jesusfilm-rag/1.0`.                                                                                                                                                                                                                                                      |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                           |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                           |
@@ -507,6 +508,25 @@ or `error {reason}` (fixed-vocabulary reason only — no raw text on the wire).
   composed with the inbound request signal. No CORS, no `error.message` on wire.
 - Scope is `apps/mastra` only; chat-app wiring is feat-205. The
   `seeker-route-isolation.test.ts` guard is re-pinned to this single route.
+
+### Routing convention — call `/forge-seeker`, never `/api/agents/seekerAgent` (feat-202)
+
+Apps and services that reach the seeker MUST call the bearer-gated
+`POST /forge-seeker` route — **never** Mastra's built-in
+`/api/agents/seekerAgent` surface, which is code-unauthenticated and carries no
+per-request budget (no wall-clock `chatTurn`, and only the constructor-default
+`maxSteps` floor feat-202 added — no route-composed step/time budget). `/forge-seeker`
+adds the default-off gate, per-session memory keying, fixed-vocabulary error
+frames, and the composed `chatTurn` + `toolCallingTurn` budget.
+
+This is an **honor-system convention, not enforcement.** It does not close the
+unauthenticated surface — the binding containment is and stays the
+network/gateway boundary (`apps/mastra-gateway` + Railway networking; see
+"Containment" above). The feat-202 constructor `maxSteps` floor is its
+defense-in-depth companion (it bounds the runaway-loop dimension on the direct
+path) but is overridable and not a substitute for routing through `/forge-seeker`.
+A CI grep asserting no first-party caller references `/api/agents/seekerAgent`
+could harden this into a real check later (deferred, not built).
 
 ### Not wired yet (deferred)
 

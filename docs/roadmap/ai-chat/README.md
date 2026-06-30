@@ -14,8 +14,8 @@ from the main DS Year 1 roadmap.
 ## Status (June 29, 2026)
 
 - **Total tickets:** 12
-- ✅ **Complete:** 8
-- 🟡 **In progress:** 1
+- ✅ **Complete:** 9
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 2
 - 🔴 **Blocked:** 1
 
@@ -27,7 +27,7 @@ from the main DS Year 1 roadmap.
 | [feat-199](feat-199-seeker-rag-retrieval-connection.md)      | Seeker Agent RAG Retrieval Connection                       | jian wei | P2       | 2026-06-10 | 3    | ✅ complete    | #1279   |
 | [feat-200](feat-200-chat-app-scaffold.md)                    | Chat app scaffold with stubbed agent                        | jian wei | P1       | 2026-06-10 | 3    | ✅ complete    | #1276   |
 | [feat-201](feat-201-chat-app-vigil-reskin.md)                | Chat app Vigil re-skin + conversation shell                 | jian wei | P1       | 2026-06-15 | 1    | ✅ complete    | #1276   |
-| [feat-202](feat-202-seeker-rag-runtime-hardening.md)         | Seeker RAG runtime hardening                                | jian wei | P2       | 2026-06-18 | 1    | 🟡 in-progress | —       |
+| [feat-202](feat-202-seeker-rag-runtime-hardening.md)         | Seeker RAG runtime hardening                                | jian wei | P2       | 2026-06-18 | 1    | ✅ complete    | #1420   |
 | [feat-203](feat-203-chat-sidebar-component-extraction.md)    | Chat sidebar component + behavior extraction                | jian wei | P2       | 2026-07-01 | 2    | ✅ complete    | #1368   |
 | [feat-204](feat-204-expose-seeker-mastra-service-route.md)   | Expose Seeker agent via internal Mastra SSE service route   | jian wei | P2       | 2026-06-24 | 3    | ✅ complete    | #1371   |
 | [feat-205](feat-205-chat-wire-seeker-route.md)               | Wire chat app to the Seeker Mastra route                    | jian wei | P1       | 2026-06-27 | 3    | ✅ complete    | #1384   |
