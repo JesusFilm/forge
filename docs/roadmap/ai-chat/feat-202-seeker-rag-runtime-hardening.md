@@ -15,7 +15,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-06-29 on branch `feat/seeker-rag-hardening` (PR _pending_ — fill the number at merge). Single-PR arc.
+**Shipped:** 2026-06-29 via [PR #1420](https://github.com/JesusFilm/forge/pull/1420). Single-PR arc.
 
 **What landed.** Built ① the RAG response byte-cap and ③ the agent step-budget floor; deliberately deferred ② in-memory `Memory` eviction to feat-208 (the Postgres move eliminates the heap-OOM risk rather than relocating it) and left `firecrawl-client.ts`'s identical gap to its owners. The byte-cap is a streamed, byte-counted read (`readJsonBodyCapped`) applied to **both** reads in `jesusfilm-rag-client.ts` (success body + `readUpstreamReason`): it aborts the stream (`reader.cancel()`) past a 2 MiB default ceiling and degrades over-cap into the **existing** `parse_error → unavailable` path — no throw, no new branch — with a structural no-throw boundary (reader acquired inside `try`, `releaseLock()` guarded in `finally`) to keep `NO-THROW LEAK CONTROL` intact. The cap knob `JESUSFILM_RAG_MAX_RESPONSE_BYTES` is `.optional()` with a runtime fallback — zero new required-at-boot env vars. The step floor sets `defaultOptions: { maxSteps: STEP_CAPS.toolCallingTurn }` on the seeker `Agent` (the vNext field, verified against the vendored `@mastra/core@1.36.0` runtime), reusing the `/forge-seeker` route's shared constant so the two paths can't diverge; plus an honor-system `/forge-seeker`-not-`/api/agents` routing-convention note in `apps/mastra/CLAUDE.md`. 765 tests green; typecheck + lint clean.
 
