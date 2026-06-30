@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "./FloatingSearchProvider"
 import { FloatingSearchFieldButton } from "./FloatingSearchField"
-import { WATCH_PAGE_SEARCH_FIELD_CLASSES } from "@/lib/content-width"
 
 type FloatingSearchBarProps = {
   open: boolean
@@ -20,14 +19,10 @@ export function FloatingSearchBar({
   onOpen,
 }: FloatingSearchBarProps) {
   const t = useTranslations("FloatingSearch")
-  const { pinned, searchChromeDimmed, searchChromeVisible } =
-    useFloatingSearchPinned()
+  const { searchChromeDimmed, searchChromeVisible } = useFloatingSearchPinned()
 
   const display = query.trim().length > 0 ? query : t("placeholder")
   const isPlaceholder = query.trim().length === 0
-  const topClass = pinned
-    ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
-    : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
   // Keep the bar fully hidden (and non-interactive) for the entire close
   // animation — not just while `open` is true — so it never appears in the
   // tab order while the overlay is still visible above it.
@@ -46,8 +41,9 @@ export function FloatingSearchBar({
       inert={chromeHidden || undefined}
       aria-hidden={chromeHidden || undefined}
       display={display}
+      mobileDisplay={isPlaceholder ? "Search" : undefined}
       isPlaceholder={isPlaceholder}
-      className={`fixed ${WATCH_PAGE_SEARCH_FIELD_CLASSES} z-50 flex ${topClass} ${openClass}`}
+      className={`h-[52px] w-full ${openClass}`}
     />
   )
 }

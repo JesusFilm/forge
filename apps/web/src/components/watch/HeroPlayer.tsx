@@ -46,7 +46,7 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { resolveMuxHeroPosterUrl } from "@/lib/url"
-import { SpinnerIcon } from "@/components/ui/spinner"
+import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
@@ -70,10 +70,12 @@ function getViewerIdServerSnapshot(): string {
 // the sound-on player as tall as the browser can show without exceeding the
 // video aspect ratio's needed height.
 const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
+const HERO_FRAME_TRANSITION_CLASS =
+  "transition-[height,margin-bottom,top] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 const MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto"
+  "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]"
 const MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
+  "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
 const MOBILE_PORTRAIT_PREVIEW_PLAYER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100"
 
@@ -403,14 +405,21 @@ export function HeroPlayer({
   // hero — the viewport/aspect-ratio height class below pins the layout, this
   // hides the empty box behind a spinner until there's something to show.
   const [videoReady, setVideoReady] = useState(false)
-  const [playerFrameRevealed, setPlayerFrameRevealed] = useState(
-    autoplayParam === "1",
-  )
+  const [playbackBuffering, setPlaybackBuffering] = useState(false)
+  const [playerFrameRevealed, setPlayerFrameRevealed] = useState(false)
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
+    setPlaybackBuffering(false)
   }, [])
   const handlePlaying = useCallback(() => {
     setPlayerFrameRevealed(true)
+    setPlaybackBuffering(false)
+  }, [])
+  const handlePlaybackBuffering = useCallback(() => {
+    setPlaybackBuffering(true)
+  }, [])
+  const handlePlaybackReady = useCallback(() => {
+    setPlaybackBuffering(false)
   }, [])
 
   useEffect(() => {
@@ -922,6 +931,7 @@ export function HeroPlayer({
     // element so the underlying media element can render its native error UI.
     setVideoReady(true)
     setPlayerFrameRevealed(true)
+    setPlaybackBuffering(false)
   }, [])
 
   // Reset the buffered/ready spinner when the playable identity changes
@@ -937,7 +947,8 @@ export function HeroPlayer({
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
-    setPlayerFrameRevealed(autoplayParam === "1")
+    setPlaybackBuffering(false)
+    setPlayerFrameRevealed(false)
     setPlayerActivated(autoplayParam === "1" || heroPosterUrl == null)
   }
   // Variant-scope the autoplay one-shot — without this, a same-component
@@ -1015,15 +1026,17 @@ export function HeroPlayer({
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
-  const effectivePreviewBodyOverlapPx = chromeRevealed
+  const playbackFrameActive =
+    chromeRevealed || (autoplayParam === "1" && !autoplayBlocked)
+  const effectivePreviewBodyOverlapPx = playbackFrameActive
     ? 0
     : previewBodyOverlapPx
-  const mobilePortraitPreviewEnabled = !chromeRevealed && overlay == null
+  const mobilePortraitPreviewEnabled = !playbackFrameActive && overlay == null
   const mediaFrameClassName = `relative h-full w-full ${
     mobilePortraitPreviewEnabled ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS : ""
   }`
   const playerClassName = `block h-full w-full origin-top ${
-    chromeRevealed
+    playbackFrameActive
       ? ""
       : `scale-y-110 ${
           mobilePortraitPreviewEnabled
@@ -1071,8 +1084,8 @@ export function HeroPlayer({
         data-mobile-portrait-preview={
           mobilePortraitPreviewEnabled ? "true" : "false"
         }
-        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${
-          chromeRevealed
+        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} ${
+          playbackFrameActive
             ? "overflow-hidden"
             : `overflow-x-clip ${
                 mobilePortraitPreviewEnabled
@@ -1130,13 +1143,17 @@ export function HeroPlayer({
               }}
               _hlsConfig={HERO_HLS_CONFIG}
               style={
-                chromeRevealed
+                playbackFrameActive
                   ? REVEALED_VIDEO_OBJECT_FIT_STYLE
                   : PRE_REVEAL_VIDEO_OBJECT_FIT_STYLE
               }
               onLoadedMetadata={handleLoadedMetadata}
               onCanPlay={handleCanPlay}
               onPlaying={handlePlaying}
+              onWaiting={handlePlaybackBuffering}
+              onStalled={handlePlaybackBuffering}
+              onSeeking={handlePlaybackBuffering}
+              onSeeked={handlePlaybackReady}
               // React's SyntheticEvent<HTMLVideoElement> is structurally
               // narrower than the native Event the handler consumes at
               // runtime; cast bridges the type-system difference.
@@ -1228,13 +1245,14 @@ export function HeroPlayer({
             />
           ) : null}
 
-          {playerActivated && !videoReady ? (
+          {playbackFrameActive &&
+          playerActivated &&
+          (!videoReady || playbackBuffering) ? (
             <div
               data-testid="hero-player-loading"
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35"
+              className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
             >
-              <SpinnerIcon className="h-12 w-12 animate-spin text-white/80" />
+              <WatchPlayerLoadingIndicator />
             </div>
           ) : null}
 

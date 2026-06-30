@@ -23,6 +23,10 @@ type MuxVideoCapturedProps = Record<string, unknown> & {
   onLoadedMetadata?: (event: Event) => void
   onCanPlay?: (event: Event) => void
   onPlaying?: (event: Event) => void
+  onWaiting?: (event: Event) => void
+  onStalled?: (event: Event) => void
+  onSeeking?: (event: Event) => void
+  onSeeked?: (event: Event) => void
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
@@ -367,6 +371,20 @@ async function firePlaying() {
   const handler = lastMuxProps()?.onPlaying
   await act(async () => {
     handler?.(new Event("playing"))
+  })
+}
+
+async function fireWaiting() {
+  const handler = lastMuxProps()?.onWaiting
+  await act(async () => {
+    handler?.(new Event("waiting"))
+  })
+}
+
+async function fireSeeked() {
+  const handler = lastMuxProps()?.onSeeked
+  await act(async () => {
+    handler?.(new Event("seeked"))
   })
 }
 
@@ -849,7 +867,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("uses the viewport/aspect-ratio height before and after reveal so Watch now does not resize the hero", async () => {
+  it("animates between the mobile portrait preview height and playback frame height", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -862,8 +880,9 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-x-clip")
+    expect(wrapper.className).toContain("transition-[height,margin-bottom,top]")
     expect(wrapper.className).toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]",
     )
     expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("true")
     expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
@@ -878,9 +897,6 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-media-frame"]',
     ) as HTMLDivElement
     expect(mediaFrame.className).toContain("relative")
-    expect(mediaFrame.className).toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
-    )
     expect(mediaFrame.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
     )
@@ -898,7 +914,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-hidden")
     expect(wrapper.className).not.toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]",
     )
     expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
     expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
@@ -908,7 +924,7 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-mobile-header-band"]'),
     ).toBeNull()
     expect(mediaFrame.className).not.toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
+      "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
     )
   })
 
@@ -940,12 +956,6 @@ describe("HeroPlayer — initial mount", () => {
     ).toBeNull()
     expect(mediaFrame.className).toContain("w-full")
     expect(mediaFrame.className).toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
-    )
-    expect(mediaFrame.className).toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
-    )
-    expect(mediaFrame.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
     )
     expect(muxVideoMock).not.toHaveBeenCalled()
@@ -966,7 +976,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(props.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100",
     )
-    expect(loading?.parentElement).toBe(mediaFrame)
+    expect(loading).toBeNull()
   })
 
   it("keeps custom overlay consumers on the existing muted preview frame", async () => {
@@ -994,9 +1004,6 @@ describe("HeroPlayer — initial mount", () => {
           '[data-testid="hero-player-mobile-header-band"]',
         ),
       ).toBeNull()
-      expect(mediaFrame.className).not.toContain(
-        "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
-      )
       expect(mediaFrame.className).not.toContain(
         "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
       )
@@ -1398,16 +1405,45 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
     ).toBeNull()
   })
 
-  it("renders the spinner after player activation while media is not ready", async () => {
+  it("does not render the spinner during muted preview activation", async () => {
     await activateMutedPreviewFromIdle()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
-    ).not.toBeNull()
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-player-loading-indicator"]'),
+    ).toBeNull()
   })
 
   it("removes the spinner once onCanPlay fires", async () => {
     await activateMutedPreviewFromIdle()
     await fireCanPlay()
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("shows the spinner when committed playback buffers", async () => {
+    setSearchParams("autoplay=1")
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    await fireCanPlay()
+    await firePlaying()
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+
+    await fireWaiting()
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-player-loading-indicator"]'),
+    ).not.toBeNull()
+
+    await fireSeeked()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).toBeNull()
@@ -1419,7 +1455,7 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
     await activateMutedPreviewFromIdle()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
-    ).not.toBeNull()
+    ).toBeNull()
     await fireError("manifest-load-error")
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
@@ -1430,16 +1466,12 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
     ).toContain("opacity-0")
   })
 
-  it("keeps the spinner up when the error is autoplay-blocked (recovery path is the unmute pill, not the player UI)", async () => {
+  it("keeps the spinner hidden when muted preview autoplay is blocked", async () => {
     await activateMutedPreviewFromIdle()
     await fireError("autoplay-blocked")
-    // Spinner stays only until onCanPlay fires (which it will once the muted
-    // loop buffers). The autoplay-blocked branch must NOT pre-emptively hide
-    // it, because that would expose Mux's empty player while we're still
-    // showing the unmute pill.
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
-    ).not.toBeNull()
+    ).toBeNull()
   })
 })
 
@@ -3122,6 +3154,47 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     })
   }
 
+  it("uses the compact playback frame on the first autoplay render", () => {
+    setSearchParams("autoplay=1")
+    const blurDataURL = "data:image/webp;base64,BQYHCA=="
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ muxHeroPosterBlurDataUrl: blurDataURL })}
+        />,
+      )
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLDivElement
+    const mediaFrame = container.querySelector(
+      '[data-testid="hero-player-media-frame"]',
+    ) as HTMLDivElement
+    const posterLayer = container.querySelector(
+      '[data-testid="hero-player-poster-layer"]',
+    )
+    const props = lastMuxProps()
+
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("false")
+    expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
+    expect(wrapper.className).toContain("overflow-hidden")
+    expect(wrapper.className).not.toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]",
+    )
+    expect(mediaFrame.className).not.toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
+    expect(posterLayer?.className).toContain("opacity-100")
+    expect(props.style).toEqual({ objectFit: "contain" })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]')?.className,
+    ).toContain("z-40")
+    expect(
+      container.querySelector('[data-testid="watch-player-loading-indicator"]'),
+    ).not.toBeNull()
+  })
+
   it("attempts unmuted play and reveals chrome when ?autoplay=1 is set and play resolves", async () => {
     setSearchParams("autoplay=1")
     act(() => {
@@ -3130,7 +3203,7 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     expect(
       container.querySelector('[data-testid="hero-player-poster-layer"]')
         ?.className,
-    ).toContain("opacity-0")
+    ).toContain("opacity-100")
     expect(
       container.querySelector('[data-testid="hero-player-unmute-pill"]'),
     ).toBeNull()
@@ -3232,11 +3305,11 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
 })
 
 describe("HeroPlayer — MuxVideo backend events", () => {
-  it("flips videoReady via onCanPlay and unmounts the spinner overlay", async () => {
+  it("flips videoReady via onCanPlay without showing a muted-preview spinner", async () => {
     await activateMutedPreviewFromIdle()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
-    ).not.toBeNull()
+    ).toBeNull()
 
     const handler = lastMuxProps()?.onCanPlay
     await act(async () => {
@@ -3286,19 +3359,18 @@ describe("HeroPlayer — MuxVideo backend events", () => {
   it("treats a generic onError event as a videoReady fallback (no autoplay-blocked flag)", async () => {
     await activateMutedPreviewFromIdle()
 
-    // Spinner visible before the error escape fires.
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
-    ).not.toBeNull()
+    ).toBeNull()
 
     const handler = lastMuxProps()?.onError
     await act(async () => {
       handler?.(new Event("error"))
     })
 
-    // Spinner unmounts (videoReady = true) but autoplayBlocked stays false
-    // because no `detail.code === "autoplay-blocked"` is present and no
-    // play() rejection has fired on this surface.
+    // videoReady = true but autoplayBlocked stays false because no
+    // `detail.code === "autoplay-blocked"` is present and no play()
+    // rejection has fired on this surface.
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).toBeNull()
