@@ -23,3 +23,5 @@ roadmap tickets broad; keep this folder practical and close to the mapper code.
 | [YTM-006](./ytm-006-evaluation-harness-and-thresholds.md)      | todo     | P1       | Evaluation harness and confidence thresholds |
 | [YTM-007](./ytm-007-ops-hardening.md)                          | todo     | P2       | Operations hardening                         |
 | [YTM-008](./ytm-008-model-assisted-review-research.md)         | backlog  | P3       | Model-assisted review research               |
+| [YTM-009](./ytm-009-queued-job-expiry-cleaner.md)              | complete | P1       | Expire abandoned queued match jobs           |
+| [YTM-010](./ytm-010-prisma-migration-deploy-safety.md)         | complete | P1       | Guard Prisma migration deploy safety         |

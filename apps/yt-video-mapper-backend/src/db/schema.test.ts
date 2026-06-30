@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
+const migrationsDir = new URL("../../prisma/migrations/", import.meta.url)
 const schema = readFileSync(
   new URL("../../prisma/schema.prisma", import.meta.url),
   "utf8",
@@ -19,6 +20,15 @@ const expiredUploadCleanupIndexMigration = readFileSync(
   ),
   "utf8",
 )
+
+const migrations = readdirSync(migrationsDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => ({
+    name: entry.name,
+    sql: readFileSync(new URL(`${entry.name}/migration.sql`, migrationsDir), {
+      encoding: "utf8",
+    }),
+  }))
 
 describe("mapper Prisma schema", () => {
   it("keeps the public Core identifiers unique in the catalog map", () => {
@@ -88,6 +98,51 @@ describe("mapper Prisma schema", () => {
     )
   })
 
+  it("keeps migrations compatible with Prisma deploy transactions", () => {
+    expect(migrations.flatMap(findDeployTransactionViolations)).toEqual([])
+  })
+
+  it("flags migration SQL patterns that break Prisma deploy transactions", () => {
+    expect(
+      findDeployTransactionViolations({
+        name: "bad_concurrent_index",
+        sql: `
+          CREATE INDEX CONCURRENTLY "mapper_match_job_status_idx"
+          ON "mapper_match_job"("status");
+        `,
+      }),
+    ).toEqual([
+      "bad_concurrent_index uses CONCURRENTLY, which cannot run inside Prisma migrate deploy transactions.",
+    ])
+
+    expect(
+      findDeployTransactionViolations({
+        name: "bad_enum_use",
+        sql: `
+          ALTER TYPE "match_job_status" ADD VALUE 'expired';
+          CREATE INDEX "mapper_match_job_expired_idx"
+          ON "mapper_match_job"("queued_at")
+          WHERE "status" = 'expired';
+        `,
+      }),
+    ).toEqual([
+      "bad_enum_use adds enum value 'expired' and references it again in the same migration; split dependent SQL into the next migration.",
+    ])
+  })
+
+  it("ignores unsafe-looking migration text inside SQL comments", () => {
+    expect(
+      findDeployTransactionViolations({
+        name: "comment_only",
+        sql: `
+          -- CREATE INDEX CONCURRENTLY would fail here if executed.
+          ALTER TYPE "match_job_status" ADD VALUE 'archived';
+          -- WHERE "status" = 'archived' belongs in a later migration.
+        `,
+      }),
+    ).toEqual([])
+  })
+
   it("keeps evidence internal and attached to jobs and candidates", () => {
     expect(schema).toContain("model MatchEvidence")
     expect(schema).toContain("internal    Boolean        @default(true)")
@@ -105,3 +160,56 @@ describe("mapper Prisma schema", () => {
     )
   })
 })
+
+interface MigrationSql {
+  name: string
+  sql: string
+}
+
+function findDeployTransactionViolations(migration: MigrationSql): string[] {
+  const sql = stripSqlComments(migration.sql)
+  const violations: string[] = []
+
+  if (/\bCONCURRENTLY\b/i.test(sql)) {
+    violations.push(
+      `${migration.name} uses CONCURRENTLY, which cannot run inside Prisma migrate deploy transactions.`,
+    )
+  }
+
+  const enumAdds = [...sql.matchAll(enumAddValueRegex)]
+  const sqlWithoutEnumAddStatements = enumAdds.reduceRight(
+    (remainingSql, match) =>
+      `${remainingSql.slice(0, match.index)}${remainingSql.slice(
+        (match.index ?? 0) + match[0].length,
+      )}`,
+    sql,
+  )
+
+  for (const match of enumAdds) {
+    const enumValue = match.groups?.value
+    if (!enumValue) continue
+
+    if (quotedSqlLiteralRegex(enumValue).test(sqlWithoutEnumAddStatements)) {
+      violations.push(
+        `${migration.name} adds enum value '${enumValue}' and references it again in the same migration; split dependent SQL into the next migration.`,
+      )
+    }
+  }
+
+  return violations
+}
+
+const enumAddValueRegex =
+  /\bALTER\s+TYPE\s+(?:"[^"]+"|[a-z_][\w$.]*)\s+ADD\s+VALUE\s+(?:IF\s+NOT\s+EXISTS\s+)?'(?<value>(?:''|[^'])*)'/gi
+
+function stripSqlComments(sql: string): string {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--.*$/gm, "")
+}
+
+function quotedSqlLiteralRegex(value: string): RegExp {
+  return new RegExp(`'${escapeRegExp(value)}'`, "i")
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
