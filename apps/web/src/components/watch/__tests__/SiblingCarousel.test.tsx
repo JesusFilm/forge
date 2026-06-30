@@ -244,13 +244,13 @@ describe("SiblingCarousel — happy path", () => {
     expect(firstItemSlot?.className).toContain("md:basis-1/3")
 
     const rail = container.querySelector("[data-block-type='SiblingCarousel']")
-    expect(rail?.className).toContain("-mx-10")
-    expect(rail?.className).toContain("w-[calc(100%+5rem)]")
+    expect(rail?.className).toContain("-mx-5")
+    expect(rail?.className).toContain("w-[calc(100%+2.5rem)]")
     expect(rail?.className).toContain("md:mx-0")
     expect(rail?.className).toContain("md:w-full")
 
     const header = rail?.querySelector("header")
-    expect(header?.className).toContain("px-10")
+    expect(header?.className).toContain("px-5")
     expect(header?.className).toContain("md:px-0")
     const headerLine = header?.querySelector("p")
     expect(headerLine?.className).toContain("font-normal")
@@ -259,13 +259,16 @@ describe("SiblingCarousel — happy path", () => {
       "font-medium",
     )
     const carousel = container.querySelector("[data-slot='carousel']")
-    expect(carousel?.className).toContain("pl-10")
+    expect(carousel?.className).toContain("pl-5")
     expect(carousel?.className).toContain("md:pl-0")
     expect(carousel?.className).not.toContain("translate-x-10")
     expect(carousel?.className).not.toContain("md:translate-x-0")
     const content = container.querySelector(
       "[data-slot='carousel-content'] > div",
     )
+    const viewport = container.querySelector("[data-slot='carousel-content']")
+    expect(viewport?.className).toContain("overflow-x-visible")
+    expect(viewport?.className).toContain("md:overflow-x-clip")
     expect(content?.className).not.toContain("pl-10")
     expect(content?.className).not.toContain("md:pl-0")
     expect(content?.className).not.toContain("translate-x-14")

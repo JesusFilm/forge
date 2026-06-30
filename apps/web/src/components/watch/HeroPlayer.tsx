@@ -72,8 +72,6 @@ function getViewerIdServerSnapshot(): string {
 const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
 const MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto"
-const MOBILE_PORTRAIT_PREVIEW_BAND_CLASS =
-  "hidden h-24 shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block"
 const MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
 const MOBILE_PORTRAIT_PREVIEW_PLAYER_CLASS =
@@ -1098,14 +1096,6 @@ export function HeroPlayer({
               : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
-        {mobilePortraitPreviewEnabled ? (
-          <div
-            aria-hidden="true"
-            data-testid="hero-player-mobile-header-band"
-            className={MOBILE_PORTRAIT_PREVIEW_BAND_CLASS}
-          />
-        ) : null}
-
         <div
           id={HERO_PLAYER_MEDIA_ID}
           data-testid="hero-player-media-frame"
@@ -1277,6 +1267,7 @@ export function HeroPlayer({
             playerRef={playerRef}
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
+            playbackId={playbackId}
             onLanguageClick={onLanguageClick}
             // In-chrome globe intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).

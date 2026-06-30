@@ -478,12 +478,22 @@ describe("HeroPlayerControls — chrome layout", () => {
         overlayAnchor
           .querySelector(`[data-testid="${testId}"]`)
           ?.getAttribute("class"),
-      ).toContain("h-12")
+      ).toContain("h-10")
       expect(
         overlayAnchor
           .querySelector(`[data-testid="${testId}"]`)
           ?.getAttribute("class"),
-      ).toContain("w-12")
+      ).toContain("w-10")
+      expect(
+        overlayAnchor
+          .querySelector(`[data-testid="${testId}"]`)
+          ?.getAttribute("class"),
+      ).toContain("md:h-12")
+      expect(
+        overlayAnchor
+          .querySelector(`[data-testid="${testId}"]`)
+          ?.getAttribute("class"),
+      ).toContain("md:w-12")
       expect(
         overlayAnchor
           .querySelector(`[data-testid="${testId}"]`)
@@ -523,8 +533,9 @@ describe("HeroPlayerControls — chrome layout", () => {
     expect(
       overlayAnchor
         .querySelector('[data-testid="hero-chrome-timeline"]')
+        ?.querySelector(".group-hover\\/timeline\\:bg-white\\/30")
         ?.getAttribute("class"),
-    ).toContain("hover:bg-white/30")
+    ).toContain("group-hover/timeline:bg-white/30")
     expect(
       overlayAnchor
         .querySelector('[data-testid="hero-chrome-volume-slider"]')
