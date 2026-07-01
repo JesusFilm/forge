@@ -39,6 +39,7 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
     volume: number
     loop: boolean
     buffered: TimeRanges | null
+    textTracks?: TextTrackList
     play: ReturnType<typeof vi.fn>
     pause: ReturnType<typeof vi.fn>
     addEventListener: ReturnType<typeof vi.fn>
@@ -56,6 +57,7 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
       volume: 1,
       loop: true,
       buffered: null,
+      textTracks: undefined,
       play: vi.fn(() => Promise.resolve()),
       pause: vi.fn(),
       addEventListener: vi.fn(),
@@ -156,6 +158,65 @@ import {
 
 type TestMockPlayer = NonNullable<typeof mockPlayerRef.current>
 
+type TestTextTrack = TextTrack & {
+  kind: TextTrackKind
+  label: string
+  mode: TextTrackMode
+}
+
+type TestTextTrackList = TextTrackList & {
+  dispatchTestEvent: (type: "addtrack" | "change") => void
+}
+
+function makeTextTrackList(tracks: TestTextTrack[]): TestTextTrackList {
+  const listeners = new Map<string, Set<EventListenerOrEventListenerObject>>()
+  const list = {
+    length: tracks.length,
+    item: (index: number) => tracks[index] ?? null,
+    getTrackById: () => null,
+    addEventListener: vi.fn(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        const set = listeners.get(type) ?? new Set()
+        set.add(listener)
+        listeners.set(type, set)
+      },
+    ),
+    removeEventListener: vi.fn(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        listeners.get(type)?.delete(listener)
+      },
+    ),
+    dispatchEvent: vi.fn((event: Event) => {
+      const set = listeners.get(event.type)
+      if (!set) return true
+      for (const listener of set) {
+        if (typeof listener === "function") {
+          listener(event)
+        } else {
+          listener.handleEvent(event)
+        }
+      }
+      return true
+    }),
+    dispatchTestEvent: () => undefined,
+    onchange: null,
+    onaddtrack: null,
+    onremovetrack: null,
+  } as unknown as TestTextTrackList
+
+  tracks.forEach((track, index) => {
+    Object.defineProperty(list, index, {
+      configurable: true,
+      value: track,
+    })
+  })
+  list.dispatchTestEvent = (type: "addtrack" | "change") => {
+    list.dispatchEvent(new Event(type))
+  }
+
+  return list
+}
+
 function expectMuxPosterUrl(
   value: string | null,
   playbackId: string,
@@ -184,6 +245,7 @@ function makeTestPlayer(
     volume: 1,
     loop: true,
     buffered: null,
+    textTracks: undefined,
     play: vi.fn(() => Promise.resolve()),
     pause: vi.fn(),
     addEventListener: vi.fn(),
@@ -3305,6 +3367,40 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
 })
 
 describe("HeroPlayer — MuxVideo backend events", () => {
+  it("keeps Mux-generated subtitle tracks disabled", async () => {
+    const generatedTrack = {
+      kind: "subtitles",
+      label: "Generated subtitles",
+      mode: "showing",
+    } as TestTextTrack
+    const textTracks = makeTextTrackList([generatedTrack])
+    mockPlayerRef.current = makeTestPlayer({ textTracks })
+
+    const idle = installIdleCallbackStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} subtitleVttSrc={null} />)
+      })
+      await idle.runNext()
+    } finally {
+      idle.restore()
+    }
+
+    expect(generatedTrack.mode).toBe("disabled")
+
+    generatedTrack.mode = "showing"
+    await act(async () => {
+      textTracks.dispatchTestEvent("change")
+    })
+    expect(generatedTrack.mode).toBe("disabled")
+
+    generatedTrack.mode = "showing"
+    await act(async () => {
+      textTracks.dispatchTestEvent("addtrack")
+    })
+    expect(generatedTrack.mode).toBe("disabled")
+  })
+
   it("flips videoReady via onCanPlay without showing a muted-preview spinner", async () => {
     await activateMutedPreviewFromIdle()
     expect(
