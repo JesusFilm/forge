@@ -133,6 +133,11 @@ export type EnqueueDeps = {
   getRecord: (slug: string) => OfflineDownloadRecord | null
   startDownload: (req: StartDownloadRequest) => Promise<StartDownloadResult>
   swapDownload: (req: StartDownloadRequest) => Promise<StartDownloadResult>
+  /**
+   * Stop an in-flight task WITHOUT deleting its record, neutralizing its terminal
+   * callbacks so the switch replacement can reclaim the slug (U4/KTD3).
+   */
+  supersedeDownload: (slug: string) => Promise<void>
   /** Cancel an in-flight record before a fresh start (the `switch` path). */
   deleteDownload: (slug: string) => Promise<void>
   /** Persist a durable `queued` placeholder so a kill stays recoverable. */
@@ -177,8 +182,11 @@ async function enqueueOne(
   }
   if (action === "switch") {
     // An in-progress copy in the old language can't be swapped (swap only acts on
-    // `downloaded`), so cancel + re-queue a recoverable placeholder + restart. The
-    // delete→queue gap only risks the already-canceled old copy, never a started one.
+    // `downloaded`). Supersede the old task FIRST — stop + neutralize its terminal
+    // callbacks + await — so its async cancel can't delete the replacement on the
+    // reused slug (KTD3); THEN clear its record/files and start fresh. The new
+    // record's own pre-onBegin guard is the belt-and-suspenders for the race.
+    await deps.supersedeDownload(episode.slug)
     await deps.deleteDownload(episode.slug)
     await deps.queueBatchRecords([request])
     const result = await deps.startDownload(request)

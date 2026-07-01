@@ -275,6 +275,7 @@ describe("AE3 — storage gate (KTD6)", () => {
 type Calls = {
   start: string[]
   swap: string[]
+  supersede: string[]
   delete: string[]
   queue: string[]
   /** Interleaved log of provider calls so a test can assert ordering. */
@@ -288,7 +289,14 @@ function makeDeps(
     swap?: (req: StartDownloadRequest) => StartDownloadResult
   } = {},
 ) {
-  const calls: Calls = { start: [], swap: [], delete: [], queue: [], order: [] }
+  const calls: Calls = {
+    start: [],
+    swap: [],
+    supersede: [],
+    delete: [],
+    queue: [],
+    order: [],
+  }
   const deps = {
     getRecord: (slug: string) => records[slug] ?? null,
     startDownload: async (req: StartDownloadRequest) => {
@@ -300,6 +308,10 @@ function makeDeps(
       calls.swap.push(req.videoSlug)
       calls.order.push(`swap:${req.videoSlug}`)
       return results.swap?.(req) ?? ({ ok: true } as StartDownloadResult)
+    },
+    supersedeDownload: async (slug: string) => {
+      calls.supersede.push(slug)
+      calls.order.push(`supersede:${slug}`)
     },
     deleteDownload: async (slug: string) => {
       calls.delete.push(slug)
@@ -361,20 +373,27 @@ describe("AE4 — start vs swap vs cancel+start routing", () => {
     expect(summary.allOk).toBe(false)
   })
 
-  it("the switch path re-queues a placeholder between delete and start (F2)", async () => {
-    // In-progress in the old language → switch: delete the in-flight copy, then
-    // persist a recoverable queued placeholder BEFORE the fresh start, so a kill
-    // in the gap leaves a record launch-reattach can recover.
+  it("the switch path supersedes the old task, then clears + restarts (U4/AE2)", async () => {
+    // In-progress in the old language → switch: supersede the old task (stop +
+    // neutralize) BEFORE clearing its record and starting fresh, so the old
+    // task's async cancel can't delete the replacement on the reused slug; then
+    // persist a recoverable queued placeholder so a kill in the gap is recoverable.
     const resolved = [resolvedEpisode("prog", "dub-spanish", 1000)]
     const { deps, calls } = makeDeps({
       prog: record("prog", "dub-english", "downloading", 2000),
     })
     await enqueueResolvedEpisodes(resolved, ctx, deps)
+    expect(calls.supersede).toEqual(["prog"])
     expect(calls.delete).toEqual(["prog"])
     expect(calls.queue).toEqual(["prog"])
     expect(calls.start).toEqual(["prog"])
-    // Order matters: delete → queue → start.
-    expect(calls.order).toEqual(["delete:prog", "queue:prog", "start:prog"])
+    // Order matters: supersede → delete → queue → start (F2 fix).
+    expect(calls.order).toEqual([
+      "supersede:prog",
+      "delete:prog",
+      "queue:prog",
+      "start:prog",
+    ])
   })
 })
 

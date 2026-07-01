@@ -343,6 +343,11 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     }): MediaDownloadHandlers => {
       const { videoSlug, committedPath, pendingPath, fallbackTotalBytes } = args
 
+      // U4/KTD3: a `canceled` interruption that lands before this task's onBegin
+      // is a stale terminal from a superseded old task that the native layer
+      // routed to this reused slug — not a real cancel. Guard the delete on it.
+      let hasBegun = false
+
       const patch = (fields: Partial<OfflineDownloadRecord>) => {
         const current = recordsRef.current[videoSlug]
         if (!current) return
@@ -459,10 +464,12 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       }
 
       return {
-        onBegin: ({ expectedBytes }) =>
+        onBegin: ({ expectedBytes }) => {
+          hasBegun = true
           patch({
             totalBytes: expectedBytes > 0 ? expectedBytes : fallbackTotalBytes,
-          }),
+          })
+        },
         onProgress: ({ bytesDownloaded, bytesTotal }) =>
           patch({
             bytesWritten: bytesDownloaded,
@@ -487,10 +494,12 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             // A swap was interrupted — keep the original copy intact.
             revertSwap(swap)
           } else if (classification.state === "canceled") {
-            // KTD2: a userCancel arriving while the record is already `paused` is
-            // the native pause surfacing as cancel-with-resume-data (iOS -999) —
-            // never delete the download the user just paused.
-            if (recordsRef.current[videoSlug]?.state !== "paused") {
+            // Skip the delete when (KTD3) the event arrives before this task ever
+            // began — a stale terminal from a SUPERSEDED old task the native layer
+            // routed to this reused slug — or (KTD2) the record is already
+            // `paused` — the native pause surfacing as cancel-with-resume-data.
+            // Neither is a genuine cancel.
+            if (hasBegun && recordsRef.current[videoSlug]?.state !== "paused") {
               void deleteDownload(videoSlug)
             }
           } else {

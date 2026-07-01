@@ -72,6 +72,7 @@ export default function SeriesDownloadRoute() {
     getRecord,
     startDownload,
     swapDownload,
+    supersedeDownload,
     deleteDownload,
     queueBatchRecords,
   } = useDownloads()
@@ -260,6 +261,7 @@ export default function SeriesDownloadRoute() {
       getRecord: (slug) => preBatch.get(slug) ?? null,
       startDownload,
       swapDownload,
+      supersedeDownload,
       deleteDownload,
       queueBatchRecords,
     })
@@ -277,6 +279,7 @@ export default function SeriesDownloadRoute() {
     getRecord,
     startDownload,
     swapDownload,
+    supersedeDownload,
     deleteDownload,
     queueBatchRecords,
     router,
