@@ -220,12 +220,6 @@ export default function SeriesDownloadRoute() {
       freeBytes: free,
       reserveBytes: STORAGE_RESERVE_BYTES,
     })
-    if (gate.kind === "unverifiable-total") {
-      setStorageError(
-        "Some sizes are unverified, so the total can't be checked. Try again on a faster connection.",
-      )
-      return
-    }
     if (gate.kind === "unreadable-free") {
       setStorageError("Couldn't check storage. Try again.")
       return

@@ -233,7 +233,7 @@ describe("AE3 — storage gate (KTD6)", () => {
     }
   })
 
-  it("blocks an unverifiable (lower-bound) total even when free space is huge", () => {
+  it("allows a lower-bound total that fits, flagging it (KTD6/R12 relax)", () => {
     const resolution = {
       ...resolutionOf([resolvedEpisode("a", "dub-a", 0)]),
       totalIsLowerBound: true,
@@ -244,7 +244,22 @@ describe("AE3 — storage gate (KTD6)", () => {
       freeBytes: Number.MAX_SAFE_INTEGER,
       reserveBytes: RESERVE,
     })
-    expect(gate.kind).toBe("unverifiable-total")
+    expect(gate.kind).toBe("ok")
+    if (gate.kind === "ok") expect(gate.lowerBound).toBe(true)
+  })
+
+  it("still blocks a lower-bound total when the known sum won't fit", () => {
+    const resolution = {
+      ...resolutionOf([resolvedEpisode("a", "dub-a", 1000)]),
+      totalIsLowerBound: true,
+    }
+    const gate = evaluateStorageGate({
+      resolution,
+      getRecord: noRecord,
+      freeBytes: RESERVE, // 1000 over budget
+      reserveBytes: RESERVE,
+    })
+    expect(gate.kind).toBe("insufficient")
   })
 
   it("blocks when free space is unreadable (freeDiskBytes returned 0)", () => {

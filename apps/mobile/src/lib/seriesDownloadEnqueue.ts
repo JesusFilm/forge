@@ -22,9 +22,14 @@ export const SERIES_ENQUEUE_CONCURRENCY = 2
 // ── Storage gate (KTD6) ─────────────────────────────────────────────
 
 export type StorageGate =
-  | { kind: "ok"; requiredBytes: number; freeBytes: number }
+  | {
+      kind: "ok"
+      requiredBytes: number
+      freeBytes: number
+      /** Some rendition sizes were unknown, so requiredBytes is a lower bound. */
+      lowerBound: boolean
+    }
   | { kind: "insufficient"; requiredBytes: number; freeBytes: number }
-  | { kind: "unverifiable-total" }
   | { kind: "unreadable-free" }
 
 export type StorageGateInput = {
@@ -39,14 +44,17 @@ export type StorageGateInput = {
  * Required = Σ(new rendition sizes) + Σ(existing on-disk totalBytes of every
  * SWAP target, since a swap keeps the old copy alongside the new until verified)
  * + the reserve. A `switch` DELETES its old copy before starting, so those bytes
- * are reclaimed first and must NOT be counted (else switch over-budgets). Never
- * green-light an unverifiable total: a lower-bound total (any zero/missing
- * resolved size) or a free read of 0 (API unavailable) blocks.
+ * are reclaimed first and must NOT be counted (else switch over-budgets).
+ *
+ * KTD6/R12: missing rendition sizes no longer hard-block. When any resolved size
+ * is unknown, the required total is a LOWER bound — budget the known sum, allow
+ * if it fits (the engine falls back to OS-reported bytes for the unknowns), and
+ * flag `lowerBound`. Only a free read of 0 (API unavailable) still blocks, since
+ * nothing can be sized against it.
  */
 export function evaluateStorageGate(input: StorageGateInput): StorageGate {
   const { resolution, getRecord, freeBytes, reserveBytes } = input
 
-  if (resolution.totalIsLowerBound) return { kind: "unverifiable-total" }
   if (freeBytes <= 0) return { kind: "unreadable-free" }
 
   let swapOnDiskBytes = 0
@@ -61,9 +69,15 @@ export function evaluateStorageGate(input: StorageGateInput): StorageGate {
   }
 
   const requiredBytes = resolution.totalBytes + swapOnDiskBytes + reserveBytes
-  return freeBytes < requiredBytes
-    ? { kind: "insufficient", requiredBytes, freeBytes }
-    : { kind: "ok", requiredBytes, freeBytes }
+  if (freeBytes < requiredBytes) {
+    return { kind: "insufficient", requiredBytes, freeBytes }
+  }
+  return {
+    kind: "ok",
+    requiredBytes,
+    freeBytes,
+    lowerBound: resolution.totalIsLowerBound,
+  }
 }
 
 // ── Request builder ─────────────────────────────────────────────────
