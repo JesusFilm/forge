@@ -38,6 +38,8 @@ describe("deriveSeriesDownloadState", () => {
       downloaded: 2,
       total: 3,
       inProgress: false,
+      pausedAggregate: false,
+      inFlightSlugs: [],
       progress: 0,
     })
   })
@@ -94,11 +96,59 @@ describe("deriveSeriesDownloadState", () => {
     expect(state.progress).toBe(0)
     expect(Number.isNaN(state.progress)).toBe(false)
   })
+
+  it("pausedAggregate is true only when paused and nothing else active (U8)", () => {
+    const allPaused = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [rec("a", "paused"), rec("b", "paused")],
+    )
+    expect(allPaused.pausedAggregate).toBe(true)
+    // paused + one still downloading → keep "Pause all", not "Resume all"
+    const mixed = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [rec("a", "paused"), rec("b", "downloading")],
+    )
+    expect(mixed.pausedAggregate).toBe(false)
+    // a queued episode counts as active, not paused
+    const queued = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [rec("a", "paused"), rec("b", "queued")],
+    )
+    expect(queued.pausedAggregate).toBe(false)
+  })
+
+  it("collects the series' in-flight slugs for the batch controls", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [
+        rec("a", "downloading"),
+        rec("b", "paused"),
+        rec("c", "downloaded", 1, 1),
+      ],
+    )
+    expect(state.inFlightSlugs.sort()).toEqual(["a", "b"])
+  })
 })
 
 describe("seriesDownloadLabel", () => {
-  const lbl = (downloaded: number, total: number, inProgress: boolean) =>
-    seriesDownloadLabel({ downloaded, total, inProgress, progress: 0 })
+  const lbl = (
+    downloaded: number,
+    total: number,
+    inProgress: boolean,
+    pausedAggregate = false,
+  ) =>
+    seriesDownloadLabel({
+      downloaded,
+      total,
+      inProgress,
+      pausedAggregate,
+      inFlightSlugs: [],
+      progress: 0,
+    })
 
   it("reads 'Download all' when nothing is downloaded", () => {
     expect(lbl(0, 3, false)).toBe("Download all")
@@ -116,6 +166,10 @@ describe("seriesDownloadLabel", () => {
     expect(lbl(1, 3, true)).toBe("Downloading… (1 of 3)")
     expect(lbl(3, 3, true)).toBe("Downloading… (3 of 3)")
   })
+
+  it("reads the paused label before the in-progress label (U8)", () => {
+    expect(lbl(1, 3, true, true)).toBe("Paused (1 of 3)")
+  })
 })
 
 describe("seriesAllDownloaded", () => {
@@ -123,6 +177,8 @@ describe("seriesAllDownloaded", () => {
     downloaded,
     total,
     inProgress: false,
+    pausedAggregate: false,
+    inFlightSlugs: [] as string[],
     progress: 0,
   })
 

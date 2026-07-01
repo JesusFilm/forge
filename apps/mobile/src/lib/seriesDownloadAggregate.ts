@@ -11,6 +11,14 @@ export type SeriesDownloadState = {
   downloaded: number
   total: number
   inProgress: boolean
+  /**
+   * Any episode paused and NONE still downloading/queued (U8). `inProgress`
+   * already counts `paused`, so it can't drive "Pause all" — this is the flag
+   * checked FIRST to flip the batch bar to "Resume all".
+   */
+  pausedAggregate: boolean
+  /** Series episode slugs in an in-progress state — the batch controls act on these. */
+  inFlightSlugs: string[]
   /** 0..1 byte-weighted progress across the series for the action-row ring. */
   progress: number
 }
@@ -32,6 +40,9 @@ export function deriveSeriesDownloadState(
   // in-flight one as its byte fraction, so the ring creeps smoothly and reads
   // full only when every episode is downloaded.
   let inProgress = false
+  let anyDownloading = false
+  let anyPaused = false
+  const inFlightSlugs: string[] = []
   let units = 0
   for (const slug of episodeSlugs) {
     const record = recordBySlug.get(slug)
@@ -40,6 +51,11 @@ export function deriveSeriesDownloadState(
       units += 1
     } else if (IN_PROGRESS_STATES.has(record.state)) {
       inProgress = true
+      inFlightSlugs.push(slug)
+      // `queued` counts as active (not paused) so a queued episode keeps the bar
+      // on "Pause all" rather than flipping it to "Resume all".
+      if (record.state === "paused") anyPaused = true
+      else anyDownloading = true
       if (record.totalBytes > 0) {
         const fraction = record.bytesWritten / record.totalBytes
         units += Math.max(0, Math.min(1, fraction))
@@ -54,6 +70,8 @@ export function deriveSeriesDownloadState(
     downloaded: episodeSlugs.filter((slug) => downloaded.has(slug)).length,
     total,
     inProgress,
+    pausedAggregate: anyPaused && !anyDownloading,
+    inFlightSlugs,
     progress: total === 0 ? 0 : units / total,
   }
 }
@@ -64,7 +82,8 @@ export function seriesAllDownloaded(state: SeriesDownloadState): boolean {
 }
 
 export function seriesDownloadLabel(state: SeriesDownloadState): string {
-  const { downloaded, total, inProgress } = state
+  const { downloaded, total, inProgress, pausedAggregate } = state
+  if (pausedAggregate) return `Paused (${downloaded} of ${total})`
   if (inProgress) return `Downloading… (${downloaded} of ${total})`
   if (seriesAllDownloaded(state)) return "All downloaded"
   if (downloaded > 0) return `${downloaded} of ${total} downloaded`

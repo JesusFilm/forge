@@ -31,6 +31,7 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
+import { SeriesBatchBar } from "../../src/components/watch/SeriesBatchBar"
 import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGrid"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
@@ -59,7 +60,13 @@ export default function SeriesScreen() {
 
   const { series, setSeries, languages, selectedLanguageSlug } =
     useSeriesSession()
-  const { downloadedSlugs, offlineRecords } = useDownloads()
+  const {
+    downloadedSlugs,
+    offlineRecords,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
+  } = useDownloads()
   const { subtitleLanguageSlug, subtitleLanguageName, subtitlesEnabled } =
     useWatchPreferences()
 
@@ -291,6 +298,24 @@ export default function SeriesScreen() {
                   subtitleLabel={subtitleActionLabel}
                   subtitleActive={subtitleActive}
                   downloadState={downloadState}
+                />
+                <SeriesBatchBar
+                  state={downloadState}
+                  onPauseAll={() =>
+                    downloadState.inFlightSlugs.forEach(
+                      (slug) => void pauseDownload(slug),
+                    )
+                  }
+                  onResumeAll={() =>
+                    downloadState.inFlightSlugs.forEach(
+                      (slug) => void resumeDownload(slug),
+                    )
+                  }
+                  onCancelAll={() =>
+                    downloadState.inFlightSlugs.forEach(
+                      (slug) => void cancelDownload(slug),
+                    )
+                  }
                 />
                 <VideoDescription description={series.description} />
                 {series.episodes.length > 0 && (
