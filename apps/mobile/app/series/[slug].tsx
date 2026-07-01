@@ -36,7 +36,10 @@ import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGr
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
-import { deriveSeriesDownloadState } from "../../src/lib/seriesDownloadAggregate"
+import {
+  deriveEpisodeBadges,
+  deriveSeriesDownloadState,
+} from "../../src/lib/seriesDownloadAggregate"
 import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
 import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
 
@@ -102,6 +105,15 @@ export default function SeriesScreen() {
         offlineRecords,
       ),
     [series?.episodes, downloadedSlugs, offlineRecords],
+  )
+
+  const badgeBySlug = useMemo(
+    () =>
+      deriveEpisodeBadges(
+        series?.episodes.map((episode) => episode.slug) ?? [],
+        offlineRecords,
+      ),
+    [series?.episodes, offlineRecords],
   )
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
@@ -276,6 +288,7 @@ export default function SeriesScreen() {
       <SeriesEpisodesGrid
         episodes={hasSeries ? series.episodes : EMPTY_EPISODES}
         onSelect={handleSelectEpisode}
+        badgeBySlug={badgeBySlug}
         header={
           <>
             <VideoMetadata

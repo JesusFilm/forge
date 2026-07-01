@@ -1,4 +1,5 @@
 import {
+  deriveEpisodeBadges,
   deriveSeriesDownloadState,
   seriesAllDownloaded,
   seriesDownloadLabel,
@@ -189,5 +190,28 @@ describe("seriesAllDownloaded", () => {
 
   it("is false for an empty series (total 0) so it never ticks nothing", () => {
     expect(seriesAllDownloaded(st(0, 0))).toBe(false)
+  })
+})
+
+describe("deriveEpisodeBadges (U9)", () => {
+  it("maps each record state to a badge; failed/absent → none", () => {
+    const badges = deriveEpisodeBadges(EPISODES, [
+      rec("a", "downloaded", 1, 1),
+      rec("b", "downloading"),
+      rec("c", "failed"),
+    ])
+    expect(badges.get("a")).toBe("saved")
+    expect(badges.get("b")).toBe("downloading")
+    expect(badges.get("c")).toBe("none")
+  })
+
+  it("maps queued and paused, and returns none for a record-less episode", () => {
+    const badges = deriveEpisodeBadges(
+      ["q", "p", "x"],
+      [rec("q", "queued"), rec("p", "paused")],
+    )
+    expect(badges.get("q")).toBe("queued")
+    expect(badges.get("p")).toBe("paused")
+    expect(badges.get("x")).toBe("none")
   })
 })

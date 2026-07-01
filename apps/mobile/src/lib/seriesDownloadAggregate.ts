@@ -81,6 +81,48 @@ export function seriesAllDownloaded(state: SeriesDownloadState): boolean {
   return state.total > 0 && state.downloaded >= state.total
 }
 
+// ── Per-episode grid badge (U9) ─────────────────────────────────────
+
+export type EpisodeBadgeState =
+  | "saved"
+  | "downloading"
+  | "queued"
+  | "paused"
+  | "none"
+
+/** Badge state for one episode from its record; `none` for failed/absent. */
+export function episodeBadgeState(
+  record: OfflineDownloadRecord | undefined,
+): EpisodeBadgeState {
+  switch (record?.state) {
+    case "downloaded":
+      return "saved"
+    case "downloading":
+      return "downloading"
+    case "queued":
+      return "queued"
+    case "paused":
+      return "paused"
+    default:
+      return "none"
+  }
+}
+
+/** slug → badge state for the grid (derived read-side, no persisted field). */
+export function deriveEpisodeBadges(
+  episodeSlugs: readonly string[],
+  offlineRecords: readonly OfflineDownloadRecord[],
+): Map<string, EpisodeBadgeState> {
+  const recordBySlug = new Map(
+    offlineRecords.map((record) => [record.videoSlug, record] as const),
+  )
+  const badges = new Map<string, EpisodeBadgeState>()
+  for (const slug of episodeSlugs) {
+    badges.set(slug, episodeBadgeState(recordBySlug.get(slug)))
+  }
+  return badges
+}
+
 export function seriesDownloadLabel(state: SeriesDownloadState): string {
   const { downloaded, total, inProgress, pausedAggregate } = state
   if (pausedAggregate) return `Paused (${downloaded} of ${total})`
