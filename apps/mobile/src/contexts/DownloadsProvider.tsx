@@ -339,6 +339,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       fallbackTotalBytes: number
       subtitleLanguageSlug: string | null
       subtitleUrl: string | null
+      /** U6: lazy subtitle-URL resolver for the reattach path (no persisted URL). */
+      resolveSubtitleUrl?: () => Promise<string | null>
       posterUrl: string | null
     }): MediaDownloadHandlers => {
       const { videoSlug, committedPath, pendingPath, fallbackTotalBytes } = args
@@ -391,16 +393,27 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           }
           let subtitleVerified = false
           let subtitleTerminallyFailed = false
-          if (args.subtitleLanguageSlug && args.subtitleUrl) {
+          // U6: the reattach path has no persisted subtitle URL, so re-resolve it
+          // lazily HERE (at commit) — the media task already survived, so wiring
+          // was never blocked on the network round-trip.
+          let subtitleUrl = args.subtitleUrl
+          if (
+            args.subtitleLanguageSlug &&
+            !subtitleUrl &&
+            args.resolveSubtitleUrl
+          ) {
+            subtitleUrl = await args.resolveSubtitleUrl()
+          }
+          if (args.subtitleLanguageSlug && subtitleUrl) {
             // Validate the CMS-sourced URL before fetching (CLAUDE.md: validate
             // all CMS URLs). An unsafe URL is a terminal subtitle failure —
             // media still completes, the subtitle degrades.
-            if (!validateActionUrl(args.subtitleUrl)) {
+            if (!validateActionUrl(subtitleUrl)) {
               subtitleTerminallyFailed = true
             } else {
               try {
                 await downloadToFile(
-                  args.subtitleUrl,
+                  subtitleUrl,
                   buildSubtitlePath(
                     OFFLINE_ROOT,
                     videoSlug,
@@ -564,8 +577,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           committedPath,
           pendingPath,
           fallbackTotalBytes: record.totalBytes,
-          subtitleLanguageSlug: null,
-          subtitleUrl: null,
+          // U6: restart re-resolves the whole dub, so the fresh subtitle URL is
+          // already in hand — thread it straight through.
+          subtitleLanguageSlug: record.subtitleLanguageSlug,
+          subtitleUrl: refreshed.subtitleUrl,
           posterUrl: null,
         }),
       )
@@ -662,9 +677,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           const pendingPath =
             record.pendingPath ??
             buildPendingPath(OFFLINE_ROOT, record.videoSlug, "reattach")
-          // The chosen subtitle's volatile URL is not persisted, so a sidecar
-          // can't be re-fetched on reattach — commit media-only (v1 emits no
-          // subtitles; sidecar re-association is a follow-up).
+          // U6: the subtitle URL isn't persisted, but the sidecar is re-resolved
+          // lazily at commit from the record's stored language slug — so a
+          // reattached download still commits with its chosen subtitle (R3).
           wireExistingTask(
             task,
             buildHandlers({
@@ -672,8 +687,20 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
               committedPath,
               pendingPath,
               fallbackTotalBytes: record.totalBytes,
-              subtitleLanguageSlug: null,
+              // U6: the surviving task has no persisted subtitle URL — re-resolve
+              // it lazily at commit so wiring is never blocked on the network.
+              subtitleLanguageSlug: record.subtitleLanguageSlug,
               subtitleUrl: null,
+              resolveSubtitleUrl: async () =>
+                (
+                  await reresolveMediaUrl({
+                    dubDocumentId: record.dubDocumentId,
+                    renditionDocumentId: record.renditionDocumentId,
+                    qualityLabel: record.qualityLabel,
+                    totalBytes: record.totalBytes,
+                    subtitleLanguageSlug: record.subtitleLanguageSlug,
+                  })
+                )?.subtitleUrl ?? null,
               posterUrl: null,
             }),
           )
