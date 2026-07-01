@@ -20,3 +20,6 @@ output/
 
 # Devcontainer CLI lockfile — machine-generated, same class as pnpm-lock.yaml
 .devcontainer/devcontainer-lock.json
+
+# Impeccable design-hook caches — gitignored, machine-generated
+.impeccable/

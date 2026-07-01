@@ -91,12 +91,12 @@ stateDiagram-v2
 
 Series-grid corner badge, mapped from the derived record state (R7, R8):
 
-| Record state | Grid badge |
-|---|---|
-| downloaded | Saved (check) |
-| downloading | In-progress glyph |
-| queued | Queued glyph |
-| paused | Paused glyph |
+| Record state  | Grid badge                            |
+| ------------- | ------------------------------------- |
+| downloaded    | Saved (check)                         |
+| downloading   | In-progress glyph                     |
+| queued        | Queued glyph                          |
+| paused        | Paused glyph                          |
 | none / failed | No badge (failed surfaces in Library) |
 
 ### Acceptance Examples
@@ -212,19 +212,19 @@ Two shippable increments. The correctness units (U1, U3, U4, U5, U6) are self-co
 
 ## Implementation Units
 
-| U-ID | Title | Key files | Depends |
-|---|---|---|---|
-| U1 | Engine pause/resume/stop + supersede stop | `downloadEngine.ts` | — |
-| U2 | Provider task registry | `DownloadsProvider.tsx` | U1 |
-| U3 | Provider control API; stop-on-delete/cancel; pause off the cancel path | `DownloadsProvider.tsx`, `downloadControls.ts` | U1, U2 |
-| U4 | Supersede-safe language-switch | `seriesDownloadEnqueue.ts` | U1, U2, U3 |
-| U5 | Reconcile keeps paused across relaunch | `downloadReconciliation.ts`, `DownloadsProvider.tsx` | U2 |
-| U6 | Subtitle survives relaunch (re-resolve) | `DownloadsProvider.tsx` | U2 |
-| U7 | Library row controls + cancel confirm | `MyDownloadsSection.tsx` | U3 |
-| U8 | Series batch bar (Pause/Resume/Cancel all) | `SeriesActionRow.tsx`, `app/series/[slug].tsx`, `seriesDownloadAggregate.ts` | U3 |
-| U9 | Series-grid per-episode badge + a11y | `SeriesEpisodeCard.tsx`, `SeriesEpisodesGrid.tsx`, `seriesDownloadAggregate.ts` | U8 |
-| U10 | Relaxed size gate | `seriesDownloadEnqueue.ts`, `seriesDownloadResolver.ts`, `app/series/download.tsx` | — |
-| U11 | Test hardening: ordering guard + coverage | `seriesDownloadEnqueue.test.ts`, `downloadControls.test.ts` | U3, U4 |
+| U-ID | Title                                                                  | Key files                                                                          | Depends    |
+| ---- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
+| U1   | Engine pause/resume/stop + supersede stop                              | `downloadEngine.ts`                                                                | —          |
+| U2   | Provider task registry                                                 | `DownloadsProvider.tsx`                                                            | U1         |
+| U3   | Provider control API; stop-on-delete/cancel; pause off the cancel path | `DownloadsProvider.tsx`, `downloadControls.ts`                                     | U1, U2     |
+| U4   | Supersede-safe language-switch                                         | `seriesDownloadEnqueue.ts`                                                         | U1, U2, U3 |
+| U5   | Reconcile keeps paused across relaunch                                 | `downloadReconciliation.ts`, `DownloadsProvider.tsx`                               | U2         |
+| U6   | Subtitle survives relaunch (re-resolve)                                | `DownloadsProvider.tsx`                                                            | U2         |
+| U7   | Library row controls + cancel confirm                                  | `MyDownloadsSection.tsx`                                                           | U3         |
+| U8   | Series batch bar (Pause/Resume/Cancel all)                             | `SeriesActionRow.tsx`, `app/series/[slug].tsx`, `seriesDownloadAggregate.ts`       | U3         |
+| U9   | Series-grid per-episode badge + a11y                                   | `SeriesEpisodeCard.tsx`, `SeriesEpisodesGrid.tsx`, `seriesDownloadAggregate.ts`    | U8         |
+| U10  | Relaxed size gate                                                      | `seriesDownloadEnqueue.ts`, `seriesDownloadResolver.ts`, `app/series/download.tsx` | —          |
+| U11  | Test hardening: ordering guard + coverage                              | `seriesDownloadEnqueue.test.ts`, `downloadControls.test.ts`                        | U3, U4     |
 
 ### U1. Engine pause/resume/stop + supersede stop
 
@@ -390,13 +390,13 @@ Two shippable increments. The correctness units (U1, U3, U4, U5, U6) are self-co
 
 ## Verification Contract
 
-| Gate | Command / action | Applies to |
-|---|---|---|
-| Unit tests | `pnpm --filter @forge/mobile test` | all units |
-| Typecheck | `pnpm --filter @forge/mobile typecheck` | all units |
-| Lint | `pnpm --filter @forge/mobile lint` | all units |
-| Simulator smoke | reload sim → open a multi-episode series (e.g. LUMO) → exercise the changed flow | U7–U10 |
-| On-device behavior | pause/resume + background/relaunch on real iOS and Android devices | U1–U6 |
+| Gate               | Command / action                                                                 | Applies to |
+| ------------------ | -------------------------------------------------------------------------------- | ---------- |
+| Unit tests         | `pnpm --filter @forge/mobile test`                                               | all units  |
+| Typecheck          | `pnpm --filter @forge/mobile typecheck`                                          | all units  |
+| Lint               | `pnpm --filter @forge/mobile lint`                                               | all units  |
+| Simulator smoke    | reload sim → open a multi-episode series (e.g. LUMO) → exercise the changed flow | U7–U10     |
+| On-device behavior | pause/resume + background/relaunch on real iOS and Android devices               | U1–U6      |
 
 The native pause/stop/resume, background completion, and paused-across-relaunch behaviors cannot be proven by the RN test harness — they need a real-device relaunch on both platforms. Copy-before-sort every Apollo-cached array touched.
 
