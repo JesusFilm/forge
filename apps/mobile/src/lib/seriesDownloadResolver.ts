@@ -28,9 +28,16 @@ export type SeriesDownloadChoice = {
   subtitleLanguageSlug: string | null
 }
 
+/**
+ * The dub-index slice resolution needs per episode — deliberately narrower than
+ * WatchVariant so the sheet can feed it from a lean query (the full per-episode
+ * watch payload made a 61-episode, 2000+-dub-segment resolve take minutes).
+ */
+export type ResolverVariant = Pick<WatchVariant, "documentId" | "languageSlug">
+
 export type SeriesResolveDeps = {
   /** The episode's dub variants (each carries documentId + languageSlug). */
-  getEpisodeVariants: (slug: string) => Promise<WatchVariant[]>
+  getEpisodeVariants: (slug: string) => Promise<ResolverVariant[]>
   /** The dub's downloads + subtitles (GET_VIDEO_DUB normalized). */
   getDubMedia: (dubDocumentId: string) => Promise<VariantMedia>
 }

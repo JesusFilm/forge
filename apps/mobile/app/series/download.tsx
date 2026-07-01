@@ -30,8 +30,8 @@ import {
 } from "../../src/lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../src/styles/shared"
 import { getApolloClient } from "../../src/lib/apolloClient"
-import { GET_VIDEO_BY_SLUG, GET_VIDEO_DUB } from "../../src/lib/queries"
-import { normalizeDubMedia, normalizeVideo } from "../../src/lib/normalizeVideo"
+import { GET_VIDEO_DUB, GET_VIDEO_DUB_INDEX } from "../../src/lib/queries"
+import { normalizeDubMedia } from "../../src/lib/normalizeVideo"
 import {
   formatFileSize,
   formatTierSize,
@@ -52,8 +52,6 @@ import {
 import { freeDiskBytes } from "../../src/lib/offlineFileSystem"
 
 // Series locale matches the series detail query (app/series/[slug].tsx).
-const LOCALE = "en"
-
 const QUALITY_TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
 const NO_SUBTITLE_KEY = "__none__"
 
@@ -130,15 +128,20 @@ export default function SeriesDownloadRoute() {
         target,
         { qualityTier, languageSlug, subtitleLanguageSlug: subtitleSlug },
         {
-          // Resolution is silent — no progress UI — so the fan-out just fetches;
-          // the per-tier sizes appear on the Quality rows once ready.
+          // Lean dub-index probe (NOT the full watch payload) — mirrors
+          // normalizeVideo's published gate so only published dubs resolve.
           getEpisodeVariants: async (slug: string) => {
             const res = await client.query({
-              query: GET_VIDEO_BY_SLUG,
-              variables: { slug, locale: LOCALE },
+              query: GET_VIDEO_DUB_INDEX,
+              variables: { slug },
               fetchPolicy: "cache-first" as const,
             })
-            return normalizeVideo(res.data?.videoBySlug ?? null)?.variants ?? []
+            return (res.data?.videoBySlug?.variants ?? [])
+              .filter((v) => v.published === true)
+              .map((v) => ({
+                documentId: v.documentId ?? "",
+                languageSlug: v.language?.slug ?? null,
+              }))
           },
           getDubMedia: async (dubDocumentId: string) => {
             const res = await client.query({
@@ -185,12 +188,29 @@ export default function SeriesDownloadRoute() {
     [episodes, languageSlug, qualityTier, subtitleSlug],
   )
 
+  // A rejected resolve must surface the retry UI — an uncaught rejection
+  // would strand the sheet in "resolving" with a dead Confirm forever.
+  const runGuarded = useCallback(
+    (
+      controller: AbortController,
+      onlyFailedFrom?: SeriesDownloadResolution,
+    ) => {
+      void runResolution(controller, onlyFailedFrom).catch((e) => {
+        console.warn("[series-dl] resolve failed", e)
+        if (!controller.signal.aborted) {
+          setPhase({ kind: "error", offline: false })
+        }
+      })
+    },
+    [runResolution],
+  )
+
   // Mount / choice-change resolution. New controller per run; aborted on cleanup.
   useEffect(() => {
     const controller = new AbortController()
-    void runResolution(controller)
+    runGuarded(controller)
     return () => controller.abort()
-  }, [runResolution])
+  }, [runGuarded])
 
   const resolution = phase.kind === "ready" ? phase.resolution : null
 
@@ -270,16 +290,16 @@ export default function SeriesDownloadRoute() {
     retryControllerRef.current?.abort()
     const controller = new AbortController()
     retryControllerRef.current = controller
-    void runResolution(controller)
-  }, [runResolution])
+    runGuarded(controller)
+  }, [runGuarded])
 
   const onRetryFailed = useCallback(() => {
     if (!resolution) return
     retryControllerRef.current?.abort()
     const controller = new AbortController()
     retryControllerRef.current = controller
-    void runResolution(controller, resolution)
-  }, [resolution, runResolution])
+    runGuarded(controller, resolution)
+  }, [resolution, runGuarded])
 
   if (!series || !episodes || !languageSlug) return null
 
@@ -471,9 +491,21 @@ function StatusPanel({
   onRetryFailed: () => void
   typography: ReturnType<typeof useTypography>
 }) {
-  // Resolving and enqueuing render no panel: resolution is silent (per-tier
-  // sizes appear on the Quality rows when ready) and enqueuing shows its state
-  // on the confirm button ("Downloading"). Both fall through to null.
+  // Enqueuing renders no panel — its state rides on the confirm button
+  // ("Downloading"). Resolving shows a spinner row: a large series can take
+  // several seconds and a silent sheet reads as broken.
+  if (phase.kind === "resolving") {
+    return (
+      <View style={styles.statusPanel}>
+        <View style={styles.resolvingRow}>
+          <ActivityIndicator color={TEXT_SECONDARY} size="small" />
+          <Text style={[styles.skippedText, typography.bodySmall]}>
+            Checking episodes…
+          </Text>
+        </View>
+      </View>
+    )
+  }
 
   if (phase.kind === "done") {
     const line = formatEnqueueSummary(phase.summary)
@@ -645,6 +677,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     width: "100%",
+  },
+  resolvingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   retryFailedText: {
     color: ACCENT,
