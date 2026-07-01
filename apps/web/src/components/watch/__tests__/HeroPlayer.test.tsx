@@ -1429,6 +1429,33 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(props.style).toEqual({ objectFit: "contain" })
   })
 
+  it("reveals custom chrome immediately when play() stays pending", async () => {
+    mockPlayerRef.current = makeTestPlayer({
+      play: vi.fn(() => new Promise<void>(() => undefined)),
+    })
+
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLAnchorElement
+
+    await act(async () => {
+      pill.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLElement
+    expect(mockPlayerRef.current?.play).toHaveBeenCalled()
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("true")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+  })
+
   it("on play() rejection (iOS NotAllowedError): pill switches to 'Tap to Unmute' (visually distinct)", async () => {
     // Override the mocked play() to reject, simulating iOS unmute-with-no-gesture.
     mockPlayerRef.current = makeTestPlayer({

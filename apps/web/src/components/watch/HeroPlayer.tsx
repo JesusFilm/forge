@@ -841,20 +841,20 @@ export function HeroPlayer({
       player.currentTime = 0
       player.muted = false
       const result = player.play()
+      setChromeRevealed(true)
+      setAutoplayBlocked(false)
       if (result && typeof result.then === "function") {
         result
           .then(() => {
-            setChromeRevealed(true)
             setAutoplayBlocked(false)
           })
           .catch((err: unknown) => {
             setPillState("tap-to-unmute")
+            setChromeRevealed(false)
             if (isAutoplayBlockedError(err)) {
               setAutoplayBlocked(true)
             }
           })
-      } else {
-        setChromeRevealed(true)
       }
     },
     [],
