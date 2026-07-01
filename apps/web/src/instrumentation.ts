@@ -1,4 +1,12 @@
 export async function register(): Promise<void> {
-  // Production APM is loaded before Next via Railway's NODE_OPTIONS command.
-  // Keep this hook light so Next's dev/browser compilers don't bundle dd-trace.
+  if (process.env.NEXT_RUNTIME !== "nodejs") return
+
+  try {
+    const { configureDatadog } = await import("@/observability/datadog")
+    configureDatadog()
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") return
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[datadog] failed to configure observability: ${message}`)
+  }
 }

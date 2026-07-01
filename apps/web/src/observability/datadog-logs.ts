@@ -17,10 +17,23 @@ type DatadogLogForwarderOptions = {
   version?: string
 }
 
+type ResolvedForwardingOptions = Required<
+  Pick<
+    DatadogLogForwarderOptions,
+    "agentHost" | "agentSyslogPort" | "environment" | "hostname" | "service"
+  >
+> &
+  Pick<DatadogLogForwarderOptions, "version">
+
+type SyslogDestination = Required<
+  Pick<DatadogLogForwarderOptions, "agentHost" | "agentSyslogPort">
+>
+
 type SyslogPayloadInput = Required<
   Pick<DatadogLogForwarderOptions, "environment" | "hostname" | "service">
 > &
   Pick<DatadogLogForwarderOptions, "version"> & {
+    attributes?: Record<string, unknown>
     level: ConsoleLevel
     message: string
     spanId?: string
@@ -28,8 +41,20 @@ type SyslogPayloadInput = Required<
     traceId?: string
   }
 
+type StructuredLogInput = {
+  attributes?: Record<string, unknown>
+  level?: ConsoleLevel
+  message: string
+}
+
+type SocketWithErrorEvents = Socket & {
+  on?: (event: "error", listener: (error: Error) => void) => unknown
+}
+
 const SYSLOG_PORT = 514
 const MAX_SYSLOG_MESSAGE_BYTES = 16 * 1024
+const MAX_ATTRIBUTE_KEY_LENGTH = 160
+const MAX_ATTRIBUTE_STRING_LENGTH = 2048
 
 const levelToSeverity = {
   debug: 7,
@@ -48,6 +73,7 @@ const levelToStatus = {
 } satisfies Record<ConsoleLevel, string>
 
 let configured = false
+let structuredSocket: Socket | null = null
 
 function inspectArgument(value: unknown): string {
   if (typeof value === "string") return value
@@ -84,6 +110,64 @@ function activeTraceTags(): { spanId?: string; traceId?: string } {
   }
 }
 
+function normalizeAttributeValue(
+  value: unknown,
+  depth = 0,
+): unknown | undefined {
+  if (value == null) return value
+  if (typeof value === "string") {
+    return value.length > MAX_ATTRIBUTE_STRING_LENGTH
+      ? `${value.slice(0, MAX_ATTRIBUTE_STRING_LENGTH)}...`
+      : value
+  }
+  if (typeof value === "boolean") return value
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : undefined
+  if (value instanceof Date) return value.toISOString()
+  if (Array.isArray(value)) {
+    if (depth >= 2) return undefined
+    return value
+      .slice(0, 20)
+      .map((item) => normalizeAttributeValue(item, depth + 1))
+      .filter((item) => item !== undefined)
+  }
+  if (typeof value === "object") {
+    if (depth >= 2) return undefined
+    const output: Record<string, unknown> = {}
+    for (const [key, nestedValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      if (!isSafeAttributeKey(key)) continue
+      const normalized = normalizeAttributeValue(nestedValue, depth + 1)
+      if (normalized !== undefined) output[key] = normalized
+    }
+    return Object.keys(output).length > 0 ? output : undefined
+  }
+  return undefined
+}
+
+function isSafeAttributeKey(key: string): boolean {
+  return (
+    key.length > 0 &&
+    key.length <= MAX_ATTRIBUTE_KEY_LENGTH &&
+    /^[A-Za-z0-9_.-]+$/.test(key)
+  )
+}
+
+function normalizeAttributes(
+  attributes: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (!attributes) return {}
+
+  const output: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(attributes)) {
+    if (!isSafeAttributeKey(key)) continue
+    const normalized = normalizeAttributeValue(value)
+    if (normalized !== undefined) output[key] = normalized
+  }
+  return output
+}
+
 export function buildDatadogSyslogMessage(input: SyslogPayloadInput): string {
   const status = levelToStatus[input.level]
   const tags = [
@@ -93,6 +177,7 @@ export function buildDatadogSyslogMessage(input: SyslogPayloadInput): string {
   ].filter(Boolean)
 
   const payload = {
+    ...normalizeAttributes(input.attributes),
     ddsource: "nodejs",
     ddtags: tags.join(","),
     env: input.environment,
@@ -111,16 +196,58 @@ export function buildDatadogSyslogMessage(input: SyslogPayloadInput): string {
   return truncateUtf8(syslogMessage, MAX_SYSLOG_MESSAGE_BYTES)
 }
 
+function resolveForwardingOptions(
+  options: DatadogLogForwarderOptions,
+): ResolvedForwardingOptions | null {
+  const agentHost = options.agentHost ?? env.DD_AGENT_HOST
+  if (!agentHost) return null
+
+  return {
+    agentHost,
+    agentSyslogPort:
+      options.agentSyslogPort ?? env.DD_AGENT_SYSLOG_PORT ?? SYSLOG_PORT,
+    environment: options.environment ?? env.DD_ENV ?? "development",
+    hostname: options.hostname ?? os.hostname(),
+    service: options.service ?? env.DD_SERVICE ?? "forge-web",
+    version: options.version ?? env.DD_VERSION,
+  }
+}
+
+function reportForwardingError(error: Error): void {
+  if (process.env.NODE_ENV === "production") return
+  process.stderr.write(
+    `[datadog-logs] failed to forward log: ${error.message}\n`,
+  )
+}
+
+function sendSyslogMessage(
+  socket: Socket,
+  message: string,
+  options: SyslogDestination,
+): void {
+  try {
+    socket.send(
+      Buffer.from(message),
+      options.agentSyslogPort,
+      options.agentHost,
+      (error) => {
+        if (error) reportForwardingError(error)
+      },
+    )
+  } catch (error) {
+    if (error instanceof Error) reportForwardingError(error)
+  }
+}
+
+function attachSocketErrorHandler(socket: Socket): void {
+  const eventedSocket = socket as SocketWithErrorEvents
+  eventedSocket.on?.("error", reportForwardingError)
+}
+
 function patchConsoleLevel(
   socket: Socket,
   level: ConsoleLevel,
-  options: Required<
-    Pick<
-      DatadogLogForwarderOptions,
-      "agentHost" | "agentSyslogPort" | "environment" | "hostname" | "service"
-    >
-  > &
-    Pick<DatadogLogForwarderOptions, "version">,
+  options: ResolvedForwardingOptions,
 ): void {
   const original = console[level].bind(console)
 
@@ -139,19 +266,42 @@ function patchConsoleLevel(
       version: options.version,
     })
 
-    socket.send(
-      Buffer.from(message),
-      options.agentSyslogPort,
-      options.agentHost,
-      (error) => {
-        if (error && process.env.NODE_ENV !== "production") {
-          process.stderr.write(
-            `[datadog-logs] failed to forward log: ${error.message}\n`,
-          )
-        }
-      },
-    )
+    sendSyslogMessage(socket, message, options)
   }
+}
+
+export function sendDatadogStructuredLog(
+  input: StructuredLogInput,
+  options: DatadogLogForwarderOptions = {},
+): void {
+  const resolvedOptions = resolveForwardingOptions(options)
+  if (!resolvedOptions) return
+
+  try {
+    if (!structuredSocket) {
+      structuredSocket = dgram.createSocket("udp6")
+      attachSocketErrorHandler(structuredSocket)
+    }
+    structuredSocket.unref()
+  } catch (error) {
+    if (error instanceof Error) reportForwardingError(error)
+    return
+  }
+
+  const { spanId, traceId } = activeTraceTags()
+  const message = buildDatadogSyslogMessage({
+    attributes: input.attributes,
+    environment: resolvedOptions.environment,
+    hostname: resolvedOptions.hostname,
+    level: input.level ?? "info",
+    message: input.message,
+    service: resolvedOptions.service,
+    spanId,
+    traceId,
+    version: resolvedOptions.version,
+  })
+
+  sendSyslogMessage(structuredSocket, message, resolvedOptions)
 }
 
 export function configureDatadogLogForwarding(
@@ -159,23 +309,20 @@ export function configureDatadogLogForwarding(
 ): void {
   if (configured) return
 
-  const agentHost = options.agentHost ?? env.DD_AGENT_HOST
-  if (!agentHost) return
+  const resolvedOptions = resolveForwardingOptions(options)
+  if (!resolvedOptions) return
+
+  let socket: Socket
+  try {
+    socket = dgram.createSocket("udp6")
+    socket.unref()
+    attachSocketErrorHandler(socket)
+  } catch (error) {
+    if (error instanceof Error) reportForwardingError(error)
+    return
+  }
 
   configured = true
-
-  const socket = dgram.createSocket("udp6")
-  socket.unref()
-
-  const resolvedOptions = {
-    agentHost,
-    agentSyslogPort:
-      options.agentSyslogPort ?? env.DD_AGENT_SYSLOG_PORT ?? SYSLOG_PORT,
-    environment: options.environment ?? env.DD_ENV ?? "development",
-    hostname: options.hostname ?? os.hostname(),
-    service: options.service ?? env.DD_SERVICE ?? "forge-web",
-    version: options.version ?? env.DD_VERSION,
-  }
 
   for (const level of ["debug", "error", "info", "log", "warn"] as const) {
     patchConsoleLevel(socket, level, resolvedOptions)

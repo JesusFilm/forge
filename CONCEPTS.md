@@ -160,6 +160,37 @@ devotionals, experiences, or related-content sections and defaults to Hybrid
 Search. `semantic-diagnostic` isolates semantic retrieval quality and only runs
 with Semantic-Only Search.
 
+### Watch Search Analytics
+
+Server-side Datadog product observability for viewer-facing Watch search. Watch
+Search Analytics records anonymous submitted search requests, outcomes,
+no-result cases, load-more behavior, and result clicks so the team can
+understand common queries, failures, language mismatch signals, search-mode
+health, and clicked results.
+
+The canonical submitted-search event is emitted from the server-side search
+path using asynchronous, non-blocking, best-effort fire-and-forget delivery so
+search responses do not wait on Datadog. Browser RUM can add supplemental UI
+context and click signals, but RUM sampling is not the source of truth for
+submitted-search counts.
+
+Watch Search Analytics is separate from Search Eval. It may include exact query
+text, but it must not attach name, email, full user id, auth token, cookie,
+session id, IP address, or bearer/API key material.
+
+### Watch Analytics Context
+
+An optional anonymous context object future Watch event collection can provide
+to product analytics emitters such as Watch Search Analytics. It can carry
+sanitized page, video, playback, language, and referrer context into Datadog RUM
+events without making Watch event storage or ingest a dependency of search
+analytics.
+
+Watch Analytics Context is trusted provider context, not a free-form browser
+payload. Until a Watch event provider owns that context, canonical server
+analytics should omit it and rely on server-derived dimensions plus the
+anonymous search request id.
+
 ### Search Language
 
 The language semantic search uses to interpret and match a query. Search Language is separate from UI locale, public Watch route language, and audio-language selection: changing it affects search results but does not change the viewer's website language, URL language segment, or selected Dub.

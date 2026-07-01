@@ -51,11 +51,22 @@ export function reportDatadogRumError(
   error: unknown,
   context: Record<string, unknown>,
 ) {
+  safeReportDatadogRum("error", () => datadogRum.addError(error, context))
+}
+
+export function reportDatadogRumAction(
+  name: string,
+  context: Record<string, unknown>,
+) {
+  safeReportDatadogRum("action", () => datadogRum.addAction(name, context))
+}
+
+function safeReportDatadogRum(kind: "action" | "error", report: () => void) {
   try {
-    datadogRum.addError(error, context)
+    report()
   } catch (reportError) {
     if (process.env.NODE_ENV !== "production") {
-      console.error("[datadog-rum] failed to report error:", reportError)
+      console.error(`[datadog-rum] failed to report ${kind}:`, reportError)
     }
   }
 }

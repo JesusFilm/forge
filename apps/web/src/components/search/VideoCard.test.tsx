@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { formatDuration } from "@/lib/format-duration"
 import type { SearchResult } from "@/lib/search"
+import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
+
 import { defaultHrefBuilder, formatVideoLabel, pickCardPill } from "./VideoCard"
 
 function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
@@ -161,5 +163,38 @@ describe("pickCardPill", () => {
         }),
       ),
     ).toBeNull()
+  })
+})
+
+describe("buildWatchSearchResultClickRumContext", () => {
+  it("builds bounded click context without copying query text", () => {
+    const context = buildWatchSearchResultClickRumContext(
+      makeResult({
+        id: "video_1",
+        slug: "jesus",
+        title: "JESUS",
+      }),
+      {
+        position: 3,
+        resultSource: "algolia",
+        routeLanguageSlug: "english",
+        searchLanguageEnglishName: "Spanish, Castilian",
+        searchLanguageSlug: "spanish-castilian",
+        searchRequestId: "search_12345678",
+      },
+    )
+
+    expect(context).toMatchObject({
+      "watch_search.result_id": "video_1",
+      "watch_search.result_position": 3,
+      "watch_search.result_slug": "jesus",
+      "watch_search.result_source": "algolia",
+      "watch_search.result_title": "JESUS",
+      "watch_search.route_language_slug": "english",
+      "watch_search.search_language_english_name": "Spanish, Castilian",
+      "watch_search.search_language_slug": "spanish-castilian",
+      "watch_search.search_request_id": "search_12345678",
+    })
+    expect(context).not.toHaveProperty("watch_search.query")
   })
 })

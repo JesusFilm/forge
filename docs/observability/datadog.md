@@ -137,6 +137,37 @@ pnpm --filter @forge/admin datadog:sourcemaps
 The upload script uses service `forge-admin`, release version
 `DATADOG_RELEASE_VERSION`, and minified path prefix `/_next/static/`.
 
+## Web production variables
+
+Set these on the Web production Railway service when enabling Watch server logs
+and Watch RUM:
+
+```bash
+# Datadog Agent transport
+DD_AGENT_HOST=${{@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN}}
+DD_TRACE_AGENT_PORT=8126
+DD_AGENT_SYSLOG_PORT=514
+
+# Web backend APM/logs
+DD_SERVICE=forge-web
+DD_ENV=prod
+DD_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
+DD_LOGS_INJECTION=true
+DD_RUNTIME_METRICS_ENABLED=true
+
+# Watch browser RUM
+NEXT_PUBLIC_DATADOG_APPLICATION_ID=<Forge Watch RUM application ID>
+NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=<Forge Watch RUM client token>
+NEXT_PUBLIC_DATADOG_SITE=datadoghq.com
+NEXT_PUBLIC_DATADOG_ENV=prod
+NEXT_PUBLIC_DATADOG_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
+```
+
+`apps/web/src/instrumentation.ts` configures Datadog only in the Next.js Node
+runtime. Watch search analytics use structured `forge-web` logs as the
+canonical every-search signal and RUM only for supplemental click context. See
+`docs/operations/watch-search-analytics-datadog.md`.
+
 ## Future app pattern
 
 Reuse the `Forge-production` API key and `@forge/datadog-agent` Railway

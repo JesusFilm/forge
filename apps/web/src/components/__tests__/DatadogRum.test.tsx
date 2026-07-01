@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { datadogRumMock, mockEnv, reactPluginMock } = vi.hoisted(() => {
   const datadogRumMock = {
+    addAction: vi.fn(),
     addError: vi.fn(),
     init: vi.fn(),
   }
@@ -37,6 +38,7 @@ vi.mock("@/env", () => ({
 
 import DatadogRum, {
   getDatadogRumInitConfig,
+  reportDatadogRumAction,
   reportDatadogRumError,
 } from "@/components/DatadogRum"
 
@@ -179,6 +181,40 @@ describe("DatadogRum", () => {
 
     expect(consoleError).toHaveBeenCalledWith(
       "[datadog-rum] failed to report error:",
+      expect.any(Error),
+    )
+    consoleError.mockRestore()
+  })
+
+  it("reports supplemental RUM actions", () => {
+    reportDatadogRumAction("watch_search.result_clicked", {
+      "watch_search.result_position": 3,
+      "watch_search.search_request_id": "search_12345678",
+    })
+
+    expect(datadogRumMock.addAction).toHaveBeenCalledWith(
+      "watch_search.result_clicked",
+      {
+        "watch_search.result_position": 3,
+        "watch_search.search_request_id": "search_12345678",
+      },
+    )
+  })
+
+  it("does not let Datadog action failures cascade", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    datadogRumMock.addAction.mockImplementationOnce(() => {
+      throw new Error("sdk failed")
+    })
+
+    expect(() =>
+      reportDatadogRumAction("watch_search.result_clicked", {
+        "watch_search.result_position": 3,
+      }),
+    ).not.toThrow()
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[datadog-rum] failed to report action:",
       expect.any(Error),
     )
     consoleError.mockRestore()
