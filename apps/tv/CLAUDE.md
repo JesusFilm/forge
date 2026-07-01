@@ -81,6 +81,38 @@ search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
   (Android = `--profile preview` APK link; Apple TV = TestFlight via `xcrun altool -t appletvos`
   — NOT `eas submit`, which delivers tvOS as iOS and is rejected).
 
+## Observability (Datadog)
+
+Client-side Mobile RUM + Logs + native crash via `@datadog/mobile-react-native` (3.5.2).
+Pure config/reporting helpers live in `src/lib/datadog.ts` (`getDatadogRumConfig`,
+`reportDatadogError`, `datadogLog` — no JSX, so they're unit-testable without the native SDK);
+the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is mounted in
+`app/_layout.tsx` below the root `ErrorBoundary`. Service = `forge-tv`.
+
+- **Opt-in / no-op when unprovisioned.** `getDatadogRumConfig()` returns `null` unless BOTH
+  `EXPO_PUBLIC_DATADOG_CLIENT_TOKEN` and `EXPO_PUBLIC_DATADOG_APPLICATION_ID` are set, so an
+  unprovisioned build boots normally (dev builds log a `[datadog] RUM disabled` warning).
+  Provision via `eas env:create` per profile (see `.env.example` and `docs/observability/datadog.md`).
+  `EXPO_PUBLIC_DATADOG_ENV` defaults by build type (`__DEV__` → development, release → production).
+- **Client token, never an API key** — RUM creds ship in the bundle (`EXPO_PUBLIC_*`).
+- **Site is the mobile enum** (`US1`, `EU1`, …), NOT web's `datadoghq.com`. Default `US1`.
+- **firstPartyHosts** targets the admin GraphQL host so RUM resources trace-link to admin APM.
+- **tvOS SDK patch (load-bearing):** `@datadog/mobile-react-native@3.5.2` does NOT compile on
+  tvOS out of the box — `patches/@datadog__mobile-react-native@3.5.2.patch` guards two unguarded
+  WebView refs the SDK missed (a stray `import DatadogWebViewTracking` in `DdSdkImplementation.swift`
+  and the `RCT_REMAP_METHOD(consumeWebviewEvent...)` export in `DdSdk.mm`). No SessionReplay /
+  WebViewTracking on tvOS — never add those packages. Re-create this patch on any SDK bump.
+- **`expo-datadog` config plugin is intentionally NOT enabled.** Its build phases run
+  `datadog-ci` dSYM/source-map upload and **hard-fail without `DATADOG_API_KEY` even in Debug**,
+  and its datadog-ci path resolution assumes a hoisted (non-pnpm) layout. Build-time symbol upload
+  is a **deferred, secret-gated CI step** (mirror web/admin's `datadog:sourcemaps` via
+  `pnpm dlx @datadog/datadog-ci`, only when the key is present) — not a mandatory build phase.
+- **Deferred (later):** Datadog does NOT profile the Hermes JS bundle — pair a dedicated Hermes
+  profiler (`react-native-release-profiler`) for client-render root-cause (the ~2.8–3.2s series parse).
+- **Verified: builds + launches on the tvOS simulator** (Apple TV 4K, tvOS 26.4) with RUM compiled
+  in. Still pending: a live RUM event confirmed in the Datadog dashboard from real Apple TV /
+  Android TV hardware once creds are provisioned.
+
 ## TV-Specific Patterns
 
 - Every interactive element must be focusable via D-pad.

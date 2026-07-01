@@ -168,6 +168,27 @@ runtime. Watch search analytics use structured `forge-web` logs as the
 canonical every-search signal and RUM only for supplemental click context. See
 `docs/operations/watch-search-analytics-datadog.md`.
 
+## TV production variables
+
+`apps/tv` ships Datadog Mobile RUM + Logs + native crash as service `forge-tv`.
+See the "Observability (Datadog)" section of `apps/tv/CLAUDE.md` for the tvOS
+SDK patch caveat, the deliberately excluded `expo-datadog` plugin, and the
+mobile site enum gotcha. Provision per EAS profile with `eas env:create`:
+
+```bash
+# RUM client token (pub..., bundle-safe) + application id from the Datadog RUM app
+EXPO_PUBLIC_DATADOG_CLIENT_TOKEN=
+EXPO_PUBLIC_DATADOG_APPLICATION_ID=
+# Mobile site enum (US1, EU1, ...), NOT web's "datadoghq.com"
+EXPO_PUBLIC_DATADOG_SITE=US1
+# Optional override; unset defaults by build type (dev -> development, release -> production)
+EXPO_PUBLIC_DATADOG_ENV=
+EXPO_PUBLIC_DATADOG_VERSION=
+```
+
+Unprovisioned builds boot with telemetry disabled; dev builds log a
+`[datadog] RUM disabled` warning so the gate is visible from Metro logs.
+
 ## Future app pattern
 
 Reuse the `Forge-production` API key and `@forge/datadog-agent` Railway
@@ -179,7 +200,6 @@ forge-watch
 forge-manager
 forge-chat
 forge-mobile
-forge-tv
 ```
 
 Browser apps should each get their own Datadog RUM application so sessions,
