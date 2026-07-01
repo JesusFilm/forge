@@ -273,14 +273,13 @@ export function HeroPlayer({
 
     disableBuiltInSubtitles()
 
-    const onTextTrackChange = () => {
+    const onAddTrack = () => {
       disableBuiltInSubtitles()
       if (subtitleVttSrc && forgeTrack) {
         forgeTrack.mode = "showing"
       }
     }
-    tracks.addEventListener("addtrack", onTextTrackChange)
-    tracks.addEventListener("change", onTextTrackChange)
+    tracks.addEventListener("addtrack", onAddTrack)
 
     let forgeTrack: TextTrack | null = null
 
@@ -314,8 +313,7 @@ export function HeroPlayer({
         forgeTrack = trackEl.track
 
         return () => {
-          tracks.removeEventListener("addtrack", onTextTrackChange)
-          tracks.removeEventListener("change", onTextTrackChange)
+          tracks.removeEventListener("addtrack", onAddTrack)
           trackEl.track.mode = "disabled"
           trackEl.remove()
         }
@@ -323,8 +321,7 @@ export function HeroPlayer({
     }
 
     return () => {
-      tracks.removeEventListener("addtrack", onTextTrackChange)
-      tracks.removeEventListener("change", onTextTrackChange)
+      tracks.removeEventListener("addtrack", onAddTrack)
     }
   }, [subtitleVttSrc, player])
 
