@@ -339,6 +339,7 @@ export function HeroPlayer({
     () => autoplayParam === "1" || heroPosterUrl == null,
   )
   const pendingSoundIntentRef = useRef<PillState | null>(null)
+  const pointerDownHandledSoundIntentRef = useRef(false)
 
   const publishChromeVisibility = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
@@ -877,6 +878,11 @@ export function HeroPlayer({
   // ref is available in the same click task whenever the dynamic chunk is
   // already loaded; otherwise keep the user's intent queued for attach.
   const handleUnmuteClick = useCallback(() => {
+    if (pointerDownHandledSoundIntentRef.current) {
+      pointerDownHandledSoundIntentRef.current = false
+      return
+    }
+
     let player = playerRef.current
     if (!playerActivated) {
       activatePlayerForIntent()
@@ -888,6 +894,21 @@ export function HeroPlayer({
     if (!player) return
 
     pendingSoundIntentRef.current = null
+    runSoundIntent(player, pillState)
+  }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
+
+  const handleWatchNowPointerDown = useCallback(() => {
+    if (playerActivated) return
+
+    activatePlayerForIntent()
+    const player = playerRef.current
+    if (!player) {
+      pendingSoundIntentRef.current = pillState
+      return
+    }
+
+    pendingSoundIntentRef.current = null
+    pointerDownHandledSoundIntentRef.current = true
     runSoundIntent(player, pillState)
   }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
 
@@ -1342,7 +1363,7 @@ export function HeroPlayer({
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
                   aria-controls={HERO_PLAYER_MEDIA_ID}
-                  onPointerDown={activatePlayerForIntent}
+                  onPointerDown={handleWatchNowPointerDown}
                   onKeyDown={handleWatchNowKeyDown}
                   onClick={handleWatchNowClick}
                   className={
