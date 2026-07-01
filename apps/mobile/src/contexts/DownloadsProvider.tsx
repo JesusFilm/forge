@@ -57,6 +57,7 @@ import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
+import { decideCancelAction } from "../lib/downloadControls"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import { validateActionUrl } from "../lib/validateUrl"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
@@ -185,6 +186,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   // (U3/U4) can act on an in-flight transfer. Populated on start/swap/restart and
   // on relaunch reattach; entries are dropped when a task reaches a terminal event.
   const taskRegistry = useRef(new Map<string, EngineTask>())
+
+  // U3: dedupe concurrent restarts (double-tap resume). A resume with no live
+  // task re-resolves for ~10s before its task registers, so guard synchronously.
+  const restartingRef = useRef(new Set<string>())
 
   const { wifiOnly } = useWatchPreferences()
   // Read inside the launch-reattach effect without making it re-run (and re-queue
@@ -532,59 +537,65 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   // U6 threads the re-resolved subtitle through here.
   const restartDownload = useCallback(
     async (record: OfflineDownloadRecord) => {
-      const refreshed = await reresolveMediaUrl({
-        dubDocumentId: record.dubDocumentId,
-        renditionDocumentId: record.renditionDocumentId,
-        qualityLabel: record.qualityLabel,
-        totalBytes: record.totalBytes,
-        subtitleLanguageSlug: record.subtitleLanguageSlug,
-      })
-      if (!refreshed || !validateActionUrl(refreshed.mediaUrl)) return
-      const nonce = `${Date.now().toString(36)}-${Math.floor(
-        Math.random() * 1e9,
-      ).toString(36)}`
-      const pendingPath =
-        record.pendingPath ??
-        buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
-      const committedPath = buildCommittedPath(
-        OFFLINE_ROOT,
-        record.videoSlug,
-        record.renditionDocumentId,
-      )
+      if (restartingRef.current.has(record.videoSlug)) return
+      restartingRef.current.add(record.videoSlug)
       try {
-        // Engine config is applied once by the mount effect — never here.
-        // Re-applying recreates the URLSession and cancels sibling restarts.
-        await ensureVideoDir(record.videoSlug)
-      } catch {
-        return
-      }
-      await writeRecord({
-        ...record,
-        state: "downloading",
-        committedPath: null,
-        pendingPath,
-        bytesWritten: 0,
-      })
-      const task = startMediaDownload(
-        {
-          id: record.videoSlug,
-          url: refreshed.mediaUrl,
-          destination: pendingPath,
-          allowCellular: !wifiOnlyRef.current,
-        },
-        buildHandlers({
-          videoSlug: record.videoSlug,
-          committedPath,
-          pendingPath,
-          fallbackTotalBytes: record.totalBytes,
-          // U6: restart re-resolves the whole dub, so the fresh subtitle URL is
-          // already in hand — thread it straight through.
+        const refreshed = await reresolveMediaUrl({
+          dubDocumentId: record.dubDocumentId,
+          renditionDocumentId: record.renditionDocumentId,
+          qualityLabel: record.qualityLabel,
+          totalBytes: record.totalBytes,
           subtitleLanguageSlug: record.subtitleLanguageSlug,
-          subtitleUrl: refreshed.subtitleUrl,
-          posterUrl: null,
-        }),
-      )
-      taskRegistry.current.set(record.videoSlug, task)
+        })
+        if (!refreshed || !validateActionUrl(refreshed.mediaUrl)) return
+        const nonce = `${Date.now().toString(36)}-${Math.floor(
+          Math.random() * 1e9,
+        ).toString(36)}`
+        const pendingPath =
+          record.pendingPath ??
+          buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
+        const committedPath = buildCommittedPath(
+          OFFLINE_ROOT,
+          record.videoSlug,
+          record.renditionDocumentId,
+        )
+        try {
+          // Engine config is applied once by the mount effect — never here.
+          // Re-applying recreates the URLSession and cancels sibling restarts.
+          await ensureVideoDir(record.videoSlug)
+        } catch {
+          return
+        }
+        await writeRecord({
+          ...record,
+          state: "downloading",
+          committedPath: null,
+          pendingPath,
+          bytesWritten: 0,
+        })
+        const task = startMediaDownload(
+          {
+            id: record.videoSlug,
+            url: refreshed.mediaUrl,
+            destination: pendingPath,
+            allowCellular: !wifiOnlyRef.current,
+          },
+          buildHandlers({
+            videoSlug: record.videoSlug,
+            committedPath,
+            pendingPath,
+            fallbackTotalBytes: record.totalBytes,
+            // U6: restart re-resolves the whole dub, so the fresh subtitle URL is
+            // already in hand — thread it straight through.
+            subtitleLanguageSlug: record.subtitleLanguageSlug,
+            subtitleUrl: refreshed.subtitleUrl,
+            posterUrl: null,
+          }),
+        )
+        taskRegistry.current.set(record.videoSlug, task)
+      } finally {
+        restartingRef.current.delete(record.videoSlug)
+      }
     },
     [writeRecord, buildHandlers],
   )
@@ -964,8 +975,44 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   )
 
   const cancelDownload = useCallback(
-    (videoSlug: string) => deleteDownload(videoSlug),
-    [deleteDownload],
+    async (videoSlug: string) => {
+      const current = recordsRef.current[videoSlug]
+      const action = decideCancelAction(current)
+      if (action === "ignore" || !current) return
+      const task = taskRegistry.current.get(videoSlug)
+      if (task) {
+        taskRegistry.current.delete(videoSlug)
+        try {
+          await stopTask(task)
+        } catch {
+          // Best-effort stop.
+        }
+      }
+      // A swap in flight reverts to the old copy (keep the previously-downloaded
+      // file that shares the video dir); a fresh download is removed entirely.
+      if (action === "revert" && current.swapFrom) {
+        const swap = current.swapFrom
+        if (current.pendingPath) await removeUri(current.pendingPath)
+        void writeRecord({
+          ...current,
+          state: "downloaded",
+          committedPath: swap.committedPath,
+          renditionDocumentId: swap.renditionDocumentId,
+          qualityLabel: swap.qualityLabel,
+          subtitleLanguageSlug: swap.subtitleLanguageSlug,
+          posterPath: swap.posterPath,
+          totalBytes: swap.totalBytes,
+          bytesWritten: swap.totalBytes,
+          pendingPath: null,
+          swapFrom: null,
+        })
+        return
+      }
+      // A fresh in-flight download → remove it entirely.
+      await removeVideoDir(videoSlug)
+      await removeRecord(videoSlug)
+    },
+    [writeRecord, removeRecord],
   )
 
   const supersedeDownload = useCallback(async (videoSlug: string) => {
