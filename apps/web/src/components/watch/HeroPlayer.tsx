@@ -164,12 +164,6 @@ function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
   return url.toString()
 }
 
-function buildHeroPlaybackFallbackHref(playbackId: string | undefined): string {
-  return playbackId
-    ? `https://stream.mux.com/${encodeURIComponent(playbackId)}.m3u8`
-    : `#${HERO_PLAYER_MEDIA_ID}`
-}
-
 // Keep automatic muted-preview activation out of the critical first-load
 // window. The poster is already the intentional LCP surface, and user intent
 // still activates the player synchronously through the click/pointer handlers.
@@ -242,7 +236,6 @@ export function HeroPlayer({
   const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
-  const heroPlaybackFallbackHref = buildHeroPlaybackFallbackHref(playbackId)
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
@@ -916,7 +909,7 @@ export function HeroPlayer({
   }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
 
   const handleWatchNowClick = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>) => {
+    (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
       handleUnmuteClick()
     },
@@ -924,7 +917,7 @@ export function HeroPlayer({
   )
 
   const handleWatchNowKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLAnchorElement>) => {
+    (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key === " ") {
         event.preventDefault()
         handleUnmuteClick()
@@ -1360,8 +1353,8 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <a
-                  href={heroPlaybackFallbackHref}
+                <button
+                  type="button"
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
@@ -1381,7 +1374,7 @@ export function HeroPlayer({
                     <PlayIcon />
                   )}
                   <span>{preRevealActionLabel}</span>
-                </a>
+                </button>
               </div>
             ))
           : null}

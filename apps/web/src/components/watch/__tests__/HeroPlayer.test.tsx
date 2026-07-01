@@ -1216,10 +1216,9 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-overlay"]',
     )
     expect(pill).not.toBeNull()
-    expect(pill?.tagName.toLowerCase()).toBe("a")
-    expect(pill?.getAttribute("href")).toBe(
-      "https://stream.mux.com/playback-id-123.m3u8",
-    )
+    expect(pill?.tagName.toLowerCase()).toBe("button")
+    expect(pill?.getAttribute("type")).toBe("button")
+    expect(pill?.hasAttribute("href")).toBe(false)
     expect(pill?.getAttribute("aria-controls")).toBe("watch-hero-player-media")
     expect(overlay?.getAttribute("class")).toContain("bottom-0")
     expect(overlay?.getAttribute("class")).toContain("gap-3")
@@ -1296,7 +1295,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
-    ) as HTMLAnchorElement
+    ) as HTMLButtonElement
     expect(pill).not.toBeNull()
 
     // Order check: capture the order in which mutations & play() happen
@@ -1440,7 +1439,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
-    ) as HTMLAnchorElement
+    ) as HTMLButtonElement
 
     await act(async () => {
       pill.dispatchEvent(new Event("pointerdown", { bubbles: true }))
