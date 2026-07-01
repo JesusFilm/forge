@@ -8,6 +8,7 @@ import {
   enqueueResolvedEpisodes,
   evaluateStorageGate,
   formatEnqueueSummary,
+  runSeriesBatchEnqueue,
 } from "../../../src/lib/seriesDownloadEnqueue"
 import {
   resolveSeriesDownload,
@@ -485,5 +486,40 @@ describe("AE8 — all-skipped resolution", () => {
     expect(res.resolvedCount).toBe(0)
     expect(res.skippedLanguageCount).toBe(2)
     expect(res.failedCount).toBe(0)
+  })
+})
+
+describe("R10 — runSeriesBatchEnqueue snapshots before writing placeholders", () => {
+  it("a fresh episode still starts even though queueBatchRecords writes its placeholder", async () => {
+    // A live store models the provider: queueBatchRecords writes a `queued`
+    // placeholder (in the chosen dub) into it, getRecord reads from it. If the
+    // snapshot ran AFTER the queue, the loop would read that placeholder, see the
+    // same dub, and SKIP — zero starts. Snapshot-first must keep the start.
+    const store: Record<string, OfflineDownloadRecord> = {}
+    const started: string[] = []
+    const resolved = [resolvedEpisode("new", "dub-a", 1000)]
+    const summary = await runSeriesBatchEnqueue(resolved, ctx, {
+      getRecord: (slug) => store[slug] ?? null,
+      startDownload: async (req: StartDownloadRequest) => {
+        started.push(req.videoSlug)
+        return { ok: true } as StartDownloadResult
+      },
+      swapDownload: async () => ({ ok: true }) as StartDownloadResult,
+      supersedeDownload: async () => {},
+      deleteDownload: async (slug: string) => {
+        delete store[slug]
+      },
+      queueBatchRecords: async (reqs: StartDownloadRequest[]) => {
+        for (const req of reqs) {
+          store[req.videoSlug] = record(
+            req.videoSlug,
+            req.dubDocumentId,
+            "queued",
+          )
+        }
+      },
+    })
+    expect(started).toEqual(["new"])
+    expect(summary.started).toBe(1)
   })
 })

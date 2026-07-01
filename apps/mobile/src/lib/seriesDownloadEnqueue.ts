@@ -261,6 +261,35 @@ export async function enqueueResolvedEpisodes(
   }
 }
 
+/**
+ * The full series batch (R10): snapshot each resolved episode's record BEFORE
+ * writing the `queued` placeholders, then enqueue against that snapshot. The
+ * snapshot MUST precede queueBatchRecords — else the loop reads the just-written
+ * placeholder as "same dub → skip" and nothing starts. Extracted here (pure,
+ * injected) so the ordering invariant is unit-testable without the route.
+ */
+export async function runSeriesBatchEnqueue(
+  resolved: readonly SeriesEpisodeResolution[],
+  ctx: BuildRequestContext,
+  deps: EnqueueDeps,
+): Promise<EnqueueSummary> {
+  // Pre-batch snapshot FIRST — decideEpisodeAction must decide from the state
+  // before our own placeholders exist, not after.
+  const preBatch = new Map(
+    resolved.map(
+      (episode) => [episode.slug, deps.getRecord(episode.slug)] as const,
+    ),
+  )
+  const requests = resolved
+    .map((episode) => buildEpisodeRequest(episode, ctx))
+    .filter((req): req is StartDownloadRequest => req != null)
+  await deps.queueBatchRecords(requests)
+  return enqueueResolvedEpisodes(resolved, ctx, {
+    ...deps,
+    getRecord: (slug) => preBatch.get(slug) ?? null,
+  })
+}
+
 // ── Summary panel copy (zero-count buckets suppressed) ──────────────
 
 /**

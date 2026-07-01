@@ -44,10 +44,9 @@ import {
   type SeriesEpisodeResolution,
 } from "../../src/lib/seriesDownloadResolver"
 import {
-  buildEpisodeRequest,
-  enqueueResolvedEpisodes,
   evaluateStorageGate,
   formatEnqueueSummary,
+  runSeriesBatchEnqueue,
   type EnqueueSummary,
 } from "../../src/lib/seriesDownloadEnqueue"
 import { freeDiskBytes } from "../../src/lib/offlineFileSystem"
@@ -237,22 +236,10 @@ export default function SeriesDownloadRoute() {
       subtitleLanguageSlug: subtitleSlug,
       allowCellular: !wifiOnly,
     }
-    // Snapshot records BEFORE queueBatchRecords writes its `queued` placeholders —
-    // else decideEpisodeAction sees the chosen dub and reads "same dub → skip",
-    // never starting. The enqueue loop decides from this pre-batch snapshot.
-    const preBatch = new Map(
-      resolution.resolved.map((e) => [e.slug, getRecord(e.slug)] as const),
-    )
-
-    // Persist a durable `queued` placeholder for each resolved episode BEFORE any
-    // network, so a backgrounding mid-batch still completes via launch reattach.
-    const requests = resolution.resolved
-      .map((e) => buildEpisodeRequest(e, ctx))
-      .filter((r): r is NonNullable<typeof r> => r != null)
-    await queueBatchRecords(requests)
-
-    const summary = await enqueueResolvedEpisodes(resolution.resolved, ctx, {
-      getRecord: (slug) => preBatch.get(slug) ?? null,
+    // Snapshot → queue placeholders → enqueue lives in runSeriesBatchEnqueue so
+    // the R10 ordering invariant is unit-tested off the route.
+    const summary = await runSeriesBatchEnqueue(resolution.resolved, ctx, {
+      getRecord,
       startDownload,
       swapDownload,
       supersedeDownload,
