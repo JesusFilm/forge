@@ -573,25 +573,33 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           pendingPath,
           bytesWritten: 0,
         })
-        const task = startMediaDownload(
-          {
-            id: record.videoSlug,
-            url: refreshed.mediaUrl,
-            destination: pendingPath,
-            allowCellular: !wifiOnlyRef.current,
-          },
-          buildHandlers({
-            videoSlug: record.videoSlug,
-            committedPath,
-            pendingPath,
-            fallbackTotalBytes: record.totalBytes,
-            // U6: restart re-resolves the whole dub, so the fresh subtitle URL is
-            // already in hand — thread it straight through.
-            subtitleLanguageSlug: record.subtitleLanguageSlug,
-            subtitleUrl: refreshed.subtitleUrl,
-            posterUrl: null,
-          }),
-        )
+        let task: EngineTask
+        try {
+          task = startMediaDownload(
+            {
+              id: record.videoSlug,
+              url: refreshed.mediaUrl,
+              destination: pendingPath,
+              allowCellular: !wifiOnlyRef.current,
+            },
+            buildHandlers({
+              videoSlug: record.videoSlug,
+              committedPath,
+              pendingPath,
+              fallbackTotalBytes: record.totalBytes,
+              // U6: restart re-resolves the whole dub, so the fresh subtitle URL is
+              // already in hand — thread it straight through.
+              subtitleLanguageSlug: record.subtitleLanguageSlug,
+              subtitleUrl: refreshed.subtitleUrl,
+              posterUrl: null,
+            }),
+          )
+        } catch {
+          // Engine start threw — mark failed (delete/retry stay available)
+          // instead of stranding a phantom "downloading" record with no task.
+          await writeRecord({ ...record, state: "failed" })
+          return
+        }
         taskRegistry.current.set(record.videoSlug, task)
       } finally {
         restartingRef.current.delete(record.videoSlug)
@@ -806,23 +814,32 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
-      const task = startMediaDownload(
-        {
-          id: videoSlug,
-          url: mediaUrl,
-          destination: pendingPath,
-          allowCellular: request.allowCellular,
-        },
-        buildHandlers({
-          videoSlug,
-          committedPath,
-          pendingPath,
-          fallbackTotalBytes: Number(rendition.size) || 0,
-          subtitleLanguageSlug: request.subtitleLanguageSlug,
-          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
-          posterUrl: request.posterUrl,
-        }),
-      )
+      // The engine can throw synchronously (missing native module, session init
+      // failure) — drop the provisional record so no phantom "downloading" row
+      // survives a start that never produced a task.
+      let task: EngineTask
+      try {
+        task = startMediaDownload(
+          {
+            id: videoSlug,
+            url: mediaUrl,
+            destination: pendingPath,
+            allowCellular: request.allowCellular,
+          },
+          buildHandlers({
+            videoSlug,
+            committedPath,
+            pendingPath,
+            fallbackTotalBytes: Number(rendition.size) || 0,
+            subtitleLanguageSlug: request.subtitleLanguageSlug,
+            subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
+            posterUrl: request.posterUrl,
+          }),
+        )
+      } catch {
+        await removeRecord(videoSlug)
+        return { ok: false, reason: "error" }
+      }
       taskRegistry.current.set(videoSlug, task)
       return { ok: true }
     },
@@ -912,23 +929,31 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
-      const task = startMediaDownload(
-        {
-          id: videoSlug,
-          url: mediaUrl,
-          destination: pendingPath,
-          allowCellular: request.allowCellular,
-        },
-        buildHandlers({
-          videoSlug,
-          committedPath,
-          pendingPath,
-          fallbackTotalBytes: Number(rendition.size) || 0,
-          subtitleLanguageSlug: request.subtitleLanguageSlug,
-          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
-          posterUrl: request.posterUrl,
-        }),
-      )
+      // Engine start threw before producing a task — restore the pre-swap
+      // record (old copy + file untouched; no pending file exists yet).
+      let task: EngineTask
+      try {
+        task = startMediaDownload(
+          {
+            id: videoSlug,
+            url: mediaUrl,
+            destination: pendingPath,
+            allowCellular: request.allowCellular,
+          },
+          buildHandlers({
+            videoSlug,
+            committedPath,
+            pendingPath,
+            fallbackTotalBytes: Number(rendition.size) || 0,
+            subtitleLanguageSlug: request.subtitleLanguageSlug,
+            subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
+            posterUrl: request.posterUrl,
+          }),
+        )
+      } catch {
+        await writeRecord(existing)
+        return { ok: false, reason: "error" }
+      }
       taskRegistry.current.set(videoSlug, task)
       return { ok: true }
     },

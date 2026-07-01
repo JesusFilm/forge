@@ -23,3 +23,7 @@ output/
 
 # Impeccable design-hook caches — gitignored, machine-generated
 .impeccable/
+
+# Expo prebuild output (gitignored; expo run:ios generates Pods etc.)
+apps/mobile/ios/
+apps/mobile/android/
