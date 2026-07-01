@@ -151,6 +151,35 @@ describe("searchAlgoliaVideos", () => {
     })
   })
 
+  it("can skip language facet requests for load-more and filtered searches", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        hits: [],
+        nbHits: 0,
+        facets: {
+          languageEnglishName: {
+            English: 12,
+          },
+        },
+      }),
+    )
+
+    const result = await searchAlgoliaVideos({
+      includeLanguageFacets: false,
+      query: "jesus",
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      facets: { languageEnglishName: {} },
+    })
+    const body = JSON.parse(
+      String((fetchMock.mock.calls[0]![1] as RequestInit).body),
+    )
+    expect(body).not.toHaveProperty("facets")
+    expect(body).not.toHaveProperty("maxValuesPerFacet")
+  })
+
   it("returns a safe not-configured result without calling fetch", async () => {
     mockEnv.ALGOLIA_INDEX = undefined
 
@@ -176,6 +205,18 @@ describe("searchAlgoliaVideos", () => {
       ok: false,
       error: { code: "ALGOLIA_UPSTREAM_ERROR" },
     })
+  })
+
+  it("does not print raw query text in ordinary Algolia error logs", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("network failed"))
+
+    await searchAlgoliaVideos({ query: "person@example.com" })
+
+    expect(consoleError).toHaveBeenCalled()
+    const message = String(consoleError.mock.calls[0]?.[0])
+    expect(message).toContain("[watch-search][algolia] fetch failed")
+    expect(message).not.toContain("person@example.com")
+    expect(message).not.toContain("q=")
   })
 
   it("returns an invalid response error when hits is missing", async () => {

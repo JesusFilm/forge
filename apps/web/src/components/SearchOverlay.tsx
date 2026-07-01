@@ -26,6 +26,7 @@ import { useFloatingSearch } from "./FloatingSearchContext"
 import { FloatingSearchFieldInput } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
+import { reportDatadogRumAction } from "@/components/DatadogRum"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { CATEGORIES } from "@/lib/search-categories"
@@ -36,6 +37,8 @@ import {
   type SearchLanguageOption,
 } from "@/lib/search-language"
 import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
+import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
+import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 
 const CATEGORY_TITLE_KEYS: Record<
   CategorySearchTerm,
@@ -105,6 +108,7 @@ export function SearchOverlay() {
     selectedLanguageEnglishNames,
     selectedLanguageRegionByName,
     selectedSearchLanguageOption,
+    searchResultAnalytics,
     defaultSearchLanguageOption,
     setQuery,
     search,
@@ -1292,7 +1296,26 @@ export function SearchOverlay() {
                     key={`${result.id}-${index}`}
                     onClick={() => closeAndKeepQuery()}
                   >
-                    <VideoCard result={result} index={exiting ? 0 : index} />
+                    <VideoCard
+                      result={result}
+                      index={exiting ? 0 : index}
+                      onResultClick={
+                        searchResultAnalytics
+                          ? (clickedResult) => {
+                              reportDatadogRumAction(
+                                WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+                                buildWatchSearchResultClickRumContext(
+                                  clickedResult,
+                                  {
+                                    ...searchResultAnalytics,
+                                    position: index + 1,
+                                  },
+                                ),
+                              )
+                            }
+                          : undefined
+                      }
+                    />
                   </div>
                 ))}
               </div>
