@@ -501,10 +501,10 @@ const styles = StyleSheet.create({
     marginTop: scale(22),
     maxWidth: scale(980),
     fontFamily: "System",
-    fontSize: Math.round(scale(25)),
-    lineHeight: Math.round(scale(36)),
+    fontSize: Math.round(scale(27)),
+    lineHeight: Math.round(scale(39)),
     fontWeight: "400",
-    color: WATCH_THEME.text74,
+    color: WATCH_THEME.text,
   },
 
   // ── Below the fold (episode rail) ─────────────────────────────────
