@@ -16,6 +16,7 @@ import {
   notifyIosBackgroundComplete,
   startMediaDownload,
   wireExistingTask,
+  type EngineTask,
   type MediaDownloadHandlers,
 } from "../lib/downloadEngine"
 import { resolveBundle } from "../lib/downloadOutcome"
@@ -168,6 +169,11 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const recordsRef = useRef(records)
   recordsRef.current = records
+
+  // U2: live native task handles keyed by slug, so pause/resume/cancel/supersede
+  // (U3/U4) can act on an in-flight transfer. Populated on start/swap/restart and
+  // on relaunch reattach; entries are dropped when a task reaches a terminal event.
+  const taskRegistry = useRef(new Map<string, EngineTask>())
 
   const { wifiOnly } = useWatchPreferences()
   // Read inside the launch-reattach effect without making it re-run (and re-queue
@@ -440,6 +446,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             totalBytes: bytesTotal || fallbackTotalBytes,
           }),
         onDone: ({ location }) => {
+          taskRegistry.current.delete(videoSlug)
           // Signal iOS only AFTER finalize settles; signalling first lets iOS
           // suspend mid-finalize on a background-only launch, cutting sidecars
           // short. `finally` so we always signal — else iOS throttles future background time.
@@ -448,6 +455,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           )
         },
         onInterruption: (classification) => {
+          // Any native interruption is terminal for this task handle (a
+          // connectivity/wifi/background error stops it). A user pause never
+          // arrives here — it sets state directly (U3) and keeps the handle.
+          taskRegistry.current.delete(videoSlug)
           const swap = recordsRef.current[videoSlug]?.swapFrom
           if (swap) {
             // A swap was interrupted — keep the original copy intact.
@@ -548,7 +559,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             pendingPath,
             bytesWritten: 0,
           })
-          startMediaDownload(
+          const task = startMediaDownload(
             {
               id: record.videoSlug,
               url: refreshed.mediaUrl,
@@ -565,6 +576,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
               posterUrl: null,
             }),
           )
+          taskRegistry.current.set(record.videoSlug, task)
         }
 
         const droppedSlugs = new Set<string>()
@@ -627,6 +639,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
               posterUrl: null,
             }),
           )
+          taskRegistry.current.set(task.id, task)
         }
       } catch {
         // Reattach is best-effort and must never break boot.
@@ -717,7 +730,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
-      startMediaDownload(
+      const task = startMediaDownload(
         {
           id: videoSlug,
           url: mediaUrl,
@@ -734,6 +747,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           posterUrl: request.posterUrl,
         }),
       )
+      taskRegistry.current.set(videoSlug, task)
       return { ok: true }
     },
     [writeRecord, removeRecord, buildHandlers],
@@ -822,7 +836,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
-      startMediaDownload(
+      const task = startMediaDownload(
         {
           id: videoSlug,
           url: mediaUrl,
@@ -839,6 +853,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           posterUrl: request.posterUrl,
         }),
       )
+      taskRegistry.current.set(videoSlug, task)
       return { ok: true }
     },
     [writeRecord, buildHandlers, startDownload],
