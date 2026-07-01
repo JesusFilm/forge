@@ -14,7 +14,10 @@ import {
   configureDownloadEngine,
   listExistingDownloadTasks,
   notifyIosBackgroundComplete,
+  pauseTask,
+  resumeTask,
   startMediaDownload,
+  stopTask,
   wireExistingTask,
   type EngineTask,
   type MediaDownloadHandlers,
@@ -110,6 +113,14 @@ type DownloadsContextValue = {
   queueBatchRecords: (requests: StartDownloadRequest[]) => Promise<void>
   /** Remove an offline copy: its files and its manifest entry. */
   deleteDownload: (videoSlug: string) => Promise<void>
+  /** Pause an in-flight download (keeps the task; resume continues in place). */
+  pauseDownload: (videoSlug: string) => Promise<void>
+  /** Resume a paused download; restarts cleanly if the task didn't survive. */
+  resumeDownload: (videoSlug: string) => Promise<void>
+  /** Cancel an in-flight download: stop the transfer and remove it (R1). */
+  cancelDownload: (videoSlug: string) => Promise<void>
+  /** Stop an in-flight task without deleting its record (U4 language-switch). */
+  supersedeDownload: (videoSlug: string) => Promise<void>
 }
 
 const DownloadsContext = createContext<DownloadsContextValue | null>(null)
@@ -298,6 +309,18 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const deleteDownload = useCallback(
     async (videoSlug: string) => {
+      // R1: stop the in-flight native transfer BEFORE removing files/record, so
+      // it doesn't keep downloading and no late done-callback writes into the
+      // removed dir. No live task (already downloaded/failed) → just remove.
+      const task = taskRegistry.current.get(videoSlug)
+      if (task) {
+        taskRegistry.current.delete(videoSlug)
+        try {
+          await stopTask(task)
+        } catch {
+          // Best-effort stop; remove regardless so the UI stays consistent.
+        }
+      }
       await removeVideoDir(videoSlug)
       await removeRecord(videoSlug)
     },
@@ -464,7 +487,12 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             // A swap was interrupted — keep the original copy intact.
             revertSwap(swap)
           } else if (classification.state === "canceled") {
-            void deleteDownload(videoSlug)
+            // KTD2: a userCancel arriving while the record is already `paused` is
+            // the native pause surfacing as cancel-with-resume-data (iOS -999) —
+            // never delete the download the user just paused.
+            if (recordsRef.current[videoSlug]?.state !== "paused") {
+              void deleteDownload(videoSlug)
+            }
           } else {
             patch({ state: classification.state })
           }
@@ -473,6 +501,68 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       }
     },
     [writeRecord, deleteDownload],
+  )
+
+  // U3: restart an interrupted download — re-resolve the URL, rewrite it
+  // `downloading`, start, and register. Hoisted from the reattach effect so
+  // resumeDownload's no-live-task branch reuses one restart path. Best-effort: a
+  // null re-resolve (offline / unsafe URL) leaves the record for the next launch.
+  // U6 threads the re-resolved subtitle through here.
+  const restartDownload = useCallback(
+    async (record: OfflineDownloadRecord) => {
+      const refreshed = await reresolveMediaUrl({
+        dubDocumentId: record.dubDocumentId,
+        renditionDocumentId: record.renditionDocumentId,
+        qualityLabel: record.qualityLabel,
+        totalBytes: record.totalBytes,
+        subtitleLanguageSlug: record.subtitleLanguageSlug,
+      })
+      if (!refreshed || !validateActionUrl(refreshed.mediaUrl)) return
+      const nonce = `${Date.now().toString(36)}-${Math.floor(
+        Math.random() * 1e9,
+      ).toString(36)}`
+      const pendingPath =
+        record.pendingPath ??
+        buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
+      const committedPath = buildCommittedPath(
+        OFFLINE_ROOT,
+        record.videoSlug,
+        record.renditionDocumentId,
+      )
+      try {
+        // Engine config is applied once by the mount effect — never here.
+        // Re-applying recreates the URLSession and cancels sibling restarts.
+        await ensureVideoDir(record.videoSlug)
+      } catch {
+        return
+      }
+      await writeRecord({
+        ...record,
+        state: "downloading",
+        committedPath: null,
+        pendingPath,
+        bytesWritten: 0,
+      })
+      const task = startMediaDownload(
+        {
+          id: record.videoSlug,
+          url: refreshed.mediaUrl,
+          destination: pendingPath,
+          allowCellular: !wifiOnlyRef.current,
+        },
+        buildHandlers({
+          videoSlug: record.videoSlug,
+          committedPath,
+          pendingPath,
+          fallbackTotalBytes: record.totalBytes,
+          subtitleLanguageSlug: null,
+          subtitleUrl: null,
+          posterUrl: null,
+        }),
+      )
+      taskRegistry.current.set(record.videoSlug, task)
+    },
+    [writeRecord, buildHandlers],
   )
 
   // Defensive launch reattach: reconcile records vs live tasks + on-disk files,
@@ -518,67 +608,6 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           committedFileSlugs,
         })
 
-        // U6: re-resolve and restart a transfer interrupted (force-quit /
-        // OS-evicted → no live task) or whose committed file went missing
-        // ("repair"). Offline → reresolve null → leave the record for next launch.
-        const restartInterrupted = async (record: OfflineDownloadRecord) => {
-          const refreshed = await reresolveMediaUrl({
-            dubDocumentId: record.dubDocumentId,
-            renditionDocumentId: record.renditionDocumentId,
-            qualityLabel: record.qualityLabel,
-            totalBytes: record.totalBytes,
-            subtitleLanguageSlug: record.subtitleLanguageSlug,
-          })
-          if (cancelled || !refreshed) return
-          // Don't restart against an unsafe URL — leave the record for a future
-          // launch to re-resolve.
-          if (!validateActionUrl(refreshed.mediaUrl)) return
-          const nonce = `${Date.now().toString(36)}-${Math.floor(
-            Math.random() * 1e9,
-          ).toString(36)}`
-          const pendingPath =
-            record.pendingPath ??
-            buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
-          const committedPath = buildCommittedPath(
-            OFFLINE_ROOT,
-            record.videoSlug,
-            record.renditionDocumentId,
-          )
-          try {
-            // Engine config is applied once by the mount effect — never here.
-            // Re-applying recreates the URLSession and cancels sibling restarts.
-            await ensureVideoDir(record.videoSlug)
-          } catch {
-            return
-          }
-          if (cancelled) return
-          await writeRecord({
-            ...record,
-            state: "downloading",
-            committedPath: null,
-            pendingPath,
-            bytesWritten: 0,
-          })
-          const task = startMediaDownload(
-            {
-              id: record.videoSlug,
-              url: refreshed.mediaUrl,
-              destination: pendingPath,
-              allowCellular: !wifiOnlyRef.current,
-            },
-            buildHandlers({
-              videoSlug: record.videoSlug,
-              committedPath,
-              pendingPath,
-              fallbackTotalBytes: record.totalBytes,
-              subtitleLanguageSlug: null,
-              subtitleUrl: null,
-              posterUrl: null,
-            }),
-          )
-          taskRegistry.current.set(record.videoSlug, task)
-        }
-
         const droppedSlugs = new Set<string>()
         for (const action of actions) {
           if (cancelled) return
@@ -590,7 +619,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             action.action === "repair"
           ) {
             const record = recordsRef.current[action.videoSlug]
-            if (record) await restartInterrupted(record)
+            if (record) await restartDownload(record)
           } else if (action.action === "cleanupOrphanPending") {
             // A `.pending` partial with no in-flight record backing it — delete
             // the leaked bytes and clear the stale path so it isn't re-flagged
@@ -648,7 +677,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isReady, removeRecord, buildHandlers, writeRecord])
+  }, [isReady, removeRecord, buildHandlers, writeRecord, restartDownload])
 
   const startDownload = useCallback(
     async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
@@ -859,6 +888,63 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [writeRecord, buildHandlers, startDownload],
   )
 
+  // U3: in-flight controls. pause sets state directly and keeps the task handle;
+  // resume continues in place or restarts if the task didn't survive (R5); cancel
+  // stops + removes (R1) via deleteDownload; supersede (U4) stops WITHOUT deleting
+  // so the language-switch replacement can claim the slug.
+  const pauseDownload = useCallback(
+    async (videoSlug: string) => {
+      const current = recordsRef.current[videoSlug]
+      const task = taskRegistry.current.get(videoSlug)
+      if (!task || current?.state !== "downloading") return
+      void writeRecord({ ...current, state: "paused" })
+      try {
+        await pauseTask(task)
+      } catch {
+        // Best-effort; the record already reflects paused.
+      }
+    },
+    [writeRecord],
+  )
+
+  const resumeDownload = useCallback(
+    async (videoSlug: string) => {
+      const current = recordsRef.current[videoSlug]
+      if (current?.state !== "paused") return
+      const task = taskRegistry.current.get(videoSlug)
+      if (task) {
+        void writeRecord({ ...current, state: "downloading" })
+        try {
+          await resumeTask(task)
+          return
+        } catch {
+          // Native resume failed — fall through to a clean restart.
+        }
+      }
+      // No live task survived the pause/relaunch — restart cleanly (R5/AE4).
+      await restartDownload(current)
+    },
+    [writeRecord, restartDownload],
+  )
+
+  const cancelDownload = useCallback(
+    (videoSlug: string) => deleteDownload(videoSlug),
+    [deleteDownload],
+  )
+
+  const supersedeDownload = useCallback(async (videoSlug: string) => {
+    // U4: stop the in-flight task WITHOUT removing its record, neutralizing its
+    // terminal callbacks so the language-switch replacement can reclaim the slug.
+    const task = taskRegistry.current.get(videoSlug)
+    if (!task) return
+    taskRegistry.current.delete(videoSlug)
+    try {
+      await stopTask(task, { supersede: true })
+    } catch {
+      // Best-effort supersede stop.
+    }
+  }, [])
+
   const value = useMemo<DownloadsContextValue>(
     () => ({
       isReady,
@@ -883,6 +969,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       swapDownload,
       queueBatchRecords,
       deleteDownload,
+      pauseDownload,
+      resumeDownload,
+      cancelDownload,
+      supersedeDownload,
     }),
     [
       records,
@@ -891,6 +981,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       swapDownload,
       queueBatchRecords,
       deleteDownload,
+      pauseDownload,
+      resumeDownload,
+      cancelDownload,
+      supersedeDownload,
     ],
   )
 
