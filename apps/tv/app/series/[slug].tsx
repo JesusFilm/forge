@@ -137,7 +137,7 @@ export default function SeriesScreen() {
   useEffect(() => {
     if (firstRailFiredForRef.current === decodedSlug) return
     if (!isDatadogProvisioned()) return
-    if (!shouldFireFirstRailTiming(record, false)) return
+    if (!shouldFireFirstRailTiming(record)) return
     firstRailFiredForRef.current = decodedSlug
     addDatadogTiming(SERIES_FIRST_RAIL_READY_TIMING)
   }, [record, decodedSlug])

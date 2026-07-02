@@ -246,28 +246,21 @@ describe("shouldFireFirstRailTiming", () => {
   const noEpisodes = { episodes: [] }
 
   it("fires when a record with episodes is present at first evaluation (cache-synchronous)", () => {
-    expect(shouldFireFirstRailTiming(withEpisodes, false)).toBe(true)
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
   })
 
   it("fires on the null -> record-with-episodes transition (network arrival)", () => {
-    expect(shouldFireFirstRailTiming(null, false)).toBe(false)
-    expect(shouldFireFirstRailTiming(withEpisodes, false)).toBe(true)
+    expect(shouldFireFirstRailTiming(null)).toBe(false)
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
   })
 
   it("waits on a partial record with zero episodes, then fires when episodes arrive", () => {
-    expect(shouldFireFirstRailTiming(noEpisodes, false)).toBe(false)
-    expect(shouldFireFirstRailTiming(withEpisodes, false)).toBe(true)
+    expect(shouldFireFirstRailTiming(noEpisodes)).toBe(false)
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
   })
 
   it("never fires while there is no record (error / no data)", () => {
-    expect(shouldFireFirstRailTiming(null, false)).toBe(false)
-    expect(shouldFireFirstRailTiming(undefined, false)).toBe(false)
-  })
-
-  it("never re-fires once fired, regardless of record identity changes", () => {
-    expect(shouldFireFirstRailTiming(withEpisodes, true)).toBe(false)
-    expect(shouldFireFirstRailTiming({ episodes: [{ id: "e2" }] }, true)).toBe(
-      false,
-    )
+    expect(shouldFireFirstRailTiming(null)).toBe(false)
+    expect(shouldFireFirstRailTiming(undefined)).toBe(false)
   })
 })

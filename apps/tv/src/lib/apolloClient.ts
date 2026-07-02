@@ -39,13 +39,11 @@ function mergeContextHeaders(
   operation.setContext({ headers: { ...(prev.headers ?? {}), ...headers } })
 }
 
-let _client: ApolloClient | undefined
-
-/** Lazy singleton Apollo Client. Never instantiate at module scope — crashes
- * imports when env vars are missing in CI. */
-export function getApolloClient(): ApolloClient {
-  if (_client) return _client
-
+/**
+ * The request chain minus transport (auth + Datadog attribution). Exported so
+ * tests can prove the Search bearer survives the attribution merge (U3).
+ */
+export function createRequestChain(): ApolloLink {
   // Bearer rides ONLY on the Search op: attaching it globally merges the fleet
   // into one consumer:<key> 60/min bucket (public ops bucket per device IP). Prod
   // token embargoed until admin lands fleet-aware bucketing (U7).
@@ -72,11 +70,17 @@ export function getApolloClient(): ApolloClient {
   })
 
   // Unprovisioned builds skip the attribution link entirely (null-gate).
-  const requestChain = isDatadogProvisioned()
-    ? authLink.concat(datadogLink)
-    : authLink
+  return isDatadogProvisioned() ? authLink.concat(datadogLink) : authLink
+}
 
-  const link = requestChain.concat(
+let _client: ApolloClient | undefined
+
+/** Lazy singleton Apollo Client. Never instantiate at module scope — crashes
+ * imports when env vars are missing in CI. */
+export function getApolloClient(): ApolloClient {
+  if (_client) return _client
+
+  const link = createRequestChain().concat(
     new HttpLink({
       uri: getGraphQLUrl(),
       fetch: fetchWithTimeout,

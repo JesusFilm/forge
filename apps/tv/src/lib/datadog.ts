@@ -39,17 +39,27 @@ export function toFirstPartyHostConfigs(
   }))
 }
 
+// Single source of truth for the provisioning gate, so isDatadogProvisioned and
+// getDatadogRumConfig stay in lockstep if the required-credential set ever grows.
+function getDatadogCredentials(): {
+  clientToken: string
+  applicationId: string
+} | null {
+  const clientToken = env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN
+  const applicationId = env.EXPO_PUBLIC_DATADOG_APPLICATION_ID
+  if (!clientToken || !applicationId) return null
+  return { clientToken, applicationId }
+}
+
 // Mirrors web's getDatadogRumInitConfig: returns null (a no-op) unless BOTH the
 // client token and application id are provisioned, so a build without Datadog env
 // still boots instead of crashing on init.
 export function getDatadogRumConfig(): DatadogRumConfig | null {
-  const clientToken = env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN
-  const applicationId = env.EXPO_PUBLIC_DATADOG_APPLICATION_ID
-  if (!clientToken || !applicationId) return null
+  const credentials = getDatadogCredentials()
+  if (credentials == null) return null
 
   return {
-    clientToken,
-    applicationId,
+    ...credentials,
     site: env.EXPO_PUBLIC_DATADOG_SITE ?? "US1",
     // Default by build type: a provisioned release fleet missing the ENV var
     // must not file its telemetry under env:development.
@@ -78,10 +88,7 @@ export function resolveViewName(
 
 /** Cheap provisioning gate for hot paths — no URL parse or config allocation. */
 export function isDatadogProvisioned(): boolean {
-  return (
-    !!env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN &&
-    !!env.EXPO_PUBLIC_DATADOG_APPLICATION_ID
-  )
+  return getDatadogCredentials() != null
 }
 
 // Telemetry must never throw into the app: swallow sync throws and rejections.

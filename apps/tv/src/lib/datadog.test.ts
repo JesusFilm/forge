@@ -59,6 +59,8 @@ const mockAddError = DdRum.addError as jest.Mock
 const mockStartView = DdRum.startView as jest.Mock
 const mockAddTiming = DdRum.addTiming as jest.Mock
 const mockLogInfo = DdLogs.info as jest.Mock
+const mockLogWarn = DdLogs.warn as jest.Mock
+const mockLogError = DdLogs.error as jest.Mock
 
 const flushMicrotasks = () =>
   new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -342,6 +344,21 @@ describe("datadogLog (never-throw contract)", () => {
   it("forwards message and context to DdLogs", () => {
     datadogLog.info("hello", { a: 1 })
     expect(mockLogInfo).toHaveBeenCalledWith("hello", { a: 1 })
+    datadogLog.warn("careful", { b: 2 })
+    expect(mockLogWarn).toHaveBeenCalledWith("careful", { b: 2 })
+    datadogLog.error("boom", { c: 3 })
+    expect(mockLogError).toHaveBeenCalledWith("boom", { c: 3 })
+  })
+
+  it("swallows a synchronously-throwing DdLogs call on every level", () => {
+    for (const mock of [mockLogInfo, mockLogWarn, mockLogError]) {
+      mock.mockImplementationOnce(() => {
+        throw new Error("native bridge down")
+      })
+    }
+    expect(() => datadogLog.info("x")).not.toThrow()
+    expect(() => datadogLog.warn("x")).not.toThrow()
+    expect(() => datadogLog.error("x")).not.toThrow()
   })
 
   it("swallows an async DdLogs rejection", async () => {

@@ -230,6 +230,10 @@ bundles at `eas update` time.
    production environment, then repeat step 1 for `production` with
    `EXPO_PUBLIC_DATADOG_ENV` unset (release defaults to production).
 
+Steps 3-4's "confirm a session" checks are human-in-the-Datadog-UI today; the
+agent-driven query recipe (Datadog MCP) that replaces the eyeball check is
+scoped in `docs/roadmap/platform/feat-228-tv-perf-tooling-mcp-and-profiler.md`.
+
 Playback note: the video player overlay is not a route, so playback telemetry
 attributes to the underlying series/watch view. A dedicated player view is a
 deliberate deferral, not an omission.
