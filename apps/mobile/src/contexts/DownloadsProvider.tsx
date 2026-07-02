@@ -53,6 +53,7 @@ import {
   type OfflineDownloadRecord,
   type SwapFrom,
 } from "../lib/offlineManifest"
+import { nextBatchAction } from "../lib/batchDownloadQueue"
 import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
@@ -103,6 +104,15 @@ type DownloadsContextValue = {
   startDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /** Swap a downloaded video to a new quality/language, non-destructively. */
   swapDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
+  /**
+   * Series batch entry point (R14): accept an episode into the strict-sequential
+   * queue — one native download at a time, in episode order — instead of
+   * starting immediately. Requires its `queued` placeholder to be persisted
+   * first (queueBatchRecords) so badges and cancel-all cover the wait.
+   */
+  queueBatchDownload: (
+    request: StartDownloadRequest,
+  ) => Promise<StartDownloadResult>
   /**
    * Durable batch pre-persist (series download-all): write a `queued` record per
    * request synchronously, BEFORE any network await, so a backgrounding mid-batch
@@ -190,6 +200,19 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   // U3: dedupe concurrent restarts (double-tap resume). A resume with no live
   // task re-resolves for ~10s before its task registers, so guard synchronously.
   const restartingRef = useRef(new Set<string>())
+
+  // R14: strict-sequential batch queue — pending requests in episode order,
+  // the slugs any batch enqueued this session (scopes pump occupancy), and a
+  // single-flight guard so overlapping pump wakeups can't double-start.
+  const batchQueueRef = useRef<StartDownloadRequest[]>([])
+  const batchSlugsRef = useRef<Set<string>>(new Set())
+  const batchPumpingRef = useRef(false)
+
+  const dropFromBatchQueue = useCallback((videoSlug: string) => {
+    batchQueueRef.current = batchQueueRef.current.filter(
+      (request) => request.videoSlug !== videoSlug,
+    )
+  }, [])
 
   const { wifiOnly } = useWatchPreferences()
   // Read inside the launch-reattach effect without making it re-run (and re-queue
@@ -314,6 +337,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const deleteDownload = useCallback(
     async (videoSlug: string) => {
+      // A deleted slug must not restart from the batch queue (R14).
+      dropFromBatchQueue(videoSlug)
       // R1: stop the in-flight native transfer BEFORE removing files/record, so
       // it doesn't keep downloading and no late done-callback writes into the
       // removed dir. No live task (already downloaded/failed) → just remove.
@@ -329,7 +354,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       await removeVideoDir(videoSlug)
       await removeRecord(videoSlug)
     },
-    [removeRecord],
+    [removeRecord, dropFromBatchQueue],
   )
 
   // Build the native event handlers for one download, bound to its identity and
@@ -846,6 +871,64 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [writeRecord, removeRecord, buildHandlers],
   )
 
+  // R14: drain the batch queue — start the head episode when the single slot
+  // is free, drop stale heads. Single-flight; every terminal path mutates
+  // `records`, whose effect below re-invokes the pump, so no missed wakeups.
+  const pumpBatchQueue = useCallback(() => {
+    if (batchPumpingRef.current) return
+    batchPumpingRef.current = true
+    void (async () => {
+      try {
+        while (true) {
+          const action = nextBatchAction(
+            recordsRef.current,
+            batchQueueRef.current,
+            batchSlugsRef.current,
+          )
+          if (action.kind === "empty" || action.kind === "wait") return
+          if (action.kind === "drop") {
+            dropFromBatchQueue(action.videoSlug)
+            continue
+          }
+          dropFromBatchQueue(action.request.videoSlug)
+          await startDownload(action.request)
+        }
+      } finally {
+        batchPumpingRef.current = false
+      }
+    })()
+  }, [startDownload, dropFromBatchQueue])
+
+  useEffect(() => {
+    if (!isReady) return
+    pumpBatchQueue()
+  }, [records, isReady, pumpBatchQueue])
+
+  // R14: accept a batch episode into the sequential queue. The caller has
+  // already persisted its `queued` placeholder (queueBatchRecords), so the
+  // grid badge and cancel-all work while the episode waits its turn.
+  const queueBatchDownload = useCallback(
+    async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
+      const existing = recordsRef.current[request.videoSlug]
+      if (
+        isLiveDownloadRecord(existing) &&
+        !isBatchPlaceholderRecord(existing)
+      ) {
+        return { ok: false, reason: "exists" }
+      }
+      if (
+        batchQueueRef.current.some((r) => r.videoSlug === request.videoSlug)
+      ) {
+        return { ok: false, reason: "exists" }
+      }
+      batchQueueRef.current = [...batchQueueRef.current, request]
+      batchSlugsRef.current.add(request.videoSlug)
+      pumpBatchQueue()
+      return { ok: true }
+    },
+    [pumpBatchQueue],
+  )
+
   // U8: non-destructive quality/language swap on an already-downloaded video.
   // The new copy downloads alongside the old (kept playable via swapFrom); on
   // success the old file is deleted, on failure the record reverts (AE2).
@@ -1004,6 +1087,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       const current = recordsRef.current[videoSlug]
       const action = decideCancelAction(current)
       if (action === "ignore" || !current) return
+      // A canceled slug must not restart from the batch queue (R14).
+      dropFromBatchQueue(videoSlug)
       const task = taskRegistry.current.get(videoSlug)
       if (task) {
         taskRegistry.current.delete(videoSlug)
@@ -1037,21 +1122,26 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       await removeVideoDir(videoSlug)
       await removeRecord(videoSlug)
     },
-    [writeRecord, removeRecord],
+    [writeRecord, removeRecord, dropFromBatchQueue],
   )
 
-  const supersedeDownload = useCallback(async (videoSlug: string) => {
-    // U4: stop the in-flight task WITHOUT removing its record, neutralizing its
-    // terminal callbacks so the language-switch replacement can reclaim the slug.
-    const task = taskRegistry.current.get(videoSlug)
-    if (!task) return
-    taskRegistry.current.delete(videoSlug)
-    try {
-      await stopTask(task, { supersede: true })
-    } catch {
-      // Best-effort supersede stop.
-    }
-  }, [])
+  const supersedeDownload = useCallback(
+    async (videoSlug: string) => {
+      // A superseded slug's stale queue entry must not race the replacement (R14).
+      dropFromBatchQueue(videoSlug)
+      // U4: stop the in-flight task WITHOUT removing its record, neutralizing its
+      // terminal callbacks so the language-switch replacement can reclaim the slug.
+      const task = taskRegistry.current.get(videoSlug)
+      if (!task) return
+      taskRegistry.current.delete(videoSlug)
+      try {
+        await stopTask(task, { supersede: true })
+      } catch {
+        // Best-effort supersede stop.
+      }
+    },
+    [dropFromBatchQueue],
+  )
 
   const value = useMemo<DownloadsContextValue>(
     () => ({
@@ -1075,6 +1165,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       ),
       startDownload,
       swapDownload,
+      queueBatchDownload,
       queueBatchRecords,
       deleteDownload,
       pauseDownload,
@@ -1087,6 +1178,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       isReady,
       startDownload,
       swapDownload,
+      queueBatchDownload,
       queueBatchRecords,
       deleteDownload,
       pauseDownload,

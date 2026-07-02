@@ -67,7 +67,7 @@ export default function SeriesDownloadRoute() {
   const { series, selectedLanguageSlug, languages } = useSeriesSession()
   const {
     getRecord,
-    startDownload,
+    queueBatchDownload,
     swapDownload,
     supersedeDownload,
     deleteDownload,
@@ -257,10 +257,11 @@ export default function SeriesDownloadRoute() {
       allowCellular: !wifiOnly,
     }
     // Snapshot → queue placeholders → enqueue lives in runSeriesBatchEnqueue so
-    // the R10 ordering invariant is unit-tested off the route.
+    // the R10 ordering invariant is unit-tested off the route. Fresh starts go
+    // through the sequential batch queue (R14) so episodes finish in order.
     const summary = await runSeriesBatchEnqueue(resolution.resolved, ctx, {
       getRecord,
-      startDownload,
+      startDownload: queueBatchDownload,
       swapDownload,
       supersedeDownload,
       deleteDownload,
@@ -278,7 +279,7 @@ export default function SeriesDownloadRoute() {
     subtitleSlug,
     wifiOnly,
     getRecord,
-    startDownload,
+    queueBatchDownload,
     swapDownload,
     supersedeDownload,
     deleteDownload,
