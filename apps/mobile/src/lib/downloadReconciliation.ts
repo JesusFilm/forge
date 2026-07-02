@@ -21,6 +21,8 @@ export type ReconcileAction =
   | { action: "rebind"; videoSlug: string }
   /** Record is in-flight but no live task survived — re-enqueue (refresh URL). */
   | { action: "requeue"; videoSlug: string }
+  /** Paused record with no live task — stay paused, await a user resume (U5). */
+  | { action: "keepPaused"; videoSlug: string }
   /** Record says downloaded and the committed file is present — confirm. */
   | { action: "confirmDownloaded"; videoSlug: string }
   /** Record says downloaded but the committed file is gone — re-download. */
@@ -49,8 +51,17 @@ export function reconcile(input: ReconcileInput): ReconcileAction[] {
             : { action: "repair", videoSlug: record.videoSlug },
         )
         break
-      case "downloading":
       case "paused":
+        // U5: a paused record whose task survived rebinds (resume continues in
+        // place); one with no live task STAYS paused, awaiting a user resume — it
+        // must NOT requeue into a zero-byte restart (R5/AE4).
+        actions.push(
+          input.liveTaskSlugs.has(record.videoSlug)
+            ? { action: "rebind", videoSlug: record.videoSlug }
+            : { action: "keepPaused", videoSlug: record.videoSlug },
+        )
+        break
+      case "downloading":
       case "queued":
         actions.push(
           input.liveTaskSlugs.has(record.videoSlug)

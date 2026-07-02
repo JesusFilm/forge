@@ -2,6 +2,7 @@ import {
   decideEpisodeAction,
   resolveSeriesDownload,
   summarizeResolution,
+  toResolverVariants,
   type SeriesEpisodeResolution,
   type SeriesResolveDeps,
 } from "../seriesDownloadResolver"
@@ -364,5 +365,28 @@ describe("decideEpisodeAction", () => {
     )
     expect(decideEpisodeAction(record("d1", "queued"), "d2")).toBe("switch")
     expect(decideEpisodeAction(record("d1", "paused"), "d2")).toBe("switch")
+  })
+})
+
+describe("toResolverVariants (lean dub-index mapper)", () => {
+  it("keeps only published dubs, mirroring normalizeVideo's gate", () => {
+    const variants = toResolverVariants([
+      { documentId: "d1", published: true, language: { slug: "en" } },
+      { documentId: "d2", published: false, language: { slug: "ja" } },
+      { documentId: "d3", published: null, language: { slug: "fr" } },
+    ])
+    expect(variants).toEqual([{ documentId: "d1", languageSlug: "en" }])
+  })
+
+  it("defaults missing ids and language slugs safely", () => {
+    const variants = toResolverVariants([
+      { documentId: null, published: true, language: null },
+    ])
+    expect(variants).toEqual([{ documentId: "", languageSlug: null }])
+  })
+
+  it("returns empty for a null/undefined dub list", () => {
+    expect(toResolverVariants(null)).toEqual([])
+    expect(toResolverVariants(undefined)).toEqual([])
   })
 })

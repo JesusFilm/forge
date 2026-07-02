@@ -1,3 +1,4 @@
+import { type ComponentProps } from "react"
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import { useRouter } from "expo-router"
 import { Image } from "expo-image"
@@ -11,6 +12,10 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../lib/color"
+import {
+  controlsForState,
+  type DownloadControl,
+} from "../../lib/downloadControls"
 import type {
   OfflineDownloadRecord,
   OfflineDownloadState,
@@ -18,6 +23,22 @@ import type {
 
 const DOWNLOADED_COLOR = "#34d399"
 const FAILED_COLOR = "#fb7185"
+
+// Icon + accessibility verb per control (U7). Cancel/delete are destructive
+// (accent-coloured, confirmed); pause/resume are non-destructive and immediate.
+const CONTROL_META: Record<
+  DownloadControl,
+  {
+    icon: ComponentProps<typeof Ionicons>["name"]
+    verb: string
+    danger: boolean
+  }
+> = {
+  pause: { icon: "pause", verb: "Pause", danger: false },
+  resume: { icon: "play", verb: "Resume", danger: false },
+  cancel: { icon: "close", verb: "Cancel", danger: true },
+  delete: { icon: "trash-outline", verb: "Remove", danger: true },
+}
 
 /** Humanize a video slug as a fallback when the record has no stored title. */
 function slugToTitle(slug: string): string {
@@ -66,7 +87,35 @@ function stateColor(state: OfflineDownloadState): string {
 export function MyDownloadsSection() {
   const typography = useTypography()
   const router = useRouter()
-  const { offlineRecords, deleteDownload } = useDownloads()
+  const {
+    offlineRecords,
+    deleteDownload,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
+  } = useDownloads()
+
+  const confirmRemove = (label: string, action: () => void) =>
+    Alert.alert(
+      "Remove download",
+      `Remove "${label}" from offline downloads?`,
+      [
+        { text: "Remove", style: "destructive", onPress: action },
+        { text: "Cancel", style: "cancel" },
+      ],
+    )
+
+  const runControl = (
+    control: DownloadControl,
+    slug: string,
+    label: string,
+  ) => {
+    if (control === "pause") void pauseDownload(slug)
+    else if (control === "resume") void resumeDownload(slug)
+    else if (control === "cancel")
+      confirmRemove(label, () => void cancelDownload(slug))
+    else confirmRemove(label, () => void deleteDownload(slug))
+  }
 
   return (
     <View style={styles.section}>
@@ -129,29 +178,33 @@ export function MyDownloadsSection() {
                 {statusLine(record)}
               </Text>
             </View>
-            <Pressable
-              hitSlop={10}
-              onPress={() =>
-                Alert.alert(
-                  "Remove download",
-                  `Remove "${displayTitle(record)}" from offline downloads?`,
-                  [
-                    {
-                      text: "Remove",
-                      style: "destructive",
-                      onPress: () => {
-                        void deleteDownload(record.videoSlug)
-                      },
-                    },
-                    { text: "Cancel", style: "cancel" },
-                  ],
+            <View style={styles.controls}>
+              {controlsForState(record.state).map((control) => {
+                const meta = CONTROL_META[control]
+                return (
+                  <Pressable
+                    key={control}
+                    hitSlop={8}
+                    style={styles.controlBtn}
+                    onPress={() =>
+                      runControl(
+                        control,
+                        record.videoSlug,
+                        displayTitle(record),
+                      )
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`${meta.verb} ${displayTitle(record)}`}
+                  >
+                    <Ionicons
+                      name={meta.icon}
+                      size={20}
+                      color={meta.danger ? ACCENT : TEXT_SECONDARY}
+                    />
+                  </Pressable>
                 )
-              }
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${displayTitle(record)}`}
-            >
-              <Ionicons name="trash-outline" size={20} color={TEXT_SECONDARY} />
-            </Pressable>
+              })}
+            </View>
           </Pressable>
         ))
       )}
@@ -210,5 +263,13 @@ const styles = StyleSheet.create({
   rowStatus: {
     fontFamily: "System",
     marginTop: 2,
+  },
+  controls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  controlBtn: {
+    padding: 4,
   },
 })

@@ -22,9 +22,14 @@ export const SERIES_ENQUEUE_CONCURRENCY = 2
 // ── Storage gate (KTD6) ─────────────────────────────────────────────
 
 export type StorageGate =
-  | { kind: "ok"; requiredBytes: number; freeBytes: number }
+  | {
+      kind: "ok"
+      requiredBytes: number
+      freeBytes: number
+      /** Some rendition sizes were unknown, so requiredBytes is a lower bound. */
+      lowerBound: boolean
+    }
   | { kind: "insufficient"; requiredBytes: number; freeBytes: number }
-  | { kind: "unverifiable-total" }
   | { kind: "unreadable-free" }
 
 export type StorageGateInput = {
@@ -39,14 +44,17 @@ export type StorageGateInput = {
  * Required = Σ(new rendition sizes) + Σ(existing on-disk totalBytes of every
  * SWAP target, since a swap keeps the old copy alongside the new until verified)
  * + the reserve. A `switch` DELETES its old copy before starting, so those bytes
- * are reclaimed first and must NOT be counted (else switch over-budgets). Never
- * green-light an unverifiable total: a lower-bound total (any zero/missing
- * resolved size) or a free read of 0 (API unavailable) blocks.
+ * are reclaimed first and must NOT be counted (else switch over-budgets).
+ *
+ * KTD6/R12: missing rendition sizes no longer hard-block. When any resolved size
+ * is unknown, the required total is a LOWER bound — budget the known sum, allow
+ * if it fits (the engine falls back to OS-reported bytes for the unknowns), and
+ * flag `lowerBound`. Only a free read of 0 (API unavailable) still blocks, since
+ * nothing can be sized against it.
  */
 export function evaluateStorageGate(input: StorageGateInput): StorageGate {
   const { resolution, getRecord, freeBytes, reserveBytes } = input
 
-  if (resolution.totalIsLowerBound) return { kind: "unverifiable-total" }
   if (freeBytes <= 0) return { kind: "unreadable-free" }
 
   let swapOnDiskBytes = 0
@@ -61,9 +69,15 @@ export function evaluateStorageGate(input: StorageGateInput): StorageGate {
   }
 
   const requiredBytes = resolution.totalBytes + swapOnDiskBytes + reserveBytes
-  return freeBytes < requiredBytes
-    ? { kind: "insufficient", requiredBytes, freeBytes }
-    : { kind: "ok", requiredBytes, freeBytes }
+  if (freeBytes < requiredBytes) {
+    return { kind: "insufficient", requiredBytes, freeBytes }
+  }
+  return {
+    kind: "ok",
+    requiredBytes,
+    freeBytes,
+    lowerBound: resolution.totalIsLowerBound,
+  }
 }
 
 // ── Request builder ─────────────────────────────────────────────────
@@ -133,6 +147,11 @@ export type EnqueueDeps = {
   getRecord: (slug: string) => OfflineDownloadRecord | null
   startDownload: (req: StartDownloadRequest) => Promise<StartDownloadResult>
   swapDownload: (req: StartDownloadRequest) => Promise<StartDownloadResult>
+  /**
+   * Stop an in-flight task WITHOUT deleting its record, neutralizing its terminal
+   * callbacks so the switch replacement can reclaim the slug (U4/KTD3).
+   */
+  supersedeDownload: (slug: string) => Promise<void>
   /** Cancel an in-flight record before a fresh start (the `switch` path). */
   deleteDownload: (slug: string) => Promise<void>
   /** Persist a durable `queued` placeholder so a kill stays recoverable. */
@@ -177,8 +196,11 @@ async function enqueueOne(
   }
   if (action === "switch") {
     // An in-progress copy in the old language can't be swapped (swap only acts on
-    // `downloaded`), so cancel + re-queue a recoverable placeholder + restart. The
-    // delete→queue gap only risks the already-canceled old copy, never a started one.
+    // `downloaded`). Supersede the old task FIRST — stop + neutralize its terminal
+    // callbacks + await — so its async cancel can't delete the replacement on the
+    // reused slug (KTD3); THEN clear its record/files and start fresh. The new
+    // record's own pre-onBegin guard is the belt-and-suspenders for the race.
+    await deps.supersedeDownload(episode.slug)
     await deps.deleteDownload(episode.slug)
     await deps.queueBatchRecords([request])
     const result = await deps.startDownload(request)
@@ -237,6 +259,35 @@ export async function enqueueResolvedEpisodes(
       results.length > 0 &&
       results.every((r) => r.outcome === "started" || r.outcome === "switched"),
   }
+}
+
+/**
+ * The full series batch (R10): snapshot each resolved episode's record BEFORE
+ * writing the `queued` placeholders, then enqueue against that snapshot. The
+ * snapshot MUST precede queueBatchRecords — else the loop reads the just-written
+ * placeholder as "same dub → skip" and nothing starts. Extracted here (pure,
+ * injected) so the ordering invariant is unit-testable without the route.
+ */
+export async function runSeriesBatchEnqueue(
+  resolved: readonly SeriesEpisodeResolution[],
+  ctx: BuildRequestContext,
+  deps: EnqueueDeps,
+): Promise<EnqueueSummary> {
+  // Pre-batch snapshot FIRST — decideEpisodeAction must decide from the state
+  // before our own placeholders exist, not after.
+  const preBatch = new Map(
+    resolved.map(
+      (episode) => [episode.slug, deps.getRecord(episode.slug)] as const,
+    ),
+  )
+  const requests = resolved
+    .map((episode) => buildEpisodeRequest(episode, ctx))
+    .filter((req): req is StartDownloadRequest => req != null)
+  await deps.queueBatchRecords(requests)
+  return enqueueResolvedEpisodes(resolved, ctx, {
+    ...deps,
+    getRecord: (slug) => preBatch.get(slug) ?? null,
+  })
 }
 
 // ── Summary panel copy (zero-count buckets suppressed) ──────────────

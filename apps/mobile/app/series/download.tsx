@@ -30,8 +30,8 @@ import {
 } from "../../src/lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../src/styles/shared"
 import { getApolloClient } from "../../src/lib/apolloClient"
-import { GET_VIDEO_BY_SLUG, GET_VIDEO_DUB } from "../../src/lib/queries"
-import { normalizeDubMedia, normalizeVideo } from "../../src/lib/normalizeVideo"
+import { GET_VIDEO_DUB, GET_VIDEO_DUB_INDEX } from "../../src/lib/queries"
+import { normalizeDubMedia } from "../../src/lib/normalizeVideo"
 import {
   formatFileSize,
   formatTierSize,
@@ -40,21 +40,19 @@ import {
 import {
   resolveSeriesDownload,
   summarizeResolution,
+  toResolverVariants,
   type SeriesDownloadResolution,
   type SeriesEpisodeResolution,
 } from "../../src/lib/seriesDownloadResolver"
 import {
-  buildEpisodeRequest,
-  enqueueResolvedEpisodes,
   evaluateStorageGate,
   formatEnqueueSummary,
+  runSeriesBatchEnqueue,
   type EnqueueSummary,
 } from "../../src/lib/seriesDownloadEnqueue"
 import { freeDiskBytes } from "../../src/lib/offlineFileSystem"
 
 // Series locale matches the series detail query (app/series/[slug].tsx).
-const LOCALE = "en"
-
 const QUALITY_TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
 const NO_SUBTITLE_KEY = "__none__"
 
@@ -70,8 +68,9 @@ export default function SeriesDownloadRoute() {
   const { series, selectedLanguageSlug, languages } = useSeriesSession()
   const {
     getRecord,
-    startDownload,
+    queueBatchDownload,
     swapDownload,
+    supersedeDownload,
     deleteDownload,
     queueBatchRecords,
   } = useDownloads()
@@ -130,15 +129,15 @@ export default function SeriesDownloadRoute() {
         target,
         { qualityTier, languageSlug, subtitleLanguageSlug: subtitleSlug },
         {
-          // Resolution is silent — no progress UI — so the fan-out just fetches;
-          // the per-tier sizes appear on the Quality rows once ready.
+          // Lean dub-index probe (NOT the full watch payload); the tested
+          // toResolverVariants mapper applies the published gate.
           getEpisodeVariants: async (slug: string) => {
             const res = await client.query({
-              query: GET_VIDEO_BY_SLUG,
-              variables: { slug, locale: LOCALE },
+              query: GET_VIDEO_DUB_INDEX,
+              variables: { slug },
               fetchPolicy: "cache-first" as const,
             })
-            return normalizeVideo(res.data?.videoBySlug ?? null)?.variants ?? []
+            return toResolverVariants(res.data?.videoBySlug?.variants)
           },
           getDubMedia: async (dubDocumentId: string) => {
             const res = await client.query({
@@ -185,12 +184,29 @@ export default function SeriesDownloadRoute() {
     [episodes, languageSlug, qualityTier, subtitleSlug],
   )
 
+  // A rejected resolve must surface the retry UI — an uncaught rejection
+  // would strand the sheet in "resolving" with a dead Confirm forever.
+  const runGuarded = useCallback(
+    (
+      controller: AbortController,
+      onlyFailedFrom?: SeriesDownloadResolution,
+    ) => {
+      void runResolution(controller, onlyFailedFrom).catch((e) => {
+        console.warn("[series-dl] resolve failed", e)
+        if (!controller.signal.aborted) {
+          setPhase({ kind: "error", offline: false })
+        }
+      })
+    },
+    [runResolution],
+  )
+
   // Mount / choice-change resolution. New controller per run; aborted on cleanup.
   useEffect(() => {
     const controller = new AbortController()
-    void runResolution(controller)
+    runGuarded(controller)
     return () => controller.abort()
-  }, [runResolution])
+  }, [runGuarded])
 
   const resolution = phase.kind === "ready" ? phase.resolution : null
 
@@ -219,12 +235,6 @@ export default function SeriesDownloadRoute() {
       freeBytes: free,
       reserveBytes: STORAGE_RESERVE_BYTES,
     })
-    if (gate.kind === "unverifiable-total") {
-      setStorageError(
-        "Some sizes are unverified, so the total can't be checked. Try again on a faster connection.",
-      )
-      return
-    }
     if (gate.kind === "unreadable-free") {
       setStorageError("Couldn't check storage. Try again.")
       return
@@ -242,24 +252,14 @@ export default function SeriesDownloadRoute() {
       subtitleLanguageSlug: subtitleSlug,
       allowCellular: !wifiOnly,
     }
-    // Snapshot records BEFORE queueBatchRecords writes its `queued` placeholders —
-    // else decideEpisodeAction sees the chosen dub and reads "same dub → skip",
-    // never starting. The enqueue loop decides from this pre-batch snapshot.
-    const preBatch = new Map(
-      resolution.resolved.map((e) => [e.slug, getRecord(e.slug)] as const),
-    )
-
-    // Persist a durable `queued` placeholder for each resolved episode BEFORE any
-    // network, so a backgrounding mid-batch still completes via launch reattach.
-    const requests = resolution.resolved
-      .map((e) => buildEpisodeRequest(e, ctx))
-      .filter((r): r is NonNullable<typeof r> => r != null)
-    await queueBatchRecords(requests)
-
-    const summary = await enqueueResolvedEpisodes(resolution.resolved, ctx, {
-      getRecord: (slug) => preBatch.get(slug) ?? null,
-      startDownload,
+    // Snapshot → queue placeholders → enqueue lives in runSeriesBatchEnqueue so
+    // the R10 ordering invariant is unit-tested off the route. Fresh starts go
+    // through the sequential batch queue (R14) so episodes finish in order.
+    const summary = await runSeriesBatchEnqueue(resolution.resolved, ctx, {
+      getRecord,
+      startDownload: queueBatchDownload,
       swapDownload,
+      supersedeDownload,
       deleteDownload,
       queueBatchRecords,
     })
@@ -275,8 +275,9 @@ export default function SeriesDownloadRoute() {
     subtitleSlug,
     wifiOnly,
     getRecord,
-    startDownload,
+    queueBatchDownload,
     swapDownload,
+    supersedeDownload,
     deleteDownload,
     queueBatchRecords,
     router,
@@ -286,16 +287,16 @@ export default function SeriesDownloadRoute() {
     retryControllerRef.current?.abort()
     const controller = new AbortController()
     retryControllerRef.current = controller
-    void runResolution(controller)
-  }, [runResolution])
+    runGuarded(controller)
+  }, [runGuarded])
 
   const onRetryFailed = useCallback(() => {
     if (!resolution) return
     retryControllerRef.current?.abort()
     const controller = new AbortController()
     retryControllerRef.current = controller
-    void runResolution(controller, resolution)
-  }, [resolution, runResolution])
+    runGuarded(controller, resolution)
+  }, [resolution, runGuarded])
 
   if (!series || !episodes || !languageSlug) return null
 
@@ -487,10 +488,9 @@ function StatusPanel({
   onRetryFailed: () => void
   typography: ReturnType<typeof useTypography>
 }) {
-  // Resolving and enqueuing render no panel: resolution is silent (per-tier
-  // sizes appear on the Quality rows when ready) and enqueuing shows its state
-  // on the confirm button ("Downloading"). Both fall through to null.
-
+  // Resolving and enqueuing render no panel — both states ride on the confirm
+  // button ("Checking episodes…" / "Downloading"). This panel only carries
+  // outcomes: partial-resolution warnings and the enqueue summary.
   if (phase.kind === "done") {
     const line = formatEnqueueSummary(phase.summary)
     return (
@@ -562,11 +562,20 @@ function ConfirmButton({
   typography: ReturnType<typeof useTypography>
 }) {
   const enqueuing = phase.kind === "enqueuing"
+  // Resolution progress rides on this button ("Checking episodes…"), not a
+  // separate status row — a large series checks for many seconds (R13).
+  const resolving = phase.kind === "resolving"
+  const busy = enqueuing || resolving
   const disabled =
     phase.kind !== "ready" ||
     !resolution ||
     resolution.resolvedCount === 0 ||
     !touAccepted
+  const label = enqueuing
+    ? "Downloading"
+    : resolving
+      ? "Checking episodes…"
+      : "Download all"
 
   return (
     <Pressable
@@ -578,17 +587,15 @@ function ConfirmButton({
       onPress={onConfirm}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={enqueuing ? "Downloading" : "Download all episodes"}
-      accessibilityState={{ disabled, busy: enqueuing }}
+      accessibilityLabel={busy ? label : "Download all episodes"}
+      accessibilityState={{ disabled, busy }}
     >
-      {enqueuing ? (
+      {busy ? (
         <ActivityIndicator color="#ffffff" size="small" />
       ) : (
         <Ionicons name="download-outline" size={20} color="#ffffff" />
       )}
-      <Text style={[styles.confirmButtonText, typography.body]}>
-        {enqueuing ? "Downloading" : "Download all"}
-      </Text>
+      <Text style={[styles.confirmButtonText, typography.body]}>{label}</Text>
     </Pressable>
   )
 }
