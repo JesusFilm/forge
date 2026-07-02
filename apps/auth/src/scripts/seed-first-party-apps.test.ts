@@ -26,10 +26,10 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 3,
-      environments: 12,
-      oauthClients: 16,
-      scopes: 9,
+      apps: 4,
+      environments: 16,
+      oauthClients: 20,
+      scopes: 10,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -67,6 +67,22 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_web_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_web_local",
+          redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
+          scopes: expect.arrayContaining(["web:watch-events:write"]),
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "web",
+          }),
         }),
       }),
     )

@@ -43,6 +43,7 @@ describe("app registry policy", () => {
     expect(seeds.map((seed) => seed.key)).toEqual([
       "admin",
       "manager",
+      "web",
       "mastra-studio",
     ])
 
