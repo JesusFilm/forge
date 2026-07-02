@@ -3,7 +3,7 @@ id: "feat-226"
 title: "TV RUM instrumentation depth: route views, GraphQL op attribution, render timing"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-04"
 duration: 3
 depends_on: []

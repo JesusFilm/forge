@@ -92,11 +92,25 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
 - **Opt-in / no-op when unprovisioned.** `getDatadogRumConfig()` returns `null` unless BOTH
   `EXPO_PUBLIC_DATADOG_CLIENT_TOKEN` and `EXPO_PUBLIC_DATADOG_APPLICATION_ID` are set, so an
   unprovisioned build boots normally (dev builds log a `[datadog] RUM disabled` warning).
-  Provision via `eas env:create` per profile (see `.env.example` and `docs/observability/datadog.md`).
-  `EXPO_PUBLIC_DATADOG_ENV` defaults by build type (`__DEV__` → development, release → production).
+  Provision via `eas env:create` per environment (see `.env.example` and the TV runbook in
+  `docs/observability/datadog.md`). `EXPO_PUBLIC_DATADOG_ENV` defaults by build type
+  (`__DEV__` → development, release → production); the preview EAS environment sets
+  `EXPO_PUBLIC_DATADOG_ENV=preview` explicitly — preview is a release build and would
+  otherwise tag external testers' sessions `env:production`.
 - **Client token, never an API key** — RUM creds ship in the bundle (`EXPO_PUBLIC_*`).
 - **Site is the mobile enum** (`US1`, `EU1`, …), NOT web's `datadoghq.com`. Default `US1`.
 - **firstPartyHosts** targets the admin GraphQL host so RUM resources trace-link to admin APM.
+- **Instrumentation depth (feat-226):** route changes become pattern-named RUM views via
+  `DatadogRouteTracker` (name = route pattern e.g. `series/[slug]`, key = literal pathname;
+  mounted in `app/_layout.tsx`); GraphQL resources carry the SDK's operation-name headers via
+  an ApolloLink before HttpLink (spread-merge preserves the SemanticSearch bearer); the series
+  screen reports a `series_first_rail_ready` view timing once per slug instance (latch in
+  `seriesScreenState.ts`, partial-data safe); a one-shot-per-process dev watchdog warns when a
+  provisioned mount never completes SDK init within ~10s (`createDatadogInitWatchdog`).
+- **Action-name privacy:** RUM names tap actions from `accessibilityLabel`. Surfaces whose
+  label carries user-typed text must override with a generic `dd-action-name` — `KeyButton`
+  (`keyboard-key`) and the recent-search chips (`recent-search`, threaded through
+  `FocusableCard`'s `ddActionName` prop, which forwards to its internal Pressable).
 - **tvOS SDK patch (load-bearing):** `@datadog/mobile-react-native@3.5.2` does NOT compile on
   tvOS out of the box — `patches/@datadog__mobile-react-native@3.5.2.patch` guards two unguarded
   WebView refs the SDK missed (a stray `import DatadogWebViewTracking` in `DdSdkImplementation.swift`
@@ -109,9 +123,10 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
   `pnpm dlx @datadog/datadog-ci`, only when the key is present) — not a mandatory build phase.
 - **Deferred (later):** Datadog does NOT profile the Hermes JS bundle — pair a dedicated Hermes
   profiler (`react-native-release-profiler`) for client-render root-cause (the ~2.8–3.2s series parse).
-- **Verified: builds + launches on the tvOS simulator** (Apple TV 4K, tvOS 26.4) with RUM compiled
-  in. Still pending: a live RUM event confirmed in the Datadog dashboard from real Apple TV /
-  Android TV hardware once creds are provisioned.
+- **Status:** development + preview EAS environments carry credentials; sessions verified from
+  the tvOS simulator. Still pending (runbook in `docs/observability/datadog.md`): the intake
+  alert, real Apple TV / Android TV hardware sessions, and the privacy-gated production
+  provisioning.
 
 ## TV-Specific Patterns
 
