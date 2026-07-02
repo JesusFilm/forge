@@ -53,7 +53,10 @@ import {
   type OfflineDownloadRecord,
   type SwapFrom,
 } from "../lib/offlineManifest"
-import { nextBatchAction } from "../lib/batchDownloadQueue"
+import {
+  canQueueBatchDownload,
+  nextBatchAction,
+} from "../lib/batchDownloadQueue"
 import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
@@ -87,7 +90,10 @@ export type StartDownloadRequest = {
 
 export type StartDownloadResult =
   | { ok: true }
-  | { ok: false; reason: "exists" | "insufficient-storage" | "error" }
+  | {
+      ok: false
+      reason: "exists" | "insufficient-storage" | "error" | "canceled"
+    }
 
 type DownloadsContextValue = {
   /** False until the persisted manifest has been read. */
@@ -105,10 +111,9 @@ type DownloadsContextValue = {
   /** Swap a downloaded video to a new quality/language, non-destructively. */
   swapDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /**
-   * Series batch entry point (R14): accept an episode into the strict-sequential
-   * queue — one native download at a time, in episode order — instead of
-   * starting immediately. Requires its `queued` placeholder to be persisted
-   * first (queueBatchRecords) so badges and cancel-all cover the wait.
+   * Series batch entry point (R14): accept an episode into the sequential
+   * queue instead of starting immediately — its `queued` placeholder must
+   * already be persisted (queueBatchRecords) so badges/cancel-all cover the wait.
    */
   queueBatchDownload: (
     request: StartDownloadRequest,
@@ -207,6 +212,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   const batchQueueRef = useRef<StartDownloadRequest[]>([])
   const batchSlugsRef = useRef<Set<string>>(new Set())
   const batchPumpingRef = useRef(false)
+  // Stable handle so the launch-reattach effect (defined before the pump) can
+  // wake it after reseeding relaunched placeholders (review #2).
+  const batchPumpRef = useRef<() => void>(() => {})
 
   const dropFromBatchQueue = useCallback((videoSlug: string) => {
     batchQueueRef.current = batchQueueRef.current.filter(
@@ -337,8 +345,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const deleteDownload = useCallback(
     async (videoSlug: string) => {
-      // A deleted slug must not restart from the batch queue (R14).
+      // A deleted slug must not restart from the batch queue (R14), nor keep
+      // occupying the batch slot via batchSlugs scoping (review #5).
       dropFromBatchQueue(videoSlug)
+      batchSlugsRef.current.delete(videoSlug)
       // R1: stop the in-flight native transfer BEFORE removing files/record, so
       // it doesn't keep downloading and no late done-callback writes into the
       // removed dir. No live task (already downloaded/failed) → just remove.
@@ -687,7 +697,35 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             action.action === "repair"
           ) {
             const record = recordsRef.current[action.videoSlug]
-            if (record) await restartDownload(record)
+            if (record && isBatchPlaceholderRecord(record)) {
+              // A relaunched batch placeholder re-enters the sequential queue —
+              // restarting it directly would fan out every queued episode as a
+              // concurrent native task, abandoning R14 ordering (review #2).
+              batchQueueRef.current = [
+                ...batchQueueRef.current,
+                {
+                  videoSlug: record.videoSlug,
+                  title: record.title,
+                  dubDocumentId: record.dubDocumentId,
+                  rendition: {
+                    documentId: record.renditionDocumentId,
+                    quality: record.qualityLabel,
+                    size:
+                      record.totalBytes > 0 ? String(record.totalBytes) : "",
+                    // No persisted URL — startDownload re-resolves; an empty
+                    // fallback fails validation and surfaces a failed badge.
+                    url: "",
+                  },
+                  subtitleLanguageSlug: record.subtitleLanguageSlug,
+                  subtitleUrl: null,
+                  posterUrl: null,
+                  allowCellular: !wifiOnlyRef.current,
+                },
+              ]
+              batchSlugsRef.current.add(record.videoSlug)
+            } else if (record) {
+              await restartDownload(record)
+            }
           } else if (action.action === "cleanupOrphanPending") {
             // A `.pending` partial with no in-flight record backing it — delete
             // the leaked bytes and clear the stale path so it isn't re-flagged
@@ -750,6 +788,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           )
           taskRegistry.current.set(task.id, task)
         }
+        // Drain any placeholders reseeded above (a pure-requeue reconcile may
+        // not touch `records`, so the records-effect alone won't wake the pump).
+        batchPumpRef.current()
       } catch {
         // Reattach is best-effort and must never break boot.
       }
@@ -793,6 +834,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
+      // A cancel/delete during the awaits above removed our adopted placeholder;
+      // proceeding would resurrect the canceled record (review #1). Bail — the
+      // cancel already cleaned the record and dir.
+      if (isOwnPlaceholder && !recordsRef.current[videoSlug]) {
+        return { ok: false, reason: "canceled" }
+      }
+
       const nonce = `${Date.now().toString(36)}-${Math.floor(
         Math.random() * 1e9,
       ).toString(36)}`
@@ -829,6 +877,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         totalBytes: Number(rendition.size) || 0,
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
+
+      // A cancel/delete during the reresolve removed the record we wrote; the
+      // native task hasn't started, so starting now would zombie-download into
+      // a dir the cancel already removed (review #1). Bail without re-creating.
+      if (recordsRef.current[videoSlug]?.state !== "downloading") {
+        return { ok: false, reason: "canceled" }
+      }
 
       const mediaUrl = fresh?.mediaUrl ?? rendition.url
       // Validate the CMS-sourced media URL before handing it to the native
@@ -885,19 +940,57 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             batchQueueRef.current,
             batchSlugsRef.current,
           )
-          if (action.kind === "empty" || action.kind === "wait") return
+          if (action.kind === "empty") {
+            // Batch fully drained: release the occupancy scope so a later
+            // manual download of a once-batched slug can't hold the slot.
+            const stillActive = Object.values(recordsRef.current).some(
+              (r) =>
+                batchSlugsRef.current.has(r.videoSlug) &&
+                (r.state === "downloading" || r.state === "paused"),
+            )
+            if (!stillActive) batchSlugsRef.current = new Set()
+            return
+          }
+          if (action.kind === "wait") return
           if (action.kind === "drop") {
             dropFromBatchQueue(action.videoSlug)
             continue
           }
           dropFromBatchQueue(action.request.videoSlug)
-          await startDownload(action.request)
+          const result = await startDownload(action.request)
+          // A pump-time failure removes the adopted placeholder, silently
+          // erasing the episode the sheet already accepted — resurface it as
+          // `failed` so the badge and Library offer delete/retry (review #4).
+          if (
+            !result.ok &&
+            result.reason !== "exists" &&
+            result.reason !== "canceled" &&
+            !recordsRef.current[action.request.videoSlug]
+          ) {
+            const r = action.request
+            await writeRecord({
+              version: OFFLINE_MANIFEST_VERSION,
+              videoSlug: r.videoSlug,
+              dubDocumentId: r.dubDocumentId,
+              renditionDocumentId: r.rendition.documentId,
+              qualityLabel: r.rendition.quality,
+              title: r.title,
+              subtitleLanguageSlug: r.subtitleLanguageSlug,
+              state: "failed",
+              committedPath: null,
+              pendingPath: null,
+              posterPath: null,
+              bytesWritten: 0,
+              totalBytes: Number(r.rendition.size) || 0,
+            })
+          }
         }
       } finally {
         batchPumpingRef.current = false
       }
     })()
-  }, [startDownload, dropFromBatchQueue])
+  }, [startDownload, dropFromBatchQueue, writeRecord])
+  batchPumpRef.current = pumpBatchQueue
 
   useEffect(() => {
     if (!isReady) return
@@ -909,15 +1002,12 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   // grid badge and cancel-all work while the episode waits its turn.
   const queueBatchDownload = useCallback(
     async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
-      const existing = recordsRef.current[request.videoSlug]
       if (
-        isLiveDownloadRecord(existing) &&
-        !isBatchPlaceholderRecord(existing)
-      ) {
-        return { ok: false, reason: "exists" }
-      }
-      if (
-        batchQueueRef.current.some((r) => r.videoSlug === request.videoSlug)
+        !canQueueBatchDownload(
+          recordsRef.current,
+          batchQueueRef.current,
+          request.videoSlug,
+        )
       ) {
         return { ok: false, reason: "exists" }
       }
@@ -1003,6 +1093,14 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
 
+      // A cancel during the reresolve already reverted the record to the old
+      // copy (swapFrom cleared) — starting now would clobber that revert and
+      // orphan a new file (review #1 sibling). Bail; the revert stands.
+      const midSwap = recordsRef.current[videoSlug]
+      if (midSwap?.state !== "downloading" || !midSwap.swapFrom) {
+        return { ok: false, reason: "canceled" }
+      }
+
       const mediaUrl = fresh?.mediaUrl ?? rendition.url
       // Validate the CMS-sourced media URL before starting. On failure restore
       // the pre-swap record (the old copy is untouched; no pending file exists
@@ -1087,8 +1185,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       const current = recordsRef.current[videoSlug]
       const action = decideCancelAction(current)
       if (action === "ignore" || !current) return
-      // A canceled slug must not restart from the batch queue (R14).
+      // A canceled slug must not restart from the batch queue (R14), nor keep
+      // occupying the batch slot via batchSlugs scoping (review #5).
       dropFromBatchQueue(videoSlug)
+      batchSlugsRef.current.delete(videoSlug)
       const task = taskRegistry.current.get(videoSlug)
       if (task) {
         taskRegistry.current.delete(videoSlug)

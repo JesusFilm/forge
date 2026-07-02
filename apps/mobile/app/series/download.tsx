@@ -40,6 +40,7 @@ import {
 import {
   resolveSeriesDownload,
   summarizeResolution,
+  toResolverVariants,
   type SeriesDownloadResolution,
   type SeriesEpisodeResolution,
 } from "../../src/lib/seriesDownloadResolver"
@@ -128,20 +129,15 @@ export default function SeriesDownloadRoute() {
         target,
         { qualityTier, languageSlug, subtitleLanguageSlug: subtitleSlug },
         {
-          // Lean dub-index probe (NOT the full watch payload) — mirrors
-          // normalizeVideo's published gate so only published dubs resolve.
+          // Lean dub-index probe (NOT the full watch payload); the tested
+          // toResolverVariants mapper applies the published gate.
           getEpisodeVariants: async (slug: string) => {
             const res = await client.query({
               query: GET_VIDEO_DUB_INDEX,
               variables: { slug },
               fetchPolicy: "cache-first" as const,
             })
-            return (res.data?.videoBySlug?.variants ?? [])
-              .filter((v) => v.published === true)
-              .map((v) => ({
-                documentId: v.documentId ?? "",
-                languageSlug: v.language?.slug ?? null,
-              }))
+            return toResolverVariants(res.data?.videoBySlug?.variants)
           },
           getDubMedia: async (dubDocumentId: string) => {
             const res = await client.query({

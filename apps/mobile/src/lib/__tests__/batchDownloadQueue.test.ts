@@ -1,4 +1,4 @@
-import { nextBatchAction } from "../batchDownloadQueue"
+import { canQueueBatchDownload, nextBatchAction } from "../batchDownloadQueue"
 import type { OfflineDownloadRecord } from "../offlineManifest"
 import type { StartDownloadRequest } from "../../contexts/DownloadsProvider"
 
@@ -104,5 +104,30 @@ describe("nextBatchAction (strict-sequential batch pump)", () => {
       2,
     )
     expect(action).toEqual({ kind: "start", request: req("e2") })
+  })
+})
+
+describe("canQueueBatchDownload (batch-queue acceptance gate)", () => {
+  it("rejects a slug another flow owns (live non-placeholder record)", () => {
+    const records = asMap(rec("e1", "downloading", { pendingPath: "/p" }))
+    expect(canQueueBatchDownload(records, [], "e1")).toBe(false)
+  })
+
+  it("accepts a slug whose record is the batch's own placeholder", () => {
+    const records = asMap(rec("e1", "queued"))
+    expect(canQueueBatchDownload(records, [], "e1")).toBe(true)
+  })
+
+  it("rejects a slug already waiting in the queue", () => {
+    expect(canQueueBatchDownload({}, [req("e1")], "e1")).toBe(false)
+  })
+
+  it("accepts a fresh slug (no record, not queued)", () => {
+    expect(canQueueBatchDownload({}, [req("e2")], "e1")).toBe(true)
+  })
+
+  it("accepts re-queueing after a failed attempt (failed is not live)", () => {
+    const records = asMap(rec("e1", "failed"))
+    expect(canQueueBatchDownload(records, [], "e1")).toBe(true)
   })
 })

@@ -35,6 +35,28 @@ export type SeriesDownloadChoice = {
  */
 export type ResolverVariant = Pick<WatchVariant, "documentId" | "languageSlug">
 
+/**
+ * Map a lean dub-index result (GET_VIDEO_DUB_INDEX) to resolver variants,
+ * mirroring normalizeVideo's published gate — only published dubs resolve.
+ */
+export function toResolverVariants(
+  dubs:
+    | readonly {
+        documentId?: string | null
+        published?: boolean | null
+        language?: { slug?: string | null } | null
+      }[]
+    | null
+    | undefined,
+): ResolverVariant[] {
+  return (dubs ?? [])
+    .filter((dub) => dub.published === true)
+    .map((dub) => ({
+      documentId: dub.documentId ?? "",
+      languageSlug: dub.language?.slug ?? null,
+    }))
+}
+
 export type SeriesResolveDeps = {
   /** The episode's dub variants (each carries documentId + languageSlug). */
   getEpisodeVariants: (slug: string) => Promise<ResolverVariant[]>

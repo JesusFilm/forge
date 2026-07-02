@@ -112,13 +112,24 @@ describe("deriveSeriesDownloadState", () => {
       [rec("a", "paused"), rec("b", "downloading")],
     )
     expect(mixed.pausedAggregate).toBe(false)
-    // a queued episode counts as active, not paused
+    // R14 steady state: the paused slot + a queued tail must flip the bar to
+    // "Resume all" — queued episodes are waiting on the pump, not downloading.
     const queued = deriveSeriesDownloadState(
       EPISODES,
       [],
       [rec("a", "paused"), rec("b", "queued")],
     )
-    expect(queued.pausedAggregate).toBe(false)
+    expect(queued.pausedAggregate).toBe(true)
+  })
+
+  it("all-queued batch start is downloading, not paused (R14)", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [rec("a", "queued"), rec("b", "queued")],
+    )
+    expect(state.pausedAggregate).toBe(false)
+    expect(state.inProgress).toBe(true)
   })
 
   it("collects the series' in-flight slugs for the batch controls", () => {

@@ -52,10 +52,11 @@ export function deriveSeriesDownloadState(
     } else if (IN_PROGRESS_STATES.has(record.state)) {
       inProgress = true
       inFlightSlugs.push(slug)
-      // `queued` counts as active (not paused) so a queued episode keeps the bar
-      // on "Pause all" rather than flipping it to "Resume all".
+      // Only a live transfer counts as downloading: under the sequential batch
+      // queue (R14) episodes sit `queued` long-term, and counting them as active
+      // would keep pausedAggregate false after Pause all — no Resume all, ever.
       if (record.state === "paused") anyPaused = true
-      else anyDownloading = true
+      else if (record.state === "downloading") anyDownloading = true
       if (record.totalBytes > 0) {
         const fraction = record.bytesWritten / record.totalBytes
         units += Math.max(0, Math.min(1, fraction))
