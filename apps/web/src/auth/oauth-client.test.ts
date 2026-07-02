@@ -16,6 +16,22 @@ async function importClient() {
   return import("./oauth-client")
 }
 
+async function importProductionClient() {
+  vi.resetModules()
+  vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.jesusfilm.org/api/graphql")
+  vi.stubEnv("WEB_ADMIN_API_KEYS", "test-key")
+  vi.stubEnv("REVALIDATION_SECRET", "test-secret")
+  vi.stubEnv("WEB_AUTH_BASE_URL", "https://auth.jesusfilm.org")
+  vi.stubEnv("WEB_AUTH_ISSUER_URL", "https://auth.jesusfilm.org/api/auth")
+  vi.stubEnv("WEB_AUTH_CLIENT_ID", "jfp_web_production")
+  vi.stubEnv("WEB_BASE_URL", "https://www.jesusfilm.org")
+  vi.stubEnv(
+    "WEB_SESSION_SECRET",
+    "test-session-secret-at-least-thirty-two-chars",
+  )
+  return import("./oauth-client")
+}
+
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.restoreAllMocks()
@@ -75,6 +91,35 @@ describe("Web OAuth client", () => {
         requestOrigin: "https://attacker.example.test",
       })?.webBaseUrl,
     ).toBe("http://localhost:3000")
+  })
+
+  it("uses an allowed production request origin for the production Web client", async () => {
+    const { buildWebAuthorizeUrl, getWebOAuthConfig } =
+      await importProductionClient()
+    const config = getWebOAuthConfig({
+      requestOrigin: "https://watch.jesusfilm.org",
+    })
+
+    expect(config?.webBaseUrl).toBe("https://watch.jesusfilm.org")
+    const url = buildWebAuthorizeUrl({
+      config: config!,
+      state: "state-123",
+      codeChallenge: "challenge-123",
+    })
+
+    expect(url.searchParams.get("redirect_uri")).toBe(
+      "https://watch.jesusfilm.org/watch/api/auth/callback",
+    )
+  })
+
+  it("falls back to the configured production base URL for untrusted origins", async () => {
+    const { getWebOAuthConfig } = await importProductionClient()
+
+    expect(
+      getWebOAuthConfig({
+        requestOrigin: "https://attacker.example.test",
+      })?.webBaseUrl,
+    ).toBe("https://www.jesusfilm.org")
   })
 
   it("requires an id_token for identity verification", async () => {
