@@ -10,6 +10,7 @@ depends_on:
   - "feat-205"
 blocks:
   - "feat-209"
+  - "feat-229"
 tags:
   - "web"
   - "infrastructure"
@@ -25,7 +26,7 @@ tags:
 
 **Residual risk / follow-ups.**
 
-- **Full end-to-end sign-in verification is deferred** to a follow-up enablement ticket that registers chat's OAuth client (`jfp_chat_local`, redirect `http://localhost:3200/api/auth/callback` for local; the exact-match redirect URI per environment) in `apps/auth` — a **production auth-DB operator action** (`pnpm --filter @forge/auth seed:first-party-apps`, no deploy hook runs it), out of this codebase. Until that lands, feat-207 is merged (once #1438 merges) but **not yet end-to-end verified**, which is why the status stays `in-progress` rather than `complete`.
+- **Full end-to-end sign-in verification is deferred** to [feat-229](feat-229-chat-auth-register-oauth-client.md), the follow-up enablement ticket that registers chat's OAuth client (`jfp_chat_local`, redirect `http://localhost:3200/api/auth/callback` for local; the exact-match redirect URI per environment) in `apps/auth` — a **production auth-DB operator action** (`pnpm --filter @forge/auth seed:first-party-apps`, no deploy hook runs it), out of this codebase. feat-207 is merged (#1438) but **not yet end-to-end verified**, which is why the status stays `in-progress` rather than `complete`.
 - The world-reachable `/api/auth/*` (and the existing `/api/seeker`) routes ship **un-rate-limited** in v1 (accepted risk; a per-IP cap is a prerequisite before the audience widens).
 
 **Unblocked.** `feat-209` (`depends_on: feat-207`) is not unblocked yet — it clears only when this ticket flips to `complete` (after the enablement ticket lands and a real sign-in is verified).
