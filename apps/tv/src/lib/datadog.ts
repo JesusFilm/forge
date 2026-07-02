@@ -62,6 +62,27 @@ export function getDatadogRumConfig(): DatadogRumConfig | null {
   }
 }
 
+// Pattern-named views keep RUM view-name cardinality bounded (one "series/[slug]"
+// facet, not one name per slug); the literal-pathname key still restarts the view
+// on every navigation, including slug-to-slug.
+export function resolveViewName(
+  segments: readonly string[],
+  pathname: string,
+): { key: string; name: string } {
+  const pattern = segments.filter(Boolean).join("/")
+  const name = pattern || (pathname === "/" ? "home" : pathname)
+  return { key: pathname, name }
+}
+
+/** Starts a RUM view — fire-and-forget, never throws into navigation. */
+export function startDatadogView(key: string, name: string): void {
+  try {
+    void DdRum.startView(key, name).catch(() => undefined)
+  } catch {
+    // Telemetry must never break the app.
+  }
+}
+
 /** Reports a handled JS error to Datadog RUM. Mirrors web's reportDatadogRumError. */
 export function reportDatadogError(
   error: unknown,

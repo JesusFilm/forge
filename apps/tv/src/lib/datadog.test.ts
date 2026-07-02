@@ -21,7 +21,10 @@ jest.mock("@datadog/mobile-react-native", () => ({
     warn: jest.fn().mockResolvedValue(undefined),
     error: jest.fn().mockResolvedValue(undefined),
   },
-  DdRum: { addError: jest.fn().mockResolvedValue(undefined) },
+  DdRum: {
+    addError: jest.fn().mockResolvedValue(undefined),
+    startView: jest.fn().mockResolvedValue(undefined),
+  },
   ErrorSource: { SOURCE: "SOURCE" },
   PropagatorType: { TRACECONTEXT: "tracecontext" },
 }))
@@ -33,11 +36,14 @@ import {
   getDatadogRumConfig,
   hostFromUrl,
   reportDatadogError,
+  resolveViewName,
+  startDatadogView,
   toFirstPartyHostConfigs,
 } from "./datadog"
 
 const mockEnv = env as unknown as Record<string, string | undefined>
 const mockAddError = DdRum.addError as jest.Mock
+const mockStartView = DdRum.startView as jest.Mock
 const mockLogInfo = DdLogs.info as jest.Mock
 
 const flushMicrotasks = () =>
@@ -56,6 +62,7 @@ beforeEach(() => {
   resetEnv()
   jest.clearAllMocks()
   mockAddError.mockResolvedValue(undefined)
+  mockStartView.mockResolvedValue(undefined)
   mockLogInfo.mockResolvedValue(undefined)
 })
 
@@ -157,6 +164,55 @@ describe("reportDatadogError (never-throw contract)", () => {
     mockAddError.mockRejectedValueOnce(new Error("intake unreachable"))
     expect(() => reportDatadogError(new Error("x"))).not.toThrow()
     await flushMicrotasks() // an uncaught rejection here would fail the test run
+  })
+})
+
+describe("resolveViewName (route-pattern view identity)", () => {
+  it("names by route pattern, keys by literal pathname", () => {
+    const a = resolveViewName(["series", "[slug]"], "/series/mark")
+    const b = resolveViewName(["series", "[slug]"], "/series/luke")
+    expect(a).toEqual({ key: "/series/mark", name: "series/[slug]" })
+    // Bounded name cardinality: one facetable "series" view across all slugs.
+    expect(b.name).toBe(a.name)
+    expect(b.key).not.toBe(a.key)
+  })
+
+  it("maps the root index route to a stable home name", () => {
+    expect(resolveViewName([], "/")).toEqual({ key: "/", name: "home" })
+  })
+
+  it("names static routes by their pattern", () => {
+    expect(resolveViewName(["search"], "/search")).toEqual({
+      key: "/search",
+      name: "search",
+    })
+  })
+
+  it("falls back to the pathname when segments are empty off-root", () => {
+    expect(resolveViewName([], "/unknown")).toEqual({
+      key: "/unknown",
+      name: "/unknown",
+    })
+  })
+})
+
+describe("startDatadogView (never-throw contract)", () => {
+  it("forwards key and name to DdRum.startView", () => {
+    startDatadogView("/series/mark", "series/[slug]")
+    expect(mockStartView).toHaveBeenCalledWith("/series/mark", "series/[slug]")
+  })
+
+  it("swallows a synchronously-throwing DdRum.startView", () => {
+    mockStartView.mockImplementationOnce(() => {
+      throw new Error("native bridge down")
+    })
+    expect(() => startDatadogView("/", "home")).not.toThrow()
+  })
+
+  it("swallows an async DdRum.startView rejection", async () => {
+    mockStartView.mockRejectedValueOnce(new Error("intake unreachable"))
+    expect(() => startDatadogView("/", "home")).not.toThrow()
+    await flushMicrotasks()
   })
 })
 
