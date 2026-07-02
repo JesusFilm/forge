@@ -21,24 +21,46 @@ jest.mock("@datadog/mobile-react-native", () => ({
     warn: jest.fn().mockResolvedValue(undefined),
     error: jest.fn().mockResolvedValue(undefined),
   },
-  DdRum: { addError: jest.fn().mockResolvedValue(undefined) },
+  DdRum: {
+    addError: jest.fn().mockResolvedValue(undefined),
+    startView: jest.fn().mockResolvedValue(undefined),
+    addTiming: jest.fn().mockResolvedValue(undefined),
+  },
   ErrorSource: { SOURCE: "SOURCE" },
   PropagatorType: { TRACECONTEXT: "tracecontext" },
+  DATADOG_GRAPH_QL_OPERATION_NAME_HEADER: "x-dd-graph-ql-operation-name",
+  DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER: "x-dd-graph-ql-operation-type",
 }))
 
-import { DdLogs, DdRum } from "@datadog/mobile-react-native"
+import {
+  DATADOG_GRAPH_QL_OPERATION_NAME_HEADER,
+  DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER,
+  DdLogs,
+  DdRum,
+} from "@datadog/mobile-react-native"
 import { env } from "../env"
 import {
+  addDatadogTiming,
+  createDatadogInitWatchdog,
+  datadogGraphqlHeaders,
   datadogLog,
   getDatadogRumConfig,
   hostFromUrl,
+  isDatadogProvisioned,
   reportDatadogError,
+  resolveViewName,
+  SERIES_FIRST_RAIL_READY_TIMING,
+  startDatadogView,
   toFirstPartyHostConfigs,
 } from "./datadog"
 
 const mockEnv = env as unknown as Record<string, string | undefined>
 const mockAddError = DdRum.addError as jest.Mock
+const mockStartView = DdRum.startView as jest.Mock
+const mockAddTiming = DdRum.addTiming as jest.Mock
 const mockLogInfo = DdLogs.info as jest.Mock
+const mockLogWarn = DdLogs.warn as jest.Mock
+const mockLogError = DdLogs.error as jest.Mock
 
 const flushMicrotasks = () =>
   new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -56,6 +78,7 @@ beforeEach(() => {
   resetEnv()
   jest.clearAllMocks()
   mockAddError.mockResolvedValue(undefined)
+  mockStartView.mockResolvedValue(undefined)
   mockLogInfo.mockResolvedValue(undefined)
 })
 
@@ -160,10 +183,182 @@ describe("reportDatadogError (never-throw contract)", () => {
   })
 })
 
+describe("isDatadogProvisioned (cheap hot-path gate)", () => {
+  it("mirrors getDatadogRumConfig's both-credentials gate", () => {
+    expect(isDatadogProvisioned()).toBe(false)
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+    expect(isDatadogProvisioned()).toBe(false)
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+    expect(isDatadogProvisioned()).toBe(true)
+  })
+})
+
+describe("resolveViewName (route-pattern view identity)", () => {
+  it("names by route pattern, keys by literal pathname", () => {
+    const a = resolveViewName(["series", "[slug]"], "/series/mark")
+    const b = resolveViewName(["series", "[slug]"], "/series/luke")
+    expect(a).toEqual({ key: "/series/mark", name: "series/[slug]" })
+    // Bounded name cardinality: one facetable "series" view across all slugs.
+    expect(b.name).toBe(a.name)
+    expect(b.key).not.toBe(a.key)
+  })
+
+  it("maps the root index route to a stable home name", () => {
+    expect(resolveViewName([], "/")).toEqual({ key: "/", name: "home" })
+  })
+
+  it("names static routes by their pattern", () => {
+    expect(resolveViewName(["search"], "/search")).toEqual({
+      key: "/search",
+      name: "search",
+    })
+  })
+
+  it("falls back to the pathname when segments are empty off-root", () => {
+    expect(resolveViewName([], "/unknown")).toEqual({
+      key: "/unknown",
+      name: "/unknown",
+    })
+  })
+})
+
+describe("datadogGraphqlHeaders (per-operation attribution)", () => {
+  it("maps a named operation to the SDK's attribution headers", () => {
+    expect(datadogGraphqlHeaders("GetSeriesBySlug", "query")).toEqual({
+      [DATADOG_GRAPH_QL_OPERATION_NAME_HEADER]: "GetSeriesBySlug",
+      [DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER]: "query",
+    })
+  })
+
+  it("omits the type header when the operation type is unknown", () => {
+    expect(datadogGraphqlHeaders("SemanticSearch", undefined)).toEqual({
+      [DATADOG_GRAPH_QL_OPERATION_NAME_HEADER]: "SemanticSearch",
+    })
+  })
+
+  it("returns no headers for anonymous operations", () => {
+    expect(datadogGraphqlHeaders(undefined, "query")).toEqual({})
+    expect(datadogGraphqlHeaders("", "query")).toEqual({})
+  })
+})
+
+describe("startDatadogView (never-throw contract)", () => {
+  it("forwards key and name to DdRum.startView", () => {
+    startDatadogView("/series/mark", "series/[slug]")
+    expect(mockStartView).toHaveBeenCalledWith("/series/mark", "series/[slug]")
+  })
+
+  it("swallows a synchronously-throwing DdRum.startView", () => {
+    mockStartView.mockImplementationOnce(() => {
+      throw new Error("native bridge down")
+    })
+    expect(() => startDatadogView("/", "home")).not.toThrow()
+  })
+
+  it("swallows an async DdRum.startView rejection", async () => {
+    mockStartView.mockRejectedValueOnce(new Error("intake unreachable"))
+    expect(() => startDatadogView("/", "home")).not.toThrow()
+    await flushMicrotasks()
+  })
+})
+
+describe("addDatadogTiming (never-throw contract)", () => {
+  it("forwards the timing name to DdRum.addTiming", () => {
+    addDatadogTiming(SERIES_FIRST_RAIL_READY_TIMING)
+    expect(mockAddTiming).toHaveBeenCalledWith("series_first_rail_ready")
+  })
+
+  it("swallows a synchronously-throwing DdRum.addTiming", () => {
+    mockAddTiming.mockImplementationOnce(() => {
+      throw new Error("native bridge down")
+    })
+    expect(() => addDatadogTiming("t")).not.toThrow()
+  })
+
+  it("swallows an async DdRum.addTiming rejection", async () => {
+    mockAddTiming.mockRejectedValueOnce(new Error("intake unreachable"))
+    expect(() => addDatadogTiming("t")).not.toThrow()
+    await flushMicrotasks()
+  })
+})
+
+describe("createDatadogInitWatchdog (one-shot per process)", () => {
+  let warnSpy: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+    warnSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+    warnSpy.mockRestore()
+  })
+
+  it("stays silent when init completes before the deadline", () => {
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    wd.markInitialized()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it("warns exactly once when the deadline passes without init", () => {
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    jest.advanceTimersByTime(10_000)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy.mock.calls[0][0]).toContain("[datadog]")
+    jest.advanceTimersByTime(30_000)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("treats a second arm as a no-op (Fast Refresh double mount)", () => {
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    wd.arm()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("never re-arms after init completed (remount against a live SDK)", () => {
+    // onInitialization fires at most once per JS process (the SDK inits behind
+    // a globalThis singleton) — a remount must not start a fresh false-warn timer.
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    wd.markInitialized()
+    wd.arm()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it("never warns in release builds", () => {
+    const wd = createDatadogInitWatchdog({ dev: false })
+    wd.arm()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
 describe("datadogLog (never-throw contract)", () => {
   it("forwards message and context to DdLogs", () => {
     datadogLog.info("hello", { a: 1 })
     expect(mockLogInfo).toHaveBeenCalledWith("hello", { a: 1 })
+    datadogLog.warn("careful", { b: 2 })
+    expect(mockLogWarn).toHaveBeenCalledWith("careful", { b: 2 })
+    datadogLog.error("boom", { c: 3 })
+    expect(mockLogError).toHaveBeenCalledWith("boom", { c: 3 })
+  })
+
+  it("swallows a synchronously-throwing DdLogs call on every level", () => {
+    for (const mock of [mockLogInfo, mockLogWarn, mockLogError]) {
+      mock.mockImplementationOnce(() => {
+        throw new Error("native bridge down")
+      })
+    }
+    expect(() => datadogLog.info("x")).not.toThrow()
+    expect(() => datadogLog.warn("x")).not.toThrow()
+    expect(() => datadogLog.error("x")).not.toThrow()
   })
 
   it("swallows an async DdLogs rejection", async () => {

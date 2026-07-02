@@ -3,6 +3,7 @@ import {
   pickPlayableTrailer,
   resolveLeafBounce,
   resolveScreenState,
+  shouldFireFirstRailTiming,
 } from "./seriesScreenState"
 
 // ── pickPlayableTrailer ────────────────────────────────────────────
@@ -235,5 +236,31 @@ describe("resolveScreenState", () => {
         loading: true,
       }),
     ).toBe("loading")
+  })
+})
+
+// ── shouldFireFirstRailTiming ──────────────────────────────────────
+
+describe("shouldFireFirstRailTiming", () => {
+  const withEpisodes = { episodes: [{ id: "e1" }] }
+  const noEpisodes = { episodes: [] }
+
+  it("fires when a record with episodes is present at first evaluation (cache-synchronous)", () => {
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
+  })
+
+  it("fires on the null -> record-with-episodes transition (network arrival)", () => {
+    expect(shouldFireFirstRailTiming(null)).toBe(false)
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
+  })
+
+  it("waits on a partial record with zero episodes, then fires when episodes arrive", () => {
+    expect(shouldFireFirstRailTiming(noEpisodes)).toBe(false)
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
+  })
+
+  it("never fires while there is no record (error / no data)", () => {
+    expect(shouldFireFirstRailTiming(null)).toBe(false)
+    expect(shouldFireFirstRailTiming(undefined)).toBe(false)
   })
 })

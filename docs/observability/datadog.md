@@ -173,7 +173,7 @@ canonical every-search signal and RUM only for supplemental click context. See
 `apps/tv` ships Datadog Mobile RUM + Logs + native crash as service `forge-tv`.
 See the "Observability (Datadog)" section of `apps/tv/CLAUDE.md` for the tvOS
 SDK patch caveat, the deliberately excluded `expo-datadog` plugin, and the
-mobile site enum gotcha. Provision per EAS profile with `eas env:create`:
+mobile site enum gotcha. Provision per EAS environment with `eas env:create`:
 
 ```bash
 # RUM client token (pub..., bundle-safe) + application id from the Datadog RUM app
@@ -181,13 +181,62 @@ EXPO_PUBLIC_DATADOG_CLIENT_TOKEN=
 EXPO_PUBLIC_DATADOG_APPLICATION_ID=
 # Mobile site enum (US1, EU1, ...), NOT web's "datadoghq.com"
 EXPO_PUBLIC_DATADOG_SITE=US1
-# Optional override; unset defaults by build type (dev -> development, release -> production)
-EXPO_PUBLIC_DATADOG_ENV=
+# preview MUST set this explicitly: preview is a release build (__DEV__ false),
+# so the unset default would tag external testers' sessions env:production.
+# development leaves it unset (defaults to development).
+EXPO_PUBLIC_DATADOG_ENV=preview
+# Leave unset; the SDK defaults to the app version.
 EXPO_PUBLIC_DATADOG_VERSION=
 ```
 
 Unprovisioned builds boot with telemetry disabled; dev builds log a
 `[datadog] RUM disabled` warning so the gate is visible from Metro logs.
+
+### TV activation runbook (feat-225 operational tail)
+
+Credential values come from the "Forge TV" RUM application page (Digital
+Experience -> RUM -> Applications). Use plaintext visibility: the values are
+bundle-inlined by design, and `secret` visibility never reaches `EXPO_PUBLIC_*`
+bundles at `eas update` time.
+
+1. **Provision an environment** (repeat per environment; development omits
+   `EXPO_PUBLIC_DATADOG_ENV`):
+
+   ```bash
+   cd apps/tv
+   eas env:create --environment preview --name EXPO_PUBLIC_DATADOG_CLIENT_TOKEN --value pub... --visibility plaintext
+   eas env:create --environment preview --name EXPO_PUBLIC_DATADOG_APPLICATION_ID --value <app-id> --visibility plaintext
+   eas env:create --environment preview --name EXPO_PUBLIC_DATADOG_SITE --value US1 --visibility plaintext
+   eas env:create --environment preview --name EXPO_PUBLIC_DATADOG_ENV --value preview --visibility plaintext
+   eas env:list --environment preview
+   ```
+
+2. **Intake/usage alert**: the client token ships in the bundle by design, so a
+   Datadog monitor on RUM event intake for `service:forge-tv` (threshold or
+   anomaly) is the abuse-detection mechanism. Create it before real builds
+   circulate.
+
+3. **Android TV verification**: `eas build --profile preview --platform android`
+   (APK link per `apps/tv/DISTRIBUTION.md`), install on a device or emulator
+   (the pnpm SDK patch is iOS-only by design; Android needs none), confirm a
+   session in RUM Explorer under `service:forge-tv env:preview`.
+
+4. **Apple TV verification**: TestFlight via the `xcrun altool -t appletvos`
+   path in `apps/tv/DISTRIBUTION.md` (NOT `eas submit`), confirm a session with
+   mobile vitals from real hardware.
+
+5. **Production (privacy-gated)**: obtain product/legal sign-off on
+   `TrackingConsent.GRANTED` at 100% session sampling BEFORE provisioning the
+   production environment, then repeat step 1 for `production` with
+   `EXPO_PUBLIC_DATADOG_ENV` unset (release defaults to production).
+
+Steps 3-4's "confirm a session" checks are human-in-the-Datadog-UI today; the
+agent-driven query recipe (Datadog MCP) that replaces the eyeball check is
+scoped in `docs/roadmap/platform/feat-228-tv-perf-tooling-mcp-and-profiler.md`.
+
+Playback note: the video player overlay is not a route, so playback telemetry
+attributes to the underlying series/watch view. A dedicated player view is a
+deliberate deferral, not an omission.
 
 ## Future app pattern
 
