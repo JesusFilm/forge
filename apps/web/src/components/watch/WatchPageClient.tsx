@@ -177,8 +177,8 @@ type WatchPageClientProps = {
   collectionSlug?: string | null
   /**
    * Validated ISO locale ("en" | "es" | ...) from the URL `[locale]` segment.
-   * Threaded into `BibleQuotesSection` so the wldeh/bible-api fetch and
-   * BibleGateway "Read more..." link pick the right translation.
+   * Kept on the client boundary for watch UI chrome and routing contracts.
+   * Bible passage translation selection is resolved by Admin before render.
    */
   locale?: string
   hideBibleQuotes?: boolean
@@ -264,7 +264,6 @@ export function WatchPageClient({
   video,
   languageSlug,
   collectionSlug = null,
-  locale,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
   initialTranscript = null,
@@ -662,7 +661,6 @@ export function WatchPageClient({
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         onPlayerActivated={handlePlayerActivated}
-        locale={locale}
         languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
         shareHref={shareHref}
