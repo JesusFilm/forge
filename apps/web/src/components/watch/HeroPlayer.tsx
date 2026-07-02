@@ -118,6 +118,10 @@ const HERO_HLS_CONFIG = {
   maxBufferLength: 10,
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
+  // Mux assets can include generated WebVTT subtitle renditions. Forge owns
+  // subtitle selection through the injected track below, so keep HLS.js from
+  // creating/auto-selecting Mux's generated caption tracks.
+  enableWebVTT: false,
 }
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"

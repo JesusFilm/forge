@@ -762,6 +762,7 @@ describe("HeroPlayer — initial mount", () => {
       maxBufferLength: 10,
       maxBufferSize: 5_000_000,
       backBufferLength: 5,
+      enableWebVTT: false,
     })
     expect(props.style).toEqual({ objectFit: "cover" })
   })
