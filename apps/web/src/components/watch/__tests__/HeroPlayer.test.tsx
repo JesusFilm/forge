@@ -764,6 +764,7 @@ describe("HeroPlayer — initial mount", () => {
       backBufferLength: 5,
       enableWebVTT: false,
     })
+    expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
   })
 

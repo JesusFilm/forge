@@ -283,7 +283,14 @@ export function HeroPlayer({
         forgeTrack.mode = "showing"
       }
     }
+    const onTrackChange = () => {
+      disableBuiltInSubtitles()
+      if (subtitleVttSrc && forgeTrack) {
+        forgeTrack.mode = "showing"
+      }
+    }
     tracks.addEventListener("addtrack", onAddTrack)
+    tracks.addEventListener("change", onTrackChange)
 
     let forgeTrack: TextTrack | null = null
 
@@ -318,6 +325,7 @@ export function HeroPlayer({
 
         return () => {
           tracks.removeEventListener("addtrack", onAddTrack)
+          tracks.removeEventListener("change", onTrackChange)
           trackEl.track.mode = "disabled"
           trackEl.remove()
         }
@@ -326,6 +334,7 @@ export function HeroPlayer({
 
     return () => {
       tracks.removeEventListener("addtrack", onAddTrack)
+      tracks.removeEventListener("change", onTrackChange)
     }
   }, [subtitleVttSrc, player])
 
@@ -1053,7 +1062,7 @@ export function HeroPlayer({
   const mediaFrameClassName = `relative h-full w-full ${
     mobilePortraitPreviewEnabled ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS : ""
   }`
-  const playerClassName = `block h-full w-full origin-top ${
+  const playerClassName = `watch-hero-player-video block h-full w-full origin-top ${
     playbackFrameActive
       ? ""
       : `scale-y-110 ${
@@ -1132,6 +1141,14 @@ export function HeroPlayer({
           data-testid="hero-player-media-frame"
           className={mediaFrameClassName}
         >
+          <style>{`
+            .watch-hero-player-video::cue {
+              color: transparent;
+              background: transparent;
+              text-shadow: none;
+              visibility: hidden;
+            }
+          `}</style>
           {playerActivated ? (
             <MuxVideo
               ref={setPlayerRef as React.Ref<MuxVideoRef>}
