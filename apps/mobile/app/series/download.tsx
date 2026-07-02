@@ -491,22 +491,9 @@ function StatusPanel({
   onRetryFailed: () => void
   typography: ReturnType<typeof useTypography>
 }) {
-  // Enqueuing renders no panel — its state rides on the confirm button
-  // ("Downloading"). Resolving shows a spinner row: a large series can take
-  // several seconds and a silent sheet reads as broken.
-  if (phase.kind === "resolving") {
-    return (
-      <View style={styles.statusPanel}>
-        <View style={styles.resolvingRow}>
-          <ActivityIndicator color={TEXT_SECONDARY} size="small" />
-          <Text style={[styles.skippedText, typography.bodySmall]}>
-            Checking episodes…
-          </Text>
-        </View>
-      </View>
-    )
-  }
-
+  // Resolving and enqueuing render no panel — both states ride on the confirm
+  // button ("Checking episodes…" / "Downloading"). This panel only carries
+  // outcomes: partial-resolution warnings and the enqueue summary.
   if (phase.kind === "done") {
     const line = formatEnqueueSummary(phase.summary)
     return (
@@ -578,11 +565,20 @@ function ConfirmButton({
   typography: ReturnType<typeof useTypography>
 }) {
   const enqueuing = phase.kind === "enqueuing"
+  // Resolution progress rides on this button ("Checking episodes…"), not a
+  // separate status row — a large series checks for many seconds (R13).
+  const resolving = phase.kind === "resolving"
+  const busy = enqueuing || resolving
   const disabled =
     phase.kind !== "ready" ||
     !resolution ||
     resolution.resolvedCount === 0 ||
     !touAccepted
+  const label = enqueuing
+    ? "Downloading"
+    : resolving
+      ? "Checking episodes…"
+      : "Download all"
 
   return (
     <Pressable
@@ -594,17 +590,15 @@ function ConfirmButton({
       onPress={onConfirm}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={enqueuing ? "Downloading" : "Download all episodes"}
-      accessibilityState={{ disabled, busy: enqueuing }}
+      accessibilityLabel={busy ? label : "Download all episodes"}
+      accessibilityState={{ disabled, busy }}
     >
-      {enqueuing ? (
+      {busy ? (
         <ActivityIndicator color="#ffffff" size="small" />
       ) : (
         <Ionicons name="download-outline" size={20} color="#ffffff" />
       )}
-      <Text style={[styles.confirmButtonText, typography.body]}>
-        {enqueuing ? "Downloading" : "Download all"}
-      </Text>
+      <Text style={[styles.confirmButtonText, typography.body]}>{label}</Text>
     </Pressable>
   )
 }
@@ -677,11 +671,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     width: "100%",
-  },
-  resolvingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
   retryFailedText: {
     color: ACCENT,
