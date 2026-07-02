@@ -281,6 +281,7 @@ export type WatchRouteSnapshotPreferredVariant = {
 export type WatchRouteSnapshot = {
   documentId: string
   slug: string | null
+  publishedAt: string | null
   noIndex: boolean | null
   label: VideoLabel | null
   images: WatchRouteSnapshotImage[]
@@ -1282,6 +1283,7 @@ export class VideoService {
       select: {
         id: true,
         slug: true,
+        publishedAt: true,
         noIndex: true,
         label: true,
         primaryLanguageId: true,
@@ -1626,6 +1628,7 @@ export class VideoService {
     return {
       documentId: root.id,
       slug: root.slug,
+      publishedAt: root.publishedAt?.toISOString() ?? null,
       noIndex: root.noIndex,
       label: root.label,
       images: imageRowsForSnapshot(imageRows, root.id),

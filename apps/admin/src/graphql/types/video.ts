@@ -1210,6 +1210,7 @@ WatchRouteSnapshotRef.implement({
   fields: (t) => ({
     documentId: t.exposeID("documentId", { nullable: false }),
     slug: t.exposeString("slug", { nullable: true }),
+    publishedAt: t.exposeString("publishedAt", { nullable: true }),
     noIndex: t.exposeBoolean("noIndex", { nullable: true }),
     label: t.field({
       type: VideoLabelEnum,
