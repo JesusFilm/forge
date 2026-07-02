@@ -56,3 +56,35 @@ export function CloseIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+/** Generic person glyph — the signed-in avatar fallback (no picture, no initials). */
+export function UserIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...baseProps}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  )
+}
+
+/** Log-in glyph — the signed-out "Sign in" affordance. */
+export function SignInIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...baseProps}>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
+    </svg>
+  )
+}
+
+/** Log-out glyph — the signed-in "Sign out" control. */
+export function SignOutIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...baseProps}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  )
+}

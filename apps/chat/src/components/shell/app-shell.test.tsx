@@ -720,3 +720,31 @@ describe("Sidebar shell", () => {
     ).toHaveFocus()
   })
 })
+
+describe("R12 sign-in-error marker strip (KTD7)", () => {
+  afterEach(() => {
+    // Restore the jsdom URL so leftover query params don't bleed into siblings.
+    window.history.replaceState(null, "", "/")
+  })
+
+  it("strips ?signin=failed after showing the notice, preserving other params", async () => {
+    view.unmount() // drop the flag-off shell from the outer beforeEach
+    window.history.replaceState(null, "", "/?signin=failed&keep=1")
+    render(<AppShell authConfigured signInError />)
+    await waitFor(() => {
+      expect(new URLSearchParams(window.location.search).has("signin")).toBe(
+        false,
+      )
+    })
+    // The strip is surgical — unrelated params survive.
+    expect(new URLSearchParams(window.location.search).get("keep")).toBe("1")
+  })
+
+  it("leaves the URL untouched when there is no sign-in error", async () => {
+    view.unmount()
+    window.history.replaceState(null, "", "/?keep=1")
+    render(<AppShell authConfigured />)
+    await act(async () => {})
+    expect(window.location.search).toBe("?keep=1")
+  })
+})
