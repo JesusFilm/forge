@@ -54,6 +54,9 @@ overrides:
   yaml@2: 2.8.3
 
 patchedDependencies:
+  '@datadog/mobile-react-native@3.5.2':
+    hash: zwconjjexlpshgvnd2tqnblelu
+    path: patches/@datadog__mobile-react-native@3.5.2.patch
   react-native-tvos@0.81.5-2:
     hash: 5f47bs6t4puwot4vtwwwxsyvpy
     path: patches/react-native-tvos@0.81.5-2.patch
@@ -900,6 +903,9 @@ importers:
       '@apollo/client':
         specifier: ^4.1.4
         version: 4.1.9(graphql-ws@6.0.8(graphql@16.13.1)(ws@8.20.1))(graphql@16.13.1)(react-dom@19.2.4(react@19.1.0))(react@19.1.0)(rxjs@7.8.2)
+      '@datadog/mobile-react-native':
+        specifier: 3.5.2
+        version: 3.5.2(patch_hash=zwconjjexlpshgvnd2tqnblelu)(react-native-tvos@0.81.5-2)(react@19.1.0)
       '@expo/vector-icons':
         specifier: ^15.1.1
         version: 15.1.1(expo-font@14.0.11(expo@54.0.34)(react-native-tvos@0.81.5-2)(react@19.1.0))(react-native-tvos@0.81.5-2)(react@19.1.0)
@@ -2415,6 +2421,12 @@ packages:
 
   '@datadog/libdatadog@0.9.4':
     resolution: {integrity: sha512-55wHHAuhHOOrBGoWV+fRuEDypN6PMJZq4LTOwExnhoDMvVcZKtqYT05xea/toRs0o75+A1IeNAQHsRLbJMf5oA==}
+
+  '@datadog/mobile-react-native@3.5.2':
+    resolution: {integrity: sha512-u0dRLJohtBc0R3Vg8ddKiYYdY300TadP/XcIl0R/b/SmYH04nVEpXyZq3ZRW9QboX4IDi1AewVTlPK4hOH9cRg==}
+    peerDependencies:
+      react: '>=16.13.1'
+      react-native: '>=0.63.4 <1.0'
 
   '@datadog/native-appsec@11.0.1':
     resolution: {integrity: sha512-Y/XfknUmmJcw4hhQVhqzgdQvfjy+EGmXuUBgtVkI1r+/qS00egYu+wD/x7pOvjdbZNqN96znVszAnXvDQAzMDQ==}
@@ -15402,6 +15414,12 @@ snapshots:
 
   '@datadog/libdatadog@0.9.4':
     optional: true
+
+  '@datadog/mobile-react-native@3.5.2(patch_hash=zwconjjexlpshgvnd2tqnblelu)(react-native-tvos@0.81.5-2)(react@19.1.0)':
+    dependencies:
+      big-integer: 1.6.52
+      react: 19.1.0
+      react-native: react-native-tvos@0.81.5-2(patch_hash=5f47bs6t4puwot4vtwwwxsyvpy)(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.1.17)(react-native-tvos@0.81.5-2)(react@19.1.0)
 
   '@datadog/native-appsec@11.0.1':
     dependencies:

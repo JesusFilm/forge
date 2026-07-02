@@ -26,11 +26,16 @@ import {
   type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
+import {
+  WATCH_SEARCH_ANALYTICS_SURFACE,
+  WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+} from "@/lib/watch-search-analytics-contract"
 
 const navigationMocks = vi.hoisted(() => ({
   pathname: "/",
   replace: vi.fn(),
 }))
+const reportDatadogRumAction = vi.hoisted(() => vi.fn())
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationMocks.pathname,
@@ -53,6 +58,11 @@ vi.mock("@/lib/search-language-actions", () => ({
     countryCode: null,
     countryName: null,
   })),
+}))
+
+vi.mock("@/components/DatadogRum", () => ({
+  default: () => null,
+  reportDatadogRumAction,
 }))
 
 let container: HTMLDivElement
@@ -905,6 +915,19 @@ describe("FloatingSearchProvider — search mode", () => {
         offset: 20,
       }),
     )
+    const firstAnalytics = mockedRunSearch.mock.calls[0]?.[0].analytics
+    const loadMoreAnalytics = mockedRunSearch.mock.calls[1]?.[0].analytics
+    expect(firstAnalytics).toMatchObject({
+      requestType: "search",
+      surface: WATCH_SEARCH_ANALYTICS_SURFACE,
+    })
+    expect(loadMoreAnalytics).toMatchObject({
+      expectedResultSource: "algolia",
+      requestType: "load_more",
+      searchRequestId: firstAnalytics?.searchRequestId,
+      surface: WATCH_SEARCH_ANALYTICS_SURFACE,
+      visibleResultCount: 1,
+    })
     expect(error?.textContent).toBe("Failed to load more results.")
   })
 
@@ -1705,6 +1728,45 @@ describe("FloatingSearchProvider — search pagination", () => {
       }),
     )
     expect(document.body.textContent).toContain("The Bible Project Result")
+  })
+
+  it("reports Datadog RUM context when a Watch search result is clicked", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockResolvedValueOnce(
+      makeSearchResponse(
+        [makeSearchResult("first-result", "The Bible Project Result")],
+        false,
+      ),
+    )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+
+    const link = Array.from(document.querySelectorAll("a")).find(
+      (anchor) =>
+        anchor.getAttribute("href") === "/first-result-slug.html/english.html",
+    )
+    const searchRequestId =
+      mockedRunSearch.mock.calls[0]?.[0].analytics?.searchRequestId
+
+    expect(link).not.toBeUndefined()
+    act(() => {
+      link?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+
+    expect(reportDatadogRumAction).toHaveBeenCalledWith(
+      WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+      expect.objectContaining({
+        "watch_search.result_id": "first-result",
+        "watch_search.result_position": 1,
+        "watch_search.result_slug": "first-result-slug",
+        "watch_search.result_source": "semantic",
+        "watch_search.search_language_slug": "english",
+        "watch_search.search_request_id": searchRequestId,
+      }),
+    )
   })
 
   it("keeps the final edited query search without syncing the URL", async () => {

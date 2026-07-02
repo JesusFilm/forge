@@ -336,6 +336,8 @@ export async function GET(request: Request): Promise<Response> {
 
   const { searchParams } = new URL(request.url)
   const rawFilename = searchParams.get("filename")
+  const contentDisposition =
+    searchParams.get("disposition") === "inline" ? "inline" : "attachment"
 
   const resolvedTarget = await resolveRequestedTarget(searchParams)
   if (!resolvedTarget.ok) {
@@ -467,7 +469,7 @@ export async function GET(request: Request): Promise<Response> {
   const encodedName = encodeURIComponent(filename)
   headers.set(
     "Content-Disposition",
-    `attachment; filename="${filename}"; filename*=UTF-8''${encodedName}`,
+    `${contentDisposition}; filename="${filename}"; filename*=UTF-8''${encodedName}`,
   )
   headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate")
   // Don't let the browser/CDN sniff the response and override our content type.

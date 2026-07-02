@@ -28,9 +28,38 @@ export type SeriesDownloadChoice = {
   subtitleLanguageSlug: string | null
 }
 
+/**
+ * The dub-index slice resolution needs per episode — deliberately narrower than
+ * WatchVariant so the sheet can feed it from a lean query (the full per-episode
+ * watch payload made a 61-episode, 2000+-dub-segment resolve take minutes).
+ */
+export type ResolverVariant = Pick<WatchVariant, "documentId" | "languageSlug">
+
+/**
+ * Map a lean dub-index result (GET_VIDEO_DUB_INDEX) to resolver variants,
+ * mirroring normalizeVideo's published gate — only published dubs resolve.
+ */
+export function toResolverVariants(
+  dubs:
+    | readonly {
+        documentId?: string | null
+        published?: boolean | null
+        language?: { slug?: string | null } | null
+      }[]
+    | null
+    | undefined,
+): ResolverVariant[] {
+  return (dubs ?? [])
+    .filter((dub) => dub.published === true)
+    .map((dub) => ({
+      documentId: dub.documentId ?? "",
+      languageSlug: dub.language?.slug ?? null,
+    }))
+}
+
 export type SeriesResolveDeps = {
   /** The episode's dub variants (each carries documentId + languageSlug). */
-  getEpisodeVariants: (slug: string) => Promise<WatchVariant[]>
+  getEpisodeVariants: (slug: string) => Promise<ResolverVariant[]>
   /** The dub's downloads + subtitles (GET_VIDEO_DUB normalized). */
   getDubMedia: (dubDocumentId: string) => Promise<VariantMedia>
 }

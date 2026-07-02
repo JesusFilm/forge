@@ -206,6 +206,41 @@ describe("GET /watch/api/download — upstream success path", () => {
     expect(await res.text()).toBe("video-bytes")
   })
 
+  it("can stream media inline for in-page consumers", async () => {
+    mockUpstream(
+      new Response("WEBVTT\n\n", {
+        status: 200,
+        headers: {
+          "content-type": "text/vtt",
+          "content-length": "8",
+        },
+      }),
+    )
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        disposition: "inline",
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-disposition")).toContain(
+      'inline; filename="download"',
+    )
+    expect(res.headers.get("content-type")).toBe("text/vtt")
+    expect(await res.text()).toBe("WEBVTT\n\n")
+  })
+
+  it("defaults unknown dispositions to attachment", async () => {
+    mockUpstream(new Response("video-bytes", { status: 200 }))
+    const res = await GET(
+      makeRequest({
+        url: "https://stream.mux.com/abc.mp4",
+        disposition: "inline; filename=x",
+      }),
+    )
+    expect(res.headers.get("content-disposition")).toContain("attachment;")
+  })
+
   it("preserves 206 Partial Content and forwards Content-Range", async () => {
     mockUpstream(
       new Response("partial-bytes", {

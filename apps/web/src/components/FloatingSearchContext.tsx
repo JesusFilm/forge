@@ -8,6 +8,12 @@ import type {
   SearchLanguageOption,
   SearchLanguageRegionGroup,
 } from "@/lib/search-language"
+import type { WatchSearchResultClickAnalytics } from "@/lib/watch-search-analytics-contract"
+
+export type FloatingSearchResultAnalyticsContext = Omit<
+  WatchSearchResultClickAnalytics,
+  "position"
+>
 
 export type FloatingSearchContextValue = {
   open: boolean
@@ -35,6 +41,7 @@ export type FloatingSearchContextValue = {
   selectedLanguageEnglishNames: string[]
   selectedLanguageRegionByName: Record<string, string>
   selectedSearchLanguageOption: SearchLanguageOption | null
+  searchResultAnalytics: FloatingSearchResultAnalyticsContext | null
   defaultSearchLanguageOption: SearchLanguageOption | null
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void

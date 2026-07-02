@@ -11,6 +11,14 @@ export type SeriesDownloadState = {
   downloaded: number
   total: number
   inProgress: boolean
+  /**
+   * Any episode paused and NONE still downloading/queued (U8). `inProgress`
+   * already counts `paused`, so it can't drive "Pause all" — this is the flag
+   * checked FIRST to flip the batch bar to "Resume all".
+   */
+  pausedAggregate: boolean
+  /** Series episode slugs in an in-progress state — the batch controls act on these. */
+  inFlightSlugs: string[]
   /** 0..1 byte-weighted progress across the series for the action-row ring. */
   progress: number
 }
@@ -32,6 +40,9 @@ export function deriveSeriesDownloadState(
   // in-flight one as its byte fraction, so the ring creeps smoothly and reads
   // full only when every episode is downloaded.
   let inProgress = false
+  let anyDownloading = false
+  let anyPaused = false
+  const inFlightSlugs: string[] = []
   let units = 0
   for (const slug of episodeSlugs) {
     const record = recordBySlug.get(slug)
@@ -40,6 +51,12 @@ export function deriveSeriesDownloadState(
       units += 1
     } else if (IN_PROGRESS_STATES.has(record.state)) {
       inProgress = true
+      inFlightSlugs.push(slug)
+      // Only a live transfer counts as downloading: under the sequential batch
+      // queue (R14) episodes sit `queued` long-term, and counting them as active
+      // would keep pausedAggregate false after Pause all — no Resume all, ever.
+      if (record.state === "paused") anyPaused = true
+      else if (record.state === "downloading") anyDownloading = true
       if (record.totalBytes > 0) {
         const fraction = record.bytesWritten / record.totalBytes
         units += Math.max(0, Math.min(1, fraction))
@@ -54,6 +71,8 @@ export function deriveSeriesDownloadState(
     downloaded: episodeSlugs.filter((slug) => downloaded.has(slug)).length,
     total,
     inProgress,
+    pausedAggregate: anyPaused && !anyDownloading,
+    inFlightSlugs,
     progress: total === 0 ? 0 : units / total,
   }
 }
@@ -63,8 +82,51 @@ export function seriesAllDownloaded(state: SeriesDownloadState): boolean {
   return state.total > 0 && state.downloaded >= state.total
 }
 
+// ── Per-episode grid badge (U9) ─────────────────────────────────────
+
+export type EpisodeBadgeState =
+  | "saved"
+  | "downloading"
+  | "queued"
+  | "paused"
+  | "none"
+
+/** Badge state for one episode from its record; `none` for failed/absent. */
+export function episodeBadgeState(
+  record: OfflineDownloadRecord | undefined,
+): EpisodeBadgeState {
+  switch (record?.state) {
+    case "downloaded":
+      return "saved"
+    case "downloading":
+      return "downloading"
+    case "queued":
+      return "queued"
+    case "paused":
+      return "paused"
+    default:
+      return "none"
+  }
+}
+
+/** slug → badge state for the grid (derived read-side, no persisted field). */
+export function deriveEpisodeBadges(
+  episodeSlugs: readonly string[],
+  offlineRecords: readonly OfflineDownloadRecord[],
+): Map<string, EpisodeBadgeState> {
+  const recordBySlug = new Map(
+    offlineRecords.map((record) => [record.videoSlug, record] as const),
+  )
+  const badges = new Map<string, EpisodeBadgeState>()
+  for (const slug of episodeSlugs) {
+    badges.set(slug, episodeBadgeState(recordBySlug.get(slug)))
+  }
+  return badges
+}
+
 export function seriesDownloadLabel(state: SeriesDownloadState): string {
-  const { downloaded, total, inProgress } = state
+  const { downloaded, total, inProgress, pausedAggregate } = state
+  if (pausedAggregate) return `Paused (${downloaded} of ${total})`
   if (inProgress) return `Downloading… (${downloaded} of ${total})`
   if (seriesAllDownloaded(state)) return "All downloaded"
   if (downloaded > 0) return `${downloaded} of ${total} downloaded`

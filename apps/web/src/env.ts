@@ -239,6 +239,7 @@ export const env = createEnv({
     DD_ENV: z.string().min(1).optional(),
     DD_SERVICE: z.string().min(1).optional(),
     DD_VERSION: z.string().min(1).optional(),
+    WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT: booleanEnv(true),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -324,6 +325,8 @@ export const env = createEnv({
     DD_ENV: datadogServerEnvFallback(),
     DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
     DD_VERSION: datadogServerVersionFallback(),
+    WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT:
+      process.env.WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_DATADOG_APPLICATION_ID:

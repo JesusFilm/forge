@@ -24,10 +24,13 @@ import {
   type SearchLanguageCountrySuggestion,
   type SearchLanguageOption,
 } from "@/lib/search-language"
+import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
 import { parseWatchPath } from "@/lib/routes"
+import { WATCH_SEARCH_ANALYTICS_SURFACE } from "@/lib/watch-search-analytics-contract"
 import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
+  type FloatingSearchResultAnalyticsContext,
 } from "./FloatingSearchContext"
 
 import { SearchOverlay } from "./SearchOverlay"
@@ -42,6 +45,10 @@ type ActiveSearchSignature = {
   routeLanguageSlug: string | null
   resultSource: SearchActionResultSource
   nextOffset: number
+  searchLanguageEnglishName: string | null
+  searchLanguageSlug: string | null
+  searchRequestId: string
+  detectedQueryLanguage: string | null
 }
 
 export type FloatingSearchControllerProps = {
@@ -102,6 +109,8 @@ export function FloatingSearchController({
     useState<Record<string, string>>({})
   const [selectedSearchLanguageOption, setSelectedSearchLanguageOption] =
     useState<SearchLanguageOption | null>(null)
+  const [searchResultAnalytics, setSearchResultAnalytics] =
+    useState<FloatingSearchResultAnalyticsContext | null>(null)
 
   const requestIdRef = useRef(0)
   const languageOptionsRequestIdRef = useRef(0)
@@ -290,7 +299,11 @@ export function FloatingSearchController({
       activeLanguageEnglishNames: readonly string[],
     ): void => {
       if (activeLanguageEnglishNames.length > 0) return
-      setLanguageFacets(nextLanguageFacets)
+      setLanguageFacets((currentLanguageFacets) =>
+        languageFacetsEqual(currentLanguageFacets, nextLanguageFacets)
+          ? currentLanguageFacets
+          : nextLanguageFacets,
+      )
     },
     [],
   )
@@ -323,6 +336,7 @@ export function FloatingSearchController({
       loadMoreRunIdRef.current += 1
       loadingMoreRef.current = false
       activeSearchSignatureRef.current = null
+      setSearchResultAnalytics(null)
       setLoadingMore(false)
 
       if (!trimmed) {
@@ -340,6 +354,7 @@ export function FloatingSearchController({
         setError(null)
         setResultSource(null)
         activeSearchSignatureRef.current = null
+        setSearchResultAnalytics(null)
         clearLoadingForRequest(thisRequest)
         return
       }
@@ -382,15 +397,33 @@ export function FloatingSearchController({
           options?.languageSlug !== undefined
             ? options.languageSlug
             : defaultLanguageSlug
+        const cappedQuery = trimmed.slice(0, 200)
+        const searchRequestId = createSearchRequestId()
+        const searchLanguageSlug =
+          activeLanguageSlug ??
+          selectedSearchLanguageOptionRef.current?.publicSlug ??
+          null
+        const detectedQueryLanguage = detectWatchQueryLanguage({
+          currentLanguageSlug: searchLanguageSlug ?? routeLanguageSlug,
+          languageOptions: currentLanguageOptions,
+          query: cappedQuery,
+        })
 
         const data = await runSearch({
-          query: trimmed.slice(0, 200),
+          query: cappedQuery,
           limit: SEARCH_PAGE_SIZE,
           offset: 0,
           languageEnglishNames: activeLanguageEnglishNames,
           languageOptions: currentLanguageOptions,
           languageSlug: activeLanguageSlug,
           routeLanguageSlug,
+          analytics: {
+            detectedQueryLanguage,
+            requestType: "search",
+            searchRequestId,
+            surface: WATCH_SEARCH_ANALYTICS_SURFACE,
+            visibleResultCount: 0,
+          },
         })
 
         if (requestIdRef.current !== thisRequest) return
@@ -401,6 +434,7 @@ export function FloatingSearchController({
           setHasMore(false)
           setResultSource(data.resultSource)
           activeSearchSignatureRef.current = null
+          setSearchResultAnalytics(null)
           setError(tSearchOverlay("searchFailed"))
           setAlgoliaSearchEnabled(data.resultSource === "algolia")
           if (data.languageFacets) {
@@ -422,14 +456,26 @@ export function FloatingSearchController({
           data.resultSource === "semantic"
             ? data.resolvedLanguage.publicSlug
             : null
+        const searchLanguageEnglishName = activeLanguageEnglishNames[0] ?? null
         activeSearchSignatureRef.current = {
-          query: trimmed.slice(0, 200),
+          query: cappedQuery,
           languageEnglishNames: [...activeLanguageEnglishNames],
           languageSlug: signatureLanguageSlug,
           routeLanguageSlug,
           resultSource: data.resultSource,
           nextOffset: data.nextOffset ?? newResults.length,
+          searchLanguageEnglishName,
+          searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
+          searchRequestId,
+          detectedQueryLanguage,
         }
+        setSearchResultAnalytics({
+          resultSource: data.resultSource,
+          routeLanguageSlug,
+          searchLanguageEnglishName,
+          searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
+          searchRequestId,
+        })
         setAlgoliaSearchEnabled(data.resultSource === "algolia")
         if (data.languageFacets) {
           maybeSetLanguageFacets(
@@ -440,6 +486,7 @@ export function FloatingSearchController({
       } catch {
         if (requestIdRef.current === thisRequest) {
           activeSearchSignatureRef.current = null
+          setSearchResultAnalytics(null)
           setError(tSearchOverlay("searchFailed"))
         }
       } finally {
@@ -490,6 +537,14 @@ export function FloatingSearchController({
         languageOptions: languageOptionsRef.current,
         languageSlug: expectedSignature.languageSlug,
         routeLanguageSlug,
+        analytics: {
+          detectedQueryLanguage: expectedSignature.detectedQueryLanguage,
+          expectedResultSource: expectedSignature.resultSource,
+          requestType: "load_more",
+          searchRequestId: expectedSignature.searchRequestId,
+          surface: WATCH_SEARCH_ANALYTICS_SURFACE,
+          visibleResultCount: displayResultsRef.current.length,
+        },
       })
       if (requestIdRef.current !== thisRequest) return
       if (data.resultSource !== expectedSignature.resultSource) {
@@ -510,6 +565,13 @@ export function FloatingSearchController({
         nextOffset:
           data.nextOffset ?? expectedSignature.nextOffset + data.results.length,
       }
+      setSearchResultAnalytics({
+        resultSource: data.resultSource,
+        routeLanguageSlug,
+        searchLanguageEnglishName: expectedSignature.searchLanguageEnglishName,
+        searchLanguageSlug: expectedSignature.searchLanguageSlug,
+        searchRequestId: expectedSignature.searchRequestId,
+      })
       setAlgoliaSearchEnabled(data.resultSource === "algolia")
     } catch {
       if (requestIdRef.current === thisRequest) {
@@ -649,6 +711,7 @@ export function FloatingSearchController({
       selectedLanguageEnglishNames,
       selectedLanguageRegionByName,
       selectedSearchLanguageOption,
+      searchResultAnalytics,
       defaultSearchLanguageOption: defaultSearchLanguage,
       setOpen,
       setQuery,
@@ -686,6 +749,7 @@ export function FloatingSearchController({
       selectedLanguageEnglishNames,
       selectedLanguageRegionByName,
       selectedSearchLanguageOption,
+      searchResultAnalytics,
       defaultSearchLanguage,
       setOpen,
       setQuery,
@@ -708,6 +772,32 @@ export function FloatingSearchController({
         ? createPortal(<SearchOverlay />, document.body)
         : null}
     </FloatingSearchContext.Provider>
+  )
+}
+
+function createSearchRequestId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID()
+  }
+  const entropy = Math.random().toString(36).slice(2, 12)
+  return `${Date.now().toString(36)}_${entropy}`
+}
+
+function detectWatchQueryLanguage({
+  currentLanguageSlug,
+  languageOptions,
+  query,
+}: {
+  currentLanguageSlug: string | null
+  languageOptions: readonly SearchLanguageOption[]
+  query: string
+}): string | null {
+  return (
+    detectQueryLanguageSuggestion({
+      currentLanguageSlug,
+      languageOptions,
+      query,
+    })?.option.publicSlug ?? null
   )
 }
 
@@ -738,6 +828,20 @@ function withSearchLanguageOptionsFallback(
       },
     )
   })
+}
+
+function languageFacetsEqual(
+  current: Record<string, number>,
+  next: Record<string, number>,
+): boolean {
+  const currentEntries = Object.entries(current)
+  const nextEntries = Object.entries(next)
+  if (currentEntries.length !== nextEntries.length) return false
+
+  for (const [language, count] of nextEntries) {
+    if (current[language] !== count) return false
+  }
+  return true
 }
 
 function defaultSearchLanguageOption({

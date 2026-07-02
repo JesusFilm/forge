@@ -123,6 +123,9 @@ export type WatchVideoMetadataModel = {
   noIndex: boolean
   inLanguage: string | null
   durationSeconds: number | null
+  contentUrl: string | null
+  embedUrl: string
+  uploadDate: string | null
 }
 
 type WatchVideoMetadataOptions = {
@@ -175,6 +178,9 @@ export function buildWatchVideoMetadataModel(
       options.selectedVariant.language?.slug ??
       null,
     durationSeconds: options.selectedVariant.duration ?? null,
+    contentUrl: options.selectedVariant.hls ?? null,
+    embedUrl: canonicalUrl,
+    uploadDate: options.video.publishedAt ?? null,
   }
 }
 
