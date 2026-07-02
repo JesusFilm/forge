@@ -3,6 +3,8 @@
 // target. Hover/focus feedback lives here so every player icon behaves
 // consistently without reintroducing the removed dark button fill.
 
+import { formatDuration } from "@/lib/format-duration"
+
 export function ChromeButton({
   children,
   onClick,
@@ -29,8 +31,5 @@ export function ChromeButton({
 
 export function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00"
-  const total = Math.floor(seconds)
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${s.toString().padStart(2, "0")}`
+  return formatDuration(seconds)
 }

@@ -23,9 +23,16 @@ export const VIDEO_JS_OPTIONS = {
 }
 
 export function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, "0")}`
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00"
+  const total = Math.floor(seconds)
+  const hours = Math.floor(total / 3600)
+  const mins = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+  const paddedSecs = secs.toString().padStart(2, "0")
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, "0")}:${paddedSecs}`
+  }
+  return `${mins}:${paddedSecs}`
 }
 
 export type VideoPlayerCoreOptions = {

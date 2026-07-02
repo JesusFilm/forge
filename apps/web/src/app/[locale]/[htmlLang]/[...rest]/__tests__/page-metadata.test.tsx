@@ -72,13 +72,8 @@ vi.mock("@/components/sections", () => ({
 
 vi.mock("@/lib/feature-flags", () => ({
   isWatchCtaTextCopyEnabled: vi.fn(),
-  isWatchYouVersionBibleQuotesEnabled: vi.fn(),
   isWatchHideBibleQuotesEnabled: vi.fn(),
   isWatchQuestionPanelEnabled: vi.fn(),
-}))
-
-vi.mock("@/lib/youversion-passage", () => ({
-  fetchYouVersionBibleQuotePassages: vi.fn(),
 }))
 
 import { generateMetadata } from "@/app/[locale]/[htmlLang]/[...rest]/page"

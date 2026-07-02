@@ -66,7 +66,7 @@ describe("reconcile", () => {
     ).toEqual([{ action: "rebind", videoSlug: "a" }])
   })
 
-  it.each<OfflineDownloadState>(["downloading", "paused", "queued"])(
+  it.each<OfflineDownloadState>(["downloading", "queued"])(
     "requeues an in-flight (%s) record with no live task",
     (state) => {
       expect(
@@ -79,6 +79,31 @@ describe("reconcile", () => {
       ).toEqual([{ action: "requeue", videoSlug: "a" }])
     },
   )
+
+  // U5: paused splits out — a dropped-task paused record must NOT requeue (which
+  // would restart from zero), it stays paused for a user resume.
+  it("keeps a paused record paused when no live task survived (U5/AE4)", () => {
+    expect(
+      reconcile(
+        input({
+          records: [record("a", "paused")],
+          pendingFileSlugs: new Set(["a"]),
+        }),
+      ),
+    ).toEqual([{ action: "keepPaused", videoSlug: "a" }])
+  })
+
+  it("rebinds a paused record whose task survived (resume in place)", () => {
+    expect(
+      reconcile(
+        input({
+          records: [record("a", "paused")],
+          liveTaskSlugs: new Set(["a"]),
+          pendingFileSlugs: new Set(["a"]),
+        }),
+      ),
+    ).toEqual([{ action: "rebind", videoSlug: "a" }])
+  })
 
   it("never confirms a partial as complete (downloading never yields confirmDownloaded)", () => {
     const actions = reconcile(

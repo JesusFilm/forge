@@ -150,15 +150,15 @@ const {
   bibleQuotesSectionMock: vi.fn(
     ({
       bibleCitations,
-      youVersionPassages = [],
+      passages = [],
     }: {
       bibleCitations: Array<unknown>
       onShareClick: () => void
-      youVersionPassages?: Array<unknown>
+      passages?: Array<unknown>
     }) => {
       const content = JSON.stringify({
         count: bibleCitations.length,
-        youVersionPassageCount: youVersionPassages.length,
+        passageCount: passages.length,
       })
       return (
         <div data-block-type="BibleQuotes" data-content={content}>
@@ -292,6 +292,18 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
           order: 1,
           osisId: "John.1.1",
           bibleBook: { documentId: "bb-1", name: "John" },
+          passage: {
+            citationDocumentId: "bc-1",
+            content: "Server passage text.",
+            copyright: "Required attribution.",
+            humanReference: "John 1:1",
+            provider: "youversion",
+            publisherUrl: null,
+            reference: "JHN.1.1",
+            versionAbbreviation: "BSB",
+            versionId: 3034,
+            versionTitle: "Berean Standard Bible",
+          },
         },
       ],
     })
@@ -307,20 +319,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       )!,
       buildBibleQuotesBlock(
         (video as { bibleCitations?: unknown[] }).bibleCitations as never,
-        [
-          {
-            citationDocumentId: "bc-1",
-            content: "Server passage text.",
-            copyright: "Required attribution.",
-            humanReference: "John 1:1",
-            publisherUrl: null,
-            reference: "JHN.1.1",
-            versionAbbreviation: "BSB",
-            versionId: 3034,
-            versionTitle: "Berean Standard Bible",
-          },
-        ],
-      )!,
+      ),
       buildShareBlock(video),
     ]
 
@@ -394,7 +393,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     )
     expect(bibleQuotesContent).toEqual({
       count: 1,
-      youVersionPassageCount: 1,
+      passageCount: 1,
     })
   })
 

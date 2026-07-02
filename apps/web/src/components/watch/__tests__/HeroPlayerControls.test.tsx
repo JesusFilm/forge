@@ -27,7 +27,7 @@ import { WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND } from "@/lib/watch-prod
 let container: HTMLDivElement
 let root: Root
 
-function makePlayer(): MuxPlayerRef {
+function makePlayer(overrides: Partial<MuxPlayerRef> = {}): MuxPlayerRef {
   return {
     muted: false,
     currentTime: 0,
@@ -39,6 +39,7 @@ function makePlayer(): MuxPlayerRef {
     pause: vi.fn(),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
+    ...overrides,
   } as unknown as MuxPlayerRef
 }
 
@@ -417,6 +418,47 @@ describe("HeroPlayerControls — fullscreen button behavior", () => {
 })
 
 describe("HeroPlayerControls — chrome layout", () => {
+  it("formats hour-plus playback time as h:mm:ss", () => {
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: makePlayer({
+        currentTime: 3725,
+        duration: 7674,
+      }),
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayerControls
+          player={playerRef.current}
+          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+          overlayAnchor={overlayAnchor}
+        />,
+      )
+    })
+
+    expect(
+      overlayAnchor.querySelector('[data-testid="hero-chrome-time"]')
+        ?.textContent,
+    ).toBe("1:02:05 / 2:07:54")
+    expect(
+      overlayAnchor
+        .querySelector('[data-testid="hero-chrome-timeline"]')
+        ?.getAttribute("aria-valuetext"),
+    ).toContain("1:02:05")
+  })
+
   it("lets the custom chrome span the full portal width", () => {
     const wrapperEl = document.createElement("div")
     const overlayAnchor = document.createElement("div")

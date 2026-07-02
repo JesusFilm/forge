@@ -667,6 +667,11 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(subtitlePopover).not.toBeNull()
     expect(subtitlesSelectTooltip?.contains(subtitlePopover)).toBe(false)
     expect(
+      $('[data-testid="watch-language-picker-modal"]')?.contains(
+        subtitlePopover,
+      ),
+    ).toBe(false)
+    expect(
       $('[data-testid="watch-language-picker-tooltip-subtitle-language"]'),
     ).toBeNull()
     expect(

@@ -8,7 +8,11 @@ export const getWatchDownloadTargetOperation = adminGraphql(`
   query GetWatchDownloadTarget($variantId: ID!) {
     videoDub(id: $variantId) {
       documentId: id
+      videoId
       downloadable
+      language {
+        documentId: id
+      }
       downloads {
         documentId: id
         url
@@ -30,7 +34,15 @@ type WatchDownloadTargetInput = {
 }
 
 export type WatchDownloadTargetResult =
-  | { ok: true; url: string }
+  | {
+      ok: true
+      url: string
+      event: {
+        videoId: string
+        videoDubId: string
+        languageId: string | null
+      }
+    }
   | { ok: false; reason: "missing-params" | "not-found" | "unavailable" }
 
 function belongsToVideoSlug(
@@ -74,6 +86,8 @@ export async function resolveWatchDownloadTarget({
     variant?.documentId !== variantId ||
     variant.published !== true ||
     variant.downloadable !== true ||
+    typeof variant.videoId !== "string" ||
+    variant.videoId.length === 0 ||
     !belongsToVideoSlug(variant.slug, videoSlug)
   ) {
     return { ok: false, reason: "not-found" }
@@ -93,5 +107,13 @@ export async function resolveWatchDownloadTarget({
     return { ok: false, reason: "unavailable" }
   }
 
-  return { ok: true, url: download.url }
+  return {
+    ok: true,
+    url: download.url,
+    event: {
+      videoId: variant.videoId,
+      videoDubId: variant.documentId,
+      languageId: variant.language?.documentId ?? null,
+    },
+  }
 }

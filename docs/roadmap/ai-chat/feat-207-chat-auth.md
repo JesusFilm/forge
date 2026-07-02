@@ -10,10 +10,26 @@ depends_on:
   - "feat-205"
 blocks:
   - "feat-209"
+  - "feat-229"
 tags:
   - "web"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Status:** Code complete and reviewed; raised as [PR #1438](https://github.com/JesusFilm/forge/pull/1438) (`feat(chat): add optional apps/auth OIDC sign-in (feat-207)`), ready to merge. **This ticket stays `in-progress`, not `complete`** — the code work is resolved but end-to-end sign-in is not yet verified (see Residual below). The two are deliberately kept separate: the Resolution is written now because the code is done; the status waits on verification.
+
+**What landed.** The implementation is complete, reviewed, and **ships default-off** — `chatAuthConfigured()` returns false unless the issuer, chat client id, base URL, and a real signing secret are all set, so an unconfigured deploy hides the "Sign in" affordance, the login route no-ops to home before any outbound call, and the session cookie fails closed to anonymous. Delivered as plan units U1–U8: `jose`-based hand-adapted OAuth client (authorization-code + PKCE + `state`), an id-token-only verifier with a JWKS-derived algorithm allowlist that deliberately diverges from admin's (no access-token fallback; `alg` pin admin omits), an HS256 signed identity cookie (HttpOnly / Secure-in-prod / `SameSite=Lax` / host-only / short TTL), `return_to` origin-equality validation, login/callback/logout routes + a non-redirecting `getChatIdentity()`, and the sidebar account control across the expanded / collapsed / mobile presentations. Authentication only — `/api/seeker` and every other surface behave identically signed-in and signed-out. `typecheck` / `lint` / `test` (234) / `build` all green.
+
+**Compound docs.** [`docs/solutions/architecture-patterns/hardened-oidc-id-token-verify-jose-jwks-20260702.md`](../../solutions/architecture-patterns/hardened-oidc-id-token-verify-jose-jwks-20260702.md) — the reusable pattern (id-token-only verify, JWKS-derived alg allowlist, fail-closed config gate, cookie decode + jose/jsdom gotchas).
+
+**Residual risk / follow-ups.**
+
+- **Full end-to-end sign-in verification is deferred** to [feat-229](feat-229-chat-auth-register-oauth-client.md), the follow-up enablement ticket that registers chat's OAuth client (`jfp_chat_local`, redirect `http://localhost:3200/api/auth/callback` for local; the exact-match redirect URI per environment) in `apps/auth` — a **production auth-DB operator action** (`pnpm --filter @forge/auth seed:first-party-apps`, no deploy hook runs it), out of this codebase. feat-207 is merged (#1438) but **not yet end-to-end verified**, which is why the status stays `in-progress` rather than `complete`.
+- The world-reachable `/api/auth/*` (and the existing `/api/seeker`) routes ship **un-rate-limited** in v1 (accepted risk; a per-IP cap is a prerequisite before the audience widens).
+
+**Unblocked.** `feat-209` (`depends_on: feat-207`) is not unblocked yet — it clears only when this ticket flips to `complete` (after the enablement ticket lands and a real sign-in is verified).
 
 ## Problem
 

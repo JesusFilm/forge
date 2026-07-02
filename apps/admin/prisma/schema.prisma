@@ -824,6 +824,7 @@ model Language {
   locales          LanguageLocale[]
   videoDubs        VideoDub[]
   videoLocales     VideoLocale[]
+  watchEvents      WatchEvent[]
   videoSubtitles   VideoSubtitle[]
   studyQuestions   VideoStudyQuestion[]
   countryLanguages CountryLanguage[]
@@ -1153,6 +1154,7 @@ model Video {
   keywords       VideoKeyword[]
   scenes         VideoScene[]
   transcripts    VideoTranscript[]
+  watchEvents    WatchEvent[]
   parents        VideoRelation[]      @relation("VideoParents")
   children       VideoRelation[]      @relation("VideoChildren")
 
@@ -1283,7 +1285,8 @@ model VideoDub {
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
-  downloads VideoDubDownload[]
+  downloads   VideoDubDownload[]
+  watchEvents WatchEvent[]
 
   @@index([videoId])
   @@index([languageId])
@@ -1291,6 +1294,30 @@ model VideoDub {
   @@index([muxVideoId])
   @@index([deletedAt])
   @@map("video_dub")
+}
+
+model WatchEvent {
+  id               String    @id @default(cuid())
+  authSubject      String    @map("auth_subject")
+  eventType        String    @map("event_type")
+  videoId          String    @map("video_id")
+  video            Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoDubId       String?   @map("video_dub_id")
+  videoDub         VideoDub? @relation(fields: [videoDubId], references: [id], onDelete: SetNull)
+  languageId       String?   @map("language_id")
+  language         Language? @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  positionSeconds  Int?      @map("position_seconds")
+  durationSeconds  Int?      @map("duration_seconds")
+  progress         Float?
+  requestSessionId String?   @map("request_session_id")
+  occurredAt       DateTime  @default(now()) @map("occurred_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([authSubject, occurredAt])
+  @@index([videoId, occurredAt])
+  @@index([videoDubId])
+  @@index([languageId])
+  @@map("watch_event")
 }
 
 /// A downloadable quality tier (e.g. mp4 480p, 720p, 1080p) of a VideoDub.
@@ -1442,6 +1469,29 @@ model BibleCitation {
   @@index([bibleBookId])
   @@index([deletedAt])
   @@map("bible_citation")
+}
+
+/// Cached scripture text fetched from an approved remote Bible provider.
+model BiblePassageCache {
+  id                  String   @id @default(cuid())
+  provider            String
+  versionId           String   @map("version_id")
+  reference           String
+  contentFormat       String   @default("text") @map("content_format")
+  content             String
+  humanReference      String?  @map("human_reference")
+  versionAbbreviation String?  @map("version_abbreviation")
+  versionTitle        String?  @map("version_title")
+  copyright           String
+  publisherUrl        String?  @map("publisher_url")
+  fetchedAt           DateTime @default(now()) @map("fetched_at")
+  expiresAt           DateTime @map("expires_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, versionId, reference, contentFormat])
+  @@index([expiresAt])
+  @@map("bible_passage_cache")
 }
 
 /// A timecoded scene segment of a VideoEdition. Scenes follow the edition's

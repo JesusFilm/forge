@@ -354,6 +354,26 @@ export const GET_VIDEO_DUB = adminGraphql(
 
 export type WatchDubData = AdminResultOf<typeof GET_VIDEO_DUB>
 
+// Series-download resolution probe: ONLY the dub id/language index. The full
+// GET_VIDEO_BY_SLUG payload on 2000+-dub segments made 61-episode resolution
+// take minutes and blow the per-episode timeout; this keeps it to a few KB.
+export const GET_VIDEO_DUB_INDEX = adminGraphql(`
+  query GetVideoDubIndex($slug: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
+      variants: dubs {
+        documentId: id
+        published
+        language {
+          slug
+        }
+      }
+    }
+  }
+`)
+
+export type WatchDubIndexData = AdminResultOf<typeof GET_VIDEO_DUB_INDEX>
+
 // ── Watch Home bulk query (card-lean by design) ─────────────────────
 // Web's WatchHomeVideo fragment MINUS `variants: dubs`: the ~30-id bulk fetch includes the JESUS film whose
 // ~2,259 dubs re-create the 9.5MB incident (KTD-2). Hero resolves HLS lazily (useHeroStream). NEVER add `dubs`

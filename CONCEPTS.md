@@ -391,6 +391,28 @@ The app-wide, persisted audio- and subtitle-language choice that carries across 
 
 Identity always keys on the Language slug; the cached name paints labels instantly on a cold load but is never used for matching. Toggling subtitles on or off changes visibility only — it never rewrites the stored language, which only an explicit pick changes.
 
+## Offline downloads
+
+### Download Record
+
+The persisted per-Video manifest entry that owns an offline copy's lifecycle — one record per Video, moving through queued, downloading, paused, downloaded, failed, or canceled. A record stores stable identity (which Dub and rendition) rather than volatile signed URLs, so every start and restart re-resolves a fresh URL from identity; the record is the single source the library rows, series badges, and batch aggregates all derive from.
+
+### Batch Placeholder
+
+A bare queued Download Record — no partial or committed file yet — persisted up front for every episode when a series batch begins, so waiting episodes show a badge and are covered by Cancel All before their transfer exists. Bare-queued is the batch's ownership signature: the start path adopts its own placeholder and drives it forward, where any other live record would be refused as already existing.
+
+### Batch Pump
+
+The named process that drains a series batch strictly in episode order: one native download at a time, the next starting only when the previous reaches a terminal state. The pump's queue lives in memory while placeholders persist, so an app relaunch re-seeds surviving placeholders into a fresh queue rather than restarting them in parallel. A paused batch episode deliberately keeps its slot — Pause All halts the whole batch — while paused downloads outside the batch never block it.
+
+### Swap
+
+The non-destructive replacement of a downloaded copy with a different quality or language: the new copy downloads alongside the old, which stays playable until the new one commits, and canceling mid-swap reverts to the old copy rather than deleting it.
+
+### Supersede
+
+Stopping an in-flight download's native task and neutralizing its callbacks — without touching its record — so a replacement download can safely reuse the same Video's task identity. Needed because the native downloader routes terminal events by task id to whichever task currently holds it, so an un-superseded old task's dying event could strike its replacement.
+
 ## AI chat
 
 ### Seeker Agent

@@ -36,6 +36,12 @@ export const AUTH_SCOPES = [
     description: "Allow sign-in to the Mastra Studio gateway.",
   },
   {
+    key: "web:watch-events:write",
+    label: "Record watch activity",
+    description:
+      "Allow Web to record meaningful signed-in video watch activity.",
+  },
+  {
     key: "admin:manager-session:validate",
     label: "Validate Manager sessions",
     description:

@@ -23,6 +23,7 @@ import {
   FloatingSearchPinnedContext,
   type FloatingSearchPinnedContextValue,
 } from "./FloatingSearchContext"
+import { AccountControl } from "@/components/watch/AccountControl"
 import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
@@ -452,7 +453,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             onOpen={openSearch}
           />
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-end md:h-[52px] md:w-12">
+        <div className="flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2">
           {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
             <button
               type="button"
@@ -468,6 +469,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
               />
             </button>
           ) : null}
+          <AccountControl />
         </div>
       </header>
       {searchControllerEnabled ? (

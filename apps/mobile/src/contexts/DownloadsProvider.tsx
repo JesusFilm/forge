@@ -14,8 +14,12 @@ import {
   configureDownloadEngine,
   listExistingDownloadTasks,
   notifyIosBackgroundComplete,
+  pauseTask,
+  resumeTask,
   startMediaDownload,
+  stopTask,
   wireExistingTask,
+  type EngineTask,
   type MediaDownloadHandlers,
 } from "../lib/downloadEngine"
 import { resolveBundle } from "../lib/downloadOutcome"
@@ -49,10 +53,15 @@ import {
   type OfflineDownloadRecord,
   type SwapFrom,
 } from "../lib/offlineManifest"
+import {
+  canQueueBatchDownload,
+  nextBatchAction,
+} from "../lib/batchDownloadQueue"
 import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
+import { decideCancelAction } from "../lib/downloadControls"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import { validateActionUrl } from "../lib/validateUrl"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
@@ -81,7 +90,10 @@ export type StartDownloadRequest = {
 
 export type StartDownloadResult =
   | { ok: true }
-  | { ok: false; reason: "exists" | "insufficient-storage" | "error" }
+  | {
+      ok: false
+      reason: "exists" | "insufficient-storage" | "error" | "canceled"
+    }
 
 type DownloadsContextValue = {
   /** False until the persisted manifest has been read. */
@@ -99,6 +111,14 @@ type DownloadsContextValue = {
   /** Swap a downloaded video to a new quality/language, non-destructively. */
   swapDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /**
+   * Series batch entry point (R14): accept an episode into the sequential
+   * queue instead of starting immediately — its `queued` placeholder must
+   * already be persisted (queueBatchRecords) so badges/cancel-all cover the wait.
+   */
+  queueBatchDownload: (
+    request: StartDownloadRequest,
+  ) => Promise<StartDownloadResult>
+  /**
    * Durable batch pre-persist (series download-all): write a `queued` record per
    * request synchronously, BEFORE any network await, so a backgrounding mid-batch
    * still completes via the launch reattach (`requeue` re-resolves the URL and
@@ -109,6 +129,14 @@ type DownloadsContextValue = {
   queueBatchRecords: (requests: StartDownloadRequest[]) => Promise<void>
   /** Remove an offline copy: its files and its manifest entry. */
   deleteDownload: (videoSlug: string) => Promise<void>
+  /** Pause an in-flight download (keeps the task; resume continues in place). */
+  pauseDownload: (videoSlug: string) => Promise<void>
+  /** Resume a paused download; restarts cleanly if the task didn't survive. */
+  resumeDownload: (videoSlug: string) => Promise<void>
+  /** Cancel an in-flight download: stop the transfer and remove it (R1). */
+  cancelDownload: (videoSlug: string) => Promise<void>
+  /** Stop an in-flight task without deleting its record (U4 language-switch). */
+  supersedeDownload: (videoSlug: string) => Promise<void>
 }
 
 const DownloadsContext = createContext<DownloadsContextValue | null>(null)
@@ -168,6 +196,31 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const recordsRef = useRef(records)
   recordsRef.current = records
+
+  // U2: live native task handles keyed by slug, so pause/resume/cancel/supersede
+  // (U3/U4) can act on an in-flight transfer. Populated on start/swap/restart and
+  // on relaunch reattach; entries are dropped when a task reaches a terminal event.
+  const taskRegistry = useRef(new Map<string, EngineTask>())
+
+  // U3: dedupe concurrent restarts (double-tap resume). A resume with no live
+  // task re-resolves for ~10s before its task registers, so guard synchronously.
+  const restartingRef = useRef(new Set<string>())
+
+  // R14: strict-sequential batch queue — pending requests in episode order,
+  // the slugs any batch enqueued this session (scopes pump occupancy), and a
+  // single-flight guard so overlapping pump wakeups can't double-start.
+  const batchQueueRef = useRef<StartDownloadRequest[]>([])
+  const batchSlugsRef = useRef<Set<string>>(new Set())
+  const batchPumpingRef = useRef(false)
+  // Stable handle so the launch-reattach effect (defined before the pump) can
+  // wake it after reseeding relaunched placeholders (review #2).
+  const batchPumpRef = useRef<() => void>(() => {})
+
+  const dropFromBatchQueue = useCallback((videoSlug: string) => {
+    batchQueueRef.current = batchQueueRef.current.filter(
+      (request) => request.videoSlug !== videoSlug,
+    )
+  }, [])
 
   const { wifiOnly } = useWatchPreferences()
   // Read inside the launch-reattach effect without making it re-run (and re-queue
@@ -292,10 +345,26 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const deleteDownload = useCallback(
     async (videoSlug: string) => {
+      // A deleted slug must not restart from the batch queue (R14), nor keep
+      // occupying the batch slot via batchSlugs scoping (review #5).
+      dropFromBatchQueue(videoSlug)
+      batchSlugsRef.current.delete(videoSlug)
+      // R1: stop the in-flight native transfer BEFORE removing files/record, so
+      // it doesn't keep downloading and no late done-callback writes into the
+      // removed dir. No live task (already downloaded/failed) → just remove.
+      const task = taskRegistry.current.get(videoSlug)
+      if (task) {
+        taskRegistry.current.delete(videoSlug)
+        try {
+          await stopTask(task)
+        } catch {
+          // Best-effort stop; remove regardless so the UI stays consistent.
+        }
+      }
       await removeVideoDir(videoSlug)
       await removeRecord(videoSlug)
     },
-    [removeRecord],
+    [removeRecord, dropFromBatchQueue],
   )
 
   // Build the native event handlers for one download, bound to its identity and
@@ -310,9 +379,16 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       fallbackTotalBytes: number
       subtitleLanguageSlug: string | null
       subtitleUrl: string | null
+      /** U6: lazy subtitle-URL resolver for the reattach path (no persisted URL). */
+      resolveSubtitleUrl?: () => Promise<string | null>
       posterUrl: string | null
     }): MediaDownloadHandlers => {
       const { videoSlug, committedPath, pendingPath, fallbackTotalBytes } = args
+
+      // U4/KTD3: a `canceled` interruption that lands before this task's onBegin
+      // is a stale terminal from a superseded old task that the native layer
+      // routed to this reused slug — not a real cancel. Guard the delete on it.
+      let hasBegun = false
 
       const patch = (fields: Partial<OfflineDownloadRecord>) => {
         const current = recordsRef.current[videoSlug]
@@ -357,16 +433,27 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           }
           let subtitleVerified = false
           let subtitleTerminallyFailed = false
-          if (args.subtitleLanguageSlug && args.subtitleUrl) {
+          // U6: the reattach path has no persisted subtitle URL, so re-resolve it
+          // lazily HERE (at commit) — the media task already survived, so wiring
+          // was never blocked on the network round-trip.
+          let subtitleUrl = args.subtitleUrl
+          if (
+            args.subtitleLanguageSlug &&
+            !subtitleUrl &&
+            args.resolveSubtitleUrl
+          ) {
+            subtitleUrl = await args.resolveSubtitleUrl()
+          }
+          if (args.subtitleLanguageSlug && subtitleUrl) {
             // Validate the CMS-sourced URL before fetching (CLAUDE.md: validate
             // all CMS URLs). An unsafe URL is a terminal subtitle failure —
             // media still completes, the subtitle degrades.
-            if (!validateActionUrl(args.subtitleUrl)) {
+            if (!validateActionUrl(subtitleUrl)) {
               subtitleTerminallyFailed = true
             } else {
               try {
                 await downloadToFile(
-                  args.subtitleUrl,
+                  subtitleUrl,
                   buildSubtitlePath(
                     OFFLINE_ROOT,
                     videoSlug,
@@ -430,16 +517,19 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       }
 
       return {
-        onBegin: ({ expectedBytes }) =>
+        onBegin: ({ expectedBytes }) => {
+          hasBegun = true
           patch({
             totalBytes: expectedBytes > 0 ? expectedBytes : fallbackTotalBytes,
-          }),
+          })
+        },
         onProgress: ({ bytesDownloaded, bytesTotal }) =>
           patch({
             bytesWritten: bytesDownloaded,
             totalBytes: bytesTotal || fallbackTotalBytes,
           }),
         onDone: ({ location }) => {
+          taskRegistry.current.delete(videoSlug)
           // Signal iOS only AFTER finalize settles; signalling first lets iOS
           // suspend mid-finalize on a background-only launch, cutting sidecars
           // short. `finally` so we always signal — else iOS throttles future background time.
@@ -448,12 +538,23 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           )
         },
         onInterruption: (classification) => {
+          // Any native interruption is terminal for this task handle (a
+          // connectivity/wifi/background error stops it). A user pause never
+          // arrives here — it sets state directly (U3) and keeps the handle.
+          taskRegistry.current.delete(videoSlug)
           const swap = recordsRef.current[videoSlug]?.swapFrom
           if (swap) {
             // A swap was interrupted — keep the original copy intact.
             revertSwap(swap)
           } else if (classification.state === "canceled") {
-            void deleteDownload(videoSlug)
+            // Skip the delete when (KTD3) the event arrives before this task ever
+            // began — a stale terminal from a SUPERSEDED old task the native layer
+            // routed to this reused slug — or (KTD2) the record is already
+            // `paused` — the native pause surfacing as cancel-with-resume-data.
+            // Neither is a genuine cancel.
+            if (hasBegun && recordsRef.current[videoSlug]?.state !== "paused") {
+              void deleteDownload(videoSlug)
+            }
           } else {
             patch({ state: classification.state })
           }
@@ -462,6 +563,84 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       }
     },
     [writeRecord, deleteDownload],
+  )
+
+  // U3: restart an interrupted download — re-resolve the URL, rewrite it
+  // `downloading`, start, and register. Hoisted from the reattach effect so
+  // resumeDownload's no-live-task branch reuses one restart path. Best-effort: a
+  // null re-resolve (offline / unsafe URL) leaves the record for the next launch.
+  // U6 threads the re-resolved subtitle through here.
+  const restartDownload = useCallback(
+    async (record: OfflineDownloadRecord) => {
+      if (restartingRef.current.has(record.videoSlug)) return
+      restartingRef.current.add(record.videoSlug)
+      try {
+        const refreshed = await reresolveMediaUrl({
+          dubDocumentId: record.dubDocumentId,
+          renditionDocumentId: record.renditionDocumentId,
+          qualityLabel: record.qualityLabel,
+          totalBytes: record.totalBytes,
+          subtitleLanguageSlug: record.subtitleLanguageSlug,
+        })
+        if (!refreshed || !validateActionUrl(refreshed.mediaUrl)) return
+        const nonce = `${Date.now().toString(36)}-${Math.floor(
+          Math.random() * 1e9,
+        ).toString(36)}`
+        const pendingPath =
+          record.pendingPath ??
+          buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
+        const committedPath = buildCommittedPath(
+          OFFLINE_ROOT,
+          record.videoSlug,
+          record.renditionDocumentId,
+        )
+        try {
+          // Engine config is applied once by the mount effect — never here.
+          // Re-applying recreates the URLSession and cancels sibling restarts.
+          await ensureVideoDir(record.videoSlug)
+        } catch {
+          return
+        }
+        await writeRecord({
+          ...record,
+          state: "downloading",
+          committedPath: null,
+          pendingPath,
+          bytesWritten: 0,
+        })
+        let task: EngineTask
+        try {
+          task = startMediaDownload(
+            {
+              id: record.videoSlug,
+              url: refreshed.mediaUrl,
+              destination: pendingPath,
+              allowCellular: !wifiOnlyRef.current,
+            },
+            buildHandlers({
+              videoSlug: record.videoSlug,
+              committedPath,
+              pendingPath,
+              fallbackTotalBytes: record.totalBytes,
+              // U6: restart re-resolves the whole dub, so the fresh subtitle URL is
+              // already in hand — thread it straight through.
+              subtitleLanguageSlug: record.subtitleLanguageSlug,
+              subtitleUrl: refreshed.subtitleUrl,
+              posterUrl: null,
+            }),
+          )
+        } catch {
+          // Engine start threw — mark failed (delete/retry stay available)
+          // instead of stranding a phantom "downloading" record with no task.
+          await writeRecord({ ...record, state: "failed" })
+          return
+        }
+        taskRegistry.current.set(record.videoSlug, task)
+      } finally {
+        restartingRef.current.delete(record.videoSlug)
+      }
+    },
+    [writeRecord, buildHandlers],
   )
 
   // Defensive launch reattach: reconcile records vs live tasks + on-disk files,
@@ -507,66 +686,6 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           committedFileSlugs,
         })
 
-        // U6: re-resolve and restart a transfer interrupted (force-quit /
-        // OS-evicted → no live task) or whose committed file went missing
-        // ("repair"). Offline → reresolve null → leave the record for next launch.
-        const restartInterrupted = async (record: OfflineDownloadRecord) => {
-          const refreshed = await reresolveMediaUrl({
-            dubDocumentId: record.dubDocumentId,
-            renditionDocumentId: record.renditionDocumentId,
-            qualityLabel: record.qualityLabel,
-            totalBytes: record.totalBytes,
-            subtitleLanguageSlug: record.subtitleLanguageSlug,
-          })
-          if (cancelled || !refreshed) return
-          // Don't restart against an unsafe URL — leave the record for a future
-          // launch to re-resolve.
-          if (!validateActionUrl(refreshed.mediaUrl)) return
-          const nonce = `${Date.now().toString(36)}-${Math.floor(
-            Math.random() * 1e9,
-          ).toString(36)}`
-          const pendingPath =
-            record.pendingPath ??
-            buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
-          const committedPath = buildCommittedPath(
-            OFFLINE_ROOT,
-            record.videoSlug,
-            record.renditionDocumentId,
-          )
-          try {
-            // Engine config is applied once by the mount effect — never here.
-            // Re-applying recreates the URLSession and cancels sibling restarts.
-            await ensureVideoDir(record.videoSlug)
-          } catch {
-            return
-          }
-          if (cancelled) return
-          await writeRecord({
-            ...record,
-            state: "downloading",
-            committedPath: null,
-            pendingPath,
-            bytesWritten: 0,
-          })
-          startMediaDownload(
-            {
-              id: record.videoSlug,
-              url: refreshed.mediaUrl,
-              destination: pendingPath,
-              allowCellular: !wifiOnlyRef.current,
-            },
-            buildHandlers({
-              videoSlug: record.videoSlug,
-              committedPath,
-              pendingPath,
-              fallbackTotalBytes: record.totalBytes,
-              subtitleLanguageSlug: null,
-              subtitleUrl: null,
-              posterUrl: null,
-            }),
-          )
-        }
-
         const droppedSlugs = new Set<string>()
         for (const action of actions) {
           if (cancelled) return
@@ -578,7 +697,35 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             action.action === "repair"
           ) {
             const record = recordsRef.current[action.videoSlug]
-            if (record) await restartInterrupted(record)
+            if (record && isBatchPlaceholderRecord(record)) {
+              // A relaunched batch placeholder re-enters the sequential queue —
+              // restarting it directly would fan out every queued episode as a
+              // concurrent native task, abandoning R14 ordering (review #2).
+              batchQueueRef.current = [
+                ...batchQueueRef.current,
+                {
+                  videoSlug: record.videoSlug,
+                  title: record.title,
+                  dubDocumentId: record.dubDocumentId,
+                  rendition: {
+                    documentId: record.renditionDocumentId,
+                    quality: record.qualityLabel,
+                    size:
+                      record.totalBytes > 0 ? String(record.totalBytes) : "",
+                    // No persisted URL — startDownload re-resolves; an empty
+                    // fallback fails validation and surfaces a failed badge.
+                    url: "",
+                  },
+                  subtitleLanguageSlug: record.subtitleLanguageSlug,
+                  subtitleUrl: null,
+                  posterUrl: null,
+                  allowCellular: !wifiOnlyRef.current,
+                },
+              ]
+              batchSlugsRef.current.add(record.videoSlug)
+            } else if (record) {
+              await restartDownload(record)
+            }
           } else if (action.action === "cleanupOrphanPending") {
             // A `.pending` partial with no in-flight record backing it — delete
             // the leaked bytes and clear the stale path so it isn't re-flagged
@@ -612,9 +759,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           const pendingPath =
             record.pendingPath ??
             buildPendingPath(OFFLINE_ROOT, record.videoSlug, "reattach")
-          // The chosen subtitle's volatile URL is not persisted, so a sidecar
-          // can't be re-fetched on reattach — commit media-only (v1 emits no
-          // subtitles; sidecar re-association is a follow-up).
+          // U6: the subtitle URL isn't persisted, but the sidecar is re-resolved
+          // lazily at commit from the record's stored language slug — so a
+          // reattached download still commits with its chosen subtitle (R3).
           wireExistingTask(
             task,
             buildHandlers({
@@ -622,12 +769,28 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
               committedPath,
               pendingPath,
               fallbackTotalBytes: record.totalBytes,
-              subtitleLanguageSlug: null,
+              // U6: the surviving task has no persisted subtitle URL — re-resolve
+              // it lazily at commit so wiring is never blocked on the network.
+              subtitleLanguageSlug: record.subtitleLanguageSlug,
               subtitleUrl: null,
+              resolveSubtitleUrl: async () =>
+                (
+                  await reresolveMediaUrl({
+                    dubDocumentId: record.dubDocumentId,
+                    renditionDocumentId: record.renditionDocumentId,
+                    qualityLabel: record.qualityLabel,
+                    totalBytes: record.totalBytes,
+                    subtitleLanguageSlug: record.subtitleLanguageSlug,
+                  })
+                )?.subtitleUrl ?? null,
               posterUrl: null,
             }),
           )
+          taskRegistry.current.set(task.id, task)
         }
+        // Drain any placeholders reseeded above (a pure-requeue reconcile may
+        // not touch `records`, so the records-effect alone won't wake the pump).
+        batchPumpRef.current()
       } catch {
         // Reattach is best-effort and must never break boot.
       }
@@ -635,7 +798,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isReady, removeRecord, buildHandlers, writeRecord])
+  }, [isReady, removeRecord, buildHandlers, writeRecord, restartDownload])
 
   const startDownload = useCallback(
     async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
@@ -669,6 +832,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       } catch {
         if (isOwnPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "error" }
+      }
+
+      // A cancel/delete during the awaits above removed our adopted placeholder;
+      // proceeding would resurrect the canceled record (review #1). Bail — the
+      // cancel already cleaned the record and dir.
+      if (isOwnPlaceholder && !recordsRef.current[videoSlug]) {
+        return { ok: false, reason: "canceled" }
       }
 
       const nonce = `${Date.now().toString(36)}-${Math.floor(
@@ -708,6 +878,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
 
+      // A cancel/delete during the reresolve removed the record we wrote; the
+      // native task hasn't started, so starting now would zombie-download into
+      // a dir the cancel already removed (review #1). Bail without re-creating.
+      if (recordsRef.current[videoSlug]?.state !== "downloading") {
+        return { ok: false, reason: "canceled" }
+      }
+
       const mediaUrl = fresh?.mediaUrl ?? rendition.url
       // Validate the CMS-sourced media URL before handing it to the native
       // downloader (CLAUDE.md invariant). Both candidates failing means we have
@@ -717,26 +894,129 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
-      startMediaDownload(
-        {
-          id: videoSlug,
-          url: mediaUrl,
-          destination: pendingPath,
-          allowCellular: request.allowCellular,
-        },
-        buildHandlers({
-          videoSlug,
-          committedPath,
-          pendingPath,
-          fallbackTotalBytes: Number(rendition.size) || 0,
-          subtitleLanguageSlug: request.subtitleLanguageSlug,
-          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
-          posterUrl: request.posterUrl,
-        }),
-      )
+      // The engine can throw synchronously (missing native module, session init
+      // failure) — drop the provisional record so no phantom "downloading" row
+      // survives a start that never produced a task.
+      let task: EngineTask
+      try {
+        task = startMediaDownload(
+          {
+            id: videoSlug,
+            url: mediaUrl,
+            destination: pendingPath,
+            allowCellular: request.allowCellular,
+          },
+          buildHandlers({
+            videoSlug,
+            committedPath,
+            pendingPath,
+            fallbackTotalBytes: Number(rendition.size) || 0,
+            subtitleLanguageSlug: request.subtitleLanguageSlug,
+            subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
+            posterUrl: request.posterUrl,
+          }),
+        )
+      } catch {
+        await removeRecord(videoSlug)
+        return { ok: false, reason: "error" }
+      }
+      taskRegistry.current.set(videoSlug, task)
       return { ok: true }
     },
     [writeRecord, removeRecord, buildHandlers],
+  )
+
+  // R14: drain the batch queue — start the head episode when the single slot
+  // is free, drop stale heads. Single-flight; every terminal path mutates
+  // `records`, whose effect below re-invokes the pump, so no missed wakeups.
+  const pumpBatchQueue = useCallback(() => {
+    if (batchPumpingRef.current) return
+    batchPumpingRef.current = true
+    void (async () => {
+      try {
+        while (true) {
+          const action = nextBatchAction(
+            recordsRef.current,
+            batchQueueRef.current,
+            batchSlugsRef.current,
+          )
+          if (action.kind === "empty") {
+            // Batch fully drained: release the occupancy scope so a later
+            // manual download of a once-batched slug can't hold the slot.
+            const stillActive = Object.values(recordsRef.current).some(
+              (r) =>
+                batchSlugsRef.current.has(r.videoSlug) &&
+                (r.state === "downloading" || r.state === "paused"),
+            )
+            if (!stillActive) batchSlugsRef.current = new Set()
+            return
+          }
+          if (action.kind === "wait") return
+          if (action.kind === "drop") {
+            dropFromBatchQueue(action.videoSlug)
+            continue
+          }
+          dropFromBatchQueue(action.request.videoSlug)
+          const result = await startDownload(action.request)
+          // A pump-time failure removes the adopted placeholder, silently
+          // erasing the episode the sheet already accepted — resurface it as
+          // `failed` so the badge and Library offer delete/retry (review #4).
+          if (
+            !result.ok &&
+            result.reason !== "exists" &&
+            result.reason !== "canceled" &&
+            !recordsRef.current[action.request.videoSlug]
+          ) {
+            const r = action.request
+            await writeRecord({
+              version: OFFLINE_MANIFEST_VERSION,
+              videoSlug: r.videoSlug,
+              dubDocumentId: r.dubDocumentId,
+              renditionDocumentId: r.rendition.documentId,
+              qualityLabel: r.rendition.quality,
+              title: r.title,
+              subtitleLanguageSlug: r.subtitleLanguageSlug,
+              state: "failed",
+              committedPath: null,
+              pendingPath: null,
+              posterPath: null,
+              bytesWritten: 0,
+              totalBytes: Number(r.rendition.size) || 0,
+            })
+          }
+        }
+      } finally {
+        batchPumpingRef.current = false
+      }
+    })()
+  }, [startDownload, dropFromBatchQueue, writeRecord])
+  batchPumpRef.current = pumpBatchQueue
+
+  useEffect(() => {
+    if (!isReady) return
+    pumpBatchQueue()
+  }, [records, isReady, pumpBatchQueue])
+
+  // R14: accept a batch episode into the sequential queue. The caller has
+  // already persisted its `queued` placeholder (queueBatchRecords), so the
+  // grid badge and cancel-all work while the episode waits its turn.
+  const queueBatchDownload = useCallback(
+    async (request: StartDownloadRequest): Promise<StartDownloadResult> => {
+      if (
+        !canQueueBatchDownload(
+          recordsRef.current,
+          batchQueueRef.current,
+          request.videoSlug,
+        )
+      ) {
+        return { ok: false, reason: "exists" }
+      }
+      batchQueueRef.current = [...batchQueueRef.current, request]
+      batchSlugsRef.current.add(request.videoSlug)
+      pumpBatchQueue()
+      return { ok: true }
+    },
+    [pumpBatchQueue],
   )
 
   // U8: non-destructive quality/language swap on an already-downloaded video.
@@ -813,6 +1093,14 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
 
+      // A cancel during the reresolve already reverted the record to the old
+      // copy (swapFrom cleared) — starting now would clobber that revert and
+      // orphan a new file (review #1 sibling). Bail; the revert stands.
+      const midSwap = recordsRef.current[videoSlug]
+      if (midSwap?.state !== "downloading" || !midSwap.swapFrom) {
+        return { ok: false, reason: "canceled" }
+      }
+
       const mediaUrl = fresh?.mediaUrl ?? rendition.url
       // Validate the CMS-sourced media URL before starting. On failure restore
       // the pre-swap record (the old copy is untouched; no pending file exists
@@ -822,26 +1110,137 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
-      startMediaDownload(
-        {
-          id: videoSlug,
-          url: mediaUrl,
-          destination: pendingPath,
-          allowCellular: request.allowCellular,
-        },
-        buildHandlers({
-          videoSlug,
-          committedPath,
-          pendingPath,
-          fallbackTotalBytes: Number(rendition.size) || 0,
-          subtitleLanguageSlug: request.subtitleLanguageSlug,
-          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
-          posterUrl: request.posterUrl,
-        }),
-      )
+      // Engine start threw before producing a task — restore the pre-swap
+      // record (old copy + file untouched; no pending file exists yet).
+      let task: EngineTask
+      try {
+        task = startMediaDownload(
+          {
+            id: videoSlug,
+            url: mediaUrl,
+            destination: pendingPath,
+            allowCellular: request.allowCellular,
+          },
+          buildHandlers({
+            videoSlug,
+            committedPath,
+            pendingPath,
+            fallbackTotalBytes: Number(rendition.size) || 0,
+            subtitleLanguageSlug: request.subtitleLanguageSlug,
+            subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
+            posterUrl: request.posterUrl,
+          }),
+        )
+      } catch {
+        await writeRecord(existing)
+        return { ok: false, reason: "error" }
+      }
+      taskRegistry.current.set(videoSlug, task)
       return { ok: true }
     },
     [writeRecord, buildHandlers, startDownload],
+  )
+
+  // U3: in-flight controls. pause sets state directly and keeps the task handle;
+  // resume continues in place or restarts if the task didn't survive (R5); cancel
+  // stops + removes (R1) via deleteDownload; supersede (U4) stops WITHOUT deleting
+  // so the language-switch replacement can claim the slug.
+  const pauseDownload = useCallback(
+    async (videoSlug: string) => {
+      const current = recordsRef.current[videoSlug]
+      const task = taskRegistry.current.get(videoSlug)
+      if (!task || current?.state !== "downloading") return
+      void writeRecord({ ...current, state: "paused" })
+      try {
+        await pauseTask(task)
+      } catch {
+        // Best-effort; the record already reflects paused.
+      }
+    },
+    [writeRecord],
+  )
+
+  const resumeDownload = useCallback(
+    async (videoSlug: string) => {
+      const current = recordsRef.current[videoSlug]
+      if (current?.state !== "paused") return
+      const task = taskRegistry.current.get(videoSlug)
+      if (task) {
+        void writeRecord({ ...current, state: "downloading" })
+        try {
+          await resumeTask(task)
+          return
+        } catch {
+          // Native resume failed — fall through to a clean restart.
+        }
+      }
+      // No live task survived the pause/relaunch — restart cleanly (R5/AE4).
+      await restartDownload(current)
+    },
+    [writeRecord, restartDownload],
+  )
+
+  const cancelDownload = useCallback(
+    async (videoSlug: string) => {
+      const current = recordsRef.current[videoSlug]
+      const action = decideCancelAction(current)
+      if (action === "ignore" || !current) return
+      // A canceled slug must not restart from the batch queue (R14), nor keep
+      // occupying the batch slot via batchSlugs scoping (review #5).
+      dropFromBatchQueue(videoSlug)
+      batchSlugsRef.current.delete(videoSlug)
+      const task = taskRegistry.current.get(videoSlug)
+      if (task) {
+        taskRegistry.current.delete(videoSlug)
+        try {
+          await stopTask(task)
+        } catch {
+          // Best-effort stop.
+        }
+      }
+      // A swap in flight reverts to the old copy (keep the previously-downloaded
+      // file that shares the video dir); a fresh download is removed entirely.
+      if (action === "revert" && current.swapFrom) {
+        const swap = current.swapFrom
+        if (current.pendingPath) await removeUri(current.pendingPath)
+        void writeRecord({
+          ...current,
+          state: "downloaded",
+          committedPath: swap.committedPath,
+          renditionDocumentId: swap.renditionDocumentId,
+          qualityLabel: swap.qualityLabel,
+          subtitleLanguageSlug: swap.subtitleLanguageSlug,
+          posterPath: swap.posterPath,
+          totalBytes: swap.totalBytes,
+          bytesWritten: swap.totalBytes,
+          pendingPath: null,
+          swapFrom: null,
+        })
+        return
+      }
+      // A fresh in-flight download → remove it entirely.
+      await removeVideoDir(videoSlug)
+      await removeRecord(videoSlug)
+    },
+    [writeRecord, removeRecord, dropFromBatchQueue],
+  )
+
+  const supersedeDownload = useCallback(
+    async (videoSlug: string) => {
+      // A superseded slug's stale queue entry must not race the replacement (R14).
+      dropFromBatchQueue(videoSlug)
+      // U4: stop the in-flight task WITHOUT removing its record, neutralizing its
+      // terminal callbacks so the language-switch replacement can reclaim the slug.
+      const task = taskRegistry.current.get(videoSlug)
+      if (!task) return
+      taskRegistry.current.delete(videoSlug)
+      try {
+        await stopTask(task, { supersede: true })
+      } catch {
+        // Best-effort supersede stop.
+      }
+    },
+    [dropFromBatchQueue],
   )
 
   const value = useMemo<DownloadsContextValue>(
@@ -866,16 +1265,26 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       ),
       startDownload,
       swapDownload,
+      queueBatchDownload,
       queueBatchRecords,
       deleteDownload,
+      pauseDownload,
+      resumeDownload,
+      cancelDownload,
+      supersedeDownload,
     }),
     [
       records,
       isReady,
       startDownload,
       swapDownload,
+      queueBatchDownload,
       queueBatchRecords,
       deleteDownload,
+      pauseDownload,
+      resumeDownload,
+      cancelDownload,
+      supersedeDownload,
     ],
   )
 

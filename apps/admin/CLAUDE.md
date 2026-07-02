@@ -2405,6 +2405,19 @@ fresh DB-backed key**:
     §"Recovery when contracts are structurally broken" — the
     `import-from-env` deletion case.
 
+## Scripture Passages
+
+Admin owns YouVersion provider access for Watch Bible passage rendering. Keep
+`YOUVERSION_APP_KEY` and `YOUVERSION_PASSAGE_CACHE_TTL_SECONDS` in Admin
+environments only. The approved Watch language slug / Core language id →
+YouVersion-version table lives in
+`src/services/scripture-passage.service.ts` as reviewed code; missing languages
+fall back to the launch English BSB version. Only full-Bible YouVersion
+candidates belong in the launch table; partial/NT-only candidates require
+explicit product approval. Web reads cached passage text through GraphQL
+`BibleCitation.passage(languageSlug:)`; other consumers may pass Core
+`languageId`. Web and consumers must not call the provider API directly.
+
 ## Common pitfalls (grows with each unit)
 
 - **Per-service `railway.toml` files are ignored until Config-as-code Path is set.** For Admin, set it to `apps/admin/railway.toml` before assuming code-owned config applies. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.

@@ -25,10 +25,9 @@ const {
   experienceEmptyMock,
   experienceErrorMock,
   isWatchCtaTextCopyEnabledMock,
-  isWatchYouVersionBibleQuotesEnabledMock,
   isWatchHideBibleQuotesEnabledMock,
-  fetchYouVersionBibleQuotePassagesMock,
   isWatchQuestionPanelEnabledMock,
+  getInitialSubtitleTranscriptMock,
 } = vi.hoisted(() => ({
   resolveWatchRouteBySlugMock: vi.fn(),
   resolveSeriesEpisodeBySlugMock: vi.fn(),
@@ -51,10 +50,9 @@ const {
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
   isWatchCtaTextCopyEnabledMock: vi.fn(async () => false),
-  isWatchYouVersionBibleQuotesEnabledMock: vi.fn(async () => false),
   isWatchHideBibleQuotesEnabledMock: vi.fn(async () => false),
-  fetchYouVersionBibleQuotePassagesMock: vi.fn(),
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
+  getInitialSubtitleTranscriptMock: vi.fn(),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -112,13 +110,12 @@ vi.mock("@/components/sections", () => ({
 
 vi.mock("@/lib/feature-flags", () => ({
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
-  isWatchYouVersionBibleQuotesEnabled: isWatchYouVersionBibleQuotesEnabledMock,
   isWatchHideBibleQuotesEnabled: isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
 }))
 
-vi.mock("@/lib/youversion-passage", () => ({
-  fetchYouVersionBibleQuotePassages: fetchYouVersionBibleQuotePassagesMock,
+vi.mock("@/lib/watch-transcript", () => ({
+  getInitialSubtitleTranscript: getInitialSubtitleTranscriptMock,
 }))
 
 import SlugRestPage, {
@@ -164,14 +161,12 @@ beforeEach(() => {
   experienceErrorMock.mockClear()
   isWatchCtaTextCopyEnabledMock.mockReset()
   isWatchCtaTextCopyEnabledMock.mockResolvedValue(false)
-  isWatchYouVersionBibleQuotesEnabledMock.mockReset()
-  isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(false)
   isWatchHideBibleQuotesEnabledMock.mockReset()
   isWatchHideBibleQuotesEnabledMock.mockResolvedValue(false)
-  fetchYouVersionBibleQuotePassagesMock.mockReset()
-  fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([])
   isWatchQuestionPanelEnabledMock.mockReset()
   isWatchQuestionPanelEnabledMock.mockResolvedValue(false)
+  getInitialSubtitleTranscriptMock.mockReset()
+  getInitialSubtitleTranscriptMock.mockResolvedValue(null)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -205,6 +200,7 @@ function makeWatchVideoResult(
     video: {
       documentId: "v1",
       slug: "storyclubs",
+      publishedAt: "2026-06-01T12:00:00.000Z",
       title: "StoryClubs",
       snippet: "StoryClubs snippet",
       description: "StoryClubs description",
@@ -254,6 +250,18 @@ function makeBibleCitations() {
       documentId: "bc-1",
       order: 1,
       osisId: "John.3.16",
+      passage: {
+        citationDocumentId: "bc-1",
+        content: "Server passage.",
+        copyright: "Copyright.",
+        humanReference: "John 3:16",
+        provider: "youversion",
+        publisherUrl: null,
+        reference: "JHN.3.16",
+        versionAbbreviation: "BSB",
+        versionId: 3034,
+        versionTitle: "Berean Standard Bible",
+      },
       verseEnd: null,
       verseStart: 16,
     },
@@ -447,6 +455,20 @@ async function render3Seg(slug: string, episode: string, locale: string) {
   act(() => {
     root.render(element)
   })
+}
+
+function jsonLdByType(type: string): Record<string, unknown> | null {
+  const scripts = Array.from(
+    container.querySelectorAll('script[type="application/ld+json"]'),
+  )
+  for (const script of scripts) {
+    const parsed = JSON.parse(script.textContent ?? "{}") as Record<
+      string,
+      unknown
+    >
+    if (parsed["@type"] === type) return parsed
+  }
+  return null
 }
 
 describe("Catch-all routing — one-segment collection/home branch", () => {
@@ -843,7 +865,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         canonicalParent?: { children: unknown[] }
       }>
     }
-    expect(props.initialTranscript).toBeUndefined()
+    expect(props.initialTranscript).toBeNull()
     expect(props.variant.videoEdition).toBeNull()
     expect(props.video.parents).toEqual([])
     expect(props.video.children).toEqual([])
@@ -882,11 +904,157 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       name: "Story < Clubs",
       description: "Story < Clubs description",
       url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      embedUrl: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      contentUrl: "https://cdn.example/storyclubs.m3u8",
       thumbnailUrl: [
         "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
       ],
       inLanguage: "en",
+      uploadDate: "2026-06-01T12:00:00.000Z",
       duration: "PT30S",
+      publisher: {
+        "@type": "Organization",
+        name: "Jesus Film Project",
+      },
+      potentialAction: {
+        "@type": "WatchAction",
+        target: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      },
+    })
+  })
+
+  it("passes server-parsed transcript cues to the client when subtitles exist", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const subtitles = [
+      {
+        documentId: "sub-en",
+        language: {
+          slug: "english",
+          name: "English",
+          nativeName: null,
+          bcp47: "en",
+        },
+        vttSrc: "https://cdn.example/storyclubs.vtt",
+        primary: true,
+        aiGenerated: false,
+      },
+    ]
+    ;(watchVideoResult.video as { subtitles: typeof subtitles }).subtitles =
+      subtitles
+    const initialTranscript = {
+      vttSrc: "https://cdn.example/storyclubs.vtt",
+      cues: [{ start: 1, end: 3, text: "In the beginning" }],
+    }
+    getInitialSubtitleTranscriptMock.mockResolvedValue(initialTranscript)
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(getInitialSubtitleTranscriptMock).toHaveBeenCalledWith({
+      subtitles,
+      audioSlug: "english",
+      durationSeconds: 30,
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toMatchObject({
+      initialTranscript,
+    })
+  })
+
+  it("renders breadcrumb and related-video JSON-LD without changing page UI", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const carouselChildren = [
+      {
+        documentId: "video-1",
+        slug: "storyclubs",
+        title: "StoryClubs",
+        label: "episode",
+        images: [
+          {
+            documentId: "img-storyclubs",
+            url: null,
+            thumbnail: "https://cdn.example/storyclubs-thumb.jpg",
+            mobileCinematicHigh: "https://cdn.example/storyclubs-high.jpg",
+            mobileCinematicLow: null,
+          },
+        ],
+        durationSeconds: 30,
+        muxPlaybackId: null,
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "video-2",
+        slug: "another-story",
+        title: "Another Story",
+        label: "episode",
+        images: [],
+        durationSeconds: null,
+        muxPlaybackId: null,
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(
+      watchVideoResult.video as { children: typeof carouselChildren }
+    ).children = carouselChildren
+    const parents = [
+      {
+        documentId: "parent-1",
+        slug: "jesus",
+        title: "Jesus",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: carouselChildren,
+      },
+    ]
+    ;(watchVideoResult.video as { parents: typeof parents }).parents = parents
+    ;(
+      watchVideoResult as unknown as {
+        canonicalParent: (typeof parents)[number]
+      }
+    ).canonicalParent = parents[0]!
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(jsonLdByType("BreadcrumbList")).toMatchObject({
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Watch",
+          item: "https://www.jesusfilm.org/watch",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "StoryClubs",
+          item: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+        },
+      ],
+    })
+    expect(jsonLdByType("ItemList")).toMatchObject({
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          item: {
+            "@type": "VideoObject",
+            name: "StoryClubs",
+            url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+            thumbnailUrl: ["https://cdn.example/storyclubs-high.jpg"],
+            duration: "PT30S",
+          },
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          item: {
+            "@type": "VideoObject",
+            name: "Another Story",
+            url: "https://www.jesusfilm.org/watch/another-story.html/english.html",
+          },
+        },
+      ],
     })
   })
 
@@ -904,7 +1072,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
   })
 
-  it("keeps the YouVersion Bible Quotes panel disabled by default", async () => {
+  it("passes Admin-resolved Bible passages through the Bible Quotes block", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     const bibleCitations = makeBibleCitations()
     ;(
@@ -914,61 +1082,15 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
     await render2Seg("jesus.html", "english.html")
 
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: { route: "/watch/jesus.html/english.html" },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       mergedBlocks: Array<{
         kind?: string
-        youVersionPassages?: Array<unknown>
+        passages?: Array<unknown>
       }>
     }
     expect(
       props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
-    ).toEqual([])
-  })
-
-  it("passes YouVersion passages into Bible Quotes when the LaunchDarkly flag is enabled", async () => {
-    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
-    fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([
-      {
-        citationDocumentId: "bc-1",
-        content: "Server passage.",
-        copyright: "Copyright.",
-        humanReference: "John 3:16",
-        publisherUrl: null,
-        reference: "JHN.3.16",
-        versionAbbreviation: "BSB",
-        versionId: 3034,
-        versionTitle: "Berean Standard Bible",
-      },
-    ])
-    const watchVideoResult = makeWatchVideoResult("featureFilm")
-    const bibleCitations = makeBibleCitations()
-    ;(
-      watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
-    ).bibleCitations = bibleCitations
-    mockRouteVideo(watchVideoResult)
-
-    await render2Seg("jesus.html", "english.html")
-
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: { route: "/watch/jesus.html/english.html" },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).toHaveBeenCalledWith(
-      bibleCitations,
-    )
-    const props = watchPageClientMock.mock.calls[0]?.[0] as {
-      mergedBlocks: Array<{
-        kind?: string
-        youVersionPassages?: Array<unknown>
-      }>
-    }
-    expect(
-      props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
+        ?.passages,
     ).toEqual([
       expect.objectContaining({
         content: "Server passage.",
@@ -977,9 +1099,8 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     ])
   })
 
-  it("passes the Bible Quotes hide flag to WatchPageClient and skips YouVersion fetches when enabled", async () => {
+  it("passes the Bible Quotes hide flag to WatchPageClient when enabled", async () => {
     isWatchHideBibleQuotesEnabledMock.mockResolvedValue(true)
-    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     const bibleCitations = makeBibleCitations()
     ;(
@@ -992,8 +1113,6 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(isWatchHideBibleQuotesEnabledMock).toHaveBeenCalledWith({
       custom: { route: "/watch/jesus.html/english.html" },
     })
-    expect(isWatchYouVersionBibleQuotesEnabledMock).not.toHaveBeenCalled()
-    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         hideBibleQuotes: true,
@@ -1433,7 +1552,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     )
   })
 
-  it("keeps episode YouVersion passages disabled by default", async () => {
+  it("passes Admin-resolved episode Bible passages through the Bible Quotes block", async () => {
     const episodeResult = makeEpisodeResult()
     const bibleCitations = makeBibleCitations()
     ;(
@@ -1447,74 +1566,18 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "english.html",
     )
 
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: {
-        route:
-          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-      },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       mergedBlocks: Array<{
         kind?: string
-        youVersionPassages?: Array<unknown>
+        passages?: Array<unknown>
       }>
     }
     expect(
       props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
-    ).toEqual([])
-  })
-
-  it("passes YouVersion passages into episode Bible Quotes when the LaunchDarkly flag is enabled", async () => {
-    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
-    fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([
-      {
-        citationDocumentId: "bc-1",
-        content: "Episode passage.",
-        copyright: "Copyright.",
-        humanReference: "John 3:16",
-        publisherUrl: null,
-        reference: "JHN.3.16",
-        versionAbbreviation: "BSB",
-        versionId: 3034,
-        versionTitle: "Berean Standard Bible",
-      },
-    ])
-    const episodeResult = makeEpisodeResult()
-    const bibleCitations = makeBibleCitations()
-    ;(
-      episodeResult.video as { bibleCitations?: typeof bibleCitations }
-    ).bibleCitations = bibleCitations
-    resolveSeriesEpisodeBySlugMock.mockResolvedValue(episodeResult)
-
-    await render3Seg(
-      "lumo-the-gospel-of-john.html",
-      "wedding-in-cana",
-      "english.html",
-    )
-
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: {
-        route:
-          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-      },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).toHaveBeenCalledWith(
-      bibleCitations,
-    )
-    const props = watchPageClientMock.mock.calls[0]?.[0] as {
-      mergedBlocks: Array<{
-        kind?: string
-        youVersionPassages?: Array<unknown>
-      }>
-    }
-    expect(
-      props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
+        ?.passages,
     ).toEqual([
       expect.objectContaining({
-        content: "Episode passage.",
+        content: "Server passage.",
         reference: "JHN.3.16",
       }),
     ])

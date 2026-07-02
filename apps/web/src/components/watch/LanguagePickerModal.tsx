@@ -760,6 +760,7 @@ export function LanguagePickerModal({
                 onOpenChange={(next) =>
                   setOpenComboboxState(next ? "language" : null)
                 }
+                popoverPortalContainer={portalContainer}
                 triggerWrapper={(trigger) => (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.language}
@@ -898,6 +899,7 @@ export function LanguagePickerModal({
                 onOpenChange={(next) =>
                   setOpenComboboxState(next ? "subtitles" : null)
                 }
+                popoverPortalContainer={portalContainer}
                 triggerWrapper={(trigger) => (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.subtitles}

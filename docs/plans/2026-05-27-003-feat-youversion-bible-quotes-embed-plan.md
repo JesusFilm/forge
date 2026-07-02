@@ -83,7 +83,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 - Fetch YouVersion passage and Bible-version metadata from the server with the official REST API and pass only rendered passage data into the client component: this keeps the app key out of browser bundles and request headers.
 - Gate that server fetch and compact panel behind LaunchDarkly flag `forge.watch.youVersionBibleQuotes`. The flag is temporary, default-off, and has local fallback env `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT`.
-- Add optional server config as `YOUVERSION_APP_KEY` and `YOUVERSION_DEFAULT_VERSION_ID`: the key is a server secret and the default version remains configurable without becoming a deploy blocker.
+- Add optional server config as `YOUVERSION_APP_KEY`: the key is a server secret, and the default version is owned by reviewed code so it does not become a deploy blocker.
 - Default version ID to `3034` (BSB) as the configurable starting point: live API smoke showed this app key can read `3034` passages, while `111` version metadata is readable but passage requests return `403 "Access denied for 111"`.
 - Avoid a same-origin public proxy route for this PR: server-render the active watch-page citation payloads during page resolution so the integration does not add an unauthenticated Bible API surface.
 - Track active citation via Embla API state, not layout measurements: jsdom does not faithfully compute Embla snap layout, so tests should assert controlled state/DOM behavior rather than real scroll geometry.
@@ -136,7 +136,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 **Approach:**
 
 - Add optional `YOUVERSION_APP_KEY`.
-- Add optional numeric/coerced `YOUVERSION_DEFAULT_VERSION_ID`, defaulting to `3034`.
+- Use the reviewed code-owned launch fallback version, defaulting to YouVersion id `3034`.
 - Add optional LaunchDarkly local fallback `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT`, defaulting off when unset.
 - Ensure missing app key means "no server passage data", not env validation failure.
 - Ensure the LaunchDarkly flag's off state skips the YouVersion fetch entirely.

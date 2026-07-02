@@ -14,6 +14,7 @@ import {
   type ReactNode,
   type UIEvent,
 } from "react"
+import { createPortal } from "react-dom"
 
 export type LanguageComboboxOption = {
   slug: string
@@ -41,6 +42,7 @@ export type LanguageComboboxProps = {
   onOpenChange?: (open: boolean) => void
   compact?: boolean
   triggerWrapper?: (trigger: ReactNode) => ReactNode
+  popoverPortalContainer?: HTMLElement | null
 }
 
 const LISTBOX_MAX_HEIGHT_PX = 288
@@ -480,6 +482,7 @@ export function LanguageCombobox({
   onOpenChange,
   compact = false,
   triggerWrapper,
+  popoverPortalContainer,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
   // Fall back to the localized default only when the caller did not pass an
@@ -495,6 +498,11 @@ export function LanguageCombobox({
   const [popoverPlacement, setPopoverPlacement] = useState<"above" | "below">(
     "below",
   )
+  const [popoverRect, setPopoverRect] = useState<{
+    left: number
+    top: number
+    width: number
+  } | null>(null)
   const open = controlledOpen ?? uncontrolledOpen
   // Mirror activeIndex in a ref so keydown handlers always read the latest value
   // even when multiple key events fire within the same React batch.
@@ -597,14 +605,35 @@ export function LanguageCombobox({
           Math.floor(availableSpace - searchHeight),
         ),
       )
+      const estimatedPopoverHeight = searchHeight + nextMaxHeight
 
       setPopoverPlacement(nextPlacement)
       setListboxMaxHeight(nextMaxHeight)
+      setPopoverRect({
+        left: triggerRect.left,
+        top:
+          nextPlacement === "above"
+            ? Math.max(
+                POPOVER_VIEWPORT_PADDING_PX,
+                triggerRect.top - POPOVER_GAP_PX - estimatedPopoverHeight,
+              )
+            : triggerRect.bottom + POPOVER_GAP_PX,
+        width: triggerRect.width,
+      })
     }
 
     updatePopoverLayout()
     window.addEventListener("resize", updatePopoverLayout, { passive: true })
-    return () => window.removeEventListener("resize", updatePopoverLayout)
+    document.addEventListener("scroll", updatePopoverLayout, {
+      capture: true,
+      passive: true,
+    })
+    return () => {
+      window.removeEventListener("resize", updatePopoverLayout)
+      document.removeEventListener("scroll", updatePopoverLayout, {
+        capture: true,
+      })
+    }
   }, [open])
 
   // Install the click-outside listener once at mount, gate its body on a
@@ -703,23 +732,13 @@ export function LanguageCombobox({
       0,
       Math.floor(scrollTop / OPTION_ROW_HEIGHT_PX) - VIRTUALIZATION_OVERSCAN,
     )
-    const activeStart =
-      activeIndex < scrollStart || activeIndex >= scrollStart + windowSize
-        ? Math.max(0, activeIndex - VIRTUALIZATION_OVERSCAN)
-        : scrollStart
     const start = Math.min(
-      activeStart,
+      scrollStart,
       Math.max(0, filtered.length - windowSize),
     )
     const end = Math.min(filtered.length, start + windowSize)
     return { end, start }
-  }, [
-    activeIndex,
-    filtered.length,
-    listboxMaxHeight,
-    scrollTop,
-    shouldVirtualize,
-  ])
+  }, [filtered.length, listboxMaxHeight, scrollTop, shouldVirtualize])
   const visibleOptions = useMemo(
     () =>
       shouldVirtualize
@@ -815,174 +834,188 @@ export function LanguageCombobox({
       />
     </button>
   )
+  const popoverContainer =
+    popoverPortalContainer ??
+    (typeof document !== "undefined" ? document.body : null)
 
   return (
     <div className="relative">
       {triggerWrapper ? triggerWrapper(triggerButton) : triggerButton}
 
-      {open ? (
-        <div
-          ref={popoverRef}
-          data-testid="language-combobox-popover"
-          // `overflow-hidden` is load-bearing — the listbox <ul> below has
-          // its own `overflow-y-auto` for scrolling, but without clipping
-          // at the popover edge the last option's hover/active background
-          // (the filled `<button>`) paints past the `rounded-2xl` corner.
-          // `shadow-xl` is unaffected because box-shadow renders outside
-          // the element's bounding box, not against its overflow rule.
-          className={`absolute left-0 right-0 z-20 overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md ${
-            popoverPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
-          }`}
-        >
-          <div
-            ref={searchFrameRef}
-            className="border-b border-white/10 px-5 py-4"
-          >
-            <input
-              ref={searchRef}
-              data-testid="language-combobox-search"
-              type="text"
-              value={query}
-              onChange={(e) => resetQuery(e.target.value)}
-              // jsdom-only: dispatchEvent(new Event("input")) does not trigger React's synthetic onChange.
-              // In production both fire on every keystroke; React batches identical setQuery values, so no double-render.
-              onInput={(e) => resetQuery((e.target as HTMLInputElement).value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder={t("searchPlaceholder")}
-              aria-activedescendant={
-                filtered[activeIndex]
-                  ? `lcb-opt-${filtered[activeIndex].slug}`
-                  : undefined
-              }
-              className="w-full bg-transparent text-lg font-normal text-stone-100 placeholder:text-stone-500 focus:outline-none"
-            />
-          </div>
-          {/* Large lists are windowed so the 2k+ language picker opens immediately. */}
-          {/*
+      {open && popoverContainer
+        ? createPortal(
+            <div
+              ref={popoverRef}
+              data-testid="language-combobox-popover"
+              data-placement={popoverPlacement}
+              // `overflow-hidden` is load-bearing — the listbox <ul> below has
+              // its own `overflow-y-auto` for scrolling, but without clipping
+              // at the popover edge the last option's hover/active background
+              // (the filled `<button>`) paints past the `rounded-2xl` corner.
+              // `shadow-xl` is unaffected because box-shadow renders outside
+              // the element's bounding box, not against its overflow rule.
+              className="fixed z-[1000] overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md"
+              style={{
+                left: popoverRect?.left ?? 0,
+                top: popoverRect?.top ?? 0,
+                width: popoverRect?.width ?? 0,
+              }}
+            >
+              <div
+                ref={searchFrameRef}
+                className="border-b border-white/10 px-5 py-4"
+              >
+                <input
+                  ref={searchRef}
+                  data-testid="language-combobox-search"
+                  type="text"
+                  value={query}
+                  onChange={(e) => resetQuery(e.target.value)}
+                  // jsdom-only: dispatchEvent(new Event("input")) does not trigger React's synthetic onChange.
+                  // In production both fire on every keystroke; React batches identical setQuery values, so no double-render.
+                  onInput={(e) =>
+                    resetQuery((e.target as HTMLInputElement).value)
+                  }
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder={t("searchPlaceholder")}
+                  aria-activedescendant={
+                    filtered[activeIndex]
+                      ? `lcb-opt-${filtered[activeIndex].slug}`
+                      : undefined
+                  }
+                  className="w-full bg-transparent text-lg font-normal text-stone-100 placeholder:text-stone-500 focus:outline-none"
+                />
+              </div>
+              {/* Large lists are windowed so the 2k+ language picker opens immediately. */}
+              {/*
             Same stone-themed scrollbar class string is also used on
             DownloadModal.tsx's terms-of-use body. Keep both in sync —
             or promote to a shared `stone-scrollbar` utility in
             globals.css, following the `search-overlay-scroll` precedent.
           */}
-          <ul
-            ref={listboxRef}
-            role="listbox"
-            aria-label={t("languages")}
-            data-virtualized={shouldVirtualize ? "true" : "false"}
-            onScroll={handleListScroll}
-            style={{ maxHeight: listboxMaxHeight }}
-            className="overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
-          >
-            {filtered.length === 0 ? (
-              <li
-                data-testid="language-combobox-empty"
-                className="px-4 py-3 text-sm text-stone-500"
+              <ul
+                ref={listboxRef}
+                role="listbox"
+                aria-label={t("languages")}
+                data-virtualized={shouldVirtualize ? "true" : "false"}
+                onScroll={handleListScroll}
+                style={{ maxHeight: listboxMaxHeight }}
+                className="overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
               >
-                {t("noMatches")}
-              </li>
-            ) : (
-              <>
-                {shouldVirtualize && visibleRange.start > 0 ? (
+                {filtered.length === 0 ? (
                   <li
-                    aria-hidden="true"
-                    style={{
-                      height: visibleRange.start * OPTION_ROW_HEIGHT_PX,
-                    }}
-                  />
-                ) : null}
-                {visibleOptions.map((option, visibleIndex) => {
-                  const index = shouldVirtualize
-                    ? visibleRange.start + visibleIndex
-                    : visibleIndex
-                  const active = index === activeIndex
-                  const optionDisabled = option.disabled === true
-                  const selectedOption =
-                    !optionDisabled && option.slug === value
-                  const nativeName = nativeNameForOption(option)
-                  return (
-                    <li key={option.slug}>
-                      <button
-                        type="button"
-                        id={`lcb-opt-${option.slug}`}
-                        role="option"
-                        aria-selected={selectedOption}
-                        aria-disabled={optionDisabled ? "true" : undefined}
-                        disabled={optionDisabled}
-                        aria-posinset={shouldVirtualize ? index + 1 : undefined}
-                        aria-setsize={
-                          shouldVirtualize ? filtered.length : undefined
-                        }
-                        data-testid="language-combobox-option"
-                        data-language-slug={option.slug}
-                        data-active={active ? "true" : "false"}
-                        data-disabled={optionDisabled ? "true" : "false"}
-                        onMouseEnter={() => setActiveIndex(index)}
-                        onClick={() => handleSelect(option.slug)}
-                        className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-100 ${
-                          optionDisabled
-                            ? active
-                              ? "bg-white/[0.06] text-stone-500"
-                              : "text-stone-500"
-                            : selectedOption
-                              ? "cursor-pointer bg-white/[0.08] text-white hover:bg-white/[0.12]"
-                              : active
-                                ? "cursor-pointer bg-white/10 text-stone-100"
-                                : "cursor-pointer text-stone-100 hover:bg-white/10"
-                        }`}
-                      >
-                        <span className="flex min-w-0 items-center gap-4">
-                          <LanguageFlag option={option} />
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold">
-                              {option.name}
-                            </span>
-                            {nativeName ? (
-                              <span
-                                data-testid="language-combobox-option-native"
-                                className="block truncate text-xs text-stone-400"
-                              >
-                                {nativeName}
-                              </span>
-                            ) : null}
-                          </span>
-                        </span>
-                        {option.chipLabel ? (
-                          <span
-                            data-testid="language-combobox-option-chip"
-                            className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
+                    data-testid="language-combobox-empty"
+                    className="px-4 py-3 text-sm text-stone-500"
+                  >
+                    {t("noMatches")}
+                  </li>
+                ) : (
+                  <>
+                    {shouldVirtualize && visibleRange.start > 0 ? (
+                      <li
+                        aria-hidden="true"
+                        style={{
+                          height: visibleRange.start * OPTION_ROW_HEIGHT_PX,
+                        }}
+                      />
+                    ) : null}
+                    {visibleOptions.map((option, visibleIndex) => {
+                      const index = shouldVirtualize
+                        ? visibleRange.start + visibleIndex
+                        : visibleIndex
+                      const active = index === activeIndex
+                      const optionDisabled = option.disabled === true
+                      const selectedOption =
+                        !optionDisabled && option.slug === value
+                      const nativeName = nativeNameForOption(option)
+                      return (
+                        <li key={option.slug}>
+                          <button
+                            type="button"
+                            id={`lcb-opt-${option.slug}`}
+                            role="option"
+                            aria-selected={selectedOption}
+                            aria-disabled={optionDisabled ? "true" : undefined}
+                            disabled={optionDisabled}
+                            aria-posinset={
+                              shouldVirtualize ? index + 1 : undefined
+                            }
+                            aria-setsize={
+                              shouldVirtualize ? filtered.length : undefined
+                            }
+                            data-testid="language-combobox-option"
+                            data-language-slug={option.slug}
+                            data-active={active ? "true" : "false"}
+                            data-disabled={optionDisabled ? "true" : "false"}
+                            onMouseEnter={() => setActiveIndex(index)}
+                            onClick={() => handleSelect(option.slug)}
+                            className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-100 ${
                               optionDisabled
-                                ? "border-stone-500/40 text-stone-400"
-                                : "border-stone-400/50 text-stone-300"
+                                ? active
+                                  ? "bg-white/[0.06] text-stone-500"
+                                  : "text-stone-500"
+                                : selectedOption
+                                  ? "cursor-pointer bg-white/[0.08] text-white hover:bg-white/[0.12]"
+                                  : active
+                                    ? "cursor-pointer bg-white/10 text-stone-100"
+                                    : "cursor-pointer text-stone-100 hover:bg-white/10"
                             }`}
                           >
-                            {option.chipLabel}
-                          </span>
-                        ) : null}
-                        {optionDisabled && !option.chipLabel ? (
-                          <span className="sr-only">
-                            {" "}
-                            {option.chipLabel ?? "Not available"}
-                          </span>
-                        ) : null}
-                      </button>
-                    </li>
-                  )
-                })}
-                {shouldVirtualize && visibleRange.end < filtered.length ? (
-                  <li
-                    aria-hidden="true"
-                    style={{
-                      height:
-                        (filtered.length - visibleRange.end) *
-                        OPTION_ROW_HEIGHT_PX,
-                    }}
-                  />
-                ) : null}
-              </>
-            )}
-          </ul>
-        </div>
-      ) : null}
+                            <span className="flex min-w-0 items-center gap-4">
+                              <LanguageFlag option={option} />
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm font-semibold">
+                                  {option.name}
+                                </span>
+                                {nativeName ? (
+                                  <span
+                                    data-testid="language-combobox-option-native"
+                                    className="block truncate text-xs text-stone-400"
+                                  >
+                                    {nativeName}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </span>
+                            {option.chipLabel ? (
+                              <span
+                                data-testid="language-combobox-option-chip"
+                                className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
+                                  optionDisabled
+                                    ? "border-stone-500/40 text-stone-400"
+                                    : "border-stone-400/50 text-stone-300"
+                                }`}
+                              >
+                                {option.chipLabel}
+                              </span>
+                            ) : null}
+                            {optionDisabled && !option.chipLabel ? (
+                              <span className="sr-only">
+                                {" "}
+                                {option.chipLabel ?? "Not available"}
+                              </span>
+                            ) : null}
+                          </button>
+                        </li>
+                      )
+                    })}
+                    {shouldVirtualize && visibleRange.end < filtered.length ? (
+                      <li
+                        aria-hidden="true"
+                        style={{
+                          height:
+                            (filtered.length - visibleRange.end) *
+                            OPTION_ROW_HEIGHT_PX,
+                        }}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </ul>
+            </div>,
+            popoverContainer,
+          )
+        : null}
     </div>
   )
 }

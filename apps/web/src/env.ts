@@ -169,8 +169,6 @@ export const env = createEnv({
     LAUNCHDARKLY_SDK_KEY: z.string().optional(),
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
-    FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: z.string().optional(),
@@ -215,21 +213,17 @@ export const env = createEnv({
     // Required — flipped from optional in U13.
     WEB_ADMIN_API_KEYS: z.string().min(1),
     // Shared Auth host used by server routes to verify Better Auth sessions
-    // over HTTP. Production/stage callers validate this before forwarding
-    // cookies; local/test default to the standalone auth dev port.
-    WEB_AUTH_BASE_URL: z
+    // over HTTP. Local development mirrors Admin and uses production Auth by
+    // default; CI overrides this to the standalone auth dev port.
+    WEB_AUTH_BASE_URL: z.url().default("https://auth.jesusfilm.org"),
+    WEB_AUTH_ISSUER_URL: z.url().optional(),
+    WEB_AUTH_CLIENT_ID: z.string().min(1).optional(),
+    WEB_BASE_URL: z
       .url()
       .default(
-        productionDefault(
-          "https://auth.jesusfilm.org",
-          "http://localhost:3004",
-        ),
+        productionDefault("https://web.jesusfilm.org", "http://localhost:3000"),
       ),
-    // Optional: server-side YouVersion Platform access for the watch-page
-    // Bible Quotes passage panel. Kept server-only so the app key is never
-    // serialized into browser JS or request headers from the client.
-    YOUVERSION_APP_KEY: z.string().optional(),
-    YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(3034),
+    WEB_SESSION_SECRET: z.string().min(32).optional(),
     // Optional server-side Datadog APM/log forwarding configuration. Keep
     // NODE_OPTIONS scoped to Railway's start command; these vars only tell the
     // tracer where to report and how to tag web spans/logs.
@@ -301,10 +295,6 @@ export const env = createEnv({
       process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT,
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT:
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
-    FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
-      process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
-      process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
@@ -317,8 +307,10 @@ export const env = createEnv({
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
-    YOUVERSION_APP_KEY: process.env.YOUVERSION_APP_KEY,
-    YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
+    WEB_AUTH_ISSUER_URL: emptyToUndefined(process.env.WEB_AUTH_ISSUER_URL),
+    WEB_AUTH_CLIENT_ID: emptyToUndefined(process.env.WEB_AUTH_CLIENT_ID),
+    WEB_BASE_URL: emptyToUndefined(process.env.WEB_BASE_URL),
+    WEB_SESSION_SECRET: emptyToUndefined(process.env.WEB_SESSION_SECRET),
     DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),
     DD_TRACE_AGENT_PORT: process.env.DD_TRACE_AGENT_PORT,
     DD_AGENT_SYSLOG_PORT: process.env.DD_AGENT_SYSLOG_PORT,

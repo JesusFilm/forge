@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 
+import { type ChatIdentity } from "@/auth/session-cookie"
+import { SIGN_IN_ERROR_PARAM } from "@/auth/sign-in-notice"
 import { Chat } from "@/components/chat/chat"
 import { useConversations } from "@/lib/use-conversations"
 
@@ -17,11 +19,22 @@ import { Sidebar, SIDEBAR_ID } from "./sidebar"
  * `seekerEnabled` is the deployment-wide flag, read server-side in page.tsx and
  * passed down (feat-205, R1/R2). It selects the reply source — the Seeker proxy
  * vs the local stub — inside useConversations; nothing else here depends on it.
+ *
+ * Auth props (feat-207) are also read server-side in page.tsx and threaded to
+ * the sidebar's account control: `authConfigured` (KTD6 gate), `identity` (the
+ * signed-in claims, or null), and `signInError` (the R12 marker). Auth changes
+ * identity only — nothing here is gated on it (R3/R7).
  */
 export function AppShell({
   seekerEnabled = false,
+  authConfigured = false,
+  identity = null,
+  signInError = false,
 }: {
   seekerEnabled?: boolean
+  authConfigured?: boolean
+  identity?: ChatIdentity | null
+  signInError?: boolean
 }) {
   const {
     conversations,
@@ -57,6 +70,18 @@ export function AppShell({
     return () => mql.removeEventListener("change", onChange)
   }, [])
 
+  // Strip the R12 sign-in-error marker from the URL after first read (KTD7), so
+  // a refresh/share/bookmark doesn't re-show the notice indefinitely. The prop
+  // stays true for this render (the notice shows once); only the URL is cleaned.
+  useEffect(() => {
+    if (!signInError) return
+    const url = new URL(window.location.href)
+    if (url.searchParams.has(SIGN_IN_ERROR_PARAM)) {
+      url.searchParams.delete(SIGN_IN_ERROR_PARAM)
+      window.history.replaceState(null, "", url.toString())
+    }
+  }, [signInError])
+
   // Lock background scroll while the mobile drawer is open.
   useEffect(() => {
     if (!mobileOpen) return
@@ -75,6 +100,9 @@ export function AppShell({
         pendingIds={pendingIds}
         collapsed={collapsed}
         mobileOpen={mobileOpen}
+        authConfigured={authConfigured}
+        identity={identity}
+        signInError={signInError}
         onNew={newConversation}
         onSelect={selectConversation}
         onToggleCollapsed={() => setCollapsed((value) => !value)}

@@ -762,7 +762,9 @@ describe("HeroPlayer — initial mount", () => {
       maxBufferLength: 10,
       maxBufferSize: 5_000_000,
       backBufferLength: 5,
+      enableWebVTT: false,
     })
+    expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
   })
 
@@ -1154,10 +1156,9 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-overlay"]',
     )
     expect(pill).not.toBeNull()
-    expect(pill?.tagName.toLowerCase()).toBe("a")
-    expect(pill?.getAttribute("href")).toBe(
-      "https://stream.mux.com/playback-id-123.m3u8",
-    )
+    expect(pill?.tagName.toLowerCase()).toBe("button")
+    expect(pill?.getAttribute("type")).toBe("button")
+    expect(pill?.hasAttribute("href")).toBe(false)
     expect(pill?.getAttribute("aria-controls")).toBe("watch-hero-player-media")
     expect(overlay?.getAttribute("class")).toContain("bottom-0")
     expect(overlay?.getAttribute("class")).toContain("gap-3")
@@ -1234,7 +1235,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
-    ) as HTMLAnchorElement
+    ) as HTMLButtonElement
     expect(pill).not.toBeNull()
 
     // Order check: capture the order in which mutations & play() happen
@@ -1367,6 +1368,32 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(props.style).toEqual({ objectFit: "contain" })
   })
 
+  it("reveals custom chrome immediately when play() stays pending", async () => {
+    mockPlayerRef.current = makeTestPlayer({
+      play: vi.fn(() => new Promise<void>(() => undefined)),
+    })
+
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      pill.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLElement
+    expect(mockPlayerRef.current?.play).toHaveBeenCalled()
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("true")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+  })
   it("on play() rejection (iOS NotAllowedError): pill switches to 'Tap to Unmute' (visually distinct)", async () => {
     // Override the mocked play() to reject, simulating iOS unmute-with-no-gesture.
     mockPlayerRef.current = makeTestPlayer({

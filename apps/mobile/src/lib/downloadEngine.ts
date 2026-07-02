@@ -130,6 +130,44 @@ export function wireExistingTask(
   attachHandlers(task, handlers)
 }
 
+/** Pause a live transfer (KTD1). iOS may implement this as cancel-with-resume-data. */
+export function pauseTask(task: EngineTask): Promise<void> {
+  return Promise.resolve(task.pause())
+}
+
+/** Resume a paused transfer. */
+export function resumeTask(task: EngineTask): Promise<void> {
+  return Promise.resolve(task.resume())
+}
+
+/**
+ * Re-bind a task's events to no-ops so its OWN late terminal callbacks are inert.
+ * Used by supersede so a stopped old-language task can't fire onDone/onInterruption.
+ */
+function neutralizeHandlers(task: EngineTask): void {
+  task
+    .begin(() => {})
+    .progress(() => {})
+    .done(() => {})
+    .error(() => {})
+}
+
+/**
+ * Stop (cancel) a transfer. `supersede` neutralizes this task's own callbacks
+ * first (KTD3) — used by the language-switch, which reuses the slug id for the
+ * replacement. Neutralizing THIS task is only part of the fix: because the native
+ * library dispatches terminal events by slug id to whichever task currently holds
+ * it, the caller must also await this stop before the replacement claims the slug,
+ * or guard the new record's onInterruption against a pre-onBegin cancel.
+ */
+export function stopTask(
+  task: EngineTask,
+  opts: { supersede?: boolean } = {},
+): Promise<void> {
+  if (opts.supersede) neutralizeHandlers(task)
+  return Promise.resolve(task.stop())
+}
+
 /** Live native tasks surviving from a prior session — feeds reconciliation. */
 export function listExistingDownloadTasks(): Promise<EngineTask[]> {
   return getExistingDownloadTasks()
