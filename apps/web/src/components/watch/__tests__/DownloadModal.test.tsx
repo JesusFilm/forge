@@ -78,9 +78,7 @@ beforeEach(() => {
   root = createRoot(container)
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      Response.json({ authenticated: false, gateEnabled: false }),
-    ),
+    vi.fn(async () => Response.json({ authenticated: true })),
   )
   vi.mocked(redirectToAuth).mockReset()
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
@@ -604,12 +602,12 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
   })
 
   it("re-checks auth before final download and blocks the anchor when the session is stale", async () => {
+    const loginUrl =
+      "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
     const fetchMock = vi.fn(async () =>
       Response.json({
         authenticated: false,
-        gateEnabled: true,
-        loginUrl:
-          "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html",
+        loginUrl,
       }),
     )
     vi.stubGlobal("fetch", fetchMock)
@@ -656,12 +654,51 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       expect.objectContaining({ credentials: "include" }),
     )
     expect(created).toHaveLength(0)
-    expect($('[data-testid="watch-download-modal-error"]')?.textContent).toBe(
-      "Your session expired. Sign in again to download.",
-    )
-    expect(redirectToAuth).toHaveBeenCalledWith(
-      "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html",
-    )
+    expect(
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent,
+    ).toContain("Downloads are available after you sign in")
+    expect($('[data-testid="watch-download-modal-error"]')).toBeNull()
+    expect(redirectToAuth).not.toHaveBeenCalled()
+
+    await act(async () => {
+      ;(
+        $('[data-testid="watch-download-modal-sign-in"]') as HTMLButtonElement
+      ).click()
+    })
+    expect(redirectToAuth).toHaveBeenCalledWith(loginUrl, {
+      reopenDownload: true,
+    })
+  })
+
+  it("shows a sign-in explanation when opened for a signed-out viewer", async () => {
+    const loginUrl =
+      "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          authRequiredLoginUrl={loginUrl}
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          videoTitle="JESUS"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect(
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent,
+    ).toContain("Sign in to download")
+    expect($('[data-testid="watch-download-modal-tos"]')).toBeNull()
+    expect($('[data-testid="watch-download-modal-confirm"]')).toBeNull()
+
+    await act(async () => {
+      ;(
+        $('[data-testid="watch-download-modal-sign-in"]') as HTMLButtonElement
+      ).click()
+    })
+    expect(redirectToAuth).toHaveBeenCalledWith(loginUrl, {
+      reopenDownload: true,
+    })
   })
 
   it("shows a visible error instead of no-oping when the session check fails", async () => {

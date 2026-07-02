@@ -40,10 +40,11 @@ const ShareModal = dynamic(
   { ssr: false },
 )
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
+import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
-import { redirectToAuth } from "@/components/watch/download-session-client"
+import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
   buildMediaProxyUrl,
   buildDownloadFilename,
@@ -505,6 +506,7 @@ export function WatchPageClient({
   const [modalState, setModalState] = useState<WatchModalState>("none")
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
   const downloadPendingRef = useRef(false)
   const [enabledModalChunks, setEnabledModalChunks] = useState({
     download: false,
@@ -517,6 +519,20 @@ export function WatchPageClient({
       variants: [],
     })
   const languageOptionsPendingRef = useRef(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get(DOWNLOAD_RETURN_INTENT_PARAM) !== "1") return
+
+    url.searchParams.delete(DOWNLOAD_RETURN_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+    setDownloadError(null)
+    setDownloadLoginUrl(null)
+    setEnabledModalChunks((prev) => ({ ...prev, download: true }))
+    void loadWatchInteraction("download").catch(() => {})
+    setModalState("download")
+  }, [])
 
   useEffect(() => {
     languageOptionsPendingRef.current = false
@@ -566,10 +582,12 @@ export function WatchPageClient({
       }
       setDownloadError(null)
       if (session.ok) {
+        setDownloadLoginUrl(null)
         setModalState("download")
         return
       }
-      redirectToAuth(session.loginUrl)
+      setDownloadLoginUrl(session.loginUrl)
+      setModalState("download")
     } finally {
       downloadPendingRef.current = false
       setDownloadPending(false)
@@ -586,7 +604,9 @@ export function WatchPageClient({
     void loadWatchInteraction("share").catch(() => {})
     setModalState("share")
   }, [])
-  const closeModal = useCallback(() => setModalState("none"), [])
+  const closeModal = useCallback(() => {
+    setModalState("none")
+  }, [])
 
   // Pause the video whenever any modal (search / language / download / share)
   // opens, and restore the prior playing state on close. Captures the snapshot
@@ -653,6 +673,13 @@ export function WatchPageClient({
         onChapterNavigateIntent={handleChapterNavigateIntent}
       />
 
+      <WatchEventRecorder
+        playerRef={playerRef}
+        videoId={video.documentId}
+        videoDubId={variant.documentId}
+        durationSeconds={variant.duration ?? null}
+      />
+
       <SubtitleTranscript
         subtitles={subtitles}
         playerRef={playerRef}
@@ -673,6 +700,7 @@ export function WatchPageClient({
           languageSlug={variant.language?.slug ?? null}
           variantId={variant.documentId}
           videoSlug={videoSlug}
+          authRequiredLoginUrl={downloadLoginUrl}
           onClose={closeModal}
         />
       ) : null}

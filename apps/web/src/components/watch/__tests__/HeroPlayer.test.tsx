@@ -1394,7 +1394,6 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       container.querySelector('[data-testid="hero-player-unmute-pill"]'),
     ).toBeNull()
   })
-
   it("on play() rejection (iOS NotAllowedError): pill switches to 'Tap to Unmute' (visually distinct)", async () => {
     // Override the mocked play() to reject, simulating iOS unmute-with-no-gesture.
     mockPlayerRef.current = makeTestPlayer({

@@ -65,6 +65,10 @@ vi.mock("@/components/watch/SubtitleTranscript", () => ({
   SubtitleTranscript: () => null,
 }))
 
+vi.mock("@/components/watch/WatchEventRecorder", () => ({
+  WatchEventRecorder: () => null,
+}))
+
 vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     downloadError,
@@ -115,6 +119,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
 }))
 
 vi.mock("@/components/watch/download-session-client", () => ({
+  DOWNLOAD_RETURN_INTENT_PARAM: "download",
   checkDownloadSession: checkDownloadSessionMock,
   redirectToAuth: redirectToAuthMock,
 }))
@@ -244,8 +249,7 @@ describe("WatchPageClient download boundary", () => {
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
-      authenticated: false,
-      gateEnabled: false,
+      authenticated: true,
     })
     renderWatchPage()
 
@@ -284,6 +288,82 @@ describe("WatchPageClient download boundary", () => {
         .querySelector('[data-testid="watch-section-renderer"]')
         ?.getAttribute("data-language-slug"),
     ).toBe("english")
+    expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
+  })
+
+  it("opens the download modal with a sign-in prompt instead of redirecting immediately", async () => {
+    const loginUrl =
+      "http://localhost:3000/watch/api/auth/login?returnTo=%2Fwatch%2Fjesus"
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      authenticated: false,
+      loginUrl,
+    })
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("download")
+    expect(redirectToAuthMock).not.toHaveBeenCalled()
+    expect(downloadModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        authRequiredLoginUrl: loginUrl,
+      }),
+    )
+
+    const latestProps = downloadModalProps.at(-1) as {
+      onClose: () => void
+    }
+    act(() => {
+      latestProps.onClose()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("none")
+    expect(downloadModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: false,
+        authRequiredLoginUrl: loginUrl,
+      }),
+    )
+  })
+
+  it("reopens the download modal after returning from sign-in", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/jesus-is-brought-to-pilate.html/english.html?download=1&t=12",
+    )
+    renderWatchPage()
+
+    await vi.waitFor(() => {
+      expect(
+        document
+          .querySelector('[data-testid="watch-page-client"]')
+          ?.getAttribute("data-modal-state"),
+      ).toBe("download")
+    })
+    expect(downloadModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        authRequiredLoginUrl: null,
+      }),
+    )
+    expect(window.location.search).toBe("?t=12")
     expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
   })
 
@@ -477,8 +557,7 @@ describe("WatchPageClient download boundary", () => {
       .mockResolvedValueOnce({ ok: false, reason: "session-unavailable" })
       .mockResolvedValueOnce({
         ok: true,
-        authenticated: false,
-        gateEnabled: false,
+        authenticated: true,
       })
     renderWatchPage()
     const button = document.querySelector<HTMLButtonElement>(

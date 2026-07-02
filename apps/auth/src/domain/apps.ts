@@ -178,6 +178,66 @@ export const MANAGER_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+export const WEB_APP_SEED: RegisteredAppSeed = {
+  key: WEB_APP_KEY,
+  displayName: "Jesus Film Web",
+  description: "Public Jesus Film watch experience.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_web_local",
+      redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3000/watch"],
+      allowedOrigins: ["http://localhost:3000"],
+      defaultScopes: WEB_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "preview",
+      kind: "preview",
+      clientId: "jfp_web_preview",
+      redirectUris: [
+        "https://web-preview.jesusfilm.org/watch/api/auth/callback",
+      ],
+      postLogoutRedirectUris: ["https://web-preview.jesusfilm.org/watch"],
+      allowedOrigins: ["https://web-preview.jesusfilm.org"],
+      defaultScopes: WEB_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "staging",
+      kind: "staging",
+      clientId: "jfp_web_staging",
+      redirectUris: ["https://web-stage.jesusfilm.org/watch/api/auth/callback"],
+      postLogoutRedirectUris: ["https://web-stage.jesusfilm.org/watch"],
+      allowedOrigins: ["https://web-stage.jesusfilm.org"],
+      defaultScopes: WEB_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_web_production",
+      redirectUris: [
+        "https://www.jesusfilm.org/watch/api/auth/callback",
+        "https://watch.jesusfilm.org/watch/api/auth/callback",
+      ],
+      postLogoutRedirectUris: [
+        "https://www.jesusfilm.org/watch",
+        "https://watch.jesusfilm.org/watch",
+      ],
+      allowedOrigins: [
+        "https://www.jesusfilm.org",
+        "https://watch.jesusfilm.org",
+      ],
+      defaultScopes: WEB_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
   key: MASTRA_STUDIO_APP_KEY,
   displayName: "Jesus Film Mastra Studio",
@@ -230,66 +290,6 @@ export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
       postLogoutRedirectUris: ["https://mastra.jesusfilm.org/api/auth/login"],
       allowedOrigins: ["https://mastra.jesusfilm.org"],
       defaultScopes: MASTRA_STUDIO_DEFAULT_SCOPES,
-      autoApprove: true,
-    },
-  ],
-}
-
-export const WEB_APP_SEED: RegisteredAppSeed = {
-  key: WEB_APP_KEY,
-  displayName: "Jesus Film Web",
-  description: "Public watch experience for Jesus Film audiences.",
-  ...FIRST_PARTY_OWNER,
-  environments: [
-    {
-      key: "local",
-      kind: "local",
-      clientId: "jfp_web_local",
-      redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
-      postLogoutRedirectUris: ["http://localhost:3000/watch"],
-      allowedOrigins: ["http://localhost:3000"],
-      defaultScopes: WEB_DEFAULT_SCOPES,
-      autoApprove: true,
-    },
-    {
-      key: "preview",
-      kind: "preview",
-      clientId: "jfp_web_preview",
-      redirectUris: [
-        "https://web-preview.jesusfilm.org/watch/api/auth/callback",
-      ],
-      postLogoutRedirectUris: ["https://web-preview.jesusfilm.org/watch"],
-      allowedOrigins: ["https://web-preview.jesusfilm.org"],
-      defaultScopes: WEB_DEFAULT_SCOPES,
-      autoApprove: true,
-    },
-    {
-      key: "staging",
-      kind: "staging",
-      clientId: "jfp_web_staging",
-      redirectUris: ["https://web-stage.jesusfilm.org/watch/api/auth/callback"],
-      postLogoutRedirectUris: ["https://web-stage.jesusfilm.org/watch"],
-      allowedOrigins: ["https://web-stage.jesusfilm.org"],
-      defaultScopes: WEB_DEFAULT_SCOPES,
-      autoApprove: true,
-    },
-    {
-      key: "production",
-      kind: "production",
-      clientId: "jfp_web_production",
-      redirectUris: [
-        "https://www.jesusfilm.org/watch/api/auth/callback",
-        "https://watch.jesusfilm.org/watch/api/auth/callback",
-      ],
-      postLogoutRedirectUris: [
-        "https://www.jesusfilm.org/watch",
-        "https://watch.jesusfilm.org/watch",
-      ],
-      allowedOrigins: [
-        "https://www.jesusfilm.org",
-        "https://watch.jesusfilm.org",
-      ],
-      defaultScopes: WEB_DEFAULT_SCOPES,
       autoApprove: true,
     },
   ],

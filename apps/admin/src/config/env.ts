@@ -150,6 +150,12 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_WEB_USER_CLIENT_IDS: z.string().min(1).optional(),
+    AUTH_WEB_USER_TOKEN_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
     // Public web origin used only for outbound visitor-facing watch links
     // from admin. Optional so local/admin-only deployments do not need a new
@@ -531,6 +537,18 @@ export const env = createEnv({
     ),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
+    ),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_ID: emptyToUndefined(
+      process.env.AUTH_WEB_USER_INTROSPECTION_CLIENT_ID,
+    ),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET: emptyToUndefined(
+      process.env.AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET,
+    ),
+    AUTH_WEB_USER_CLIENT_IDS: emptyToUndefined(
+      process.env.AUTH_WEB_USER_CLIENT_IDS,
+    ),
+    AUTH_WEB_USER_TOKEN_ENVIRONMENT: emptyToUndefined(
+      process.env.AUTH_WEB_USER_TOKEN_ENVIRONMENT,
     ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     WEB_CANONICAL_ORIGIN:

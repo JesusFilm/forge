@@ -301,6 +301,7 @@ builder.prismaObject("VideoDub", {
     "A language-specific audio dub of an Edition, bundled with its encoded playback (HLS/DASH/Mux). lengthInMilliseconds is BigInt — int4 truncates at 596 hours.",
   fields: (t) => ({
     id: t.exposeID("id"),
+    videoId: t.exposeString("videoId"),
     coreId: t.exposeString("coreId"),
     slug: t.exposeString("slug", { nullable: true }),
     duration: t.exposeInt("duration", { nullable: true }),

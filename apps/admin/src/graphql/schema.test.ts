@@ -216,6 +216,13 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.updateManagerJob).toBeDefined()
   })
 
+  it("Mutation root exposes the private watch-event write contract", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.recordWatchEvent).toBeDefined()
+  })
+
   it("Mutation root exposes media asset write entry points", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()

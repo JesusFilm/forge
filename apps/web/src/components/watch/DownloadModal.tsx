@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Download as DownloadIcon,
   Globe2,
+  LogIn,
   Play,
   X as XIcon,
 } from "lucide-react"
@@ -51,6 +52,7 @@ export type DownloadModalProps = {
   languageSlug?: string | null
   variantId: string
   videoSlug: string
+  authRequiredLoginUrl?: string | null
   onClose: () => void
 }
 
@@ -116,6 +118,7 @@ export function DownloadModal({
   languageSlug,
   variantId,
   videoSlug,
+  authRequiredLoginUrl = null,
   onClose,
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
@@ -140,6 +143,9 @@ export function DownloadModal({
     width: number
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [localAuthLoginUrl, setLocalAuthLoginUrl] = useState<string | null>(
+    null,
+  )
   const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
   // Keyed by download id so raw CDN URLs never need to enter the client bundle.
@@ -190,7 +196,10 @@ export function DownloadModal({
       ? selectedTier
       : defaultTier
   const selected = tiers.find((t) => t.tier === effectiveTier) ?? null
-  const canDownload = tosAgreed && selected != null && !authChecking
+  const effectiveAuthLoginUrl = authRequiredLoginUrl ?? localAuthLoginUrl
+  const authRequired = effectiveAuthLoginUrl != null
+  const canDownload =
+    !authRequired && tosAgreed && selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
 
   const updateDropdownRect = useCallback(() => {
@@ -237,6 +246,7 @@ export function DownloadModal({
   // per page-load lifetime.
   useEffect(() => {
     if (!open) return
+    if (authRequired) return
     const attempted = attemptedDownloadIdsRef.current
     const missingDownloads = tiers
       .map((t) => t.download)
@@ -280,7 +290,7 @@ export function DownloadModal({
         console.error("[DownloadModal] size probe pipeline failed", err)
       })
     return () => controller.abort()
-  }, [open, tiers, variantId, videoSlug])
+  }, [authRequired, open, tiers, variantId, videoSlug])
 
   useEffect(() => {
     if (dropdownOpen) return
@@ -353,8 +363,8 @@ export function DownloadModal({
     if (!session.ok) {
       downloadInFlight.current = false
       setAuthChecking(false)
-      setError(t("errorSessionExpired"))
-      redirectToAuth(session.loginUrl)
+      setError(null)
+      setLocalAuthLoginUrl(session.loginUrl)
       return
     }
     setAuthChecking(false)
@@ -476,173 +486,189 @@ export function DownloadModal({
           </div>
 
           {/* Body: file size dropdown */}
-          <div>
-            {tiers.length === 0 ? (
-              <p
-                data-testid="watch-download-modal-empty"
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-stone-400"
-              >
-                {t("noDownloads")}
+          {authRequired ? (
+            <div
+              data-testid="watch-download-modal-auth-required"
+              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-5"
+            >
+              <h3 className="text-lg font-semibold text-stone-50">
+                {t("authRequiredTitle")}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-stone-300">
+                {t("authRequiredBody")}
               </p>
-            ) : (
-              <div className="-mx-2 flex flex-col gap-3 px-2">
-                <label
-                  htmlFor={dropdownId}
-                  className="text-lg font-semibold text-stone-100"
+            </div>
+          ) : (
+            <div>
+              {tiers.length === 0 ? (
+                <p
+                  data-testid="watch-download-modal-empty"
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-stone-400"
                 >
-                  {fileSizeLabel}
-                </label>
-                <div className="relative">
-                  <button
-                    ref={triggerRef}
-                    id={dropdownId}
-                    type="button"
-                    onClick={() => {
-                      if (dropdownOpen) {
-                        closeDropdown()
-                        return
-                      }
-                      updateDropdownRect()
-                      setDropdownMounted(false)
-                      setDropdownOpen(true)
-                    }}
-                    data-testid="watch-download-modal-size-trigger"
-                    data-open={dropdownOpen ? "true" : "false"}
-                    aria-haspopup="listbox"
-                    aria-expanded={dropdownOpen}
-                    aria-controls={dropdownListId}
-                    className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left text-lg font-semibold text-stone-100 transition hover:bg-white/10"
+                  {t("noDownloads")}
+                </p>
+              ) : (
+                <div className="-mx-2 flex flex-col gap-3 px-2">
+                  <label
+                    htmlFor={dropdownId}
+                    className="text-lg font-semibold text-stone-100"
                   >
-                    <span>
-                      {selected ? (
-                        <>
-                          <span className="font-semibold">
-                            {tierLabel(selected.tier)}
-                          </span>
-                          <SizeLabel
-                            bytes={resolveSize(selected.download)}
-                            className="ml-1 text-stone-300"
-                          />
-                        </>
-                      ) : (
-                        fileSizeLabel
-                      )}
-                    </span>
-                    <ChevronDown
-                      size={20}
-                      className={cn(
-                        "transition-transform",
-                        dropdownOpen ? "rotate-180" : "",
-                      )}
-                    />
-                  </button>
-                  {(dropdownOpen || dropdownMounted) &&
-                  dropdownRect != null &&
-                  typeof document !== "undefined"
-                    ? createPortal(
-                        <ul
-                          ref={listRef}
-                          id={dropdownListId}
-                          role="listbox"
-                          aria-labelledby={dropdownId}
-                          data-testid="watch-download-modal-size-list"
-                          data-open={dropdownOpen ? "true" : "false"}
-                          className={cn(
-                            "fixed z-[1000] max-h-72 origin-top overflow-y-auto rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-150 ease-out",
-                            dropdownOpen
-                              ? "translate-y-0 scale-100 opacity-100"
-                              : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0",
-                          )}
-                          style={{
-                            left: dropdownRect.left,
-                            top: dropdownRect.top,
-                            width: dropdownRect.width,
-                          }}
-                        >
-                          {tiers.map((t) => {
-                            const isSelected = effectiveTier === t.tier
-                            return (
-                              <li key={t.tier}>
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={isSelected}
-                                  data-testid="watch-download-modal-size-option"
-                                  data-tier={t.tier}
-                                  data-size-bytes={
-                                    resolveSize(t.download) ?? ""
-                                  }
-                                  onClick={() => {
-                                    setSelectedTier(t.tier)
-                                    closeDropdown()
-                                  }}
-                                  className={cn(
-                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-sm transition",
-                                    isSelected
-                                      ? "bg-brand-red text-white"
-                                      : "text-stone-100 hover:bg-white/10",
-                                  )}
-                                >
-                                  <Check
-                                    size={16}
-                                    className={
-                                      isSelected ? "opacity-100" : "opacity-0"
+                    {fileSizeLabel}
+                  </label>
+                  <div className="relative">
+                    <button
+                      ref={triggerRef}
+                      id={dropdownId}
+                      type="button"
+                      onClick={() => {
+                        if (dropdownOpen) {
+                          closeDropdown()
+                          return
+                        }
+                        updateDropdownRect()
+                        setDropdownMounted(false)
+                        setDropdownOpen(true)
+                      }}
+                      data-testid="watch-download-modal-size-trigger"
+                      data-open={dropdownOpen ? "true" : "false"}
+                      aria-haspopup="listbox"
+                      aria-expanded={dropdownOpen}
+                      aria-controls={dropdownListId}
+                      className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left text-lg font-semibold text-stone-100 transition hover:bg-white/10"
+                    >
+                      <span>
+                        {selected ? (
+                          <>
+                            <span className="font-semibold">
+                              {tierLabel(selected.tier)}
+                            </span>
+                            <SizeLabel
+                              bytes={resolveSize(selected.download)}
+                              className="ml-1 text-stone-300"
+                            />
+                          </>
+                        ) : (
+                          fileSizeLabel
+                        )}
+                      </span>
+                      <ChevronDown
+                        size={20}
+                        className={cn(
+                          "transition-transform",
+                          dropdownOpen ? "rotate-180" : "",
+                        )}
+                      />
+                    </button>
+                    {(dropdownOpen || dropdownMounted) &&
+                    dropdownRect != null &&
+                    typeof document !== "undefined"
+                      ? createPortal(
+                          <ul
+                            ref={listRef}
+                            id={dropdownListId}
+                            role="listbox"
+                            aria-labelledby={dropdownId}
+                            data-testid="watch-download-modal-size-list"
+                            data-open={dropdownOpen ? "true" : "false"}
+                            className={cn(
+                              "fixed z-[1000] max-h-72 origin-top overflow-y-auto rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-150 ease-out",
+                              dropdownOpen
+                                ? "translate-y-0 scale-100 opacity-100"
+                                : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0",
+                            )}
+                            style={{
+                              left: dropdownRect.left,
+                              top: dropdownRect.top,
+                              width: dropdownRect.width,
+                            }}
+                          >
+                            {tiers.map((t) => {
+                              const isSelected = effectiveTier === t.tier
+                              return (
+                                <li key={t.tier}>
+                                  <button
+                                    type="button"
+                                    role="option"
+                                    aria-selected={isSelected}
+                                    data-testid="watch-download-modal-size-option"
+                                    data-tier={t.tier}
+                                    data-size-bytes={
+                                      resolveSize(t.download) ?? ""
                                     }
-                                  />
-                                  <span className="font-semibold">
-                                    {tierLabel(t.tier)}
-                                  </span>
-                                  <SizeLabel
-                                    bytes={resolveSize(t.download)}
+                                    onClick={() => {
+                                      setSelectedTier(t.tier)
+                                      closeDropdown()
+                                    }}
                                     className={cn(
-                                      "text-xs",
+                                      "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-sm transition",
                                       isSelected
-                                        ? "text-white/80"
-                                        : "text-stone-400",
+                                        ? "bg-brand-red text-white"
+                                        : "text-stone-100 hover:bg-white/10",
                                     )}
-                                  />
-                                </button>
-                              </li>
-                            )
-                          })}
-                        </ul>,
-                        document.body,
-                      )
-                    : null}
+                                  >
+                                    <Check
+                                      size={16}
+                                      className={
+                                        isSelected ? "opacity-100" : "opacity-0"
+                                      }
+                                    />
+                                    <span className="font-semibold">
+                                      {tierLabel(t.tier)}
+                                    </span>
+                                    <SizeLabel
+                                      bytes={resolveSize(t.download)}
+                                      className={cn(
+                                        "text-xs",
+                                        isSelected
+                                          ? "text-white/80"
+                                          : "text-stone-400",
+                                      )}
+                                    />
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>,
+                          document.body,
+                        )
+                      : null}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
-          <label className="flex cursor-pointer items-center gap-3 text-sm font-normal text-stone-100">
-            <span className="relative inline-flex shrink-0 items-center justify-center">
-              <input
-                type="checkbox"
-                checked={tosAgreed}
-                onChange={(e) => setTosAgreed(e.target.checked)}
-                data-testid="watch-download-modal-tos"
-                className="peer size-4 cursor-pointer appearance-none rounded-[3px] border-2 border-stone-500 bg-transparent transition-colors hover:border-stone-300 checked:border-brand-red checked:bg-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
-              />
-              <Check
-                size={10}
-                strokeWidth={3}
-                aria-hidden="true"
-                className="pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100"
-              />
-            </span>
-            <span>
-              {t("termsAgreementPrefix")}
-              <button
-                type="button"
-                onClick={() => setTermsOpen(true)}
-                data-testid="watch-download-modal-tos-trigger"
-                className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
-              >
-                {t("termsOfUse")}
-              </button>
-              {t("termsAgreementSuffix")}
-            </span>
-          </label>
+          {authRequired ? null : (
+            <label className="flex cursor-pointer items-center gap-3 text-sm font-normal text-stone-100">
+              <span className="relative inline-flex shrink-0 items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={tosAgreed}
+                  onChange={(e) => setTosAgreed(e.target.checked)}
+                  data-testid="watch-download-modal-tos"
+                  className="peer size-4 cursor-pointer appearance-none rounded-[3px] border-2 border-stone-500 bg-transparent transition-colors hover:border-stone-300 checked:border-brand-red checked:bg-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
+                />
+                <Check
+                  size={10}
+                  strokeWidth={3}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100"
+                />
+              </span>
+              <span>
+                {t("termsAgreementPrefix")}
+                <button
+                  type="button"
+                  onClick={() => setTermsOpen(true)}
+                  data-testid="watch-download-modal-tos-trigger"
+                  className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
+                >
+                  {t("termsOfUse")}
+                </button>
+                {t("termsAgreementSuffix")}
+              </span>
+            </label>
+          )}
 
           {error ? (
             <p
@@ -662,17 +688,34 @@ export function DownloadModal({
             >
               {t("close")}
             </Button>
-            <Button
-              variant="pill"
-              onClick={handleDownload}
-              disabled={!canDownload}
-              aria-label={t("download")}
-              data-testid="watch-download-modal-confirm"
-              className="px-7 py-4 text-sm"
-            >
-              <DownloadIcon size={16} />
-              <span>{authChecking ? t("checking") : t("download")}</span>
-            </Button>
+            {authRequired ? (
+              <Button
+                variant="pill"
+                onClick={() =>
+                  redirectToAuth(effectiveAuthLoginUrl, {
+                    reopenDownload: true,
+                  })
+                }
+                aria-label={t("signInToDownload")}
+                data-testid="watch-download-modal-sign-in"
+                className="px-7 py-4 text-sm"
+              >
+                <LogIn size={16} />
+                <span>{t("signInToDownload")}</span>
+              </Button>
+            ) : (
+              <Button
+                variant="pill"
+                onClick={handleDownload}
+                disabled={!canDownload}
+                aria-label={t("download")}
+                data-testid="watch-download-modal-confirm"
+                className="px-7 py-4 text-sm"
+              >
+                <DownloadIcon size={16} />
+                <span>{authChecking ? t("checking") : t("download")}</span>
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

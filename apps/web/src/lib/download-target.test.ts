@@ -27,6 +27,7 @@ function adminVideoDub({
   slug = "jesus/english",
   url = "https://stream.mux.com/abc.mp4",
   variantId = "variant-1",
+  videoId = "video-1",
 }: {
   downloadable?: boolean
   downloadId?: string
@@ -34,11 +35,14 @@ function adminVideoDub({
   slug?: string | null
   url?: string | null
   variantId?: string
+  videoId?: string
 } = {}) {
   return {
     videoDub: {
       downloadable,
       documentId: variantId,
+      videoId,
+      language: { documentId: "language-1" },
       downloads: [{ documentId: downloadId, url }],
       published,
       slug,
@@ -96,7 +100,15 @@ describe("resolveWatchDownloadTarget", () => {
         variantId: "variant-1",
         videoSlug: "jesus",
       }),
-    ).resolves.toEqual({ ok: true, url: "https://stream.mux.com/abc.mp4" })
+    ).resolves.toEqual({
+      ok: true,
+      url: "https://stream.mux.com/abc.mp4",
+      event: {
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+    })
     expect(queryMock).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { variantId: "variant-1" },
@@ -215,6 +227,14 @@ describe("resolveWatchDownloadTarget", () => {
         variantId: "variant-1",
         videoSlug: "jesus",
       }),
-    ).resolves.toEqual({ ok: true, url: "https://stream.mux.com/abc.mp4" })
+    ).resolves.toMatchObject({
+      ok: true,
+      url: "https://stream.mux.com/abc.mp4",
+      event: {
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
+    })
   })
 })
