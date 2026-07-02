@@ -260,6 +260,7 @@ export type WatchSubtitle = {
 export type WatchVideoRecord = {
   documentId: string
   slug: string | null
+  publishedAt: string | null
   title: string | null
   snippet: string | null
   description: string | null
@@ -528,6 +529,7 @@ type AdminStudyQuestionRaw = {
 type AdminVideoRaw = {
   documentId: string | null
   slug?: string | null
+  publishedAt?: string | null
   noIndex?: boolean | null
   label?: string | null
   images?: AdminImageRaw[] | null
@@ -844,6 +846,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
   return {
     documentId: raw.documentId,
     slug: raw.slug ?? null,
+    publishedAt: raw.publishedAt ?? null,
     title: localeRow?.title ?? null,
     snippet: localeRow?.snippet ?? null,
     description: localeRow?.description ?? null,
