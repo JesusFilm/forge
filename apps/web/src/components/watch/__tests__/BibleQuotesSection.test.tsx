@@ -289,7 +289,7 @@ describe("BibleQuotesSection — citations + promo", () => {
     const version = container.querySelector(
       '[data-testid="watch-bible-quotes-version"]',
     )
-    expect(version?.textContent).toBe("NIV · New International Version")
+    expect(version?.textContent).toBe("New International Version")
   })
 
   it("happy path: 2 citations renders 3 list items (2 citations + 1 promo)", () => {
@@ -553,31 +553,43 @@ describe("BibleQuotesSection — Admin-resolved passages", () => {
     expect(
       container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
     ).toBeNull()
+    const card = container.querySelector(
+      '[data-testid="watch-bible-quotes-card"]',
+    ) as HTMLElement | null
+    expect(card?.style.backgroundImage).toContain("radial-gradient")
+    expect(card?.style.backgroundImage).toContain("linear-gradient")
+    expect(
+      card?.querySelector('[data-testid="watch-bible-quotes-grain"]'),
+    ).not.toBeNull()
     const reference = container.querySelector(
       '[data-testid="watch-bible-quotes-reference"]',
-    )
-    const link = reference?.querySelector("a") as HTMLAnchorElement | null
+    ) as HTMLElement | null
     expect(reference?.textContent).toBe("Colossians 1:16")
-    expect(link?.getAttribute("href")).toBe(
-      "https://www.bible.com/bible/3034/COL.1.16.BSB",
+    expect(reference?.querySelector("a")).toBeNull()
+    expect(reference?.className).not.toContain("text-white/72")
+    expect(reference?.style.color).not.toBe("")
+    const verse = container.querySelector(
+      '[data-testid="watch-bible-quotes-verse"]',
     )
-    expect(link?.getAttribute("target")).toBe("_blank")
-    expect(link?.getAttribute("rel")).toContain("noopener")
-    expect(
-      container.querySelector('[data-testid="watch-bible-quotes-verse"]')
-        ?.textContent,
-    ).toBe("For in Him all things were created.")
+    expect(verse?.textContent).toBe("For in Him all things were created.")
+    expect(verse?.className).toContain("line-clamp-4")
     expect(
       container.querySelector('[data-testid="watch-bible-quotes-version"]')
         ?.textContent,
-    ).toBe("BSB · Berean Standard Bible")
+    ).toBe("Berean Standard Bible")
     expect(
       container.querySelector('[data-testid="watch-bible-quotes-copyright"]')
         ?.textContent,
     ).toBe("Test Bible version copyright from the server response.")
-    expect(
-      container.querySelector('[data-testid="watch-bible-quotes-read-more"]'),
-    ).toBeNull()
+    const readMore = container.querySelector(
+      '[data-testid="watch-bible-quotes-read-more"]',
+    ) as HTMLAnchorElement | null
+    expect(readMore?.textContent).toBe("Read more...")
+    expect(readMore?.getAttribute("href")).toBe(
+      "https://www.bible.com/bible/3034/COL.1.16.BSB",
+    )
+    expect(readMore?.getAttribute("target")).toBe("_blank")
+    expect(readMore?.getAttribute("rel")).toContain("noopener")
   })
 
   it("uses the Admin human reference for narrowed ranges", () => {
@@ -642,6 +654,9 @@ describe("BibleQuotesSection — Admin-resolved passages", () => {
     expect(
       container.querySelector('[data-testid="watch-bible-quotes-version"]'),
     ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-read-more"]'),
+    ).toBeNull()
   })
 
   it("does not build a Bible.com link without a version abbreviation", () => {
@@ -665,14 +680,17 @@ describe("BibleQuotesSection — Admin-resolved passages", () => {
       container.querySelector('[data-testid="watch-bible-quotes-reference"] a'),
     ).toBeNull()
     expect(
+      container.querySelector('[data-testid="watch-bible-quotes-read-more"]'),
+    ).toBeNull()
+    expect(
       container.querySelector('[data-testid="watch-bible-quotes-version"]')
         ?.textContent,
     ).toBe("Translation Without Abbreviation")
   })
 })
 
-describe("BibleQuotesSection — Unsplash image cards", () => {
-  it("renders an <img> per citation using the index-cycled Unsplash URLs", () => {
+describe("BibleQuotesSection — gradient quote cards", () => {
+  it("uses generated gradient backgrounds for citations instead of photo images", () => {
     const citations: Citation[] = [
       makeCitation({
         documentId: "bc-1",
@@ -696,18 +714,25 @@ describe("BibleQuotesSection — Unsplash image cards", () => {
         />,
       )
     })
-    const imgs = container.querySelectorAll(
-      '[data-testid="watch-bible-quotes-item"] img',
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-item"] img'),
+    ).toBeNull()
+    const cards = container.querySelectorAll(
+      '[data-testid="watch-bible-quotes-card"]',
     )
-    expect(imgs.length).toBeGreaterThanOrEqual(2)
-    const src0 = imgs[0]?.getAttribute("src") ?? ""
-    const src1 = imgs[1]?.getAttribute("src") ?? ""
-    expect(src0).toContain("images.unsplash.com")
-    expect(src1).toContain("images.unsplash.com")
-    expect(src0).not.toBe(src1)
+    expect(cards).toHaveLength(2)
+    expect((cards[0] as HTMLElement).style.backgroundImage).toContain(
+      "radial-gradient",
+    )
+    expect((cards[1] as HTMLElement).style.backgroundImage).toContain(
+      "radial-gradient",
+    )
+    expect((cards[0] as HTMLElement).style.backgroundImage).not.toBe(
+      (cards[1] as HTMLElement).style.backgroundImage,
+    )
   })
 
-  it("BIBLE_IMAGES cycles by index modulo array length", () => {
+  it("keeps the promo card image while replacing citation images", () => {
     const citations: Citation[] = Array.from({ length: 9 }).map((_, i) =>
       makeCitation({
         documentId: `bc-${i}`,
@@ -724,15 +749,12 @@ describe("BibleQuotesSection — Unsplash image cards", () => {
         />,
       )
     })
-    const imgs = container.querySelectorAll(
-      '[data-testid="watch-bible-quotes-item"] img',
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-item"] img'),
+    ).toBeNull()
+    const promoImg = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo"] img',
     )
-    const src0 = imgs[0]?.getAttribute("src") ?? ""
-    const src7 = imgs[7]?.getAttribute("src") ?? ""
-    expect(src7).toBe(src0)
-    const src8 = imgs[8]?.getAttribute("src") ?? ""
-    const src1 = imgs[1]?.getAttribute("src") ?? ""
-    expect(src8).toBe(src1)
-    expect(src8).not.toBe(src0)
+    expect(promoImg?.getAttribute("src")).toContain("images.unsplash.com")
   })
 })
