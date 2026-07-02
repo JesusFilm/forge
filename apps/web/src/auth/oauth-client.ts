@@ -1,4 +1,8 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose"
+import {
+  getDefaultWatchCallbackOrigins,
+  normalizeOrigin,
+} from "@forge/watch-url-policy"
 
 import { env } from "@/env"
 
@@ -184,7 +188,18 @@ function resolveWebBaseUrl({
     return requestOrigin.replace(/\/$/, "")
   }
 
+  if (requestOrigin && isAllowedWatchRequestOrigin(requestOrigin)) {
+    return requestOrigin.replace(/\/$/, "")
+  }
+
   return configuredBaseUrl.replace(/\/$/, "")
+}
+
+function isAllowedWatchRequestOrigin(value: string) {
+  const origin = normalizeOrigin(value)
+  if (!origin) return false
+
+  return getDefaultWatchCallbackOrigins(process.env.NODE_ENV).includes(origin)
 }
 
 function isLoopbackOrigin(value: string | undefined) {
