@@ -1471,6 +1471,29 @@ model BibleCitation {
   @@map("bible_citation")
 }
 
+/// Cached scripture text fetched from an approved remote Bible provider.
+model BiblePassageCache {
+  id                  String   @id @default(cuid())
+  provider            String
+  versionId           String   @map("version_id")
+  reference           String
+  contentFormat       String   @default("text") @map("content_format")
+  content             String
+  humanReference      String?  @map("human_reference")
+  versionAbbreviation String?  @map("version_abbreviation")
+  versionTitle        String?  @map("version_title")
+  copyright           String
+  publisherUrl        String?  @map("publisher_url")
+  fetchedAt           DateTime @default(now()) @map("fetched_at")
+  expiresAt           DateTime @map("expires_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, versionId, reference, contentFormat])
+  @@index([expiresAt])
+  @@map("bible_passage_cache")
+}
+
 /// A timecoded scene segment of a VideoEdition. Scenes follow the edition's
 /// cut, so timecodes attach at edition level (same pattern as VideoSubtitle).
 /// Language-agnostic fields only — per-locale descriptions + embeddings live

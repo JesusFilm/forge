@@ -95,9 +95,7 @@ afterEach(() => {
 })
 
 type Citation = WatchBibleQuotesBlock["bibleCitations"][number]
-type YouVersionPassage = NonNullable<
-  WatchBibleQuotesBlock["youVersionPassages"]
->[number]
+type Passage = NonNullable<WatchBibleQuotesBlock["passages"]>[number]
 
 function makeCitation(
   overrides: Partial<{
@@ -124,12 +122,11 @@ function makeCitation(
       documentId: overrides.bibleBookDocumentId ?? "bb-galatians",
       name: overrides.bookName === undefined ? "Galatians" : overrides.bookName,
     },
+    passage: null,
   } satisfies Citation
 }
 
-function makeYouVersionPassage(
-  overrides: Partial<YouVersionPassage> = {},
-): YouVersionPassage {
+function makeYouVersionPassage(overrides: Partial<Passage> = {}): Passage {
   return {
     citationDocumentId: overrides.citationDocumentId ?? "bc-1",
     content: overrides.content ?? "Server-rendered YouVersion passage text.",
@@ -137,6 +134,7 @@ function makeYouVersionPassage(
       overrides.copyright ??
       "Test Bible version copyright from the server response.",
     humanReference: overrides.humanReference ?? "Galatians 2:20",
+    provider: overrides.provider ?? "youversion",
     publisherUrl:
       overrides.publisherUrl ?? "https://example.test/bible-version",
     reference: overrides.reference ?? "GAL.2.20",
@@ -552,7 +550,7 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
             makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
           ]}
           onShareClick={vi.fn()}
-          youVersionPassages={[
+          passages={[
             makeYouVersionPassage({
               citationDocumentId: "bc-1",
               content: "I have been crucified with Christ.",
@@ -610,7 +608,7 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
             }),
           ]}
           onShareClick={vi.fn()}
-          youVersionPassages={[
+          passages={[
             makeYouVersionPassage({
               citationDocumentId: "bc-cross-chapter",
               content: "I have been crucified with Christ.",
@@ -644,7 +642,7 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
             }),
           ]}
           onShareClick={vi.fn()}
-          youVersionPassages={[
+          passages={[
             makeYouVersionPassage({
               citationDocumentId: "bc-gal",
               content: "Galatians passage.",
@@ -685,7 +683,7 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
             makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
           ]}
           onShareClick={vi.fn()}
-          youVersionPassages={[makeYouVersionPassage()]}
+          passages={[makeYouVersionPassage()]}
         />,
       )
     })

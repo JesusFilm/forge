@@ -124,6 +124,13 @@ export const experienceAiMaxRepairAttemptsEnvSchema = z.coerce
   .optional()
   .default(2)
 
+export const youVersionPassageCacheTtlSecondsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(60 * 60 * 24 * 14)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -231,6 +238,11 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Admin-owned YouVersion integration for Watch Bible passages. Web
+    // reads cached passage data through GraphQL and never receives this key.
+    YOUVERSION_APP_KEY: z.string().min(1).optional(),
+    YOUVERSION_PASSAGE_CACHE_TTL_SECONDS:
+      youVersionPassageCacheTtlSecondsEnvSchema,
     // Video DB backup download signer. Production admin uses this CSV
     // to authorize non-production callers that need a short-lived GET
     // URL for the latest reviewed video backup. Keep separate from
@@ -605,6 +617,10 @@ export const env = createEnv({
       process.env.EXPERIENCE_EXEMPLAR_FALLBACK_SLUG,
     ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    YOUVERSION_APP_KEY: emptyToUndefined(process.env.YOUVERSION_APP_KEY),
+    YOUVERSION_PASSAGE_CACHE_TTL_SECONDS: emptyToUndefined(
+      process.env.YOUVERSION_PASSAGE_CACHE_TTL_SECONDS,
+    ),
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),

@@ -32,7 +32,6 @@ import {
   isWatchCtaTextCopyEnabled,
   isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
-  isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
 import {
   isLocale,
@@ -59,7 +58,6 @@ import {
 } from "@/lib/watch-structured-data"
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
-import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -239,17 +237,6 @@ async function getDownloadButtonLabel(
   const messages = (await import(`../../../../../messages/${locale}.json`))
     .default as { DownloadButton?: { saveVideo?: string } }
   return messages.DownloadButton?.saveVideo ?? "Save Video"
-}
-
-async function getYouVersionBibleQuotePassages(
-  route: string,
-  bibleCitations: Parameters<typeof fetchYouVersionBibleQuotePassages>[0],
-) {
-  const enabled = await isWatchYouVersionBibleQuotesEnabled({
-    custom: { route },
-  })
-  if (!enabled) return []
-  return fetchYouVersionBibleQuotePassages(bibleCitations)
 }
 
 async function getQuestionPanelEnabled(route: string): Promise<boolean> {
@@ -516,14 +503,10 @@ async function renderEpisode(shape: {
       getQuestionPanelEnabled(route),
       getHideBibleQuotesEnabled(route),
     ])
-  const youVersionPassages = await (hideBibleQuotes
-    ? Promise.resolve([])
-    : getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations))
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
-    youVersionPassages,
   })
   const clientVariant = pruneWatchVariantForClient(resolved.selectedVariant)
   const clientMergedBlocks = pruneMergedWatchBlocksForClient(
@@ -617,14 +600,10 @@ async function renderVideo(shape: {
         getQuestionPanelEnabled(route),
         getHideBibleQuotesEnabled(route),
       ])
-    const youVersionPassages = await (hideBibleQuotes
-      ? Promise.resolve([])
-      : getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations))
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
-      youVersionPassages,
     })
     const clientVariant = pruneWatchVariantForClient(watchVideo.selectedVariant)
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
