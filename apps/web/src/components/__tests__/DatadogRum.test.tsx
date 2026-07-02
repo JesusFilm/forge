@@ -9,7 +9,9 @@ const { datadogRumMock, mockEnv, reactPluginMock } = vi.hoisted(() => {
   const datadogRumMock = {
     addAction: vi.fn(),
     addError: vi.fn(),
+    clearUser: vi.fn(),
     init: vi.fn(),
+    setUser: vi.fn(),
   }
   const reactPlugin = { name: "react-plugin" }
   const reactPluginMock = vi.fn(() => reactPlugin)
@@ -38,6 +40,8 @@ vi.mock("@/env", () => ({
 
 import DatadogRum, {
   getDatadogRumInitConfig,
+  clearDatadogRumUser,
+  identifyDatadogRumUser,
   reportDatadogRumAction,
   reportDatadogRumError,
 } from "@/components/DatadogRum"
@@ -199,6 +203,27 @@ describe("DatadogRum", () => {
         "watch_search.search_request_id": "search_12345678",
       },
     )
+  })
+
+  it("identifies signed-in users in RUM without image data", () => {
+    identifyDatadogRumUser({
+      id: " auth-user-123 ",
+      email: " viewer@example.test ",
+      name: " Viewer Example ",
+    })
+
+    expect(datadogRumMock.setUser).toHaveBeenCalledWith({
+      id: "auth-user-123",
+      email: "viewer@example.test",
+      name: "Viewer Example",
+    })
+  })
+
+  it("clears the RUM user when the session is anonymous", () => {
+    identifyDatadogRumUser(undefined)
+    clearDatadogRumUser()
+
+    expect(datadogRumMock.clearUser).toHaveBeenCalledTimes(2)
   })
 
   it("does not let Datadog action failures cascade", () => {

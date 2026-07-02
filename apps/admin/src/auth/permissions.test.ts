@@ -33,6 +33,11 @@ const MANAGER_OPERATOR_ADMIN: Principal = {
   managerRole: "OPERATOR",
 }
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
+const WEB_USER: Principal = {
+  id: "auth-user-1",
+  role: "WEB_USER",
+  rateLimitBucketKey: "auth-user-1",
+}
 
 const EXPERIENCE_OWNED_BY_ALICE = {
   ownerId: "alice",
@@ -79,6 +84,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "PUBLIC", expected: false },
       { key: "write:media-assets", role: "PUBLIC", expected: false },
       { key: "write:manager-jobs", role: "PUBLIC", expected: false },
+      { key: "write:watch-events", role: "PUBLIC", expected: false },
       { key: "admin:all", role: "PUBLIC", expected: false },
 
       // VIEWER reach
@@ -92,6 +98,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "VIEWER", expected: false },
       { key: "write:media-assets", role: "VIEWER", expected: false },
       { key: "write:manager-jobs", role: "VIEWER", expected: false },
+      { key: "write:watch-events", role: "VIEWER", expected: false },
       { key: "publish:experiences", role: "VIEWER", expected: false },
 
       // EDITOR reach
@@ -104,6 +111,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "access:manager", role: "EDITOR", expected: false },
       { key: "read:manager-read-models", role: "EDITOR", expected: false },
       { key: "write:manager-jobs", role: "EDITOR", expected: false },
+      { key: "write:watch-events", role: "EDITOR", expected: false },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
       { key: "system:trigger-workflow", role: "EDITOR", expected: false },
@@ -119,6 +127,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "access:manager", role: "ADMIN", expected: false },
       { key: "read:manager-read-models", role: "ADMIN", expected: false },
       { key: "write:manager-jobs", role: "ADMIN", expected: false },
+      { key: "write:watch-events", role: "ADMIN", expected: true },
       { key: "delete:media-assets", role: "ADMIN", expected: true },
       { key: "publish:experiences", role: "ADMIN", expected: true },
       { key: "system:trigger-workflow", role: "ADMIN", expected: true },
@@ -139,6 +148,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "access:manager", role: "SYSTEM", expected: false },
       { key: "read:manager-read-models", role: "SYSTEM", expected: false },
       { key: "write:manager-jobs", role: "SYSTEM", expected: false },
+      { key: "write:watch-events", role: "SYSTEM", expected: false },
       { key: "system:write-derived", role: "SYSTEM", expected: true },
       { key: "system:trigger-workflow", role: "SYSTEM", expected: false },
     ]
@@ -176,6 +186,16 @@ describe("hasPermission — Manager backend bearer gate", () => {
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "access:manager")).toBe(
       false,
     )
+  })
+})
+
+describe("hasPermission — Web user bearer gate", () => {
+  it("grants only watch-event writes", () => {
+    expect(hasPermission(WEB_USER, "write:watch-events")).toBe(true)
+    expect(hasPermission(WEB_USER, "read:videos")).toBe(false)
+    expect(hasPermission(WEB_USER, "read:experiences")).toBe(false)
+    expect(hasPermission(WEB_USER, "write:experiences")).toBe(false)
+    expect(hasPermission(WEB_USER, "admin:all")).toBe(false)
   })
 })
 
@@ -547,6 +567,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -583,6 +604,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -623,6 +645,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -671,6 +694,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,

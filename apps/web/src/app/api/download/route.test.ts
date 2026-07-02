@@ -25,6 +25,13 @@ vi.mock("node:dns", () => ({
   },
 }))
 
+vi.mock("@/lib/auth-session", () => ({
+  verifyAuthSession: vi.fn(async () => ({
+    authenticated: true,
+    user: { id: "user_123" },
+  })),
+}))
+
 import { promises as dns } from "node:dns"
 
 import { GET, HEAD } from "./route"
@@ -367,7 +374,7 @@ describe("GET /watch/api/download — filename sanitization", () => {
     // The double-quote in the filename must be stripped so the filename
     // can't break out of the quoted-string token.
     expect(cd).not.toMatch(/filename="[^"]*"[^;]*"/)
-    expect(res.headers.get("set-cookie")).not.toContain("foo=bar")
+    expect(res.headers.has("set-cookie")).toBe(false)
   })
 
   it("strips RTL-override and other bidi-control codepoints used in extension-spoof attacks", async () => {
@@ -488,7 +495,7 @@ describe("HEAD /watch/api/download — size probe", () => {
     const res = await HEAD(
       makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
     )
-    expect(res.headers.get("set-cookie")).not.toContain("tracker=abc")
+    expect(res.headers.has("set-cookie")).toBe(false)
     expect(res.headers.has("x-attacker-frame")).toBe(false)
     expect(res.headers.get("content-length")).toBe("100")
   })
@@ -552,7 +559,7 @@ describe("GET /watch/api/download — response header allowlist", () => {
         filename: "x.mp4",
       }),
     )
-    expect(res.headers.get("set-cookie")).not.toContain("tracker=abc")
+    expect(res.headers.has("set-cookie")).toBe(false)
     expect(res.headers.has("x-attacker-frame")).toBe(false)
     expect(res.headers.get("content-type")).toBe("video/mp4")
   })

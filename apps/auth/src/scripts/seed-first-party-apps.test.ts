@@ -82,6 +82,7 @@ describe("seedFirstPartyApps", () => {
           tokenEndpointAuthMethod: "none",
           metadata: expect.objectContaining({
             appKey: "web",
+            environmentKey: "local",
           }),
         }),
       }),

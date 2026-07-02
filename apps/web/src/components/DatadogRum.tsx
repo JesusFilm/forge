@@ -61,7 +61,38 @@ export function reportDatadogRumAction(
   safeReportDatadogRum("action", () => datadogRum.addAction(name, context))
 }
 
-function safeReportDatadogRum(kind: "action" | "error", report: () => void) {
+type DatadogRumUser = {
+  id?: string
+  email?: string
+  name?: string
+}
+
+export function identifyDatadogRumUser(user: DatadogRumUser | undefined) {
+  const id = user?.id?.trim()
+  if (!user || !id) {
+    clearDatadogRumUser()
+    return
+  }
+
+  const email = user.email?.trim() || undefined
+  const name = user.name?.trim() || undefined
+  safeReportDatadogRum("user", () =>
+    datadogRum.setUser({
+      id,
+      email,
+      name,
+    }),
+  )
+}
+
+export function clearDatadogRumUser() {
+  safeReportDatadogRum("user", () => datadogRum.clearUser())
+}
+
+function safeReportDatadogRum(
+  kind: "action" | "error" | "user",
+  report: () => void,
+) {
   try {
     report()
   } catch (reportError) {

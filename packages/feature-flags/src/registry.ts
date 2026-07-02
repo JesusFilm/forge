@@ -13,13 +13,6 @@ export const featureFlags = {
     description:
       "Temporary production smoke flag for the watch-page CTA text copy.",
   },
-  watchDownloadAccountGate: {
-    key: "forge.watch.downloadAccountGate",
-    defaultValue: false,
-    localOverrideEnv: "FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT",
-    description:
-      "Gradual rollout gate requiring a Jesus Film One account before watch-page video downloads.",
-  },
   watchYouVersionBibleQuotes: {
     key: "forge.watch.youVersionBibleQuotes",
     defaultValue: false,
