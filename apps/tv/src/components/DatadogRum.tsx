@@ -9,9 +9,7 @@ import {
 
 import {
   DATADOG_SERVICE,
-  datadogLog,
   getDatadogRumConfig,
-  reportDatadogError,
   toFirstPartyHostConfigs,
 } from "../lib/datadog"
 
@@ -24,19 +22,12 @@ export function TvDatadogProvider({ children }: { children: ReactNode }) {
   const config = getDatadogRumConfig()
   const provisioned = config != null
 
-  // Dev-only: surface the disabled gate in logs, and fire one RUM error + one
-  // log so a freshly provisioned run self-confirms the pipe (search "tv boot
-  // smoke" in Datadog). Smoke is TEMPORARY scaffolding — remove once verified.
+  // Dev-only: surface the disabled gate so a creds-less build is diagnosable.
   useEffect(() => {
-    if (!__DEV__) return
-    if (!provisioned) {
-      console.warn(
-        "[datadog] RUM disabled: set EXPO_PUBLIC_DATADOG_CLIENT_TOKEN and EXPO_PUBLIC_DATADOG_APPLICATION_ID to enable telemetry",
-      )
-      return
-    }
-    reportDatadogError(new Error("[datadog] tv boot smoke"), { origin: "boot" })
-    datadogLog.info("[datadog] tv boot smoke", { origin: "boot" })
+    if (!__DEV__ || provisioned) return
+    console.warn(
+      "[datadog] RUM disabled: set EXPO_PUBLIC_DATADOG_CLIENT_TOKEN and EXPO_PUBLIC_DATADOG_APPLICATION_ID to enable telemetry",
+    )
   }, [provisioned])
 
   if (!config) return <>{children}</>
