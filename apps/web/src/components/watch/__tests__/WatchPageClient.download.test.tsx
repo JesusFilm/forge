@@ -73,6 +73,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     languageSlug,
     modalCallbacks,
     shareHref,
+    subtitleVttSrc,
   }: {
     downloadError?: string | null
     downloadHref?: string
@@ -80,12 +81,14 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
     shareHref?: string
+    subtitleVttSrc?: string | null
   }) => (
     <div
       data-testid="watch-section-renderer"
       data-download-href={downloadHref ?? ""}
       data-language-slug={languageSlug ?? ""}
       data-share-href={shareHref ?? ""}
+      data-subtitle-vtt-src={subtitleVttSrc ?? ""}
     >
       <button
         data-testid="watch-download-button"
@@ -410,6 +413,36 @@ describe("WatchPageClient download boundary", () => {
     expect(latestProps.subtitles).toHaveLength(1)
     expect(latestProps.currentSubtitleEnabled).toBe(true)
     expect(latestProps.currentSubtitleSlug).toBe("spanish")
+  })
+
+  it("passes selected subtitle VTTs through the same-origin media proxy", () => {
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+    renderWatchPage({
+      languageSlug: "english",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-subtitle-vtt-src")).toBe(
+      "/watch/api/download?url=https%3A%2F%2Fcdn.test%2Fspanish.vtt&disposition=inline",
+    )
   })
 
   it("shows an inline error when the first session check cannot complete", async () => {
