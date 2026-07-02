@@ -62,6 +62,9 @@ type FocusableCardProps = {
    *  the card does (e.g. "Opens this experience"). Optional when the action is
    *  self-evident (single-letter keyboard cells). */
   accessibilityHint?: string
+  /** Overrides Datadog RUM's tap-action name (which defaults to the accessibility
+   *  label). Set a generic value when the label carries user-typed text. */
+  ddActionName?: string
   style?: ViewStyle
   children: ReactNode
 }
@@ -76,6 +79,7 @@ export function FocusableCard({
   focusRing = "white",
   accessibilityLabel,
   accessibilityHint,
+  ddActionName,
   style,
   children,
 }: FocusableCardProps) {
@@ -142,6 +146,9 @@ export function FocusableCard({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityRole="button"
+      // Non-typed prop spread (KeyButton's pattern) — Pressable's TS types
+      // don't declare dd-action-name.
+      {...(ddActionName ? { "dd-action-name": ddActionName } : {})}
     >
       <Animated.View
         needsOffscreenAlphaCompositing={Platform.OS === "android" && isFocused}
