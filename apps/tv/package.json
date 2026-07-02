@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
+    "@datadog/mobile-react-native": "3.5.2",
     "@expo/vector-icons": "^15.1.1",
     "@forge/admin-graphql": "workspace:*",
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -51,7 +52,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))"
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog))"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

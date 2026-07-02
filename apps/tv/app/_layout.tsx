@@ -19,6 +19,8 @@ let Stack: typeof import("expo-router").Stack
 let StatusBar: typeof import("expo-status-bar").StatusBar
 let ApolloProvider: typeof import("@apollo/client/react").ApolloProvider
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
+let TvDatadogProvider: typeof import("../src/components/DatadogRum").TvDatadogProvider
+let reportDatadogError: typeof import("../src/lib/datadog").reportDatadogError
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -28,6 +30,8 @@ try {
   StatusBar = require("expo-status-bar").StatusBar
   ApolloProvider = require("@apollo/client/react").ApolloProvider
   getApolloClient = require("../src/lib/apolloClient").getApolloClient
+  TvDatadogProvider = require("../src/components/DatadogRum").TvDatadogProvider
+  reportDatadogError = require("../src/lib/datadog").reportDatadogError
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -67,6 +71,9 @@ class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo })
+    reportDatadogError(error, {
+      componentStack: errorInfo.componentStack ?? undefined,
+    })
   }
 
   render() {
@@ -161,28 +168,32 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <ApolloProvider client={clientRef.current!}>
-        {/* SeriesLanguage sits ABOVE WatchSession: session default-dub resolution
-            reads the carried series-language selection (U4), so its provider must
-            be mounted first. Lives here, not the series screen, to survive push/pop. */}
-        <SeriesLanguageProvider>
-          {/* WatchSession is OUTER of VideoPlayer so the overlay VideoPlayer can
-              call useWatchSession() (live dub/subtitle handoff). Below ErrorBoundary
-              so a throw degrades to the error screen. Inert until a video is published (KTD2, U3). */}
-          <WatchSessionProvider>
-            <VideoPlayerProvider>
-              <StatusBar style="light" />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: BG_COLOR },
-                }}
-              />
-              <VideoPlayerOverlay />
-            </VideoPlayerProvider>
-          </WatchSessionProvider>
-        </SeriesLanguageProvider>
-      </ApolloProvider>
+      {/* Datadog RUM wraps the app so it buffers/instruments from first mount.
+          A no-op pass-through until the client token + app id are provisioned. */}
+      <TvDatadogProvider>
+        <ApolloProvider client={clientRef.current!}>
+          {/* SeriesLanguage sits ABOVE WatchSession: session default-dub resolution
+              reads the carried series-language selection (U4), so its provider must
+              be mounted first. Lives here, not the series screen, to survive push/pop. */}
+          <SeriesLanguageProvider>
+            {/* WatchSession is OUTER of VideoPlayer so the overlay VideoPlayer can
+                call useWatchSession() (live dub/subtitle handoff). Below ErrorBoundary
+                so a throw degrades to the error screen. Inert until a video is published (KTD2, U3). */}
+            <WatchSessionProvider>
+              <VideoPlayerProvider>
+                <StatusBar style="light" />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: BG_COLOR },
+                  }}
+                />
+                <VideoPlayerOverlay />
+              </VideoPlayerProvider>
+            </WatchSessionProvider>
+          </SeriesLanguageProvider>
+        </ApolloProvider>
+      </TvDatadogProvider>
     </ErrorBoundary>
   )
 }

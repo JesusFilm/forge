@@ -52,6 +52,9 @@ export function KeyButton({
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={cell.accessibilityLabel ?? cell.label}
+      // Datadog RUM names TAP actions from accessibilityLabel by default — a
+      // generic dd-action-name keeps typed search letters out of telemetry.
+      {...{ "dd-action-name": "keyboard-key" }}
     >
       <Animated.View
         style={[
