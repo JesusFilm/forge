@@ -147,8 +147,13 @@ describe("AccountControl", () => {
     expect(button.getAttribute("aria-expanded")).toBe("true")
     expect(container.innerHTML).toContain("https://example.test/avatar.jpg")
 
+    const logoutItem = Array.from(
+      menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
+    ).find((item) => item.textContent?.includes("Log out"))
+    expect(logoutItem).toBeDefined()
+
     await act(async () => {
-      ;(menu.querySelector('[role="menuitem"]') as HTMLButtonElement).click()
+      logoutItem?.click()
     })
 
     expect(assignSpy).toHaveBeenCalledWith(

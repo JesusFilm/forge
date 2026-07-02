@@ -370,8 +370,8 @@ describe("SiblingCarousel — happy path", () => {
     expect(outlineSegments?.[1]?.className).toContain(
       "bg-[linear-gradient(to_bottom",
     )
-    expect(outlineSegments?.[1]?.className).toContain("rgba(0,0,0,0.92)_100%")
-    expect(outlineSegments?.[3]?.className).toContain("bg-black/90")
+    expect(outlineSegments?.[1]?.className).toContain("rgba(239,68,68,0)_100%")
+    expect(outlineSegments?.[3]?.className).toContain("bg-transparent")
 
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
