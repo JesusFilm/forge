@@ -20,6 +20,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import {
@@ -385,7 +386,7 @@ export function SiblingCarousel({
                     landscape tile. */}
                 <div
                   data-testid="sibling-carousel-caption"
-                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
+                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent px-3 pt-3 pb-5 sm:px-4 sm:pt-4 sm:pb-6"
                 >
                   <span className="text-[10px] font-normal tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
                     {t("chapter")}
@@ -406,6 +407,7 @@ export function SiblingCarousel({
                   data-testid="sibling-carousel-bevel"
                   className="pointer-events-none absolute inset-0 z-40 rounded-lg border border-white opacity-40 mix-blend-soft-light"
                 />
+                <WatchProgressBar videoId={child.documentId} />
 
                 <div
                   aria-hidden="true"
@@ -418,9 +420,9 @@ export function SiblingCarousel({
                   )}
                 >
                   <span className="absolute inset-x-0 top-0 h-[4px] rounded-t-lg bg-brand-red" />
-                  <span className="absolute inset-y-0 left-0 w-[4px] rounded-l-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(120,20,20,0.88)_78%,rgba(0,0,0,0.92)_100%)]" />
-                  <span className="absolute inset-y-0 right-0 w-[4px] rounded-r-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(120,20,20,0.88)_78%,rgba(0,0,0,0.92)_100%)]" />
-                  <span className="absolute inset-x-0 bottom-0 h-[4px] rounded-b-lg bg-black/90" />
+                  <span className="absolute inset-y-0 left-0 w-[4px] rounded-l-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
+                  <span className="absolute inset-y-0 right-0 w-[4px] rounded-r-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
+                  <span className="absolute inset-x-0 bottom-0 h-[4px] rounded-b-lg bg-transparent" />
                 </div>
 
                 <div

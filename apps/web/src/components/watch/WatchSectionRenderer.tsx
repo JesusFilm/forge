@@ -283,6 +283,7 @@ function SyntheticBlock({
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
           onLanguageClick={modalCallbacks?.openLanguage}
+          languageSlug={languageSlug ?? null}
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
