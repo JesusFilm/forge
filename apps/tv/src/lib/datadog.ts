@@ -101,6 +101,18 @@ export function startDatadogView(key: string, name: string): void {
   }
 }
 
+/** RUM timing marking the series screen's first rendered rail (the perf-sweep cost). */
+export const SERIES_FIRST_RAIL_READY_TIMING = "series_first_rail_ready"
+
+/** Records a timing on the active RUM view — fire-and-forget, never throws. */
+export function addDatadogTiming(name: string): void {
+  try {
+    void DdRum.addTiming(name).catch(() => undefined)
+  } catch {
+    // Telemetry must never break the app.
+  }
+}
+
 /** Reports a handled JS error to Datadog RUM. Mirrors web's reportDatadogRumError. */
 export function reportDatadogError(
   error: unknown,

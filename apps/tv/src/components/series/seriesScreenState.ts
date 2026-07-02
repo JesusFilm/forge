@@ -80,6 +80,21 @@ export function resolveLeafBounce(
   return hasSeriesSelection ? "bounce" : "pending"
 }
 
+// ── First-rail timing (feat-226 R6) ────────────────────────────────
+
+/**
+ * Gate for the `series_first_rail_ready` RUM timing: once per screen instance,
+ * on the first render whose record yields an actual rail. Partial-data records
+ * without episodes wait; error/no-data never fires; ~0ms re-fires never happen.
+ */
+export function shouldFireFirstRailTiming(
+  record: { episodes: readonly unknown[] } | null | undefined,
+  hasFired: boolean,
+): boolean {
+  if (hasFired || record == null) return false
+  return record.episodes.length > 0
+}
+
 // ── Screen state (R16) ─────────────────────────────────────────────
 
 /**

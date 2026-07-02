@@ -32,7 +32,13 @@ import {
   pickDefaultTrailer,
   resolveLeafBounce,
   resolveScreenState,
+  shouldFireFirstRailTiming,
 } from "../../src/components/series/seriesScreenState"
+import {
+  addDatadogTiming,
+  getDatadogRumConfig,
+  SERIES_FIRST_RAIL_READY_TIMING,
+} from "../../src/lib/datadog"
 import { isSeriesLabel } from "../../src/lib/isSeriesRecord"
 import { EpisodeRail } from "../../src/components/series/EpisodeRail"
 import { RetryButton } from "../../src/components/RetryButton"
@@ -123,6 +129,18 @@ export default function SeriesScreen() {
       : `/watch/${encodeURIComponent(decodedSlug)}`
     router.replace(target)
   }, [bounce, decodedSlug, router, seedParam])
+
+  // series_first_rail_ready (R6): once per slug instance, on the first render
+  // whose record yields a non-empty rail. Timing lands on the series view the
+  // route tracker started (tracker precedes <Stack> in the layout tree).
+  const firstRailFiredForRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (getDatadogRumConfig() == null) return
+    const hasFired = firstRailFiredForRef.current === decodedSlug
+    if (!shouldFireFirstRailTiming(record, hasFired)) return
+    firstRailFiredForRef.current = decodedSlug
+    addDatadogTiming(SERIES_FIRST_RAIL_READY_TIMING)
+  }, [record, decodedSlug])
 
   const screenState = resolveScreenState({ record, seed, error, loading })
 

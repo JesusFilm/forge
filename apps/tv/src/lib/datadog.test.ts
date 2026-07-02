@@ -24,6 +24,7 @@ jest.mock("@datadog/mobile-react-native", () => ({
   DdRum: {
     addError: jest.fn().mockResolvedValue(undefined),
     startView: jest.fn().mockResolvedValue(undefined),
+    addTiming: jest.fn().mockResolvedValue(undefined),
   },
   ErrorSource: { SOURCE: "SOURCE" },
   PropagatorType: { TRACECONTEXT: "tracecontext" },
@@ -39,12 +40,14 @@ import {
 } from "@datadog/mobile-react-native"
 import { env } from "../env"
 import {
+  addDatadogTiming,
   datadogGraphqlHeaders,
   datadogLog,
   getDatadogRumConfig,
   hostFromUrl,
   reportDatadogError,
   resolveViewName,
+  SERIES_FIRST_RAIL_READY_TIMING,
   startDatadogView,
   toFirstPartyHostConfigs,
 } from "./datadog"
@@ -52,6 +55,7 @@ import {
 const mockEnv = env as unknown as Record<string, string | undefined>
 const mockAddError = DdRum.addError as jest.Mock
 const mockStartView = DdRum.startView as jest.Mock
+const mockAddTiming = DdRum.addTiming as jest.Mock
 const mockLogInfo = DdLogs.info as jest.Mock
 
 const flushMicrotasks = () =>
@@ -240,6 +244,26 @@ describe("startDatadogView (never-throw contract)", () => {
   it("swallows an async DdRum.startView rejection", async () => {
     mockStartView.mockRejectedValueOnce(new Error("intake unreachable"))
     expect(() => startDatadogView("/", "home")).not.toThrow()
+    await flushMicrotasks()
+  })
+})
+
+describe("addDatadogTiming (never-throw contract)", () => {
+  it("forwards the timing name to DdRum.addTiming", () => {
+    addDatadogTiming(SERIES_FIRST_RAIL_READY_TIMING)
+    expect(mockAddTiming).toHaveBeenCalledWith("series_first_rail_ready")
+  })
+
+  it("swallows a synchronously-throwing DdRum.addTiming", () => {
+    mockAddTiming.mockImplementationOnce(() => {
+      throw new Error("native bridge down")
+    })
+    expect(() => addDatadogTiming("t")).not.toThrow()
+  })
+
+  it("swallows an async DdRum.addTiming rejection", async () => {
+    mockAddTiming.mockRejectedValueOnce(new Error("intake unreachable"))
+    expect(() => addDatadogTiming("t")).not.toThrow()
     await flushMicrotasks()
   })
 })
