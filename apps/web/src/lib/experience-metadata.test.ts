@@ -126,6 +126,7 @@ describe("getWatchPageMetadata", () => {
       video: {
         documentId: "video-1",
         slug: "life-of-jesus-gospel-of-john",
+        publishedAt: "2026-06-01T12:00:00.000Z",
         title: "Life of Jesus (Gospel of John)",
         snippet: "A feature film about Jesus.",
         description: "Watch the life of Jesus from the Gospel of John.",
@@ -246,6 +247,7 @@ describe("getWatchPageMetadata", () => {
       video: {
         documentId: "video-pilate",
         slug: "jesus-is-brought-to-pilate",
+        publishedAt: null,
         title: "Jesus is Brought to Pilate",
         snippet: "Pilate questions Jesus.",
         description: "Pilate questions Jesus before the crowd.",
@@ -297,6 +299,7 @@ describe("getWatchPageMetadata", () => {
       video: {
         documentId: "video-1",
         slug: "jesus",
+        publishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,
@@ -351,6 +354,7 @@ describe("getWatchPageMetadata", () => {
       video: {
         documentId: "video-1",
         slug: "jesus",
+        publishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,

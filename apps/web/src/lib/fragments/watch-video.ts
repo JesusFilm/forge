@@ -39,6 +39,7 @@ export const watchVideoShellFragment = adminGraphql(`
   fragment WatchVideoShell on Video @_unmask {
     documentId: id
     slug
+    publishedAt
     noIndex
     label
     images {
@@ -238,6 +239,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
       ) {
         documentId
         slug
+        publishedAt
         noIndex
         label
         images {
