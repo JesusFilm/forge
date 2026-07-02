@@ -81,7 +81,8 @@
       "yaml@2": "2.8.3"
     },
     "patchedDependencies": {
-      "react-native-tvos@0.81.5-2": "patches/react-native-tvos@0.81.5-2.patch"
+      "react-native-tvos@0.81.5-2": "patches/react-native-tvos@0.81.5-2.patch",
+      "@datadog/mobile-react-native@3.5.2": "patches/@datadog__mobile-react-native@3.5.2.patch"
     }
   },
   "devDependencies": {

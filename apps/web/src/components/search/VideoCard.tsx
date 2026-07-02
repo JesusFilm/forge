@@ -18,6 +18,7 @@ type VideoCardProps = {
   result: SearchResult
   index?: number
   hrefBuilder?: (result: SearchResult) => Route
+  onResultClick?: (result: SearchResult) => void
 }
 
 // English is the default UI locale for search-result deep links. Hoisted to
@@ -128,6 +129,7 @@ export function VideoCard({
   result,
   index = 0,
   hrefBuilder = defaultHrefBuilder,
+  onResultClick,
 }: VideoCardProps) {
   const t = useTranslations("SearchResultCard")
   const videoLabels = useTranslations("VideoLabels")
@@ -155,6 +157,7 @@ export function VideoCard({
   return (
     <Link
       href={hrefBuilder(result)}
+      onClick={() => onResultClick?.(result)}
       className="group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-2xl transition hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
       style={{ animationDelay: `${index * 50}ms` }}
     >

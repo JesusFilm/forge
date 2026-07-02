@@ -1,0 +1,174 @@
+// Factory returns literals only (no outer refs) to avoid jest hoist/TDZ issues;
+// tests mutate the mocked `env` object, which datadog.ts reads by reference.
+jest.mock("../env", () => ({
+  env: {
+    EXPO_PUBLIC_GRAPHQL_URL: "https://admin.jesusfilm.org/api/graphql",
+    EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN: undefined,
+    EXPO_PUBLIC_DATADOG_CLIENT_TOKEN: undefined,
+    EXPO_PUBLIC_DATADOG_APPLICATION_ID: undefined,
+    EXPO_PUBLIC_DATADOG_SITE: undefined,
+    EXPO_PUBLIC_DATADOG_ENV: undefined,
+    EXPO_PUBLIC_DATADOG_VERSION: undefined,
+  },
+}))
+
+// The native module only exists in a prebuilt dev-client; mock it so the pure
+// helpers can be unit-tested. DdRum/DdLogs methods return promises in the real
+// SDK — the mocks must too, or the wrappers' .catch chains would throw.
+jest.mock("@datadog/mobile-react-native", () => ({
+  DdLogs: {
+    info: jest.fn().mockResolvedValue(undefined),
+    warn: jest.fn().mockResolvedValue(undefined),
+    error: jest.fn().mockResolvedValue(undefined),
+  },
+  DdRum: { addError: jest.fn().mockResolvedValue(undefined) },
+  ErrorSource: { SOURCE: "SOURCE" },
+  PropagatorType: { TRACECONTEXT: "tracecontext" },
+}))
+
+import { DdLogs, DdRum } from "@datadog/mobile-react-native"
+import { env } from "../env"
+import {
+  datadogLog,
+  getDatadogRumConfig,
+  hostFromUrl,
+  reportDatadogError,
+  toFirstPartyHostConfigs,
+} from "./datadog"
+
+const mockEnv = env as unknown as Record<string, string | undefined>
+const mockAddError = DdRum.addError as jest.Mock
+const mockLogInfo = DdLogs.info as jest.Mock
+
+const flushMicrotasks = () =>
+  new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+function resetEnv() {
+  mockEnv.EXPO_PUBLIC_GRAPHQL_URL = "https://admin.jesusfilm.org/api/graphql"
+  mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = undefined
+  mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = undefined
+  mockEnv.EXPO_PUBLIC_DATADOG_SITE = undefined
+  mockEnv.EXPO_PUBLIC_DATADOG_ENV = undefined
+  mockEnv.EXPO_PUBLIC_DATADOG_VERSION = undefined
+}
+
+beforeEach(() => {
+  resetEnv()
+  jest.clearAllMocks()
+  mockAddError.mockResolvedValue(undefined)
+  mockLogInfo.mockResolvedValue(undefined)
+})
+
+describe("hostFromUrl", () => {
+  it("returns the bare hostname — no scheme, path, query, or port", () => {
+    expect(hostFromUrl("https://admin.jesusfilm.org/api/graphql")).toBe(
+      "admin.jesusfilm.org",
+    )
+    // Port MUST be stripped: the SDK matches first-party hosts against the
+    // request's port-less hostname, so "localhost:3003" would never match.
+    expect(hostFromUrl("http://localhost:3003/api/graphql")).toBe("localhost")
+    expect(hostFromUrl("https://admin.jesusfilm.org:8443/api?x=1")).toBe(
+      "admin.jesusfilm.org",
+    )
+  })
+})
+
+describe("toFirstPartyHostConfigs", () => {
+  it("maps bare hosts to the SDK's tracecontext propagator shape", () => {
+    expect(toFirstPartyHostConfigs(["admin.jesusfilm.org"])).toEqual([
+      { match: "admin.jesusfilm.org", propagatorTypes: ["tracecontext"] },
+    ])
+  })
+})
+
+describe("getDatadogRumConfig (provisioning gate)", () => {
+  it("returns null when neither credential is set", () => {
+    expect(getDatadogRumConfig()).toBeNull()
+  })
+
+  // The gate that keeps an unprovisioned build booting: BOTH creds required.
+  it("returns null when only one of token / app id is set", () => {
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+    expect(getDatadogRumConfig()).toBeNull()
+    resetEnv()
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+    expect(getDatadogRumConfig()).toBeNull()
+  })
+
+  it("maps env to config when both are provisioned, defaulting site/env", () => {
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+    expect(getDatadogRumConfig()).toEqual({
+      clientToken: "ct",
+      applicationId: "app",
+      site: "US1",
+      // __DEV__ is true under jest; release builds default to "production".
+      envName: "development",
+      version: undefined,
+      sessionSampleRate: 100,
+      firstPartyHosts: ["admin.jesusfilm.org"],
+    })
+  })
+
+  it("honors explicit site / env / version overrides", () => {
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+    mockEnv.EXPO_PUBLIC_DATADOG_SITE = "EU1"
+    mockEnv.EXPO_PUBLIC_DATADOG_ENV = "production"
+    mockEnv.EXPO_PUBLIC_DATADOG_VERSION = "1.2.3"
+    expect(getDatadogRumConfig()).toMatchObject({
+      site: "EU1",
+      envName: "production",
+      version: "1.2.3",
+    })
+  })
+})
+
+describe("reportDatadogError (never-throw contract)", () => {
+  it("forwards message, stack, and context to DdRum.addError", () => {
+    const err = new Error("boom")
+    reportDatadogError(err, { origin: "test" })
+    expect(mockAddError).toHaveBeenCalledWith(
+      "boom",
+      "SOURCE",
+      err.stack ?? "",
+      { origin: "test" },
+    )
+  })
+
+  it("coerces non-Error values via new Error(String(...))", () => {
+    reportDatadogError("plain failure")
+    expect(mockAddError).toHaveBeenCalledWith(
+      "plain failure",
+      "SOURCE",
+      expect.any(String),
+      {},
+    )
+  })
+
+  it("swallows a synchronously-throwing DdRum.addError", () => {
+    mockAddError.mockImplementationOnce(() => {
+      throw new Error("native bridge down")
+    })
+    expect(() => reportDatadogError(new Error("x"))).not.toThrow()
+  })
+
+  it("swallows an async DdRum.addError rejection", async () => {
+    mockAddError.mockRejectedValueOnce(new Error("intake unreachable"))
+    expect(() => reportDatadogError(new Error("x"))).not.toThrow()
+    await flushMicrotasks() // an uncaught rejection here would fail the test run
+  })
+})
+
+describe("datadogLog (never-throw contract)", () => {
+  it("forwards message and context to DdLogs", () => {
+    datadogLog.info("hello", { a: 1 })
+    expect(mockLogInfo).toHaveBeenCalledWith("hello", { a: 1 })
+  })
+
+  it("swallows an async DdLogs rejection", async () => {
+    mockLogInfo.mockRejectedValueOnce(new Error("intake unreachable"))
+    expect(() => datadogLog.info("hello")).not.toThrow()
+    await flushMicrotasks()
+  })
+})
