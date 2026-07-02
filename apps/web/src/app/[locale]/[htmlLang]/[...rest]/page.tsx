@@ -52,8 +52,13 @@ import {
   SAFE_SLUG_PATTERN,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
-import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
+import {
+  watchBreadcrumbStructuredDataJson,
+  watchVideoStructuredDataJson,
+  watchRelatedItemListStructuredDataJson,
+} from "@/lib/watch-structured-data"
 import { logWatchServerEvent } from "@/lib/watch-observability"
+import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
@@ -259,6 +264,18 @@ async function getHideBibleQuotesEnabled(route: string): Promise<boolean> {
   })
 }
 
+async function getInitialTranscriptForWatchVideo(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): ReturnType<typeof getInitialSubtitleTranscript> {
+  if (video.subtitles.length === 0) return null
+  return getInitialSubtitleTranscript({
+    subtitles: video.subtitles,
+    audioSlug: selectedVariant.language?.slug ?? null,
+    durationSeconds: selectedVariant.duration ?? null,
+  })
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -365,6 +382,16 @@ function WatchVideoStructuredData({
       dangerouslySetInnerHTML={{
         __html: watchVideoStructuredDataJson(model),
       }}
+    />
+  )
+}
+
+function WatchStructuredData({ json }: { json: string | null | undefined }) {
+  if (!json) return null
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: json }}
     />
   )
 }
@@ -515,20 +542,41 @@ async function renderEpisode(shape: {
     pathLocale: rawLocale,
     seriesSlug,
   })
+  const initialTranscript = await getInitialTranscriptForWatchVideo(
+    resolved.video,
+    resolved.selectedVariant,
+  )
+  const languageSlug = resolved.selectedVariant.language?.slug ?? rawLocale
+  const breadcrumbJson = watchBreadcrumbStructuredDataJson({
+    videoTitle: metadataModel.videoTitle,
+    canonicalUrl: metadataModel.canonicalUrl,
+    languageSlug,
+    series: {
+      slug: resolved.series.slug,
+      title: resolved.series.title,
+    },
+  })
+  const relatedItemsJson = watchRelatedItemListStructuredDataJson({
+    blocks: mergedBlocks,
+    languageSlug,
+  })
 
   return (
     <>
       <WatchVideoStructuredData model={metadataModel} />
+      <WatchStructuredData json={breadcrumbJson} />
+      <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
         mergedBlocks={clientMergedBlocks}
         variant={clientVariant}
         video={clientVideo}
-        languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
+        languageSlug={languageSlug}
         collectionSlug={seriesSlug}
         locale={locale}
         hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
+        initialTranscript={initialTranscript}
       />
     </>
   )
@@ -593,18 +641,35 @@ async function renderVideo(shape: {
       routeSlug: slug,
       pathLocale: rawLocale,
     })
+    const initialTranscript = await getInitialTranscriptForWatchVideo(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
+    const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
+    const breadcrumbJson = watchBreadcrumbStructuredDataJson({
+      videoTitle: metadataModel.videoTitle,
+      canonicalUrl: metadataModel.canonicalUrl,
+      languageSlug,
+    })
+    const relatedItemsJson = watchRelatedItemListStructuredDataJson({
+      blocks: mergedBlocks,
+      languageSlug,
+    })
     return (
       <>
         <WatchVideoStructuredData model={metadataModel} />
+        <WatchStructuredData json={breadcrumbJson} />
+        <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
           mergedBlocks={clientMergedBlocks}
           variant={clientVariant}
           video={clientVideo}
-          languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
+          languageSlug={languageSlug}
           locale={locale}
           hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
+          initialTranscript={initialTranscript}
         />
       </>
     )
