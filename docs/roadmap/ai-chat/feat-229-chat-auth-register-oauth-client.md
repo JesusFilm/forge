@@ -113,7 +113,7 @@ environment (`apps/auth/CLAUDE.md` → Security posture).
    export const CHAT_APP_SEED: RegisteredAppSeed = {
      key: CHAT_APP_KEY,
      displayName: "Jesus Film Chat",
-     description: "Conversational AI chat surface (jesusfilm.ai).",
+     description: "Conversational AI chat surface.",
      ...FIRST_PARTY_OWNER,
      environments: [
        {
