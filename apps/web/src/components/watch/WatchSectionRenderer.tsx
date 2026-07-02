@@ -344,7 +344,7 @@ function SyntheticBlock({
           href={shareHref}
           onShareClick={modalCallbacks?.openShare ?? noop}
           locale={locale}
-          youVersionPassages={block.youVersionPassages}
+          passages={block.passages}
         />
       )
     case "Share":

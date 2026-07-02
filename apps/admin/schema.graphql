@@ -45,6 +45,10 @@ type BibleCitation {
   id: ID
   order: Int
   osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
   verseEnd: Int
   verseStart: Int
 }
@@ -947,6 +951,21 @@ type NavigationCarouselItem {
   title: String
 }
 
+"""
+Cached Bible passage text for a video citation, fetched server-side from an approved provider.
+"""
+type Passage {
+  content: String
+  copyright: String
+  humanReference: String
+  provider: String
+  publisherUrl: String
+  reference: String
+  versionAbbreviation: String
+  versionId: Int
+  versionTitle: String
+}
+
 """Promotional banner with heading, description, and CTA."""
 type PromoBannerBlock {
   backgroundColor: String
@@ -1791,6 +1810,10 @@ type WatchRouteSnapshotBibleCitation {
   documentId: ID!
   order: Int
   osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
   verseEnd: Int
   verseStart: Int
 }

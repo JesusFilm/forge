@@ -113,6 +113,12 @@ Do not set `NODE_OPTIONS` as a global Railway service variable because service
 variables are also present during Railpack setup before dependencies are
 installed.
 
+Production readiness gates for `@forge/web` live in
+`docs/operations/web-production-readiness.md`. Use that runbook before launch
+or before broadening production traffic; it ties together local checks, Railway
+config verification, URL parity, revalidation, Datadog evidence, source maps,
+and gated third-party smokes.
+
 ## Feature flags
 
 LaunchDarkly server-side feature flag evaluation is available through
@@ -149,13 +155,10 @@ flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
 renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
 and Railway envs unless intentionally testing the fallback path.
 
-`forge.watch.youVersionBibleQuotes` is a temporary LaunchDarkly-backed rollout
-flag for the server-rendered YouVersion passage panel below the watch-page
-Bible Quotes carousel. `false` preserves the existing carousel-only behavior
-and skips YouVersion API calls; `true` enables the server fetch when
-`YOUVERSION_APP_KEY` is configured. Keep
-`FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=false` unless intentionally
-smoke-testing the panel locally.
+Watch Bible passage text is resolved by Admin through
+`BibleCitation.passage`; Web must not hold YouVersion provider keys or call the
+YouVersion API directly. If the passage is absent, the watch page falls back to
+the existing citation carousel and promo card behavior.
 
 `forge.watch.hideBibleQuotes` is a temporary LaunchDarkly-backed release flag
 for hiding the full watch-page Bible Quotes band. `false` keeps the existing

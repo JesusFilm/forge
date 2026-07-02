@@ -11,6 +11,7 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   webCanonicalOriginEnvSchema,
+  youVersionPassageCacheTtlSecondsEnvSchema,
 } from "@/config/env"
 
 describe("env", () => {
@@ -134,6 +135,27 @@ describe("env", () => {
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("1.5")).toThrow()
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("-1")).toThrow()
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("30")).toThrow()
+    })
+  })
+
+  describe("youVersionPassageCacheTtlSecondsEnvSchema", () => {
+    it("defaults to a two-week cache ttl", () => {
+      expect(youVersionPassageCacheTtlSecondsEnvSchema.parse(undefined)).toBe(
+        60 * 60 * 24 * 14,
+      )
+    })
+
+    it("coerces positive integer ttl seconds", () => {
+      expect(youVersionPassageCacheTtlSecondsEnvSchema.parse("60")).toBe(60)
+    })
+
+    it("rejects invalid ttl values", () => {
+      expect(() =>
+        youVersionPassageCacheTtlSecondsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        youVersionPassageCacheTtlSecondsEnvSchema.parse("abc"),
+      ).toThrow()
     })
   })
 

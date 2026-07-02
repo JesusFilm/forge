@@ -53,10 +53,9 @@ type BibleQuotesSectionProps = {
    */
   locale?: string
   /**
-   * Server-fetched YouVersion API payloads keyed by citation documentId.
-   * Keeping this as data avoids exposing the YouVersion app key to browser JS.
+   * Admin-resolved passage payloads keyed by citation documentId.
    */
-  youVersionPassages?: WatchBibleQuotesBlock["youVersionPassages"]
+  passages?: WatchBibleQuotesBlock["passages"]
 }
 
 const JOIN_BIBLE_STUDY_URL =
@@ -160,27 +159,22 @@ export function BibleQuotesSection({
   href,
   onShareClick,
   locale = "en",
-  youVersionPassages = [],
+  passages = [],
 }: BibleQuotesSectionProps) {
   const t = useTranslations("BibleQuotes")
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
-  const youVersionPassagesByCitationId = useMemo(
+  const passagesByCitationId = useMemo(
     () =>
-      new Map(
-        youVersionPassages.map((passage) => [
-          passage.citationDocumentId,
-          passage,
-        ]),
-      ),
-    [youVersionPassages],
+      new Map(passages.map((passage) => [passage.citationDocumentId, passage])),
+    [passages],
   )
   const activeCitation =
     activeSlideIndex < bibleCitations.length
       ? bibleCitations[activeSlideIndex]
       : null
-  const activeYouVersionPassage = activeCitation
-    ? (youVersionPassagesByCitationId.get(activeCitation.documentId) ?? null)
+  const activePassage = activeCitation
+    ? (passagesByCitationId.get(activeCitation.documentId) ?? null)
     : null
 
   const handleCarouselApi = useCallback((api: CarouselApi) => {
@@ -382,7 +376,7 @@ export function BibleQuotesSection({
         </Carousel>
       </div>
       <YouVersionPassagePanel
-        passage={activeYouVersionPassage}
+        passage={activePassage}
         learnMoreLabel={t("learnMore")}
       />
     </section>
@@ -394,9 +388,7 @@ function YouVersionPassagePanel({
   passage,
 }: {
   learnMoreLabel: string
-  passage:
-    | NonNullable<WatchBibleQuotesBlock["youVersionPassages"]>[number]
-    | null
+  passage: NonNullable<WatchBibleQuotesBlock["passages"]>[number] | null
 }) {
   if (passage == null) {
     return null

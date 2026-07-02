@@ -110,6 +110,17 @@ export const watchVideoShellFragment = adminGraphql(`
       verseEnd
       order
       osisId
+      passage {
+        content
+        copyright
+        humanReference
+        provider
+        publisherUrl
+        reference
+        versionAbbreviation
+        versionId
+        versionTitle
+      }
       bibleBook {
         documentId: id
         name
@@ -356,6 +367,17 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           verseEnd
           order
           osisId
+          passage(languageSlug: $languageSlug) {
+            content
+            copyright
+            humanReference
+            provider
+            publisherUrl
+            reference
+            versionAbbreviation
+            versionId
+            versionTitle
+          }
           bibleBook {
             documentId
             name

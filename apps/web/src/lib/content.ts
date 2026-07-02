@@ -9,7 +9,6 @@ import {
 import client from "@/lib/admin-client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
-import type { YouVersionBibleQuotePassage } from "@/lib/youversion-passage"
 import {
   getVideoChildDubLanguagesBySlugOperation,
   getWatchLanguagePickerVariantsBySlugOperation,
@@ -233,6 +232,19 @@ export type WatchStudyQuestion = {
   order: number | null
 }
 
+export type WatchBibleCitationPassage = {
+  citationDocumentId: string
+  content: string
+  copyright: string
+  humanReference: string
+  provider: string
+  publisherUrl: string | null
+  reference: string
+  versionAbbreviation: string | null
+  versionId: number
+  versionTitle: string | null
+}
+
 export type WatchBibleCitation = {
   documentId: string
   chapterStart: number | null
@@ -242,6 +254,7 @@ export type WatchBibleCitation = {
   order: number | null
   osisId: string | null
   bibleBook: { documentId: string; name: string | null } | null
+  passage: WatchBibleCitationPassage | null
 }
 
 export type WatchSubtitle = {
@@ -517,6 +530,17 @@ type AdminBibleCitationRaw = {
   order?: number | null
   osisId?: string | null
   bibleBook?: { documentId: string | null; name?: unknown } | null
+  passage?: {
+    content?: string | null
+    copyright?: string | null
+    humanReference?: string | null
+    provider?: string | null
+    publisherUrl?: string | null
+    reference?: string | null
+    versionAbbreviation?: string | null
+    versionId?: number | null
+    versionTitle?: string | null
+  } | null
 }
 
 type AdminStudyQuestionRaw = {
@@ -920,6 +944,27 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
                   // rows admin still emits as a plain string the helper
                   // returns it verbatim.
                   name: pickLocalizedName(c.bibleBook.name),
+                }
+              : null,
+          passage:
+            c.passage &&
+            c.passage.content &&
+            c.passage.copyright &&
+            c.passage.humanReference &&
+            c.passage.provider &&
+            c.passage.reference &&
+            c.passage.versionId
+              ? {
+                  citationDocumentId: c.documentId,
+                  content: c.passage.content,
+                  copyright: c.passage.copyright,
+                  humanReference: c.passage.humanReference,
+                  provider: c.passage.provider,
+                  publisherUrl: c.passage.publisherUrl ?? null,
+                  reference: c.passage.reference,
+                  versionAbbreviation: c.passage.versionAbbreviation ?? null,
+                  versionId: c.passage.versionId,
+                  versionTitle: c.passage.versionTitle ?? null,
                 }
               : null,
         }
@@ -2256,7 +2301,7 @@ export type WatchStudyQuestionsBlock = {
 export type WatchBibleQuotesBlock = {
   kind: "BibleQuotes"
   bibleCitations: WatchBibleCitation[]
-  youVersionPassages?: YouVersionBibleQuotePassage[]
+  passages?: WatchBibleCitationPassage[]
 }
 
 export type WatchShareBlock = {
@@ -2385,12 +2430,19 @@ export function buildStudyQuestionsBlock(
  */
 export function buildBibleQuotesBlock(
   bibleCitations: WatchVideoRecord["bibleCitations"] | null | undefined,
-  youVersionPassages: YouVersionBibleQuotePassage[] = [],
 ): WatchBibleQuotesBlock {
   const items = (bibleCitations ?? []).filter(
     (c): c is WatchBibleCitation => c != null,
   )
-  return { kind: "BibleQuotes", bibleCitations: items, youVersionPassages }
+  return {
+    kind: "BibleQuotes",
+    bibleCitations: items,
+    passages: items
+      .map((citation) => citation.passage)
+      .filter(
+        (passage): passage is WatchBibleCitationPassage => passage != null,
+      ),
+  }
 }
 
 /** Always returns a Share block — every video is shareable. */
@@ -2471,8 +2523,6 @@ type MergeWatchExperienceArgs = {
    * the SiblingCarousel slot is omitted from the merged block array.
    */
   canonicalParent: WatchParent | null
-  /** Server-fetched YouVersion passage payloads for the synthetic BibleQuotes slot. */
-  youVersionPassages?: YouVersionBibleQuotePassage[]
   /** Optional Experience override — when omitted, all 6 slots auto-template. */
   experience?: WatchExperience | null
 }
@@ -2501,7 +2551,6 @@ export function mergeWatchExperience({
   video,
   variant,
   canonicalParent,
-  youVersionPassages = [],
   experience,
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
@@ -2544,10 +2593,7 @@ export function mergeWatchExperience({
   pushSlot("SiblingCarousel", buildSiblingCarouselBlock(canonicalParent, video))
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))
-  pushSlot(
-    "BibleQuotes",
-    buildBibleQuotesBlock(video.bibleCitations, youVersionPassages),
-  )
+  pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations))
   pushSlot("Share", buildShareBlock(video))
 
   for (const block of passthrough) result.push(block)

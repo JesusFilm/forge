@@ -98,7 +98,7 @@ const BOOK_NAME_TO_USFM = Object.fromEntries(BOOK_NAME_ENTRIES) as Record<
   string
 >
 
-BOOK_NAME_TO_USFM["songofsolomon"] = "SNG"
+BOOK_NAME_TO_USFM.songofsolomon = "SNG"
 
 const OSIS_BOOK_PATTERN = /^[1-3]?[A-Za-z]+$/
 const USFM_REFERENCE_PATTERN =
@@ -119,42 +119,28 @@ export function toYouVersionReference(
   const { chapterStart, chapterEnd, verseStart, verseEnd } = citation
 
   if (verseStart == null) {
-    if (verseEnd != null) {
-      return null
-    }
-    if (chapterEnd != null && chapterEnd !== chapterStart) {
-      return null
-    }
+    if (verseEnd != null) return null
+    if (chapterEnd != null && chapterEnd !== chapterStart) return null
     return safeReference(`${bookCode}.${chapterStart}`)
   }
 
-  if (!isPositiveInteger(verseStart)) {
-    return null
-  }
+  if (!isPositiveInteger(verseStart)) return null
 
   if (chapterEnd != null) {
     if (!isPositiveInteger(chapterEnd) || chapterEnd < chapterStart) {
       return null
     }
     if (chapterEnd > chapterStart) {
-      if (verseEnd != null && !isPositiveInteger(verseEnd)) {
-        return null
-      }
+      if (verseEnd != null && !isPositiveInteger(verseEnd)) return null
       return safeReference(`${bookCode}.${chapterStart}.${verseStart}`)
     }
   }
 
-  if (verseEnd == null) {
+  if (verseEnd == null)
     return safeReference(`${bookCode}.${chapterStart}.${verseStart}`)
-  }
-
-  if (!isPositiveInteger(verseEnd) || verseEnd < verseStart) {
-    return null
-  }
-
-  if (verseEnd === verseStart) {
+  if (!isPositiveInteger(verseEnd) || verseEnd < verseStart) return null
+  if (verseEnd === verseStart)
     return safeReference(`${bookCode}.${chapterStart}.${verseStart}`)
-  }
 
   return safeReference(`${bookCode}.${chapterStart}.${verseStart}-${verseEnd}`)
 }
@@ -170,9 +156,7 @@ function getBookCode(citation: Exclude<YouVersionCitationLike, null>) {
   }
 
   const bookName = citation.bibleBook?.name
-  if (bookName == null) {
-    return null
-  }
+  if (bookName == null) return null
 
   return BOOK_NAME_TO_USFM[normalizeBookName(bookName)] ?? null
 }

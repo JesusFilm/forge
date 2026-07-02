@@ -169,7 +169,6 @@ export const env = createEnv({
     LAUNCHDARKLY_SDK_KEY: z.string().optional(),
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: z.string().optional(),
@@ -225,11 +224,6 @@ export const env = createEnv({
         productionDefault("https://web.jesusfilm.org", "http://localhost:3000"),
       ),
     WEB_SESSION_SECRET: z.string().min(32).optional(),
-    // Optional: server-side YouVersion Platform access for the watch-page
-    // Bible Quotes passage panel. Kept server-only so the app key is never
-    // serialized into browser JS or request headers from the client.
-    YOUVERSION_APP_KEY: z.string().optional(),
-    YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(3034),
     // Optional server-side Datadog APM/log forwarding configuration. Keep
     // NODE_OPTIONS scoped to Railway's start command; these vars only tell the
     // tracer where to report and how to tag web spans/logs.
@@ -301,8 +295,6 @@ export const env = createEnv({
       process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT,
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT:
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
-      process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
@@ -319,8 +311,6 @@ export const env = createEnv({
     WEB_AUTH_CLIENT_ID: emptyToUndefined(process.env.WEB_AUTH_CLIENT_ID),
     WEB_BASE_URL: emptyToUndefined(process.env.WEB_BASE_URL),
     WEB_SESSION_SECRET: emptyToUndefined(process.env.WEB_SESSION_SECRET),
-    YOUVERSION_APP_KEY: process.env.YOUVERSION_APP_KEY,
-    YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
     DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),
     DD_TRACE_AGENT_PORT: process.env.DD_TRACE_AGENT_PORT,
     DD_AGENT_SYSLOG_PORT: process.env.DD_AGENT_SYSLOG_PORT,

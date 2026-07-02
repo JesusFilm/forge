@@ -12,6 +12,7 @@ import { ManagerJobService } from "@/services/manager-job.service"
 import { ManagerReadModelService } from "@/services/manager-read-model.service"
 import { MediaAssetService } from "@/services/media-asset.service"
 import { MediaFolderService } from "@/services/media-folder.service"
+import { ScripturePassageService } from "@/services/scripture-passage.service"
 import { VideoService } from "@/services/video.service"
 import { WatchEventService } from "@/services/watch-events.service"
 import { WatchSettingService } from "@/services/watch-setting.service"
@@ -26,6 +27,7 @@ export function createServices(prisma: PrismaClient) {
     managerReadModel: new ManagerReadModelService(prisma),
     mediaAsset: new MediaAssetService(prisma),
     mediaFolder: new MediaFolderService(prisma),
+    scripturePassage: new ScripturePassageService(prisma),
     video: new VideoService(prisma),
     watchEvent: new WatchEventService(prisma),
     watchSetting: new WatchSettingService(prisma),
