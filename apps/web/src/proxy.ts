@@ -152,6 +152,14 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
+    if (segment === "history") {
+      return {
+        kind: "rewrite",
+        locale: DEFAULT_LOCALE,
+        htmlLang: DEFAULT_LOCALE,
+        pathname,
+      }
+    }
     if (segment === "videos") {
       return {
         kind: "rewrite",
@@ -304,6 +312,15 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     const url = request.nextUrl.clone()
     url.pathname = prefix.pathname
     return buildRedirect(url, 308)
+  }
+
+  if (pathname === "/history") {
+    return rewriteToInternal(request, {
+      kind: "rewrite",
+      locale: DEFAULT_LOCALE,
+      htmlLang: DEFAULT_LOCALE,
+      pathname,
+    })
   }
 
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })

@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { Play } from "lucide-react"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { cn } from "@/lib/utils"
 import type { WatchHomeCard as WatchHomeCardModel } from "@/lib/watch-home"
 
@@ -121,6 +122,7 @@ export function WatchHomeCard({
             {index + 1}
           </span>
         ) : null}
+        <WatchProgressBar videoId={card.id} />
         {card.metaLabel ? (
           <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 px-2 py-1 text-sm font-semibold text-white backdrop-blur-sm">
             {card.childCount === 0 && card.href ? (
@@ -130,7 +132,7 @@ export function WatchHomeCard({
           </div>
         ) : null}
         <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 group-hover:opacity-50" />
-        <div className="absolute inset-0 flex flex-col justify-end p-4">
+        <div className="absolute inset-0 flex flex-col justify-end px-4 pt-4 pb-5">
           <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
             {card.label}
           </div>

@@ -1157,6 +1157,7 @@ model Video {
   watchEvents    WatchEvent[]
   parents        VideoRelation[]      @relation("VideoParents")
   children       VideoRelation[]      @relation("VideoChildren")
+  watchProgress  WatchProgress[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -1166,6 +1167,29 @@ model Video {
   // the `videos` list query's ORDER BY. Not expressed here because Prisma
   // doesn't model partial-index `WHERE` clauses cleanly across providers.
   @@map("video")
+}
+
+/// Latest per-consumer playback position for resume/progress UI.
+///
+/// `userId` is the consumer Auth subject, not a relation to admin's editorial
+/// `User` table. Consumer accounts can exist without an admin row.
+model WatchProgress {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  videoId         String   @map("video_id")
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  languageSlug    String?  @map("language_slug")
+  positionSeconds Int      @map("position_seconds")
+  durationSeconds Int      @map("duration_seconds")
+  completed       Boolean  @default(false)
+  lastWatchedAt   DateTime @default(now()) @map("last_watched_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, videoId])
+  @@index([userId, lastWatchedAt])
+  @@index([videoId])
+  @@map("watch_progress")
 }
 
 /// Per-locale Video content. Editors curate localized title / description /

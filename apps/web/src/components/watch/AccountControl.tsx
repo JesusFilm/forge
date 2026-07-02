@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { LogOut, UserRound } from "lucide-react"
+import { History, LogOut, UserRound } from "lucide-react"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import {
@@ -186,6 +186,17 @@ export function AccountControl() {
             </div>
           </div>
           <div className="border-t border-white/10 p-2">
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
+              onClick={() => {
+                window.location.assign("/watch/history")
+              }}
+            >
+              <History aria-hidden="true" className="h-4 w-4" />
+              <span>History</span>
+            </button>
             <button
               type="button"
               role="menuitem"

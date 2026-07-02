@@ -16,6 +16,7 @@ import {
   tryAsContentSlug,
   watchVideoPath,
 } from "@/lib/routes"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 
 // Collections carry no per-item language today, so card deep links default
 // to the English variant and rely on the watch route to re-resolve locale.
@@ -313,6 +314,7 @@ function VideoCard({
           </div>
 
           <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0px_0px_0px_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 hover:opacity-50" />
+          <WatchProgressBar videoId={item.id} className="rounded-b-lg" />
 
           {item.collectionSize && (
             <div className="absolute top-2 right-2 z-10 flex shrink-0 flex-row items-center gap-1 rounded bg-black/30 px-2 py-1 text-white">
@@ -322,7 +324,7 @@ function VideoCard({
             </div>
           )}
 
-          <div className="absolute inset-0 flex flex-col justify-end gap-0 p-4">
+          <div className="absolute inset-0 flex flex-col justify-end gap-0 px-4 pt-4 pb-5">
             {item.label && (
               <div className="flex min-w-0 flex-row items-end justify-between gap-[90px]">
                 <div className="truncate text-xs font-semibold leading-8 tracking-wider text-stone-300/70 uppercase mix-blend-screen">

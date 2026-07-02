@@ -212,6 +212,10 @@ export const env = createEnv({
     // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
     // Required — flipped from optional in U13.
     WEB_ADMIN_API_KEYS: z.string().min(1),
+    // Optional narrower bearer for admin's watch-progress receiver. When unset,
+    // local development falls back to WEB_ADMIN_API_KEYS until the dedicated
+    // secret is provisioned in the target environment.
+    WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
     // Shared Auth host used by server routes to verify Better Auth sessions
     // over HTTP. Local development mirrors Admin and uses production Auth by
     // default; CI overrides this to the standalone auth dev port.
@@ -306,6 +310,7 @@ export const env = createEnv({
     ALGOLIA_INDEX: process.env.ALGOLIA_INDEX,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    WATCH_PROGRESS_ADMIN_API_KEYS: process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
     WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
     WEB_AUTH_ISSUER_URL: emptyToUndefined(process.env.WEB_AUTH_ISSUER_URL),
     WEB_AUTH_CLIENT_ID: emptyToUndefined(process.env.WEB_AUTH_CLIENT_ID),

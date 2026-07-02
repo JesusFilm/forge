@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Play } from "lucide-react"
 
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
 import {
@@ -85,6 +86,7 @@ export function SeriesEpisodeCard({
         aria-hidden="true"
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"
       />
+      <WatchProgressBar videoId={episode.documentId} />
 
       {/* Top-right runtime pill. Icon-only when no duration is available
           (still affordant as a "play" hint) — the label collapses rather
@@ -95,7 +97,7 @@ export function SeriesEpisodeCard({
       </div>
 
       {/* Bottom-left text block — EPISODE eyebrow + episode title. */}
-      <div className="absolute right-3 bottom-3 left-3 flex flex-col gap-1">
+      <div className="absolute right-3 bottom-5 left-3 flex flex-col gap-1">
         <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-300/90 uppercase">
           {`Episode ${index + 1}`}
         </span>

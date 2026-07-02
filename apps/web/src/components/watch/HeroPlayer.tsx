@@ -35,6 +35,12 @@ import {
 } from "@/lib/content-width"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
+import {
+  ensureWatchProgressAuth,
+  getWatchProgress,
+  getWatchProgressRatio,
+  useWatchProgressRecorder,
+} from "@/lib/watch-progress-client"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -130,6 +136,12 @@ const HERO_POSTER_MAX_WIDTH = 1280
 const WATCH_NOW_LINK_CLASS =
   "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
 
+function isResumableProgress(videoId: string): boolean {
+  const savedProgress = getWatchProgress(videoId)
+  const ratio = getWatchProgressRatio(savedProgress)
+  return ratio > 0 && ratio < 1
+}
+
 function buildHeroPosterUrl(
   playbackId: string | undefined,
 ): string | undefined {
@@ -214,6 +226,7 @@ export function HeroPlayer({
   onPlayerReady,
   onPlayerActivated,
   onLanguageClick,
+  languageSlug,
   playableLanguageCount,
   darkenOverlay = false,
   overlay,
@@ -226,6 +239,7 @@ export function HeroPlayer({
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
   onLanguageClick?: () => void
+  languageSlug?: string | null
   playableLanguageCount?: number
   darkenOverlay?: boolean
   overlay?: ReactNode
@@ -731,18 +745,47 @@ export function HeroPlayer({
     getViewerId,
     getViewerIdServerSnapshot,
   )
+  const [resumeFromSavedProgress, setResumeFromSavedProgress] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ensureWatchProgressAuth().then((authenticated) => {
+      if (cancelled) return
+      if (!authenticated || tParam != null || autoplayParam === "1") return
+      if (!isResumableProgress(video.documentId)) return
+      setResumeFromSavedProgress(true)
+      setPlayerActivated(true)
+      setChromeRevealed(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [autoplayParam, tParam, video.documentId])
+
+  useWatchProgressRecorder({
+    player: player as HTMLMediaElement | null,
+    videoId: video.documentId,
+    languageSlug,
+    enabled: chromeRevealed,
+  })
 
   const handleLoadedMetadata = useCallback(() => {
     const player = playerRef.current
     if (!player) return
-    if (tParam == null) return
-    const parsed = Number.parseFloat(tParam)
+    const savedProgress =
+      tParam == null && isResumableProgress(video.documentId)
+        ? getWatchProgress(video.documentId)
+        : null
+    const parsed =
+      tParam != null
+        ? Number.parseFloat(tParam)
+        : (savedProgress?.positionSeconds ?? Number.NaN)
     if (!Number.isFinite(parsed) || parsed < 0) return
     const duration = Number.isFinite(player.duration) ? player.duration : 0
     const safeDuration = duration > 1 ? duration - 1 : duration
     player.currentTime =
       safeDuration > 0 ? Math.min(parsed, safeDuration) : parsed
-  }, [tParam])
+  }, [tParam, video.documentId])
 
   // One-shot autoplay-with-sound when the URL carries `?autoplay=1`.
   // LanguagePickerModal appends this signal so the new page knows the
@@ -830,9 +873,9 @@ export function HeroPlayer({
         return
       }
 
-      // Initial click commits playback from the beginning, not from wherever the
-      // muted preview loop happened to be when the user clicked.
-      player.currentTime = 0
+      const savedProgress =
+        tParam == null ? getWatchProgress(video.documentId) : null
+      player.currentTime = savedProgress?.positionSeconds ?? 0
       player.muted = false
       const result = player.play()
       setChromeRevealed(true)
@@ -851,7 +894,7 @@ export function HeroPlayer({
           })
       }
     },
-    [],
+    [tParam, video.documentId],
   )
 
   useEffect(() => {
@@ -980,6 +1023,7 @@ export function HeroPlayer({
 
   const loop = !chromeRevealed
   const muted = !chromeRevealed
+  const shouldAutoplay = !resumeFromSavedProgress
   const canUseOptimisticVisual = !chromeRevealed
   const visualHeroPosterUrl = canUseOptimisticVisual
     ? (optimisticVisual?.posterUrl ?? heroPosterUrl)
@@ -1146,7 +1190,7 @@ export function HeroPlayer({
               playbackId={playbackId}
               src={playbackId ? undefined : hlsSrc}
               // Native <video> takes boolean `autoPlay` + separate `muted`.
-              autoPlay
+              autoPlay={shouldAutoplay}
               muted={muted}
               loop={loop}
               preload="metadata"
