@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import MuxVideo from "@forge/video-player/mux-video"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
+import { formatDuration } from "@/lib/format-duration"
 import { videoSectionFragment } from "@/lib/fragments/video-section"
 import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 
@@ -172,12 +173,13 @@ function MuxBackedVideoPlayer({
     setIsLoading(true)
   }
 
-  const formatTime = useCallback((seconds: number) => {
-    const safe = Number.isFinite(seconds) ? seconds : 0
-    const mins = Math.floor(safe / 60)
-    const secs = Math.floor(safe % 60)
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }, [])
+  const formatTime = useCallback(
+    (seconds: number) =>
+      Number.isFinite(seconds) && seconds >= 0
+        ? formatDuration(seconds)
+        : "0:00",
+    [],
+  )
 
   const syncPlaybackUi = useCallback(() => {
     const video = videoRef.current

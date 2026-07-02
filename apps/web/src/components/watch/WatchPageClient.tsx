@@ -45,6 +45,7 @@ import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { redirectToAuth } from "@/components/watch/download-session-client"
 import {
+  buildMediaProxyUrl,
   buildDownloadFilename,
   buildDownloadProxyUrl,
 } from "@/components/watch/download-link"
@@ -402,9 +403,9 @@ export function WatchPageClient({
   const subtitleVttSrc = useMemo((): string | null | undefined => {
     if (subtitles.length === 0) return undefined
     if (!subtitleEnabled || !subtitleSlug) return null
-    return (
+    const rawVttSrc =
       subtitles.find((s) => s.language.slug === subtitleSlug)?.vttSrc ?? null
-    )
+    return rawVttSrc ? buildMediaProxyUrl(rawVttSrc) : null
   }, [subtitleEnabled, subtitleSlug, subtitles])
 
   const handleSubtitleChange = useCallback(

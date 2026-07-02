@@ -7,6 +7,7 @@ import type {
   FragmentOf,
   LegacyFragmentValue,
 } from "@/lib/legacy-fragment-types"
+import { formatDuration } from "@/lib/format-duration"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import {
   Carousel,
@@ -138,12 +139,13 @@ function MuxBackedCarouselVideoPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const formatTime = useCallback((seconds: number) => {
-    const safe = Number.isFinite(seconds) ? seconds : 0
-    const mins = Math.floor(safe / 60)
-    const secs = Math.floor(safe % 60)
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }, [])
+  const formatTime = useCallback(
+    (seconds: number) =>
+      Number.isFinite(seconds) && seconds >= 0
+        ? formatDuration(seconds)
+        : "0:00",
+    [],
+  )
 
   const syncPlaybackUi = useCallback(() => {
     const video = videoRef.current

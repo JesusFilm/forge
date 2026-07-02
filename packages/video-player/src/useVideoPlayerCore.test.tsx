@@ -276,6 +276,11 @@ describe("formatTime", () => {
     expect(formatTime(65)).toBe("1:05")
     expect(formatTime(600)).toBe("10:00")
   })
+
+  it("formats hour-plus durations as h:mm:ss", () => {
+    expect(formatTime(3600)).toBe("1:00:00")
+    expect(formatTime(3725)).toBe("1:02:05")
+  })
 })
 
 describe("useVideoPlayerCore", () => {

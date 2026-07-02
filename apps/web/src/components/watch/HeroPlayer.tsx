@@ -118,6 +118,10 @@ const HERO_HLS_CONFIG = {
   maxBufferLength: 10,
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
+  // Mux assets can include generated WebVTT subtitle renditions. Forge owns
+  // subtitle selection through the injected track below, so keep HLS.js from
+  // creating/auto-selecting Mux's generated caption tracks.
+  enableWebVTT: false,
 }
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
@@ -162,12 +166,6 @@ function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
   url.searchParams.set("width", String(Math.min(width, HERO_POSTER_MAX_WIDTH)))
   url.searchParams.set("time", String(HERO_POSTER_TIME_SECONDS))
   return url.toString()
-}
-
-function buildHeroPlaybackFallbackHref(playbackId: string | undefined): string {
-  return playbackId
-    ? `https://stream.mux.com/${encodeURIComponent(playbackId)}.m3u8`
-    : `#${HERO_PLAYER_MEDIA_ID}`
 }
 
 // Keep automatic muted-preview activation out of the critical first-load
@@ -242,7 +240,6 @@ export function HeroPlayer({
   const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
-  const heroPlaybackFallbackHref = buildHeroPlaybackFallbackHref(playbackId)
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
@@ -339,6 +336,7 @@ export function HeroPlayer({
     () => autoplayParam === "1" || heroPosterUrl == null,
   )
   const pendingSoundIntentRef = useRef<PillState | null>(null)
+  const pointerDownHandledSoundIntentRef = useRef(false)
 
   const publishChromeVisibility = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
@@ -837,20 +835,20 @@ export function HeroPlayer({
       player.currentTime = 0
       player.muted = false
       const result = player.play()
+      setChromeRevealed(true)
+      setAutoplayBlocked(false)
       if (result && typeof result.then === "function") {
         result
           .then(() => {
-            setChromeRevealed(true)
             setAutoplayBlocked(false)
           })
           .catch((err: unknown) => {
             setPillState("tap-to-unmute")
+            setChromeRevealed(false)
             if (isAutoplayBlockedError(err)) {
               setAutoplayBlocked(true)
             }
           })
-      } else {
-        setChromeRevealed(true)
       }
     },
     [],
@@ -877,6 +875,11 @@ export function HeroPlayer({
   // ref is available in the same click task whenever the dynamic chunk is
   // already loaded; otherwise keep the user's intent queued for attach.
   const handleUnmuteClick = useCallback(() => {
+    if (pointerDownHandledSoundIntentRef.current) {
+      pointerDownHandledSoundIntentRef.current = false
+      return
+    }
+
     let player = playerRef.current
     if (!playerActivated) {
       activatePlayerForIntent()
@@ -891,8 +894,23 @@ export function HeroPlayer({
     runSoundIntent(player, pillState)
   }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
 
+  const handleWatchNowPointerDown = useCallback(() => {
+    if (playerActivated) return
+
+    activatePlayerForIntent()
+    const player = playerRef.current
+    if (!player) {
+      pendingSoundIntentRef.current = pillState
+      return
+    }
+
+    pendingSoundIntentRef.current = null
+    pointerDownHandledSoundIntentRef.current = true
+    runSoundIntent(player, pillState)
+  }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
+
   const handleWatchNowClick = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>) => {
+    (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
       handleUnmuteClick()
     },
@@ -900,7 +918,7 @@ export function HeroPlayer({
   )
 
   const handleWatchNowKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLAnchorElement>) => {
+    (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key === " ") {
         event.preventDefault()
         handleUnmuteClick()
@@ -1035,7 +1053,7 @@ export function HeroPlayer({
   const mediaFrameClassName = `relative h-full w-full ${
     mobilePortraitPreviewEnabled ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS : ""
   }`
-  const playerClassName = `block h-full w-full origin-top ${
+  const playerClassName = `watch-hero-player-video block h-full w-full origin-top ${
     playbackFrameActive
       ? ""
       : `scale-y-110 ${
@@ -1114,6 +1132,14 @@ export function HeroPlayer({
           data-testid="hero-player-media-frame"
           className={mediaFrameClassName}
         >
+          <style>{`
+            .watch-hero-player-video::cue {
+              color: transparent;
+              background: transparent;
+              text-shadow: none;
+              visibility: hidden;
+            }
+          `}</style>
           {playerActivated ? (
             <MuxVideo
               ref={setPlayerRef as React.Ref<MuxVideoRef>}
@@ -1336,13 +1362,13 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <a
-                  href={heroPlaybackFallbackHref}
+                <button
+                  type="button"
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
                   aria-controls={HERO_PLAYER_MEDIA_ID}
-                  onPointerDown={activatePlayerForIntent}
+                  onPointerDown={handleWatchNowPointerDown}
                   onKeyDown={handleWatchNowKeyDown}
                   onClick={handleWatchNowClick}
                   className={
@@ -1357,7 +1383,7 @@ export function HeroPlayer({
                     <PlayIcon />
                   )}
                   <span>{preRevealActionLabel}</span>
-                </a>
+                </button>
               </div>
             ))
           : null}
