@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   ADMIN_APP_SEED,
+  CHAT_APP_KEY,
+  CHAT_APP_SEED,
   FIRST_PARTY_APP_SEEDS,
   MASTRA_STUDIO_APP_KEY,
   MASTRA_STUDIO_APP_SEED,
@@ -18,6 +20,7 @@ describe("first-party app seeds", () => {
       MANAGER_APP_KEY,
       WEB_APP_KEY,
       MASTRA_STUDIO_APP_KEY,
+      CHAT_APP_KEY,
     ])
     expect(MANAGER_APP_SEED).toEqual(
       expect.objectContaining({
@@ -98,6 +101,22 @@ describe("first-party app seeds", () => {
         }),
       ]),
     )
+  })
+
+  it("registers the Chat OAuth client for local development only", () => {
+    expect(CHAT_APP_SEED.environments.map((env) => env.key)).toEqual(["local"])
+    expect(CHAT_APP_SEED.environments).toEqual([
+      expect.objectContaining({
+        key: "local",
+        clientId: "jfp_chat_local",
+        redirectUris: ["http://localhost:3200/api/auth/callback"],
+        postLogoutRedirectUris: ["http://localhost:3200"],
+        allowedOrigins: ["http://localhost:3200"],
+        // Identity-only — no *:access, no membership:read (feat-207 R7).
+        defaultScopes: ["openid", "profile:read", "email:read"],
+        autoApprove: true,
+      }),
+    ])
   })
 
   it("registers Mastra Studio OAuth clients for the gateway", () => {
