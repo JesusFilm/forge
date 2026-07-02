@@ -19,8 +19,19 @@ src/
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
       seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. Testable core handleSeekerProxyRequest
+      auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; no-op home redirect when unconfigured (feat-207)
+      auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie, 302 return_to; single catch → non-PII log + ?signin=failed
+      auth/logout/route.ts   POST → clear session cookie, 303 home (POST so it isn't prefetchable)
+  auth/                  Chat auth (feat-207), adapted from apps/admin/src/auth/* — SDL of the OAuth flow, no DB, no authorization
+    oauth-state.ts       state + PKCE (S256) via node:crypto (verbatim port)
+    oauth-client.ts      authorize URL + token exchange + verifyChatIdToken (JWKS-derived alg allowlist, NO access-token fallback — R9 divergence)
+    session-cookie.ts    signed identity cookie create/read + option helpers; fail-closed to anonymous without a real secret
+    origins.ts           resolveChatReturnToURL — post-login return-target validated against chat's own origin (R10)
+    identity.ts          getChatIdentity() server reader (next/headers); never redirects; display-only
+    errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
+    sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
-    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED flag + Mastra base URL/bearer/allowlist/timeout. isSeekerChatEnabled() + seekerTimeoutMs(). Boots clean with none set
+    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205) AND the feat-207 auth vars. isSeekerChatEnabled() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
@@ -30,6 +41,7 @@ src/
       sidebar-header.tsx           Brand mark + wordmark + the three mutually-exclusive controls (desktop collapse toggle / collapsed expand affordance / mobile close X); presentational
       sidebar-new-conversation.tsx New-conversation action (full-width labeled ↔ centered icon-only when collapsed); presentational
       sidebar-conversation-list.tsx Conversation history nav (select + per-row replying pulse; hidden when collapsed); presentational
+      sidebar-account.tsx          Rail-foot account control (feat-207): signed-out "Sign in" anchor / signed-in identity (name→email→label, avatar→initials→icon) + "Sign out" POST form + R12 notice; presentational, three-presentation coverage; hidden when auth unconfigured
       icons.tsx          Inline line-icon components (panel/compose/menu/close) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational)
@@ -127,17 +139,93 @@ timeout, single-file async seam) are now **implemented**: failures render a
 `role="alert"` notice keeping partial text; the call is timeout-bounded; the seam
 is async (`streamReply`) and the hook only awaits it.
 
+## Authentication (feat-207)
+
+Optional sign-in / sign-out against `apps/auth` (Better Auth OIDC), reusing
+admin's redirect-based OAuth client _shape_. **Authentication only — it
+establishes _who_ the user is and gates nothing** (R7): chat stays fully usable
+anonymously, the seeker route behaves identically signed-in and signed-out, and
+there are no role/permission checks.
+
+- **Cookie-only session, no database.** The session IS a signed, app-local cookie
+  carrying the verified identity claims (`{ sub, name?, email?, picture? }`) read
+  from the id_token at callback — chat writes no user record (matches the
+  no-persistence boundary). `HS256` via `jose`; short TTL (`SESSION_TTL_SECONDS`,
+  8h — deliberately not admin's 7 days, for shared-device exposure); the cookie's
+  own lifetime is authoritative (the id_token's ~1h `exp` is verified once at
+  callback, not carried onto the session — chat gates nothing, so token freshness
+  buys nothing).
+- **Config-gated, default off.** `chatAuthConfigured()` (`config/env.ts`) is true
+  only when `AUTH_ISSUER_URL`, `AUTH_CHAT_CLIENT_ID`, `CHAT_BASE_URL`, and a REAL
+  `CHAT_SESSION_SECRET` (rejects empty, the `.env.example` placeholder, and
+  sub-32-char values — fail-closed to anonymous) are all set. When false the
+  sidebar hides the "Sign in" affordance and `/api/auth/login` refuses to start a
+  flow, so chat never dead-ends in a `redirect_uri` mismatch. **All auth env vars
+  are `.optional()`** — the default-off deploy boots with none set.
+- **Out-of-codebase PREREQUISITE:** a chat OAuth client must be registered in
+  `apps/auth` (with the `openid` scope and the EXACT redirect URI
+  `<CHAT_BASE_URL>/api/auth/callback` per environment) **before** these env vars
+  are set in that environment — mirroring the repo's receiver-registers-first
+  cross-app discipline.
+- **The flow:** `src/auth/` holds the primitives (`oauth-state` PKCE/state,
+  `oauth-client` authorize+exchange+`verifyChatIdToken`, `session-cookie` signed
+  cookie, `origins` return-target validation, `identity` the server reader,
+  `errors`/`sign-in-notice` shared constants); `src/app/api/auth/{login,callback,
+logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
+  `page.tsx` (`force-dynamic`) and threads `identity` / `authConfigured` /
+  `signInError` down to `SidebarAccount` (like `seekerEnabled`). It NEVER
+  redirects (anonymous is valid) and is **display-only — its output must never
+  gate authorization** (see the code comment; the first feature to trust the
+  subject for a gated decision must add revocation + a membership gate first).
+- **R9 divergence from admin's verifier (net-new, so it carries its own tests):**
+  `verifyChatIdToken` verifies the **id_token only** (no `idToken ?? accessToken`
+  fallback — admin is safe without this only because it also gates on
+  `admin:access`, which chat doesn't) and pins a **JWKS-derived `algorithms`
+  allowlist** admin omits. `createRemoteJWKSet` (asymmetric-only) is the
+  symmetric-key barrier; the allowlist's job is `alg:none` rejection +
+  rotation-tracking. The allowlist is derived from the issuer's published JWKS
+  (`kty`+`crv` mapping; fail-closed loudly on an unrecognized key), cached with a
+  bounded TTL + re-derived once on an alg-mismatch (never pinned for process
+  lifetime), and all endpoint URLs use `new URL(absolutePath, issuerUrl)` (NOT
+  string concatenation).
+- **Cookie hardening (R11):** `HttpOnly`, `Secure` in production, `SameSite=Lax`
+  (the callback is a top-level cross-site GET return — `Strict` would withhold the
+  cookie), host-only (no `Domain`, per `apps/auth`'s no-shared-parent-cookie
+  rule), `Path=/`. The transient `state`/`verifier`/`return_to` cookies share the
+  hardening with a ~10m TTL and are cleared on callback. Sign-out is a **POST
+  form** (not a GET link — a GET logout is prefetchable/crawlable); it clears
+  chat's cookie only, leaving `apps/auth`'s SSO session untouched.
+- **No PII in logs or surfaces (KTD7):** the callback logs only fixed non-PII
+  reason codes in the `[chat-auth] event=callback_failed reason=<code>`
+  plain-string format (Railway logsV2 silences JSON stdout); it never logs the
+  claims or the caught verification error. The R12 sign-in-failure notice is keyed
+  off a FIXED enum marker (`?signin=failed`, stripped from the URL after first
+  read), never reflected error text.
+- **Accepted v1 risk (recorded decision, do NOT "fix" without the follow-up):**
+  the `login`/`callback` routes are world-reachable and drive outbound calls to
+  `apps/auth`, and — like `/api/seeker` above — ship **un-rate-limited** in v1,
+  gated only by the outbound timeout. A per-IP cap (as admin's auth routes use via
+  Redis, fired before the outbound call) is a prerequisite before the audience
+  widens.
+
 ## Intentionally Absent
 
-- No auth on the chat origin or the `/api/seeker` proxy (lands later, alongside
-  Cloudflare fronting + a rate cap — see the accepted-risk note above)
+- No **authorization** anywhere — auth changes identity only, never what a user
+  may do; no role/permission checks, no gating of any surface (including
+  `/api/seeker`). Sign-in itself is optional (feat-207) and default-off.
+- No inbound auth / rate cap on `/api/seeker` or the auth routes (lands later,
+  alongside Cloudflare fronting — see the accepted-risk notes above)
 - No database or conversation persistence (conversations are client-only; Seeker
-  memory is Mastra's in-memory store, lost on its restart)
+  memory is Mastra's in-memory store, lost on its restart; the auth session is a
+  cookie, not a DB row)
 - No browser-direct Mastra path / CORS (server-to-server bearer only)
 - No i18n, no design-system sharing with `apps/web`
 
 Now present (feat-205, behind the default-off flag): a validated `env.ts`, the
-`/api/seeker` App Router route handler, and SSE streaming.
+`/api/seeker` App Router route handler, and SSE streaming. Now present (feat-207,
+behind `chatAuthConfigured()`, default off): optional OAuth sign-in/out against
+`apps/auth` — `src/auth/*`, the `/api/auth/*` routes, and the sidebar account
+control. Authentication only; gates nothing.
 
 ## Key Conventions
 
@@ -145,12 +233,13 @@ Now present (feat-205, behind the default-off flag): a validated `env.ts`, the
   `shell/app-shell.tsx`, `shell/sidebar.tsx`, `shell/use-sidebar-chrome.ts`,
   `chat/chat.tsx`, `chat/composer.tsx`, and `chat/empty-state.tsx`.
   `chat/message-list.tsx`, `chat/sources-list.tsx`, and the
-  `shell/sidebar-{header,new-conversation,conversation-list}.tsx`
+  `shell/sidebar-{header,new-conversation,conversation-list,account}.tsx`
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import
   them (`shell/icons.tsx`, the stateless SVGs, is the same). `shell/sidebar-collapsed-styles.ts`
   (a pure class-map function), `brand/*`, `lib/cn.ts`, `lib/sse.ts`, the `app/`
-  entry files, and the server-only modules (`config/env.ts`, `app/api/seeker/route.ts`)
+  entry files, and the server-only modules (`config/env.ts`, `app/api/seeker/route.ts`,
+  `app/api/auth/*`, and `auth/*` — note `auth/identity.ts` uses `next/headers`)
   stay server / framework-agnostic.
 - Strict TypeScript, `src/` layout, `@/*` path alias — config mirrors
   `apps/web` (the CI-proven template).
@@ -160,8 +249,13 @@ Now present (feat-205, behind the default-off flag): a validated `env.ts`, the
   Library** (`render` / `screen` / `within` + `@testing-library/user-event`,
   with `@testing-library/jest-dom` matchers); the hook test uses `renderHook`.
   jsdom is the app-wide test env (`vitest.config.ts` `environment: "jsdom"` +
-  `vitest.setup.ts`), so there are no per-file `// @vitest-environment`
-  directives. This is a **deliberate divergence** from the `apps/admin` /
+  `vitest.setup.ts`). The auth crypto/route tests (`src/auth/oauth-client`,
+  `session-cookie`, `identity`, and `src/app/api/auth/*` route tests) are the one
+  exception: they carry a top-of-file `// @vitest-environment node` directive
+  because `jose`'s WebCrypto path throws a cross-realm `payload must be an
+instance of Uint8Array` under jsdom (jsdom's `TextEncoder` produces a
+  different-realm `Uint8Array` than jose's `instanceof` check). Component/hook
+  tests stay on jsdom. This is a **deliberate divergence** from the `apps/admin` /
   `apps/web` no-testing-library convention (plain `react-dom/client` + `act`),
   scoped to chat by design — it does not change those apps. Pure-function tests
   (`lib/conversations.test.ts`, `lib/chat-stub.test.ts`,

@@ -1,8 +1,10 @@
 "use client"
 
+import { type ChatIdentity } from "@/auth/session-cookie"
 import { cn } from "@/lib/cn"
 import { type Conversation } from "@/lib/conversations"
 
+import { SidebarAccount } from "./sidebar-account"
 import { collapsedStyles } from "./sidebar-collapsed-styles"
 import { ConversationList } from "./sidebar-conversation-list"
 import { SidebarHeader } from "./sidebar-header"
@@ -15,6 +17,9 @@ type SidebarProps = {
   pendingIds: ReadonlySet<string>
   collapsed: boolean
   mobileOpen: boolean
+  authConfigured: boolean
+  identity: ChatIdentity | null
+  signInError: boolean
   onNew: () => void
   onSelect: (id: string) => void
   onToggleCollapsed: () => void
@@ -41,6 +46,9 @@ export function Sidebar({
   pendingIds,
   collapsed,
   mobileOpen,
+  authConfigured,
+  identity,
+  signInError,
   onNew,
   onSelect,
   onToggleCollapsed,
@@ -113,6 +121,13 @@ export function Sidebar({
           styles={styles}
           onSelect={onSelect}
           onCloseMobile={onCloseMobile}
+        />
+        <SidebarAccount
+          authConfigured={authConfigured}
+          identity={identity}
+          signInError={signInError}
+          collapsed={collapsed}
+          styles={styles}
         />
       </aside>
     </>

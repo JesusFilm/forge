@@ -51,6 +51,9 @@ DNS entry — Cloudflare fronting is expected to land alongside auth, later.
 
 ## What is intentionally absent
 
-No auth, no database, no API routes, no real agent connection, no env vars.
-See `CLAUDE.md` for the full list and the eventual `apps/mastra` connection
-plan (integration path undecided).
+No **authorization** (auth changes identity only, gates nothing), no database or
+persistence, no real agent connection. Optional OAuth sign-in against `apps/auth`
+(feat-207) and the Seeker proxy (feat-205) are present but **default off** —
+the app boots and is fully usable with no env vars set. See `CLAUDE.md` for the
+full list, the auth env vars + out-of-codebase client-registration prerequisite,
+and the eventual `apps/mastra` connection plan.
