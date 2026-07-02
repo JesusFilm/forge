@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react"
 import { usePathname, useSegments } from "expo-router"
 
 import {
-  getDatadogRumConfig,
+  isDatadogProvisioned,
   resolveViewName,
   startDatadogView,
 } from "../lib/datadog"
@@ -19,9 +19,10 @@ export function DatadogRouteTracker() {
   const lastKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (getDatadogRumConfig() == null) return
+    // The view key IS the pathname, so the ref-compare runs before any work.
+    if (lastKeyRef.current === pathname) return
+    if (!isDatadogProvisioned()) return
     const { key, name } = resolveViewName(segments, pathname)
-    if (lastKeyRef.current === key) return
     lastKeyRef.current = key
     startDatadogView(key, name)
   }, [pathname, segments])

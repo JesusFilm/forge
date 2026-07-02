@@ -4,9 +4,10 @@ import {
   HttpLink,
   InMemoryCache,
 } from "@apollo/client"
+import { getMainDefinition } from "@apollo/client/utilities"
 import { getGraphQLUrl, getApiToken } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
-import { datadogGraphqlHeaders, getDatadogRumConfig } from "./datadog"
+import { datadogGraphqlHeaders, isDatadogProvisioned } from "./datadog"
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -28,6 +29,16 @@ const fetchWithTimeout = (
   )
 }
 
+// Spread-merge so header links compose: each rides over what prior links set.
+function mergeContextHeaders(
+  operation: ApolloLink.Operation,
+  headers: Record<string, string>,
+): void {
+  if (Object.keys(headers).length === 0) return
+  const prev = operation.getContext()
+  operation.setContext({ headers: { ...(prev.headers ?? {}), ...headers } })
+}
+
 let _client: ApolloClient | undefined
 
 /** Lazy singleton Apollo Client. Never instantiate at module scope — crashes
@@ -39,40 +50,31 @@ export function getApolloClient(): ApolloClient {
   // into one consumer:<key> 60/min bucket (public ops bucket per device IP). Prod
   // token embargoed until admin lands fleet-aware bucketing (U7).
   const authLink = new ApolloLink((operation, forward) => {
-    const auth = authHeadersForOperation(operation.operationName, getApiToken())
-    if (Object.keys(auth).length > 0) {
-      const prev = operation.getContext()
-      operation.setContext({
-        headers: { ...(prev.headers ?? {}), ...auth },
-      })
-    }
+    mergeContextHeaders(
+      operation,
+      authHeadersForOperation(operation.operationName, getApiToken()),
+    )
     return forward(operation)
   })
 
-  // Datadog attribution rides every named operation; spread-merge over prior
-  // context headers so the Search bearer set above survives. RUM's XHR proxy
-  // strips these before the wire once init completes (pre-init they pass through;
-  // admin ignores unknown headers).
+  // Datadog attribution rides every named op. RUM's XHR proxy strips these
+  // post-init (pre-init they pass through; admin ignores unknown headers).
   const datadogLink = new ApolloLink((operation, forward) => {
-    const opDef = operation.query.definitions.find(
-      (d) => d.kind === "OperationDefinition",
+    const def = getMainDefinition(operation.query)
+    mergeContextHeaders(
+      operation,
+      datadogGraphqlHeaders(
+        operation.operationName,
+        def.kind === "OperationDefinition" ? def.operation : undefined,
+      ),
     )
-    const dd = datadogGraphqlHeaders(
-      operation.operationName,
-      opDef?.kind === "OperationDefinition" ? opDef.operation : undefined,
-    )
-    if (Object.keys(dd).length > 0) {
-      const prev = operation.getContext()
-      operation.setContext({
-        headers: { ...(prev.headers ?? {}), ...dd },
-      })
-    }
     return forward(operation)
   })
 
   // Unprovisioned builds skip the attribution link entirely (null-gate).
-  const requestChain =
-    getDatadogRumConfig() != null ? authLink.concat(datadogLink) : authLink
+  const requestChain = isDatadogProvisioned()
+    ? authLink.concat(datadogLink)
+    : authLink
 
   const link = requestChain.concat(
     new HttpLink({

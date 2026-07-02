@@ -76,6 +76,23 @@ export function resolveViewName(
   return { key: pathname, name }
 }
 
+/** Cheap provisioning gate for hot paths — no URL parse or config allocation. */
+export function isDatadogProvisioned(): boolean {
+  return (
+    !!env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN &&
+    !!env.EXPO_PUBLIC_DATADOG_APPLICATION_ID
+  )
+}
+
+// Telemetry must never throw into the app: swallow sync throws and rejections.
+function safeDatadogCall(call: () => Promise<unknown>): void {
+  try {
+    void call().catch(() => undefined)
+  } catch {
+    // Telemetry must never break the app.
+  }
+}
+
 // The SDK's XHR interception strips these headers post-init and attaches the
 // operation name/type to the RUM resource; anonymous operations get none.
 export function datadogGraphqlHeaders(
@@ -94,11 +111,7 @@ export function datadogGraphqlHeaders(
 
 /** Starts a RUM view — fire-and-forget, never throws into navigation. */
 export function startDatadogView(key: string, name: string): void {
-  try {
-    void DdRum.startView(key, name).catch(() => undefined)
-  } catch {
-    // Telemetry must never break the app.
-  }
+  safeDatadogCall(() => DdRum.startView(key, name))
 }
 
 /** RUM timing marking the series screen's first rendered rail (the perf-sweep cost). */
@@ -106,11 +119,7 @@ export const SERIES_FIRST_RAIL_READY_TIMING = "series_first_rail_ready"
 
 /** Records a timing on the active RUM view — fire-and-forget, never throws. */
 export function addDatadogTiming(name: string): void {
-  try {
-    void DdRum.addTiming(name).catch(() => undefined)
-  } catch {
-    // Telemetry must never break the app.
-  }
+  safeDatadogCall(() => DdRum.addTiming(name))
 }
 
 const INIT_WATCHDOG_DEADLINE_MS = 10_000
@@ -158,30 +167,23 @@ export function reportDatadogError(
   error: unknown,
   context: Record<string, unknown> = {},
 ): void {
-  try {
+  safeDatadogCall(() => {
     const err = error instanceof Error ? error : new Error(String(error))
-    // .catch too: post-init the SDK returns the raw native promise, whose
-    // rejection would escape this synchronous try/catch.
-    void DdRum.addError(
+    return DdRum.addError(
       err.message,
       ErrorSource.SOURCE,
       err.stack ?? "",
       context,
-    ).catch(() => undefined)
-  } catch {
-    // Telemetry must never break the app.
-  }
+    )
+  })
 }
 
 /** Thin Datadog Logs wrapper — fire-and-forget, never throws into the caller. */
 export const datadogLog = {
-  info: (message: string, context: object = {}): void => {
-    void DdLogs.info(message, context).catch(() => undefined)
-  },
-  warn: (message: string, context: object = {}): void => {
-    void DdLogs.warn(message, context).catch(() => undefined)
-  },
-  error: (message: string, context: object = {}): void => {
-    void DdLogs.error(message, context).catch(() => undefined)
-  },
+  info: (message: string, context: object = {}): void =>
+    safeDatadogCall(() => DdLogs.info(message, context)),
+  warn: (message: string, context: object = {}): void =>
+    safeDatadogCall(() => DdLogs.warn(message, context)),
+  error: (message: string, context: object = {}): void =>
+    safeDatadogCall(() => DdLogs.error(message, context)),
 }

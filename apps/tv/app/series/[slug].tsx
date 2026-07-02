@@ -36,7 +36,7 @@ import {
 } from "../../src/components/series/seriesScreenState"
 import {
   addDatadogTiming,
-  getDatadogRumConfig,
+  isDatadogProvisioned,
   SERIES_FIRST_RAIL_READY_TIMING,
 } from "../../src/lib/datadog"
 import { isSeriesLabel } from "../../src/lib/isSeriesRecord"
@@ -135,9 +135,9 @@ export default function SeriesScreen() {
   // route tracker started (tracker precedes <Stack> in the layout tree).
   const firstRailFiredForRef = useRef<string | null>(null)
   useEffect(() => {
-    if (getDatadogRumConfig() == null) return
-    const hasFired = firstRailFiredForRef.current === decodedSlug
-    if (!shouldFireFirstRailTiming(record, hasFired)) return
+    if (firstRailFiredForRef.current === decodedSlug) return
+    if (!isDatadogProvisioned()) return
+    if (!shouldFireFirstRailTiming(record, false)) return
     firstRailFiredForRef.current = decodedSlug
     addDatadogTiming(SERIES_FIRST_RAIL_READY_TIMING)
   }, [record, decodedSlug])

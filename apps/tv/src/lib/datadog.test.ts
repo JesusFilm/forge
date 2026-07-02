@@ -46,6 +46,7 @@ import {
   datadogLog,
   getDatadogRumConfig,
   hostFromUrl,
+  isDatadogProvisioned,
   reportDatadogError,
   resolveViewName,
   SERIES_FIRST_RAIL_READY_TIMING,
@@ -177,6 +178,16 @@ describe("reportDatadogError (never-throw contract)", () => {
     mockAddError.mockRejectedValueOnce(new Error("intake unreachable"))
     expect(() => reportDatadogError(new Error("x"))).not.toThrow()
     await flushMicrotasks() // an uncaught rejection here would fail the test run
+  })
+})
+
+describe("isDatadogProvisioned (cheap hot-path gate)", () => {
+  it("mirrors getDatadogRumConfig's both-credentials gate", () => {
+    expect(isDatadogProvisioned()).toBe(false)
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+    expect(isDatadogProvisioned()).toBe(false)
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+    expect(isDatadogProvisioned()).toBe(true)
   })
 })
 
