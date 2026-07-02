@@ -3,12 +3,13 @@ id: "feat-229"
 title: "Register chat OAuth client in apps/auth (chat auth enablement)"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-09"
 duration: 2
 depends_on:
   - "feat-207"
 blocks:
+  - "feat-231"
 tags:
   - "infrastructure"
   - "web"
@@ -21,11 +22,12 @@ feat-207 wires optional OAuth sign-in into `apps/chat`, but the code ships
 are set, so the sidebar hides "Sign in" and `/api/auth/login` no-ops to home.
 The feature cannot be exercised — locally or in production — until a **chat
 OAuth client is registered in `apps/auth`**. There is no such client today:
-`apps/auth/src/domain/apps.ts` seeds only `admin`, `manager`, and
+`apps/auth/src/domain/apps.ts` seeds only `admin`, `manager`, `web`, and
 `mastra-studio`.
 
-This ticket owns that out-of-codebase enablement. It **does not block feat-207's
-merge** — feat-207 merges independently and stays inert while unconfigured. It
+This ticket owns that enablement. It did not block feat-207's merge (feat-207
+merged 2026-07-02 via [#1438](https://github.com/JesusFilm/forge/pull/1438) and
+stays inert while unconfigured). It
 blocks feat-207's **end-to-end verification and per-environment enablement**:
 feat-207 stays `in-progress` until this ticket lands a client and a real sign-in
 round trip has been verified.
@@ -38,14 +40,12 @@ Two facts drive the shape of this work (both verified against the code):
    "Jesus Film Auth client mode"). There is no local auth instance in the loop.
    So the `jfp_chat_local` client (redirect `http://localhost:3200/...`) lives in
    the **same production auth DB** as any future `jfp_chat_production` client.
-2. **Seeding is a manual, production-DB operator action.** OAuth clients are
-   written by `pnpm --filter @forge/auth seed:first-party-apps`
-   (`apps/auth/src/scripts/seed-first-party-apps.ts`, a `prisma.oauthClient.upsert`
-   loop). **Nothing runs it on deploy** — `apps/auth/railway.toml` has no
-   pre/post-deploy hook. So "merge the seed PR" ≠ "client registered"; a human
-   with prod `forge-auth` DB access must run the seed. The running auth server
-   reads clients from the DB at request time, so no auth redeploy is needed once
-   seeded — the seed write is the go-live.
+2. **Seeding runs automatically on every auth deploy**, so merging a seed
+   change registers the client on the next auth deploy — no manual seed run.
+   (The Railway dashboard start command is canonical and chains migrations +
+   `seed-first-party-apps.ts`; `railway.toml`'s startCommand does NOT run the
+   seed, so don't infer "manual" from that file. Verified in the production
+   deploy logs, 2026-07-02.)
 
 ## Entry Points — Read These First
 
@@ -53,11 +53,11 @@ Two facts drive the shape of this work (both verified against the code):
    and the `RegisteredAppSeed` / `AppEnvironmentSeed` types (line ~13). Model a
    new `CHAT_APP_SEED` on `ADMIN_APP_SEED` (line ~59). The array is what the seed
    iterates.
-2. `apps/auth/src/scripts/seed-first-party-apps.ts` — the manual seed command.
-   It upserts scopes, then every app + environment + `oauthClient` row. **It
-   rewrites the whole array on each run (idempotent upserts of admin/manager/
-   mastra too), not a chat-only insert** — expect a prod seed run to touch every
-   client row.
+2. `apps/auth/src/scripts/seed-first-party-apps.ts` — the seed (runs on every
+   auth deploy; see Problem #2). It upserts scopes, then every app, environment,
+   and `oauthClient` row. **It rewrites the whole seed array on each run
+   (idempotent upserts of the sibling apps too), not a chat-only insert** —
+   every deploy touches every client row.
 3. `apps/auth/src/scripts/seed-first-party-apps.test.ts` — asserts seed counts /
    shape. Update it when `CHAT_APP_SEED` is added (a new app + its environments).
 4. `apps/auth/src/auth/config.ts` — `clientRegistrationDefaultScopes` (line ~150)
@@ -70,10 +70,7 @@ Two facts drive the shape of this work (both verified against the code):
    `AUTH_CHAT_CLIENT_SECRET` / `CHAT_BASE_URL` / `CHAT_SESSION_SECRET` vars, plus
    an optional `AUTH_COOKIE_PREFIX`). **Landed on `main` in [PR #1438](https://github.com/JesusFilm/forge/pull/1438)** —
    this is the env the client registration must line up with.
-6. `apps/auth/CLAUDE.md` → "Agent login handles" — `AGENT_LOGIN_MINTING_KEY` +
-   `pnpm --filter @forge/auth mint:agent-handle` is the sanctioned dev
-   login-without-real-credentials path for verification.
-7. `docs/plans/2026-06-30-002-feat-chat-auth-plan.md` — feat-207's plan; the
+6. `docs/plans/2026-06-30-002-feat-chat-auth-plan.md` — feat-207's plan; the
    "Prerequisite (out-of-codebase)" and receiver-registers-first sequencing.
 
 ## Grep These
@@ -84,15 +81,16 @@ Two facts drive the shape of this work (both verified against the code):
   naming to mirror (`jfp_chat_local` / `jfp_chat_production`).
 - `chatAuthConfigured` / `AUTH_CHAT_CLIENT_ID` / `CHAT_BASE_URL` in `apps/chat/`
   — the env the client registration must match.
-- `seed:first-party-apps` / `mint:agent-handle` in `apps/auth/package.json`.
+- `seed:first-party-apps` in `apps/auth/package.json`.
 - Receiver-registers-first: `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`.
 
 ## What To Build
 
-Split into **two PRs** — not "local DB vs prod DB" (there is one prod auth DB),
-but "register the localhost redirect now to unblock local verification, and
-defer the real prod redirect until chat's prod hostname is settled." `apps/chat`
-is still on a Railway-generated domain with no `jesusfilm.org` DNS
+**This ticket ships PR1 only** — register the localhost redirect now to unblock
+local verification. The deployed-environment client (production, plus a
+recommended pre-DNS `preview` on chat's Railway domain) is tracked as
+**[feat-231](feat-231-chat-auth-prod-oauth-client.md)**: `apps/chat` is still on
+a Railway-generated domain with no `jesusfilm.org` DNS
 (`apps/chat/CLAUDE.md` → Deployment), so the exact-match prod redirect URI is not
 yet knowable — and `apps/auth` requires redirect URIs to be exact per
 environment (`apps/auth/CLAUDE.md` → Security posture).
@@ -136,58 +134,43 @@ environment (`apps/auth/CLAUDE.md` → Security posture).
 
 2. Update `apps/auth/src/scripts/seed-first-party-apps.test.ts` for the new app +
    environment counts.
-3. **Operator step (production auth DB):** a person with prod `forge-auth` DB
-   access runs `pnpm --filter @forge/auth seed:first-party-apps` against the prod
-   `DATABASE_URL`. This creates the `jfp_chat_local` client row. **Call out the
-   operator/owner explicitly** — the PR author cannot self-serve this without prod
-   auth DB credentials (Doppler project `forge-auth`).
-   - **Seed from a checkout current for ALL apps — ideally `main` after this PR
-     merges, not the feature branch in isolation.** The seed re-upserts every
-     client row (admin/manager/mastra-studio included, per Entry Point #2), so
-     seeding from a stale or ahead-of-`main` branch would silently regress those
-     sibling clients' prod config (redirect URIs, scopes) to whatever that
-     checkout's `apps.ts` holds. Merge first, then seed from `main`.
-4. **Verify feat-207 end-to-end locally** (see Verification). Once green, feat-207
-   can merge (if it hasn't already) and this PR merges.
+3. **Merge this PR — merging is the registration go-live.** Auth redeploys on
+   every `main` merge, and the startup seed runs with `CHAT_APP_SEED` included
+   (Problem #2). Confirm the receipt in the auth service's deploy logs: the
+   seed line changes from
+   `Seeded 4 first-party apps, 16 environments, 20 OAuth clients, and 10 scopes.`
+   to `Seeded 5 first-party apps, 17 environments, 21 OAuth clients, and 10 scopes.`
+   No manual seed run, no DB access, no other operator action.
+4. **Verify feat-207 end-to-end locally** (see Verification), then flip
+   statuses per Completion.
 
-### PR2 — production client (deferred until chat's prod hostname is settled)
+### Deployed-environment client — moved to feat-231
 
-1. Add a `production` (and any `preview`/`staging`) environment to `CHAT_APP_SEED`
-   with the real chat prod origin once known:
-   `clientId: "jfp_chat_production"`, `redirectUris:
-["https://<chat-prod-host>/api/auth/callback"]`, matching `allowedOrigins` /
-   `postLogoutRedirectUris`.
-2. Update the seed test counts.
-3. **Seed the prod client FIRST**, then set chat's prod env vars
-   (`AUTH_ISSUER_URL`, `AUTH_CHAT_CLIENT_ID=jfp_chat_production`,
-   `CHAT_BASE_URL`, `CHAT_SESSION_SECRET`) in the chat Railway service — again
-   **no `AUTH_CHAT_CLIENT_SECRET`** (public PKCE client, as in PR1). This is the
-   **receiver-registers-first** discipline: if chat's prod `chatAuthConfigured()`
-   flips true before the client exists in the DB, every sign-in dead-ends in a
-   `redirect_uri`/unknown-client error with no chat-side signal.
-4. Verify sign-in in production.
+The production (and pre-DNS `preview`) client registration is tracked as
+[feat-231](feat-231-chat-auth-prod-oauth-client.md), gated on chat's prod
+hostname. Kept out of this ticket so feat-229 completes at PR1 instead of
+staying open indefinitely on DNS decisions.
 
 ## Constraints
 
-- **Do NOT gate feat-207's merge on this ticket.** feat-207 is default-off and
-  inert while unconfigured; it merges independently and stays `in-progress` until
-  this ticket verifies it.
-- **Do NOT set chat's prod auth env vars before the prod client is seeded**
-  (PR2). Receiver-registers-first; reverse order produces a dead window of failing
-  sign-ins.
+- **Do NOT set chat's deployed auth env vars before the deployed client exists**
+  ([feat-231](feat-231-chat-auth-prod-oauth-client.md)). Receiver-registers-first;
+  reverse order produces a dead window of failing sign-ins.
 - **Do NOT touch chat code** — no `apps/chat` changes belong here. If verification
   surfaces a chat-side bug, that is a separate `fix(chat-auth):` PR against
   feat-207's surface.
 - **Do NOT add `*:access` or `membership:read` to chat's scopes** — chat performs
   no authorization (feat-207 R7). Identity-only: `openid profile:read email:read`.
-- **Do NOT invent the prod redirect URI** in PR1. The prod host isn't settled;
-  guessing an exact-match URI now would register a wrong client.
+- **Do NOT invent the prod redirect URI** here. The prod host isn't settled;
+  guessing an exact-match URI now would register a wrong client (that's
+  feat-231's scope, once the host is known).
 - Client-id naming mirrors admin/manager: `jfp_chat_<env>`. Redirect URI is
   always `<CHAT_BASE_URL>/api/auth/callback` (chat's `getChatOAuthRedirectUri()`).
 
 ## Verification
 
-Local end-to-end (PR1), after the operator seeds `jfp_chat_local`:
+Local end-to-end, after the post-merge auth deploy has seeded `jfp_chat_local`
+(deploy-log receipt in PR1 step 3):
 
 1. In `apps/chat`, set `.env.local`: `AUTH_ISSUER_URL=https://auth.jesusfilm.org/api/auth`,
    `AUTH_CHAT_CLIENT_ID=jfp_chat_local`, `CHAT_BASE_URL=http://localhost:3200`,
@@ -197,26 +180,28 @@ Local end-to-end (PR1), after the operator seeds `jfp_chat_local`:
    `tokenEndpointAuthMethod: "none"`), so no client secret is issued (mirrors
    admin, whose `.env.example` leaves `AUTH_ADMIN_CLIENT_SECRET` commented out).
 2. Confirm `chatAuthConfigured()` is now true: the sidebar shows "Sign in".
-3. Ensure `AGENT_LOGIN_MINTING_KEY` is set on auth; mint a login handle:
-   `pnpm --filter @forge/auth mint:agent-handle`. (Handle is a bearer credential —
-   don't paste it into PRs/logs.)
-4. `pnpm --filter @forge/chat dev` → http://localhost:3200 → click Sign in →
-   authenticate with the minted handle → confirm you land back signed in, the
-   sidebar shows the identity (name→email→label, avatar→initials→icon), sign-out
-   clears the session and returns to anonymous, and the failure path (`?signin=failed`)
-   shows the R12 notice on a cancelled/failed attempt.
-5. Confirm the seeded client alone enabled this: with the same env but the client
-   NOT seeded, sign-in dead-ends at the provider (`redirect_uri`/unknown-client).
+3. `pnpm --filter @forge/chat dev` → http://localhost:3200 → click Sign in →
+   authenticate with **your own account** (the client is seeded `skipConsent`).
+   Use a private window to see the fresh-login screen (an existing auth SSO
+   session redirects straight back). Confirm you land back signed in, the
+   sidebar shows the identity (name→email→label, avatar→initials→icon), and
+   sign-out clears the session and returns to anonymous.
+4. Failure path: start a sign-in and cancel at the provider — confirm the R12
+   notice renders via `?signin=failed`.
 
-Seed-shape checks (both PRs):
+(An optional negative control — the same env before the client is seeded
+dead-ends at the provider with a `redirect_uri`/unknown-client error — only
+exists BEFORE this PR merges; there is no unseeded window after.)
+
+Seed-shape checks:
 
 - `pnpm --filter @forge/auth test` green (updated `seed-first-party-apps.test.ts`).
 - `pnpm --filter @forge/auth typecheck` clean.
 
-Completion: when the local round trip passes and `jfp_chat_local` is seeded in
-prod auth, flip **feat-207** to `complete` (with its Resolution section) — that
-is the signal this ticket unblocks. **feat-229 itself flips to `complete` at
-PR1** (local client seeded + verified); PR2 (prod client) is tracked as a
-trailing follow-up gated on chat's DNS cutover, not a condition of this ticket's
-completion — so feat-229 doesn't stay open indefinitely waiting on production
-hostname decisions.
+Completion: when the deploy-log receipt is confirmed and the local round trip
+passes, flip **feat-207** to `complete` (with its Resolution section) — that is
+the signal this ticket unblocks. **feat-229 itself flips to `complete` at PR1**
+(client seeded by the post-merge deploy + verified). The deployed-environment
+client is tracked as [feat-231](feat-231-chat-auth-prod-oauth-client.md), not a
+condition of this ticket's completion — so feat-229 doesn't stay open
+indefinitely waiting on production hostname decisions.

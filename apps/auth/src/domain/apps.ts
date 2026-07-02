@@ -10,6 +10,7 @@ export const ADMIN_APP_KEY = "admin"
 export const MANAGER_APP_KEY = "manager"
 export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 export const WEB_APP_KEY = "web"
+export const CHAT_APP_KEY = "chat"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -63,6 +64,15 @@ export const WEB_DEFAULT_SCOPES = [
   "email:read",
   "web:watch-events:write",
 ] satisfies AuthScopeKey[]
+
+// Identity-only: chat performs no authorization, so no *:access or
+// membership:read (feat-207 R7).
+export const CHAT_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+] satisfies AuthScopeKey[]
+
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {
   key: ADMIN_APP_KEY,
@@ -295,9 +305,32 @@ export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+// Local environment only for now: chat's production hostname is not settled
+// (feat-229 PR2 adds production/preview once it is), and redirect URIs must be
+// exact-match per environment.
+export const CHAT_APP_SEED: RegisteredAppSeed = {
+  key: CHAT_APP_KEY,
+  displayName: "Jesus Film Chat",
+  description: "Conversational AI chat surface (jesusfilm.ai).",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_chat_local",
+      redirectUris: ["http://localhost:3200/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3200"],
+      allowedOrigins: ["http://localhost:3200"],
+      defaultScopes: CHAT_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 export const FIRST_PARTY_APP_SEEDS = [
   ADMIN_APP_SEED,
   MANAGER_APP_SEED,
   WEB_APP_SEED,
   MASTRA_STUDIO_APP_SEED,
+  CHAT_APP_SEED,
 ] satisfies RegisteredAppSeed[]

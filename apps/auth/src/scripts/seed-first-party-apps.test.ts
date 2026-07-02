@@ -26,9 +26,9 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 4,
-      environments: 16,
-      oauthClients: 20,
+      apps: 5,
+      environments: 17,
+      oauthClients: 21,
       scopes: 10,
     })
 
@@ -84,6 +84,21 @@ describe("seedFirstPartyApps", () => {
             appKey: "web",
             environmentKey: "local",
           }),
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_chat_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_chat_local",
+          // Identity-only client — exact scope list, no *:access or
+          // membership:read (feat-207 R7).
+          scopes: ["openid", "profile:read", "email:read"],
+          redirectUris: ["http://localhost:3200/api/auth/callback"],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
         }),
       }),
     )

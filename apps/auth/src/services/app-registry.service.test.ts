@@ -45,6 +45,7 @@ describe("app registry policy", () => {
       "manager",
       "web",
       "mastra-studio",
+      "chat",
     ])
 
     for (const seed of seeds) {
