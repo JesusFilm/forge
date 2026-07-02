@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { isDynamicRailwayPreviewRedirectUriAllowed } from "./dynamic-preview-redirect.service"
+import {
+  isDynamicLocalWebRedirectUriAllowed,
+  isDynamicRailwayPreviewRedirectUriAllowed,
+} from "./dynamic-preview-redirect.service"
 
 describe("dynamic preview redirect policy", () => {
   it("allows Railway PR callback URLs for preview/staging admin clients", () => {
@@ -62,6 +65,42 @@ describe("dynamic preview redirect policy", () => {
         clientId: "jfp_mastra_studio_preview",
         redirectUri:
           "https://forge-admin-pr-123.up.railway.app/api/auth/callback",
+      }),
+    ).toBe(false)
+  })
+
+  it("allows loopback watch callbacks for the local Web client", () => {
+    expect(
+      isDynamicLocalWebRedirectUriAllowed({
+        clientId: "jfp_web_local",
+        redirectUri: "http://localhost:51810/watch/api/auth/callback",
+      }),
+    ).toBe(true)
+    expect(
+      isDynamicLocalWebRedirectUriAllowed({
+        clientId: "jfp_web_local",
+        redirectUri: "http://127.0.0.1:51810/watch/api/auth/callback",
+      }),
+    ).toBe(true)
+  })
+
+  it("rejects non-loopback or non-watch local Web callback URLs", () => {
+    expect(
+      isDynamicLocalWebRedirectUriAllowed({
+        clientId: "jfp_web_production",
+        redirectUri: "http://localhost:51810/watch/api/auth/callback",
+      }),
+    ).toBe(false)
+    expect(
+      isDynamicLocalWebRedirectUriAllowed({
+        clientId: "jfp_web_local",
+        redirectUri: "https://localhost:51810/watch/api/auth/callback",
+      }),
+    ).toBe(false)
+    expect(
+      isDynamicLocalWebRedirectUriAllowed({
+        clientId: "jfp_web_local",
+        redirectUri: "http://localhost:51810/api/auth/callback",
       }),
     ).toBe(false)
   })
