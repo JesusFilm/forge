@@ -27,11 +27,19 @@ jest.mock("@datadog/mobile-react-native", () => ({
   },
   ErrorSource: { SOURCE: "SOURCE" },
   PropagatorType: { TRACECONTEXT: "tracecontext" },
+  DATADOG_GRAPH_QL_OPERATION_NAME_HEADER: "x-dd-graph-ql-operation-name",
+  DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER: "x-dd-graph-ql-operation-type",
 }))
 
-import { DdLogs, DdRum } from "@datadog/mobile-react-native"
+import {
+  DATADOG_GRAPH_QL_OPERATION_NAME_HEADER,
+  DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER,
+  DdLogs,
+  DdRum,
+} from "@datadog/mobile-react-native"
 import { env } from "../env"
 import {
+  datadogGraphqlHeaders,
   datadogLog,
   getDatadogRumConfig,
   hostFromUrl,
@@ -193,6 +201,26 @@ describe("resolveViewName (route-pattern view identity)", () => {
       key: "/unknown",
       name: "/unknown",
     })
+  })
+})
+
+describe("datadogGraphqlHeaders (per-operation attribution)", () => {
+  it("maps a named operation to the SDK's attribution headers", () => {
+    expect(datadogGraphqlHeaders("GetSeriesBySlug", "query")).toEqual({
+      [DATADOG_GRAPH_QL_OPERATION_NAME_HEADER]: "GetSeriesBySlug",
+      [DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER]: "query",
+    })
+  })
+
+  it("omits the type header when the operation type is unknown", () => {
+    expect(datadogGraphqlHeaders("SemanticSearch", undefined)).toEqual({
+      [DATADOG_GRAPH_QL_OPERATION_NAME_HEADER]: "SemanticSearch",
+    })
+  })
+
+  it("returns no headers for anonymous operations", () => {
+    expect(datadogGraphqlHeaders(undefined, "query")).toEqual({})
+    expect(datadogGraphqlHeaders("", "query")).toEqual({})
   })
 })
 

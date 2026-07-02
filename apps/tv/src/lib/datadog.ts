@@ -1,4 +1,6 @@
 import {
+  DATADOG_GRAPH_QL_OPERATION_NAME_HEADER,
+  DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER,
   DdLogs,
   DdRum,
   ErrorSource,
@@ -72,6 +74,22 @@ export function resolveViewName(
   const pattern = segments.filter(Boolean).join("/")
   const name = pattern || (pathname === "/" ? "home" : pathname)
   return { key: pathname, name }
+}
+
+// The SDK's XHR interception strips these headers post-init and attaches the
+// operation name/type to the RUM resource; anonymous operations get none.
+export function datadogGraphqlHeaders(
+  operationName: string | undefined,
+  operationType: string | undefined,
+): Record<string, string> {
+  if (!operationName) return {}
+  const headers: Record<string, string> = {
+    [DATADOG_GRAPH_QL_OPERATION_NAME_HEADER]: operationName,
+  }
+  if (operationType) {
+    headers[DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER] = operationType
+  }
+  return headers
 }
 
 /** Starts a RUM view — fire-and-forget, never throws into navigation. */

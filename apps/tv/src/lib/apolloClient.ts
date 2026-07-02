@@ -6,6 +6,7 @@ import {
 } from "@apollo/client"
 import { getGraphQLUrl, getApiToken } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
+import { datadogGraphqlHeaders, getDatadogRumConfig } from "./datadog"
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -48,7 +49,32 @@ export function getApolloClient(): ApolloClient {
     return forward(operation)
   })
 
-  const link = authLink.concat(
+  // Datadog attribution rides every named operation; spread-merge over prior
+  // context headers so the Search bearer set above survives. RUM's XHR proxy
+  // strips these before the wire once init completes (pre-init they pass through;
+  // admin ignores unknown headers).
+  const datadogLink = new ApolloLink((operation, forward) => {
+    const opDef = operation.query.definitions.find(
+      (d) => d.kind === "OperationDefinition",
+    )
+    const dd = datadogGraphqlHeaders(
+      operation.operationName,
+      opDef?.kind === "OperationDefinition" ? opDef.operation : undefined,
+    )
+    if (Object.keys(dd).length > 0) {
+      const prev = operation.getContext()
+      operation.setContext({
+        headers: { ...(prev.headers ?? {}), ...dd },
+      })
+    }
+    return forward(operation)
+  })
+
+  // Unprovisioned builds skip the attribution link entirely (null-gate).
+  const requestChain =
+    getDatadogRumConfig() != null ? authLink.concat(datadogLink) : authLink
+
+  const link = requestChain.concat(
     new HttpLink({
       uri: getGraphQLUrl(),
       fetch: fetchWithTimeout,
