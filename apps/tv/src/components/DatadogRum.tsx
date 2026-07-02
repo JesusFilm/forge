@@ -9,9 +9,13 @@ import {
 
 import {
   DATADOG_SERVICE,
+  datadogInitWatchdog,
   getDatadogRumConfig,
   toFirstPartyHostConfigs,
 } from "../lib/datadog"
+
+// Module-scope so the prop stays referentially stable across re-renders.
+const handleDatadogInitialized = () => datadogInitWatchdog.markInitialized()
 
 /**
  * Wraps the app in Datadog RUM when provisioned; transparent pass-through otherwise.
@@ -22,12 +26,17 @@ export function TvDatadogProvider({ children }: { children: ReactNode }) {
   const config = getDatadogRumConfig()
   const provisioned = config != null
 
-  // Dev-only: surface the disabled gate so a creds-less build is diagnosable.
+  // Dev-only: surface the disabled gate so a creds-less build is diagnosable,
+  // and arm the init watchdog so a provisioned-but-dead SDK warns within ~10s.
   useEffect(() => {
-    if (!__DEV__ || provisioned) return
-    console.warn(
-      "[datadog] RUM disabled: set EXPO_PUBLIC_DATADOG_CLIENT_TOKEN and EXPO_PUBLIC_DATADOG_APPLICATION_ID to enable telemetry",
-    )
+    if (!__DEV__) return
+    if (!provisioned) {
+      console.warn(
+        "[datadog] RUM disabled: set EXPO_PUBLIC_DATADOG_CLIENT_TOKEN and EXPO_PUBLIC_DATADOG_APPLICATION_ID to enable telemetry",
+      )
+      return
+    }
+    datadogInitWatchdog.arm()
   }, [provisioned])
 
   if (!config) return <>{children}</>
@@ -57,6 +66,11 @@ export function TvDatadogProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <DatadogProvider configuration={configuration}>{children}</DatadogProvider>
+    <DatadogProvider
+      configuration={configuration}
+      onInitialization={handleDatadogInitialized}
+    >
+      {children}
+    </DatadogProvider>
   )
 }

@@ -113,6 +113,46 @@ export function addDatadogTiming(name: string): void {
   }
 }
 
+const INIT_WATCHDOG_DEADLINE_MS = 10_000
+
+/**
+ * Dev-only watchdog for silent SDK init failure (provisioned but native init
+ * never completes, e.g. a JS-only reload against a stale binary). One-shot per
+ * JS process: onInitialization fires at most once (globalThis init singleton),
+ * so a per-mount timer would false-warn on every remount.
+ */
+export function createDatadogInitWatchdog({
+  deadlineMs = INIT_WATCHDOG_DEADLINE_MS,
+  dev = __DEV__,
+}: { deadlineMs?: number; dev?: boolean } = {}) {
+  let armed = false
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  return {
+    arm(): void {
+      if (!dev || armed) return
+      armed = true
+      timer = setTimeout(() => {
+        timer = null
+        console.warn(
+          `[datadog] SDK init has not completed within ${deadlineMs / 1000}s of a provisioned mount — telemetry is likely dead (stale binary or rejected native init)`,
+        )
+      }, deadlineMs)
+    },
+    markInitialized(): void {
+      // Once initialized, later arms are meaningless for this process.
+      armed = true
+      if (timer != null) {
+        clearTimeout(timer)
+        timer = null
+      }
+    },
+  }
+}
+
+/** Process-wide watchdog instance, mirroring the SDK's one-shot init behavior. */
+export const datadogInitWatchdog = createDatadogInitWatchdog()
+
 /** Reports a handled JS error to Datadog RUM. Mirrors web's reportDatadogRumError. */
 export function reportDatadogError(
   error: unknown,

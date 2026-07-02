@@ -41,6 +41,7 @@ import {
 import { env } from "../env"
 import {
   addDatadogTiming,
+  createDatadogInitWatchdog,
   datadogGraphqlHeaders,
   datadogLog,
   getDatadogRumConfig,
@@ -265,6 +266,64 @@ describe("addDatadogTiming (never-throw contract)", () => {
     mockAddTiming.mockRejectedValueOnce(new Error("intake unreachable"))
     expect(() => addDatadogTiming("t")).not.toThrow()
     await flushMicrotasks()
+  })
+})
+
+describe("createDatadogInitWatchdog (one-shot per process)", () => {
+  let warnSpy: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+    warnSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+    warnSpy.mockRestore()
+  })
+
+  it("stays silent when init completes before the deadline", () => {
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    wd.markInitialized()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it("warns exactly once when the deadline passes without init", () => {
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    jest.advanceTimersByTime(10_000)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy.mock.calls[0][0]).toContain("[datadog]")
+    jest.advanceTimersByTime(30_000)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("treats a second arm as a no-op (Fast Refresh double mount)", () => {
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    wd.arm()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("never re-arms after init completed (remount against a live SDK)", () => {
+    // onInitialization fires at most once per JS process (the SDK inits behind
+    // a globalThis singleton) — a remount must not start a fresh false-warn timer.
+    const wd = createDatadogInitWatchdog({ dev: true })
+    wd.arm()
+    wd.markInitialized()
+    wd.arm()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it("never warns in release builds", () => {
+    const wd = createDatadogInitWatchdog({ dev: false })
+    wd.arm()
+    jest.advanceTimersByTime(20_000)
+    expect(warnSpy).not.toHaveBeenCalled()
   })
 })
 
