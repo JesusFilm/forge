@@ -95,21 +95,54 @@ in the stream's `cancel()`. Relying on `request.signal` propagation alone leaves
 a paid generation draining to the timeout ceiling on any path where the signal
 doesn't fire.
 
-**5. SSRF guard: require https EXCEPT loopback.** The bearer rides the outbound
-request, so an `http://` base would egress it in cleartext — enforce `https:`.
-But exempt loopback hosts (`localhost`/`127.0.0.1`/`::1`) so local dev against an
-`http://localhost:4111` Mastra still works:
+**5. SSRF guard: require https EXCEPT loopback and `*.railway.internal`.** The
+bearer rides the outbound request, so an `http://` base would egress it in
+cleartext — enforce `https:`. But exempt two private transports where the
+cleartext concern doesn't apply:
+
+- **Loopback** (`localhost`/`127.0.0.1`/`::1`) — local dev against an
+  `http://localhost:4111` Mastra; the bearer never leaves the machine.
+- **`*.railway.internal`** — Railway private networking, the intended prod
+  transport when the internal service has no public domain (the network
+  boundary IS Mastra's containment). The mesh is WireGuard-encrypted, but
+  services serve plain HTTP and Railway issues no TLS cert for
+  `*.railway.internal`, so `https://` can never work there. Without this
+  exemption there is NO base-URL value that works in production — the guard
+  contradicts its own deployment path (this happened; the loopback exemption
+  masked it in local dev). The exemption is name-based and sound ONLY where
+  `.railway.internal` resolves through Railway's private DNS — i.e., the app
+  itself runs on Railway; elsewhere the name guarantees nothing about
+  transport encryption, so a copier deploying off-platform should drop the
+  exemption or gate it on `RAILWAY_ENVIRONMENT_NAME` (the platform marker
+  `apps/web/src/env.ts` already reads). Match on `url.hostname` (never a substring of the
+  URL string) with an END-ANCHORED dotted suffix: the leading dot makes it a
+  label-boundary match, so `railway.internal.evil.com`, `evilrailway.internal`,
+  and bare `railway.internal` are all rejected. A bare `endsWith` is NOT yet a
+  full-label match, though — empty-label hosts (`.railway.internal`,
+  `a..railway.internal`) parse fine in the WHATWG URL parser and satisfy the
+  suffix, so pair it with the empty-label rejections shown below.
 
 ```ts
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
-const loopbackHttp =
-  url.protocol === "http:" && LOOPBACK.has(url.hostname.toLowerCase())
-if (url.protocol !== "https:" && !loopbackHttp) return false // ssrf_blocked
+const host = url.hostname.toLowerCase()
+const railwayInternal =
+  host.endsWith(".railway.internal") &&
+  !host.startsWith(".") && // no empty leading label (".railway.internal")
+  !host.includes("..") // no empty inner labels ("a..railway.internal")
+const privateHttp =
+  url.protocol === "http:" && (LOOPBACK.has(host) || railwayInternal)
+if (url.protocol !== "https:" && !privateHttp) return false // ssrf_blocked
 ```
 
 Keep the host allowlist check after the scheme floor; an unset allowlist trusts
 the operator-set host (admin parity; `redirect:"error"` still blocks off-host
-hops), but the scheme floor applies regardless.
+hops), but the scheme floor applies regardless — including to
+`*.railway.internal` hosts, which a configured allowlist still gates. As
+defense-in-depth, prod should set the allowlist to the exact internal host —
+"should" not "must" because Railway private networks are isolated per
+project+environment, so an unset allowlist's worst-case http misconfig reaches
+only a sibling service in the same environment; treat the allowlist as
+REQUIRED if the environment ever hosts services outside this trust boundary.
 
 **6. First terminal frame wins (both sides).** The proxy emits exactly one
 terminal frame then closes; the client treats the first `result`/`error` as

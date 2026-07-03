@@ -84,12 +84,31 @@ function isProxyBody(
 // cleartext concern doesn't apply, and this is what local Mastra dev serves.
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
 
+// Railway private-network hosts may also use http: — Mastra has no public
+// domain, the WireGuard mesh encrypts transport, and Railway issues no TLS
+// cert for *.railway.internal.
+const RAILWAY_INTERNAL_SUFFIX = ".railway.internal"
+
+// True full-label suffix match: a bare endsWith would also admit empty-label
+// hosts (".railway.internal", "a..railway.internal"), which parse fine in the
+// WHATWG URL parser and would otherwise slip past the scheme floor.
+function isRailwayInternalHost(host: string): boolean {
+  return (
+    host.endsWith(RAILWAY_INTERNAL_SUFFIX) &&
+    !host.startsWith(".") &&
+    !host.includes("..")
+  )
+}
+
 /**
  * SSRF guard. The base URL must be `https:` — the bearer rides this request, so
- * an `http:` base would egress it in cleartext — EXCEPT for loopback hosts
- * (local dev). When an allowlist is set the host must be in it. An unset
- * allowlist trusts the operator-set host (admin parity; `redirect:"error"` still
- * blocks off-host hops) but the scheme floor applies regardless.
+ * an `http:` base would egress it in cleartext — EXCEPT loopback hosts (local
+ * dev) and `*.railway.internal` hosts (the prod transport: Railway private
+ * networking is plain HTTP at the app layer over a WireGuard-encrypted mesh,
+ * and Mastra deliberately has no public https domain). When an allowlist is set
+ * the host must be in it. An unset allowlist trusts the operator-set host
+ * (admin parity; `redirect:"error"` still blocks off-host hops) but the scheme
+ * floor applies regardless.
  */
 function hostAllowed(
   baseUrl: string,
@@ -102,8 +121,10 @@ function hostAllowed(
     return false
   }
   const host = url.hostname.toLowerCase()
-  const loopbackHttp = url.protocol === "http:" && LOOPBACK_HOSTS.has(host)
-  if (url.protocol !== "https:" && !loopbackHttp) return false
+  const privateHttp =
+    url.protocol === "http:" &&
+    (LOOPBACK_HOSTS.has(host) || isRailwayInternalHost(host))
+  if (url.protocol !== "https:" && !privateHttp) return false
   if (!allowedHostsCsv) return true
   const allowed = new Set(
     allowedHostsCsv

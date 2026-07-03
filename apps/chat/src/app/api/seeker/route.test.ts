@@ -196,6 +196,215 @@ describe("handleSeekerProxyRequest — gates", () => {
     expect(fetchImpl).toHaveBeenCalledOnce()
   })
 
+  it("allows http for an IPv4 loopback base URL → fetch proceeds", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, baseUrl: "http://127.0.0.1:4111" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it("allows http for a *.railway.internal base URL (prod private networking) → fetch proceeds", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        baseUrl: "http://example-service.railway.internal",
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it("allows http for a *.railway.internal base URL with a port → fetch proceeds", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        baseUrl: "http://example-service.railway.internal:4111",
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it("rejects an http public host → ssrf_blocked, no fetch", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, baseUrl: "http://evil.com" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("rejects http railway.internal.evil.com (suffix is a full-label match, not a substring) → ssrf_blocked", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, baseUrl: "http://railway.internal.evil.com" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("rejects http evilrailway.internal (no dot boundary) → ssrf_blocked", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, baseUrl: "http://evilrailway.internal" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("rejects http bare railway.internal (no leading label) → ssrf_blocked", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, baseUrl: "http://railway.internal" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("rejects http .railway.internal (empty leading label) → ssrf_blocked", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, baseUrl: "http://.railway.internal" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("rejects http foo..railway.internal (empty inner label) → ssrf_blocked", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, baseUrl: "http://foo..railway.internal" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("rejects a trailing-dot FQDN railway.internal. host → ssrf_blocked (pins fail-closed)", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        baseUrl: "http://example-service.railway.internal.:4111",
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("allows http for an uppercase *.RAILWAY.INTERNAL host (parser lowercases) → fetch proceeds", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        baseUrl: "http://EXAMPLE-SERVICE.RAILWAY.INTERNAL:4111",
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it("SSRF: railway.internal http base host NOT in a set allowlist → ssrf_blocked", async () => {
+    const fetchImpl = vi.fn()
+    const res = await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        baseUrl: "http://example-service.railway.internal:4111",
+        allowedHosts: "trusted.internal",
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("SSRF: railway.internal http base host IN the allowlist → fetch proceeds", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        baseUrl: "http://example-service.railway.internal:4111",
+        allowedHosts: "example-service.railway.internal",
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
   it("SSRF: base host in allowlist → fetch proceeds", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       upstream([
