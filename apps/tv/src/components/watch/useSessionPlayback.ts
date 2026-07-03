@@ -98,6 +98,12 @@ export type UseSessionPlaybackResult = {
    * pill never lies about CC being on.
    */
   subtitleLabel: string | null
+  /**
+   * True while a dub/language source swap is in flight (before replaceAsync +
+   * until it settles). The host's QoE rebuffer gate reads this so the spurious
+   * statusChange:"loading" a swap fires is NOT counted as a real rebuffer.
+   */
+  sourceSwappingRef: MutableRefObject<boolean>
 }
 
 export function useSessionPlayback({
@@ -150,6 +156,10 @@ export function useSessionPlayback({
   // is still the latest, so rapid dub changes never strand on a stale target.
   const switchTokenRef = useRef(0)
 
+  // True while a swap is loading a new source. The host's QoE rebuffer gate
+  // reads it so a swap's spurious statusChange:"loading" isn't miscounted.
+  const sourceSwappingRef = useRef(false)
+
   // ── Live dub-switch (U7) ────────────────────────────────────────────
   // Desired source = active dub HLS when menuActive, else streamingUrl (no-session
   // path no-ops on loadedUrlRef equality). Swap-vs-noop is by Mux playback id
@@ -188,6 +198,9 @@ export function useSessionPlayback({
       }
     }
 
+    // Mark the swap in flight so the host's QoE rebuffer gate ignores the
+    // spurious statusChange:"loading" this source change fires.
+    sourceSwappingRef.current = true
     // replaceAsync loads off the main thread (replace() blocks the UI thread for
     // HLS). Fall back to the synchronous path (disableWarning=true) if it rejects.
     void player
@@ -203,6 +216,9 @@ export function useSessionPlayback({
           // Player already released.
         }
         resume()
+      })
+      .finally(() => {
+        sourceSwappingRef.current = false
       })
   }, [desiredSource, player, seekTargetRef])
 
@@ -312,5 +328,6 @@ export function useSessionPlayback({
     activeVttSrc,
     audioLabel,
     subtitleLabel,
+    sourceSwappingRef,
   }
 }
