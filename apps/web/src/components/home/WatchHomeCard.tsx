@@ -72,7 +72,7 @@ export function WatchHomeCard({
 }: WatchHomeCardProps) {
   const isVertical = orientation === "vertical"
   const frameClassName = cn(
-    "beveled group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-xl shadow-stone-950/70 transition duration-300 hover:scale-[1.02] focus-visible:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+    "group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-300 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
     className,
   )
 
@@ -131,7 +131,21 @@ export function WatchHomeCard({
             {card.metaLabel}
           </div>
         ) : null}
-        <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 group-hover:opacity-50" />
+        <div
+          aria-hidden
+          data-testid="watch-home-card-bevel"
+          className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
+        />
+        <div
+          aria-hidden
+          data-testid="watch-home-card-hover-outline"
+          className="pointer-events-none absolute inset-0 z-50 rounded-lg opacity-0 shadow-[0_0_22px_rgba(239,68,68,0.32)] transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          <span className="absolute inset-x-0 top-0 h-[4px] rounded-t-lg bg-brand-red" />
+          <span className="absolute inset-y-0 left-0 w-[4px] rounded-l-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
+          <span className="absolute inset-y-0 right-0 w-[4px] rounded-r-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
+          <span className="absolute inset-x-0 bottom-0 h-[4px] rounded-b-lg bg-transparent" />
+        </div>
         <div className="absolute inset-0 flex flex-col justify-end px-4 pt-4 pb-5">
           <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
             {card.label}

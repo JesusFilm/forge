@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Clapperboard, Globe2, UsersRound } from "lucide-react"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 const points = [
   {
@@ -44,7 +45,7 @@ export function WatchHomePromo() {
   return (
     <section className="relative overflow-hidden bg-[linear-gradient(135deg,rgba(69,10,29,0.6),rgba(88,28,135,0.2),rgba(234,88,12,0.1))] py-[4.5rem] text-white">
       <div className="absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-45 mix-blend-multiply" />
-      <div className="relative mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="flex flex-col gap-14">
           <div className="max-w-3xl space-y-4">
             <p className="text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">

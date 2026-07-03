@@ -184,6 +184,51 @@
   transform: scale(1.06);
 }
 
+.watch-home-media-enter {
+  animation: watch-home-media-enter 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.watch-home-media-exit {
+  animation: watch-home-media-exit 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.watch-home-copy-enter {
+  animation: watch-home-copy-enter 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--watch-home-copy-delay, 0ms);
+}
+
+.watch-home-copy-exit {
+  animation: watch-home-copy-exit 320ms cubic-bezier(0.55, 0, 0.3, 1) both;
+  animation-delay: var(--watch-home-copy-delay, 0ms);
+}
+
+.watch-home-progress-ring {
+  animation: watch-home-progress-ring var(--watch-home-progress-duration, 30s)
+    linear forwards;
+}
+
+.watch-home-progress-ring-reset {
+  animation: watch-home-progress-ring-reset 900ms
+    cubic-bezier(0.2, 1.35, 0.35, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watch-home-media-enter,
+  .watch-home-media-exit,
+  .watch-home-copy-enter,
+  .watch-home-copy-exit {
+    animation: none;
+  }
+
+  .watch-home-progress-ring {
+    animation: none;
+  }
+
+  .watch-home-progress-ring-reset {
+    display: none;
+  }
+}
+
 @keyframes background-pan-zoom {
   0% {
     background-position: 50% 50%;
@@ -196,6 +241,67 @@
   100% {
     background-position: 50% 50%;
     transform: scale(1);
+  }
+}
+
+@keyframes watch-home-media-enter {
+  0% {
+    opacity: 0;
+    transform: scale(1.018);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes watch-home-media-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.992);
+  }
+}
+
+@keyframes watch-home-copy-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes watch-home-copy-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+}
+
+@keyframes watch-home-progress-ring {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes watch-home-progress-ring-reset {
+  0% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+  100% {
+    opacity: 0.72;
+    stroke-dashoffset: var(--watch-home-progress-circumference);
   }
 }
 
