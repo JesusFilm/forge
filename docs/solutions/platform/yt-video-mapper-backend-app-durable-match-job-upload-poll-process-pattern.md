@@ -1,7 +1,7 @@
 ---
 title: "yt-video-mapper backend app durable match job upload poll process pattern"
 date: 2026-06-09
-last_updated: 2026-06-29
+last_updated: 2026-07-02
 category: platform
 module: apps/yt-video-mapper-backend
 problem_type: architecture_pattern
@@ -49,10 +49,12 @@ matchers are swapped in.
 
 Build the app around an async upload job lifecycle:
 
-1. `POST /match-jobs` accepts raw media bytes, stores the upload, creates a
-   queued `MatchJob`, and returns `202` with `{ jobId, status }`.
-2. `GET /match-jobs/:jobId` polls job state. Once complete, it returns only
-   `{ candidates }` so the public contract stays focused on attribution.
+1. `POST /match-jobs` accepts raw media bytes or `multipart/form-data` with a
+   file/media part, stores the normalized upload bytes, creates a queued
+   `MatchJob`, and returns `202` with `{ jobId, status }`.
+2. `GET /match-jobs/:jobId` polls job state. Once complete, it returns
+   `{ jobId, status: "complete", candidates }` so status-based pollers can
+   terminate even when the candidate list is empty.
 3. The server starts a bounded worker loop by default. The loop claims the
    oldest fresh queued or stale-running job, processes one job at a time, and
    polls when the queue is empty.
@@ -189,7 +191,7 @@ cleaner loop                      -> expires queued jobs after 30 minutes
 MATCH_JOB_CLEANER_ENABLED=false   -> rollout kill switch for cleaner startup
 POST /match-jobs/:jobId/process   -> authenticated operator recovery
 GET  /match-jobs/:jobId           -> queued/running/failed/expired envelope
-GET  /match-jobs/:jobId           -> { candidates } when complete
+GET  /match-jobs/:jobId           -> { jobId, status: "complete", candidates }
 ```
 
 Avoid these shortcuts:
@@ -203,6 +205,8 @@ Avoid these shortcuts:
 - Releasing a database cleaner lease without checking the lease owner.
 - Retrying every expired upload cleanup before marking newly overdue queued
   jobs expired.
+- Returning a candidate-only complete payload that makes empty no-match jobs
+  ambiguous to status-based polling clients.
 - Keying fusion by `videoVariantId` without the parent `coreId`.
 - Exposing internal visual/audio/text evidence in the public response before
   the API contract calls for it.

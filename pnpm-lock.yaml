@@ -1127,6 +1127,9 @@ importers:
 
   apps/yt-video-mapper-backend:
     dependencies:
+      '@fastify/busboy':
+        specifier: 3.2.0
+        version: 3.2.0
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql

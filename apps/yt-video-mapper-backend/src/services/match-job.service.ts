@@ -54,6 +54,8 @@ export type MatchJobResult =
       errorCode?: string
     }
   | {
+      jobId: string
+      status: "complete"
       candidates: PublicMatchCandidate[]
     }
 
@@ -356,6 +358,8 @@ export class MatchJobService {
     if (job.status === "complete") {
       const candidates = await this.repository.listCandidates(job.id)
       return {
+        jobId: job.id,
+        status: job.status,
         candidates: candidates.map(
           ({ rank: _rank, ...candidate }) => candidate,
         ),

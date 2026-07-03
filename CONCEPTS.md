@@ -92,6 +92,14 @@ The worker is intentionally bounded: it handles one Match Job at a time in a
 service process, preserving the durable queue semantics without adding an
 external queue service.
 
+### Complete Match Job
+
+A terminal Match Job whose attribution attempt finished, regardless of whether
+it produced any Match Candidates.
+
+A Complete Match Job with no candidates still carries the completed status so
+polling clients can stop waiting and handle the no-match result explicitly.
+
 ### Expired Match Job
 
 A Match Job that remained queued past the yt-video-mapper queue expiry window

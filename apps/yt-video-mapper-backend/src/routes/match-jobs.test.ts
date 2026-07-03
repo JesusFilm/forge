@@ -26,6 +26,13 @@ const candidate: PublicMatchCandidate = {
   matchStrength: "high",
 }
 
+const structuralCandidate: PublicMatchCandidate = {
+  coreId: "core-jesus-film",
+  videoVariantId: "variant-en",
+  confidence: 1,
+  matchStrength: "high",
+}
+
 class TestResponse extends Writable {
   statusCode = 200
   headers: Record<string, string> = {}
@@ -124,10 +131,39 @@ describe("match jobs route", () => {
     expect(response).toEqual({
       statusCode: 200,
       body: {
+        jobId,
+        status: "complete",
         candidates: [candidate],
       },
     })
     expect(JSON.stringify(response.body)).not.toContain("evidence")
+  })
+
+  it("polls complete jobs with empty candidates as terminal complete", async () => {
+    const service = new MatchJobService(
+      new InMemoryMatchJobRepository(),
+      new InMemoryUploadStorage(),
+      new StubExtractor({
+        visualHashes: ["frame-a"],
+        audioFingerprints: ["audio-a"],
+      }),
+      new StubMatcher([]),
+      () => new Date("2026-06-08T00:00:00.000Z"),
+    )
+    const { request } = createHarness({ service })
+    const created = await request("POST", "/match-jobs", Buffer.from("video"))
+    const jobId = String(created.body.jobId)
+
+    await service.processJob(jobId)
+
+    await expect(request("GET", `/match-jobs/${jobId}`)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        jobId,
+        status: "complete",
+        candidates: [],
+      },
+    })
   })
 
   it("lets an authenticated worker process a queued job", async () => {
@@ -144,6 +180,8 @@ describe("match jobs route", () => {
     ).resolves.toEqual({
       statusCode: 200,
       body: {
+        jobId,
+        status: "complete",
         candidates: [candidate],
       },
     })
@@ -199,17 +237,135 @@ describe("match jobs route", () => {
     expect(response).toEqual({
       statusCode: 200,
       body: {
-        candidates: [
-          {
-            coreId: "core-jesus-film",
-            videoVariantId: "variant-en",
-            confidence: 1,
-            matchStrength: "high",
-          },
-        ],
+        jobId,
+        status: "complete",
+        candidates: [structuralCandidate],
       },
     })
     expect(JSON.stringify(response.body)).not.toContain("evidence")
+  })
+
+  it("processes a multipart video upload through real extraction and matching", async () => {
+    const { request } = createHarness({
+      service: createRealMatcherService(),
+    })
+    const boundary = "match-job-test-boundary"
+    const created = await request(
+      "POST",
+      "/match-jobs",
+      createMultipartBody({
+        boundary,
+        bytes: Buffer.from([1, 2, 3, 4]),
+        contentType: "video/mp4",
+        filename: "sample.mp4",
+        name: "file",
+      }),
+      {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+    )
+    const jobId = String(created.body.jobId)
+
+    const response = await request("POST", `/match-jobs/${jobId}/process`)
+
+    expect(response).toEqual({
+      statusCode: 200,
+      body: {
+        jobId,
+        status: "complete",
+        candidates: [structuralCandidate],
+      },
+    })
+  })
+
+  it("processes a multipart media part without a filename", async () => {
+    const { request } = createHarness({
+      service: createRealMatcherService(),
+    })
+    const boundary = "match-job-test-boundary"
+    const created = await request(
+      "POST",
+      "/match-jobs",
+      createMultipartBody({
+        boundary,
+        bytes: Buffer.from([1, 2, 3, 4]),
+        contentType: "video/mp4",
+        name: "file",
+      }),
+      {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+    )
+    const jobId = String(created.body.jobId)
+
+    const response = await request("POST", `/match-jobs/${jobId}/process`)
+
+    expect(response).toEqual({
+      statusCode: 200,
+      body: {
+        jobId,
+        status: "complete",
+        candidates: [structuralCandidate],
+      },
+    })
+  })
+
+  it("rejects multipart uploads without a file part safely", async () => {
+    const { request } = createHarness()
+    const boundary = "match-job-test-boundary"
+
+    await expect(
+      request(
+        "POST",
+        "/match-jobs",
+        createMultipartBody({
+          boundary,
+          bytes: Buffer.from("not-a-file"),
+          name: "description",
+        }),
+        {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+        },
+      ),
+    ).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "invalid_multipart_upload" },
+    })
+  })
+
+  it("rejects malformed multipart uploads safely", async () => {
+    const { request } = createHarness()
+    const boundary = "match-job-test-boundary"
+
+    const response = await request(
+      "POST",
+      "/match-jobs",
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="sample.mp4"\r\nContent-Type: video/mp4\r\n\r\nunfinished`,
+      ),
+      {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+    )
+
+    expect(response).toEqual({
+      statusCode: 400,
+      body: { error: "invalid_multipart_upload" },
+    })
+    expect(response.body).not.toHaveProperty("jobId")
+  })
+
+  it("rejects multipart uploads without a boundary safely", async () => {
+    const { request } = createHarness()
+
+    await expect(
+      request("POST", "/match-jobs", Buffer.from("not-a-multipart-body"), {
+        "content-type": "multipart/form-data",
+      }),
+    ).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "invalid_multipart_upload" },
+    })
   })
 
   it("rejects oversized uploads safely", async () => {
@@ -217,6 +373,31 @@ describe("match jobs route", () => {
 
     await expect(
       request("POST", "/match-jobs", Buffer.from("video")),
+    ).resolves.toEqual({
+      statusCode: 413,
+      body: { error: "upload_too_large" },
+    })
+  })
+
+  it("rejects oversized multipart uploads safely", async () => {
+    const { request } = createHarness({ maxUploadBytes: 20 })
+    const boundary = "match-job-test-boundary"
+
+    await expect(
+      request(
+        "POST",
+        "/match-jobs",
+        createMultipartBody({
+          boundary,
+          bytes: Buffer.from("video"),
+          contentType: "video/mp4",
+          filename: "sample.mp4",
+          name: "file",
+        }),
+        {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+        },
+      ),
     ).resolves.toEqual({
       statusCode: 413,
       body: { error: "upload_too_large" },
@@ -295,7 +476,7 @@ function createHarness({
     async request(
       method: string,
       url: string,
-      body = Buffer.alloc(0),
+      body: Uint8Array = Buffer.alloc(0),
       headers: Record<string, string> = {},
     ) {
       const incoming = Readable.from(body.byteLength > 0 ? [body] : [])
@@ -341,6 +522,37 @@ class StubExtractor implements UploadSignalExtractor {
   async extract(): Promise<UploadSignals> {
     return this.signals
   }
+}
+
+function createMultipartBody({
+  boundary,
+  bytes,
+  contentType,
+  filename,
+  name,
+}: {
+  boundary: string
+  bytes: Uint8Array
+  contentType?: string
+  filename?: string
+  name: string
+}): Buffer {
+  const disposition = [
+    `Content-Disposition: form-data; name="${name}"`,
+    filename ? `; filename="${filename}"` : "",
+  ].join("")
+  const headers = [
+    disposition,
+    contentType ? `Content-Type: ${contentType}` : "",
+  ]
+    .filter((line) => line.length > 0)
+    .join("\r\n")
+
+  return Buffer.concat([
+    Buffer.from(`--${boundary}\r\n${headers}\r\n\r\n`),
+    bytes,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ])
 }
 
 class StubMatcher implements Matcher {
