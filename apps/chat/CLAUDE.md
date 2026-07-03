@@ -125,7 +125,10 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   path), still the single swap point. The `Message` type + `SeekerSource` +
   `ReplyFailureReason` live in `src/lib/conversations.ts` so they outlive the seam.
 - **The proxy** is `src/app/api/seeker/route.ts` (+ `src/lib/sse.ts` parser). It
-  holds the bearer server-side, SSRF-checks the base host + enforces `https:`,
+  holds the bearer server-side, SSRF-checks the base host + enforces `https:`
+  (exempting loopback for local dev AND `*.railway.internal` — the prod
+  transport: Railway private networking is plain HTTP over a
+  WireGuard-encrypted mesh, and Mastra has no public domain),
   `redirect:"error"`, bounds the call with `SEEKER_TIMEOUT_MS` (95s > Mastra's
   90s ceiling), and normalizes every failure to one terminal `error{reason}` SSE
   frame. Plain-string logging only.
