@@ -130,6 +130,21 @@ jobs:
       - name: Check format
         run: pnpm run format:check
 
+  patched-deps-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      # Dependency-free guard: fails fast when a pnpm.patchedDependencies key no
+      # longer matches the installed version (pnpm only warns), so an orphaned
+      # tvOS patch can't silently re-break the native build. No install needed.
+      - name: Check pnpm patch keys match installed versions
+        run: node scripts/check-patched-deps.mjs
+
   lint:
     runs-on: ubuntu-latest
     needs: affected
