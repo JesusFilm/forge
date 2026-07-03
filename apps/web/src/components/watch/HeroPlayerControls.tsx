@@ -83,6 +83,7 @@ export function HeroPlayerControls({
   onLanguageClick,
   showLanguageButton,
   onVisibilityChange,
+  onWatchNextInteraction,
 }: {
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
@@ -106,6 +107,7 @@ export function HeroPlayerControls({
    */
   showLanguageButton?: boolean
   onVisibilityChange?: (detail: WatchPlayerChromeVisibilityDetail) => void
+  onWatchNextInteraction?: () => void
 }) {
   const t = useTranslations("HeroPlayerControls")
   const [playing, setPlaying] = useState(false)
@@ -939,6 +941,8 @@ export function HeroPlayerControls({
           setHoveringControls(true)
         }
       }}
+      onPointerDownCapture={onWatchNextInteraction}
+      onKeyDownCapture={onWatchNextInteraction}
       onPointerMove={(event) => {
         event.stopPropagation()
         if (revealControls({ pointerDriven: true })) {
