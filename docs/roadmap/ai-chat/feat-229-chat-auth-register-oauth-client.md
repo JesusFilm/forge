@@ -3,7 +3,7 @@ id: "feat-229"
 title: "Register chat OAuth client in apps/auth (chat auth enablement)"
 owner: "jian wei"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-09"
 duration: 2
 depends_on:
@@ -14,6 +14,16 @@ tags:
   - "infrastructure"
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-02 via [PR #1453](https://github.com/JesusFilm/forge/pull/1453) (`feat(auth): register jfp_chat_local OAuth client (feat-229 PR1)`).
+
+**What landed.** `CHAT_APP_SEED` (client `jfp_chat_local`, redirect `http://localhost:3200/api/auth/callback`, identity-only scopes, public PKCE, `skipConsent`) in `apps/auth/src/domain/apps.ts`. The originally planned "production auth-DB operator action" turned out to be obsolete: the first-party seed runs on **every auth deploy** — the Railway **dashboard start command** (canonical) chains migrations + `seed-first-party-apps.ts`; `railway.toml`'s startCommand alone doesn't show this, so don't infer "manual" from that file. Merging was therefore the registration go-live, confirmed by the deploy-log receipt (`Seeded 5 first-party apps, 17 environments, 21 OAuth clients, and 10 scopes.`). End-to-end verification completed 2026-07-03 with the owner's own account against production auth: sign-in round trip, identity display fallbacks, sign-out back to anonymous, and the `?signin=failed` failure path.
+
+**Residual risk / follow-ups.** [feat-231](feat-231-chat-auth-prod-oauth-client.md) — deployed-environment client(s): a pre-DNS `preview` on chat's Railway domain, then `production` once chat's hostname is settled.
+
+**Unblocked.** [feat-231](feat-231-chat-auth-prod-oauth-client.md) (`depends_on: feat-229`). Also cleared [feat-207](feat-207-chat-auth.md)'s completion gate — its status was held `in-progress` pending exactly this verification.
 
 ## Problem
 
