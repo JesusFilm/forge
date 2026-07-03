@@ -170,6 +170,8 @@ const EpisodeCard = memo(function EpisodeCard({
       onBlur={() => setFocused(false)}
       accessibilityRole="button"
       accessibilityLabel={title}
+      // Stable, low-cardinality RUM action name (auto-tracker would use the title).
+      {...{ "dd-action-name": "series-episode" }}
       accessibilityHint={
         isNestedSeries ? "Opens this series" : "Opens this video"
       }
