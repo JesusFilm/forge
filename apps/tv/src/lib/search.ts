@@ -24,6 +24,24 @@ export const sanitizeQuery = sanitizeQueryImpl
 // keyword-fallback path — the request_type reported on each watch_search log.
 const WATCH_SEARCH_REQUEST_TYPE = "semantic"
 
+// One shared emitter so the per-search Log mirrors web's canonical shape
+// (message + watch_search.*-prefixed attributes), letting search_request_id
+// join the result-click action on the same Datadog facet.
+function emitWatchSearchLog(
+  outcome: "completed" | "no_result" | "failed",
+  resultCount: number,
+  startedAt: number,
+  searchRequestId: string,
+): void {
+  datadogLog.info("watch_search analytics", {
+    "watch_search.outcome": outcome,
+    "watch_search.result_count": resultCount,
+    "watch_search.latency_ms": Date.now() - startedAt,
+    "watch_search.request_type": WATCH_SEARCH_REQUEST_TYPE,
+    "watch_search.search_request_id": searchRequestId,
+  })
+}
+
 /** Client-side correlation id for one search request (mirrors web's
  *  search_request_id). Runtime UUID when present, else an RFC4122 v4 fallback —
  *  Hermes lacks crypto.randomUUID and we add no dependency. */
@@ -184,13 +202,7 @@ export function useSemanticSearch(
         setResults([])
         setState("error")
         isSubmittingRef.current = false
-        datadogLog.info("watch_search", {
-          outcome: "failed",
-          result_count: 0,
-          latency_ms: Date.now() - startedAt,
-          request_type: WATCH_SEARCH_REQUEST_TYPE,
-          search_request_id: requestSearchId,
-        })
+        emitWatchSearchLog("failed", 0, startedAt, requestSearchId)
         // Bump requestIdRef so any late-arriving response from this
         // request is dropped (treat it as stale).
         requestIdRef.current += 1
@@ -228,13 +240,12 @@ export function useSemanticSearch(
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
 
-        datadogLog.info("watch_search", {
-          outcome: items.length === 0 ? "no_result" : "completed",
-          result_count: items.length,
-          latency_ms: Date.now() - startedAt,
-          request_type: WATCH_SEARCH_REQUEST_TYPE,
-          search_request_id: requestSearchId,
-        })
+        emitWatchSearchLog(
+          items.length === 0 ? "no_result" : "completed",
+          items.length,
+          startedAt,
+          requestSearchId,
+        )
 
         // Keyword-only (semantic-unavailable) responses flow through as
         // normal results — no separate degraded-mode UX.
@@ -254,13 +265,7 @@ export function useSemanticSearch(
         }
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
-        datadogLog.info("watch_search", {
-          outcome: "failed",
-          result_count: 0,
-          latency_ms: Date.now() - startedAt,
-          request_type: WATCH_SEARCH_REQUEST_TYPE,
-          search_request_id: requestSearchId,
-        })
+        emitWatchSearchLog("failed", 0, startedAt, requestSearchId)
         setResults([])
         setState("error")
       } finally {

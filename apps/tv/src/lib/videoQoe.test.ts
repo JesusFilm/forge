@@ -1,4 +1,4 @@
-import { createVideoQoeSession } from "./videoQoe"
+import { createVideoQoeSession, sanitizeVideoErrorMessage } from "./videoQoe"
 
 // Deterministic clock: `now` reads a mutable `t` so tests advance time between
 // calls without touching the real Date.now (ttff must measure from mount).
@@ -87,5 +87,26 @@ describe("createVideoQoeSession", () => {
     expect(typeof ttff).toBe("number")
     expect(ttff).toBeGreaterThanOrEqual(0)
     expect(session.finalize("ended")?.content_id).toBeNull()
+  })
+})
+
+describe("sanitizeVideoErrorMessage", () => {
+  it("collapses newlines to spaces", () => {
+    expect(sanitizeVideoErrorMessage("line1\nline2\r\nline3")).toBe(
+      "line1 line2 line3",
+    )
+  })
+
+  it("strips the query string from an embedded (signed) URL", () => {
+    const msg =
+      "load failed: https://stream.mux.com/abc123.m3u8?token=eyJ.SECRET.sig&x=1"
+    const out = sanitizeVideoErrorMessage(msg)
+    expect(out).not.toContain("token=")
+    expect(out).not.toContain("SECRET")
+    expect(out).toContain("https://stream.mux.com/abc123.m3u8?[redacted]")
+  })
+
+  it("caps the message length at 200", () => {
+    expect(sanitizeVideoErrorMessage("x".repeat(500)).length).toBe(200)
   })
 })

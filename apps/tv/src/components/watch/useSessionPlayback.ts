@@ -218,7 +218,9 @@ export function useSessionPlayback({
         resume()
       })
       .finally(() => {
-        sourceSwappingRef.current = false
+        // Only the latest swap clears the flag — a superseded swap settling must
+        // not clear it while a newer swap is still loading (miscounts a rebuffer).
+        if (token === switchTokenRef.current) sourceSwappingRef.current = false
       })
   }, [desiredSource, player, seekTargetRef])
 

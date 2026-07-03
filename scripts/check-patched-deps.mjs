@@ -19,7 +19,14 @@ const lock = readFileSync(join(repoRoot, "pnpm-lock.yaml"), "utf8")
 // Search only the resolved-package region (packages:/snapshots:), never the
 // patchedDependencies mirror above it that echoes the same keys back.
 const pkgIdx = lock.indexOf("\npackages:")
-const resolved = pkgIdx === -1 ? lock : lock.slice(pkgIdx)
+if (pkgIdx === -1) {
+  console.error(
+    "patched-deps guard FAILED — pnpm-lock.yaml has no `packages:` section; " +
+      "unexpected lockfile format (refusing to pass rather than search the mirror).",
+  )
+  process.exit(1)
+}
+const resolved = lock.slice(pkgIdx)
 
 function resolvedVersions(name) {
   const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")

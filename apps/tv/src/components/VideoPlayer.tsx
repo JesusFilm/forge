@@ -24,7 +24,10 @@ import { TVFocusGuideView } from "./TVFocusGuideView"
 import { scale } from "../lib/scale"
 import { datadogLog, reportDatadogError } from "../lib/datadog"
 import { extractMuxPlaybackId } from "../lib/muxUrl"
-import { createVideoQoeSession } from "../lib/videoQoe"
+import {
+  createVideoQoeSession,
+  sanitizeVideoErrorMessage,
+} from "../lib/videoQoe"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
@@ -911,10 +914,9 @@ export function VideoPlayer({
   })
 
   // ── Playback QoE session (U13) ──────────────────────────────────────
-  // Pure accumulator created once per fullscreen session (mount == origin for
-  // ttff). content_id is the Mux playback id, NEVER the title (PII). Emits are
-  // fired from the EXISTING listeners below via the safeDatadogCall-guarded
-  // wrappers, so telemetry never throws into playback.
+  // Pure accumulator created once per session (mount = ttff origin). content_id
+  // is the Mux playback id, never the title (PII); emits fire from the existing
+  // listeners below via safeDatadogCall-guarded wrappers, so they never throw.
   const contentIdRef = useRef<string | null>(null)
   const qoeRef = useRef<ReturnType<typeof createVideoQoeSession> | null>(null)
   if (qoeRef.current == null) {
@@ -1160,12 +1162,16 @@ export function VideoPlayer({
       // Terminal error — force chrome visible permanently, focus the
       // back pill. hasError gates all subsequent scheduleHide calls.
       if (next === "error") {
-        // QoE: count the error + report a tracked RUM error (message only, no PII).
-        qoeRef.current?.onError(payload.error?.message)
-        reportDatadogError(payload.error?.message ?? "video playback error", {
-          content_id: contentIdRef.current,
-          origin: "video_playback",
-        })
+        // QoE: count + report a tracked RUM error. Sanitize first — the native
+        // message can embed the failing (signed) Mux URL, so cap + strip query.
+        const errorMessage = payload.error?.message
+        qoeRef.current?.onError(errorMessage)
+        reportDatadogError(
+          errorMessage != null
+            ? sanitizeVideoErrorMessage(errorMessage)
+            : "video playback error",
+          { content_id: contentIdRef.current, origin: "video_playback" },
+        )
         hasErrorRef.current = true
         setHasError(true)
         if (inactivityTimerRef.current != null) {

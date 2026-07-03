@@ -29,11 +29,14 @@ export type VideoQoeSession = {
 
 const MAX_ERROR_MESSAGE_LEN = 200
 
-// Newlines would break the flat `key=value` log line and could smuggle a raw
-// body fragment; collapse them to spaces, then cap so a pathological native
-// error can't bloat the payload.
-function sanitizeErrorMessage(message: string): string {
-  return message.replace(/[\r\n]+/g, " ").slice(0, MAX_ERROR_MESSAGE_LEN)
+// Newlines break the flat log line and could smuggle a body fragment, and a
+// native message can embed the failing (signed) Mux URL — so collapse newlines,
+// strip URL query strings, then cap. Exported so the RUM error path reuses it.
+export function sanitizeVideoErrorMessage(message: string): string {
+  return message
+    .replace(/[\r\n]+/g, " ")
+    .replace(/(https?:\/\/[^\s?]+)\?\S*/gi, "$1?[redacted]")
+    .slice(0, MAX_ERROR_MESSAGE_LEN)
 }
 
 export function createVideoQoeSession({
@@ -65,7 +68,7 @@ export function createVideoQoeSession({
     onError(message) {
       errorCount += 1
       if (message != null && message.length > 0) {
-        lastError = sanitizeErrorMessage(message)
+        lastError = sanitizeVideoErrorMessage(message)
       }
     },
     onTimeUpdate(positionSeconds) {
