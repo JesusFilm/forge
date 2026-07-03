@@ -192,6 +192,10 @@ EXPO_PUBLIC_DATADOG_VERSION=
 Unprovisioned builds boot with telemetry disabled; dev builds log a
 `[datadog] RUM disabled` warning so the gate is visible from Metro logs.
 
+### TV symbol upload (feat-227)
+
+`apps/tv/scripts/eas-build-on-success.sh` (wired via the `eas-build-on-success` package script) uploads iOS/tvOS dSYMs to Datadog after a successful EAS build so native crash stacks symbolicate. It runs on the build worker and is key-gated: no `DATADOG_API_KEY` means `exit 0` (keyless builds pass through), and every upload error is swallowed — a hook failure would fail the whole build. Provision the key as an EAS **secret** (`eas env:create ... --visibility secret`) for preview + production; it is a write credential, unlike the plaintext client token. The `eas-build-pre-install` hook stamps `EXPO_PUBLIC_DATADOG_VERSION` from the build's git SHA so sessions, crashes, and uploads share one build identity. The RN/Hermes source-map upload is staged (KTD-4): confirm the composed-map path on the first real keyed build, then wire `datadog-ci react-native upload`.
+
 ### TV activation runbook (feat-225 operational tail)
 
 Credential values come from the "Forge TV" RUM application page (Digital
