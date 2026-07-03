@@ -51,6 +51,8 @@ describe("MatchJobService", () => {
 
     expect(storage.has(job.uploadStorageKey!)).toBe(false)
     await expect(service.getJobResult(job.id)).resolves.toEqual({
+      jobId: job.id,
+      status: "complete",
       candidates: [candidate],
     })
   })
@@ -80,6 +82,8 @@ describe("MatchJobService", () => {
     await service.processJob(job.id)
 
     await expect(service.getJobResult(job.id)).resolves.toEqual({
+      jobId: job.id,
+      status: "complete",
       candidates: [
         {
           coreId: "core-jesus-film",
@@ -170,6 +174,8 @@ describe("MatchJobService", () => {
     })
 
     await expect(service.getJobResult(first.id)).resolves.toEqual({
+      jobId: first.id,
+      status: "complete",
       candidates: [candidate],
     })
     await expect(service.getJobResult(second.id)).resolves.toEqual({
@@ -207,7 +213,27 @@ describe("MatchJobService", () => {
     })
 
     await expect(service.getJobResult("job-stale")).resolves.toEqual({
+      jobId: "job-stale",
+      status: "complete",
       candidates: [candidate],
+    })
+  })
+
+  it("returns complete status when a processed job has no candidates", async () => {
+    const service = createService({
+      matcher: new StubMatcher([]),
+    })
+    const job = await service.createUploadJob({
+      bytes: Buffer.from("video-bytes"),
+      contentType: "video/mp4",
+    })
+
+    await service.processJob(job.id)
+
+    await expect(service.getJobResult(job.id)).resolves.toEqual({
+      jobId: job.id,
+      status: "complete",
+      candidates: [],
     })
   })
 
@@ -296,6 +322,8 @@ describe("MatchJobService", () => {
 
     expect(matcher.calls).toBe(1)
     await expect(service.getJobResult(job.id)).resolves.toEqual({
+      jobId: job.id,
+      status: "complete",
       candidates: [candidate],
     })
   })
@@ -434,6 +462,8 @@ describe("MatchJobService", () => {
       status: "running",
     })
     await expect(service.getJobResult("job-stale-running")).resolves.toEqual({
+      jobId: "job-stale-running",
+      status: "complete",
       candidates: [candidate],
     })
   })
@@ -455,6 +485,8 @@ describe("MatchJobService", () => {
     await service.processJob(job.id)
 
     await expect(service.getJobResult(job.id)).resolves.toEqual({
+      jobId: job.id,
+      status: "complete",
       candidates: [candidate],
     })
   })
