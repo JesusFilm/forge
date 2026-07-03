@@ -242,6 +242,22 @@ Playback note: the video player overlay is not a route, so playback telemetry
 attributes to the underlying series/watch view. A dedicated player view is a
 deliberate deferral, not an omission.
 
+### TV ↔ web data parity (feat-228)
+
+TV mirrors web's **non-sensitive** signals and deliberately skips the sensitive or inapplicable ones.
+
+**Matched** (joinable with web dashboards): route/screen views, GraphQL resources, errors + native crashes, content-selection actions (stable `dd-action-name` on home/series/search cards), the per-search `watch_search` structured Log (web's canonical `@watch_search.*` shape), and the `watch_search.result_clicked` custom action.
+
+**Deliberately unmatched** — three web signals TV does not collect:
+
+- **Session Replay** — unsupported on tvOS (the SDK's WebView refs are patched out); never add it.
+- **Server-side APM spans** — web has a server tier; TV is a client-only app with no server component to trace.
+- **User-identity / PII** — web attaches `setUser` (email/name); TV has no accounts and stays anonymous (no `setUserInfo`).
+
+**TV-only** (no web counterpart): video playback QoE (`video_playback.*` — TTFF, rebuffering, errors, completion) and Home focus-restore health (`focus.restore_failed`).
+
+**Sampling normalization:** TV runs 100% session sampling (`TrackingConsent.GRANTED`); web samples RUM sessions at 50% (Session Replay at 10%). Absolute-count comparisons across the two apps must normalize for this — roughly web ×2 on session-derived counts.
+
 ## Datadog MCP for agents (feat-228)
 
 Agents query `service:forge-tv` telemetry read-only via Datadog's hosted MCP, registered in the repo `.mcp.json` (`datadog` entry). OAuth on first connect; no API keys in the repo. Toolsets are pinned read-only: `core` (RUM events, spans, traces) plus `error-tracking`, with the two write tools omitted (`update_datadog_error_tracking_issue`, `manage_datadog_error_tracking_issue_comments`).
