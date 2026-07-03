@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 const socialLinks = [
   {
@@ -44,9 +45,9 @@ export function WatchHomeFooter() {
   return (
     <footer
       data-testid="watch-home-footer"
-      className="bg-white px-6 py-10 text-[#131111] sm:px-8 lg:px-6"
+      className="bg-white py-10 text-[#131111]"
     >
-      <div className="mx-auto flex max-w-[1920px] flex-col gap-8">
+      <div className={`${WATCH_PAGE_CONTENT_CLASSES} flex flex-col gap-8`}>
         <div className="grid gap-8 lg:grid-cols-[160px_minmax(0,1fr)] lg:items-center xl:grid-cols-[340px_minmax(0,1fr)]">
           <a
             href="https://www.jesusfilm.org/"

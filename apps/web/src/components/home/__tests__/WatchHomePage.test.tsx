@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { act, type ReactNode } from "react"
+import { act, useEffect, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
@@ -11,44 +11,116 @@ import type { WatchHomeTvCarouselVideoSlide } from "@/lib/watch-home-carousel-se
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
 vi.mock("next/image", () => ({
-  default: ({ alt, src }: { alt: string; src: string }) => (
-    <span role="img" aria-label={alt} data-src={src} />
+  default: ({
+    alt,
+    className,
+    src,
+  }: {
+    alt: string
+    className?: string
+    src: string
+  }) => (
+    <span role="img" aria-label={alt} className={className} data-src={src} />
   ),
 }))
 
 vi.mock("@forge/video-player/mux-video", async () => {
   const React = await vi.importActual<typeof import("react")>("react")
   return {
-    default: React.forwardRef<HTMLVideoElement, { src?: string }>(
-      function MockMuxVideo({ src }, ref) {
-        return <video ref={ref} data-testid="watch-home-tv-video" src={src} />
-      },
-    ),
+    default: React.forwardRef<
+      HTMLVideoElement,
+      React.VideoHTMLAttributes<HTMLVideoElement> & {
+        disableTracking?: boolean
+      }
+    >(function MockMuxVideo(
+      { disableTracking: _disableTracking, ...props },
+      ref,
+    ) {
+      return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
+    }),
   }
 })
+
+const carouselApi = vi.hoisted(() => ({
+  scrollTo: vi.fn(),
+}))
 
 vi.mock("@/components/ui/carousel", () => ({
   Carousel: ({
     children,
     className,
+    opts,
+    setApi,
   }: {
     children: ReactNode
     className?: string
-  }) => <div className={className}>{children}</div>,
+    opts?: Record<string, unknown>
+    setApi?: (api: typeof carouselApi) => void
+  }) => {
+    useEffect(() => {
+      setApi?.(carouselApi)
+    }, [setApi])
+
+    return (
+      <div
+        data-slot="carousel"
+        data-loop={opts?.loop === true ? "true" : "false"}
+        className={className}
+      >
+        {children}
+      </div>
+    )
+  },
   CarouselContent: ({
     children,
     className,
+    viewportClassName,
   }: {
     children: ReactNode
     className?: string
-  }) => <div className={className}>{children}</div>,
+    viewportClassName?: string
+  }) => (
+    <div data-slot="carousel-content" className={viewportClassName}>
+      <div className={className}>{children}</div>
+    </div>
+  ),
   CarouselItem: ({
     children,
     className,
   }: {
     children: ReactNode
     className?: string
-  }) => <div className={className}>{children}</div>,
+  }) => (
+    <div data-slot="carousel-item" className={className}>
+      {children}
+    </div>
+  ),
+  CarouselPrevious: ({
+    className,
+    label,
+  }: {
+    className?: string
+    label?: string
+  }) => (
+    <button
+      data-slot="carousel-previous"
+      className={className}
+      aria-label={label}
+    />
+  ),
+  CarouselNext: ({
+    className,
+    label,
+  }: {
+    className?: string
+    label?: string
+  }) => (
+    <button
+      data-slot="carousel-next"
+      className={className}
+      aria-label={label}
+    />
+  ),
 }))
 
 function makeCard(overrides: Record<string, unknown> = {}) {
@@ -65,6 +137,8 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     imageAlt: "Jesus still",
     hls: "https://stream.example/jesus.m3u8",
     playbackId: "mux-1",
+    subtitleVttSrc: null,
+    subtitleLanguageBcp47: null,
     durationSeconds: 123,
     childCount: 0,
     parentCoreId: null,
@@ -114,6 +188,8 @@ function makeCarouselSlide(
     imageAlt: "Queued One still",
     src: "https://stream.example/queued-one.m3u8",
     playbackId: "mux-queued-one",
+    subtitleVttSrc: null,
+    subtitleLanguageBcp47: null,
     durationSeconds: 10,
     ...overrides,
   }
@@ -140,6 +216,7 @@ let root: Root
 beforeEach(() => {
   window.localStorage.clear()
   window.sessionStorage.clear()
+  carouselApi.scrollTo.mockClear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -162,6 +239,47 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-tv-carousel"]'),
     ).not.toBeNull()
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("class"),
+    ).toContain("mt-[calc(5.5rem+env(safe-area-inset-top,0px))]")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("class"),
+    ).toContain("md:mt-0")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("class"),
+    ).not.toContain("lg:mt-")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("class"),
+    ).not.toContain("svh")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("class"),
+    ).not.toContain("--watch-home-rail-height")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-rail"]')
+        ?.getAttribute("class"),
+    ).not.toContain("h-[var")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"] > div')
+        ?.getAttribute("class"),
+    ).toContain("h-[min(100svh,56.25vw)]")
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-rail"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
+    ).not.toBeNull()
     expect(container.textContent).toContain("Jesus")
     expect(container.textContent).toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
@@ -174,11 +292,23 @@ describe("WatchHomePage", () => {
       container.querySelectorAll('button[aria-label="Next video"]'),
     ).toHaveLength(2)
     expect(
+      container.querySelectorAll('[data-testid="watch-home-next-progress"]'),
+    ).toHaveLength(2)
+    expect(
       container.querySelectorAll('button[aria-label="Unmute preview"]'),
     ).toHaveLength(2)
     expect(
       container.querySelectorAll("a[href='/jesus.html/english.html']"),
-    ).toHaveLength(4)
+    ).toHaveLength(3)
+    expect(
+      container.querySelectorAll(
+        "a[href='/jesus.html/english.html?autoplay=1']",
+      ),
+    ).toHaveLength(1)
+    expect(
+      container.querySelector("a[href='/jesus.html/english.html?autoplay=1']")
+        ?.textContent,
+    ).toContain("Watch Now")
     const textureClassNames = Array.from(
       container.querySelectorAll("[class*='overlay.svg']"),
     ).map((element) => element.getAttribute("class") ?? "")
@@ -227,7 +357,71 @@ describe("WatchHomePage", () => {
     expect(container.textContent).toContain("Fallback Cards")
   })
 
-  it("renders the sequenced Mux and playlist slides in the rail", async () => {
+  it("carries the hero preview playback time into the watch now link", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      value: 12.8,
+    })
+    Object.defineProperty(video, "duration", {
+      configurable: true,
+      value: 100,
+    })
+
+    await act(async () => {
+      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+    })
+
+    expect(
+      container.querySelector(
+        "a[href='/jesus.html/english.html?t=12&autoplay=1']",
+      )?.textContent,
+    ).toContain("Watch Now")
+  })
+
+  it("shows available subtitles while the hero preview is muted", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            heroSlides: [
+              {
+                ...makeCard({
+                  subtitleVttSrc: "https://cdn.example/jesus.vtt",
+                  subtitleLanguageBcp47: "en",
+                }),
+                eyebrow: "Featured",
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    const track = video.querySelector("track[data-subtitle-track]")
+    expect(video.getAttribute("crossorigin")).toBe("anonymous")
+    expect(track?.getAttribute("src")).toBe("https://cdn.example/jesus.vtt")
+    expect(track?.getAttribute("srclang")).toBe("en")
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Unmute preview"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(video.querySelector("track[data-subtitle-track]")).toBeNull()
+  })
+
+  it("renders the sequenced Mux and playlist slides in the rail and scrolls the active card into the lead position", async () => {
     await act(async () => {
       root.render(
         <WatchHomePage
@@ -259,5 +453,144 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
     ).toHaveLength(3)
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-carousel-card"]')
+        ?.textContent,
+    ).toContain("Daily Start")
+    const queuedTwoCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((element) => element.textContent?.includes("Queued Two"))
+    expect(queuedTwoCard).not.toBeUndefined()
+
+    await act(async () => {
+      queuedTwoCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(carouselApi.scrollTo).toHaveBeenCalledWith(2)
+    expect(
+      Array.from(
+        container.querySelectorAll('[data-slot="carousel-item"]'),
+      ).some(
+        (element) =>
+          (element.getAttribute("class") ?? "").includes("md:basis-1/3") &&
+          (element.getAttribute("class") ?? "").includes("lg:basis-1/4"),
+      ),
+    ).toBe(true)
+    const heroRailCard = container.querySelector(
+      '[data-testid="watch-home-tv-carousel-card"]',
+    )
+    expect(heroRailCard?.getAttribute("class")).toContain("md:w-full")
+    expect(heroRailCard?.getAttribute("class")).not.toContain("hover:scale")
+    expect(
+      heroRailCard?.querySelector('[data-testid="watch-home-tv-card-bevel"]'),
+    ).not.toBeNull()
+    expect(
+      heroRailCard?.querySelector(
+        '[data-testid="watch-home-tv-card-hover-outline"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      heroRailCard?.querySelector('[role="img"]')?.getAttribute("class"),
+    ).toContain("group-hover:scale-105")
+    const standardCard = container
+      .querySelector('[data-testid="watch-home-card-bevel"]')
+      ?.closest("a")
+    expect(standardCard?.getAttribute("class")).not.toContain("hover:scale")
+    expect(
+      standardCard?.querySelector('[data-testid="watch-home-card-bevel"]'),
+    ).not.toBeNull()
+    expect(
+      standardCard?.querySelector(
+        '[data-testid="watch-home-card-hover-outline"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      standardCard?.querySelector('[role="img"]')?.getAttribute("class"),
+    ).toContain("poster-hover-zoom")
+    expect(
+      Array.from(container.querySelectorAll("div"))
+        .map((element) => element.getAttribute("class") ?? "")
+        .some(
+          (className) =>
+            className.includes("max-w-[1920px]") &&
+            className.includes("px-5") &&
+            className.includes("md:px-16") &&
+            className.includes("xl:px-24"),
+        ),
+    ).toBe(true)
+    expect(
+      Array.from(container.querySelectorAll("section, footer, div"))
+        .map((element) => element.getAttribute("class") ?? "")
+        .some((className) => className.includes("px-4 sm:px-6 lg:px-8")),
+    ).toBe(false)
+    expect(
+      container.querySelector('[data-slot="carousel"]')?.getAttribute("class"),
+    ).toContain("-mx-5")
+    expect(
+      container
+        .querySelector('[data-slot="carousel"]')
+        ?.getAttribute("data-loop"),
+    ).toBe("true")
+    expect(
+      container
+        .querySelector('[data-slot="carousel-content"]')
+        ?.getAttribute("class"),
+    ).toContain("overflow-x-visible md:overflow-x-clip")
+    expect(
+      container.querySelector('button[aria-label="Previous video preview"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('button[aria-label="Next video preview"]'),
+    ).not.toBeNull()
+    expect(
+      container
+        .querySelector('button[aria-label="Previous video preview"]')
+        ?.getAttribute("class"),
+    ).not.toContain("left-6")
+    expect(
+      container
+        .querySelector('button[aria-label="Previous video preview"]')
+        ?.getAttribute("class"),
+    ).not.toContain("h-12")
+    expect(
+      container
+        .querySelector('button[aria-label="Previous video preview"]')
+        ?.getAttribute("class"),
+    ).toContain("text-stone-900")
+    expect(
+      container
+        .querySelector('button[aria-label="Next video preview"]')
+        ?.getAttribute("class"),
+    ).not.toContain("right-6")
+    expect(
+      container
+        .querySelector('button[aria-label="Next video preview"]')
+        ?.getAttribute("class"),
+    ).not.toContain("h-12")
+    expect(
+      container
+        .querySelector('button[aria-label="Next video preview"]')
+        ?.getAttribute("class"),
+    ).toContain("text-stone-900")
+  })
+
+  it("keeps configured Mux inserts when the video queue is empty", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [],
+              muxInserts: [muxInsert],
+            },
+          })}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("Daily Start")
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).toHaveLength(1)
   })
 })

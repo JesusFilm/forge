@@ -43,6 +43,16 @@ export const watchHomeVideoFragment = adminGraphql(`
       muxVideo {
         playbackId
       }
+      videoEdition {
+        subtitles {
+          vttSrc
+          primary
+          language {
+            bcp47
+            slug
+          }
+        }
+      }
     }
     children {
       child {

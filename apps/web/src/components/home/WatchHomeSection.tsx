@@ -5,6 +5,10 @@ import type { Route } from "next"
 import { useState } from "react"
 import { Play } from "lucide-react"
 import { WatchHomeCard } from "@/components/home/WatchHomeCard"
+import {
+  WATCH_PAGE_CONTENT_CLASSES,
+  WATCH_PAGE_RAIL_PADDING_CLASSES,
+} from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
 import { videosIndexPath } from "@/lib/routes"
@@ -91,7 +95,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
         )}
       />
 
-      <div className="relative z-[2] mx-auto max-w-[1920px] px-4 pb-6 sm:px-6 lg:px-8">
+      <div className={cn("relative z-[2] pb-6", WATCH_PAGE_CONTENT_CLASSES)}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex max-w-4xl flex-col gap-1">
             <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
@@ -113,7 +117,12 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
 
       {isRail ? (
         <div className="relative z-[2] w-full overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex w-max gap-5 px-4 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              "mx-auto flex w-max max-w-[1920px] gap-5",
+              WATCH_PAGE_RAIL_PADDING_CLASSES,
+            )}
+          >
             {section.cards.map((card, index) => (
               <WatchHomeCard
                 key={`${section.id}-${card.id}-${index}`}
@@ -128,7 +137,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
           </div>
         </div>
       ) : (
-        <div className="relative z-[2] mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+        <div className={cn("relative z-[2]", WATCH_PAGE_CONTENT_CLASSES)}>
           <div
             className={cn(
               "grid gap-4",
@@ -152,7 +161,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
       )}
 
       {section.description ? (
-        <div className="relative z-[2] mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+        <div className={cn("relative z-[2]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p className="mt-8 max-w-5xl text-lg leading-relaxed text-stone-200/80 xl:text-xl">
             {section.description}
           </p>
