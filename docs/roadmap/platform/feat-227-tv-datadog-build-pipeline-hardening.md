@@ -15,6 +15,8 @@ tags:
   - "observability"
 ---
 
+> **Scope note (2026-07-03):** the secret-gated symbol upload and the patch-pin CI guard proceed now; upstreaming the tvOS patch to `DataDog/dd-sdk-reactnative` is deferred by user decision. The patch stays a local carry, protected by the new guard.
+
 ## Problem
 
 Two deliberate deferrals from PR #1434 need durable homes. (1) The `expo-datadog` config plugin was excluded (its dSYM-upload build phase hard-fails keyless builds and its datadog-ci path resolution breaks under pnpm), so native crash stacks arrive in Datadog unsymbolicated until a secret-gated upload step exists. (2) The tvOS fix lives in a pnpm patch keyed to `@datadog/mobile-react-native@3.5.2` — pnpm only WARNS when the key stops matching after a version bump, so the tvOS build breakage would silently return at the next native build, disconnected from the bump commit. The patch should also be upstreamed so it eventually becomes deletable.

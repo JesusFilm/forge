@@ -3,7 +3,7 @@ id: "feat-225"
 title: "TV Datadog production activation and fleet verification"
 owner: "urim"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-07-03"
 duration: 2
 depends_on: []
@@ -14,6 +14,8 @@ tags:
   - "infrastructure"
   - "observability"
 ---
+
+> **Reopened 2026-07-03.** #1450 marked this complete, but verification against EAS + Datadog showed the operational tail undone: the production EAS environment has no Datadog vars, no `service:forge-tv` monitor exists, and every RUM session to date is simulator-only. Remaining: provision production credentials, create the intake-abuse monitor, verify real Apple TV + Android TV hardware sessions, and record the telemetry data inventory in the runbook. The privacy sign-off gate was dropped by user decision — web already collects more-sensitive data (Session Replay + email/name) with no recorded sign-off, and TV is PII-free and replay-free.
 
 ## Problem
 
