@@ -238,6 +238,18 @@ Playback note: the video player overlay is not a route, so playback telemetry
 attributes to the underlying series/watch view. A dedicated player view is a
 deliberate deferral, not an omission.
 
+## Datadog MCP for agents (feat-228)
+
+Agents query `service:forge-tv` telemetry read-only via Datadog's hosted MCP, registered in the repo `.mcp.json` (`datadog` entry). OAuth on first connect; no API keys in the repo. Toolsets are pinned read-only: `core` (RUM events, spans, traces) plus `error-tracking`, with the two write tools omitted (`update_datadog_error_tracking_issue`, `manage_datadog_error_tracking_issue_comments`).
+
+Regression-hunt loop against `service:forge-tv`:
+
+- `search_datadog_rum_events` — sessions, views, resources sliced by `version` (the per-build git SHA).
+- `search_datadog_spans` / `get_datadog_trace` — the client-vs-server split via the RUM→admin-APM tracecontext link.
+- `search_datadog_error_tracking_issues` — native crashes and reported errors.
+
+"Did telemetry arrive in the last N minutes?" — query `search_datadog_rum_events` for `service:forge-tv` over the window, or `curl` the RUM search API with a read-scoped key. Provisioning (RUM app, tokens, monitors) stays in the Datadog UI; the MCP is read-only.
+
 ## Future app pattern
 
 Reuse the `Forge-production` API key and `@forge/datadog-agent` Railway

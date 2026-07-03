@@ -100,6 +100,7 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
 - **Client token, never an API key** — RUM creds ship in the bundle (`EXPO_PUBLIC_*`).
 - **Site is the mobile enum** (`US1`, `EU1`, …), NOT web's `datadoghq.com`. Default `US1`.
 - **firstPartyHosts** targets the admin GraphQL host so RUM resources trace-link to admin APM.
+- **Agent telemetry access (feat-228):** query `service:forge-tv` read-only via the `datadog` MCP in repo `.mcp.json` (see `docs/observability/datadog.md`, "Datadog MCP for agents").
 - **Instrumentation depth (feat-226):** route changes become pattern-named RUM views via
   `DatadogRouteTracker` (name = route pattern e.g. `series/[slug]`, key = literal pathname;
   mounted in `app/_layout.tsx`); GraphQL resources carry the SDK's operation-name headers via
