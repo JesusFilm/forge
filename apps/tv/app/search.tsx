@@ -27,8 +27,15 @@ import { useSearchHistory } from "../src/lib/searchHistory"
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
-  const { state, results, lastSubmittedQuery, submit, runQuery, retry } =
-    useSemanticSearch(query)
+  const {
+    state,
+    results,
+    lastSubmittedQuery,
+    searchRequestId,
+    submit,
+    runQuery,
+    retry,
+  } = useSemanticSearch(query)
   const { recents, addRecent, clearAll } = useSearchHistory()
 
   // Sanitize at the write site so downstream consumers never see raw input.
@@ -72,6 +79,7 @@ export default function SearchScreen() {
     query,
     state,
     results,
+    searchRequestId,
     meta,
     hasQuery,
     onChangeQuery: setSanitizedQuery,
@@ -100,6 +108,7 @@ type SearchBodyProps = {
   query: string
   state: SearchState
   results: SearchResult[]
+  searchRequestId: string
   meta: string
   hasQuery: boolean
   onChangeQuery: (next: string) => void
@@ -119,6 +128,7 @@ function SearchResultsPane({
   state,
   results,
   query,
+  searchRequestId,
   meta,
   hasQuery,
   recents,
@@ -144,6 +154,7 @@ function SearchResultsPane({
             state={state}
             results={results}
             query={query}
+            searchRequestId={searchRequestId}
             columns={columns}
             onRetry={onRetry}
             topRowFocusUp={topRowFocusUp}

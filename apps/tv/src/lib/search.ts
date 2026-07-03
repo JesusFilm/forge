@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getApolloClient } from "./apolloClient"
+import { datadogLog } from "./datadog"
 import { SEMANTIC_SEARCH, type SearchResult } from "./queries"
 import { sanitizeQuery as sanitizeQueryImpl } from "./sanitizeQuery"
 import { meetsMinQueryLength } from "./searchGate"
@@ -19,6 +20,25 @@ const SEARCH_SAFETY_TIMEOUT_MS = 12_000
 // without pulling React's ESM type declarations through babel.
 export const sanitizeQuery = sanitizeQueryImpl
 
+// TV omits searchMode (no degraded-mode UX), so every search is the semantic /
+// keyword-fallback path — the request_type reported on each watch_search log.
+const WATCH_SEARCH_REQUEST_TYPE = "semantic"
+
+/** Client-side correlation id for one search request (mirrors web's
+ *  search_request_id). Runtime UUID when present, else an RFC4122 v4 fallback —
+ *  Hermes lacks crypto.randomUUID and we add no dependency. */
+function generateSearchRequestId(): string {
+  const runtimeCrypto = (
+    globalThis as { crypto?: { randomUUID?: () => string } }
+  ).crypto
+  const uuid = runtimeCrypto?.randomUUID?.()
+  if (uuid) return uuid
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
 export type SearchState = "idle" | "loading" | "ready" | "empty" | "error"
 
 type UseSemanticSearchResult = {
@@ -30,6 +50,12 @@ type UseSemanticSearchResult = {
    * recent-history record the query that produced the visible results.
    */
   lastSubmittedQuery: string
+  /**
+   * Client-generated correlation id for the search behind the CURRENT visible
+   * results. Threaded into the result-click RUM action so a click links back to
+   * its per-search log. Empty until the first search resolves.
+   */
+  searchRequestId: string
   /** Force an immediate search for the current query, bypassing debounce. */
   submit: () => void
   /** Run an explicit query immediately, bypassing React state flush and
@@ -67,6 +93,10 @@ export function useSemanticSearch(
   // runSearch on resolution so consumers record the query that produced
   // the results, not the live keyboard state that drifts ahead.
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState<string>("")
+  // Correlation id for the search behind the visible results; set on resolution
+  // alongside lastSubmittedQuery so the result-click action reuses the same id
+  // that its per-search log carried.
+  const [searchRequestId, setSearchRequestId] = useState<string>("")
 
   const requestIdRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -125,6 +155,11 @@ export function useSemanticSearch(
       isSubmittingRef.current = true
       setState("loading")
 
+      // Per-search telemetry: one client id correlates the per-search log with a
+      // later result-click; startedAt measures latency to the terminal branch.
+      const requestSearchId = generateSearchRequestId()
+      const startedAt = Date.now()
+
       if (__DEV__) {
         console.log("[search] firing query:", { q, thisRequest, locale, limit })
       }
@@ -149,6 +184,13 @@ export function useSemanticSearch(
         setResults([])
         setState("error")
         isSubmittingRef.current = false
+        datadogLog.info("watch_search", {
+          outcome: "failed",
+          result_count: 0,
+          latency_ms: Date.now() - startedAt,
+          request_type: WATCH_SEARCH_REQUEST_TYPE,
+          search_request_id: requestSearchId,
+        })
         // Bump requestIdRef so any late-arriving response from this
         // request is dropped (treat it as stale).
         requestIdRef.current += 1
@@ -186,6 +228,14 @@ export function useSemanticSearch(
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
 
+        datadogLog.info("watch_search", {
+          outcome: items.length === 0 ? "no_result" : "completed",
+          result_count: items.length,
+          latency_ms: Date.now() - startedAt,
+          request_type: WATCH_SEARCH_REQUEST_TYPE,
+          search_request_id: requestSearchId,
+        })
+
         // Keyword-only (semantic-unavailable) responses flow through as
         // normal results — no separate degraded-mode UX.
         if (items.length === 0) {
@@ -204,6 +254,13 @@ export function useSemanticSearch(
         }
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
+        datadogLog.info("watch_search", {
+          outcome: "failed",
+          result_count: 0,
+          latency_ms: Date.now() - startedAt,
+          request_type: WATCH_SEARCH_REQUEST_TYPE,
+          search_request_id: requestSearchId,
+        })
         setResults([])
         setState("error")
       } finally {
@@ -220,6 +277,8 @@ export function useSemanticSearch(
           // history records the right value, not the live keyboard state
           // that may have advanced past `trimmed` during the round-trip.
           setLastSubmittedQuery(trimmed)
+          // Pair the id with the visible results so a click reuses it.
+          setSearchRequestId(requestSearchId)
         }
       }
     },
@@ -253,6 +312,7 @@ export function useSemanticSearch(
       // a new entry rather than dedup-skipping against the prior
       // submission.
       setLastSubmittedQuery("")
+      setSearchRequestId("")
       return
     }
 
@@ -313,5 +373,13 @@ export function useSemanticSearch(
     void runSearch(last)
   }, [runSearch])
 
-  return { state, results, lastSubmittedQuery, submit, runQuery, retry }
+  return {
+    state,
+    results,
+    lastSubmittedQuery,
+    searchRequestId,
+    submit,
+    runQuery,
+    retry,
+  }
 }

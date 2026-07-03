@@ -5,6 +5,7 @@ import {
   DdRum,
   ErrorSource,
   PropagatorType,
+  RumActionType,
 } from "@datadog/mobile-react-native"
 
 import { env } from "../env"
@@ -183,6 +184,11 @@ export function reportDatadogError(
       context,
     )
   })
+}
+
+/** Reports a custom RUM action to Datadog — fire-and-forget, never throws. */
+export function reportDatadogAction(name: string, context: object = {}): void {
+  safeDatadogCall(() => DdRum.addAction(RumActionType.CUSTOM, name, context))
 }
 
 /** Thin Datadog Logs wrapper — fire-and-forget, never throws into the caller. */
