@@ -3,7 +3,7 @@ id: "feat-207"
 title: "Chat app authentication"
 owner: "jian wei"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-07"
 duration: 5
 depends_on:
@@ -18,7 +18,7 @@ tags:
 
 ## Resolution
 
-**Status:** Code complete and reviewed; raised as [PR #1438](https://github.com/JesusFilm/forge/pull/1438) (`feat(chat): add optional apps/auth OIDC sign-in (feat-207)`), ready to merge. **This ticket stays `in-progress`, not `complete`** — the code work is resolved but end-to-end sign-in is not yet verified (see Residual below). The two are deliberately kept separate: the Resolution is written now because the code is done; the status waits on verification.
+**Status:** Complete. Shipped via [PR #1438](https://github.com/JesusFilm/forge/pull/1438) (`feat(chat): add optional apps/auth OIDC sign-in (feat-207)`), merged 2026-07-02. End-to-end verification completed 2026-07-03 via [feat-229](feat-229-chat-auth-register-oauth-client.md) ([PR #1453](https://github.com/JesusFilm/forge/pull/1453)), which registered the `jfp_chat_local` OAuth client: the sign-in round trip against production auth with a real account, the identity display fallbacks, sign-out back to anonymous, and the `?signin=failed` failure path all pass.
 
 **What landed.** The implementation is complete, reviewed, and **ships default-off** — `chatAuthConfigured()` returns false unless the issuer, chat client id, base URL, and a real signing secret are all set, so an unconfigured deploy hides the "Sign in" affordance, the login route no-ops to home before any outbound call, and the session cookie fails closed to anonymous. Delivered as plan units U1–U8: `jose`-based hand-adapted OAuth client (authorization-code + PKCE + `state`), an id-token-only verifier with a JWKS-derived algorithm allowlist that deliberately diverges from admin's (no access-token fallback; `alg` pin admin omits), an HS256 signed identity cookie (HttpOnly / Secure-in-prod / `SameSite=Lax` / host-only / short TTL), `return_to` origin-equality validation, login/callback/logout routes + a non-redirecting `getChatIdentity()`, and the sidebar account control across the expanded / collapsed / mobile presentations. Authentication only — `/api/seeker` and every other surface behave identically signed-in and signed-out. `typecheck` / `lint` / `test` (234) / `build` all green.
 
@@ -26,10 +26,10 @@ tags:
 
 **Residual risk / follow-ups.**
 
-- **Full end-to-end sign-in verification is deferred** to [feat-229](feat-229-chat-auth-register-oauth-client.md), the follow-up enablement ticket that registers chat's OAuth client (`jfp_chat_local`, redirect `http://localhost:3200/api/auth/callback` for local; the exact-match redirect URI per environment) in `apps/auth` — a **production auth-DB operator action** (`pnpm --filter @forge/auth seed:first-party-apps`, no deploy hook runs it), out of this codebase. feat-207 is merged (#1438) but **not yet end-to-end verified**, which is why the status stays `in-progress` rather than `complete`.
+- **End-to-end sign-in verification (formerly deferred) — resolved 2026-07-03.** [feat-229](feat-229-chat-auth-register-oauth-client.md) registered `jfp_chat_local` via [PR #1453](https://github.com/JesusFilm/forge/pull/1453). The "production auth-DB operator action" this bullet originally described turned out not to exist: the first-party seed runs on every auth deploy (the Railway dashboard start command chains it — `railway.toml` alone doesn't show this), so the merge itself registered the client. Deployed-environment clients are tracked in [feat-231](feat-231-chat-auth-prod-oauth-client.md).
 - The world-reachable `/api/auth/*` (and the existing `/api/seeker`) routes ship **un-rate-limited** in v1 (accepted risk; a per-IP cap is a prerequisite before the audience widens).
 
-**Unblocked.** `feat-209` (`depends_on: feat-207`) is not unblocked yet — it clears only when this ticket flips to `complete` (after the enablement ticket lands and a real sign-in is verified).
+**Unblocked.** [feat-229](feat-229-chat-auth-register-oauth-client.md) (`depends_on: feat-207`) — completed alongside this flip. [feat-209](feat-209-chat-per-conversation-urls.md)'s `feat-207` dependency is now satisfied, though it stays `blocked` on [feat-208](feat-208-seeker-postgres-memory.md).
 
 ## Problem
 
