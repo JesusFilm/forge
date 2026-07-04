@@ -72,7 +72,7 @@ export function WatchHomeCard({
 }: WatchHomeCardProps) {
   const isVertical = orientation === "vertical"
   const frameClassName = cn(
-    "group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-300 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
+    "group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
     className,
   )
 
@@ -81,9 +81,7 @@ export function WatchHomeCard({
       card={card}
       className={frameClassName}
       onPointerEnter={() => onHoverImageChange?.(card.imageUrl)}
-      onPointerLeave={() => onHoverImageChange?.(null)}
       onFocus={() => onHoverImageChange?.(card.imageUrl)}
-      onBlur={() => onHoverImageChange?.(null)}
     >
       <div
         className={cn(
@@ -139,13 +137,13 @@ export function WatchHomeCard({
         <div
           aria-hidden
           data-testid="watch-home-card-hover-outline"
-          className="pointer-events-none absolute inset-0 z-50 rounded-lg opacity-0 shadow-[0_0_22px_rgba(239,68,68,0.32)] transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
-        >
-          <span className="absolute inset-x-0 top-0 h-[4px] rounded-t-lg bg-brand-red" />
-          <span className="absolute inset-y-0 left-0 w-[4px] rounded-l-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
-          <span className="absolute inset-y-0 right-0 w-[4px] rounded-r-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
-          <span className="absolute inset-x-0 bottom-0 h-[4px] rounded-b-lg bg-transparent" />
-        </div>
+          className={cn(
+            "watch-home-gradient-outline pointer-events-none absolute z-50 opacity-0 shadow-[0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-visible:opacity-100",
+            isVertical
+              ? "watch-home-gradient-outline-portrait"
+              : "watch-home-gradient-outline-landscape",
+          )}
+        />
         <div className="absolute inset-0 flex flex-col justify-end px-4 pt-4 pb-5">
           <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
             {card.label}

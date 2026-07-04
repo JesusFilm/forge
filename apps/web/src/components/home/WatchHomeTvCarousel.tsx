@@ -682,16 +682,11 @@ function WatchHomeTvCard({
         aria-hidden
         data-testid="watch-home-tv-card-hover-outline"
         className={cn(
-          "pointer-events-none absolute inset-0 z-50 rounded-lg opacity-0 shadow-[0_0_22px_rgba(239,68,68,0.32)] transition-opacity duration-200",
+          "watch-home-gradient-outline watch-home-gradient-outline-landscape pointer-events-none absolute z-50 opacity-0 shadow-[0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-200",
           !isActive &&
             "group-hover:opacity-100 group-focus-visible:opacity-100",
         )}
-      >
-        <span className="absolute inset-x-0 top-0 h-[4px] rounded-t-lg bg-brand-red" />
-        <span className="absolute inset-y-0 left-0 w-[4px] rounded-l-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
-        <span className="absolute inset-y-0 right-0 w-[4px] rounded-r-lg bg-[linear-gradient(to_bottom,rgba(239,68,68,0.96)_0%,rgba(239,68,68,0.96)_48%,rgba(239,68,68,0.5)_78%,rgba(239,68,68,0)_100%)]" />
-        <span className="absolute inset-x-0 bottom-0 h-[4px] rounded-b-lg bg-transparent" />
-      </div>
+      />
       <div
         aria-hidden
         data-testid="watch-home-tv-card-active-outline"
