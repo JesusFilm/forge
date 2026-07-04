@@ -286,6 +286,11 @@ describe("WatchHomePage", () => {
     expect(container.textContent).toContain("Built for global missions")
     expect(container.textContent).toContain("Sign Up For Our Newsletter")
     expect(
+      container
+        .querySelector('[data-section-id="home-video-gospels"] .grid')
+        ?.getAttribute("class"),
+    ).toContain("xl:grid-cols-6")
+    expect(
       container.querySelector('[data-testid="watch-home-tv-video"]'),
     ).not.toBeNull()
     expect(
@@ -355,6 +360,184 @@ describe("WatchHomePage", () => {
       container.querySelector("a[href='/jesus.html/english.html']"),
     ).toBeNull()
     expect(container.textContent).toContain("Fallback Cards")
+  })
+
+  it("softens section card hover by crossfading the backdrop without clearing between cards", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            sections: [
+              {
+                id: "hover-test",
+                eyebrow: "Hover",
+                title: "Hover Backdrops",
+                description: null,
+                layout: "grid",
+                orientation: "horizontal",
+                showSequenceNumbers: false,
+                cards: [
+                  makeCard({
+                    id: "card-1",
+                    title: "Jesus",
+                    imageUrl: "https://cdn.example/jesus.jpg",
+                  }),
+                  makeCard({
+                    id: "card-2",
+                    title: "John",
+                    href: "/john.html/english.html",
+                    imageUrl: "https://cdn.example/john.jpg",
+                  }),
+                  makeCard({
+                    id: "card-3",
+                    title: "Luke",
+                    href: "/luke.html/english.html",
+                    imageUrl: "https://cdn.example/luke.jpg",
+                  }),
+                ],
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector(
+      '[data-section-id="hover-test"]',
+    ) as HTMLElement
+    const cardLinks = Array.from(section.querySelectorAll("a")).filter((link) =>
+      link.querySelector('[data-testid="watch-home-card-bevel"]'),
+    )
+    const firstCard = cardLinks.find(
+      (link) => link.getAttribute("href") === "/jesus.html/english.html",
+    )
+    const secondCard = cardLinks.find(
+      (link) => link.getAttribute("href") === "/john.html/english.html",
+    )
+    const thirdCard = cardLinks.find(
+      (link) => link.getAttribute("href") === "/luke.html/english.html",
+    )
+    const findHoverBackdrop = () =>
+      section.querySelector(
+        '[data-testid="watch-home-section-hover-backdrop"]',
+      ) as HTMLElement | null
+    const defaultBackdrop = section.querySelector(
+      '[data-testid="watch-home-section-default-backdrop"]',
+    ) as HTMLElement
+
+    expect(defaultBackdrop.style.backgroundImage).toContain(
+      "https://cdn.example/jesus.jpg",
+    )
+    expect(findHoverBackdrop()).toBeNull()
+
+    await act(async () => {
+      secondCard?.dispatchEvent(
+        new MouseEvent("pointerover", { bubbles: true }),
+      )
+    })
+
+    const johnBackdrop = findHoverBackdrop()
+    expect(johnBackdrop?.getAttribute("class")).toContain(
+      "watch-home-section-backdrop-enter",
+    )
+    expect(johnBackdrop?.style.backgroundImage).toContain(
+      "https://cdn.example/john.jpg",
+    )
+    expect(
+      johnBackdrop?.style.getPropertyValue("--watch-home-backdrop-opacity"),
+    ).toBe("1")
+
+    await act(async () => {
+      firstCard?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    const jesusBackdrop = findHoverBackdrop()
+    expect(jesusBackdrop).not.toBe(johnBackdrop)
+    expect(jesusBackdrop?.style.backgroundImage).toContain(
+      "https://cdn.example/jesus.jpg",
+    )
+    expect(
+      (
+        section.querySelector(
+          '[data-testid="watch-home-section-hover-backdrop-previous"]',
+        ) as HTMLElement
+      ).style.backgroundImage,
+    ).toContain("https://cdn.example/john.jpg")
+
+    await act(async () => {
+      thirdCard?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
+    })
+
+    const lukeBackdrop = findHoverBackdrop()
+    expect(lukeBackdrop).not.toBe(jesusBackdrop)
+    expect(lukeBackdrop?.style.backgroundImage).toContain(
+      "https://cdn.example/luke.jpg",
+    )
+    expect(
+      Array.from(
+        section.querySelectorAll(
+          '[data-testid="watch-home-section-hover-backdrop-previous"]',
+        ),
+      ).map((element) => (element as HTMLElement).style.backgroundImage),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("https://cdn.example/john.jpg"),
+        expect.stringContaining("https://cdn.example/jesus.jpg"),
+      ]),
+    )
+
+    await act(async () => {
+      section.dispatchEvent(
+        new MouseEvent("pointerout", {
+          bubbles: true,
+          relatedTarget: document.body,
+        }),
+      )
+    })
+
+    expect(defaultBackdrop.style.backgroundImage).toContain(
+      "https://cdn.example/luke.jpg",
+    )
+    expect(findHoverBackdrop()).toBeNull()
+    expect(
+      section
+        .querySelector(
+          '[data-testid="watch-home-section-hover-backdrop-previous"]',
+        )
+        ?.getAttribute("class"),
+    ).toContain("watch-home-section-backdrop-exit")
+
+    await act(async () => {
+      firstCard?.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+    })
+
+    const focusedJesusBackdrop = findHoverBackdrop()
+    expect(focusedJesusBackdrop?.style.backgroundImage).toContain(
+      "https://cdn.example/jesus.jpg",
+    )
+
+    await act(async () => {
+      firstCard?.dispatchEvent(
+        new FocusEvent("focusout", {
+          bubbles: true,
+          relatedTarget: secondCard,
+        }),
+      )
+    })
+
+    expect(findHoverBackdrop()?.style.backgroundImage).toContain(
+      "https://cdn.example/jesus.jpg",
+    )
+
+    await act(async () => {
+      secondCard?.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+    })
+
+    const focusedJohnBackdrop = findHoverBackdrop()
+    expect(focusedJohnBackdrop).not.toBe(focusedJesusBackdrop)
+    expect(focusedJohnBackdrop?.style.backgroundImage).toContain(
+      "https://cdn.example/john.jpg",
+    )
   })
 
   it("carries the hero preview playback time into the watch now link", async () => {
@@ -457,16 +640,20 @@ describe("WatchHomePage", () => {
       container.querySelector('[data-testid="watch-home-tv-carousel-card"]')
         ?.textContent,
     ).toContain("Daily Start")
-    const queuedTwoCard = Array.from(
+    const heroRailCards = Array.from(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    ).find((element) => element.textContent?.includes("Queued Two"))
+    )
+    const queuedTwoIndex = heroRailCards.findIndex((element) =>
+      element.textContent?.includes("Queued Two"),
+    )
+    const queuedTwoCard = heroRailCards[queuedTwoIndex]
     expect(queuedTwoCard).not.toBeUndefined()
 
     await act(async () => {
       queuedTwoCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
 
-    expect(carouselApi.scrollTo).toHaveBeenCalledWith(2)
+    expect(carouselApi.scrollTo).toHaveBeenCalledWith(queuedTwoIndex)
     expect(
       Array.from(
         container.querySelectorAll('[data-slot="carousel-item"]'),
@@ -489,6 +676,21 @@ describe("WatchHomePage", () => {
         '[data-testid="watch-home-tv-card-hover-outline"]',
       ),
     ).not.toBeNull()
+    const heroRailHoverOutline = heroRailCard?.querySelector(
+      '[data-testid="watch-home-tv-card-hover-outline"]',
+    )
+    expect(heroRailHoverOutline?.getAttribute("class")).toContain(
+      "watch-home-gradient-outline",
+    )
+    expect(heroRailHoverOutline?.getAttribute("class")).toContain(
+      "watch-home-gradient-outline-landscape",
+    )
+    expect(heroRailHoverOutline?.querySelector("svg")).toBeNull()
+    expect(
+      heroRailCard?.querySelectorAll(
+        '[data-testid="watch-home-tv-card-hover-outline"] span',
+      ),
+    ).toHaveLength(0)
     expect(
       heroRailCard?.querySelector('[role="img"]')?.getAttribute("class"),
     ).toContain("group-hover:scale-105")
@@ -504,6 +706,21 @@ describe("WatchHomePage", () => {
         '[data-testid="watch-home-card-hover-outline"]',
       ),
     ).not.toBeNull()
+    const standardCardHoverOutline = standardCard?.querySelector(
+      '[data-testid="watch-home-card-hover-outline"]',
+    )
+    expect(standardCardHoverOutline?.getAttribute("class")).toContain(
+      "watch-home-gradient-outline",
+    )
+    expect(standardCardHoverOutline?.getAttribute("class")).toContain(
+      "watch-home-gradient-outline-portrait",
+    )
+    expect(standardCardHoverOutline?.querySelector("svg")).toBeNull()
+    expect(
+      standardCard?.querySelectorAll(
+        '[data-testid="watch-home-card-hover-outline"] span',
+      ),
+    ).toHaveLength(0)
     expect(
       standardCard?.querySelector('[role="img"]')?.getAttribute("class"),
     ).toContain("poster-hover-zoom")

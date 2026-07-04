@@ -176,12 +176,41 @@
 }
 
 .poster-hover-zoom {
-  transition: transform 300ms ease;
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .group:hover .poster-hover-zoom,
 .group:focus-visible .poster-hover-zoom {
   transform: scale(1.06);
+}
+
+.watch-home-gradient-outline {
+  inset: -5px;
+  padding: 10px;
+  background: linear-gradient(
+    to bottom,
+    rgba(239, 68, 68, 0.98) 0%,
+    rgba(239, 68, 68, 0.96) 48%,
+    rgba(239, 68, 68, 0.34) 70%,
+    rgba(239, 68, 68, 0) 88%,
+    rgba(239, 68, 68, 0) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.watch-home-gradient-outline-portrait {
+  border-radius: 17px;
+}
+
+.watch-home-gradient-outline-landscape {
+  border-radius: 16px;
 }
 
 .watch-home-media-enter {
@@ -202,6 +231,16 @@
   animation-delay: var(--watch-home-copy-delay, 0ms);
 }
 
+.watch-home-section-backdrop-enter {
+  animation: watch-home-section-backdrop-enter 1000ms
+    cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.watch-home-section-backdrop-exit {
+  animation: watch-home-section-backdrop-exit 1000ms
+    cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 .watch-home-progress-ring {
   animation: watch-home-progress-ring var(--watch-home-progress-duration, 30s)
     linear forwards;
@@ -216,12 +255,24 @@
   .watch-home-media-enter,
   .watch-home-media-exit,
   .watch-home-copy-enter,
-  .watch-home-copy-exit {
+  .watch-home-copy-exit,
+  .watch-home-section-backdrop-enter,
+  .watch-home-section-backdrop-exit {
     animation: none;
   }
 
   .watch-home-progress-ring {
     animation: none;
+  }
+
+  .watch-home-section-backdrop-enter {
+    opacity: var(--watch-home-backdrop-opacity, 0.42);
+    transform: scale(1);
+  }
+
+  .watch-home-section-backdrop-exit {
+    opacity: 0;
+    transform: scale(0.996);
   }
 
   .watch-home-progress-ring-reset {
@@ -285,6 +336,28 @@
   100% {
     opacity: 0;
     transform: translateY(1.25rem);
+  }
+}
+
+@keyframes watch-home-section-backdrop-enter {
+  0% {
+    opacity: 0;
+    transform: scale(1.012);
+  }
+  100% {
+    opacity: var(--watch-home-backdrop-opacity, 0.42);
+    transform: scale(1);
+  }
+}
+
+@keyframes watch-home-section-backdrop-exit {
+  0% {
+    opacity: var(--watch-home-backdrop-opacity, 0.42);
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.996);
   }
 }
 

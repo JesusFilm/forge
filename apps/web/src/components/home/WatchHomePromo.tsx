@@ -65,7 +65,7 @@ export function WatchHomePromo() {
             {points.map(({ Icon, title, description }) => (
               <article
                 key={title}
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1 hover:bg-white/10"
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
               >
                 <Icon
                   className="h-20 w-20 text-white/20 mix-blend-overlay"
@@ -89,7 +89,7 @@ export function WatchHomePromo() {
               {highlights.map((highlight) => (
                 <article
                   key={highlight.title}
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-stone-950/20 p-6 transition-transform duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-stone-900/60"
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-stone-950/20 p-6 transition-colors duration-300 hover:border-white/20 hover:bg-stone-900/60"
                 >
                   <h3 className="text-lg font-semibold text-white">
                     {highlight.title}
