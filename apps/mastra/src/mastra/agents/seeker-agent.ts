@@ -64,7 +64,14 @@ export const seekerAgent = new Agent({
   // on `openai/...` (OPENAI_API_KEY), so both keys are present in this app today.
   // If `OPENROUTER_API_KEY` is unset, the agent errors at generate time in
   // Studio (a runtime error, not a boot crash).
-  model: "openrouter/google/gemma-4-31b-it:free",
+  //
+  // Fallback chain: the free-tier primary errors intermittently (feat-198
+  // residual), so retry it once, then fall through to OpenRouter's other free
+  // Gemma 4 model.
+  model: [
+    { model: "openrouter/google/gemma-4-31b-it:free", maxRetries: 1 },
+    { model: "openrouter/google/gemma-4-26b-a4b-it:free", maxRetries: 1 },
+  ],
 
   tools: {
     retrieveAnswer: retrieveAnswerTool,
