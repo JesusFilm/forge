@@ -17,7 +17,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-07-05 via [PR #PR_NUMBER](https://github.com/JesusFilm/forge/pull/PR_NUMBER) (`feat: postgres-persisted ai-chat memory for the seeker agent (feat-208)`).
+**Shipped:** 2026-07-05 via [PR #1462](https://github.com/JesusFilm/forge/pull/1462) (`feat(ai-chat): postgres-persisted seeker memory + thread ownership (feat-208)`).
 
 **What landed.** The seeker's Memory moved from the deliberately non-persistent
 `InMemoryStore` to a `PostgresStore` in a new dedicated `ai_chat` schema (same
