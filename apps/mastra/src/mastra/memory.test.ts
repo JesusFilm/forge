@@ -3,15 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { InMemoryStore } from "@mastra/core/storage"
 
 import {
-  __resetSeekerMemoryForTesting,
-  buildSeekerMemory,
-  getSeekerMemory,
+  __resetAiChatMemoryForTesting,
+  __resetAiChatStorageForTesting,
+  AI_CHAT_SCHEMA_NAME,
+  buildAiChatMemory,
+  getAiChatMemory,
 } from "./memory"
 
 // ---------------------------------------------------------------------------
-// Mocks for the experience-chat memory section (U3). The seeker tests below
-// do not depend on env or @mastra/pg, so these hoisted mocks are inert for
-// them: the seeker store is an InMemoryStore from @mastra/core/storage.
+// Hoisted env mock shared by both memory sections. The ai-chat backend
+// defaults to `memory` here so module-load construction never builds a
+// PostgresStore unless a test flips it.
 // ---------------------------------------------------------------------------
 
 const LOCAL_DATABASE_URL =
@@ -27,11 +29,13 @@ const mockEnv = vi.hoisted(() => {
       AI_GATEWAY_EMBEDDINGS_BASE_URL: undefined as string | undefined,
       AI_GATEWAY_EMBEDDINGS_MODEL: undefined as string | undefined,
     },
+    aiChatBackend: "memory" as "postgres" | "memory",
     // Mirror the real `getMastraDatabaseUrl()`: DATABASE_URL with the local
     // fallback so resolution never returns undefined.
     getMastraDatabaseUrl: () =>
       state.env.DATABASE_URL ??
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    resolveAiChatMemoryBackend: () => state.aiChatBackend,
   }
   return state
 })
@@ -54,20 +58,65 @@ vi.mock("@mastra/pg", async () => {
 })
 
 afterEach(() => {
-  __resetSeekerMemoryForTesting()
+  __resetAiChatMemoryForTesting()
+  __resetAiChatStorageForTesting()
+  mockEnv.aiChatBackend = "memory"
+  postgresStoreSpy.mockClear()
 })
 
-describe("seeker memory", () => {
+describe("ai-chat memory (feat-208)", () => {
   it("returns a singleton Memory instance", () => {
-    const first = getSeekerMemory()
-    const second = getSeekerMemory()
+    const first = getAiChatMemory()
+    const second = getAiChatMemory()
     expect(first).toBe(second)
   })
 
-  it("is backed by an in-memory store (never a persisted store)", () => {
-    // Guards against accidentally wiring a Postgres/PgVector-backed store —
-    // the seeker skeleton's memory must physically be unable to persist.
-    expect(buildSeekerMemory().storage).toBeInstanceOf(InMemoryStore)
+  it("returns a fresh instance after __resetAiChatMemoryForTesting", () => {
+    const first = getAiChatMemory()
+    __resetAiChatMemoryForTesting()
+    expect(getAiChatMemory()).not.toBe(first)
+  })
+
+  it("uses an InMemoryStore under the memory backend (local dev / kill-switch path)", () => {
+    const memory = buildAiChatMemory({ getBackend: () => "memory" })
+    expect(memory.storage).toBeInstanceOf(InMemoryStore)
+    expect(postgresStoreSpy).not.toHaveBeenCalled()
+  })
+
+  it("uses a PostgresStore in the dedicated ai_chat schema under the postgres backend", () => {
+    buildAiChatMemory({ getBackend: () => "postgres" })
+    expect(postgresStoreSpy).toHaveBeenCalledTimes(1)
+    const options = postgresStoreSpy.mock.calls[0]?.[0] as {
+      schemaName?: string
+      max?: number
+    }
+    expect(options.schemaName).toBe("ai_chat")
+    expect(options.max).toBe(5)
+  })
+
+  it("keeps the ai_chat schema distinct from the mastra schema (drift guard)", () => {
+    // The whole point of feat-208's schema choice: ai-chat conversations must
+    // never share tables with runtime storage / experience-chat memory.
+    expect(AI_CHAT_SCHEMA_NAME).toBe("ai_chat")
+    expect(AI_CHAT_SCHEMA_NAME).not.toBe("mastra")
+  })
+
+  it("honors the injectable backend seam on the singleton path", () => {
+    // The default singleton resolves through the mocked env (memory here) —
+    // proving getBackend defaults to resolveAiChatMemoryBackend.
+    mockEnv.aiChatBackend = "postgres"
+    __resetAiChatMemoryForTesting()
+    getAiChatMemory()
+    expect(postgresStoreSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not open a connection at construction time on the postgres path", () => {
+    mockEnv.env.DATABASE_URL =
+      "postgresql://nobody:nopass@nonexistent-host-7vqf:5432/no_db"
+    expect(() =>
+      buildAiChatMemory({ getBackend: () => "postgres" }),
+    ).not.toThrow()
+    mockEnv.env.DATABASE_URL = undefined
   })
 
   // Adversarial cross-thread isolation against a REAL InMemoryStore-backed
@@ -76,7 +125,7 @@ describe("seeker memory", () => {
   // threads MUST be created first — `recall` on a never-created thread throws
   // ("No thread found with id …"), it does not return empty (verified U2 recipe).
   it("keeps messages scoped to their own thread", async () => {
-    const memory = buildSeekerMemory()
+    const memory = buildAiChatMemory({ getBackend: () => "memory" })
     const resourceId = "seeker-test-resource"
     const threadA = "thread-a"
     const threadB = "thread-b"

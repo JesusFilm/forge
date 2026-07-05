@@ -11,13 +11,13 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 3, 2026)
+## Status (July 6, 2026)
 
 - **Total tickets:** 14
-- ✅ **Complete:** 11
+- ✅ **Complete:** 12
 - 🟡 **In progress:** 1
 - 🔵 **Not started:** 1
-- 🔴 **Blocked:** 1
+- 🔴 **Blocked:** 0
 
 ## Feature Index
 
@@ -33,7 +33,7 @@ from the main DS Year 1 roadmap.
 | [feat-205](feat-205-chat-wire-seeker-route.md)               | Wire chat app to the Seeker Mastra route                           | jian wei | P1       | 2026-06-27 | 3    | ✅ complete    | #1384   |
 | [feat-206](feat-206-chat-introduce-react-testing-library.md) | Introduce React Testing Library to the chat app                    | jian wei | P2       | 2026-07-03 | 2    | ✅ complete    | #1372   |
 | [feat-207](feat-207-chat-auth.md)                            | Chat app authentication                                            | jian wei | P1       | 2026-07-07 | 5    | ✅ complete    | #1438   |
-| [feat-208](feat-208-seeker-postgres-memory.md)               | Postgres-persisted Seeker memory + conversation persistence        | jian wei | P2       | 2026-07-10 | 5    | 🔵 not-started | —       |
-| [feat-209](feat-209-chat-per-conversation-urls.md)           | Per-conversation URLs + sidebar history                            | jian wei | P2       | 2026-07-15 | 3    | 🔴 blocked     | —       |
+| [feat-208](feat-208-seeker-postgres-memory.md)               | Postgres-persisted Seeker memory + conversation persistence        | jian wei | P2       | 2026-07-10 | 5    | ✅ complete    | #1462   |
+| [feat-209](feat-209-chat-per-conversation-urls.md)           | Per-conversation URLs + sidebar history                            | jian wei | P2       | 2026-07-15 | 3    | 🔵 not-started | —       |
 | [feat-229](feat-229-chat-auth-register-oauth-client.md)      | Register chat OAuth client in apps/auth (chat auth enablement)     | jian wei | P1       | 2026-07-09 | 2    | ✅ complete    | #1453   |
 | [feat-231](feat-231-chat-auth-prod-oauth-client.md)          | Register chat deployed-environment OAuth clients (prod enablement) | jian wei | P2       | 2026-07-20 | 1    | 🟡 in-progress | —       |

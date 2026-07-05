@@ -2,30 +2,39 @@
  * Mastra Memory primitives for the standalone service.
  *
  * Two independent memory surfaces live here:
- *   1. Seeker-agent memory (feat-198, U2) — a dedicated in-memory store that
- *      never persists (this header).
- *   2. Experience-AI chat memory (consolidation U3) — Postgres-persisted, in
- *      the clearly-delimited section at the bottom of this file.
- * They share nothing but this module; the seeker store is physically unable to
- * persist while the chat store is backed by `@mastra/pg`.
+ *   1. AI-chat lane memory (feat-198/feat-208) — the seeker agent's (and every
+ *      future ai-chat agent's) conversation memory, Postgres-persisted in the
+ *      DEDICATED `ai_chat` schema (this header).
+ *   2. Experience-AI chat memory (consolidation U3) — Postgres-persisted in
+ *      the `mastra` schema, in the clearly-delimited section at the bottom.
+ * They share nothing but this module and the connection string: the two
+ * schemas keep ai-chat seeker conversations and experience-chat editor
+ * conversations physically separate tables.
  *
- * --- 1. Seeker-agent Memory primitive (feat-198, U2) ---
+ * --- 1. AI-chat lane Memory (feat-208) ---
  *
- * Wires `@mastra/memory`'s `Memory` against a DEDICATED in-memory store,
- * independent of `index.ts`'s `MASTRA_STORAGE_BACKEND` switch. The seeker
- * skeleton's memory is ALWAYS in-memory and therefore physically cannot
- * persist to Postgres — honoring the brainstorm's "no Postgres-persisted
- * memory" deferral unconditionally (KTD1). It wipes on process restart, not
- * per session.
+ * One shared `PostgresStore` (schema `ai_chat`) for the whole ai-chat lane.
+ * Mastra memory threads are keyed by threadId+resourceId with NO agent
+ * scoping, so future ai-chat agents (intent routing, etc.) that point at this
+ * same storage and are called with the same keys share the thread by
+ * construction. Cross-agent routing must stay explicit per-call
+ * (`memory: { thread, resource }`) — Agent.network() delegation auto-isolates
+ * subagent memory and must not be relied on for shared threads.
  *
- * This module is the single-responsibility seam where the eventual
- * in-memory -> Postgres/PgVector swap lands later. The wiring shape
- * (`new Memory({ storage })`) is identical to the persisted path, so this
- * choice does not complicate the future build-out.
+ * Backend selection (`resolveAiChatMemoryBackend`): `memory` → a dedicated
+ * `InMemoryStore` (local dev/tests, no Postgres needed — and the documented
+ * production kill-switch via AI_CHAT_MEMORY_BACKEND); `postgres` → the shared
+ * `ai_chat` store. Ownership of a thread is NOT enforced here — Mastra's
+ * message path silently adopts an existing thread regardless of the caller's
+ * resource — so every ai-chat route MUST gate access through
+ * `authorizeAiChatThreadAccess` (./ai-chat-thread-ownership.ts) first.
+ *
+ * pg pool arithmetic for this service: runtime store (index.ts) defaults to
+ * max 20, experience-chat storage 5, experience-chat vector 2, ai-chat
+ * storage 5 → ~32 potential connections total. Keep new pools small.
  *
  * Mirrors the lazy-singleton + `__reset*ForTesting` SHAPE of
- * `apps/admin/src/mastra/memory.ts`, stripped to in-memory only (no Postgres,
- * no PgVector, no embedder, no env reads). Admin is a reference to copy from,
+ * `apps/admin/src/mastra/memory.ts`. Admin is a reference to copy from,
  * NEVER an import — `apps/mastra` must not import `apps/admin`. Two distinct
  * reasons, two distinct docs:
  *   - copy-not-import convention:
@@ -41,7 +50,11 @@ import { InMemoryStore } from "@mastra/core/storage"
 import { Memory } from "@mastra/memory"
 import { PgVector, PostgresStore } from "@mastra/pg"
 
-import { env, getMastraDatabaseUrl } from "../config/env"
+import {
+  env,
+  getMastraDatabaseUrl,
+  resolveAiChatMemoryBackend,
+} from "../config/env"
 
 import {
   AI_GATEWAY_USER_AGENT,
@@ -59,42 +72,90 @@ import {
 const require = createRequire(import.meta.url)
 
 /**
- * Build the seeker Memory instance against its own `InMemoryStore`. Pure
- * factory — the store is the same class `index.ts` uses for its
- * `MASTRA_STORAGE_BACKEND === "memory"` path, but this is a SEPARATE instance
- * so the seeker's memory never shares state with (or persists through) the
- * app-level store.
+ * Postgres schema owning the ai-chat lane's memory tables (feat-208). SEPARATE
+ * from the `mastra` schema (runtime storage + experience-chat memory) so
+ * seeker/ai-chat conversations never mix with other agents' data and a future
+ * reset is a single `DROP SCHEMA ai_chat CASCADE`. `PostgresStore` runs its
+ * own DDL (CREATE SCHEMA + tables) at init.
  */
-export function buildSeekerMemory(): Memory {
-  return new Memory({
-    storage: new InMemoryStore({ id: "seeker-memory-storage" }),
+export const AI_CHAT_SCHEMA_NAME = "ai_chat"
+
+/** Pool cap for the ai-chat store — small; see the header's pool arithmetic. */
+const AI_CHAT_STORAGE_POOL_MAX = 5
+
+/**
+ * Build the PostgresStore backing ai-chat memory. Pure factory — no
+ * connection is opened until first I/O.
+ */
+export function buildAiChatStorage(): PostgresStore {
+  return new PostgresStore({
+    id: "ai-chat-storage",
+    connectionString: getMastraDatabaseUrl(),
+    schemaName: AI_CHAT_SCHEMA_NAME,
+    // ConnectionStringConfig takes the pool cap as a top-level `max`.
+    max: AI_CHAT_STORAGE_POOL_MAX,
   })
 }
 
-/**
- * Singleton Memory instance for the seeker agent.
- *
- * Why a singleton: Mastra's Memory primitive owns its backing store; a single
- * instance keeps every read/write against the same in-memory state for the
- * process lifetime. Construction is lazy so importing this module in a
- * build-phase context does not eagerly allocate the store.
- */
-let cached: Memory | null = null
+let cachedAiChatStorage: PostgresStore | null = null
 
-export function getSeekerMemory(): Memory {
-  if (cached === null) {
-    cached = buildSeekerMemory()
+/**
+ * Singleton `ai_chat`-schema PostgresStore, shared by every ai-chat agent so
+ * cross-agent thread sharing works by construction. Lazy so build-phase
+ * imports never open a pool.
+ */
+export function getAiChatStorage(): PostgresStore {
+  if (cachedAiChatStorage === null) {
+    cachedAiChatStorage = buildAiChatStorage()
   }
-  return cached
+  return cachedAiChatStorage
 }
 
 /**
- * Test-only reset hook. Production code never resets the singleton — the
- * cached instance is the whole point. Tests use this to start from a fresh
- * in-memory store between cases.
+ * Build the ai-chat Memory. Backend-aware (feat-208): `memory` → a dedicated
+ * `InMemoryStore` (local dev/tests + the production kill-switch), `postgres` →
+ * the shared `ai_chat` store. Storage-only — no vector/embedder/semantic
+ * recall yet. `getBackend` is an injectable seam (same pattern as
+ * seeker-route's `getEnabled`/`getModelKey`) so tests flip backends per-case.
  */
-export function __resetSeekerMemoryForTesting(): void {
-  cached = null
+export function buildAiChatMemory({
+  getBackend = resolveAiChatMemoryBackend,
+}: {
+  getBackend?: () => "postgres" | "memory"
+} = {}): Memory {
+  if (getBackend() === "memory") {
+    return new Memory({
+      storage: new InMemoryStore({ id: "ai-chat-memory-storage" }),
+    })
+  }
+  return new Memory({ storage: getAiChatStorage() })
+}
+
+/**
+ * Singleton Memory instance shared by the ai-chat lane's agents (today: the
+ * seeker). One instance keeps every read/write on the same store and avoids
+ * multiplying pool capacity. Construction is lazy so importing this module in
+ * a build-phase context does not eagerly allocate a store.
+ */
+let cachedAiChatMemory: Memory | null = null
+
+export function getAiChatMemory(): Memory {
+  if (cachedAiChatMemory === null) {
+    cachedAiChatMemory = buildAiChatMemory()
+  }
+  return cachedAiChatMemory
+}
+
+/**
+ * Test-only reset hooks. Production code never resets the singletons — the
+ * cached instances are the whole point.
+ */
+export function __resetAiChatMemoryForTesting(): void {
+  cachedAiChatMemory = null
+}
+
+export function __resetAiChatStorageForTesting(): void {
+  cachedAiChatStorage = null
 }
 
 // ===========================================================================

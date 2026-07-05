@@ -4,10 +4,13 @@
 
 A chat UI for the Forge Mastra agents (jesusfilm.ai). The initial styling
 follows the "Vigil" design direction (see below) — a starting point handed to
-us to get going, not a locked-in convention; expect it to evolve. Assistant
-replies still come from a pure client-side stub
-(`src/lib/chat-stub.ts`) — no data layer, no agent wiring yet. Conversation
-state lives in the client and resets on refresh.
+us to get going, not a locked-in convention; expect it to evolve. Replies come
+from the client stub by default, or stream from Seeker behind the
+`SEEKER_CHAT_ENABLED` flag (feat-205). Conversation state in the UI is still
+client-only and resets on refresh, but on the Seeker path the SERVER side now
+persists (feat-208): Mastra stores threads/messages in its `ai_chat` Postgres
+schema, keyed by a proxy-resolved per-user resource. UI restore/deep-linking
+is feat-209.
 
 ## Architecture
 
@@ -18,7 +21,7 @@ src/
     page.tsx             Reads isSeekerChatEnabled() (force-dynamic) → <AppShell seekerEnabled> (server)
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
-      seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. Testable core handleSeekerProxyRequest
+      seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. Testable core handleSeekerProxyRequest
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; no-op home redirect when unconfigured (feat-207)
       auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie, 302 return_to; single catch → non-PII log + ?signin=failed
       auth/logout/route.ts   POST → clear session cookie, 303 home (POST so it isn't prefetchable)
@@ -28,6 +31,7 @@ src/
     session-cookie.ts    signed identity cookie create/read + option helpers; fail-closed to anonymous without a real secret
     origins.ts           resolveChatReturnToURL — post-login return-target validated against chat's own origin (R10)
     identity.ts          getChatIdentity() server reader (next/headers); never redirects; display-only
+    anon-id.ts           feat-208: anonymous continuity id — resolveSeekerResource (user:/anon: namespacing, prefix-check only), UUID validation, rolling 30-day hardened cookie serialization
     errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
@@ -132,10 +136,28 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   `redirect:"error"`, bounds the call with `SEEKER_TIMEOUT_MS` (95s > Mastra's
   90s ceiling), and normalizes every failure to one terminal `error{reason}` SSE
   frame. Plain-string logging only.
-- **Accepted v1 risk:** the proxy is unauthenticated + un-rate-limited +
-  world-reachable, gated only by URL obscurity + a small trusted audience (NOT a
-  gate). Inbound auth + a rate/concurrency cap are prerequisites before the
-  audience widens — do not "fix" the open proxy without that work.
+- **Accepted v1 risk (restated under feat-208's durable-storage physics):** the
+  proxy is unauthenticated + un-rate-limited + world-reachable, gated only by
+  URL obscurity + a small trusted audience (NOT a gate). Since feat-208, each
+  junk POST no longer costs only an ephemeral ~90s paid generation — it also
+  writes durable rows into the SAME Postgres database as Mastra runtime
+  storage. Two bounds apply, honestly framed: the per-resource thread ceiling
+  (200, `thread_limit`) bounds a single cooperative or runaway client ONLY — a
+  cookie-refusing attacker mints a fresh `anon:<uuid>` resource per POST for
+  free — so the 30-day retention purge is the SOLE adversarial storage
+  backstop. Inbound auth + a rate/concurrency cap remain prerequisites before
+  the audience widens — do not "fix" the open proxy without that work.
+- **Memory keying (feat-208):** the proxy resolves `resourceId` server-side
+  (`src/auth/anon-id.ts`): the session's verified `sub` → `user:<sub>` when
+  signed in, else `anon:<uuid>` from a hardened, UUID-validated cookie that is
+  minted on first send and re-issued with a fresh 30-day Max-Age on EVERY send
+  (rolling, aligned with the anonymous retention window). The subject is a
+  memory PARTITION KEY only — never authorization (R7). Prefix-check resources
+  (`startsWith`) — never split on `:`. Known accepted behaviors: a
+  cookie-refusing client loses continuity at turn 2 (`thread_forbidden`
+  notice); an identity change starts fresh threads (client state resets on the
+  OAuth redirect — an invariant feat-209 must preserve); anonymous→account
+  thread migration is out of scope.
 
 The three former "deferred hardening" criteria (surface failures, outbound
 timeout, single-file async seam) are now **implemented**: failures render a
@@ -218,9 +240,12 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   `/api/seeker`). Sign-in itself is optional (feat-207) and default-off.
 - No inbound auth / rate cap on `/api/seeker` or the auth routes (lands later,
   alongside Cloudflare fronting — see the accepted-risk notes above)
-- No database or conversation persistence (conversations are client-only; Seeker
-  memory is Mastra's in-memory store, lost on its restart; the auth session is a
-  cookie, not a DB row)
+- No chat-side database (the auth session is a cookie, not a DB row; chat
+  writes no user record). Since feat-208 the SERVER side does persist: Seeker
+  threads/messages live in Mastra's `ai_chat` Postgres schema (30d anon / 180d
+  signed-in retention). What's still absent here is UI restore — conversations
+  in the client reset on refresh; per-conversation URLs + sidebar history are
+  feat-209 (gated on session revocation, see that ticket's preconditions)
 - No browser-direct Mastra path / CORS (server-to-server bearer only)
 - No i18n, no design-system sharing with `apps/web`
 

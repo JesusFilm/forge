@@ -15,9 +15,10 @@
  *   - error        { reason }                                — terminal failure
  *
  * Defense-in-depth gates, checked in order: enable flag (KTD7) → service bearer
- * (R5) → body validation (R2) → model-key preflight (R11) → stream. The route
- * is MORE locked down than Mastra's built-in unauthenticated `/api/agents/*`
- * surface; it adds no CORS (R6).
+ * (R5) → body validation (R2) → model-key preflight (R11) → thread ownership +
+ * creation ceiling (feat-208; in-stream `thread_forbidden` / `thread_limit`
+ * error frames) → stream. The route is MORE locked down than Mastra's built-in
+ * unauthenticated `/api/agents/*` surface; it adds no CORS (R6).
  *
  * Memory contract (KTD3): a memory-configured agent throws
  * `AGENT_MEMORY_MISSING_RESOURCE_ID` at runtime if a `threadId` is supplied
@@ -37,6 +38,11 @@
 import { isValidServiceBearer } from "../../server/service-bearer"
 import { getOpenRouterApiKey, isSeekerRouteEnabled } from "../../config/env"
 import { TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
+import {
+  authorizeAiChatThreadAccess,
+  type AiChatOwnershipMemory,
+} from "../ai-chat-thread-ownership"
+import { getAiChatMemory } from "../memory"
 
 // Narrow structural surface of the seeker agent's streaming API (avoids
 // fighting the generic Agent.stream signature; the runtime contract is
@@ -74,6 +80,12 @@ export type SeekerRouteHandlerInput = {
   getModelKey?: () => string | undefined
   /** Seam: enable-gate (KTD7). Defaults to `isSeekerRouteEnabled`. */
   getEnabled?: () => boolean
+  /**
+   * Seam: the Memory instance backing the thread-ownership gate (feat-208).
+   * Defaults to the shared ai-chat memory (the same instance the agent
+   * writes through, so the gate and the write path cannot diverge).
+   */
+  getMemory?: () => AiChatOwnershipMemory
   /**
    * Seam: internal per-turn wall-clock budget in ms (R9). Defaults to
    * `TIME_BUDGET_MS.chatTurn` (90s). Overridable so the timeout-reason branch
@@ -195,6 +207,7 @@ export async function handleSeekerRouteRequest({
   requestSignal,
   getModelKey = getOpenRouterApiKey,
   getEnabled = isSeekerRouteEnabled,
+  getMemory = () => getAiChatMemory() as unknown as AiChatOwnershipMemory,
   budgetMs = TIME_BUDGET_MS.chatTurn,
 }: SeekerRouteHandlerInput): Promise<Response> {
   // Gate 1 — enable flag FIRST (KTD7): unreachable unless explicitly enabled.
@@ -268,6 +281,24 @@ export async function handleSeekerRouteRequest({
         }
       }
       try {
+        // Gate 5 — thread ownership + creation ceiling (feat-208). Mastra's
+        // message path silently adopts an existing thread regardless of the
+        // caller's resource, so this check is the ONLY thing binding threadId
+        // to its owner. A store failure here falls through to the outer catch
+        // (fail closed as generation_failed — never fail open).
+        const authz = await authorizeAiChatThreadAccess({
+          memory: getMemory(),
+          threadId: memory.thread,
+          resource: memory.resource,
+        })
+        if (!authz.ok) {
+          console.warn(
+            `[seeker-route] event=thread_access_rejected reason=${authz.reason}`,
+          )
+          enqueue(sseFrame("error", { reason: authz.reason }))
+          return
+        }
+
         output = await agent.stream(prompt, {
           maxSteps: STEP_CAPS.toolCallingTurn,
           abortSignal,

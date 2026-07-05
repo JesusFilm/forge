@@ -116,6 +116,7 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import { startAiChatRetentionPurge } from "./ai-chat-retention"
 
 assertMastraRuntimeEnv()
 
@@ -591,3 +592,8 @@ export const mastra = new Mastra({
 })
 
 configureSearchEvalNativeSuiteRuntime(() => mastra)
+
+// ai-chat retention purge (feat-208): boot sweep + daily timer over the
+// `ai_chat` schema. No-ops unless the resolved ai-chat backend is postgres,
+// so memory-backend local runs never touch a pool.
+startAiChatRetentionPurge()
