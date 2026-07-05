@@ -21,7 +21,7 @@ tags: []
 
 **Compound docs.** `docs/solutions/integration-issues/mastra-conversational-agent-memory-and-model-router-wiring.md`; `docs/solutions/integration-issues/mastra-studio-api-auth-guard.md`.
 
-**Residual risk / follow-ups.** Full persona + safety guardrails (incl. crisis handling) and any public surface remain a deferred release gate. The free-tier model `gemma-4-31b-it:free` shows intermittent provider errors (live re-test 2026-06-18, ~5/8 success) — acceptable for Studio, revisit a paid/stable model before production.
+**Residual risk / follow-ups.** Full persona + safety guardrails (incl. crisis handling) and any public surface remain a deferred release gate. The free-tier model `gemma-4-31b-it:free` shows intermittent provider errors (live re-test 2026-06-18, ~5/8 success) — acceptable for Studio, revisit a paid/stable model before production. _Mitigated 2026-07-05 via [PR #1461](https://github.com/JesusFilm/forge/pull/1461): the agent now falls back to OpenRouter's other free Gemma 4 model (`gemma-4-26b-a4b-it:free`) after one primary retry; the paid/stable model swap stays deferred._
 
 **Unblocked.** feat-199 (Seeker Agent RAG Retrieval Connection).
 
