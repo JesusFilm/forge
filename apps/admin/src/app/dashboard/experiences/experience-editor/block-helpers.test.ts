@@ -41,7 +41,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(21)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(20)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -362,22 +362,6 @@ describe("experience editor block helpers", () => {
       title: "Watch Home Hero",
       body: "Renders the static Watch homepage hero.",
       tone: "hero",
-      badges: ["WATCH_HOME"],
-    })
-  })
-
-  it("creates and summarizes the Watch Home promo block", () => {
-    expect(createTemplateBlock("watchHomePromo", 1)).toMatchObject({
-      t: "watchHomePromo",
-      sectionKey: "watch-home-promo-1",
-      ctaLabel: "Become a beta tester",
-    })
-
-    expect(
-      summarizeBlock(createTemplateBlock("watchHomePromo", 1), 1, []),
-    ).toMatchObject({
-      typeLabel: "Watch Home Promo",
-      title: "The message doesn't change. The way people watch does.",
       badges: ["WATCH_HOME"],
     })
   })

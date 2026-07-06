@@ -29,7 +29,6 @@ export type BlockTemplateKey =
   | "videoCarousel"
   | "videoHero"
   | "watchHomeHero"
-  | "watchHomePromo"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -39,7 +38,6 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "video",
   "videoCarousel",
   "watchHomeHero",
-  "watchHomePromo",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
@@ -348,19 +346,6 @@ export function summarizeBlock(
     }
   }
 
-  if (type === "watchHomePromo") {
-    return {
-      key: summaryKey,
-      typeLabel: "Watch Home Promo",
-      title: asString(value.heading) || "Watch Home Promo",
-      body:
-        asString(value.description) ||
-        "Mission promo and beta tester call to action.",
-      tone: "standard",
-      badges: ["WATCH_HOME"],
-    }
-  }
-
   if (type === "bibleQuotesCarousel") {
     const quotes = asArray(value.quotes)
     const firstQuote = asRecord(quotes[0])
@@ -646,27 +631,6 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
-    }
-  }
-
-  if (template === "watchHomePromo") {
-    return {
-      t: "watchHomePromo",
-      sectionKey: `watch-home-promo-${index}`,
-      eyebrow: "Built for global missions",
-      heading: "The message doesn't change. The way people watch does.",
-      description:
-        "We are rebuilding our video library and tools from the ground up, committing decades of translation work to the platforms where people already gather, watch, and share.",
-      points: [],
-      highlightsHeading: "What we are building next",
-      highlights: [],
-      invitationEyebrow: "You're invited",
-      invitationHeading: "Help build",
-      invitationGradientText: "the next generation",
-      invitationDescription:
-        "We're inviting practitioners, creators, and partners into early access. Test new tools first, give feedback, and help shape products designed for real mission work.",
-      ctaLabel: "Become a beta tester",
-      ctaLink: "https://mailchi.mp/jesusfilm/beta",
     }
   }
 

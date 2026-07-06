@@ -182,58 +182,89 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
   },
 ]
 
-const WATCH_HOME_PROMO_BLOCK = {
-  t: "watchHomePromo",
+const WATCH_HOME_PROMO_SECTION = {
+  t: "section",
   sectionKey: "home-global-missions-promo",
-  eyebrow: "Built for global missions",
-  heading: "The message doesn't change. The way people watch does.",
-  description:
-    "We are rebuilding our video library and tools from the ground up, committing decades of translation work to the platforms where people already gather, watch, and share.",
-  points: [
+  backgroundColor: "purple",
+  staticOverlay: true,
+  content: [
     {
-      icon: "globe",
-      title: "The most translated film library in the world",
-      description:
-        "Decades of translation work, carried by trusted ministry partners, have built a library with thousands of language tracks so people can encounter the story of Jesus in the language that reaches them deepest.",
+      t: "text",
+      sectionKey: "home-global-missions-intro",
+      subtitle: "Built for global missions",
+      heading: "The message doesn't change. The way people watch does.",
+      contentParagraphs: [
+        "We are rebuilding our video library and tools from the ground up, committing decades of translation work to the platforms where people already gather, watch, and share.",
+      ],
+      variant: "lead",
     },
     {
-      icon: "clapperboard",
-      title: "Carrying trusted voices into new formats",
-      description:
-        "We are rebuilding how gospel stories are told visually, pairing trusted translations with modern formats so the message can move freely across platforms, cultures, and screens.",
+      t: "infoBlocks",
+      sectionKey: "home-global-missions-points",
+      backgroundColor: "glass",
+      blocks: [
+        {
+          icon: "globe",
+          title: "The most translated film library in the world",
+          description:
+            "Decades of translation work, carried by trusted ministry partners, have built a library with thousands of language tracks so people can encounter the story of Jesus in the language that reaches them deepest.",
+        },
+        {
+          icon: "clapperboard",
+          title: "Carrying trusted voices into new formats",
+          description:
+            "We are rebuilding how gospel stories are told visually, pairing trusted translations with modern formats so the message can move freely across platforms, cultures, and screens.",
+        },
+        {
+          icon: "users",
+          title: "More than a library. A mission-driven team.",
+          description:
+            "Jesus Film Project is a global team of translators, media specialists, editors, and creators turning decades of ministry experience into tools for disciple-makers everywhere.",
+        },
+      ],
     },
     {
-      icon: "users",
-      title: "More than a library. A mission-driven team.",
-      description:
-        "Jesus Film Project is a global team of translators, media specialists, editors, and creators turning decades of ministry experience into tools for disciple-makers everywhere.",
+      t: "text",
+      sectionKey: "home-building-next-heading",
+      heading: "What we are building next",
+      variant: "small",
+    },
+    {
+      t: "infoBlocks",
+      sectionKey: "home-building-next-highlights",
+      backgroundColor: "darkGlass",
+      blocks: [
+        {
+          title: "Next Steps Platform",
+          description:
+            "Connect viewers with tangible opportunities on their spiritual journey, helping them take a next step into community, Scripture, or mission.",
+          icon: "steps",
+        },
+        {
+          title: "Evangelistic Media Library",
+          description:
+            "An extensive Christian media library with thousands of videos, films, and resources available in multiple languages for ministry and evangelism worldwide.",
+          icon: "library",
+        },
+        {
+          title: "Digital Tools for Ministries",
+          description:
+            "Video management, content distribution, audience engagement, and analytics designed to help ministries reach more people effectively.",
+          icon: "tools",
+        },
+      ],
+    },
+    {
+      t: "cta",
+      sectionKey: "home-beta-tester-cta",
+      heading: "Help build the next generation of mission tools",
+      body: "We're inviting practitioners, creators, and partners into early access. Test new tools first, give feedback, and help shape products designed for real mission work.",
+      buttonLabel: "Become a beta tester",
+      buttonLink: "https://mailchi.mp/jesusfilm/beta",
+      backgroundColor: "transparent",
+      variant: "secondary",
     },
   ],
-  highlightsHeading: "What we are building next",
-  highlights: [
-    {
-      title: "Next Steps Platform",
-      description:
-        "Connect viewers with tangible opportunities on their spiritual journey, helping them take a next step into community, Scripture, or mission.",
-    },
-    {
-      title: "Evangelistic Media Library",
-      description:
-        "An extensive Christian media library with thousands of videos, films, and resources available in multiple languages for ministry and evangelism worldwide.",
-    },
-    {
-      title: "Digital Tools for Ministries",
-      description:
-        "Video management, content distribution, audience engagement, and analytics designed to help ministries reach more people effectively.",
-    },
-  ],
-  invitationEyebrow: "You're invited",
-  invitationHeading: "Help build",
-  invitationGradientText: "the next generation",
-  invitationDescription:
-    "We're inviting practitioners, creators, and partners into early access. Test new tools first, give feedback, and help shape products designed for real mission work.",
-  ctaLabel: "Become a beta tester",
-  ctaLink: "https://mailchi.mp/jesusfilm/beta",
 } as const
 
 function assertNotProdUrl(rawUrl: string | undefined): void {
@@ -401,7 +432,7 @@ async function main(): Promise<void> {
             return video ? [buildMediaItem(video)] : []
           }),
       })),
-      WATCH_HOME_PROMO_BLOCK,
+      WATCH_HOME_PROMO_SECTION,
     ])
 
     const existingLocales = await prisma.experienceLocale.findMany({

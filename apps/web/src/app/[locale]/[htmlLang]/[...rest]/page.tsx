@@ -5,7 +5,7 @@ import { setRequestLocale } from "next-intl/server"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
-import { WatchHomePage } from "@/components/home/WatchHomePage"
+import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
@@ -412,14 +412,38 @@ async function renderOneSegment(shape: {
 }) {
   const { slug, locale, isLanguageHome } = shape
   if (isLanguageHome) {
-    const home = await resolveWatchHome(locale)
-    if (home.error) {
-      return <ExperienceError message={home.error.message} />
+    const [heroResult, pageResult] = await Promise.all([
+      resolveWatchHome(locale),
+      resolveWatchPage(locale),
+    ])
+    if (heroResult.error) {
+      return <ExperienceError message={heroResult.error.message} />
     }
-    if (!home.data.heroSlides.length && !home.data.sections.length) {
+
+    const builderBlocks =
+      pageResult.data?.kind === "experience"
+        ? (pageResult.data.experience.blocks ?? [])
+        : []
+
+    if (
+      pageResult.error &&
+      !isWatchPageMissingError(pageResult.error) &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.warn("[watch-home] Unable to load builder-authored body.", {
+        error: pageResult.error.message,
+      })
+    }
+
+    if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
       return <ExperienceEmpty />
     }
-    return <WatchHomePage model={home.data} />
+    return (
+      <WatchHomeExperiencePage
+        heroModel={heroResult.data}
+        blocks={builderBlocks}
+      />
+    )
   }
 
   const result = await resolveWatchExperiencePage(locale, slug)

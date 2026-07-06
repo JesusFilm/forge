@@ -88,15 +88,6 @@ export const InfoBlockItemSchema = z
   })
   .strict()
 
-/** `sections.watch-home-promo-card` — nested inside watchHomePromo card grids. */
-export const WatchHomePromoCardSchema = z
-  .object({
-    icon: z.string().optional(),
-    title: z.string().min(1),
-    description: z.string().min(1),
-  })
-  .strict()
-
 /** `sections.media-collection-item` — nested inside mediaCollection.items. */
 export const MediaCollectionItemSchema = z
   .object({
@@ -433,25 +424,6 @@ export const WatchHomeHeroBlockSchema = z
   })
   .strict()
 
-export const WatchHomePromoBlockSchema = z
-  .object({
-    t: z.literal("watchHomePromo"),
-    sectionKey,
-    eyebrow: z.string().optional(),
-    heading: z.string().min(1),
-    description: z.string().min(1),
-    points: z.array(WatchHomePromoCardSchema).default([]),
-    highlightsHeading: z.string().optional(),
-    highlights: z.array(WatchHomePromoCardSchema).default([]),
-    invitationEyebrow: z.string().optional(),
-    invitationHeading: z.string().min(1),
-    invitationGradientText: z.string().optional(),
-    invitationDescription: z.string().min(1),
-    ctaLabel: z.string().min(1),
-    ctaLink: z.string().min(1),
-  })
-  .strict()
-
 // -----------------------------------------------------------------------------
 // Container composition (no recursion — slot content is a narrower set).
 // -----------------------------------------------------------------------------
@@ -594,7 +566,6 @@ export const BlockSchema = z.discriminatedUnion("t", [
   VideoRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
   WatchHomeHeroBlockSchema,
-  WatchHomePromoBlockSchema,
 ])
 
 export type Block = z.infer<typeof BlockSchema>

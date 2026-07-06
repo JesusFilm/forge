@@ -21,10 +21,6 @@ import type { Section as SectionBlockType } from "./Section"
 import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestions"
 import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
-import type {
-  WatchHomePromo as WatchHomePromoType,
-  WatchHomePromoBlockData,
-} from "@/components/home/WatchHomePromo"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
@@ -74,11 +70,6 @@ const NavigationCarousel = dynamic(() =>
     default: m.NavigationCarousel,
   })),
 ) as typeof NavigationCarouselType
-const WatchHomePromo = dynamic(() =>
-  import("@/components/home/WatchHomePromo").then((m) => ({
-    default: m.WatchHomePromo,
-  })),
-) as typeof WatchHomePromoType
 export type { Section } from "@/lib/content"
 
 /**
@@ -125,7 +116,6 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "CardBlock",
   "VideoRecommendationsBlock",
   "WatchHomeHeroBlock",
-  "WatchHomePromoBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -277,10 +267,6 @@ function renderAdminBlock(
       }
       return null
     }
-    case "WatchHomePromoBlock":
-      return (
-        <WatchHomePromo data={block as unknown as WatchHomePromoBlockData} />
-      )
     case "WatchHomeHeroBlock":
       // The Watch homepage route renders this placeholder with the static
       // hero model it already resolved. Other routes deliberately ignore it.

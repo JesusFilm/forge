@@ -173,15 +173,6 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
   watchHomeHero: {
     t: "watchHomeHero",
   },
-  watchHomePromo: {
-    t: "watchHomePromo",
-    heading: "Mission",
-    description: "Mission body",
-    invitationHeading: "Help build",
-    invitationDescription: "Join the beta.",
-    ctaLabel: "Become a beta tester",
-    ctaLink: "https://example.com/beta",
-  },
 }
 
 // Sanity guard so the fixture set stays in lockstep with the typed map.
@@ -328,13 +319,6 @@ describe("Edge cases", () => {
     const type = schema.getType("MediaCollectionItem")
     expect(
       type && "getFields" in type ? type.getFields().videoSlug : null,
-    ).toBeDefined()
-  })
-
-  it("exposes WatchHomePromoBlock for authored mission promo content", () => {
-    const type = schema.getType("WatchHomePromoBlock")
-    expect(
-      type && "getFields" in type ? type.getFields().ctaLabel : null,
     ).toBeDefined()
   })
 

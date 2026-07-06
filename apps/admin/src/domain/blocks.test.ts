@@ -14,7 +14,6 @@ import {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
-  WatchHomePromoBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -79,18 +78,6 @@ describe("BlockSchema — all top-level types validate", () => {
       value: { t: "watchHomeHero" },
     },
     {
-      name: "watchHomePromo",
-      value: {
-        t: "watchHomePromo",
-        heading: "Mission",
-        description: "Mission body",
-        invitationHeading: "Help build",
-        invitationDescription: "Join the beta.",
-        ctaLabel: "Become a beta tester",
-        ctaLink: "https://example.com/beta",
-      },
-    },
-    {
       name: "container",
       value: {
         t: "container",
@@ -117,35 +104,17 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   }
 
-  it("covers all 19 top-level block types listed in the experience schema", () => {
+  it("covers all 18 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
     // videoRecommendations variant (schema only; no cms precedent) +
     // watchHomeHero's homepage-only placeholder.
-    expect(samples.length).toBe(19)
+    expect(samples.length).toBe(18)
   })
 
   it("accepts watchHomeHero as a placement-only placeholder", () => {
     const result = WatchHomeHeroBlockSchema.safeParse({
       t: "watchHomeHero",
       sectionKey: "watch-home-hero",
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it("accepts watchHomePromo as authored mission promo content", () => {
-    const result = WatchHomePromoBlockSchema.safeParse({
-      t: "watchHomePromo",
-      sectionKey: "watch-home-promo",
-      heading: "Mission",
-      description: "Mission body",
-      points: [{ icon: "globe", title: "Translated", description: "Body" }],
-      highlightsHeading: "What we are building next",
-      highlights: [{ title: "Tools", description: "Body" }],
-      invitationHeading: "Help build",
-      invitationGradientText: "the next generation",
-      invitationDescription: "Join the beta.",
-      ctaLabel: "Become a beta tester",
-      ctaLink: "https://example.com/beta",
     })
     expect(result.success).toBe(true)
   })

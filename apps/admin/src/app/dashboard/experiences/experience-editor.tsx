@@ -320,13 +320,6 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: MonitorPlay,
   },
   {
-    key: "watchHomePromo",
-    label: "Watch Home Promo",
-    description: "Mission promo and beta tester CTA for the Watch homepage.",
-    category: "Content",
-    icon: HandHeart,
-  },
-  {
     key: "routeVideoHero",
     label: "Route Video Hero",
     description: "Hero bound to the current video route.",
@@ -1425,9 +1418,7 @@ export function ExperienceEditor({
       )
     }
 
-    if (block.key === "watchHomeHero" || block.key === "watchHomePromo") {
-      return isHomepage
-    }
+    if (block.key === "watchHomeHero") return isHomepage
 
     return isTemplate || block.category !== "Route"
   })
