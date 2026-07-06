@@ -71,6 +71,16 @@ document the dashboard as canonical.
 - No shared `.jesusfilm.org` cookie dependency for admin.
 - No public signup while migration fallback exists.
 - OAuth redirect URLs must be exact-match per app environment.
+- The first-party seed (`src/scripts/seed-first-party-apps.ts`) is
+  **upsert-only and never prunes.** Editing a client's redirect URIs is scrubbed
+  into the DB on the next deploy (the upsert `update` branch replaces
+  `redirectUris` wholesale), but **removing or renaming a client's `clientId` in
+  the seed leaves the old OAuth client row live** — the seeder never deletes it.
+  Retiring a client (DNS cutover to a new id, or decommission) means
+  disabling/deleting its row out-of-band, not just dropping it from the seed.
+  This matters most when a redirect host is reclaimable (e.g. a raw
+  `*.up.railway.app` domain) — see
+  `docs/solutions/auth/public-repo-oauth-seed-railway-domain-exposure-calculus.md`.
 - Operator dashboard access is disabled in production until the developer
   console becomes an OAuth relying client.
 - Token issuance must be scoped, audience-bound, environment-bound, expiring,
