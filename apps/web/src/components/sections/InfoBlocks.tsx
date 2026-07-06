@@ -55,6 +55,7 @@ export function InfoBlocks({ data }: InfoBlocksProps) {
   const gridClass = isDarkGlass
     ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3"
     : "grid gap-8 md:grid-cols-2 lg:grid-cols-3"
+  const innerClass = isDarkTreatment ? "w-full" : "container mx-auto px-4"
   const cardClass = isGlass
     ? "group relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
     : isDarkGlass
@@ -63,7 +64,7 @@ export function InfoBlocks({ data }: InfoBlocksProps) {
 
   return (
     <section id={id} className={sectionClass}>
-      <div className="container mx-auto px-4">
+      <div className={innerClass}>
         {heading && <h2 className={headingClass}>{heading}</h2>}
         {intro && <p className={`mb-4 ${mutedTextClass}`}>{intro}</p>}
         {description && <p className="mb-6">{description}</p>}

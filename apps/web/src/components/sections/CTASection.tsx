@@ -34,10 +34,13 @@ export function CTASection({ data }: CTASectionProps) {
     isTransparent || isSecondary
       ? "inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       : "inline-block rounded bg-gray-800 px-6 py-3 font-medium text-white hover:bg-gray-900"
+  const innerClass = isTransparent
+    ? "w-full text-center"
+    : "container mx-auto px-4 text-center"
 
   return (
     <section id={id} className={sectionClass}>
-      <div className="container mx-auto px-4 text-center">
+      <div className={innerClass}>
         <h2 className="mb-4 text-3xl font-semibold">{heading}</h2>
         <p className={bodyClass}>{body}</p>
         {buttonLink && (
