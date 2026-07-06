@@ -20,6 +20,7 @@ import { resolvePosterUrl } from "@/lib/url"
 import { stripHtmlSuffix } from "@/lib/url-shape"
 
 const TITLE_SUFFIX = "| Jesus Film Project"
+const TITLE_SUFFIX_TEXT = "Jesus Film Project"
 
 /**
  * Build the canonical absolute URL for a watch page in the `.html` shape,
@@ -78,6 +79,13 @@ function getOgLocale(locale: string): string {
   if (OG_LOCALE_OVERRIDES[locale]) return OG_LOCALE_OVERRIDES[locale]
   if (locale.includes("-")) return locale.replace(/-/g, "_")
   return `${locale}_${locale.toUpperCase()}`
+}
+
+function withTitleSuffix(title: string): string {
+  const trimmed = title.trim()
+  if (!trimmed) return `Watch ${TITLE_SUFFIX}`
+  if (trimmed.endsWith(TITLE_SUFFIX_TEXT)) return trimmed
+  return `${trimmed} ${TITLE_SUFFIX}`
 }
 
 const DEFAULT_OG_IMAGE = {
@@ -306,11 +314,11 @@ function toMetadata(
   const fallbackTitle = options?.slug
     ? `${options.slug} ${TITLE_SUFFIX}`
     : "Watch | Jesus Film Project"
-  const title = cms?.title ?? fallbackTitle
+  const title = cms?.title ? withTitleSuffix(cms.title) : fallbackTitle
   const description =
     cms?.description ??
     "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages."
-  const ogTitle = cms?.ogTitle ?? title
+  const ogTitle = cms?.ogTitle ? withTitleSuffix(cms.ogTitle) : title
   const ogDescription = cms?.ogDescription ?? description
   const ogImage = cms?.ogImage
     ? {
