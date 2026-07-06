@@ -31,7 +31,7 @@ Admin data store and the web cache is refreshed.
 2. `apps/web/src/app/[locale]/[htmlLang]/page.tsx` - static-hero shell logic
    when the builder homepage is absent.
 3. `apps/web/src/components/home/WatchHomeExperiencePage.tsx` - static hero,
-   builder blocks, and static promo/footer composition.
+   builder blocks, and static footer composition.
 4. `apps/web/src/components/sections/MediaCollection.tsx` - Watch-home styled
    media collection renderer.
 
@@ -47,9 +47,9 @@ Admin data store and the web cache is refreshed.
    other rows use `grid`.
 4. Revalidate or redeploy the public web cache after the production data is
    published.
-5. Smoke `/watch` in production: static hero still renders, builder body rows
-   render above the static promo/footer, hover backdrops update, and cards
-   navigate.
+5. Smoke `/watch` in production: static hero still renders, builder media rows
+   and promo block render above the static footer, hover backdrops update, and
+   cards navigate.
 
 ## Constraints
 

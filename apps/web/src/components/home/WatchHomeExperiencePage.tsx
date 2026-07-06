@@ -1,7 +1,6 @@
 import Image from "next/image"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
-import { WatchHomePromo } from "@/components/home/WatchHomePromo"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
@@ -92,7 +91,6 @@ export function WatchHomeExperiencePage({
               />
             ),
           )}
-          <WatchHomePromo />
           <WatchHomeFooter />
         </div>
       </div>

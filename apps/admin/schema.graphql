@@ -276,7 +276,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock | WatchHomePromoBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -1711,6 +1711,33 @@ enum WatchEventType {
 type WatchHomeHeroBlock {
   sectionKey: String
   t: String
+}
+
+"""
+Watch homepage mission promo and beta tester CTA block authored in Experience Builder.
+"""
+type WatchHomePromoBlock {
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  eyebrow: String
+  heading: String
+  highlights: [WatchHomePromoCard!]!
+  highlightsHeading: String
+  invitationDescription: String
+  invitationEyebrow: String
+  invitationGradientText: String
+  invitationHeading: String
+  points: [WatchHomePromoCard!]!
+  sectionKey: String
+  t: String
+}
+
+"""Single card in WatchHomePromoBlock points or highlights."""
+type WatchHomePromoCard {
+  description: String
+  icon: String
+  title: String
 }
 
 """

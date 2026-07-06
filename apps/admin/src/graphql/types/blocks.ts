@@ -47,6 +47,8 @@ import type {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
+  WatchHomePromoBlockSchema,
+  WatchHomePromoCardSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
@@ -80,6 +82,8 @@ type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
+type WatchHomePromoBlock = z.infer<typeof WatchHomePromoBlockSchema>
+type WatchHomePromoCard = z.infer<typeof WatchHomePromoCardSchema>
 
 /** Surfaces unknown stored `t` discriminators as GraphQL errors instead of silently dropping. */
 export class UnknownBlockKindError extends Error {
@@ -217,6 +221,17 @@ InfoBlockItemRef.implement({
   description: "Single entry in InfoBlocksBlock.blocks.",
   fields: (t) => ({
     icon: t.exposeString("icon"),
+    title: t.exposeString("title"),
+    description: t.exposeString("description"),
+  }),
+})
+
+const WatchHomePromoCardRef =
+  builder.objectRef<WatchHomePromoCard>("WatchHomePromoCard")
+WatchHomePromoCardRef.implement({
+  description: "Single card in WatchHomePromoBlock points or highlights.",
+  fields: (t) => ({
+    icon: t.exposeString("icon", { nullable: true }),
     title: t.exposeString("title"),
     description: t.exposeString("description"),
   }),
@@ -695,6 +710,42 @@ WatchHomeHeroBlockRef.implement({
   }),
 })
 
+const WatchHomePromoBlockRef = builder.objectRef<WatchHomePromoBlock>(
+  "WatchHomePromoBlock",
+)
+WatchHomePromoBlockRef.implement({
+  description:
+    "Watch homepage mission promo and beta tester CTA block authored in Experience Builder.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    eyebrow: t.exposeString("eyebrow", { nullable: true }),
+    heading: t.exposeString("heading"),
+    description: t.exposeString("description"),
+    points: t.field({
+      type: [WatchHomePromoCardRef],
+      nullable: false,
+      resolve: (row) => row.points,
+    }),
+    highlightsHeading: t.exposeString("highlightsHeading", { nullable: true }),
+    highlights: t.field({
+      type: [WatchHomePromoCardRef],
+      nullable: false,
+      resolve: (row) => row.highlights,
+    }),
+    invitationEyebrow: t.exposeString("invitationEyebrow", {
+      nullable: true,
+    }),
+    invitationHeading: t.exposeString("invitationHeading"),
+    invitationGradientText: t.exposeString("invitationGradientText", {
+      nullable: true,
+    }),
+    invitationDescription: t.exposeString("invitationDescription"),
+    ctaLabel: t.exposeString("ctaLabel"),
+    ctaLink: t.exposeString("ctaLink"),
+  }),
+})
+
 const ContainerSlotBlockRef =
   builder.objectRef<ContainerSlotBlock>("ContainerSlotBlock")
 ContainerSlotBlockRef.implement({
@@ -799,6 +850,7 @@ export const T_TO_TYPENAME = {
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
   watchHomeHero: "WatchHomeHeroBlock",
+  watchHomePromo: "WatchHomePromoBlock",
 } as const satisfies Record<
   Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
   string
@@ -849,6 +901,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
     WatchHomeHeroBlockRef,
+    WatchHomePromoBlockRef,
   ],
   resolveType: (value: Block) => resolveBlockTypename(value),
 })
