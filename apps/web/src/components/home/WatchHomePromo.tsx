@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Clapperboard, Globe2, UsersRound } from "lucide-react"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 const points = [
   {
@@ -44,7 +45,7 @@ export function WatchHomePromo() {
   return (
     <section className="relative overflow-hidden bg-[linear-gradient(135deg,rgba(69,10,29,0.6),rgba(88,28,135,0.2),rgba(234,88,12,0.1))] py-[4.5rem] text-white">
       <div className="absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-45 mix-blend-multiply" />
-      <div className="relative mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="flex flex-col gap-14">
           <div className="max-w-3xl space-y-4">
             <p className="text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
@@ -64,7 +65,7 @@ export function WatchHomePromo() {
             {points.map(({ Icon, title, description }) => (
               <article
                 key={title}
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1 hover:bg-white/10"
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
               >
                 <Icon
                   className="h-20 w-20 text-white/20 mix-blend-overlay"
@@ -88,7 +89,7 @@ export function WatchHomePromo() {
               {highlights.map((highlight) => (
                 <article
                   key={highlight.title}
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-stone-950/20 p-6 transition-transform duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-stone-900/60"
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-stone-950/20 p-6 transition-colors duration-300 hover:border-white/20 hover:bg-stone-900/60"
                 >
                   <h3 className="text-lg font-semibold text-white">
                     {highlight.title}

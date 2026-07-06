@@ -2265,6 +2265,15 @@ export type WatchHeroPlayerBlock = {
   video: WatchVideoRecord
   variant: WatchVariant
   playableLanguageCount?: number
+  nextWatchItem?: WatchNextWatchItem | null
+}
+
+export type WatchNextWatchItem = {
+  parentSlug: string
+  slug: string
+  title: string | null
+  documentId: string
+  kind: "chapter" | "episode"
 }
 
 /**
@@ -2343,6 +2352,7 @@ const HERO_PLAYER_REJECTION_MESSAGE =
 export function buildHeroBlock(
   video: WatchVideoRecord,
   variant: WatchVariant,
+  canonicalParent: WatchParent | null = null,
 ): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
@@ -2350,6 +2360,64 @@ export function buildHeroBlock(
     variant,
     playableLanguageCount:
       video.playableLanguageCount ?? countPlayableWatchVariants(video.variants),
+    nextWatchItem: buildNextWatchItem(canonicalParent, video),
+  }
+}
+
+export function buildNextWatchItem(
+  canonicalParent: WatchParent | null,
+  video: WatchVideoRecord,
+): WatchNextWatchItem | null {
+  const ownChildren = video.children.filter(
+    (child): child is WatchChild & { slug: string } =>
+      isPlayableWatchChild(child),
+  )
+  const currentSlug =
+    typeof video.slug === "string" && video.slug.length > 0 ? video.slug : null
+
+  if (ownChildren.length > 0 && currentSlug != null) {
+    return nextWatchItemFromChild(currentSlug, ownChildren[0]!)
+  }
+
+  if (!canonicalParent?.slug) return null
+  const activeIndex = canonicalParent.children.findIndex(
+    (child) => child.documentId === video.documentId,
+  )
+  if (activeIndex < 0 || activeIndex >= canonicalParent.children.length - 1) {
+    return null
+  }
+  const nextChild = canonicalParent.children
+    .slice(activeIndex + 1)
+    .find(isPlayableWatchChild)
+  if (!nextChild) return null
+
+  return nextWatchItemFromChild(canonicalParent.slug, nextChild)
+}
+
+function isPlayableWatchChild(
+  child: WatchChild,
+): child is WatchChild & { slug: string } {
+  return (
+    child.slug != null &&
+    child.slug.length > 0 &&
+    child.muxPlaybackId != null &&
+    child.muxPlaybackId.length > 0
+  )
+}
+
+function nextWatchItemFromChild(
+  parentSlug: string,
+  child: WatchChild & { slug: string },
+): WatchNextWatchItem {
+  return {
+    parentSlug,
+    slug: child.slug,
+    title: child.title,
+    documentId: child.documentId,
+    kind:
+      child.label === "EPISODE" || child.label === "episode"
+        ? "episode"
+        : "chapter",
   }
 }
 
@@ -2589,7 +2657,7 @@ export function mergeWatchExperience({
     if (fallback !== null) result.push(fallback)
   }
 
-  pushSlot("HeroPlayer", buildHeroBlock(video, variant))
+  pushSlot("HeroPlayer", buildHeroBlock(video, variant, canonicalParent))
   pushSlot("SiblingCarousel", buildSiblingCarouselBlock(canonicalParent, video))
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))

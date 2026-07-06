@@ -4,17 +4,19 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
+  type PointerEvent,
   type ReactNode,
 } from "react"
 import { flushSync } from "react-dom"
 import Image, { type ImageLoaderProps } from "next/image"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
 import type {
@@ -32,6 +34,7 @@ import type { WatchHeroPlayerBlock } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
@@ -42,6 +45,11 @@ import {
   useWatchProgressRecorder,
 } from "@/lib/watch-progress-client"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+} from "@/lib/routes"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -135,6 +143,7 @@ const HERO_POSTER_TIME_SECONDS = 2
 const HERO_POSTER_MAX_WIDTH = 1280
 const WATCH_NOW_LINK_CLASS =
   "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
+const WATCH_NEXT_WINDOW_SECONDS = 5
 
 function isResumableProgress(videoId: string): boolean {
   const savedProgress = getWatchProgress(videoId)
@@ -255,15 +264,23 @@ export function HeroPlayer({
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
   const searchParams = useSearchParams()
+  const router = useRouter()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  const [nextPlaybackState, setNextPlaybackState] = useState({
+    currentTime: 0,
+    duration: 0,
+    paused: true,
+    ended: false,
+  })
+  const nextNavigationStartedRef = useRef(false)
   const setPlayerRef = useCallback(
     (next: MuxPlayerRef | null) => {
       playerRef.current = next
-      setPlayer(next)
+      setPlayer((current) => (current === next ? current : next))
       onPlayerReady?.(next)
     },
     [onPlayerReady],
@@ -419,6 +436,19 @@ export function HeroPlayer({
   const [videoReady, setVideoReady] = useState(false)
   const [playbackBuffering, setPlaybackBuffering] = useState(false)
   const [playerFrameRevealed, setPlayerFrameRevealed] = useState(false)
+  const [watchNextModeState, setWatchNextModeState] = useState<{
+    videoId: string
+    mode: "armed" | "manual"
+  } | null>(null)
+  const watchNextModeRef = useRef<typeof watchNextModeState>(null)
+  const previousNextPlaybackRef = useRef<{
+    currentTime: number
+    duration: number
+    remainingSeconds: number
+    paused: boolean
+  } | null>(null)
+  const seekInProgressRef = useRef(false)
+  const suppressNextThresholdRef = useRef(false)
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
     setPlaybackBuffering(false)
@@ -433,6 +463,180 @@ export function HeroPlayer({
   const handlePlaybackReady = useCallback(() => {
     setPlaybackBuffering(false)
   }, [])
+
+  const nextWatchHref = useMemo(() => {
+    const nextWatchItem = block.nextWatchItem
+    const parentSlug =
+      nextWatchItem != null ? tryAsContentSlug(nextWatchItem.parentSlug) : null
+    const slug =
+      nextWatchItem != null ? tryAsContentSlug(nextWatchItem.slug) : null
+    const lang = languageSlug != null ? tryAsLocaleSlug(languageSlug) : null
+    if (!nextWatchItem || !parentSlug || !slug || !lang) return null
+    return watchEpisodePath(parentSlug, slug, lang, { autoplay: true })
+  }, [block.nextWatchItem, languageSlug])
+
+  const navigateToNextWatchItem = useCallback(() => {
+    if (nextWatchHref == null || nextNavigationStartedRef.current) return
+    nextNavigationStartedRef.current = true
+    router.push(nextWatchHref)
+  }, [nextWatchHref, router])
+
+  useEffect(() => {
+    nextNavigationStartedRef.current = false
+  }, [video.documentId])
+
+  const watchNextMode =
+    watchNextModeState?.videoId === video.documentId
+      ? watchNextModeState.mode
+      : null
+  const watchNextManual = watchNextMode === "manual"
+  const watchNextAutoArmed = watchNextMode === "armed"
+
+  useEffect(() => {
+    watchNextModeRef.current = watchNextModeState
+  }, [watchNextModeState])
+
+  useEffect(() => {
+    if (!player || typeof player.addEventListener !== "function") {
+      return
+    }
+
+    previousNextPlaybackRef.current = null
+    seekInProgressRef.current = false
+    suppressNextThresholdRef.current = false
+
+    const sync = (eventName: string) => {
+      const duration = Number.isFinite(player.duration) ? player.duration : 0
+      const currentTime = Number.isFinite(player.currentTime)
+        ? player.currentTime
+        : 0
+      const remainingSeconds =
+        duration > 0 ? duration - currentTime : Number.POSITIVE_INFINITY
+      const previous = previousNextPlaybackRef.current
+      const currentMode = watchNextModeRef.current
+      const currentModeApplies = currentMode?.videoId === video.documentId
+      const crossingCountdownThreshold =
+        eventName === "timeupdate" &&
+        previous != null &&
+        previous.duration > 0 &&
+        previous.remainingSeconds > WATCH_NEXT_WINDOW_SECONDS &&
+        remainingSeconds >= 0 &&
+        remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS &&
+        currentTime >= previous.currentTime &&
+        !player.paused &&
+        !seekInProgressRef.current &&
+        !suppressNextThresholdRef.current
+      const seekedIntoCountdownWindow =
+        (eventName === "seeked" ||
+          seekInProgressRef.current ||
+          suppressNextThresholdRef.current) &&
+        remainingSeconds >= 0 &&
+        remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS
+      const outsideCountdownWindow =
+        remainingSeconds < 0 || remainingSeconds > WATCH_NEXT_WINDOW_SECONDS
+
+      if (currentModeApplies && outsideCountdownWindow) {
+        watchNextModeRef.current = null
+        setWatchNextModeState(null)
+      } else if (
+        seekedIntoCountdownWindow &&
+        nextWatchHref != null &&
+        (!currentModeApplies || currentMode.mode !== "manual")
+      ) {
+        const nextMode = { videoId: video.documentId, mode: "manual" } as const
+        watchNextModeRef.current = nextMode
+        setWatchNextModeState(nextMode)
+      } else if (
+        crossingCountdownThreshold &&
+        nextWatchHref != null &&
+        (!currentModeApplies || currentMode.mode !== "manual")
+      ) {
+        const nextMode = { videoId: video.documentId, mode: "armed" } as const
+        watchNextModeRef.current = nextMode
+        setWatchNextModeState(nextMode)
+      }
+
+      if (eventName === "timeupdate" && suppressNextThresholdRef.current) {
+        suppressNextThresholdRef.current = false
+      }
+
+      previousNextPlaybackRef.current = {
+        currentTime,
+        duration,
+        remainingSeconds,
+        paused: player.paused,
+      }
+      setNextPlaybackState((current) => {
+        if (
+          current.currentTime === currentTime &&
+          current.duration === duration &&
+          current.paused === player.paused &&
+          current.ended === player.ended
+        ) {
+          return current
+        }
+        return {
+          currentTime,
+          duration,
+          paused: player.paused,
+          ended: player.ended,
+        }
+      })
+    }
+    const handleEnded = () => {
+      sync("ended")
+      if (
+        watchNextModeRef.current?.videoId === video.documentId &&
+        watchNextModeRef.current.mode === "armed"
+      ) {
+        navigateToNextWatchItem()
+      }
+    }
+    const handleSeeking = () => {
+      seekInProgressRef.current = true
+      sync("seeking")
+    }
+    const handleSeeked = () => {
+      sync("seeked")
+      seekInProgressRef.current = false
+      const duration = Number.isFinite(player.duration) ? player.duration : 0
+      const currentTime = Number.isFinite(player.currentTime)
+        ? player.currentTime
+        : 0
+      const remainingSeconds =
+        duration > 0 ? duration - currentTime : Number.POSITIVE_INFINITY
+      suppressNextThresholdRef.current =
+        remainingSeconds >= 0 && remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS
+    }
+    const handleTimeUpdate = () => sync("timeupdate")
+    const handleDurationChange = () => sync("durationchange")
+    const handleLoadedMetadata = () => sync("loadedmetadata")
+    const handlePlay = () => sync("play")
+    const handlePause = () => sync("pause")
+    const events = [
+      ["timeupdate", handleTimeUpdate],
+      ["durationchange", handleDurationChange],
+      ["loadedmetadata", handleLoadedMetadata],
+      ["play", handlePlay],
+      ["pause", handlePause],
+    ] as const
+
+    sync("init")
+    events.forEach(([event, listener]) =>
+      player.addEventListener(event, listener),
+    )
+    player.addEventListener("seeking", handleSeeking)
+    player.addEventListener("seeked", handleSeeked)
+    player.addEventListener("ended", handleEnded)
+    return () => {
+      events.forEach(([event, listener]) =>
+        player.removeEventListener(event, listener),
+      )
+      player.removeEventListener("seeking", handleSeeking)
+      player.removeEventListener("seeked", handleSeeked)
+      player.removeEventListener("ended", handleEnded)
+    }
+  }, [navigateToNextWatchItem, nextWatchHref, player, video.documentId])
 
   useEffect(() => {
     if (playerActivated || autoplayParam === "1" || heroPosterUrl == null) {
@@ -1106,6 +1310,47 @@ export function HeroPlayer({
             : ""
         }`
   }`
+  const remainingSeconds =
+    nextPlaybackState.duration > 0
+      ? nextPlaybackState.duration - nextPlaybackState.currentTime
+      : Number.POSITIVE_INFINITY
+  const watchNextWindowActive =
+    remainingSeconds >= 0 && remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS
+  const watchNextProgressPct = watchNextWindowActive
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          ((WATCH_NEXT_WINDOW_SECONDS - remainingSeconds) /
+            WATCH_NEXT_WINDOW_SECONDS) *
+            100,
+        ),
+      )
+    : 0
+  const showWatchNextButton =
+    chromeRevealed && nextWatchHref != null && watchNextWindowActive
+  const cancelWatchNextAutoAdvance = useCallback(() => {
+    if (watchNextWindowActive) {
+      const nextMode = { videoId: video.documentId, mode: "manual" } as const
+      watchNextModeRef.current = nextMode
+      setWatchNextModeState(nextMode)
+    }
+  }, [video.documentId, watchNextWindowActive])
+
+  const handleWatchNextSurfaceInteract = useCallback(
+    (event: PointerEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>) => {
+      const target = event.target
+      if (
+        target instanceof Element &&
+        target.closest('[data-testid="hero-player-watch-next"]')
+      ) {
+        return
+      }
+
+      cancelWatchNextAutoAdvance()
+    },
+    [cancelWatchNextAutoAdvance],
+  )
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1146,6 +1391,8 @@ export function HeroPlayer({
         data-mobile-portrait-preview={
           mobilePortraitPreviewEnabled ? "true" : "false"
         }
+        onPointerDownCapture={handleWatchNextSurfaceInteract}
+        onKeyDownCapture={handleWatchNextSurfaceInteract}
         className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} ${
           playbackFrameActive
             ? "overflow-hidden"
@@ -1361,6 +1608,7 @@ export function HeroPlayer({
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}
             onVisibilityChange={handleControlsVisibilityChange}
+            onWatchNextInteraction={cancelWatchNextAutoAdvance}
           />
         ) : null}
         <SubtitleOverlay
@@ -1368,6 +1616,35 @@ export function HeroPlayer({
           wrapperRef={wrapperRef}
           player={player}
         />
+        {showWatchNextButton ? (
+          <button
+            type="button"
+            data-testid="hero-player-watch-next"
+            data-kind={block.nextWatchItem?.kind ?? "chapter"}
+            data-manual={watchNextManual ? "true" : "false"}
+            data-auto-armed={watchNextAutoArmed ? "true" : "false"}
+            aria-label="Next Episode"
+            onClick={navigateToNextWatchItem}
+            className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
+              watchNextManual
+                ? "bg-white text-black ring-white hover:bg-white"
+                : "bg-black/70 text-white ring-white/20 hover:bg-black/80"
+            }`}
+          >
+            {!watchNextManual ? (
+              <span
+                aria-hidden="true"
+                data-testid="hero-player-watch-next-progress"
+                className="absolute inset-y-0 left-0 -z-10 bg-brand-red transition-[width] duration-200 ease-linear"
+                style={{ width: `${watchNextProgressPct}%` }}
+              />
+            ) : null}
+            <PlayIcon />
+            <span className="relative text-base font-bold leading-none">
+              Next Episode
+            </span>
+          </button>
+        ) : null}
       </div>
 
       {/*

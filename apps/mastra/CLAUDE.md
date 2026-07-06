@@ -446,10 +446,13 @@ returns ranked, cited **passages** (`{ status, sources, message? }`) and the
 agent's own LLM synthesizes the source-attributed answer — the tool generates
 nothing. When the RAG env vars are unset (or the service is unreachable), the
 tool returns an explicit `unavailable` status and the agent says it cannot
-ground an answer; retrieval is never required for the app to boot. Model is
-`openrouter/google/gemma-4-31b-it:free` (OpenRouter —
-auto-reads `OPENROUTER_API_KEY`); the other agents stay on `openai/...`, so both
-keys are needed. Memory lives in `src/mastra/memory.ts`, owns its own `InMemoryStore`
+ground an answer; retrieval is never required for the app to boot. Model is a
+fallback chain of the two free Gemma 4 OpenRouter models —
+`openrouter/google/gemma-4-31b-it:free` (primary, 1 retry) then
+`openrouter/google/gemma-4-26b-a4b-it:free` (feat-198 residual: the free tier
+errors intermittently). OpenRouter auto-reads `OPENROUTER_API_KEY`; the other
+agents stay on `openai/...`, so both keys are needed. Memory lives in
+`src/mastra/memory.ts`, owns its own `InMemoryStore`
 (never persists), and is mirrored — never imported — from admin (see that
 file's header for the why).
 

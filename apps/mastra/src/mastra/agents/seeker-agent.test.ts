@@ -71,6 +71,30 @@ describe("seeker agent", () => {
     expect(memory).toBe(getSeekerMemory())
   })
 
+  it("configures the free Gemma 4 fallback chain in primary-first order", async () => {
+    // Ordered on purpose: the runtime tries entries top-down, so a reorder
+    // must fail here.
+    const models = await seekerAgent.getModelList()
+    expect(
+      models?.map((m) => ({
+        modelId: m.model.modelId,
+        provider: m.model.provider,
+        maxRetries: m.maxRetries,
+      })),
+    ).toEqual([
+      {
+        modelId: "google/gemma-4-31b-it:free",
+        provider: "openrouter",
+        maxRetries: 1,
+      },
+      {
+        modelId: "google/gemma-4-26b-a4b-it:free",
+        provider: "openrouter",
+        maxRetries: 1,
+      },
+    ])
+  })
+
   it("applies a default maxSteps floor reusing the route's shared constant", async () => {
     // feat-202: the built-in /api/agents/seekerAgent surface carries no per-call
     // budget, so the constructor default is the only ceiling on the step
