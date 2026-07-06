@@ -34,6 +34,11 @@ export const REPLY_FAILURE_REASONS = [
   "invalid_request",
   "cancelled",
   "parse_error",
+  // feat-208 thread-gate rejections from Mastra, passed through verbatim:
+  // the conversation belongs to another identity / the per-user thread
+  // ceiling was hit. Distinct notices — never fold into generation_failed.
+  "thread_forbidden",
+  "thread_limit",
 ] as const
 
 export type ReplyFailureReason = (typeof REPLY_FAILURE_REASONS)[number]

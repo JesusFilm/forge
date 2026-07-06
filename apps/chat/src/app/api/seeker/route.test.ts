@@ -1,7 +1,23 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { handleSeekerProxyRequest, type SeekerProxyConfig } from "./route"
+import {
+  handleSeekerProxyRequest,
+  type SeekerProxyConfig,
+  type SeekerProxyHandlerInput,
+} from "./route"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
+
+// Wrapper injecting the (now-required, feat-208) server-resolved resourceId so
+// the pre-existing suites stay focused on their own concern. resourceId
+// behavior has its own describe block below.
+function runProxy(
+  input: Omit<SeekerProxyHandlerInput, "resourceId"> & { resourceId?: string },
+): Promise<Response> {
+  return handleSeekerProxyRequest({
+    resourceId: "anon:00000000-0000-4000-8000-000000000000",
+    ...input,
+  })
+}
 
 const BASE_CONFIG: SeekerProxyConfig = {
   enabled: true,
@@ -50,7 +66,7 @@ function readJson(body: unknown) {
 describe("handleSeekerProxyRequest — body validation", () => {
   it("returns 400 JSON (not SSE) on a malformed body, with no fetch", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -62,7 +78,7 @@ describe("handleSeekerProxyRequest — body validation", () => {
 
   it("rejects an over-length prompt with 400 and no fetch", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "x".repeat(8001), conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -73,7 +89,7 @@ describe("handleSeekerProxyRequest — body validation", () => {
 
   it("rejects an over-length conversationId with 400 and no fetch", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "x".repeat(201) }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -86,7 +102,7 @@ describe("handleSeekerProxyRequest — body validation", () => {
 describe("handleSeekerProxyRequest — gates", () => {
   it("flag off → config_missing error frame, no fetch", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, enabled: false },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -100,7 +116,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("SSRF: base host not in allowlist → ssrf_blocked, no fetch", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, allowedHosts: "trusted.internal" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -113,7 +129,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects a non-https base URL (bearer-in-cleartext guard) → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://mastra.internal" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -133,7 +149,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://localhost:4111" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -143,7 +159,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("SSRF: loopback http base host NOT in a set allowlist → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -167,7 +183,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -188,7 +204,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://[::1]:4111" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -205,7 +221,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://127.0.0.1:4111" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -222,7 +238,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -242,7 +258,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -255,7 +271,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects an http public host → ssrf_blocked, no fetch", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://evil.com" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -268,7 +284,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects http railway.internal.evil.com (suffix is a full-label match, not a substring) → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://railway.internal.evil.com" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -281,7 +297,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects http evilrailway.internal (no dot boundary) → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://evilrailway.internal" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -294,7 +310,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects http bare railway.internal (no leading label) → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://railway.internal" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -307,7 +323,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects http .railway.internal (empty leading label) → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://.railway.internal" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -320,7 +336,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects http foo..railway.internal (empty inner label) → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, baseUrl: "http://foo..railway.internal" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -333,7 +349,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("rejects a trailing-dot FQDN railway.internal. host → ssrf_blocked (pins fail-closed)", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -356,7 +372,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -369,7 +385,7 @@ describe("handleSeekerProxyRequest — gates", () => {
 
   it("SSRF: railway.internal http base host NOT in a set allowlist → ssrf_blocked", async () => {
     const fetchImpl = vi.fn()
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -393,7 +409,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: {
         ...BASE_CONFIG,
@@ -414,7 +430,7 @@ describe("handleSeekerProxyRequest — gates", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, allowedHosts: "mastra.internal" },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -433,7 +449,7 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hello", conversationId: "conv-7" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -446,6 +462,7 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
     expect(JSON.parse(init.body)).toEqual({
       prompt: "hello",
       threadId: "conv-7",
+      resourceId: "anon:00000000-0000-4000-8000-000000000000",
     })
   })
 
@@ -460,7 +477,7 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
         },
       ]),
     )
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -478,7 +495,7 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
       .mockResolvedValue(
         upstream([{ event: "error", data: { reason: "timeout" } }]),
       )
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -494,7 +511,7 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
       .mockResolvedValue(
         upstream([{ event: "error", data: { reason: "generation_failed" } }]),
       )
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -510,7 +527,7 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
       .mockResolvedValue(
         upstream([{ event: "token_delta", data: { text: "partial" } }]),
       )
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -556,7 +573,7 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
         }),
       )
     })
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -575,7 +592,7 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(new Response("nope", { status: 401 }))
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -589,7 +606,7 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(new Response("forbidden", { status: 403 }))
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -606,7 +623,7 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
         headers: { "content-type": "application/json" },
       }),
     )
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -620,7 +637,7 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(new Response("not json", { status: 503 }))
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -634,7 +651,7 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(new Response("Not found", { status: 404 }))
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -648,7 +665,7 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
 describe("handleSeekerProxyRequest — transport failures", () => {
   it("fetch rejection → network_error", async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error("boom"))
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -666,7 +683,7 @@ describe("handleSeekerProxyRequest — transport failures", () => {
       .mockRejectedValue(
         Object.assign(new Error("aborted"), { name: "AbortError" }),
       )
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -691,7 +708,7 @@ describe("handleSeekerProxyRequest — transport failures", () => {
         }),
       )
     })
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -715,7 +732,7 @@ describe("handleSeekerProxyRequest — transport failures", () => {
         )
       })
     })
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, timeoutMs: 5 },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -755,7 +772,7 @@ describe("handleSeekerProxyRequest — mid-stream read failures", () => {
         }),
       )
     })
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, timeoutMs: 5 },
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -786,7 +803,7 @@ describe("handleSeekerProxyRequest — mid-stream read failures", () => {
         }),
       )
     })
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: BASE_CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -806,13 +823,110 @@ describe("handleSeekerProxyRequest — mid-stream read failures", () => {
       json: () => new Promise(() => {}),
       body: null,
     } as unknown as Response)
-    const res = await handleSeekerProxyRequest({
+    const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, timeoutMs: 5 },
       fetchImpl: fetchImpl as unknown as typeof fetch,
     })
     expect(await proxyFrames(res)).toEqual([
       { event: "error", data: { reason: "config_missing" } },
+    ])
+  })
+})
+
+// ===========================================================================
+// feat-208 — memory resource keying, rolling anon cookie, thread-gate reasons
+// ===========================================================================
+
+describe("handleSeekerProxyRequest — resource keying (feat-208)", () => {
+  it("forwards the caller-resolved resourceId verbatim in the upstream body", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    await handleSeekerProxyRequest({
+      readJson: readJson({ text: "hello", conversationId: "conv-9" }),
+      config: BASE_CONFIG,
+      resourceId: "user:auth0|abc123",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    const [, init] = fetchImpl.mock.calls[0]
+    expect(JSON.parse(init.body).resourceId).toBe("user:auth0|abc123")
+  })
+
+  it("attaches the anon Set-Cookie to the SSE response (rolling reissue)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      anonSetCookie: "jfp_chat_anon_id=abc; Path=/; Max-Age=2592000; HttpOnly",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(res.status).toBe(200)
+    expect(res.headers.get("set-cookie")).toContain("jfp_chat_anon_id=abc")
+    expect(res.headers.get("content-type")).toContain("text/event-stream")
+  })
+
+  it("omits Set-Cookie when no anon cookie is being issued (signed-in path)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(res.headers.get("set-cookie")).toBeNull()
+  })
+})
+
+describe("handleSeekerProxyRequest — thread-gate reason passthrough (feat-208)", () => {
+  it.each(["thread_forbidden", "thread_limit"] as const)(
+    "relays an upstream %s error frame verbatim (never generation_failed)",
+    async (reason) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(upstream([{ event: "error", data: { reason } }]))
+      const res = await runProxy({
+        readJson: readJson({ text: "hi", conversationId: "c1" }),
+        config: BASE_CONFIG,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      })
+      expect(await proxyFrames(res)).toEqual([
+        { event: "error", data: { reason } },
+      ])
+    },
+  )
+
+  it("still folds unknown upstream reasons into generation_failed", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        upstream([{ event: "error", data: { reason: "some_future_reason" } }]),
+      )
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "generation_failed" } },
     ])
   })
 })

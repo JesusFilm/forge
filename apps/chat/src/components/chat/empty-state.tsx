@@ -30,6 +30,15 @@ export function EmptyState({
           ? "Answers come from Seeker, grounded in cited sources."
           : "Replies come from a stub for now; no agent is connected yet."}
       </p>
+      {/* Storage disclosure (feat-208): only when Seeker is live — the stub
+          path persists nothing server-side. Retention wording must track the
+          ai-chat retention windows (30d anon / 180d signed-in). */}
+      {seekerEnabled ? (
+        <p className="mt-2 max-w-[480px] text-[13px] leading-relaxed text-ash/80">
+          Conversations are saved to keep continuity between visits — anonymous
+          conversations are kept for 30 days.
+        </p>
+      ) : null}
       <div className="mt-10 border-t border-linen/5">
         {STARTERS.map((question) => (
           <button

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { STEP_CAPS } from "../budgets"
-import { getSeekerMemory } from "../memory"
+import { getAiChatMemory } from "../memory"
 import { seekerAgent } from "./seeker-agent"
 
 describe("seeker agent", () => {
@@ -66,9 +66,9 @@ describe("seeker agent", () => {
     expect(Object.keys(tools)).toContain("retrieveAnswer")
   })
 
-  it("attaches the seeker memory singleton", async () => {
+  it("attaches the shared ai-chat memory singleton (feat-208)", async () => {
     const memory = await seekerAgent.getMemory()
-    expect(memory).toBe(getSeekerMemory())
+    expect(memory).toBe(getAiChatMemory())
   })
 
   it("configures the free Gemma 4 fallback chain in primary-first order", async () => {

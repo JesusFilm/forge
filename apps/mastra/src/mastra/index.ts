@@ -116,6 +116,7 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import { startAiChatRetentionPurge } from "./ai-chat-retention"
 
 assertMastraRuntimeEnv()
 
@@ -591,3 +592,15 @@ export const mastra = new Mastra({
 })
 
 configureSearchEvalNativeSuiteRuntime(() => mastra)
+
+// ai-chat retention purge (feat-208): boot drain + daily timer over the
+// `ai_chat` schema. Gated to the deployed runtime (NODE_ENV=production) so a
+// build / `mastra dev` CLI-analysis import never fires DB I/O at module load;
+// it additionally no-ops unless a postgres backend is configured at all
+// (canAiChatDataPersist) — deliberately NOT the resolved ai-chat backend: the
+// kill-switch (AI_CHAT_MEMORY_BACKEND=memory) stops writes, never retention
+// on already-stored rows. Single-instance assumption: replicas would each run
+// redundant (harmless, wasteful) sweeps — add a leader guard before scaling out.
+if (env.NODE_ENV === "production") {
+  startAiChatRetentionPurge()
+}
