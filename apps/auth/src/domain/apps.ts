@@ -304,9 +304,10 @@ export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
-// Local environment only for now: chat's production hostname is not settled
-// (feat-229 PR2 adds production/preview once it is), and redirect URIs must be
-// exact-match per environment.
+// Local + production: chat's Railway-generated domain IS the settled prod
+// hostname for now (feat-231; no jesusfilm.org DNS yet). If the domain churns
+// or DNS fronting lands, update the seed and merge — it re-seeds on deploy.
+// Redirect URIs must be exact-match per environment.
 export const CHAT_APP_SEED: RegisteredAppSeed = {
   key: CHAT_APP_KEY,
   displayName: "Jesus Film Chat",
@@ -320,6 +321,20 @@ export const CHAT_APP_SEED: RegisteredAppSeed = {
       redirectUris: ["http://localhost:3200/api/auth/callback"],
       postLogoutRedirectUris: ["http://localhost:3200"],
       allowedOrigins: ["http://localhost:3200"],
+      defaultScopes: CHAT_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_chat_production",
+      redirectUris: [
+        "https://forgechat-production-a4f5.up.railway.app/api/auth/callback",
+      ],
+      postLogoutRedirectUris: [
+        "https://forgechat-production-a4f5.up.railway.app",
+      ],
+      allowedOrigins: ["https://forgechat-production-a4f5.up.railway.app"],
       defaultScopes: CHAT_DEFAULT_SCOPES,
       autoApprove: true,
     },
