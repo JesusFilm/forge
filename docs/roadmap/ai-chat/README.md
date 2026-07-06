@@ -11,11 +11,11 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 3, 2026)
+## Status (July 6, 2026)
 
 - **Total tickets:** 14
-- ✅ **Complete:** 11
-- 🟡 **In progress:** 1
+- ✅ **Complete:** 12
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 1
 - 🔴 **Blocked:** 1
 
@@ -36,4 +36,4 @@ from the main DS Year 1 roadmap.
 | [feat-208](feat-208-seeker-postgres-memory.md)               | Postgres-persisted Seeker memory + conversation persistence        | jian wei | P2       | 2026-07-10 | 5    | 🔵 not-started | —       |
 | [feat-209](feat-209-chat-per-conversation-urls.md)           | Per-conversation URLs + sidebar history                            | jian wei | P2       | 2026-07-15 | 3    | 🔴 blocked     | —       |
 | [feat-229](feat-229-chat-auth-register-oauth-client.md)      | Register chat OAuth client in apps/auth (chat auth enablement)     | jian wei | P1       | 2026-07-09 | 2    | ✅ complete    | #1453   |
-| [feat-231](feat-231-chat-auth-prod-oauth-client.md)          | Register chat deployed-environment OAuth clients (prod enablement) | jian wei | P2       | 2026-07-20 | 1    | 🟡 in-progress | —       |
+| [feat-231](feat-231-chat-auth-prod-oauth-client.md)          | Register chat deployed-environment OAuth clients (prod enablement) | jian wei | P2       | 2026-07-20 | 1    | ✅ complete    | #1465   |

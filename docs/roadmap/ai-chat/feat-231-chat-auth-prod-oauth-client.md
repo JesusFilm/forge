@@ -3,7 +3,7 @@ id: "feat-231"
 title: "Register chat deployed-environment OAuth clients (prod chat auth enablement)"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-20"
 duration: 1
 depends_on:
@@ -13,6 +13,33 @@ tags:
   - "infrastructure"
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-06 via [PR #1465](https://github.com/JesusFilm/forge/pull/1465) (`feat(auth): register jfp_chat_production OAuth client (feat-231)`).
+
+**What landed.** Deviation from the brief's two-step plan: the owner accepted chat's
+Railway-generated domain (`forgechat-production-a4f5.up.railway.app`) as the settled
+production hostname pre-DNS and approved its public exposure, so the PR went straight
+to `jfp_chat_production` (`kind: "production"`) — no preview client was ever
+registered. Identity-only scopes, public PKCE, autoApprove, exact-match redirect
+`https://forgechat-production-a4f5.up.railway.app/api/auth/callback`. Two
+review-hardening tests rode along: a global clientId-uniqueness assertion across all
+first-party seeds (upsert-by-clientId means a copy-paste collision would pass count
+and shape tests) and a negative test pinning `jfp_chat_production` out of the dynamic
+Railway-wildcard redirect path. Registration receipt confirmed on the post-merge auth
+deploy — `Seeded 5 first-party apps, 18 environments, 22 OAuth clients, and 10
+scopes.` — then chat's Railway env vars were set (`AUTH_CHAT_CLIENT_ID=jfp_chat_production`,
+no client secret), and the owner verified end-to-end in-browser on 2026-07-06:
+sign-in round trip, sign-out to anonymous, and the `?signin=failed` path.
+
+**Residual risk / follow-ups.** The seed row and the Railway domain live and die
+together: if the domain churns or `jesusfilm.org` DNS fronting lands, update/remove
+the seed entry BEFORE releasing the old domain — a released subdomain under a
+still-seeded redirect is a silent token-harvesting window on a consent-skipping
+client (bounded by identity-only scopes). `SEEKER_CHAT_ENABLED` stays off on the
+deployed instance until the inbound rate-cap work lands (the domain is now public in
+this repo, so URL obscurity is gone).
 
 ## Problem
 
