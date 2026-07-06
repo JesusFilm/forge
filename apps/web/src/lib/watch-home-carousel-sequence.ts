@@ -1,4 +1,7 @@
-import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
+import type {
+  WatchHomeMuxInsertAction,
+  WatchHomeMuxInsertConfig,
+} from "@/lib/watch-home-config"
 
 export const WATCH_HOME_TV_ADVANCE_THRESHOLD = 95
 export const WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY = "carousel-played-ids"
@@ -33,7 +36,8 @@ export type WatchHomeTvCarouselMuxSlide = {
   description: string | null
   label: string
   href: string | null
-  action: { label: string; url: string } | null
+  action: WatchHomeMuxInsertAction | null
+  secondaryAction: { label: string; type: "watch-short-film" } | null
   posterUrl: string | null
   thumbnailUrl: string | null
   imageAlt: string
@@ -587,6 +591,9 @@ function muxInsertToSlide(
     label: overlay.label,
     href: null,
     action: overlay.action,
+    secondaryAction: overlay.action
+      ? { label: "Watch Short Film", type: "watch-short-film" }
+      : null,
     posterUrl,
     thumbnailUrl: muxPosterUrl(playbackId, 640),
     imageAlt: title,
