@@ -3,7 +3,7 @@ id: "feat-231"
 title: "Register chat deployed-environment OAuth clients (prod chat auth enablement)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-20"
 duration: 1
 depends_on:
