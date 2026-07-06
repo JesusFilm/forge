@@ -16,18 +16,6 @@ const HEADING_TAG = {
   h6: "h6",
 } as const
 
-function BoldLeadParagraph({ text }: { text: string }) {
-  const words = text.split(" ")
-  const boldPart = words.slice(0, 3).join(" ")
-  const rest = text.slice(boldPart.length)
-  return (
-    <p className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
-      <span className="font-bold text-white">{boldPart}</span>
-      {rest}
-    </p>
-  )
-}
-
 export function Text({ data }: TextProps) {
   const {
     id,
@@ -71,7 +59,12 @@ export function Text({ data }: TextProps) {
         {paragraphs.length > 0 && (
           <div>
             {paragraphs.map((text, i) => (
-              <BoldLeadParagraph key={i} text={text} />
+              <p
+                key={i}
+                className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl"
+              >
+                {text}
+              </p>
             ))}
           </div>
         )}
