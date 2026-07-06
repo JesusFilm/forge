@@ -37,6 +37,7 @@ function makeData(
     title: "Related",
     subtitle: null,
     mediaDescription: null,
+    backgroundColor: null,
     categoryLabel: null,
     itemsSource: "routeVideoChildren",
     mediaCtaLink: null,
@@ -192,5 +193,34 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(container.textContent).toContain("Intro copy")
     expect(container.textContent).toContain("Footer copy")
+  })
+
+  it("uses the authored background color as the media collection tint", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            backgroundColor: "#123456",
+            itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "episode-one",
+                titleOverride: "Episode One",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-section"]',
+    )
+    expect(section?.style.backgroundColor).toBe("rgb(18, 52, 86)")
   })
 })

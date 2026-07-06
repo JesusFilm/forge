@@ -42,8 +42,65 @@ type HoverBackdropLayer = {
   state: "entering" | "exiting"
 }
 
+const MEDIA_COLLECTION_TINTS: Record<string, string> = {
+  default: "#050505",
+  dark: "#050505",
+  primary: "#172554",
+  cosmic: "#312e81",
+  purple: "#91214A",
+  red: "#7f1d1d",
+  rose: "#9f1239",
+  blue: "#1e3a8a",
+  teal: "#134e4a",
+  green: "#14532d",
+  amber: "#92400e",
+}
+
 function backgroundImageStyle(imageUrl: string | null) {
   return imageUrl ? { backgroundImage: `url("${imageUrl}")` } : undefined
+}
+
+function normalizeTintColor(value: unknown): string | null {
+  if (typeof value !== "string") return null
+
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  return MEDIA_COLLECTION_TINTS[trimmed] ?? trimmed
+}
+
+function hexToRgb(value: string): { r: number; g: number; b: number } | null {
+  const match = /^#([0-9a-fA-F]{6})$/.exec(value.trim())
+  if (!match) return null
+
+  const hex = match[1]
+  return {
+    r: Number.parseInt(hex.slice(0, 2), 16),
+    g: Number.parseInt(hex.slice(2, 4), 16),
+    b: Number.parseInt(hex.slice(4, 6), 16),
+  }
+}
+
+function alphaColor(color: string, opacity: number): string {
+  const rgb = hexToRgb(color)
+  if (!rgb) return color
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
+}
+
+function tintOverlayStyle(
+  backgroundColor: string | null,
+  isRail: boolean,
+): CSSProperties | undefined {
+  if (!backgroundColor) return undefined
+
+  const strong = alphaColor(backgroundColor, isRail ? 0.92 : 0.86)
+  const soft = alphaColor(backgroundColor, isRail ? 0.38 : 0.34)
+  const deep = alphaColor("#050505", isRail ? 0.62 : 0.76)
+
+  return {
+    background: `linear-gradient(to top right, ${deep}, ${soft} 42%, ${strong})`,
+  }
 }
 
 function backdropLayerStyle(
@@ -64,6 +121,7 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
     title,
     subtitle,
     mediaDescription: description,
+    backgroundColor,
     categoryLabel,
     mediaCtaLink: ctaLink,
     mediaCtaLabel: rawCtaLabel,
@@ -108,6 +166,7 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
       ctaLabel={ctaLabel}
       footerText={footerText}
       variant={variant}
+      backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
     />
@@ -143,6 +202,7 @@ function WatchHomeMediaCollection({
   ctaLabel,
   footerText,
   variant,
+  backgroundColor,
   showItemNumbers,
   items,
 }: {
@@ -154,6 +214,7 @@ function WatchHomeMediaCollection({
   ctaLabel: string | null
   footerText: string | null
   variant: string | null
+  backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
 }) {
@@ -172,6 +233,9 @@ function WatchHomeMediaCollection({
     HoverBackdropLayer[]
   >([])
   const watchHref = ctaLink ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
+  const sectionBackgroundColor =
+    backgroundColor ?? (isRail ? "#5b1537" : "#050505")
+  const tintStyle = tintOverlayStyle(backgroundColor, isRail)
 
   function updateHoverBackground(imageUrl: string | null) {
     if (imageUrl) {
@@ -246,10 +310,12 @@ function WatchHomeMediaCollection({
       }}
       className={cn(
         "scroll-mt-24 relative overflow-hidden py-16 text-white",
-        isRail
-          ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.22),rgba(88,28,135,0.2),rgba(145,33,74,0.94))]"
-          : "bg-[#050505]",
+        !backgroundColor &&
+          (isRail
+            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.22),rgba(88,28,135,0.2),rgba(145,33,74,0.94))]"
+            : "bg-[#050505]"),
       )}
+      style={{ backgroundColor: sectionBackgroundColor }}
     >
       {settledBackgroundUrl ? (
         <div
@@ -290,10 +356,13 @@ function WatchHomeMediaCollection({
         className={cn(
           "absolute inset-0 z-[1] transition-opacity duration-500 ease-out",
           isSectionActive ? "opacity-0" : "opacity-100",
-          isRail
+          !backgroundColor && isRail
             ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.38),rgba(88,28,135,0.34),rgba(145,33,74,0.88))] mix-blend-multiply"
-            : "bg-[linear-gradient(to_top_right,rgba(88,28,135,0.42),rgba(190,24,93,0.34)_38%,rgba(12,10,9,0.9))]",
+            : !backgroundColor
+              ? "bg-[linear-gradient(to_top_right,rgba(88,28,135,0.42),rgba(190,24,93,0.34)_38%,rgba(12,10,9,0.9))]"
+              : "mix-blend-multiply",
         )}
+        style={tintStyle}
       />
       <div
         aria-hidden
