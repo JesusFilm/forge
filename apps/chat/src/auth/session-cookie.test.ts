@@ -97,6 +97,18 @@ describe("readChatSessionCookie — anonymous on any failure (R11)", () => {
     expect(await readChatSessionCookie(`${ok}tampered`)).toBeNull()
   })
 
+  it("returns null for a validly-signed token with an empty or blank sub", async () => {
+    // An empty/blank sub would collapse every such identity onto the shared
+    // `user:` memory partition (feat-208) — reject it, fail closed to anonymous.
+    const { readChatSessionCookie } = await loadModule({ secret: REAL_SECRET })
+    expect(
+      await readChatSessionCookie(await signWith(REAL_SECRET, { sub: "" })),
+    ).toBeNull()
+    expect(
+      await readChatSessionCookie(await signWith(REAL_SECRET, { sub: "   " })),
+    ).toBeNull()
+  })
+
   it("returns null for an empty/undefined value", async () => {
     const { readChatSessionCookie } = await loadModule({ secret: REAL_SECRET })
     expect(await readChatSessionCookie(undefined)).toBeNull()
