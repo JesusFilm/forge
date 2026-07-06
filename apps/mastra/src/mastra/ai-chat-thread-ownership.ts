@@ -44,8 +44,17 @@ export type AiChatThreadAuthorization =
  * Authorize one turn against a thread. Existing thread → the caller's resource
  * must equal the thread's owner (`thread_forbidden` otherwise). New thread →
  * the resource must be under the creation ceiling (`thread_limit` otherwise).
- * Throws only if the underlying store does — callers map that to their
- * generic failure path (fail closed, never fail open).
+ *
+ * Fail modes differ by branch, per the @mastra/pg contract — not uniform:
+ *  - Ownership (existing thread): `getThreadById` THROWS on a store error, which
+ *    propagates so the caller maps it to its generic failure — fail CLOSED. This
+ *    is the security-critical guarantee: a store blip never grants continuation
+ *    of someone else's thread.
+ *  - Ceiling (new thread): `listThreads` SWALLOWS store errors and returns total
+ *    0, so a transient fault lets thread creation through — fail OPEN. Accepted:
+ *    the ceiling is only a soft anti-abuse cap on a cooperative/runaway client
+ *    (the retention purge is the adversarial backstop), never the access
+ *    boundary, and a genuinely-down store fails the downstream stream anyway.
  */
 export async function authorizeAiChatThreadAccess({
   memory,

@@ -44,6 +44,16 @@ per-conversation URLs and a history sidebar, reading history back from the
 5. **Anonymous→account migration stays out of scope** (feat-208 accepted
    limitation): threads created anonymously belong to the `anon:<uuid>`
    resource and are not re-parented on sign-in.
+6. **Session-expiry UX.** Passive expiry of the 8h session cookie (no
+   redirect) makes the next send resolve as `anon:*`, so the ownership gate
+   returns `thread_forbidden` on the user's OWN thread (feat-208 accepted
+   limitation, plan §C). With URL-addressable threads, opening an old link
+   with an expired session becomes the COMMON path — map
+   `thread_forbidden` + signed-out state to an explicit "session expired —
+   sign in to continue" prompt (not the generic failure notice). Do NOT fix
+   this by rolling/extending the session cookie lifetime before precondition
+   1 (revocation) lands: the 8h fixed TTL is the only bound on a
+   revocation-less credential.
 
 ## Entry Points — Read These First
 

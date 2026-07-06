@@ -144,9 +144,13 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   storage. Two bounds apply, honestly framed: the per-resource thread ceiling
   (200, `thread_limit`) bounds a single cooperative or runaway client ONLY — a
   cookie-refusing attacker mints a fresh `anon:<uuid>` resource per POST for
-  free — so the 30-day retention purge is the SOLE adversarial storage
-  backstop. Inbound auth + a rate/concurrency cap remain prerequisites before
-  the audience widens — do not "fix" the open proxy without that work.
+  free. The 30-day retention purge is the only adversarial storage control
+  and it is bounded: it drains junk once aged past the window (capping total
+  junk at ~one retention window × inflow), but in-window growth is unbounded
+  and a concurrent burst can saturate Mastra's small ai-chat pool long before
+  storage matters. Inbound auth + a rate/concurrency cap remain prerequisites
+  before the audience widens — they, not the purge, are the actual flood
+  control; do not "fix" the open proxy without that work.
 - **Memory keying (feat-208):** the proxy resolves `resourceId` server-side
   (`src/auth/anon-id.ts`): the session's verified `sub` → `user:<sub>` when
   signed in, else `anon:<uuid>` from a hardened, UUID-validated cookie that is

@@ -818,4 +818,26 @@ describe("handleSeekerRouteRequest — thread ownership gate", () => {
     expect(body).not.toContain("event: result")
     expect(streamCalls).toHaveLength(0)
   })
+
+  it("bounds a never-settling ownership gate by the turn budget (feat-208 #1)", async () => {
+    // A slow-but-not-down Postgres: the gate's store call never resolves. Before
+    // the fix it would hang the SSE stream past the ceiling with no frame; now
+    // the budget signal trips it and the outer catch emits a timeout frame.
+    const { mastra, streamCalls } = makeMastra({ chunks: ["never"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        budgetMs: 20,
+        getMemory: () => ({
+          getThreadById: () =>
+            new Promise<{ resourceId?: string | null } | null>(() => {}),
+          listThreads: async () => ({ total: 0 }),
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain('"reason":"timeout"')
+    expect(body).not.toContain("event: result")
+    // The gate is bounded BEFORE agent.stream, so the agent never runs.
+    expect(streamCalls).toHaveLength(0)
+  })
 })

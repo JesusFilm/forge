@@ -25,11 +25,23 @@ export const ANON_ID_TTL_SECONDS = 30 * 24 * 60 * 60
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/**
+ * Whether `value` is a well-formed anon id (a v4-shaped UUID). Security-
+ * relevant: the ONLY gate deciding whether a client-settable cookie value is
+ * trusted as the anon resource or discarded and re-minted — anything that is
+ * not a bare UUID (an injected `user:<sub>`, a cookie-attribute smuggle) fails.
+ */
 export function isValidAnonId(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value)
 }
 
-/** Minimal cookie-header lookup (first match wins), no decoding surprises. */
+/**
+ * Minimal cookie-header lookup (first match wins), no decoding surprises.
+ * Deliberately does NOT `decodeURIComponent` the value (anon ids are bare
+ * UUIDs) — this diverges on purpose from `readCookie` in
+ * `app/api/auth/callback/route.ts`, which decodes because it carries a URL.
+ * Keep the two in sync only if the anon cookie ever needs percent-decoding.
+ */
 export function getCookieValue(
   cookieHeader: string | null | undefined,
   name: string,
@@ -83,7 +95,11 @@ export function resolveSeekerResource({
   anonCookieValue: string | undefined
   mintId?: () => string
 }): SeekerResourceResolution {
-  if (identity !== null) {
+  // A verified session with a non-empty sub keys to that user's partition. An
+  // empty/blank sub (a malformed token) must NOT collapse every such user onto
+  // the bare `user:` partition — fall through to an anon id instead (defense in
+  // depth; readChatSessionCookie already rejects an empty sub upstream).
+  if (identity !== null && identity.sub.trim().length > 0) {
     return { resourceId: `user:${identity.sub}` }
   }
   const anonId = isValidAnonId(anonCookieValue) ? anonCookieValue : mintId()

@@ -199,6 +199,37 @@ function extractSources(chunks: SeekerToolResultChunk[]): {
   return { sources, grounded: result?.status === "ok" }
 }
 
+/**
+ * Resolve `promise`, but reject if `signal` aborts first. Bounds an opaque
+ * store call by the turn budget: the ownership gate's `@mastra/pg` queries
+ * (feat-208) honor no per-call timeout, and the pinned PostgresStore pool sets
+ * no `statement_timeout`/`connectionTimeoutMillis`, so without this a slow (not
+ * down) Postgres would hang the SSE stream past the 90s ceiling with no
+ * terminal frame. A budget-abort here surfaces through the outer catch as the
+ * existing fail-closed `timeout` frame — matching the repo's
+ * outbound-timeout-shorter-than-caller-budget rule.
+ */
+function settleWithinBudget<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error("budget_aborted"))
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new Error("budget_aborted"))
+    signal.addEventListener("abort", onAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort)
+        resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort)
+        reject(error)
+      },
+    )
+  })
+}
+
 export async function handleSeekerRouteRequest({
   authHeader,
   serviceKeys,
@@ -207,7 +238,7 @@ export async function handleSeekerRouteRequest({
   requestSignal,
   getModelKey = getOpenRouterApiKey,
   getEnabled = isSeekerRouteEnabled,
-  getMemory = () => getAiChatMemory() as unknown as AiChatOwnershipMemory,
+  getMemory = () => getAiChatMemory(),
   budgetMs = TIME_BUDGET_MS.chatTurn,
 }: SeekerRouteHandlerInput): Promise<Response> {
   // Gate 1 — enable flag FIRST (KTD7): unreachable unless explicitly enabled.
@@ -284,13 +315,20 @@ export async function handleSeekerRouteRequest({
         // Gate 5 — thread ownership + creation ceiling (feat-208). Mastra's
         // message path silently adopts an existing thread regardless of the
         // caller's resource, so this check is the ONLY thing binding threadId
-        // to its owner. A store failure here falls through to the outer catch
-        // (fail closed as generation_failed — never fail open).
-        const authz = await authorizeAiChatThreadAccess({
-          memory: getMemory(),
-          threadId: memory.thread,
-          resource: memory.resource,
-        })
+        // to its owner. Fail modes differ by branch (see the
+        // authorizeAiChatThreadAccess docstring): ownership fails CLOSED
+        // (getThreadById throws → this outer catch → generation_failed), while
+        // the creation-ceiling check fails OPEN (listThreads swallows → total 0
+        // → new thread allowed) — an accepted soft-cap gap backstopped by the
+        // retention purge, never the access boundary.
+        const authz = await settleWithinBudget(
+          authorizeAiChatThreadAccess({
+            memory: getMemory(),
+            threadId: memory.thread,
+            resource: memory.resource,
+          }),
+          budgetSignal,
+        )
         if (!authz.ok) {
           console.warn(
             `[seeker-route] event=thread_access_rejected reason=${authz.reason}`,

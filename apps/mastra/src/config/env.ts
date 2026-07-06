@@ -720,6 +720,20 @@ export function resolveAiChatMemoryBackend(): "postgres" | "memory" {
   return env.AI_CHAT_MEMORY_BACKEND ?? env.MASTRA_STORAGE_BACKEND
 }
 
+/**
+ * Whether persisted ai-chat rows can exist in Postgres: true when EITHER the
+ * runtime storage backend or the ai-chat override is postgres. Gates the
+ * retention purge — deliberately NOT `resolveAiChatMemoryBackend()`: the
+ * kill-switch (`AI_CHAT_MEMORY_BACKEND=memory`) reverts WRITES only and must
+ * never pause retention on conversations already stored in `ai_chat`.
+ */
+export function canAiChatDataPersist(): boolean {
+  return (
+    env.MASTRA_STORAGE_BACKEND === "postgres" ||
+    env.AI_CHAT_MEMORY_BACKEND === "postgres"
+  )
+}
+
 export function getFirecrawlConfig(): FirecrawlConfig {
   return {
     apiKey: env.FIRECRAWL_API_KEY,

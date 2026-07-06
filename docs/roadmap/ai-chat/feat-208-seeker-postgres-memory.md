@@ -34,10 +34,14 @@ production kill-switch. Full design + verified package-behavior citations:
 `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md`.
 
 **Residual risk / follow-ups.** The thread ceiling bounds cooperative clients
-only (the purge is the adversarial storage backstop); `/api/seeker` remains
+only; the purge drains junk past the retention window (capping total junk at
+~one window × inflow) but does NOT bound in-window growth — inbound auth +
+rate caps stay the real flood control; `/api/seeker` remains
 unauthenticated/un-rate-limited (accepted, restated in `apps/chat/CLAUDE.md`);
-TOCTOU + existence-oracle residue accepted (v4 UUID entropy); anon→account
-thread migration out of scope. feat-209 preconditions recorded in its ticket.
+TOCTOU + existence-oracle residue accepted (v4 UUID entropy); passive session
+expiry dead-ends a signed-in thread with `thread_forbidden` until feat-209
+adds a session-expired sign-in path (accepted, plan §C); anon→account thread
+migration out of scope. feat-209 preconditions recorded in its ticket.
 
 **Unblocked.** feat-209 (with feat-207 already complete).
 

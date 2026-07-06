@@ -77,6 +77,19 @@ describe("resolveSeekerResource", () => {
     expect(resolution).toEqual({ resourceId: "user:auth0|abc:def" })
   })
 
+  it("treats an empty/blank sub as anonymous (never a bare `user:` partition)", () => {
+    // A malformed identity must not collapse onto the shared `user:` partition —
+    // it falls through to a fresh anon id instead.
+    for (const sub of ["", "   "]) {
+      const resolution = resolveSeekerResource({
+        identity: { sub },
+        anonCookieValue: undefined,
+        mintId: () => VALID_UUID,
+      })
+      expect(resolution.resourceId).toBe(`anon:${VALID_UUID}`)
+    }
+  })
+
   it("reuses AND re-issues a valid anon id (rolling lifetime, day-31 case)", () => {
     // The day-31 active anonymous user: their threads are still live (rolling
     // retention) so their identifier must roll too — same value, re-set.
