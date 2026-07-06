@@ -3,7 +3,7 @@ id: "feat-233"
 title: "Chat seeker LaunchDarkly dogfood gate (per-user allowlist)"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-06"
 duration: 3
 depends_on:
