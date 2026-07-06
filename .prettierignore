@@ -17,6 +17,7 @@ apps/cms/.strapi
 apps/cms/.strapi-updater.json
 output/
 .cursor
+.local
 
 # Devcontainer CLI lockfile — machine-generated, same class as pnpm-lock.yaml
 .devcontainer/devcontainer-lock.json

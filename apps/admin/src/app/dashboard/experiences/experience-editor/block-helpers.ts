@@ -28,6 +28,7 @@ export type BlockTemplateKey =
   | "video"
   | "videoCarousel"
   | "videoHero"
+  | "watchHomeHero"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -36,6 +37,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "videoHero",
   "video",
   "videoCarousel",
+  "watchHomeHero",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
@@ -333,6 +335,17 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "watchHomeHero") {
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Home Hero",
+      title: "Watch Home Hero",
+      body: "Renders the static Watch homepage hero.",
+      tone: "hero",
+      badges: ["WATCH_HOME"],
+    }
+  }
+
   if (type === "bibleQuotesCarousel") {
     const quotes = asArray(value.quotes)
     const firstQuote = asRecord(quotes[0])
@@ -611,6 +624,13 @@ export function createTemplateBlock(
       ctaEnabled: true,
       ctaLabel: "Learn more",
       ctaLink: "/",
+    }
+  }
+
+  if (template === "watchHomeHero") {
+    return {
+      t: "watchHomeHero",
+      sectionKey: `watch-home-hero-${index}`,
     }
   }
 

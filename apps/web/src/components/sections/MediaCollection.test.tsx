@@ -29,7 +29,9 @@ afterEach(() => {
 
 // The component destructures these fields off `data` at runtime; the prop
 // type derives from a legacy Strapi fragment, so we cast a minimal literal.
-function makeData(): Parameters<typeof MediaCollection>[0]["data"] {
+function makeData(
+  overrides: Record<string, unknown> = {},
+): Parameters<typeof MediaCollection>[0]["data"] {
   return {
     id: "mc-1",
     title: "Related",
@@ -43,6 +45,7 @@ function makeData(): Parameters<typeof MediaCollection>[0]["data"] {
     mediaCollectionVariant: "carousel",
     footerText: null,
     items: [],
+    ...overrides,
   } as unknown as Parameters<typeof MediaCollection>[0]["data"]
 }
 
@@ -101,8 +104,93 @@ describe("MediaCollection VideoCard href", () => {
 
     // Empty videoSlug → href is undefined → wrapper is a <div>, not an <a>.
     expect(container.querySelector('a[aria-label="VideoCard"]')).toBeNull()
+    const card = container.querySelector('div[aria-label="VideoCard"]')
+    expect(card).not.toBeNull()
+    expect(card?.className).not.toContain("pointer-events-none")
+  })
+
+  it("links manual authored items when the admin payload includes a videoSlug", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "the-gospel-of-luke",
+                titleOverride: "The Gospel of Luke",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const link = container.querySelector<HTMLAnchorElement>(
+      'a[aria-label="VideoCard"]',
+    )
+    expect(link?.getAttribute("href")).toBe(
+      "/watch/the-gospel-of-luke.html/english.html",
+    )
+  })
+
+  it("uses the watch videos index as the default CTA target", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "episode-one",
+                titleOverride: "Episode One",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
     expect(
-      container.querySelector('div[aria-label="VideoCard"]'),
+      container.querySelector<HTMLAnchorElement>("a[href='/watch/videos']"),
     ).not.toBeNull()
+  })
+
+  it("renders both description and footer copy when both are authored", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaDescription: "Intro copy",
+            footerText: "Footer copy",
+            itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "episode-one",
+                titleOverride: "Episode One",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("Intro copy")
+    expect(container.textContent).toContain("Footer copy")
   })
 })

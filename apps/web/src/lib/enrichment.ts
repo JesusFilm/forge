@@ -2,12 +2,14 @@
 // `videoId`, `imageUrl`, and `imageOverrideUrl` directly, with no nested
 // `video { ... }` join. The renderer
 // (`apps/web/src/components/sections/index.tsx:53-70`) tolerates a
-// missing video join via the `titleOverride` + image fallback path, so
-// this helper does NOT hydrate the missing video record. A videoId →
-// slug + title hydrator is a deferred concern.
+// missing video join via the `titleOverride` + image fallback path. Authored
+// items may also carry a route slug snapshot for linking, but this helper does
+// NOT hydrate the missing video record. A live videoId → title/image hydrator is
+// a deferred concern.
 
 type MediaItem = {
   videoId?: string | null
+  videoSlug?: string | null
   titleOverride: string | null
   subtitleOverride: string | null
   labelOverride: string | null
@@ -61,10 +63,10 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
       ? item.imageUrl
       : null
   const imageUrl = overrideUrl ?? fallbackUrl
-  // Admin items carry no slug — the videoId → slug hydration is deferred.
+  // Admin-authored items carry a route slug snapshot when seeded from videos.
   // Renderer skips the `<a href>` when videoSlug is empty (see
   // MediaCollection.tsx `const href = item.videoSlug ? ...`).
-  const videoSlug = ""
+  const videoSlug = typeof item.videoSlug === "string" ? item.videoSlug : ""
   // Fall back to videoId (or empty string) when no upstream id is present.
   // React keys against an empty string repeat-collide across items, so the
   // consumer also keys by array index where this matters.

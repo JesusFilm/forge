@@ -25,6 +25,7 @@ export const adminMediaCollectionFragment = adminGraphql(`
     backgroundColor
     items {
       videoId
+      videoSlug
       titleOverride
       subtitleOverride
       labelOverride
