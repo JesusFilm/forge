@@ -110,9 +110,7 @@ describe("seedFirstPartyApps", () => {
           // Identity-only client — exact scope list, no *:access or
           // membership:read (feat-207 R7).
           scopes: ["openid", "profile:read", "email:read"],
-          redirectUris: [
-            "https://forgechat-production-a4f5.up.railway.app/api/auth/callback",
-          ],
+          redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",

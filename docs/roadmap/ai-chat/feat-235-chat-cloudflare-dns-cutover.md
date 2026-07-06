@@ -3,7 +3,7 @@ id: "feat-235"
 title: "Chat app Cloudflare DNS cutover (retire Railway domain)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-01"
 duration: 2
 depends_on:
@@ -14,10 +14,11 @@ tags:
   - "web"
 ---
 
-> **Stub — not fully fleshed.** The Cloudflare/DNS provisioning half needs
-> detail before starting. The cutover-mechanics half (below) is captured now,
-> while fresh from feat-231, because the same-`clientId` rule is the detail most
-> likely to be lost and most dangerous to get wrong.
+> The production hostname is decided: **`chat.jesusfilm.ai`**. The
+> cutover-mechanics half (below) was captured while fresh from feat-231,
+> because the same-`clientId` rule is the detail most likely to be lost and
+> most dangerous to get wrong. The Cloudflare/DNS provisioning half is
+> dashboard work outside the repo.
 
 ## Problem
 
@@ -44,9 +45,10 @@ seed/domain lifecycle currently carries.
 
 ## What To Do
 
-1. Provision the chat hostname (e.g. `chat.jesusfilm.org`) with Cloudflare
-   fronting — DNS, WAF, Authenticated Origin Pulls, DNSSEC — mirroring the
-   platform Cloudflare + Railway pattern. (This half needs fleshing out.)
+1. Provision the chat hostname — decided: `chat.jesusfilm.ai` — with
+   Cloudflare fronting: DNS, WAF, Authenticated Origin Pulls, DNSSEC,
+   mirroring the platform Cloudflare + Railway pattern. (Dashboard work,
+   outside the repo.)
 2. **DNS cutover — KEEP the same `clientId` (`jfp_chat_production`); change only
    the URLs.** Repoint `redirectUris` / `postLogoutRedirectUris` /
    `allowedOrigins` in the production environment from the Railway host to the

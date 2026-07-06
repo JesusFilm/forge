@@ -333,5 +333,10 @@ plus the Mastra base URL + bearer (see `src/config/env.ts`).
 
 Railway via `railway.toml` (railpack builder), but only once the service's
 "Config-as-code Path" points at the file — see README's wiring checklist
-and its `configFile` verification step. Stays on the Railway-generated
-domain; no `jesusfilm.org` DNS until Cloudflare fronting lands.
+and its `configFile` verification step.
+
+Production hostname is the Cloudflare-fronted `chat.jesusfilm.ai` (feat-235;
+DNS, WAF, Authenticated Origin Pulls, DNSSEC). Railway env sets
+`CHAT_BASE_URL=https://chat.jesusfilm.ai`; domain-lifecycle rules for the
+OAuth seed live in
+`docs/solutions/auth/public-repo-oauth-seed-railway-domain-exposure-calculus.md`.
