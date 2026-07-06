@@ -20,7 +20,7 @@ const {
   redirectMock,
   seriesPageClientMock,
   watchPageClientMock,
-  watchHomePageMock,
+  watchHomeExperiencePageMock,
   watchQuestionPanelMock,
   experienceEmptyMock,
   experienceErrorMock,
@@ -45,7 +45,7 @@ const {
       null,
   ),
   watchPageClientMock: vi.fn((_props: unknown) => null),
-  watchHomePageMock: vi.fn((_props: unknown) => null),
+  watchHomeExperiencePageMock: vi.fn((_props: unknown) => null),
   watchQuestionPanelMock: vi.fn((_props: unknown) => null),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
@@ -88,8 +88,8 @@ vi.mock("@/components/watch/WatchPageClient", () => ({
   WatchPageClient: watchPageClientMock,
 }))
 
-vi.mock("@/components/home/WatchHomePage", () => ({
-  WatchHomePage: watchHomePageMock,
+vi.mock("@/components/home/WatchHomeExperiencePage", () => ({
+  WatchHomeExperiencePage: watchHomeExperiencePageMock,
 }))
 
 vi.mock("@/components/watch/WatchQuestionPanel", () => ({
@@ -155,7 +155,7 @@ beforeEach(() => {
   })
   seriesPageClientMock.mockClear()
   watchPageClientMock.mockClear()
-  watchHomePageMock.mockClear()
+  watchHomeExperiencePageMock.mockClear()
   watchQuestionPanelMock.mockClear()
   experienceEmptyMock.mockClear()
   experienceErrorMock.mockClear()
@@ -508,8 +508,19 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     await render1Seg("spanish-castilian.html")
 
     expect(resolveWatchHomeMock).toHaveBeenCalledWith("es")
-    expect(watchHomePageMock).toHaveBeenCalled()
-    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      {
+        heroModel: {
+          heroSlides: [{ id: "hero-es" }],
+          sections: [],
+          carousel: { pools: [], muxInserts: [] },
+          missingData: [],
+        },
+        blocks: [],
+      },
+      undefined,
+    )
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("es")
     expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
     expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
   })

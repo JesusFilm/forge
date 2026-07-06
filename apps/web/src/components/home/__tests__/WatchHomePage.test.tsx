@@ -742,16 +742,20 @@ describe("WatchHomePage", () => {
       handleChromeVisibility,
     )
 
-    const queuedOneCard = Array.from(
+    const railCards = Array.from(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    ).find((element) => element.textContent?.includes("Queued One"))
+    )
+    const queuedOneCard = railCards.find((element) =>
+      element.textContent?.includes("Queued One"),
+    )
     expect(queuedOneCard).not.toBeUndefined()
+    const queuedOneIndex = queuedOneCard ? railCards.indexOf(queuedOneCard) : -1
 
     await act(async () => {
       queuedOneCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
 
-    expect(carouselApi.scrollTo).toHaveBeenCalledWith(1)
+    expect(carouselApi.scrollTo).toHaveBeenCalledWith(queuedOneIndex)
     expect(
       document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
     ).toBeNull()
