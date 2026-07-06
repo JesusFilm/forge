@@ -304,9 +304,10 @@ export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
-// Local + production: chat's Railway-generated domain IS the settled prod
-// hostname for now (feat-231; no jesusfilm.org DNS yet). If the domain churns
-// or DNS fronting lands, update the seed and merge — it re-seeds on deploy.
+// Local + production: production is the Cloudflare-fronted chat.jesusfilm.ai.
+// A host change is a seed edit + merge — it re-seeds on deploy; keep the same
+// clientId (the seeder never prunes; see
+// docs/solutions/auth/public-repo-oauth-seed-railway-domain-exposure-calculus.md).
 // Redirect URIs must be exact-match per environment.
 export const CHAT_APP_SEED: RegisteredAppSeed = {
   key: CHAT_APP_KEY,
@@ -328,13 +329,9 @@ export const CHAT_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: "jfp_chat_production",
-      redirectUris: [
-        "https://forgechat-production-a4f5.up.railway.app/api/auth/callback",
-      ],
-      postLogoutRedirectUris: [
-        "https://forgechat-production-a4f5.up.railway.app",
-      ],
-      allowedOrigins: ["https://forgechat-production-a4f5.up.railway.app"],
+      redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
+      postLogoutRedirectUris: ["https://chat.jesusfilm.ai"],
+      allowedOrigins: ["https://chat.jesusfilm.ai"],
       defaultScopes: CHAT_DEFAULT_SCOPES,
       autoApprove: true,
     },

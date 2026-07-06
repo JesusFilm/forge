@@ -134,15 +134,9 @@ describe("first-party app seeds", () => {
       expect.objectContaining({
         key: "production",
         clientId: "jfp_chat_production",
-        // Chat's Railway-generated domain is the settled prod hostname for
-        // now (feat-231, pre-DNS); update seed + re-merge if it churns.
-        redirectUris: [
-          "https://forgechat-production-a4f5.up.railway.app/api/auth/callback",
-        ],
-        postLogoutRedirectUris: [
-          "https://forgechat-production-a4f5.up.railway.app",
-        ],
-        allowedOrigins: ["https://forgechat-production-a4f5.up.railway.app"],
+        redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
+        postLogoutRedirectUris: ["https://chat.jesusfilm.ai"],
+        allowedOrigins: ["https://chat.jesusfilm.ai"],
         // Identity-only — no *:access, no membership:read (feat-207 R7).
         defaultScopes: ["openid", "profile:read", "email:read"],
         autoApprove: true,

@@ -43,11 +43,10 @@ Checklist for whoever wires the service:
 4. Deploy, then **verify the deployment record's `configFile` field is
    non-null and reads `/apps/chat/railway.toml`** — this is the proof the
    config file was actually loaded. Build logs are a secondary signal only.
-5. Confirm the app responds on the Railway-generated domain and a sent
-   message gets a visibly-stubbed reply.
+5. Confirm the app responds on its public hostname and a sent message gets
+   a visibly-stubbed reply.
 
-**Stay on the Railway-generated domain.** Do not assign a `jesusfilm.org`
-DNS entry — Cloudflare fronting is expected to land alongside auth, later.
+The public hostname is `chat.jesusfilm.ai`, fronted by Cloudflare (feat-235).
 
 ## What is intentionally absent
 
