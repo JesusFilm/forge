@@ -143,6 +143,10 @@ export function nextUnplayedWatchHomeTvCarouselIndex(
 export function useWatchHomeTvCarousel(
   slides: readonly WatchHomeTvCarouselSlide[],
   sequence: WatchHomeCarouselSequenceData | null = null,
+  options: {
+    autoAdvancePausedForSlideId?: string | null
+    suppressLeavingSlide?: boolean
+  } = {},
 ) {
   const hasHydrated = useSyncExternalStore(
     subscribeToHydrationStore,
@@ -229,6 +233,9 @@ export function useWatchHomeTvCarousel(
     displaySlides[defaultActiveIndex] ??
     displaySlides[0] ??
     null
+  const autoAdvancePaused =
+    activeSlide != null &&
+    activeSlide.id === options.autoAdvancePausedForSlideId
   const safeActiveIndex = activeSlide
     ? Math.max(
         0,
@@ -258,7 +265,11 @@ export function useWatchHomeTvCarousel(
     (index: number) => {
       if (index < 0 || index >= displaySlides.length) return
       const nextSlide = displaySlides[index] ?? null
-      if (activeSlide && nextSlide?.id !== activeSlide.id) {
+      if (
+        activeSlide &&
+        nextSlide?.id !== activeSlide.id &&
+        options.suppressLeavingSlide !== true
+      ) {
         if (leavingSlideTimeoutRef.current != null) {
           window.clearTimeout(leavingSlideTimeoutRef.current)
         }
@@ -282,6 +293,7 @@ export function useWatchHomeTvCarousel(
       clearSlideAdvanceTimeout,
       clearVideoPosterHold,
       displaySlides,
+      options.suppressLeavingSlide,
     ],
   )
 
@@ -430,6 +442,8 @@ export function useWatchHomeTvCarousel(
     if (!activeSlide) return
 
     clearSlideAdvanceTimeout()
+    if (autoAdvancePaused) return undefined
+
     const advanceAfterMs = activeSlide.src
       ? watchHomeTvAdvanceTargetSeconds(
           activeSlide.durationSeconds ?? Number.NaN,
@@ -450,6 +464,7 @@ export function useWatchHomeTvCarousel(
     activeSlide?.id,
     activeSlide?.src,
     advance,
+    autoAdvancePaused,
     clearSlideAdvanceTimeout,
   ])
 
@@ -497,7 +512,7 @@ export function useWatchHomeTvCarousel(
   ])
 
   useEffect(() => {
-    if (!activeSlide || activeSlide.src) return
+    if (!activeSlide || activeSlide.src || autoAdvancePaused) return
 
     let animationFrame = 0
 
@@ -519,7 +534,7 @@ export function useWatchHomeTvCarousel(
     return () => {
       cancelAnimationFrame(animationFrame)
     }
-  }, [activeSlide])
+  }, [activeSlide, autoAdvancePaused])
 
   return useMemo(
     () => ({

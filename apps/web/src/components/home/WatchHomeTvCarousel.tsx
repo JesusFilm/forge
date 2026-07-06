@@ -4,16 +4,25 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type Ref,
+  type MutableRefObject,
   type RefObject,
 } from "react"
+import type { MuxPlayerRef } from "@forge/video-player"
 import MuxVideo from "@forge/video-player/mux-video"
-import { Play, SkipForward, Volume2, VolumeX } from "lucide-react"
+import {
+  Play,
+  Share2,
+  SkipForward,
+  UserPlus,
+  Volume2,
+  VolumeX,
+} from "lucide-react"
 import {
   Carousel,
   type CarouselApi,
@@ -28,8 +37,16 @@ import {
   WATCH_PAGE_RAIL_PADDING_CLASSES,
 } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
+import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
+import {
+  WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  type WatchPlayerChromeVisibilityDetail,
+} from "@/lib/watch-player-chrome-events"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
-import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
+import type {
+  WatchHomeCarouselSequenceData,
+  WatchHomeTvCarouselMuxSlide,
+} from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
 import {
   useWatchHomeTvCarousel,
@@ -41,6 +58,10 @@ type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
 }
+
+type WatchHomeShortFilmPhase = "transitioning" | "playing"
+
+const WATCH_HOME_SHORT_FILM_TRANSITION_MS = 360
 
 function muxStreamUrl(playbackId: string | null) {
   return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
@@ -98,31 +119,68 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
   })
 }
 
+type PrimaryActionIconName = NonNullable<
+  WatchHomeTvCarouselMuxSlide["action"]
+>["icon"]
+
+function PrimaryActionIcon({ icon }: { icon: PrimaryActionIconName }) {
+  const iconClassName = "h-5 w-5 shrink-0"
+
+  if (icon === "join") {
+    return <UserPlus className={iconClassName} aria-hidden />
+  }
+
+  if (icon === "share") {
+    return <Share2 className={iconClassName} aria-hidden />
+  }
+
+  return <Play className={`${iconClassName} fill-current`} aria-hidden />
+}
+
 function PrimaryAction({
+  onWatchShortFilm,
   playbackTimeSeconds,
   slide,
 }: {
+  onWatchShortFilm?: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
   slide: WatchHomeTvCarouselSlide
 }) {
-  const className =
-    "inline-flex h-12 max-w-full items-center gap-2 rounded-full bg-brand-red px-4 text-base font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-16 sm:gap-3 sm:px-7 sm:text-xl"
+  const primaryClassName =
+    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
+  const secondaryClassName =
+    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full border border-white/35 bg-black/30 px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.22)] backdrop-blur transition hover:border-white/60 hover:bg-white/12 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
+
+  const secondaryAction =
+    slide.kind === "mux" && slide.secondaryAction && slide.src ? (
+      <button
+        type="button"
+        className={secondaryClassName}
+        onClick={() => onWatchShortFilm?.(slide)}
+      >
+        <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
+        <span className="truncate">{slide.secondaryAction.label}</span>
+      </button>
+    ) : null
 
   if (slide.kind === "mux" && slide.action) {
     return (
-      <a href={slide.action.url} className={className}>
-        <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
-        <span className="truncate">{slide.action.label}</span>
-      </a>
+      <div className="flex max-w-[calc(100vw-9rem)] flex-col items-start gap-3 sm:max-w-full sm:flex-row sm:items-center">
+        <a href={slide.action.url} className={primaryClassName}>
+          <PrimaryActionIcon icon={slide.action.icon} />
+          <span className="truncate">{slide.action.label}</span>
+        </a>
+        {secondaryAction}
+      </div>
     )
   }
 
-  if (!slide.href) return null
+  if (!slide.href) return secondaryAction
 
   return (
     <Link
       href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
-      className={className}
+      className={primaryClassName}
     >
       <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
       <span className="truncate">Watch Now</span>
@@ -132,26 +190,34 @@ function PrimaryAction({
 
 function WatchHomeTvMedia({
   activeSlide,
+  fullPlayerMode,
+  playerTransitioning,
   isMuted,
   leavingSlide,
   mediaReady,
   onCanPlay,
   onEnded,
   onLoadedMetadata,
+  onPlayerReady,
   onSubtitleCueTextChange,
   onTimeUpdate,
   videoRef,
+  wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
+  fullPlayerMode: boolean
+  playerTransitioning: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   mediaReady: boolean
   onCanPlay: () => void
-  onEnded: () => void
+  onEnded?: () => void
   onLoadedMetadata: () => void
+  onPlayerReady?: (player: MuxPlayerRef | null) => void
   onSubtitleCueTextChange: (cueText: string | null) => void
   onTimeUpdate: () => void
-  videoRef: RefObject<HTMLVideoElement | null>
+  videoRef: MutableRefObject<HTMLVideoElement | null>
+  wrapperRef: RefObject<HTMLDivElement | null>
 }) {
   const subtitleVttSrc =
     isMuted && activeSlide.kind === "video"
@@ -170,12 +236,22 @@ function WatchHomeTvMedia({
     videoRef,
   })
 
+  const handleVideoRef = useCallback(
+    (next: HTMLVideoElement | null) => {
+      videoRef.current = next
+      onPlayerReady?.((next ?? null) as MuxPlayerRef | null)
+    },
+    [onPlayerReady, videoRef],
+  )
+  const takeoverActive = fullPlayerMode || playerTransitioning
+
   return (
     <div
+      ref={wrapperRef}
       className="absolute inset-0 isolate z-0 overflow-hidden bg-black"
       data-testid="watch-home-tv-media-frame"
     >
-      {leavingSlide ? (
+      {leavingSlide && !fullPlayerMode ? (
         <WatchHomeTvVisualLayer
           key={`${leavingSlide.id}-leaving`}
           slide={leavingSlide}
@@ -183,35 +259,43 @@ function WatchHomeTvMedia({
           priority={false}
         />
       ) : null}
-      <WatchHomeTvVisualLayer
-        key={`${activeSlide.id}-entering`}
-        slide={activeSlide}
-        className="watch-home-media-enter z-10"
-        priority
-      />
+      {!fullPlayerMode ? (
+        <WatchHomeTvVisualLayer
+          key={`${activeSlide.id}-entering`}
+          slide={activeSlide}
+          className="watch-home-media-enter z-10"
+          priority
+        />
+      ) : null}
       {activeSlide.src ? (
         <MuxVideo
           key={activeSlide.id}
-          ref={videoRef as Ref<HTMLVideoElement | undefined>}
+          ref={handleVideoRef}
           src={activeSlide.src}
           poster={activeSlide.posterUrl ?? undefined}
-          muted={isMuted}
+          muted={takeoverActive ? false : isMuted}
           playsInline
           disableTracking
           controls={false}
           crossOrigin="anonymous"
           onCanPlay={onCanPlay}
-          onEnded={onEnded}
+          onEnded={takeoverActive ? undefined : onEnded}
           onLoadedMetadata={onLoadedMetadata}
           onTimeUpdate={onTimeUpdate}
           className={cn(
-            "absolute inset-0 z-20 h-full w-full object-cover opacity-0 transition-opacity duration-[900ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
-            mediaReady ? "opacity-100" : "opacity-0",
+            "absolute inset-0 z-20 h-full w-full opacity-0 transition-opacity duration-[900ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
+            fullPlayerMode ? "object-contain" : "object-cover",
+            fullPlayerMode || mediaReady ? "opacity-100" : "opacity-0",
+            playerTransitioning && "watch-home-player-enter",
           )}
         />
       ) : null}
-      <div className="absolute inset-0 z-30 bg-[linear-gradient(180deg,rgba(0,0,0,0.18),rgba(0,0,0,0)_36%,rgba(0,0,0,0.35)_70%,rgba(0,0,0,0.72)_100%)]" />
-      <div className="absolute inset-y-0 left-0 z-30 w-3/5 bg-[linear-gradient(90deg,rgba(0,0,0,0.48)_0%,rgba(0,0,0,0)_100%)]" />
+      {!fullPlayerMode ? (
+        <>
+          <div className="absolute inset-0 z-30 bg-[linear-gradient(180deg,rgba(0,0,0,0.18),rgba(0,0,0,0)_36%,rgba(0,0,0,0.35)_70%,rgba(0,0,0,0.72)_100%)]" />
+          <div className="absolute inset-y-0 left-0 z-30 w-3/5 bg-[linear-gradient(90deg,rgba(0,0,0,0.48)_0%,rgba(0,0,0,0)_100%)]" />
+        </>
+      ) : null}
     </div>
   )
 }
@@ -327,7 +411,10 @@ function WatchHomeTvVisualLayer({
   slide: WatchHomeTvCarouselSlide
 }) {
   return (
-    <div className={cn("absolute inset-0", className)}>
+    <div
+      className={cn("absolute inset-0", className)}
+      data-testid="watch-home-tv-visual-layer"
+    >
       {slide.posterUrl ? (
         <Image
           src={slide.posterUrl}
@@ -349,30 +436,41 @@ function WatchHomeTvVisualLayer({
 
 function WatchHomeTvOverlay({
   activeSlide,
+  exitingToPlayer,
+  fullPlayerMode,
   isMuted,
   leavingSlide,
   onNext,
   onToggleMuted,
+  onWatchShortFilm,
   playbackTimeSeconds,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
+  exitingToPlayer: boolean
+  fullPlayerMode: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   onNext: () => void
   onToggleMuted: () => void
+  onWatchShortFilm: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
 }) {
   const advanceDurationSeconds =
     watchHomeTvSlideAdvanceDurationSeconds(activeSlide)
 
+  if (fullPlayerMode && !exitingToPlayer) return null
+
   return (
     <div
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 pb-6 sm:pb-8",
+        "absolute inset-x-0 z-10 flex items-end justify-between gap-4",
+        fullPlayerMode
+          ? "pointer-events-none bottom-16 pb-4 sm:hidden"
+          : "bottom-0 pb-4 sm:pb-8",
         WATCH_PAGE_RAIL_PADDING_CLASSES,
       )}
     >
-      <div className="relative min-w-0 max-w-[min(58rem,calc(100vw-2.5rem))] text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
+      <div className="relative min-w-0 flex-1 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
         {leavingSlide ? (
           <WatchHomeTvOverlayContent
             key={`${leavingSlide.id}-leaving-copy`}
@@ -382,35 +480,44 @@ function WatchHomeTvOverlay({
           />
         ) : null}
         <WatchHomeTvOverlayContent
-          key={`${activeSlide.id}-entering-copy`}
+          key={`${activeSlide.id}-${exitingToPlayer ? "player-exit" : "entering"}-copy`}
           enterDelayOffsetMs={leavingSlide ? 430 : 0}
-          mode="entering"
+          mode={exitingToPlayer ? "leaving" : "entering"}
+          onWatchShortFilm={onWatchShortFilm}
           playbackTimeSeconds={playbackTimeSeconds}
+          showAction={!fullPlayerMode}
           slide={activeSlide}
         />
       </div>
-      <div className="hidden shrink-0 items-center gap-4 text-white sm:flex">
-        <NextVideoButton
-          advanceDurationSeconds={advanceDurationSeconds}
-          animationKey={activeSlide.id}
-          onClick={onNext}
-          size="large"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={isMuted ? "Unmute preview" : "Mute preview"}
-          onClick={onToggleMuted}
-          className="h-14 w-14 rounded-full text-white/80 hover:bg-white/10 hover:text-white"
-        >
-          {isMuted ? (
-            <VolumeX className="size-7" aria-hidden />
-          ) : (
-            <Volume2 className="size-7" aria-hidden />
+      {!fullPlayerMode ? (
+        <div
+          className={cn(
+            "hidden shrink-0 items-center gap-4 text-white sm:flex",
+            exitingToPlayer && "watch-home-controls-exit pointer-events-none",
           )}
-        </Button>
-      </div>
+        >
+          <NextVideoButton
+            advanceDurationSeconds={advanceDurationSeconds}
+            animationKey={activeSlide.id}
+            onClick={onNext}
+            size="large"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={isMuted ? "Unmute preview" : "Mute preview"}
+            onClick={onToggleMuted}
+            className="h-14 w-14 rounded-full text-white/80 hover:bg-white/10 hover:text-white"
+          >
+            {isMuted ? (
+              <VolumeX className="size-7" aria-hidden />
+            ) : (
+              <Volume2 className="size-7" aria-hidden />
+            )}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -425,12 +532,16 @@ function watchHomeTvSlideAdvanceDurationSeconds(
 function WatchHomeTvOverlayContent({
   enterDelayOffsetMs = 0,
   mode,
+  onWatchShortFilm,
   playbackTimeSeconds,
+  showAction = true,
   slide,
 }: {
   enterDelayOffsetMs?: number
   mode: "entering" | "leaving"
+  onWatchShortFilm?: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
+  showAction?: boolean
   slide: WatchHomeTvCarouselSlide
 }) {
   const enterDelays = [0, 70, 140, 210]
@@ -464,7 +575,8 @@ function WatchHomeTvOverlayContent({
         <h1
           className={cn(
             itemClassName,
-            "line-clamp-2 text-4xl leading-tight font-extrabold max-[360px]:text-3xl sm:text-5xl md:text-6xl",
+            "line-clamp-3 leading-tight font-extrabold sm:line-clamp-2",
+            "text-3xl max-[360px]:text-2xl sm:text-5xl md:text-6xl",
           )}
           style={delayStyle(1)}
         >
@@ -482,12 +594,15 @@ function WatchHomeTvOverlayContent({
           </p>
         ) : null}
       </div>
-      <div className={itemClassName} style={delayStyle(3)}>
-        <PrimaryAction
-          slide={slide}
-          playbackTimeSeconds={playbackTimeSeconds}
-        />
-      </div>
+      {showAction ? (
+        <div className={itemClassName} style={delayStyle(3)}>
+          <PrimaryAction
+            slide={slide}
+            onWatchShortFilm={onWatchShortFilm}
+            playbackTimeSeconds={playbackTimeSeconds}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -780,6 +895,10 @@ export function WatchHomeTvCarousel({
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
   )
+  const [shortFilmSlide, setShortFilmSlide] =
+    useState<WatchHomeTvCarouselMuxSlide | null>(null)
+  const [shortFilmPhase, setShortFilmPhase] =
+    useState<WatchHomeShortFilmPhase | null>(null)
   const {
     activeSlide,
     advance,
@@ -796,71 +915,207 @@ export function WatchHomeTvCarousel({
     slides: displaySlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence)
+  } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    autoAdvancePausedForSlideId: shortFilmSlide?.id ?? null,
+    suppressLeavingSlide: shortFilmSlide != null,
+  })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const shortFilmTakeoverSlideIdRef = useRef<string | null>(null)
+  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
+    null,
+  )
+  const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
+    setPlayer((current) => (current === next ? current : next))
+  }, [])
+  const handleOpenShortFilm = useCallback(
+    (slide: WatchHomeTvCarouselSlide) => {
+      if (slide.kind !== "mux" || !slide.src) return
+      shortFilmTakeoverSlideIdRef.current = slide.id
+      setShortFilmSlide(slide)
+      setShortFilmPhase("transitioning")
+      if (isMuted) toggleMuted()
+      const video = videoRef.current
+      if (!video) return
+      video.muted = false
+      const playResult = video.play()
+      if (playResult && typeof playResult.catch === "function") {
+        playResult.catch(() => undefined)
+      }
+    },
+    [isMuted, toggleMuted, videoRef],
+  )
+  const handlePlayerChromeVisibilityChange = useCallback(
+    (detail: WatchPlayerChromeVisibilityDetail) => {
+      if (typeof window === "undefined") return
+      window.dispatchEvent(
+        new CustomEvent<WatchPlayerChromeVisibilityDetail>(
+          WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+          { detail },
+        ),
+      )
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || shortFilmSlide == null) return
+    video.muted = false
+    video.controls = false
+  }, [shortFilmSlide, videoRef])
+
+  useEffect(() => {
+    if (shortFilmSlide == null || shortFilmPhase !== "transitioning") return
+    const timeout = window.setTimeout(() => {
+      setShortFilmPhase("playing")
+    }, WATCH_HOME_SHORT_FILM_TRANSITION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [shortFilmPhase, shortFilmSlide])
+
+  const fullPlayerMode =
+    shortFilmSlide != null &&
+    shortFilmPhase === "playing" &&
+    activeSlide?.id === shortFilmSlide.id
+  const playerTransitioning =
+    shortFilmSlide != null &&
+    shortFilmPhase === "transitioning" &&
+    activeSlide?.id === shortFilmSlide.id
+  const handleMediaEnded = useCallback(() => {
+    if (
+      shortFilmTakeoverSlideIdRef.current != null &&
+      activeSlide?.id === shortFilmTakeoverSlideIdRef.current
+    ) {
+      return
+    }
+    handleEnded()
+  }, [activeSlide?.id, handleEnded])
+
+  useEffect(() => {
+    if (fullPlayerMode || playerTransitioning) return
+    handlePlayerChromeVisibilityChange({ visible: true, opacity: 1 })
+  }, [fullPlayerMode, playerTransitioning, handlePlayerChromeVisibilityChange])
+
+  useEffect(() => {
+    if (!fullPlayerMode) return
+
+    const revealHeaderOffPlayer = () => {
+      const rect = wrapperRef.current?.getBoundingClientRect()
+      if (!rect) return
+      if (rect.bottom <= 0 || rect.top >= window.innerHeight) {
+        handlePlayerChromeVisibilityChange({ visible: true, opacity: 1 })
+      }
+    }
+
+    window.addEventListener("scroll", revealHeaderOffPlayer, { passive: true })
+    window.addEventListener("resize", revealHeaderOffPlayer)
+    return () => {
+      window.removeEventListener("scroll", revealHeaderOffPlayer)
+      window.removeEventListener("resize", revealHeaderOffPlayer)
+    }
+  }, [fullPlayerMode, handlePlayerChromeVisibilityChange])
+
+  const handleSelectSlide = useCallback(
+    (slideId: string) => {
+      shortFilmTakeoverSlideIdRef.current = null
+      setShortFilmSlide(null)
+      setShortFilmPhase(null)
+      selectSlide(slideId)
+    },
+    [selectSlide],
+  )
 
   if (!activeSlide) return null
 
   return (
-    <section
-      className="relative mt-[calc(5.5rem+env(safe-area-inset-top,0px))] bg-black md:mt-0"
-      data-testid="watch-home-tv-carousel"
-    >
+    <section className="relative bg-black" data-testid="watch-home-tv-carousel">
       <h1 className="sr-only">Jesus Film Project Watch</h1>
-      <div className="relative mx-auto h-[min(100svh,56.25vw)] w-full max-w-[1920px] overflow-hidden bg-black">
+      <div className="relative mx-auto h-[66svh] w-full max-w-[1920px] overflow-hidden bg-black md:h-[min(100svh,56.25vw)]">
         <WatchHomeTvMedia
           activeSlide={activeSlide}
+          fullPlayerMode={fullPlayerMode}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           mediaReady={mediaReady}
           onCanPlay={handleCanPlay}
-          onEnded={handleEnded}
+          onEnded={handleMediaEnded}
           onLoadedMetadata={handleLoadedMetadata}
+          onPlayerReady={handlePlayerReady}
           onSubtitleCueTextChange={setSubtitleCueText}
           onTimeUpdate={handleTimeUpdate}
+          playerTransitioning={playerTransitioning}
           videoRef={videoRef}
+          wrapperRef={wrapperRef}
         />
         <WatchHomeTvOverlay
           activeSlide={activeSlide}
+          exitingToPlayer={playerTransitioning}
+          fullPlayerMode={fullPlayerMode}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           onNext={advance}
           onToggleMuted={toggleMuted}
+          onWatchShortFilm={handleOpenShortFilm}
           playbackTimeSeconds={playbackTimeSeconds}
         />
-        {subtitleCueText ? (
+        {subtitleCueText && !fullPlayerMode ? (
           <WatchHomeSubtitleOverlay cueText={subtitleCueText} />
         ) : null}
-        <div className="absolute right-5 bottom-4 z-30 flex gap-2 sm:hidden">
-          <NextVideoButton
-            advanceDurationSeconds={watchHomeTvSlideAdvanceDurationSeconds(
-              activeSlide,
-            )}
-            animationKey={activeSlide.id}
-            onClick={advance}
-            size="compact"
+        {fullPlayerMode ? (
+          <HeroPlayerControls
+            player={player}
+            playerRef={videoRef as unknown as RefObject<MuxPlayerRef | null>}
+            wrapperRef={wrapperRef}
+            overlayAnchor={overlayAnchor}
+            playbackId={activeSlide.playbackId ?? undefined}
+            showLanguageButton={false}
+            onVisibilityChange={handlePlayerChromeVisibilityChange}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={isMuted ? "Unmute preview" : "Mute preview"}
-            onClick={toggleMuted}
-            className="h-11 w-11 rounded-full bg-black/35 text-white hover:bg-black/55"
-          >
-            {isMuted ? (
-              <VolumeX className="size-7" aria-hidden />
-            ) : (
-              <Volume2 className="size-7" aria-hidden />
+        ) : null}
+        {!fullPlayerMode ? (
+          <div
+            className={cn(
+              "absolute right-5 bottom-4 z-30 flex gap-2 sm:hidden",
+              playerTransitioning &&
+                "watch-home-controls-exit pointer-events-none",
             )}
-          </Button>
-        </div>
+          >
+            <NextVideoButton
+              advanceDurationSeconds={watchHomeTvSlideAdvanceDurationSeconds(
+                activeSlide,
+              )}
+              animationKey={activeSlide.id}
+              onClick={advance}
+              size="compact"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={isMuted ? "Unmute preview" : "Mute preview"}
+              onClick={toggleMuted}
+              className="h-11 w-11 rounded-full bg-black/35 text-white hover:bg-black/55"
+            >
+              {isMuted ? (
+                <VolumeX className="size-7" aria-hidden />
+              ) : (
+                <Volume2 className="size-7" aria-hidden />
+              )}
+            </Button>
+          </div>
+        ) : null}
       </div>
+      <div
+        ref={setOverlayAnchor}
+        data-testid="watch-home-player-overlay-anchor"
+        className="relative z-40 mx-auto h-0 w-full max-w-[1920px]"
+      />
       <WatchHomeTvRail
         slides={displaySlides}
         activeSlideId={activeSlide.id}
         progress={progress}
-        onSelect={selectSlide}
+        onSelect={handleSelectSlide}
       />
     </section>
   )

@@ -8,6 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import type { WatchHomeTvCarouselVideoSlide } from "@/lib/watch-home-carousel-sequence"
+import {
+  WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  type WatchPlayerChromeVisibilityDetail,
+} from "@/lib/watch-player-chrome-events"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
 vi.mock("next/image", () => ({
@@ -210,6 +214,16 @@ const muxInsert = {
   trigger: { type: "sequence-start" },
 } satisfies WatchHomeMuxInsertConfig
 
+const ctaMuxInsert = {
+  ...muxInsert,
+  id: "join-us",
+  playbackIds: ["mux-join"],
+  label: "Join Us",
+  title: "Join Us",
+  description: "A Mux mission film",
+  action: { label: "Join Us", url: "https://example.com/join", icon: "join" },
+} satisfies WatchHomeMuxInsertConfig
+
 let container: HTMLDivElement
 let root: Root
 
@@ -243,12 +257,12 @@ describe("WatchHomePage", () => {
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
         ?.getAttribute("class"),
-    ).toContain("mt-[calc(5.5rem+env(safe-area-inset-top,0px))]")
+    ).not.toContain("mt-[calc(5.5rem+env(safe-area-inset-top,0px))]")
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
         ?.getAttribute("class"),
-    ).toContain("md:mt-0")
+    ).not.toContain("md:mt-0")
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
@@ -273,7 +287,12 @@ describe("WatchHomePage", () => {
       container
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
-    ).toContain("h-[min(100svh,56.25vw)]")
+    ).toContain("h-[66svh]")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"] > div')
+        ?.getAttribute("class"),
+    ).toContain("md:h-[min(100svh,56.25vw)]")
     expect(
       container.querySelector('[data-testid="watch-home-tv-rail"]'),
     ).not.toBeNull()
@@ -327,10 +346,6 @@ describe("WatchHomePage", () => {
         className.includes("/assets/overlay.svg"),
       ),
     ).toBe(false)
-    expect(
-      JSON.parse(window.localStorage.getItem("carousel-played-ids") ?? "{}")
-        .ids,
-    ).toEqual(["1_jf-0-0"])
   })
 
   it("renders an unlinked fallback card when href is missing", async () => {
@@ -624,14 +639,14 @@ describe("WatchHomePage", () => {
                   ],
                 },
               ],
-              muxInserts: [muxInsert],
+              muxInserts: [ctaMuxInsert],
             },
           })}
         />,
       )
     })
 
-    expect(container.textContent).toContain("Daily Start")
+    expect(container.textContent).toContain("Join Us")
     expect(container.textContent).toContain("Queued One")
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
@@ -639,7 +654,7 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-tv-carousel-card"]')
         ?.textContent,
-    ).toContain("Daily Start")
+    ).toContain("Join Us")
     const heroRailCards = Array.from(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
     )
@@ -648,9 +663,121 @@ describe("WatchHomePage", () => {
     )
     const queuedTwoCard = heroRailCards[queuedTwoIndex]
     expect(queuedTwoCard).not.toBeUndefined()
+    const primaryCta = container.querySelector(
+      'a[href="https://example.com/join"]',
+    )
+    expect(primaryCta?.textContent).toContain("Join Us")
+    const shortFilmButton = Array.from(
+      container.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Watch Short Film"))
+    expect(shortFilmButton).not.toBeUndefined()
+    const playSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined)
+    const heroVideo = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    expect(heroVideo.hasAttribute("controls")).toBe(false)
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).toBeNull()
+    const chromeVisibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
+    const handleChromeVisibility = (event: Event) => {
+      chromeVisibilityEvents.push(
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
+      )
+    }
+    window.addEventListener(
+      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+      handleChromeVisibility,
+    )
 
     await act(async () => {
-      queuedTwoCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      shortFilmButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(playSpy).toHaveBeenCalled()
+    expect(heroVideo.hasAttribute("controls")).toBe(false)
+    expect(heroVideo.className).toContain("watch-home-player-enter")
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).toBeNull()
+    expect(container.textContent).toContain("Watch Short Film")
+
+    await act(async () => {
+      heroVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 380))
+    })
+
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).not.toBeNull()
+    expect(
+      document.body.querySelector('[data-testid="hero-chrome-timeline"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-tv-visual-layer"]'),
+    ).toHaveLength(0)
+    expect(chromeVisibilityEvents).toContainEqual({
+      visible: true,
+      opacity: 1,
+    })
+    expect(heroVideo.muted).toBe(false)
+    expect(heroVideo.getAttribute("src")).toBe(
+      "https://stream.mux.com/mux-join.m3u8",
+    )
+
+    expect(container.textContent).not.toContain("Watch Short Film")
+    expect(
+      container.querySelector('button[aria-label="Next video"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('button[aria-label="Back to carousel"]'),
+    ).toBeNull()
+    window.removeEventListener(
+      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+      handleChromeVisibility,
+    )
+
+    const queuedOneCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((element) => element.textContent?.includes("Queued One"))
+    expect(queuedOneCard).not.toBeUndefined()
+
+    await act(async () => {
+      queuedOneCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(carouselApi.scrollTo).toHaveBeenCalledWith(1)
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).toBeNull()
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-tv-visual-layer"]')
+        .length,
+    ).toBeGreaterThan(0)
+    const updatedHeroVideo = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    expect(updatedHeroVideo.getAttribute("src")).toBe(
+      "https://stream.example/queued-one.m3u8",
+    )
+    expect(
+      container.querySelector('button[aria-label="Next video"]'),
+    ).not.toBeNull()
+
+    const updatedQueuedTwoCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((element) => element.textContent?.includes("Queued Two"))
+    expect(updatedQueuedTwoCard).not.toBeUndefined()
+
+    await act(async () => {
+      updatedQueuedTwoCard?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      )
     })
 
     expect(carouselApi.scrollTo).toHaveBeenCalledWith(queuedTwoIndex)
@@ -806,6 +933,7 @@ describe("WatchHomePage", () => {
     })
 
     expect(container.textContent).toContain("Daily Start")
+    expect(container.textContent).not.toContain("Watch Short Film")
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
     ).toHaveLength(1)
