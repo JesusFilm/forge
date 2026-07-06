@@ -20,18 +20,18 @@ tags:
 ## Problem
 
 The code path can render the Watch homepage body from a published homepage
-Experience, but production will keep using the static fallback until the
-canonical `watch-home` Experience is created or published in the production
+Experience, but production will keep showing only the static hero shell until
+the canonical `watch-home` Experience is created or published in the production
 Admin data store and the web cache is refreshed.
 
 ## Entry Points - Read These First
 
 1. `apps/admin/src/scripts/seed-watch-homepage-experience.ts` - local/staging
    seed shape and the canonical block/item payload.
-2. `apps/web/src/app/[locale]/[htmlLang]/page.tsx` - production fallback logic
+2. `apps/web/src/app/[locale]/[htmlLang]/page.tsx` - static-hero shell logic
    when the builder homepage is absent.
 3. `apps/web/src/components/home/WatchHomeExperiencePage.tsx` - static hero,
-   builder blocks, fallback sections, and static promo/footer composition.
+   builder blocks, and static promo/footer composition.
 4. `apps/web/src/components/sections/MediaCollection.tsx` - Watch-home styled
    media collection renderer.
 

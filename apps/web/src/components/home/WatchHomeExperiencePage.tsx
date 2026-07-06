@@ -2,7 +2,6 @@ import Image from "next/image"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomePromo } from "@/components/home/WatchHomePromo"
-import { WatchHomeSection } from "@/components/home/WatchHomeSection"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
@@ -37,7 +36,6 @@ export function WatchHomeExperiencePage({
 }: WatchHomeExperiencePageProps) {
   const backdrop = findBackdropImage(heroModel)
   const hasHeroBlock = blocks.some(isWatchHomeHeroBlock)
-  const fallbackSections = blocks.length === 0 ? heroModel.sections : []
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black text-white">
@@ -94,9 +92,6 @@ export function WatchHomeExperiencePage({
               />
             ),
           )}
-          {fallbackSections.map((section) => (
-            <WatchHomeSection key={section.id} section={section} />
-          ))}
           <WatchHomePromo />
           <WatchHomeFooter />
         </div>

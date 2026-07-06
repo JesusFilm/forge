@@ -117,7 +117,7 @@ describe("Watch root homepage", () => {
     expect(element.type).toBe(experienceEmptyMock)
   })
 
-  it("does not render empty state when static watch sections remain available", async () => {
+  it("ignores legacy static sections when deciding whether the builder homepage is empty", async () => {
     const heroModelWithStaticSections = {
       heroSlides: [],
       sections: [
@@ -140,10 +140,6 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.type).toBe(watchHomeExperiencePageMock)
-    expect(element.props).toEqual({
-      heroModel: heroModelWithStaticSections,
-      blocks: [],
-    })
+    expect(element.type).toBe(experienceEmptyMock)
   })
 })

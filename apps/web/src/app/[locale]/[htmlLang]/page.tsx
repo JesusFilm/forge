@@ -60,11 +60,7 @@ export default async function HomePage({ params }: PageProps) {
     })
   }
 
-  if (
-    !heroResult.data.heroSlides.length &&
-    !heroResult.data.sections.length &&
-    !builderBlocks.length
-  ) {
+  if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
     return <ExperienceEmpty />
   }
 
