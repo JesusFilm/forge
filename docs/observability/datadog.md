@@ -260,7 +260,7 @@ TV mirrors web's **non-sensitive** signals and deliberately skips the sensitive 
 
 ## Datadog MCP for agents (feat-228)
 
-Agents query `service:forge-tv` telemetry read-only via Datadog's hosted MCP, registered in the repo `.mcp.json` (`datadog` entry). OAuth on first connect; no API keys in the repo. Toolsets are pinned read-only: `core` (RUM events, spans, traces) plus `error-tracking`, with the two write tools omitted (`update_datadog_error_tracking_issue`, `manage_datadog_error_tracking_issue_comments`).
+Agents query `service:forge-tv` telemetry read-only via Datadog's hosted MCP, registered in the repo `.mcp.json` (`datadog` entry). OAuth on first connect; no API keys in the repo. Toolsets are `core` (RUM events, spans, traces) plus `error-tracking`, with every known write tool omitted so the grant is read-only — from error-tracking: `update_datadog_error_tracking_issue`, `manage_datadog_error_tracking_issue_comments`; from core: `create_datadog_notebook`, `edit_datadog_notebook`, `upsert_datadog_dashboard`. The endpoint is `/api/unstable/`, so re-verify the write-tool set against Datadog's `/mcp_server/tools/` reference whenever the query string changes.
 
 Regression-hunt loop against `service:forge-tv`:
 

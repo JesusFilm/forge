@@ -5,6 +5,10 @@ import { datadogLog } from "./datadog"
 import { SEMANTIC_SEARCH, type SearchResult } from "./queries"
 import { sanitizeQuery as sanitizeQueryImpl } from "./sanitizeQuery"
 import { meetsMinQueryLength } from "./searchGate"
+import {
+  generateSearchRequestId,
+  resolveWatchSearchOutcome,
+} from "./watchSearchLog"
 
 /** Debounce window from last query change to auto-submit. Raised from 600 ms so
  *  fewer in-progress prefixes each fire a server-side cold embedding. */
@@ -39,21 +43,6 @@ function emitWatchSearchLog(
     "watch_search.latency_ms": Date.now() - startedAt,
     "watch_search.request_type": WATCH_SEARCH_REQUEST_TYPE,
     "watch_search.search_request_id": searchRequestId,
-  })
-}
-
-/** Client-side correlation id for one search request (mirrors web's
- *  search_request_id). Runtime UUID when present, else an RFC4122 v4 fallback —
- *  Hermes lacks crypto.randomUUID and we add no dependency. */
-function generateSearchRequestId(): string {
-  const runtimeCrypto = (
-    globalThis as { crypto?: { randomUUID?: () => string } }
-  ).crypto
-  const uuid = runtimeCrypto?.randomUUID?.()
-  if (uuid) return uuid
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16)
   })
 }
 
@@ -241,7 +230,7 @@ export function useSemanticSearch(
         if (!mountedRef.current) return
 
         emitWatchSearchLog(
-          items.length === 0 ? "no_result" : "completed",
+          resolveWatchSearchOutcome(items.length),
           items.length,
           startedAt,
           requestSearchId,

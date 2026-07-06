@@ -21,14 +21,14 @@ redact() { sed "s|$DATADOG_API_KEY|[REDACTED]|g"; }
 case "${EAS_BUILD_PLATFORM:-ios}" in
 ios)
   # dSYMs match crashes by UUID (no version needed). ios/build is the gym output.
-  pnpm dlx @datadog/datadog-ci@5.8.0 dsyms upload ios/build 2>&1 | redact ||
-    echo "[datadog] dSYM upload failed (non-fatal)"
-  # RN/Hermes source map (KTD-4, staged): a plain EAS build does not retain the
-  # composed map. The first real keyed build confirms whether SOURCEMAP_FILE or a
-  # re-export produces it and at what path; wire `datadog-ci react-native upload
-  # --platform ios --service forge-tv --release-version $EXPO_PUBLIC_DATADOG_VERSION
-  # --bundle <b> --sourcemap <m>` then. dSYMs already symbolicate native crashes.
-  echo "[datadog] dSYMs uploaded; RN source map upload staged (KTD-4)"
+  # RN/Hermes source map (KTD-4) is staged, not uploaded: a plain EAS build doesn't
+  # retain the composed map. First real keyed build confirms its path, then wire
+  # `datadog-ci react-native upload`. dSYMs already symbolicate native crashes.
+  if pnpm dlx @datadog/datadog-ci@5.8.0 dsyms upload ios/build 2>&1 | redact; then
+    echo "[datadog] dSYMs uploaded; RN source map upload staged (KTD-4)"
+  else
+    echo "[datadog] dSYM upload failed (non-fatal); RN source map upload staged (KTD-4)"
+  fi
   ;;
 android)
   # Android mapping + RN source map upload mirrors the iOS branch; deferred and

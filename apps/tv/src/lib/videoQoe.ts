@@ -39,6 +39,16 @@ export function sanitizeVideoErrorMessage(message: string): string {
     .slice(0, MAX_ERROR_MESSAGE_LEN)
 }
 
+// Rebuffer gate for a "loading" status: genuine only when playback has started
+// and we're not mid dub/source swap. (Seek is handled by the caller's earlier
+// seekTargetRef early-return, before this runs.)
+export function shouldCountRebuffer(
+  hasStarted: boolean,
+  isSourceSwapping: boolean,
+): boolean {
+  return hasStarted && !isSourceSwapping
+}
+
 export function createVideoQoeSession({
   contentId,
   now = Date.now,

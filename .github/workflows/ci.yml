@@ -139,6 +139,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
+      - name: Test the patched-deps guard logic
+        run: node scripts/check-patched-deps.test.mjs
       # Dependency-free guard: fails fast when a pnpm.patchedDependencies key no
       # longer matches the installed version (pnpm only warns), so an orphaned
       # tvOS patch can't silently re-break the native build. No install needed.

@@ -27,6 +27,7 @@ import { extractMuxPlaybackId } from "../lib/muxUrl"
 import {
   createVideoQoeSession,
   sanitizeVideoErrorMessage,
+  shouldCountRebuffer,
 } from "../lib/videoQoe"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
@@ -1204,7 +1205,9 @@ export function VideoPlayer({
         // QoE rebuffer (rule 3): reached only with seekTargetRef null (guarded
         // above). A "loading" after playback started that is NOT a dub/source
         // swap is a genuine rebuffer; seeks and swaps must never count.
-        if (hasStartedRef.current && !sourceSwappingRef.current) {
+        if (
+          shouldCountRebuffer(hasStartedRef.current, sourceSwappingRef.current)
+        ) {
           qoeRef.current?.onRebuffer()
         }
         // Genuine network buffering: suspend the timer and force controls visible

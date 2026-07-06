@@ -1,4 +1,8 @@
-import { createVideoQoeSession, sanitizeVideoErrorMessage } from "./videoQoe"
+import {
+  createVideoQoeSession,
+  sanitizeVideoErrorMessage,
+  shouldCountRebuffer,
+} from "./videoQoe"
 
 // Deterministic clock: `now` reads a mutable `t` so tests advance time between
 // calls without touching the real Date.now (ttff must measure from mount).
@@ -87,6 +91,18 @@ describe("createVideoQoeSession", () => {
     expect(typeof ttff).toBe("number")
     expect(ttff).toBeGreaterThanOrEqual(0)
     expect(session.finalize("ended")?.content_id).toBeNull()
+  })
+})
+
+describe("shouldCountRebuffer", () => {
+  it("counts a loading after playback started, not mid-swap", () => {
+    expect(shouldCountRebuffer(true, false)).toBe(true)
+  })
+  it("does not count before playback has started", () => {
+    expect(shouldCountRebuffer(false, false)).toBe(false)
+  })
+  it("does not count during a dub/source swap", () => {
+    expect(shouldCountRebuffer(true, true)).toBe(false)
   })
 })
 
