@@ -22,6 +22,7 @@ type WatchHomeSeedSection = {
   eyebrow: string
   title: string
   description?: string
+  backgroundColor?: string
   layout: "rail" | "grid"
   variant?: "carousel" | "grid" | "collection"
   showSequenceNumbers?: boolean
@@ -64,6 +65,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     title: "Discover the full story",
     description:
       "Explore our collection of videos and resources that bring the Bible to life through engaging stories and teachings.",
+    backgroundColor: "#6f1d46",
     coreIds: [
       "1_jf-0-0",
       "2_GOJ-0-0",
@@ -80,6 +82,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     title: "Scripture Told Through Film",
     description:
       "Explore our collection of videos and resources that bring the Bible to life through engaging stories and teachings.",
+    backgroundColor: "#172554",
     showSequenceNumbers: true,
     coreIds: [
       "1_jf-0-0",
@@ -97,6 +100,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     title: "Christmas Advent Countdown",
     description:
       "Join our Advent journey with a daily video that builds anticipation for Christmas, exploring the hope, joy, and promise of Jesus' arrival.",
+    backgroundColor: "#7f1d1d",
     showSequenceNumbers: true,
     coreIds: [
       "2_0-ConsideringChristmas",
@@ -122,6 +126,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     variant: "collection",
     eyebrow: "Bible Project",
     title: "BibleProject Advent",
+    backgroundColor: "#4c1d95",
     coreIds: [
       "11_Advent0104",
       "11_Advent0204",
@@ -134,6 +139,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     layout: "grid",
     eyebrow: "NUA Series",
     title: "NUA",
+    backgroundColor: "#134e4a",
     coreIds: ["7_0-ncs01", "7_0-ncs02", "7_0-ncs03"],
   },
   {
@@ -141,6 +147,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     layout: "grid",
     eyebrow: "Worth Series",
     title: "NUA Worth",
+    backgroundColor: "#78350f",
     coreIds: [
       "7_Origins2Worth0103",
       "7_Origins2Worth0203",
@@ -152,6 +159,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     layout: "grid",
     eyebrow: "Video Course",
     title: "Journey with Jesus",
+    backgroundColor: "#14532d",
     coreIds: [
       "8_NBC01",
       "8_NBC02",
@@ -173,6 +181,7 @@ const WATCH_HOME_SEED_SECTIONS: readonly WatchHomeSeedSection[] = [
     title: "Scripture, Spoken Exactly as Written",
     description:
       "Explore our collection of videos and resources that bring the Bible to life through engaging stories and teachings.",
+    backgroundColor: "#1e3a8a",
     coreIds: [
       "LUMOCollection",
       "GOMarkCollection",
@@ -423,6 +432,7 @@ async function main(): Promise<void> {
         itemsSource: "manual",
         title: section.title,
         description: section.description,
+        backgroundColor: section.backgroundColor,
         showItemNumbers: section.showSequenceNumbers ?? false,
         items: section.coreIds
           .map((coreId) => videoIdByCoreId.get(coreId))

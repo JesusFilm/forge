@@ -49,7 +49,7 @@ export function Text({ data }: TextProps) {
           )}
           {heading && (
             <div className="mb-3 flex items-center justify-between">
-              <Tag className="mb-0 text-2xl font-bold xl:text-3xl 2xl:text-4xl">
+              <Tag className="mb-0 text-xl font-bold xl:text-2xl 2xl:text-3xl">
                 {heading}
               </Tag>
             </div>
@@ -78,7 +78,17 @@ export function Text({ data }: TextProps) {
       className="space-y-6 text-stone-100"
       data-testid="Text"
     >
-      {heading && <Tag className="mb-0 text-4xl font-bold">{heading}</Tag>}
+      {heading && (
+        <Tag
+          className={
+            variant === "small"
+              ? "mb-0 text-xl font-bold xl:text-2xl"
+              : "mb-0 text-4xl font-bold"
+          }
+        >
+          {heading}
+        </Tag>
+      )}
       {subtitle && <p className="text-xl opacity-50">{subtitle}</p>}
       {paragraphs.length > 0 && (
         <div
