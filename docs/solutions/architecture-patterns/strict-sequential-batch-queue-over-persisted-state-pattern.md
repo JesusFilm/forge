@@ -1,5 +1,5 @@
 ---
-title: "Serializing parallel background downloads into an in-memory queue over persisted state: four hazard classes"
+title: "Serializing parallel background downloads into an in-memory queue over persisted state: five hazard classes"
 date: "2026-07-02"
 category: architecture-patterns
 module: "apps/mobile"
@@ -12,12 +12,14 @@ applies_when:
   - "A derived aggregate (e.g. batch progress bar) treats a transient per-item state value as steady-state once serialization makes it long-lived"
   - "User-cancelable async gaps (disk probes, URL re-resolution, dir creation) sit between a request and the point of no return"
   - "An occupancy/dedup guard scopes membership across multiple sequential batches without being pruned on cancel, delete, or drain"
+  - "An edge-triggered success notification reads completion from an aggregate terminal-state predicate that a non-destructive cancel/failure revert also re-satisfies"
 symptoms:
   - "Canceled or deleted item mid-batch reappears as a zombie native transfer with an orphaned committed file no UI can see"
   - "App relaunch mid-batch restarts all remaining items in parallel, silently breaking the ordering contract the feature promises"
   - "Pause All never flips to Resume All; the paused slot freezes the pump in an unrecoverable-looking wedge"
   - "A queued item silently vanishes from the UI with no failed or paused record when its deferred start fails"
   - "A paused or manually-retried item from an old batch wedges every future batch via a slug that is never released"
+  - "An edge-triggered completion toast fires after a cancel or a silent failure, because a non-destructive revert lands the same fully-downloaded aggregate state as a genuine finish"
 root_cause: async_timing
 resolution_type: code_fix
 related_components:
@@ -39,7 +41,7 @@ tags:
 
 `apps/mobile`'s series "Download All" originally started every episode's download in parallel via `@kesha-antonov/react-native-background-downloader` — fast, but with no ordering guarantee. The product requirement changed: episodes must complete strictly in series order (1 → 2 → 3), not size-order-first. The naive fix — cap concurrency to 1 inside the existing per-video `startDownload` — doesn't work, because `startDownload` is also the single entry point for manual, swap, and reattach downloads. Those must stay unthrottled; only the _batch_ surface needs sequencing.
 
-The shape of this problem recurs anywhere a system has (a) a per-item action that already works and is reused by multiple callers, (b) a persisted record of item state that survives process restarts, and (c) a new requirement to serialize a _subset_ of callers into "one at a time, in order" without touching the others. Mobile's series batch queue (R14, shipped across `f7da6d02`, `fe898f3e`, `7c75915e`) is a concrete instance. A 9-reviewer pass on the PR found four hazard classes that are generic to this shape, not specific to downloads — they're the checklist for the next person who builds this pattern.
+The shape of this problem recurs anywhere a system has (a) a per-item action that already works and is reused by multiple callers, (b) a persisted record of item state that survives process restarts, and (c) a new requirement to serialize a _subset_ of callers into "one at a time, in order" without touching the others. Mobile's series batch queue (R14, shipped across `f7da6d02`, `fe898f3e`, `7c75915e`) is a concrete instance. A 9-reviewer pass on the PR found four hazard classes that are generic to this shape, not specific to downloads — they're the checklist for the next person who builds this pattern. A later review of a series-completion toast surfaced a fifth, on the same derived-aggregate seam as Hazard 3 — its terminal-state twin.
 
 Lineage: the predecessor session (session history) deliberately left the hook this pattern formalizes — the R10 queue-ordering invariant and the pure `runSeriesBatchEnqueue` extraction were built so a later pass could serialize the batch without touching the shared `startDownload`; the same session also rejected adding a React Native render harness in favor of the pure-extraction testing convention this pattern's decision core follows.
 
@@ -148,7 +150,7 @@ if (isLiveDownloadRecord(existing) && !isOwnPlaceholder) {
 
 **4. Occupancy is scoped and lifecycled, not a global counter.** `batchSlugs` is not "how many downloads are active app-wide" — it's "which slugs belong to _this_ batch run." A paused batch episode still counts toward occupancy (deliberately — see Why This Matters), but a paused _unrelated_ download never blocks the batch. The scope is populated on enqueue, pruned on cancel/delete, and — critically — cleared when the queue drains with nothing left in flight, so a later manual download of a once-batched slug doesn't inherit a stale reservation.
 
-### The four hazard classes (checklist for the next implementation)
+### The five hazard classes (checklist for the next implementation)
 
 **Hazard 1 — Serialization widens a cancel window that used to be safe.** Before batching, `startDownload`'s awaits (`freeDiskBytes`, `ensureVideoDir`, the ~10s `reresolveMediaUrl`) were cheap because most calls started immediately. Under the batch queue, "immediately" can mean minutes into a wait. Nothing had ever re-checked whether the record was still there after those awaits, because the gap used to be too small to matter. Once episodes serialize, a cancel that lands mid-gap can: get overwritten by the state write that runs after the gap (resurrecting a record cancel just deleted), start a native task that isn't yet in the task registry when cancel looks for it (unstoppable), or let `finalize` move a completed file to disk against a record that no longer exists (an orphan no UI path can delete).
 
@@ -261,6 +263,26 @@ if (action.kind === "empty") {
 
 Generic lesson: when acceptance and execution are separated in time by a queue, (a) execution's result must be plumbed back to wherever acceptance reported success, not silently dropped, and (b) any occupancy/reservation scope that execution reads must have an explicit release path — "only ever grows" is a slot leak waiting for the next unrelated caller to collide with it.
 
+**Hazard 5 — An edge-triggered notification reads "success" from aggregate terminal state, which a revert re-satisfies.** Hazard 3 was the pause affordance reading the wrong _active_-state distribution; this is its terminal-state twin. A "Series downloaded" toast fired on the falling edge of `inProgress → false` while `seriesAllDownloaded` was true. But because a swap is non-destructive (see "Two intentional non-fixes"), cancelling a re-download — or a re-download whose swaps all silently fail — reverts every episode to its still-`downloaded` old copy, landing the same fully-downloaded terminal state in the same render `inProgress` flips false. The falling-edge detector therefore aliased three transitions — genuine completion, cancel-revert, failure-revert — into one predicate, firing a false success toast right after a cancel. A naive "reset the activity latch inside the cancel handler" doesn't work: the in-flight episode is still reverting, so `inProgress` stays true for a render or two and the effect's `if (inProgress) { latch = true; return }` branch re-arms the latch before the real edge arrives.
+
+Fix: carry the missing distinction out-of-band. The cancel handler is the only place that _knows_ a revert (not a completion) is coming, so it sets a dedicated one-shot `cancellingRef` latch that the effect reads on the same falling edge, and the activity latch is reset on _any_ activity-end so a suppressed non-completion can't swallow a later genuine one:
+
+```ts
+// apps/mobile/app/series/[slug].tsx — the toast effect
+if (downloadState.inProgress) {
+  sawDownloadActivityRef.current = true
+  return
+}
+if (!sawDownloadActivityRef.current) return
+sawDownloadActivityRef.current = false // reset on ANY activity-end
+const wasCancelling = cancellingRef.current
+cancellingRef.current = false
+if (!wasCancelling && seriesFullyDownloaded)
+  setSeriesSnackbar("Series downloaded")
+```
+
+Generic lesson: an aggregate terminal-state predicate answers "is everything in the done state?" — never "did _this_ run finish it?" When a cancel or failure reverts to that same terminal state (which non-destructive replacement guarantees), any edge-triggered success signal built on the predicate must carry the transition's identity explicitly — a suppression latch, or a real finalize/`onDone` event — not infer it from the aggregate. Full writeup: `docs/solutions/logic-errors/series-download-completion-toast-terminal-state-ambiguity.md`.
+
 ### Two intentional non-fixes worth naming
 
 - **Swaps and language-switches bypass the queue entirely.** The ordering guarantee is scoped to _fresh_ downloads inside a batch; `swapDownload` calls `startDownload` directly when there's no existing copy, and otherwise runs its own non-destructive swap flow. This is deliberate, not an oversight — don't "fix" it by routing swaps through the batch queue.
@@ -282,6 +304,7 @@ Reach for this pattern — and re-run this exact hazard checklist — whenever y
 - There's a derived/aggregate UI view that was built assuming today's state distribution (which states are transient vs. steady) — before the queue existed.
 - Acceptance (validating and enqueueing a request) and execution (actually running it) are going to happen at different times, and something reports outcomes at acceptance time.
 - Occupancy/concurrency is tracked via a scope (a set of ids) rather than a single incrementing counter — check it has both a grow path and a release path.
+- An edge-triggered success signal (a toast, a haptic, a "done" callback) is derived from an aggregate terminal-state predicate, and a cancel or failure can revert items back into that same terminal state — a non-destructive swap/replace guarantees it. Carry the transition's identity out-of-band (a suppression latch, or a real finalize event); the aggregate can't tell a finish from a revert.
 
 ## Examples
 
@@ -316,6 +339,7 @@ pausedAggregate: anyPaused && !anyDownloading,
 ## Related
 
 - `docs/solutions/runtime-errors/series-download-setconfig-cancels-inflight-20260624.md` — Same subsystem (DownloadsProvider + @kesha-antonov/react-native-background-downloader) and the direct precedent the new queue pump builds on.
+- `docs/solutions/logic-errors/series-download-completion-toast-terminal-state-ambiguity.md` — Hazard 5's standalone writeup: a falling-edge completion toast aliased cancel/failure reverts as success; fixed with an out-of-band suppression latch.
 - `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md` — Canonical reserve-then-release slot contract for background dispatch; the new doc's hazard #4 (occupancy slug-set that only grew because deferred start failures escaped enqueue-time reporting) is a fresh cross-domain instance of exactly the leak pattern this doc catalogs (slot reserved before dispatch, never released on a throw that doesn't hit the normal completion path).
 - `docs/solutions/developer-experience/debugging-rn-sim-state-via-app-container-20260624.md` — Verification methodology (reading AsyncStorage/queue records straight from the iOS sim app container when console.
 - `apps/mobile/src/lib/batchDownloadQueue.ts` — pure decision core (`nextBatchAction`, `canQueueBatchDownload`, `BATCH_DOWNLOAD_CONCURRENCY`).
