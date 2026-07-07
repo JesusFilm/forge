@@ -156,6 +156,28 @@ describe("runtime env", () => {
       "MAPPER_API_TOKEN is required for yt-video-mapper-backend production",
     )
   })
+
+  it("requires an official media host allowlist for production indexing", async () => {
+    const { assertMediaIndexEnv } = await loadEnv({
+      NODE_ENV: "production",
+      MEDIA_INDEX_ALLOWED_HOSTS: "",
+    })
+
+    expect(assertMediaIndexEnv).toThrow(
+      "MEDIA_INDEX_ALLOWED_HOSTS is required to index yt-video-mapper official media in production",
+    )
+  })
+
+  it("returns media index configuration when the production allowlist is set", async () => {
+    const { assertMediaIndexEnv } = await loadEnv({
+      NODE_ENV: "production",
+      MEDIA_INDEX_ALLOWED_HOSTS: "stream.mux.com,api-media-core.jesusfilm.org",
+    })
+
+    expect(assertMediaIndexEnv()).toEqual({
+      allowedHosts: "stream.mux.com,api-media-core.jesusfilm.org",
+    })
+  })
 })
 
 async function loadEnv(overrides: NodeJS.ProcessEnv) {

@@ -116,7 +116,9 @@ export function createDefaultMatchJobService(): MatchJobService {
   return new MatchJobService(
     new PrismaMatchJobRepository(prisma),
     new FileSystemUploadStorage(env.UPLOAD_STORAGE_DIR),
-    new DeterministicUploadSignalExtractor(),
+    new DeterministicUploadSignalExtractor({
+      algorithmVersion: env.MEDIA_SIGNATURE_ALGORITHM_VERSION,
+    }),
     new MediaSignatureMatcher(new PrismaMediaSignatureMatchRepository(prisma), {
       algorithmVersion: env.MEDIA_SIGNATURE_ALGORITHM_VERSION,
     }),
