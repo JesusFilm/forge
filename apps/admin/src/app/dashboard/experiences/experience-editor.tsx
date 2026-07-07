@@ -81,10 +81,13 @@ import {
 import { cx } from "@/components/admin-ui"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
+import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
+import type { UploadActionResult } from "@/app/dashboard/media/media-actions"
 import {
   BackgroundColorPicker,
   normalizeHexColor,
 } from "./experience-editor/background-color-picker"
+import { ImagePickerBrowser } from "./experience-editor/image-picker-browser"
 import {
   BibleQuoteCard,
   type BibleQuoteDragHandleState,
@@ -142,21 +145,16 @@ type RevisionEntry = {
   isActive: boolean
 }
 
-type MediaLibraryItem = {
-  id: string
-  displayName: string
-  altText: string | null
-  mimeType: string
-  byteSize: string
-  previewUrl: string | null
-  updated: string
-}
+type MediaLibraryItem = MediaLibraryBrowserData["images"][number]
+
+type ImagePickerUrlField = "backgroundImageUrl" | "imageUrl" | "mediaUrl"
 
 type ImagePickerTarget = {
-  blockIndex: number
-  urlField: "backgroundImageUrl" | "imageUrl" | "mediaUrl"
-  assetField: "backgroundImageAssetId" | "imageAssetId" | "mediaAssetId"
   label: string
+  selectedAssetId: string | null
+  canClear: boolean
+  apply: (asset: MediaLibraryItem) => void
+  clear: () => void
 }
 
 type LocaleEntry = {
@@ -813,6 +811,15 @@ function localeDotClass(tone: LocaleEntry["stateTone"]) {
   return "bg-[var(--color-warning)]"
 }
 
+const selectedMediaButtonClassName =
+  "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
+const idleMediaButtonClassName =
+  "border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+const selectedOverlayMediaButtonClassName =
+  "border-[rgba(110,231,183,0.54)] bg-[rgba(20,83,61,0.82)] text-white hover:border-[rgba(110,231,183,0.78)] hover:bg-[rgba(24,96,70,0.9)]"
+const idleOverlayMediaButtonClassName =
+  "border-white/18 bg-[#08090d] text-white hover:border-white/36 hover:bg-[#11131a]"
+
 function formatSeconds(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "--:--"
   const totalSeconds = Math.max(0, Math.floor(value))
@@ -956,6 +963,7 @@ export function ExperienceEditor({
   localeEntries,
   videoLibrary,
   mediaLibrary,
+  canUploadImages,
   calendarDate,
   watchOrigin,
   initialValues,
@@ -963,6 +971,7 @@ export function ExperienceEditor({
   publishAction,
   createLocaleAction,
   restoreAction,
+  uploadImageAction,
   onCanvasController,
 }: {
   canPublish: boolean
@@ -970,7 +979,8 @@ export function ExperienceEditor({
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
-  mediaLibrary: MediaLibraryItem[]
+  mediaLibrary: MediaLibraryBrowserData
+  canUploadImages: boolean
   calendarDate: string
   /** Forge watch-app origin (env.WATCH_CANONICAL_ORIGIN) for preview links. */
   watchOrigin: string
@@ -991,6 +1001,7 @@ export function ExperienceEditor({
   publishAction: (localeId: string) => Promise<EditorActionResult>
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
+  uploadImageAction: (formData: FormData) => Promise<UploadActionResult>
   /**
    * Optional imperative bridge published once on mount so the chat panel
    * (sibling component at the page level) can read current canvas state
@@ -1242,6 +1253,11 @@ export function ExperienceEditor({
   const [imagePickerTarget, setImagePickerTarget] =
     useState<ImagePickerTarget | null>(null)
   const [imageLibraryQuery, setImageLibraryQuery] = useState("")
+  const [imagePickerSelectedFolderId, setImagePickerSelectedFolderId] =
+    useState<string | null>(null)
+  const [lastImagePickerFolderId, setLastImagePickerFolderId] = useState<
+    string | null
+  >(null)
   const [carouselDragState, setCarouselDragState] =
     useState<CarouselDragState | null>(null)
   const [carouselDragHandleState, setCarouselDragHandleState] =
@@ -1531,15 +1547,6 @@ export function ExperienceEditor({
       (item) => item.key !== videoPickerCurrentVideo?.key,
     ),
   ]
-  const normalizedImageLibraryQuery = imageLibraryQuery.trim().toLowerCase()
-  const filteredImageLibrary = mediaLibrary.filter((asset) => {
-    const haystack =
-      `${asset.displayName} ${asset.altText ?? ""} ${asset.mimeType} ${asset.id}`.toLowerCase()
-    return (
-      normalizedImageLibraryQuery.length === 0 ||
-      haystack.includes(normalizedImageLibraryQuery)
-    )
-  })
   const videoPickerSelectedVideo = findVideoLibraryItem(
     videoPickerDraft.videoKey,
   )
@@ -3208,10 +3215,18 @@ export function ExperienceEditor({
     })
   }
 
+  function mediaAssetPreviewUrl(assetId: unknown) {
+    const id = asString(assetId)
+    if (!id) return ""
+    return (
+      mediaLibrary.images.find((asset) => asset.id === id)?.previewUrl ?? ""
+    )
+  }
+
   function chooseBackgroundImage(
     index: number,
     block: BlockRecord,
-    field: ImagePickerTarget["urlField"],
+    field: ImagePickerUrlField,
   ) {
     openImagePicker(index, block, field)
   }
@@ -3220,41 +3235,288 @@ export function ExperienceEditor({
     openImagePicker(index, block, "backgroundImageUrl")
   }
 
+  function chooseVideoCarouselItemImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
+    openImagePickerTarget({
+      label: "carousel item image",
+      selectedAssetId:
+        asString(itemRecord?.imageOverrideAssetId) ||
+        asString(itemRecord?.imageAssetId) ||
+        null,
+      canClear: Boolean(
+        asString(itemRecord?.imageOverrideAssetId) ||
+        asString(itemRecord?.imageAssetId),
+      ),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "videoCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageOverrideUrl: "",
+                    imageOverrideAssetId: asset.id,
+                    imageUrl: "",
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "videoCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageOverrideUrl: "",
+                    imageOverrideAssetId: "",
+                    imageUrl: "",
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
+  }
+
+  function chooseNavigationCarouselItemImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
+    openImagePickerTarget({
+      label: "navigation destination image",
+      selectedAssetId: asString(itemRecord?.imageAssetId) || null,
+      canClear: Boolean(asString(itemRecord?.imageAssetId)),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "navigationCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageUrl: "",
+                    imageAssetId: asset.id,
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "navigationCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageUrl: "",
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
+  }
+
+  function chooseMediaCollectionItemImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
+    openImagePickerTarget({
+      label: "media item image",
+      selectedAssetId:
+        asString(itemRecord?.imageOverrideAssetId) ||
+        asString(itemRecord?.imageAssetId) ||
+        null,
+      canClear: Boolean(
+        asString(itemRecord?.imageOverrideAssetId) ||
+        asString(itemRecord?.imageAssetId),
+      ),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "mediaCollection") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageOverrideUrl: "",
+                    imageOverrideAssetId: asset.id,
+                    imageUrl: "",
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "mediaCollection") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageOverrideUrl: "",
+                    imageOverrideAssetId: "",
+                    imageUrl: "",
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
+  }
+
+  function chooseBibleQuoteImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.quotes)[itemIndex])
+    openImagePickerTarget({
+      label: "quote image",
+      selectedAssetId:
+        asString(itemRecord?.backgroundImageAssetId) ||
+        asString(itemRecord?.imageAssetId) ||
+        null,
+      canClear: Boolean(
+        asString(itemRecord?.backgroundImageAssetId) ||
+        asString(itemRecord?.imageAssetId),
+      ),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "bibleQuotesCarousel") return block
+          return {
+            ...block,
+            quotes: asArray(block.quotes).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    backgroundImageUrl: "",
+                    backgroundImageAssetId: asset.id,
+                    imageUrl: "",
+                    imageAssetId: asset.id,
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "bibleQuotesCarousel") return block
+          return {
+            ...block,
+            quotes: asArray(block.quotes).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    backgroundImageUrl: "",
+                    backgroundImageAssetId: "",
+                    imageUrl: "",
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
+  }
+
   function openImagePicker(
     blockIndex: number,
     block: BlockRecord,
-    urlField: ImagePickerTarget["urlField"],
+    urlField: ImagePickerUrlField,
   ) {
     const blockType = asString(block.t) || "block"
-    setImagePickerTarget({
-      blockIndex,
-      urlField,
-      assetField: visualIdentityAssetField(urlField),
+    const assetField = visualIdentityAssetField(urlField)
+    openImagePickerTarget({
       label: blockType === "card" ? "card image" : `${blockType} image`,
+      selectedAssetId: asString(block[assetField]) || null,
+      canClear: Boolean(asString(block[assetField])),
+      apply: (asset) => {
+        updateBlockAt(blockIndex, (currentBlock) => ({
+          ...currentBlock,
+          [urlField]: "",
+          [assetField]: asset.id,
+        }))
+      },
+      clear: () => clearVisualIdentityImage(blockIndex, urlField),
+    })
+  }
+
+  function openImagePickerTarget(target: ImagePickerTarget) {
+    const selectedAsset = target.selectedAssetId
+      ? mediaLibrary.images.find((asset) => asset.id === target.selectedAssetId)
+      : null
+    const rememberedFolderId =
+      lastImagePickerFolderId === null ||
+      mediaLibrary.folders.some(
+        (folder) => folder.id === lastImagePickerFolderId,
+      )
+        ? lastImagePickerFolderId
+        : null
+    setImagePickerTarget({
+      label: target.label,
+      selectedAssetId: target.selectedAssetId,
+      canClear: target.canClear,
+      apply: target.apply,
+      clear: target.clear,
     })
     setImageLibraryQuery("")
+    setImagePickerSelectedFolderId(
+      selectedAsset ? selectedAsset.folderId : rememberedFolderId,
+    )
   }
 
   function closeImagePicker() {
     setImagePickerTarget(null)
     setImageLibraryQuery("")
+    setImagePickerSelectedFolderId(null)
+  }
+
+  function selectImagePickerFolder(folderId: string | null) {
+    setImagePickerSelectedFolderId(folderId)
+    setLastImagePickerFolderId(folderId)
   }
 
   function applyImagePickerSelection(asset: MediaLibraryItem) {
     if (!imagePickerTarget || !asset.previewUrl) return
 
-    updateBlockAt(imagePickerTarget.blockIndex, (block) => ({
-      ...block,
-      [imagePickerTarget.urlField]: asset.previewUrl,
-      [imagePickerTarget.assetField]: asset.id,
-    }))
+    imagePickerTarget.apply(asset)
     pushToast(`Attached ${asset.displayName}.`, "success")
+    closeImagePicker()
+  }
+
+  function clearImagePickerSelection() {
+    if (!imagePickerTarget) return
+
+    imagePickerTarget.clear()
+    pushToast(`Removed ${imagePickerTarget.label}.`, "success")
     closeImagePicker()
   }
 
   function clearVisualIdentityImage(
     index: number,
-    urlField: ImagePickerTarget["urlField"],
+    urlField: ImagePickerUrlField,
   ) {
     const assetField = visualIdentityAssetField(urlField)
     updateBlockAt(index, (block) => ({
@@ -3652,7 +3914,13 @@ export function ExperienceEditor({
   function updateNavigationCarouselItemField(
     index: number,
     itemIndex: number,
-    field: "contentId" | "title" | "category" | "imageUrl" | "backgroundColor",
+    field:
+      | "contentId"
+      | "title"
+      | "category"
+      | "imageUrl"
+      | "imageAssetId"
+      | "backgroundColor",
     value: string,
   ) {
     updateBlockAt(index, (block) => {
@@ -3805,7 +4073,9 @@ export function ExperienceEditor({
     field:
       | "videoId"
       | "imageOverrideUrl"
+      | "imageOverrideAssetId"
       | "imageUrl"
+      | "imageAssetId"
       | "titleOverride"
       | "subtitleOverride"
       | "labelOverride"
@@ -3988,6 +4258,8 @@ export function ExperienceEditor({
   function resolveVideoCarouselItemImage(item: BlockRecord | null) {
     const itemVideo = findVideoLibraryItem(item?.videoId)
     return (
+      mediaAssetPreviewUrl(item?.imageOverrideAssetId) ||
+      mediaAssetPreviewUrl(item?.imageAssetId) ||
       asString(item?.imageOverrideUrl) ||
       asString(item?.imageUrl) ||
       itemVideo?.previewImageUrl ||
@@ -4016,7 +4288,7 @@ export function ExperienceEditor({
     return type === "card" ? "mediaUrl" : "imageUrl"
   }
 
-  function visualIdentityAssetField(field: ImagePickerTarget["urlField"]) {
+  function visualIdentityAssetField(field: ImagePickerUrlField) {
     if (field === "backgroundImageUrl") return "backgroundImageAssetId"
     if (field === "mediaUrl") return "mediaAssetId"
     return "imageAssetId"
@@ -4026,6 +4298,9 @@ export function ExperienceEditor({
     return {
       backgroundColor: asString(block?.backgroundColor),
       imageUrl:
+        mediaAssetPreviewUrl(block?.imageAssetId) ||
+        mediaAssetPreviewUrl(block?.backgroundImageAssetId) ||
+        mediaAssetPreviewUrl(block?.mediaAssetId) ||
         asString(block?.imageUrl) ||
         asString(block?.backgroundImageUrl) ||
         asString(block?.mediaUrl),
@@ -5342,6 +5617,10 @@ export function ExperienceEditor({
     const itemRecord = asRecord(item)
     const itemVideo = findVideoLibraryItem(itemRecord?.videoId)
     const itemImageUrl = resolveVideoCarouselItemImage(itemRecord)
+    const hasItemImageOverride = Boolean(
+      asString(itemRecord?.imageOverrideAssetId) ||
+      asString(itemRecord?.imageAssetId),
+    )
     const itemTitle = resolveVideoCarouselItemTitle(itemRecord)
     const itemSubtitle = resolveVideoCarouselItemSubtitle(itemRecord)
     const titleOverride = asString(itemRecord?.titleOverride)
@@ -5414,12 +5693,15 @@ export function ExperienceEditor({
               draggable={false}
               onClick={(event) => {
                 event.stopPropagation()
-                pushToast(
-                  "Asset library image picker is coming next.",
-                  "success",
-                )
+                chooseVideoCarouselItemImage(index, itemIndex)
               }}
-              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-white/16 bg-[rgba(4,6,10,0.58)] text-white shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out hover:bg-[rgba(4,6,10,0.72)]"
+              className={cx(
+                "absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out",
+                hasItemImageOverride
+                  ? selectedOverlayMediaButtonClassName
+                  : "border-white/16 bg-[rgba(4,6,10,0.58)] text-white hover:bg-[rgba(4,6,10,0.72)]",
+              )}
+              aria-pressed={hasItemImageOverride}
               aria-label="Choose carousel image"
             >
               <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
@@ -5900,7 +6182,10 @@ export function ExperienceEditor({
     itemIndex: number,
   ) {
     const itemRecord = asRecord(item)
-    const imageUrl = asString(itemRecord?.imageUrl)
+    const imageUrl =
+      mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
+      asString(itemRecord?.imageUrl)
+    const imageAssetId = asString(itemRecord?.imageAssetId)
     const backgroundColor = normalizeHexColor(itemRecord?.backgroundColor)
     const destinationOptions = navigationDestinationOptions(index)
     const currentDestination = destinationOptions.find(
@@ -5989,39 +6274,20 @@ export function ExperienceEditor({
                   onClick={(event) => {
                     event.stopPropagation()
                     activateBlock(index)
-                    pushToast(
-                      "Asset library image picker is coming next.",
-                      "success",
-                    )
+                    chooseNavigationCarouselItemImage(index, itemIndex)
                   }}
                   className={cx(
-                    "inline-flex h-8 w-8 cursor-pointer items-center justify-center border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a]",
-                    imageUrl ? "rounded-l-sm border-r-0" : "rounded-sm",
+                    "inline-flex h-8 w-8 cursor-pointer items-center justify-center border transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5",
+                    imageAssetId
+                      ? selectedOverlayMediaButtonClassName
+                      : idleOverlayMediaButtonClassName,
+                    "rounded-sm",
                   )}
+                  aria-pressed={Boolean(imageAssetId)}
                   aria-label="Choose navigation destination image"
                 >
                   <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
                 </button>
-                {imageUrl ? (
-                  <button
-                    type="button"
-                    draggable={false}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      activateBlock(index)
-                      updateNavigationCarouselItemField(
-                        index,
-                        itemIndex,
-                        "imageUrl",
-                        "",
-                      )
-                    }}
-                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-r-sm border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a] hover:text-[var(--color-danger)]"
-                    aria-label="Remove navigation destination image"
-                  >
-                    <X className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                ) : null}
               </div>
             </div>
           </div>
@@ -6176,10 +6442,16 @@ export function ExperienceEditor({
     const itemRecord = asRecord(item)
     const itemVideo = findVideoLibraryItem(itemRecord?.videoId)
     const itemImageUrl =
+      mediaAssetPreviewUrl(itemRecord?.imageOverrideAssetId) ||
+      mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
       asString(itemRecord?.imageOverrideUrl) ||
       asString(itemRecord?.imageUrl) ||
       itemVideo?.previewImageUrl ||
       ""
+    const hasItemImageOverride = Boolean(
+      asString(itemRecord?.imageOverrideAssetId) ||
+      asString(itemRecord?.imageAssetId),
+    )
     const itemTitle =
       asString(itemRecord?.titleOverride) || itemVideo?.title || "Media item"
     const itemSubtitle =
@@ -6271,12 +6543,15 @@ export function ExperienceEditor({
               draggable={false}
               onClick={(event) => {
                 event.stopPropagation()
-                pushToast(
-                  "Asset library image picker is coming next.",
-                  "success",
-                )
+                chooseMediaCollectionItemImage(index, itemIndex)
               }}
-              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-white/16 bg-[rgba(4,6,10,0.58)] text-white shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out hover:bg-[rgba(4,6,10,0.72)]"
+              className={cx(
+                "absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out",
+                hasItemImageOverride
+                  ? selectedOverlayMediaButtonClassName
+                  : "border-white/16 bg-[rgba(4,6,10,0.58)] text-white hover:bg-[rgba(4,6,10,0.72)]",
+              )}
+              aria-pressed={hasItemImageOverride}
               aria-label="Choose media item image"
             >
               <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
@@ -6856,6 +7131,8 @@ export function ExperienceEditor({
         {
           backgroundColor: asString(record.backgroundColor),
           imageUrl:
+            mediaAssetPreviewUrl(record.imageOverrideAssetId) ||
+            mediaAssetPreviewUrl(record.imageAssetId) ||
             asString(record.imageOverrideUrl) ||
             asString(record.imageUrl) ||
             findVideoLibraryItem(record.videoId)?.previewImageUrl ||
@@ -6872,6 +7149,8 @@ export function ExperienceEditor({
             asString(itemRecord?.backgroundColor) ||
             asString(record.backgroundColor),
           imageUrl:
+            mediaAssetPreviewUrl(itemRecord?.imageOverrideAssetId) ||
+            mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
             asString(itemRecord?.imageOverrideUrl) ||
             asString(itemRecord?.imageUrl) ||
             findVideoLibraryItem(itemRecord?.videoId)?.previewImageUrl ||
@@ -6928,7 +7207,9 @@ export function ExperienceEditor({
               imageUrl: previewVisual?.imageUrl ?? "",
             },
           ]
-    const containerBackgroundImageUrl = asString(blockRecord.backgroundImageUrl)
+    const containerBackgroundImageUrl =
+      mediaAssetPreviewUrl(blockRecord.backgroundImageAssetId) ||
+      asString(blockRecord.backgroundImageUrl)
 
     return (
       <div className="mt-4">
@@ -7090,11 +7371,24 @@ export function ExperienceEditor({
     item: unknown,
     itemIndex: number,
   ) {
+    const itemRecord = asRecord(item)
+    const mediaLibraryPreviewUrl =
+      mediaAssetPreviewUrl(itemRecord?.backgroundImageAssetId) ||
+      mediaAssetPreviewUrl(itemRecord?.imageAssetId)
+    const previewItem =
+      itemRecord && mediaLibraryPreviewUrl
+        ? {
+            ...itemRecord,
+            backgroundImageUrl: mediaLibraryPreviewUrl,
+            imageUrl: mediaLibraryPreviewUrl,
+          }
+        : item
+
     return (
       <BibleQuoteCard
         key={`${index}-bible-quote-${itemIndex}`}
         blockIndex={index}
-        item={item}
+        item={previewItem}
         itemIndex={itemIndex}
         dragState={bibleQuoteDragState}
         dragHandleState={bibleQuoteDragHandleState}
@@ -7103,9 +7397,9 @@ export function ExperienceEditor({
         onRemove={removeBibleQuote}
         onDragStart={handleBibleQuoteDragStart}
         onDragEnter={handleBibleQuoteDragEnter}
+        onChooseImage={chooseBibleQuoteImage}
         onClearDragState={clearBibleQuoteDragState}
         onSetDragHandleState={setBibleQuoteDragHandleState}
-        onPushToast={pushToast}
       />
     )
   }
@@ -7331,6 +7625,13 @@ export function ExperienceEditor({
       visualIdentity.backgroundColor,
     )
     const visualIdentityImageFieldName = visualIdentityImageField(type)
+    const visualIdentityImageAssetId = asString(
+      blockRecord?.[
+        visualIdentityAssetField(
+          visualIdentityImageFieldName as ImagePickerUrlField,
+        )
+      ],
+    )
     const visualIdentityLabel = type === "card" ? "card" : block.typeLabel
     const isCardBackgroundPickerOpen = cardBackgroundPickerIndex === index
 
@@ -7408,15 +7709,17 @@ export function ExperienceEditor({
                     chooseBackgroundImage(
                       index,
                       blockRecord ?? {},
-                      visualIdentityImageFieldName as ImagePickerTarget["urlField"],
+                      visualIdentityImageFieldName as ImagePickerUrlField,
                     )
                   }}
                   className={cx(
-                    "flex h-6 w-6 cursor-pointer items-center justify-center border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-text-primary)]",
-                    visualIdentityImageUrl
-                      ? "rounded-l-sm border-r-0"
-                      : "rounded-sm",
+                    "flex h-6 w-6 cursor-pointer items-center justify-center border transition-all duration-[120ms] ease-out",
+                    visualIdentityImageAssetId
+                      ? selectedMediaButtonClassName
+                      : idleMediaButtonClassName,
+                    "rounded-sm",
                   )}
+                  aria-pressed={Boolean(visualIdentityImageAssetId)}
                   aria-label={
                     type === "container"
                       ? "Choose container background image"
@@ -7425,24 +7728,6 @@ export function ExperienceEditor({
                 >
                   <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
                 </button>
-                {visualIdentityImageUrl ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      activateBlock(index)
-                      clearVisualIdentityImage(
-                        index,
-                        visualIdentityImageFieldName as ImagePickerTarget["urlField"],
-                      )
-                    }}
-                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-danger)]"
-                    aria-label={`Remove ${visualIdentityLabel} image`}
-                  >
-                    <X className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                ) : null}
               </div>
             </>
           ) : null}
@@ -8771,6 +9056,12 @@ export function ExperienceEditor({
                                 .map((item, itemIndex) => {
                                   const itemRecord = asRecord(item)
                                   const previewImageUrl =
+                                    mediaAssetPreviewUrl(
+                                      itemRecord?.backgroundImageAssetId,
+                                    ) ||
+                                    mediaAssetPreviewUrl(
+                                      itemRecord?.imageAssetId,
+                                    ) ||
                                     asString(itemRecord?.backgroundImageUrl) ||
                                     asString(itemRecord?.imageUrl)
                                   const backgroundColor =
@@ -9480,132 +9771,26 @@ export function ExperienceEditor({
           </div>
         </div>
       ) : null}
-      <div
-        className={cx(
-          "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",
+      <ImagePickerBrowser
+        key={
           imagePickerTarget
-            ? "pointer-events-auto bg-[rgba(4,6,10,0.78)] backdrop-blur-[8px]"
-            : "pointer-events-none bg-[rgba(4,6,10,0)] backdrop-blur-0",
-        )}
-        onClick={(event) => {
-          if (event.target !== event.currentTarget) return
-          closeImagePicker()
-        }}
-        role="presentation"
-        aria-hidden={!imagePickerTarget}
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="image-library-title"
-          className={cx(
-            "flex h-[min(80vh,760px)] w-full max-w-[920px] flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out",
-            imagePickerTarget
-              ? "translate-y-0 scale-100 opacity-100"
-              : "translate-y-2 scale-[0.98] opacity-0",
-          )}
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                Media Library
-              </div>
-              <h2
-                id="image-library-title"
-                className="mt-2 text-[22px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]"
-              >
-                Choose an image
-              </h2>
-              <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                Attach a managed image asset to this{" "}
-                {imagePickerTarget?.label ?? "block"}. The editor stores the
-                asset ID and keeps the preview URL for current renderers.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={closeImagePicker}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
-              aria-label="Close image library"
-            >
-              <X className="h-4 w-4" strokeWidth={1.5} />
-            </button>
-          </div>
-
-          <label className="mt-5 grid gap-1.5 border-b border-[var(--color-hairline)] pb-4">
-            <span className="label-text">Search</span>
-            <div className="flex h-10 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3">
-              <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
-              <input
-                value={imageLibraryQuery}
-                onChange={(event) => setImageLibraryQuery(event.target.value)}
-                className="w-full border-0 bg-transparent text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
-                placeholder="Search display name, alt text, MIME type, or asset ID"
-              />
-            </div>
-          </label>
-
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-            {filteredImageLibrary.length === 0 ? (
-              <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-8 text-center">
-                <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
-                  No image assets match these filters
-                </div>
-                <div className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                  Upload images in the Media Library, then return here to use
-                  them in experience blocks.
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-3 pb-6 md:grid-cols-2 xl:grid-cols-3">
-                {filteredImageLibrary.map((asset) => (
-                  <button
-                    key={asset.id}
-                    type="button"
-                    disabled={!asset.previewUrl}
-                    onClick={() => applyImagePickerSelection(asset)}
-                    className="group grid cursor-pointer overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <div className="aspect-video bg-[var(--color-bg)]">
-                      {asset.previewUrl ? (
-                        <div
-                          className="h-full w-full bg-cover bg-center transition-transform duration-[180ms] ease-out group-hover:scale-[1.02]"
-                          style={{
-                            backgroundImage: `url("${asset.previewUrl}")`,
-                          }}
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <ImageIcon
-                            className="h-8 w-8 text-[var(--color-text-muted)]"
-                            strokeWidth={1.5}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="grid gap-2 p-3">
-                      <div className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
-                        {asset.displayName}
-                      </div>
-                      <div className="mono-meta truncate text-[var(--color-text-muted)]">
-                        {asset.altText || asset.id}
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="mono-meta text-[var(--color-text-secondary)]">
-                          {asset.byteSize}
-                        </span>
-                        <span className="mono-meta text-[var(--color-text-muted)]">
-                          {asset.updated}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            ? `${imagePickerTarget.label}:${imagePickerTarget.selectedAssetId ?? ""}`
+            : "closed"
+        }
+        open={imagePickerTarget !== null}
+        mediaLibrary={mediaLibrary}
+        query={imageLibraryQuery}
+        selectedFolderId={imagePickerSelectedFolderId}
+        selectedAssetId={imagePickerTarget?.selectedAssetId ?? null}
+        canClearImage={imagePickerTarget?.canClear ?? false}
+        canUpload={canUploadImages}
+        uploadAction={uploadImageAction}
+        onQueryChange={setImageLibraryQuery}
+        onSelectFolder={selectImagePickerFolder}
+        onSelectImage={applyImagePickerSelection}
+        onClearImage={clearImagePickerSelection}
+        onClose={closeImagePicker}
+      />
       <div
         className={cx(
           "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",

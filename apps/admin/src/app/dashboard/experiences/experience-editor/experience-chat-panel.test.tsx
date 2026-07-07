@@ -165,6 +165,25 @@ describe("ExperienceChatPanel", () => {
     expect(empty).not.toBeNull()
   })
 
+  it("renders optional utility controls inside the chat rail", async () => {
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+        utilitySlot={<button type="button">Create persona version</button>}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const panel = view.container.querySelector(
+      '[data-testid="experience-chat-panel"]',
+    )
+    expect(panel?.textContent).toContain("Create persona version")
+  })
+
   it("video-anchored section: stages an append-mode draft and Apply appends to existing canvas blocks", async () => {
     const existingBlock = {
       t: "text",
