@@ -23,6 +23,22 @@ const additionalImageHosts = (
   .filter(Boolean)
   .map((hostname) => ({ protocol: "https", hostname }))
 
+const adminMediaImageHost = (() => {
+  try {
+    const url = new URL(process.env.ADMIN_GRAPHQL_URL ?? "")
+    return [
+      {
+        protocol: url.protocol.replace(":", ""),
+        hostname: url.hostname,
+        port: url.port,
+        pathname: "/api/media-assets/**",
+      },
+    ]
+  } catch {
+    return []
+  }
+})()
+
 const nextConfig = {
   basePath: WATCH_BASE_PATH,
   allowedDevOrigins: ["127.0.0.1"],
@@ -66,9 +82,23 @@ const nextConfig = {
     optimizePackageImports: ["lucide-react", "@mux/mux-video-react"],
   },
   images: {
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       { protocol: "http", hostname: "localhost", pathname: "/uploads/**" },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3003",
+        pathname: "/api/media-assets/**",
+      },
       { protocol: "http", hostname: "127.0.0.1", pathname: "/uploads/**" },
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "3003",
+        pathname: "/api/media-assets/**",
+      },
+      ...adminMediaImageHost,
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "imagedelivery.net" },
       { protocol: "https", hostname: "image.mux.com" },

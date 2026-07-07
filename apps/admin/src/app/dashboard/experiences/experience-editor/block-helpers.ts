@@ -71,6 +71,8 @@ export const CONTAINER_SLOT_LAYOUT_PRESETS = [
   { label: "3 / 3 / 3 / 3", spans: [3, 3, 3, 3] },
 ] as const
 
+const legacyEditorOnlyKeys = new Set(["videoSlug"])
+
 export type VideoLibraryItem = {
   key: string
   title: string
@@ -177,6 +179,7 @@ export function containerSlotMarkerIndexes(content: unknown[]) {
 
 const optionalEmptyStringKeys = new Set([
   "backgroundColor",
+  "backgroundImageAssetId",
   "backgroundImageUrl",
   "buttonLink",
   "category",
@@ -187,11 +190,14 @@ const optionalEmptyStringKeys = new Set([
   "ctaLink",
   "footerText",
   "imageOverrideUrl",
+  "imageOverrideAssetId",
+  "imageAssetId",
   "imageUrl",
   "labelOverride",
   "link",
   "linkToSectionKey",
   "mediaUrl",
+  "mediaAssetId",
   "ogImageUrl",
   "sectionKey",
   "streamingUrl",
@@ -264,6 +270,7 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
   const normalizedEntries = Object.entries(record)
     .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
     .filter(([key, item]) => {
+      if (legacyEditorOnlyKeys.has(key)) return false
       if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true

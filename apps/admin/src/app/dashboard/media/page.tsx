@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer"
 import { revalidatePath } from "next/cache"
 import type { Route } from "next"
 import Link from "next/link"
@@ -14,6 +13,7 @@ import { MediaFolderInspector } from "@/app/dashboard/media/media-folder-inspect
 import { MediaLibraryDndProvider } from "@/app/dashboard/media/media-library-dnd-provider"
 import { MediaFolderTree } from "@/app/dashboard/media/folder-tree"
 import { MediaLibraryToolbar } from "@/app/dashboard/media/media-library-toolbar"
+import { uploadMediaAssetFromFormData } from "@/app/dashboard/media/upload-media-asset-action"
 import { hasPermission } from "@/auth/permissions"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { requireSession } from "@/auth/session"
@@ -26,11 +26,6 @@ import {
   mediaAssetPreviewUrl,
   MediaAssetValidationError,
 } from "@/services/media-asset.service"
-import {
-  defaultBackend,
-  safeMediaFilename,
-  writeMediaObject,
-} from "@/storage/media"
 import { MediaFolderValidationError } from "@/services/media-folder.service"
 import { runMediaImageEnrichment } from "@/workflows/mediaImageEnrichment"
 
@@ -116,28 +111,6 @@ const mediaNameCollator = new Intl.Collator("en", {
   sensitivity: "base",
   numeric: true,
 })
-
-function mediaKindForMimeType(mimeType: string): SupportedMediaKind {
-  if (mimeType.startsWith("image/")) return "IMAGE"
-  if (mimeType.startsWith("video/")) return "VIDEO"
-  if (mimeType === "application/pdf") return "PDF"
-  return "FILE"
-}
-
-function uploadedFile(value: FormDataEntryValue | null) {
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "arrayBuffer" in value &&
-    "size" in value &&
-    "name" in value &&
-    "type" in value
-  ) {
-    return value as File
-  }
-
-  return null
-}
 
 function defaultDirectionForSort(sort: MediaSortField): SortDirection {
   return sort === "name" ? "asc" : "desc"
@@ -724,87 +697,12 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
     "use server"
 
     const user = await requireSession()
-    const services = createServices(prisma)
-    if (!hasPermission(user, "write:media-assets")) {
-      return { ok: false as const, error: "forbidden" as const }
+    const result = await uploadMediaAssetFromFormData({ formData, user })
+
+    if (result.ok) {
+      revalidatePath("/dashboard/media")
     }
-
-    const file = uploadedFile(formData.get("file"))
-    if (!file || file.size === 0) {
-      return { ok: false as const, error: "missing-file" as const }
-    }
-
-    const folderId = String(formData.get("folderId") ?? "").trim()
-    const backend = defaultBackend()
-    const displayName = file.name
-    const kind = mediaKindForMimeType(file.type)
-
-    try {
-      const asset = await services.mediaAsset.create({
-        input: {
-          kind,
-          backend,
-          status: "UPLOADING",
-          mimeType: file.type || "application/octet-stream",
-          byteSize: file.size.toString(),
-          originalFilename: file.name,
-          ...(folderId ? { folderId } : {}),
-        },
-        user,
-      })
-      await services.mediaAsset.updateImageLocale({
-        input: {
-          mediaAssetId: asset.id,
-          locale: "en",
-          displayName,
-        },
-        user,
-      })
-      const filename = safeMediaFilename(file.name)
-      const key = await writeMediaObject({
-        backend,
-        assetId: asset.id,
-        filename,
-        body: Buffer.from(await file.arrayBuffer()),
-        contentType: file.type || undefined,
-      })
-
-      await services.mediaAsset.update({
-        input: {
-          id: asset.id,
-          status: "READY",
-          objectKey: key,
-          ...(folderId ? { folderId } : {}),
-        },
-        user,
-      })
-
-      if (kind === "IMAGE") {
-        try {
-          await start(runMediaImageEnrichment, [{ mediaAssetId: asset.id }])
-        } catch (error) {
-          await services.mediaAsset.updateImageEnrichmentState({
-            mediaAssetId: asset.id,
-            user: SYSTEM_PRINCIPAL,
-            data: {
-              imageEnrichmentStatus: "FAILED",
-              imageEnrichmentErrorCode: "workflow_dispatch_failed",
-              imageEnrichmentErrorMessage:
-                error instanceof Error ? error.message : String(error),
-              imageEnrichmentCompletedAt: new Date(),
-            },
-          })
-        }
-      }
-    } catch (error) {
-      if (error instanceof ForbiddenError) {
-        return { ok: false as const, error: "forbidden" as const }
-      }
-      return { ok: false as const, error: "unknown" as const }
-    }
-
-    revalidatePath("/dashboard/media")
-    return { ok: true as const }
+    return result
   }
 
   async function createMediaFolderAction(

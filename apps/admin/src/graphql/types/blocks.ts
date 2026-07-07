@@ -50,6 +50,7 @@ import type {
 } from "@/domain/blocks"
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
+import { mediaAssetPreviewUrl } from "@/services/media-asset.service"
 
 // Typed value helpers — each block POJO mirrors its Zod schema output.
 
@@ -80,6 +81,53 @@ type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
+
+type MediaPreviewContext = {
+  request: {
+    url: string
+  }
+  prisma: {
+    mediaAsset: {
+      findUnique: (args: { where: { id: string } }) => Promise<{
+        id: string
+        backend: string
+        objectKey: string | null
+        previewObjectKey: string | null
+        muxPlaybackId: string | null
+      } | null>
+    }
+  }
+}
+
+function optionalString(value: unknown) {
+  return typeof value === "string" && value.length > 0 ? value : null
+}
+
+async function resolveMediaAssetPreviewUrl(
+  ctx: MediaPreviewContext,
+  assetId: unknown,
+) {
+  const id = optionalString(assetId)
+  if (!id) return null
+  const asset = await ctx.prisma.mediaAsset.findUnique({ where: { id } })
+  const previewUrl = asset ? mediaAssetPreviewUrl(asset) : null
+  return previewUrl?.startsWith("/")
+    ? new URL(previewUrl, ctx.request.url).toString()
+    : previewUrl
+}
+
+async function resolveAssetBackedUrl(
+  row: object,
+  ctx: MediaPreviewContext,
+  urlField: string,
+  assetField: string,
+) {
+  const record = row as Record<string, unknown>
+  return (
+    optionalString(record[urlField]) ??
+    (await resolveMediaAssetPreviewUrl(ctx, record[assetField]))
+  )
+}
 
 /** Surfaces unknown stored `t` discriminators as GraphQL errors instead of silently dropping. */
 export class UnknownBlockKindError extends Error {
@@ -196,8 +244,15 @@ BibleQuoteItemRef.implement({
     chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
     verseStart: t.exposeInt("verseStart", { nullable: true }),
     verseEnd: t.exposeInt("verseEnd", { nullable: true }),
-    backgroundImageUrl: t.exposeString("backgroundImageUrl", {
+    backgroundImageUrl: t.string({
       nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(
+          row,
+          ctx,
+          "backgroundImageUrl",
+          "backgroundImageAssetId",
+        ),
     }),
     backgroundImageAssetId: t.exposeString("backgroundImageAssetId", {
       nullable: true,
@@ -206,7 +261,11 @@ BibleQuoteItemRef.implement({
     ctaLabel: t.exposeString("ctaLabel", { nullable: true }),
     ctaLink: t.exposeString("ctaLink", { nullable: true }),
     attribution: t.exposeString("attribution", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
   }),
@@ -230,7 +289,16 @@ MediaCollectionItemRef.implement({
   fields: (t) => ({
     videoId: t.exposeString("videoId", { nullable: true }),
     videoSlug: t.exposeString("videoSlug", { nullable: true }),
-    imageOverrideUrl: t.exposeString("imageOverrideUrl", { nullable: true }),
+    imageOverrideUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(
+          row,
+          ctx,
+          "imageOverrideUrl",
+          "imageOverrideAssetId",
+        ),
+    }),
     imageOverrideAssetId: t.exposeString("imageOverrideAssetId", {
       nullable: true,
     }),
@@ -238,7 +306,11 @@ MediaCollectionItemRef.implement({
     subtitleOverride: t.exposeString("subtitleOverride", { nullable: true }),
     labelOverride: t.exposeString("labelOverride", { nullable: true }),
     collectionSize: t.exposeString("collectionSize", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     linkToSectionKey: t.exposeString("linkToSectionKey", { nullable: true }),
   }),
@@ -253,7 +325,11 @@ NavigationCarouselItemRef.implement({
     contentId: t.exposeString("contentId"),
     title: t.exposeString("title"),
     category: t.exposeString("category", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
   }),
@@ -277,9 +353,22 @@ VideoCarouselItemRef.implement({
   fields: (t) => ({
     videoId: t.exposeString("videoId", { nullable: true }),
     streamingUrl: t.exposeString("streamingUrl", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
-    imageOverrideUrl: t.exposeString("imageOverrideUrl", { nullable: true }),
+    imageOverrideUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(
+          row,
+          ctx,
+          "imageOverrideUrl",
+          "imageOverrideAssetId",
+        ),
+    }),
     imageOverrideAssetId: t.exposeString("imageOverrideAssetId", {
       nullable: true,
     }),
@@ -314,7 +403,11 @@ AdventCountdownBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     title: t.exposeString("title"),
@@ -334,7 +427,11 @@ BibleQuotesCarouselBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     heading: t.exposeString("heading", { nullable: true }),
@@ -354,7 +451,11 @@ CardBlockRef.implement({
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
     title: t.exposeString("title"),
     description: t.exposeString("description"),
-    mediaUrl: t.exposeString("mediaUrl", { nullable: true }),
+    mediaUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "mediaUrl", "mediaAssetId"),
+    }),
     mediaAssetId: t.exposeString("mediaAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     link: t.exposeString("link", { nullable: true }),
@@ -372,7 +473,11 @@ CtaBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     heading: t.exposeString("heading", { nullable: true }),
@@ -394,7 +499,11 @@ EasterDatesBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     easterDatesTitle: t.exposeString("easterDatesTitle"),
@@ -418,7 +527,11 @@ InfoBlocksBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     widthPercent: t.exposeInt("widthPercent", { nullable: true }),
@@ -442,7 +555,11 @@ MediaCollectionBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     categoryLabel: t.exposeString("categoryLabel", { nullable: true }),
@@ -479,7 +596,11 @@ NavigationCarouselBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     items: t.field({
@@ -497,7 +618,11 @@ PromoBannerBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     widthPercent: t.exposeInt("widthPercent", { nullable: true }),
@@ -530,7 +655,11 @@ RelatedQuestionsBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     heading: t.exposeString("heading", { nullable: true }),
@@ -551,7 +680,11 @@ TextBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     heading: t.exposeString("heading", { nullable: true }),
@@ -583,7 +716,11 @@ VideoBlockRef.implement({
     useRouteVideo: t.exposeBoolean("useRouteVideo"),
     streamingUrl: t.exposeString("streamingUrl", { nullable: true }),
     videoId: t.exposeString("videoId", { nullable: true }),
-    mediaUrl: t.exposeString("mediaUrl", { nullable: true }),
+    mediaUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "mediaUrl", "mediaAssetId"),
+    }),
     mediaAssetId: t.exposeString("mediaAssetId", { nullable: true }),
     clipStartSeconds: t.exposeFloat("clipStartSeconds", { nullable: true }),
     clipEndSeconds: t.exposeFloat("clipEndSeconds", { nullable: true }),
@@ -613,7 +750,11 @@ VideoCarouselBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     itemsSource: t.field({
@@ -640,7 +781,11 @@ VideoRecommendationsBlockRef.implement({
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
-    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
+    }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     subtitle: t.exposeString("subtitle", { nullable: true }),
@@ -709,8 +854,15 @@ ContainerSlotBlockRef.implement({
       resolve: (row) => row.spans ?? null,
     }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
-    backgroundImageUrl: t.exposeString("backgroundImageUrl", {
+    backgroundImageUrl: t.string({
       nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(
+          row,
+          ctx,
+          "backgroundImageUrl",
+          "backgroundImageAssetId",
+        ),
     }),
     backgroundImageAssetId: t.exposeString("backgroundImageAssetId", {
       nullable: true,
@@ -726,8 +878,15 @@ ContainerBlockRef.implement({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
-    backgroundImageUrl: t.exposeString("backgroundImageUrl", {
+    backgroundImageUrl: t.string({
       nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(
+          row,
+          ctx,
+          "backgroundImageUrl",
+          "backgroundImageAssetId",
+        ),
     }),
     backgroundImageAssetId: t.exposeString("backgroundImageAssetId", {
       nullable: true,
@@ -754,8 +913,15 @@ SectionBlockRef.implement({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
-    backgroundImageUrl: t.exposeString("backgroundImageUrl", {
+    backgroundImageUrl: t.string({
       nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedUrl(
+          row,
+          ctx,
+          "backgroundImageUrl",
+          "backgroundImageAssetId",
+        ),
     }),
     backgroundImageAssetId: t.exposeString("backgroundImageAssetId", {
       nullable: true,

@@ -235,6 +235,44 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(vertical?.cards[0]?.parentCoreId).toBe("LUMOCollection")
   })
 
+  it("applies homepage media overrides to configured child cards", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          documentId: "lumo-admin-id",
+          coreId: "LUMOCollection",
+          slug: "lumo",
+          label: "COLLECTION",
+          children: [{ child: makeChild() }],
+        }),
+      ] as never,
+      experienceBlocks: [
+        {
+          __typename: "MediaCollectionBlock",
+          sectionKey: "home-collection-showcase-grid-vertical",
+          items: [
+            {
+              videoId: "lumo-admin-id",
+              imageOverrideUrl:
+                "http://localhost:3003/api/media-assets/asset-1/preview",
+            },
+          ],
+        },
+      ] as never,
+    })
+
+    const vertical = model.sections.find(
+      (section) => section.id === "home-collection-showcase-grid-vertical",
+    )
+    expect(vertical?.cards[0]?.imageUrl).toBe(
+      "http://localhost:3003/api/media-assets/asset-1/preview",
+    )
+  })
+
   it("expands the Journey with Jesus course into child episode cards", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 
@@ -368,13 +406,16 @@ describe("resolveWatchHome", () => {
         watchHomeVideos: [makeVideo()],
       },
     })
+    queryMock.mockResolvedValueOnce({
+      data: { watchSetting: { homepageExperience: { blocks: [] } } },
+    })
 
     const { resolveWatchHome } = await import("../watch-home")
 
     const result = await resolveWatchHome("ru")
 
     expect(result.error).toBeNull()
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(2)
     expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe("russian")
     expect(queryMock.mock.calls[0][0].variables.locale).toBe("ru")
     expect(queryMock.mock.calls[0][0].variables.coreIds).toContain("1_jf-0-0")
@@ -400,13 +441,16 @@ describe("resolveWatchHome", () => {
         ],
       },
     })
+    queryMock.mockResolvedValueOnce({
+      data: { watchSetting: { homepageExperience: { blocks: [] } } },
+    })
 
     const { resolveWatchHome } = await import("../watch-home")
 
     const result = await resolveWatchHome("es", "spanish-latin-american")
 
     expect(result.error).toBeNull()
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(2)
     expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe(
       "spanish-latin-american",
     )
