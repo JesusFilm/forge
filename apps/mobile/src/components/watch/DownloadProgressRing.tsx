@@ -1,10 +1,14 @@
-import { type ReactNode } from "react"
-import { StyleSheet, View } from "react-native"
+import { useEffect, useRef, type ReactNode } from "react"
+import { Animated, Easing, StyleSheet, View } from "react-native"
 
 /**
  * Determinate progress ring drawn WITHOUT react-native-svg so it hot-reloads on
  * the existing dev build (svg would force a native rebuild). Two half-disc "pie"
  * layers pivoted via `transformOrigin`; `cutoutColor` MUST match `BG_COLOR`.
+ *
+ * Native progress events land ~once per second (engine `progressInterval`), so
+ * mapping `progress` straight to rotation makes the arc teleport each tick. An
+ * `Animated.Value` tweens between values (native-driver rotate) so the fill glides.
  */
 export type DownloadProgressRingProps = {
   size: number
@@ -17,6 +21,11 @@ export type DownloadProgressRingProps = {
   trackColor: string
   /** Opaque colour punched into the centre to form the ring — match the bg. */
   cutoutColor: string
+  /**
+   * Tween duration between progress ticks. Defaults to the ~1s native progress
+   * cadence so the fill moves at a near-constant rate instead of stepping.
+   */
+  animationDurationMs?: number
   children?: ReactNode
 }
 
@@ -27,16 +36,41 @@ export function DownloadProgressRing({
   color,
   trackColor,
   cutoutColor,
+  animationDurationMs = 1000,
   children,
 }: DownloadProgressRingProps) {
   const radius = size / 2
   const clamped = Math.max(0, Math.min(1, progress))
-  const deg = clamped * 360
-  // Each half rotates from -180deg (fully outside its clip = empty) to 0deg
-  // (fully inside its clip = filled). The right half handles the first 180deg.
-  const rightRotate = Math.min(deg, 180) - 180
-  const leftRotate = Math.max(deg - 180, 0) - 180
   const inner = Math.max(0, size - strokeWidth * 2)
+
+  // Persist across renders so a re-render (new progress) resumes from the arc's
+  // current on-screen angle rather than snapping. Seeded to the first value so
+  // the ring appears at its real progress without an intro sweep.
+  const anim = useRef(new Animated.Value(clamped)).current
+  useEffect(() => {
+    const animation = Animated.timing(anim, {
+      toValue: clamped,
+      duration: animationDurationMs,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    })
+    animation.start()
+    return () => animation.stop()
+  }, [anim, clamped, animationDurationMs])
+
+  // Piecewise-linear rotations reproducing the static geometry: each half spins
+  // from -180deg (outside its clip = empty) to 0deg (inside = filled). The right
+  // half fills over 0–50%, the left over 50–100%.
+  const rightRotate = anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ["-180deg", "0deg", "0deg"],
+    extrapolate: "clamp",
+  })
+  const leftRotate = anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ["-180deg", "-180deg", "0deg"],
+    extrapolate: "clamp",
+  })
 
   return (
     <View style={[styles.root, { width: size, height: size }]}>
@@ -57,7 +91,7 @@ export function DownloadProgressRing({
       <View
         style={[styles.clip, { left: radius, width: radius, height: size }]}
       >
-        <View
+        <Animated.View
           style={{
             width: radius,
             height: size,
@@ -65,14 +99,14 @@ export function DownloadProgressRing({
             borderBottomRightRadius: radius,
             backgroundColor: color,
             transformOrigin: "0% 50%",
-            transform: [{ rotate: `${rightRotate}deg` }],
+            transform: [{ rotate: rightRotate }],
           }}
         />
       </View>
 
       {/* Left half — fills 50–100% clockwise to the top. */}
       <View style={[styles.clip, { left: 0, width: radius, height: size }]}>
-        <View
+        <Animated.View
           style={{
             width: radius,
             height: size,
@@ -80,7 +114,7 @@ export function DownloadProgressRing({
             borderBottomLeftRadius: radius,
             backgroundColor: color,
             transformOrigin: "100% 50%",
-            transform: [{ rotate: `${leftRotate}deg` }],
+            transform: [{ rotate: leftRotate }],
           }}
         />
       </View>

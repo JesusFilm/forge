@@ -82,11 +82,23 @@ describe("nextBatchAction (strict-sequential batch pump)", () => {
     expect(action).toEqual({ kind: "wait" })
   })
 
-  it("drops a head that completed out-of-band (downloaded record)", () => {
+  it("processes a still-downloaded head (re-download → swap in its turn)", () => {
     const records = asMap(
       rec("e1", "downloaded", { committedPath: "/c" }),
       rec("e2", "queued"),
     )
+    const action = nextBatchAction(
+      records,
+      [req("e1"), req("e2")],
+      new Set(["e1", "e2"]),
+    )
+    // A downloaded head is a re-download → start (the provider swaps it, or
+    // no-ops via `exists` if it completed out-of-band at the same choice).
+    expect(action).toEqual({ kind: "start", request: req("e1") })
+  })
+
+  it("drops a head whose record went terminal-failed while waiting", () => {
+    const records = asMap(rec("e1", "failed"), rec("e2", "queued"))
     const action = nextBatchAction(
       records,
       [req("e1"), req("e2")],
@@ -108,9 +120,19 @@ describe("nextBatchAction (strict-sequential batch pump)", () => {
 })
 
 describe("canQueueBatchDownload (batch-queue acceptance gate)", () => {
-  it("rejects a slug another flow owns (live non-placeholder record)", () => {
+  it("rejects a slug an in-flight transfer owns (downloading)", () => {
     const records = asMap(rec("e1", "downloading", { pendingPath: "/p" }))
     expect(canQueueBatchDownload(records, [], "e1")).toBe(false)
+  })
+
+  it("rejects a slug that is paused (an in-flight transfer owns it)", () => {
+    const records = asMap(rec("e1", "paused", { pendingPath: "/p" }))
+    expect(canQueueBatchDownload(records, [], "e1")).toBe(false)
+  })
+
+  it("accepts a downloaded slug (the pump swaps it to the new choice)", () => {
+    const records = asMap(rec("e1", "downloaded", { committedPath: "/c" }))
+    expect(canQueueBatchDownload(records, [], "e1")).toBe(true)
   })
 
   it("accepts a slug whose record is the batch's own placeholder", () => {

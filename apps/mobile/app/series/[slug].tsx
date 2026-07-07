@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  ActionSheetIOS,
+  Alert,
   AppState,
   BackHandler,
+  Platform,
   Share,
   StyleSheet,
   Text,
@@ -11,6 +14,7 @@ import { Image } from "expo-image"
 import { StatusBar } from "expo-status-bar"
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { GET_SERIES_BY_SLUG } from "../../src/lib/queries"
 import {
@@ -31,23 +35,33 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
-import { SeriesBatchBar } from "../../src/components/watch/SeriesBatchBar"
 import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGrid"
+import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
+import { Snackbar } from "../../src/components/ui/Snackbar"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import {
   deriveEpisodeBadges,
   deriveSeriesDownloadState,
+  seriesAllDownloaded,
 } from "../../src/lib/seriesDownloadAggregate"
 import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
 import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
-// Series detail screen. Hero is pinned at the route root (outside the ScrollView)
-// so custom fullscreen never reparents: VideoPlayer when there's a trailer, else
-// a poster (no player). It holds the only decoder slot; the grid is static images.
+// Mirrors app/watch/[slug]: the hero docks at the top safe edge, inset this far
+// on each side, with the back button floating just inside its top-left corner.
+const PLAYER_SIDE_PADDING = 10
+const BACK_BUTTON_PROPS = {
+  topOffset: 10,
+  sideOffset: PLAYER_SIDE_PADDING + 8,
+}
+
+// Series detail screen. A trailer plays in a VideoPlayer PINNED at the route root
+// (outside the list) so fullscreen never reparents and scrolling can't obscure it.
+// A poster-only hero instead scrolls away in the grid header.
 export default function SeriesScreen() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
     slug: string
@@ -60,12 +74,16 @@ export default function SeriesScreen() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
   const typography = useTypography()
+  const insets = useSafeAreaInsets()
 
   const { series, setSeries, languages, selectedLanguageSlug } =
     useSeriesSession()
   const {
     downloadedSlugs,
     offlineRecords,
+    pendingSwapSlugs,
+    getRecord,
+    deleteDownload,
     pauseDownload,
     resumeDownload,
     cancelDownload,
@@ -103,9 +121,32 @@ export default function SeriesScreen() {
         series?.episodes.map((episode) => episode.slug) ?? [],
         downloadedSlugs,
         offlineRecords,
+        pendingSwapSlugs,
       ),
-    [series?.episodes, downloadedSlugs, offlineRecords],
+    [series?.episodes, downloadedSlugs, offlineRecords, pendingSwapSlugs],
   )
+  const seriesFullyDownloaded = seriesAllDownloaded(downloadState)
+
+  // Toast a genuine series-completion: sawDownloadActivityRef skips a fresh mount
+  // of an already-saved series; cancellingRef skips a cancel-revert (also lands
+  // fully-downloaded). `queued` keeps inProgress true between sequential episodes.
+  const [seriesSnackbar, setSeriesSnackbar] = useState<string | null>(null)
+  const sawDownloadActivityRef = useRef(false)
+  const cancellingRef = useRef(false)
+  useEffect(() => {
+    if (downloadState.inProgress) {
+      sawDownloadActivityRef.current = true
+      return
+    }
+    if (!sawDownloadActivityRef.current) return
+    // Activity ended: consume both latches; toast only a genuine completion.
+    sawDownloadActivityRef.current = false
+    const wasCancelling = cancellingRef.current
+    cancellingRef.current = false
+    if (!wasCancelling && seriesFullyDownloaded) {
+      setSeriesSnackbar("Series downloaded")
+    }
+  }, [downloadState.inProgress, seriesFullyDownloaded])
 
   const badgeBySlug = useMemo(
     () =>
@@ -139,11 +180,11 @@ export default function SeriesScreen() {
 
   const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
 
-  // Fullscreen side-effects — the same three the watch screen runs, so the
-  // reused player's custom fullscreen rotates and toggles the header in step.
+  // Fullscreen side-effects — mirrors the watch screen: no native header to
+  // toggle (the floating back button is the affordance), so only gestures +
+  // orientation flip with the reused player's custom fullscreen.
   useEffect(() => {
     navigation.setOptions({
-      headerShown: !isFullscreen,
       gestureEnabled: !isFullscreen,
       orientation: isFullscreen ? "landscape" : "portrait",
     })
@@ -210,6 +251,131 @@ export default function SeriesScreen() {
     }).catch(() => {})
   }, [series, selectedLanguageSlug])
 
+  const openDownloadSheet = useCallback(
+    () => router.push("/series/download"),
+    [router],
+  )
+
+  // Manage control once the whole series is saved — mirrors the single-video
+  // manage flow (app/watch/[slug]) as a native iOS action sheet (HIG: a menu, not
+  // an alert), offering change-quality/subtitles + remove-all.
+  const handleManageDownloads = useCallback(() => {
+    const savedSlugs = (series?.episodes ?? [])
+      .map((episode) => episode.slug)
+      .filter((slug) => getRecord(slug) != null)
+    const seriesTitle = series?.title ?? "this series"
+
+    const confirmRemoveAll = () => {
+      Alert.alert(
+        "Remove downloads?",
+        `This removes all ${savedSlugs.length} downloaded ${
+          savedSlugs.length === 1 ? "episode" : "episodes"
+        } for “${seriesTitle}.” You can download them again anytime.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: () => {
+              // Sequential so the manifest index isn't raced across writes.
+              void (async () => {
+                for (const slug of savedSlugs) await deleteDownload(slug)
+              })()
+            },
+          },
+        ],
+      )
+    }
+
+    // The download sheet changes quality + subtitles for the current audio
+    // language (audio language is set via the language pill, not here). Same-
+    // language quality/subtitle re-download is a known no-op (decideEpisodeAction).
+    const CHANGE = "Change quality or subtitles"
+    const REMOVE = "Remove all downloads"
+    const savedCount = downloadState.total
+    const savedLabel = `${savedCount} ${
+      savedCount === 1 ? "episode" : "episodes"
+    } saved for offline viewing`
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: seriesTitle,
+          message: savedLabel,
+          options: [CHANGE, REMOVE, "Cancel"],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 2,
+          // App is dark-only; keep the sheet in step rather than following the OS.
+          userInterfaceStyle: "dark",
+        },
+        (index) => {
+          if (index === 0) openDownloadSheet()
+          else if (index === 1) confirmRemoveAll()
+        },
+      )
+    } else {
+      Alert.alert(seriesTitle, savedLabel, [
+        { text: CHANGE, onPress: openDownloadSheet },
+        { text: REMOVE, style: "destructive", onPress: confirmRemoveAll },
+        { text: "Cancel", style: "cancel" },
+      ])
+    }
+  }, [
+    series?.episodes,
+    series?.title,
+    downloadState.total,
+    getRecord,
+    deleteDownload,
+    openDownloadSheet,
+  ])
+
+  // Downloading → the ring's pause glyph pauses the active transfer (the pump
+  // then holds, so the whole batch pauses).
+  const handlePauseAll = useCallback(() => {
+    downloadState.inFlightSlugs.forEach((slug) => void pauseDownload(slug))
+  }, [downloadState.inFlightSlugs, pauseDownload])
+
+  // Paused → the ring's play glyph opens a sheet: resume, or cancel the batch
+  // (keeping existing copies). Replaces the old always-on batch bar.
+  const handlePausedTap = useCallback(() => {
+    const resumeAll = () =>
+      downloadState.inFlightSlugs.forEach((slug) => void resumeDownload(slug))
+    const cancelAll = () => {
+      // Cancelling reverts episodes to their saved copies (series reads
+      // fully-downloaded again) — suppress the false completion toast.
+      cancellingRef.current = true
+      ;(series?.episodes ?? []).forEach(
+        (episode) => void cancelDownload(episode.slug),
+      )
+    }
+    const RESUME = "Resume"
+    const CANCEL_ALL = "Cancel all downloads"
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [CANCEL_ALL, RESUME, "Cancel"],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 2,
+          userInterfaceStyle: "dark",
+        },
+        (index) => {
+          if (index === 0) cancelAll()
+          else if (index === 1) resumeAll()
+        },
+      )
+    } else {
+      Alert.alert("Downloads paused", undefined, [
+        { text: CANCEL_ALL, style: "destructive", onPress: cancelAll },
+        { text: RESUME, onPress: resumeAll },
+        { text: "Cancel", style: "cancel" },
+      ])
+    }
+  }, [
+    downloadState.inFlightSlugs,
+    series?.episodes,
+    resumeDownload,
+    cancelDownload,
+  ])
+
   // Tap an episode → its detail page. Language carries via the persisted
   // WatchPreferences audio slug (the watch screen resolves its dub from it), so
   // it's not threaded through nav params. The seed paints the hero instantly.
@@ -227,61 +393,92 @@ export default function SeriesScreen() {
   )
 
   // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.
+  // Match the loaded hero's dock (top safe edge + side inset) so it doesn't jump.
   if (!hasSeries && seed == null && loading) {
     return (
       <View style={layout.screenContainer}>
-        <VideoDetailSkeleton />
+        <StatusBar style="light" />
+        <VideoDetailSkeleton
+          playerTopInset={insets.top}
+          playerHorizontalInset={PLAYER_SIDE_PADDING}
+        />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
   }
 
-  // No series, no seed, not loading → genuinely nothing to show.
+  // No series, no seed, not loading → genuinely nothing to show. screenContainer
+  // hosts the absolute back button; the centered error lives in an inner view.
   if (!hasSeries && seed == null) {
     return (
-      <View style={layout.centered}>
-        <Text style={text.errorTitle}>Series Not Found</Text>
-        <Text style={text.errorMessage}>
-          {error?.message ?? "This series could not be loaded."}
-        </Text>
-        <Text
-          style={styles.retryLink}
-          onPress={() => void refetch()}
-          accessibilityRole="button"
-        >
-          Retry
-        </Text>
+      <View style={layout.screenContainer}>
+        <StatusBar style="light" />
+        <View style={layout.centered}>
+          <Text style={text.errorTitle}>Series Not Found</Text>
+          <Text style={text.errorMessage}>
+            {error?.message ?? "This series could not be loaded."}
+          </Text>
+          <Text
+            style={styles.retryLink}
+            onPress={() => void refetch()}
+            accessibilityRole="button"
+          >
+            Retry
+          </Text>
+        </View>
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
   }
+
+  // Hero dock: top safe edge + side inset, matching the watch player. Shared by
+  // the pinned trailer player and the poster-only hero so both share the offset.
+  const heroDock = {
+    paddingTop: insets.top,
+    paddingHorizontal: PLAYER_SIDE_PADDING,
+  }
+
+  // A poster-only hero (no trailer) scrolls away with the list — rendered as the
+  // grid header's first element below. A playing trailer stays PINNED here so
+  // scrolling never obscures it (the original decoder-safe layout).
+  const posterHero = (
+    <View
+      style={heroDock}
+      accessible={true}
+      accessibilityRole="image"
+      accessibilityLabel={
+        displayTitle ? `${displayTitle} poster` : "Series poster"
+      }
+    >
+      <View style={styles.posterHero}>
+        {displayPoster != null && (
+          <Image
+            source={{ uri: displayPoster }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey={series?.documentId ?? decodedSlug}
+          />
+        )}
+      </View>
+    </View>
+  )
 
   return (
     <View style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
-      {hasSeries && hasTrailer ? (
-        <VideoPlayer
-          streamingUrl={trailerHls}
-          posterUrl={displayPoster}
-          fullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-        />
-      ) : (
-        <View
-          style={styles.posterHero}
-          accessible={true}
-          accessibilityRole="image"
-          accessibilityLabel={
-            displayTitle ? `${displayTitle} poster` : "Series poster"
-          }
-        >
-          {displayPoster != null && (
-            <Image
-              source={{ uri: displayPoster }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              recyclingKey={series?.documentId ?? decodedSlug}
-            />
-          )}
+      {/* Trailer plays → pin the player at the top so scrolling the list never
+          obscures playback. Fullscreen lifts the dock above the grid via zIndex
+          (RN zIndex is sibling-scoped, so the player's own can't clear it). */}
+      {hasSeries && hasTrailer && (
+        <View style={isFullscreen ? styles.heroDockFullscreen : heroDock}>
+          <VideoPlayer
+            streamingUrl={trailerHls}
+            posterUrl={displayPoster}
+            fullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            horizontalInset={PLAYER_SIDE_PADDING}
+          />
         </View>
       )}
 
@@ -291,6 +488,7 @@ export default function SeriesScreen() {
         badgeBySlug={badgeBySlug}
         header={
           <>
+            {!hasTrailer && posterHero}
             <VideoMetadata
               label={series?.label ?? "SERIES"}
               title={displayTitle}
@@ -302,7 +500,18 @@ export default function SeriesScreen() {
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
                   onSubtitles={() => router.push("/series/subtitle")}
-                  onDownload={() => router.push("/series/download")}
+                  // The single download control carries every state: paused →
+                  // resume/cancel sheet; downloading → pause; saved → manage
+                  // sheet; idle → the download picker. (No separate batch bar.)
+                  onDownload={
+                    downloadState.pausedAggregate
+                      ? handlePausedTap
+                      : downloadState.inProgress
+                        ? handlePauseAll
+                        : seriesFullyDownloaded
+                          ? handleManageDownloads
+                          : openDownloadSheet
+                  }
                   onShare={handleShare}
                   languageLabel={
                     languages.find((l) => l.slug === selectedLanguageSlug)
@@ -311,24 +520,6 @@ export default function SeriesScreen() {
                   subtitleLabel={subtitleActionLabel}
                   subtitleActive={subtitleActive}
                   downloadState={downloadState}
-                />
-                <SeriesBatchBar
-                  state={downloadState}
-                  onPauseAll={() =>
-                    downloadState.inFlightSlugs.forEach(
-                      (slug) => void pauseDownload(slug),
-                    )
-                  }
-                  onResumeAll={() =>
-                    downloadState.inFlightSlugs.forEach(
-                      (slug) => void resumeDownload(slug),
-                    )
-                  }
-                  onCancelAll={() =>
-                    downloadState.inFlightSlugs.forEach(
-                      (slug) => void cancelDownload(slug),
-                    )
-                  }
                 />
                 <VideoDescription description={series.description} />
                 {series.episodes.length > 0 && (
@@ -365,11 +556,26 @@ export default function SeriesScreen() {
           </>
         }
       />
+
+      {/* Floating back button overlaid on the hero's top-left corner — replaces
+          the native header back. Hidden in fullscreen (the player owns chrome). */}
+      {!isFullscreen && <FloatingBackButton {...BACK_BUTTON_PROPS} />}
+
+      <Snackbar
+        message={seriesSnackbar ?? ""}
+        visible={seriesSnackbar != null}
+        onDismiss={() => setSeriesSnackbar(null)}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  // Lifts the hero dock (incl. the absolutely-positioned fullscreen player)
+  // above the later-painted episodes grid; zIndex is sibling-scoped in RN.
+  heroDockFullscreen: {
+    zIndex: 1000,
+  },
   posterHero: {
     width: "100%",
     aspectRatio: 16 / 9,

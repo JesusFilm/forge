@@ -417,6 +417,8 @@ The named process that drains a series batch strictly in episode order: one nati
 
 The non-destructive replacement of a downloaded copy with a different quality or language: the new copy downloads alongside the old, which stays playable until the new one commits, and canceling mid-swap reverts to the old copy rather than deleting it.
 
+Because a revert lands the episode back in the downloaded state, a canceled or failed swap is indistinguishable at the record level from a genuine completion — anything that must know which transition occurred (a completion toast, a progress-ring reset) has to carry that signal explicitly rather than infer it from aggregate terminal state.
+
 ### Supersede
 
 Stopping an in-flight download's native task and neutralizing its callbacks — without touching its record — so a replacement download can safely reuse the same Video's task identity. Needed because the native downloader routes terminal events by task id to whichever task currently holds it, so an un-superseded old task's dying event could strike its replacement.

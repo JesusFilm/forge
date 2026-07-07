@@ -58,9 +58,15 @@ export function SeriesActionRow({
   const subtitle = subtitleLabel?.trim() || "Subtitles"
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
-  // Icon-only Download button → the spoken label carries the state/meaning.
-  const downloadA11y = seriesDownloadLabel(downloadState)
   const allDownloaded = seriesAllDownloaded(downloadState)
+  // The ring IS the control: it holds a pause glyph while downloading (tap →
+  // pause) and a play glyph once paused (tap → resume/cancel sheet). Icon-only,
+  // so the spoken label carries the action.
+  const downloadA11y = downloadState.pausedAggregate
+    ? "Downloads paused. Tap for resume or cancel options"
+    : downloadState.inProgress
+      ? "Pause downloads"
+      : seriesDownloadLabel(downloadState)
 
   return (
     <View style={styles.row}>
@@ -123,12 +129,16 @@ export function SeriesActionRow({
               trackColor="rgba(255, 255, 255, 0.18)"
               cutoutColor={SURFACE_COLOR}
             >
-              <Ionicons name="arrow-down" size={12} color={ACCENT_ON_DARK} />
+              <Ionicons
+                name={downloadState.pausedAggregate ? "play" : "pause"}
+                size={12}
+                color={ACCENT_ON_DARK}
+              />
             </DownloadProgressRing>
           ) : allDownloaded ? (
             <Ionicons
               name="checkmark-circle-outline"
-              size={24}
+              size={28}
               color={DOWNLOAD_DONE_COLOR}
             />
           ) : (

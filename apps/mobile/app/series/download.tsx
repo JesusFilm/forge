@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,6 +39,9 @@ import {
   type QualityTier,
 } from "../../src/lib/downloadTiers"
 import {
+  decideEpisodeAction,
+  deriveDownloadedSelection,
+  episodeChoiceFor,
   resolveSeriesDownload,
   summarizeResolution,
   toResolverVariants,
@@ -69,7 +73,6 @@ export default function SeriesDownloadRoute() {
   const {
     getRecord,
     queueBatchDownload,
-    swapDownload,
     supersedeDownload,
     deleteDownload,
     queueBatchRecords,
@@ -210,22 +213,65 @@ export default function SeriesDownloadRoute() {
 
   const resolution = phase.kind === "ready" ? phase.resolution : null
 
+  // What quality/subtitle this series is already saved in (current language), so
+  // the pickers can disable those options and the user re-downloads a real change.
+  const downloaded = useMemo(
+    () =>
+      resolution
+        ? deriveDownloadedSelection(resolution, getRecord)
+        : { tier: null, subtitleSlug: undefined },
+    [resolution, getRecord],
+  )
+  const ALREADY_DOWNLOADED = "Already downloaded"
+
+  // Re-download shouldn't default to the already-saved quality (it's disabled).
+  // Once the saved tier is known, move the default off it to the next tier. Runs
+  // once so it never fights a later manual pick.
+  const didPickDefaultRef = useRef(false)
+  useEffect(() => {
+    if (didPickDefaultRef.current || downloaded.tier == null) return
+    didPickDefaultRef.current = true
+    if (qualityTier === downloaded.tier) {
+      const next = QUALITY_TIERS.find((t) => t !== downloaded.tier)
+      if (next) setQualityTier(next)
+    }
+  }, [downloaded.tier, qualityTier])
+
   // Quality options carry each tier's whole-series total as trailing text (the
-  // per-video sheet's pattern); the size hint lives here, not in a separate panel.
+  // per-video sheet's pattern); the already-saved tier is disabled instead.
   const qualityOptions = useMemo<DropdownOption[]>(
     () =>
-      QUALITY_TIERS.map((t) => ({
-        key: t,
-        label: t,
-        trailing: resolution
-          ? formatTierSize(resolution.tierTotals[t])
-          : undefined,
-      })),
-    [resolution],
+      QUALITY_TIERS.map((t) => {
+        const isDownloaded = downloaded.tier === t
+        return {
+          key: t,
+          label: t,
+          disabled: isDownloaded,
+          note: isDownloaded ? ALREADY_DOWNLOADED : undefined,
+          trailing: resolution
+            ? formatTierSize(resolution.tierTotals[t])
+            : undefined,
+        }
+      }),
+    [resolution, downloaded.tier],
   )
 
-  const onConfirm = useCallback(async () => {
-    if (!resolution || resolution.resolvedCount === 0 || !touAccepted) return
+  // Every resolved episode already saved at this exact quality+subtitle → the
+  // batch would be a no-op. Gate the button so the user can't "re-download"
+  // the identical copy; they must pick a different quality or subtitle.
+  const nothingToDo = useMemo(() => {
+    if (!resolution || resolution.resolvedCount === 0) return false
+    return resolution.resolved.every((episode) => {
+      const choice = episodeChoiceFor(episode, subtitleSlug)
+      return (
+        choice != null &&
+        decideEpisodeAction(getRecord(episode.slug), choice) === "skip"
+      )
+    })
+  }, [resolution, subtitleSlug, getRecord])
+
+  const proceed = useCallback(async () => {
+    if (!resolution) return
     setStorageError(null)
 
     const free = await freeDiskBytes()
@@ -234,6 +280,7 @@ export default function SeriesDownloadRoute() {
       getRecord,
       freeBytes: free,
       reserveBytes: STORAGE_RESERVE_BYTES,
+      subtitleLanguageSlug: subtitleSlug,
     })
     if (gate.kind === "unreadable-free") {
       setStorageError("Couldn't check storage. Try again.")
@@ -258,7 +305,6 @@ export default function SeriesDownloadRoute() {
     const summary = await runSeriesBatchEnqueue(resolution.resolved, ctx, {
       getRecord,
       startDownload: queueBatchDownload,
-      swapDownload,
       supersedeDownload,
       deleteDownload,
       queueBatchRecords,
@@ -271,17 +317,40 @@ export default function SeriesDownloadRoute() {
     setPhase({ kind: "done", summary })
   }, [
     resolution,
-    touAccepted,
     subtitleSlug,
     wifiOnly,
     getRecord,
     queueBatchDownload,
-    swapDownload,
     supersedeDownload,
     deleteDownload,
     queueBatchRecords,
     router,
   ])
+
+  const onConfirm = useCallback(() => {
+    if (!resolution || resolution.resolvedCount === 0 || !touAccepted) return
+    // A new quality/subtitle on an already-saved episode replaces the old copy
+    // (swap) or restarts an in-progress one (switch). Confirm before discarding
+    // the current downloads; an unchanged selection just re-checks (skips).
+    const willReplace = resolution.resolved.some((episode) => {
+      const choice = episodeChoiceFor(episode, subtitleSlug)
+      if (!choice) return false
+      const action = decideEpisodeAction(getRecord(episode.slug), choice)
+      return action === "swap" || action === "switch"
+    })
+    if (!willReplace) {
+      void proceed()
+      return
+    }
+    Alert.alert(
+      "Replace downloads?",
+      "Downloading again in the new quality or subtitles replaces your saved episodes. Your current copies stay playable until the new ones finish.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Re-download", onPress: () => void proceed() },
+      ],
+    )
+  }, [resolution, touAccepted, subtitleSlug, getRecord, proceed])
 
   const onRetry = useCallback(() => {
     retryControllerRef.current?.abort()
@@ -348,6 +417,7 @@ export default function SeriesDownloadRoute() {
       <SubtitlePicker
         union={subtitleUnion}
         selectedSlug={subtitleSlug}
+        downloadedSlug={downloaded.subtitleSlug}
         open={subtitleOpen}
         onToggle={() => setSubtitleOpen((o) => !o)}
         onSelect={(slug) => {
@@ -420,6 +490,7 @@ export default function SeriesDownloadRoute() {
             phase={phase}
             resolution={resolution}
             touAccepted={touAccepted}
+            nothingToDo={nothingToDo}
             onConfirm={onConfirm}
             typography={typography}
           />
@@ -443,6 +514,7 @@ export default function SeriesDownloadRoute() {
 function SubtitlePicker({
   union,
   selectedSlug,
+  downloadedSlug,
   open,
   onToggle,
   onSelect,
@@ -450,20 +522,31 @@ function SubtitlePicker({
   /** slug → display name, the union of subtitle tracks across resolved episodes. */
   union: Map<string, string>
   selectedSlug: string | null
+  /** Already-saved subtitle (null = saved with none, undefined = n/a) → disabled. */
+  downloadedSlug: string | null | undefined
   open: boolean
   onToggle: () => void
   onSelect: (slug: string | null) => void
 }) {
   const options = useMemo<DropdownOption[]>(() => {
+    // Only a saved subtitle LANGUAGE is "already downloaded" — the "No subtitles"
+    // row is never disabled (re-downloading "no subtitle" isn't a thing).
+    const disabledKey =
+      typeof downloadedSlug === "string" ? downloadedSlug : null
+    const mark = (opt: DropdownOption): DropdownOption =>
+      opt.key === disabledKey
+        ? { ...opt, disabled: true, note: "Already downloaded" }
+        : opt
     const base: DropdownOption[] = [
-      { key: NO_SUBTITLE_KEY, label: "No subtitles" },
+      mark({ key: NO_SUBTITLE_KEY, label: "No subtitles" }),
     ]
     const sorted = [...union.entries()].sort((a, b) =>
       a[1].toLowerCase().localeCompare(b[1].toLowerCase()),
     )
-    for (const [slug, name] of sorted) base.push({ key: slug, label: name })
+    for (const [slug, name] of sorted)
+      base.push(mark({ key: slug, label: name }))
     return base
-  }, [union])
+  }, [union, downloadedSlug])
 
   return (
     <Dropdown
@@ -552,12 +635,14 @@ function ConfirmButton({
   phase,
   resolution,
   touAccepted,
+  nothingToDo,
   onConfirm,
   typography,
 }: {
   phase: SheetPhase
   resolution: SeriesDownloadResolution | null
   touAccepted: boolean
+  nothingToDo: boolean
   onConfirm: () => void
   typography: ReturnType<typeof useTypography>
 }) {
@@ -570,12 +655,15 @@ function ConfirmButton({
     phase.kind !== "ready" ||
     !resolution ||
     resolution.resolvedCount === 0 ||
-    !touAccepted
+    !touAccepted ||
+    nothingToDo
   const label = enqueuing
     ? "Downloading"
     : resolving
       ? "Checking episodes…"
-      : "Download all"
+      : nothingToDo
+        ? "Already downloaded"
+        : "Download all"
 
   return (
     <Pressable

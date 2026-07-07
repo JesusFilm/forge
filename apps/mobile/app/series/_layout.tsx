@@ -1,8 +1,6 @@
-import { Stack, useRouter } from "expo-router"
-import { Pressable } from "react-native"
-import Ionicons from "@expo/vector-icons/Ionicons"
+import { Stack } from "expo-router"
 
-import { ACCENT, BG_COLOR } from "../../src/lib/color"
+import { BG_COLOR } from "../../src/lib/color"
 import { SeriesSessionProvider } from "../../src/contexts/SeriesSessionProvider"
 import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 
@@ -30,8 +28,6 @@ const DOWNLOAD_SHEET_DETENTS = [0.65, 1] as const
 // Mirrors app/watch/_layout.tsx: the series screen + its language sheet share a
 // session context, so the Stack is wrapped in SeriesSessionProvider.
 export default function SeriesLayout() {
-  const router = useRouter()
-
   return (
     <SeriesSessionProvider>
       <Stack
@@ -39,27 +35,9 @@ export default function SeriesLayout() {
           contentStyle: { backgroundColor: BG_COLOR },
         }}
       >
-        <Stack.Screen
-          name="[slug]"
-          options={{
-            headerShown: true,
-            headerTintColor: ACCENT,
-            headerTitle: "",
-            headerStyle: { backgroundColor: BG_COLOR },
-            headerShadowVisible: false,
-            headerTitleAlign: "center",
-            headerLeft: () => (
-              <Pressable
-                onPress={() => router.back()}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-                hitSlop={12}
-              >
-                <Ionicons name="chevron-back" size={28} color={ACCENT} />
-              </Pressable>
-            ),
-          }}
-        />
+        {/* No native header: the hero sits at the top safe edge with a floating
+            back button overlaid (mirrors app/watch/_layout.tsx + app/series/[slug]). */}
+        <Stack.Screen name="[slug]" options={{ headerShown: false }} />
         <Stack.Screen name="language" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen name="subtitle" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen
