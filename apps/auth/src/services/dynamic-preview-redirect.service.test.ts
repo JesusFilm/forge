@@ -69,6 +69,16 @@ describe("dynamic preview redirect policy", () => {
     ).toBe(false)
   })
 
+  it("does not widen the chat production client beyond its exact seeded redirect", () => {
+    expect(
+      isDynamicRailwayPreviewRedirectUriAllowed({
+        clientId: "jfp_chat_production",
+        redirectUri:
+          "https://forgechat-anything.up.railway.app/api/auth/callback",
+      }),
+    ).toBe(false)
+  })
+
   it("allows loopback watch callbacks for the local Web client", () => {
     expect(
       isDynamicLocalWebRedirectUriAllowed({

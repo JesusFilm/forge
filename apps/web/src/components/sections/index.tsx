@@ -115,6 +115,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "NavigationCarouselBlock",
   "CardBlock",
   "VideoRecommendationsBlock",
+  "WatchHomeHeroBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -266,6 +267,10 @@ function renderAdminBlock(
       }
       return null
     }
+    case "WatchHomeHeroBlock":
+      // The Watch homepage route renders this placeholder with the static
+      // hero model it already resolved. Other routes deliberately ignore it.
+      return null
     default: {
       // F6 (ce-code-review): if this branch fires for a typename in
       // ADMIN_BLOCK_TYPENAMES_LIST, the dispatch set and the switch have

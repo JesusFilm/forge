@@ -62,6 +62,7 @@ import {
   MousePointer2,
   Music,
   ImageIcon,
+  MonitorPlay,
   Plus,
   RectangleHorizontal,
   Route,
@@ -310,6 +311,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     description: "Scrollable set of selectable videos.",
     category: "Media",
     icon: Clapperboard,
+  },
+  {
+    key: "watchHomeHero",
+    label: "Watch Home Hero",
+    description: "Static hero used at the top of the Watch homepage.",
+    category: "Hero",
+    icon: MonitorPlay,
   },
   {
     key: "routeVideoHero",
@@ -1409,6 +1417,8 @@ export function ExperienceEditor({
         block.key as SectionContentTemplateKey,
       )
     }
+
+    if (block.key === "watchHomeHero") return isHomepage
 
     return isTemplate || block.category !== "Route"
   })

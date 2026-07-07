@@ -427,6 +427,10 @@ Stopping an in-flight download's native task and neutralizing its callbacks — 
 
 The first conversational agent of the planned headless Jesus Film AI Chat system, for people exploring Christianity and who Jesus is. It grounds factual answers through retrieval rather than answering from model memory: its retrieval tool fetches cited passages and the agent's own LLM synthesizes the answer, attributing sources. Studio-only until the deferred guardrail gate lands.
 
+### Seeker Dogfood Gate
+
+The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse `SEEKER_CHAT_ENABLED` kill switch, then a verified signed-in identity, then a LaunchDarkly boolean flag with individually-targeted emails. Default-deny and fail-closed — anonymous users, untargeted users, identities without a verified email, and LaunchDarkly outages all resolve to the stub (the flag's local override env is inert in deployed environments); delisting a user takes effect on their next message. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
+
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.

@@ -103,8 +103,23 @@ describe("first-party app seeds", () => {
     )
   })
 
-  it("registers the Chat OAuth client for local development only", () => {
-    expect(CHAT_APP_SEED.environments.map((env) => env.key)).toEqual(["local"])
+  it("keeps every seeded clientId globally unique across first-party apps", () => {
+    const clientIds = FIRST_PARTY_APP_SEEDS.flatMap((app) =>
+      app.environments.flatMap((env) => [
+        env.clientId,
+        ...(env.managerSessionServiceClientId
+          ? [env.managerSessionServiceClientId]
+          : []),
+      ]),
+    )
+    expect(new Set(clientIds).size).toBe(clientIds.length)
+  })
+
+  it("registers the Chat OAuth clients for local development and production", () => {
+    expect(CHAT_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "production",
+    ])
     expect(CHAT_APP_SEED.environments).toEqual([
       expect.objectContaining({
         key: "local",
@@ -112,6 +127,16 @@ describe("first-party app seeds", () => {
         redirectUris: ["http://localhost:3200/api/auth/callback"],
         postLogoutRedirectUris: ["http://localhost:3200"],
         allowedOrigins: ["http://localhost:3200"],
+        // Identity-only — no *:access, no membership:read (feat-207 R7).
+        defaultScopes: ["openid", "profile:read", "email:read"],
+        autoApprove: true,
+      }),
+      expect.objectContaining({
+        key: "production",
+        clientId: "jfp_chat_production",
+        redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
+        postLogoutRedirectUris: ["https://chat.jesusfilm.ai"],
+        allowedOrigins: ["https://chat.jesusfilm.ai"],
         // Identity-only — no *:access, no membership:read (feat-207 R7).
         defaultScopes: ["openid", "profile:read", "email:read"],
         autoApprove: true,

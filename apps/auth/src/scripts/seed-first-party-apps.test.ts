@@ -27,8 +27,8 @@ describe("seedFirstPartyApps", () => {
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
       apps: 5,
-      environments: 17,
-      oauthClients: 21,
+      environments: 18,
+      oauthClients: 22,
       scopes: 10,
     })
 
@@ -99,6 +99,25 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_chat_production" },
+        create: expect.objectContaining({
+          clientId: "jfp_chat_production",
+          // Identity-only client — exact scope list, no *:access or
+          // membership:read (feat-207 R7).
+          scopes: ["openid", "profile:read", "email:read"],
+          redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "chat",
+            environmentKey: "production",
+          }),
         }),
       }),
     )

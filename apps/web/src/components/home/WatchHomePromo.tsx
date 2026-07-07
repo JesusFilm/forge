@@ -1,7 +1,7 @@
-import Link from "next/link"
 import { Clapperboard, Globe2, UsersRound } from "lucide-react"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
-const points = [
+const defaultPoints = [
   {
     Icon: Globe2,
     title: "The most translated film library in the world",
@@ -22,7 +22,7 @@ const points = [
   },
 ] as const
 
-const highlights = [
+const defaultHighlights = [
   {
     title: "Next Steps Platform",
     description:
@@ -44,7 +44,7 @@ export function WatchHomePromo() {
   return (
     <section className="relative overflow-hidden bg-[linear-gradient(135deg,rgba(69,10,29,0.6),rgba(88,28,135,0.2),rgba(234,88,12,0.1))] py-[4.5rem] text-white">
       <div className="absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-45 mix-blend-multiply" />
-      <div className="relative mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="flex flex-col gap-14">
           <div className="max-w-3xl space-y-4">
             <p className="text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
@@ -61,23 +61,26 @@ export function WatchHomePromo() {
           </div>
 
           <div className="grid gap-8 md:grid-cols-3">
-            {points.map(({ Icon, title, description }) => (
-              <article
-                key={title}
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1 hover:bg-white/10"
-              >
-                <Icon
-                  className="h-20 w-20 text-white/20 mix-blend-overlay"
-                  aria-hidden
-                />
-                <h3 className="mt-6 text-xl font-semibold text-white">
-                  {title}
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-white/70">
-                  {description}
-                </p>
-              </article>
-            ))}
+            {defaultPoints.map((point) => {
+              const Icon = point.Icon
+              return (
+                <article
+                  key={point.title}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
+                >
+                  <Icon
+                    className="h-20 w-20 text-white/20 mix-blend-overlay"
+                    aria-hidden
+                  />
+                  <h3 className="mt-6 text-xl font-semibold text-white">
+                    {point.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                    {point.description}
+                  </p>
+                </article>
+              )
+            })}
           </div>
 
           <div className="space-y-6">
@@ -85,10 +88,10 @@ export function WatchHomePromo() {
               What we are building next
             </p>
             <div className="grid gap-6 md:grid-cols-3">
-              {highlights.map((highlight) => (
+              {defaultHighlights.map((highlight) => (
                 <article
                   key={highlight.title}
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-stone-950/20 p-6 transition-transform duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-stone-900/60"
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-stone-950/20 p-6 transition-colors duration-300 hover:border-white/20 hover:bg-stone-900/60"
                 >
                   <h3 className="text-lg font-semibold text-white">
                     {highlight.title}
@@ -117,14 +120,14 @@ export function WatchHomePromo() {
                 "We're inviting practitioners, creators, and partners into early access. Test new tools first, give feedback, and help shape products designed for real mission work."
               }
             </p>
-            <Link
+            <a
               href="https://mailchi.mp/jesusfilm/beta"
               target="_blank"
               rel="noopener noreferrer nofollow"
               className="inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               Become a beta tester
-            </Link>
+            </a>
           </div>
         </div>
       </div>

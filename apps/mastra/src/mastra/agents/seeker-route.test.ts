@@ -2,7 +2,10 @@ import { Agent } from "@mastra/core/agent"
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
 import { describe, expect, it } from "vitest"
 
-import { __resetSeekerMemoryForTesting, getSeekerMemory } from "../memory"
+import type { Memory } from "@mastra/memory"
+
+import { buildAiChatMemory } from "../memory"
+import type { AiChatOwnershipMemory } from "../ai-chat-thread-ownership"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
 
 import {
@@ -67,6 +70,15 @@ function makeMastra(opts: MakeMastraOpts = {}): {
   return { mastra, streamCalls, agentLookups }
 }
 
+// Permissive ownership fake (feat-208): no existing thread, zero threads for
+// the resource → the gate always passes. Gate-specific tests override it.
+function permissiveOwnershipMemory(): AiChatOwnershipMemory {
+  return {
+    getThreadById: async () => null,
+    listThreads: async () => ({ total: 0 }),
+  }
+}
+
 function baseInput(
   mastra: SeekerRouteMastra,
   over: Partial<SeekerRouteHandlerInput> = {},
@@ -78,6 +90,7 @@ function baseInput(
     getMastra: () => mastra,
     getEnabled: () => true,
     getModelKey: () => "model-key",
+    getMemory: permissiveOwnershipMemory,
     ...over,
   }
 }
@@ -601,7 +614,14 @@ function mockModel(replyText: string): MockLanguageModelV3 {
   })
 }
 
-function buildSmokeAgent(model: MockLanguageModelV3): Agent {
+// Fresh, isolated ai-chat Memory on the in-memory backend — one per test so
+// no thread state leaks across cases. Also handed to the route's ownership
+// gate so gate + agent write path share one store (the production wiring).
+function buildSmokeMemory(): Memory {
+  return buildAiChatMemory({ getBackend: () => "memory" })
+}
+
+function buildSmokeAgent(model: MockLanguageModelV3, memory: Memory): Agent {
   return new Agent({
     id: "seeker-smoke",
     name: "Seeker Smoke",
@@ -610,18 +630,22 @@ function buildSmokeAgent(model: MockLanguageModelV3): Agent {
     // Mastra's MastraModelConfig accepts directly.
     model,
     tools: { retrieveAnswer: retrieveAnswerTool },
-    memory: getSeekerMemory(),
+    memory,
   })
 }
 
 describe("handleSeekerRouteRequest — real-memory smoke", () => {
   it("does NOT throw AGENT_MEMORY_MISSING_RESOURCE_ID when no resourceId is given (AE3b contract)", async () => {
-    __resetSeekerMemoryForTesting()
-    const agent = buildSmokeAgent(mockModel("A grounded-sounding reply."))
+    const memory = buildSmokeMemory()
+    const agent = buildSmokeAgent(
+      mockModel("A grounded-sounding reply."),
+      memory,
+    )
     const mastra: SeekerRouteMastra = { getAgentById: () => agent }
 
     const res = await handleSeekerRouteRequest(
       baseInput(mastra, {
+        getMemory: () => memory as unknown as AiChatOwnershipMemory,
         readJson: async () => ({
           prompt: "Who is Jesus?",
           threadId: "smoke-thread-1",
@@ -636,14 +660,16 @@ describe("handleSeekerRouteRequest — real-memory smoke", () => {
   })
 
   it("recalls turn-1 content on turn-2 of the same thread (AE3c)", async () => {
-    __resetSeekerMemoryForTesting()
+    const memory = buildSmokeMemory()
     const model = mockModel("ASSISTANT_REPLY_BETA")
-    const agent = buildSmokeAgent(model)
+    const agent = buildSmokeAgent(model, memory)
     const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+    const getMemory = () => memory as unknown as AiChatOwnershipMemory
 
     // Turn 1 — carries a unique marker in the user prompt.
     const res1 = await handleSeekerRouteRequest(
       baseInput(mastra, {
+        getMemory,
         readJson: async () => ({
           prompt: "MARKER_ALPHA_UNIQUE please remember this",
           threadId: "smoke-recall-thread",
@@ -652,9 +678,12 @@ describe("handleSeekerRouteRequest — real-memory smoke", () => {
     )
     await readSse(res1)
 
-    // Turn 2 — same thread, different prompt.
+    // Turn 2 — same thread, different prompt. Turn 2 also exercises the
+    // ownership gate's existing-thread branch against the REAL memory (turn 1
+    // created the thread under the default resource).
     const res2 = await handleSeekerRouteRequest(
       baseInput(mastra, {
+        getMemory,
         readJson: async () => ({
           prompt: "what did I just say?",
           threadId: "smoke-recall-thread",
@@ -665,9 +694,150 @@ describe("handleSeekerRouteRequest — real-memory smoke", () => {
 
     // The model saw at least two calls; turn-2's assembled prompt must include
     // turn-1's marker — proving recall flowed route → agent.stream({ memory })
-    // → getSeekerMemory end-to-end.
+    // → the ai-chat Memory end-to-end.
     expect(model.doStreamCalls.length).toBeGreaterThanOrEqual(2)
     const turn2Prompt = JSON.stringify(model.doStreamCalls[1].prompt)
     expect(turn2Prompt).toContain("MARKER_ALPHA_UNIQUE")
+  })
+
+  it("rejects turn-2 with thread_forbidden when a different resource replays the threadId (feat-208)", async () => {
+    const memory = buildSmokeMemory()
+    const model = mockModel("ASSISTANT_REPLY_GAMMA")
+    const agent = buildSmokeAgent(model, memory)
+    const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+    const getMemory = () => memory as unknown as AiChatOwnershipMemory
+
+    // Turn 1 creates the thread under resource "user:alice".
+    await readSse(
+      await handleSeekerRouteRequest(
+        baseInput(mastra, {
+          getMemory,
+          readJson: async () => ({
+            prompt: "hello",
+            threadId: "smoke-owned-thread",
+            resourceId: "user:alice",
+          }),
+        }),
+      ),
+    )
+    const callsAfterTurn1 = model.doStreamCalls.length
+
+    // Turn 2 replays the same threadId as a different resource. Mastra itself
+    // would silently adopt the thread — the route's gate must refuse.
+    const res2 = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory,
+        readJson: async () => ({
+          prompt: "and what did alice say?",
+          threadId: "smoke-owned-thread",
+          resourceId: "anon:intruder",
+        }),
+      }),
+    )
+    const body2 = await readSse(res2)
+    expect(body2).toContain("event: error")
+    expect(body2).toContain('"reason":"thread_forbidden"')
+    expect(body2).not.toContain("event: result")
+    // The agent never streamed for the rejected turn.
+    expect(model.doStreamCalls.length).toBe(callsAfterTurn1)
+  })
+})
+
+// ===========================================================================
+// Thread ownership + ceiling gate (feat-208, fake agent + fake memory)
+// ===========================================================================
+
+describe("handleSeekerRouteRequest — thread ownership gate", () => {
+  it("emits thread_forbidden and never calls agent.stream when the thread has a different owner", async () => {
+    const { mastra, streamCalls } = makeMastra({ chunks: ["never"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => ({
+          getThreadById: async () => ({ resourceId: "user:someone-else" }),
+          listThreads: async () => ({ total: 0 }),
+        }),
+        readJson: async () => ({
+          prompt: "hi",
+          threadId: "stolen-thread",
+          resourceId: "anon:attacker",
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain('"reason":"thread_forbidden"')
+    expect(body).not.toContain("event: result")
+    expect(streamCalls).toHaveLength(0)
+  })
+
+  it("emits thread_limit when a NEW thread would exceed the per-resource ceiling", async () => {
+    const { mastra, streamCalls } = makeMastra({ chunks: ["never"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => ({
+          getThreadById: async () => null,
+          listThreads: async () => ({ total: 200 }),
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain('"reason":"thread_limit"')
+    expect(streamCalls).toHaveLength(0)
+  })
+
+  it("streams normally when the caller owns the existing thread", async () => {
+    const { mastra } = makeMastra({ chunks: ["hello"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => ({
+          getThreadById: async () => ({
+            resourceId: SEEKER_DEFAULT_RESOURCE_ID,
+          }),
+          listThreads: async () => ({ total: 9999 }),
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+    expect(body).not.toContain("event: error")
+  })
+
+  it("fails closed as generation_failed when the ownership check itself throws", async () => {
+    const { mastra, streamCalls } = makeMastra({ chunks: ["never"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => ({
+          getThreadById: async () => {
+            throw new Error("store unavailable")
+          },
+          listThreads: async () => ({ total: 0 }),
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain('"reason":"generation_failed"')
+    expect(body).not.toContain("event: result")
+    expect(streamCalls).toHaveLength(0)
+  })
+
+  it("bounds a never-settling ownership gate by the turn budget (feat-208 #1)", async () => {
+    // A slow-but-not-down Postgres: the gate's store call never resolves. Before
+    // the fix it would hang the SSE stream past the ceiling with no frame; now
+    // the budget signal trips it and the outer catch emits a timeout frame.
+    const { mastra, streamCalls } = makeMastra({ chunks: ["never"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        budgetMs: 20,
+        getMemory: () => ({
+          getThreadById: () =>
+            new Promise<{ resourceId?: string | null } | null>(() => {}),
+          listThreads: async () => ({ total: 0 }),
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain('"reason":"timeout"')
+    expect(body).not.toContain("event: result")
+    // The gate is bounded BEFORE agent.stream, so the agent never runs.
+    expect(streamCalls).toHaveLength(0)
   })
 })

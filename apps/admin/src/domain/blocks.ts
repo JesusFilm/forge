@@ -93,6 +93,8 @@ export const MediaCollectionItemSchema = z
   .object({
     /** Reference to a Video row by id (resolved on read). */
     videoId: z.string().optional(),
+    /** Snapshot of the Video route slug so static authored collections can link. */
+    videoSlug: z.string().min(1).optional(),
     imageOverrideUrl: z.string().url().optional(),
     imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
@@ -415,6 +417,13 @@ export const VideoHeroBlockSchema = z
   })
   .strict()
 
+export const WatchHomeHeroBlockSchema = z
+  .object({
+    t: z.literal("watchHomeHero"),
+    sectionKey,
+  })
+  .strict()
+
 // -----------------------------------------------------------------------------
 // Container composition (no recursion — slot content is a narrower set).
 // -----------------------------------------------------------------------------
@@ -556,6 +565,7 @@ export const BlockSchema = z.discriminatedUnion("t", [
   VideoCarouselBlockSchema,
   VideoRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
+  WatchHomeHeroBlockSchema,
 ])
 
 export type Block = z.infer<typeof BlockSchema>

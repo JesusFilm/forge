@@ -304,9 +304,11 @@ export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
-// Local environment only for now: chat's production hostname is not settled
-// (feat-229 PR2 adds production/preview once it is), and redirect URIs must be
-// exact-match per environment.
+// Local + production: production is the Cloudflare-fronted chat.jesusfilm.ai.
+// A host change is a seed edit + merge — it re-seeds on deploy; keep the same
+// clientId (the seeder never prunes; see
+// docs/solutions/auth/public-repo-oauth-seed-railway-domain-exposure-calculus.md).
+// Redirect URIs must be exact-match per environment.
 export const CHAT_APP_SEED: RegisteredAppSeed = {
   key: CHAT_APP_KEY,
   displayName: "Jesus Film Chat",
@@ -320,6 +322,16 @@ export const CHAT_APP_SEED: RegisteredAppSeed = {
       redirectUris: ["http://localhost:3200/api/auth/callback"],
       postLogoutRedirectUris: ["http://localhost:3200"],
       allowedOrigins: ["http://localhost:3200"],
+      defaultScopes: CHAT_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_chat_production",
+      redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
+      postLogoutRedirectUris: ["https://chat.jesusfilm.ai"],
+      allowedOrigins: ["https://chat.jesusfilm.ai"],
       defaultScopes: CHAT_DEFAULT_SCOPES,
       autoApprove: true,
     },

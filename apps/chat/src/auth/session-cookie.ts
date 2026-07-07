@@ -73,7 +73,12 @@ export async function readChatSessionCookie(
     const { payload } = await jwtVerify(value, getSigningKey(), {
       algorithms: ["HS256"],
     })
-    if (typeof payload.sub !== "string") return null
+    // Reject an empty/blank sub: it would collapse every such identity onto the
+    // bare `user:` memory partition (feat-208). A conformant OIDC sub is a
+    // non-empty string; anything else fails closed to anonymous.
+    if (typeof payload.sub !== "string" || payload.sub.trim().length === 0) {
+      return null
+    }
 
     return {
       sub: payload.sub,
