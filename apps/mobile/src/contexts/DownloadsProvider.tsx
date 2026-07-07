@@ -106,6 +106,11 @@ type DownloadsContextValue = {
   downloadedSlugs: string[]
   /** All offline records (downloaded + in-progress) for the library. */
   offlineRecords: OfflineDownloadRecord[]
+  /**
+   * Episodes queued for a re-download swap — still `downloaded` (old copy) but
+   * pending replacement. Feeds the series ring so a re-download fills from 0.
+   */
+  pendingSwapSlugs: ReadonlySet<string>
   /** Enqueue an offline download (one copy per video). */
   startDownload: (request: StartDownloadRequest) => Promise<StartDownloadResult>
   /** Swap a downloaded video to a new quality/language, non-destructively. */
@@ -215,12 +220,48 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   // Stable handle so the launch-reattach effect (defined before the pump) can
   // wake it after reseeding relaunched placeholders (review #2).
   const batchPumpRef = useRef<() => void>(() => {})
+  // Forward handle to swapDownload (defined after the pump) so a batch head that
+  // is still `downloaded` is REPLACED sequentially in its turn, not in parallel.
+  const swapForBatchRef = useRef<
+    (request: StartDownloadRequest) => Promise<StartDownloadResult>
+  >(async () => ({ ok: false, reason: "error" }))
 
   const dropFromBatchQueue = useCallback((videoSlug: string) => {
     batchQueueRef.current = batchQueueRef.current.filter(
       (request) => request.videoSlug !== videoSlug,
     )
   }, [])
+
+  // Episodes queued for a re-download swap: still `downloaded` (old copy playable)
+  // but pending replacement. Reactive so the ring recomputes and counts them 0
+  // (a re-download fills from 0). Enqueue adds; pump/cancel/delete removes.
+  const [pendingSwapSlugs, setPendingSwapSlugs] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+  const enterPendingSwap = useCallback((videoSlug: string) => {
+    setPendingSwapSlugs((prev) =>
+      prev.has(videoSlug) ? prev : new Set(prev).add(videoSlug),
+    )
+  }, [])
+  const leavePendingSwap = useCallback((videoSlug: string) => {
+    setPendingSwapSlugs((prev) => {
+      if (!prev.has(videoSlug)) return prev
+      const next = new Set(prev)
+      next.delete(videoSlug)
+      return next
+    })
+  }, [])
+  // Single owner for fully leaving the batch scope (queue entry + occupancy slot +
+  // pending-swap flag together), so a teardown site can't clear one and leak the
+  // rest — a leaked pending flag would pin the ring at "Downloading…" (review).
+  const removeFromBatchScope = useCallback(
+    (videoSlug: string) => {
+      dropFromBatchQueue(videoSlug)
+      batchSlugsRef.current.delete(videoSlug)
+      leavePendingSwap(videoSlug)
+    },
+    [dropFromBatchQueue, leavePendingSwap],
+  )
 
   const { wifiOnly } = useWatchPreferences()
   // Read inside the launch-reattach effect without making it re-run (and re-queue
@@ -346,9 +387,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   const deleteDownload = useCallback(
     async (videoSlug: string) => {
       // A deleted slug must not restart from the batch queue (R14), nor keep
-      // occupying the batch slot via batchSlugs scoping (review #5).
-      dropFromBatchQueue(videoSlug)
-      batchSlugsRef.current.delete(videoSlug)
+      // occupying the batch slot / pending-swap flag (review #5).
+      removeFromBatchScope(videoSlug)
       // R1: stop the in-flight native transfer BEFORE removing files/record, so
       // it doesn't keep downloading and no late done-callback writes into the
       // removed dir. No live task (already downloaded/failed) → just remove.
@@ -364,7 +404,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       await removeVideoDir(videoSlug)
       await removeRecord(videoSlug)
     },
-    [removeRecord, dropFromBatchQueue],
+    [removeRecord, removeFromBatchScope],
   )
 
   // Build the native event handlers for one download, bound to its identity and
@@ -953,14 +993,24 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           }
           if (action.kind === "wait") return
           if (action.kind === "drop") {
-            dropFromBatchQueue(action.videoSlug)
+            // Terminal disposition (stale/failed/gone head, occupancy already 0):
+            // leave the whole batch scope so a pending-swap flag can't leak and
+            // pin the ring at "Downloading…" (review: correctness/reliability).
+            removeFromBatchScope(action.videoSlug)
             continue
           }
           dropFromBatchQueue(action.request.videoSlug)
-          const result = await startDownload(action.request)
-          // A pump-time failure removes the adopted placeholder, silently
-          // erasing the episode the sheet already accepted — resurface it as
-          // `failed` so the badge and Library offer delete/retry (review #4).
+          // A still-`downloaded` head is a re-download → swap it (non-destructive,
+          // keeps the old copy until the new verifies); a bare placeholder is a
+          // fresh start. Either way it runs to a terminal state before the next.
+          const isSwap =
+            recordsRef.current[action.request.videoSlug]?.state === "downloaded"
+          const result = isSwap
+            ? await swapForBatchRef.current(action.request)
+            : await startDownload(action.request)
+          // A pump-time failure removes the adopted placeholder, silently erasing
+          // the episode the sheet accepted — resurface it as `failed` so the badge
+          // /Library offer delete/retry (review #4; a failed swap reverts instead).
           if (
             !result.ok &&
             result.reason !== "exists" &&
@@ -984,12 +1034,22 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
               totalBytes: Number(r.rendition.size) || 0,
             })
           }
+          // Processed → no longer a pending swap. Done AFTER the swap wrote its
+          // `downloading` record, so the ring never blips through "done" (an
+          // in-flight `downloading` reads as its byte fraction, not full).
+          leavePendingSwap(action.request.videoSlug)
         }
       } finally {
         batchPumpingRef.current = false
       }
     })()
-  }, [startDownload, dropFromBatchQueue, writeRecord])
+  }, [
+    startDownload,
+    dropFromBatchQueue,
+    removeFromBatchScope,
+    writeRecord,
+    leavePendingSwap,
+  ])
   batchPumpRef.current = pumpBatchQueue
 
   useEffect(() => {
@@ -1013,10 +1073,15 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       }
       batchQueueRef.current = [...batchQueueRef.current, request]
       batchSlugsRef.current.add(request.videoSlug)
+      // A downloaded slug queued here is a re-download swap — mark it pending so
+      // the ring drops to 0 now (a fresh episode is `queued`, already counted).
+      if (recordsRef.current[request.videoSlug]?.state === "downloaded") {
+        enterPendingSwap(request.videoSlug)
+      }
       pumpBatchQueue()
       return { ok: true }
     },
-    [pumpBatchQueue],
+    [pumpBatchQueue, enterPendingSwap],
   )
 
   // U8: non-destructive quality/language swap on an already-downloaded video.
@@ -1140,6 +1205,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     },
     [writeRecord, buildHandlers, startDownload],
   )
+  // The sequential pump (defined above) swaps a downloaded batch head via this.
+  swapForBatchRef.current = swapDownload
 
   // U3: in-flight controls. pause sets state directly and keeps the task handle;
   // resume continues in place or restarts if the task didn't survive (R5); cancel
@@ -1182,13 +1249,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const cancelDownload = useCallback(
     async (videoSlug: string) => {
+      // Leave the batch scope FIRST, before the ignore-check below: a re-download
+      // waiter sits as state="downloaded" (decideCancelAction→"ignore"), so
+      // dropping after would leave it queued and the pump would resume its swap.
+      removeFromBatchScope(videoSlug)
       const current = recordsRef.current[videoSlug]
       const action = decideCancelAction(current)
       if (action === "ignore" || !current) return
-      // A canceled slug must not restart from the batch queue (R14), nor keep
-      // occupying the batch slot via batchSlugs scoping (review #5).
-      dropFromBatchQueue(videoSlug)
-      batchSlugsRef.current.delete(videoSlug)
       const task = taskRegistry.current.get(videoSlug)
       if (task) {
         taskRegistry.current.delete(videoSlug)
@@ -1222,13 +1289,15 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       await removeVideoDir(videoSlug)
       await removeRecord(videoSlug)
     },
-    [writeRecord, removeRecord, dropFromBatchQueue],
+    [writeRecord, removeRecord, removeFromBatchScope],
   )
 
   const supersedeDownload = useCallback(
     async (videoSlug: string) => {
-      // A superseded slug's stale queue entry must not race the replacement (R14).
+      // Drop the stale queue entry + any pending-swap flag (keep the occupancy
+      // slot — the switch replacement reclaims it); must not race it (R14).
       dropFromBatchQueue(videoSlug)
+      leavePendingSwap(videoSlug)
       // U4: stop the in-flight task WITHOUT removing its record, neutralizing its
       // terminal callbacks so the language-switch replacement can reclaim the slug.
       const task = taskRegistry.current.get(videoSlug)
@@ -1240,7 +1309,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         // Best-effort supersede stop.
       }
     },
-    [dropFromBatchQueue],
+    [dropFromBatchQueue, leavePendingSwap],
   )
 
   const value = useMemo<DownloadsContextValue>(
@@ -1263,6 +1332,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       offlineRecords: Object.values(records).filter(
         (record) => record.state !== "canceled",
       ),
+      pendingSwapSlugs,
       startDownload,
       swapDownload,
       queueBatchDownload,
@@ -1276,6 +1346,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [
       records,
       isReady,
+      pendingSwapSlugs,
       startDownload,
       swapDownload,
       queueBatchDownload,

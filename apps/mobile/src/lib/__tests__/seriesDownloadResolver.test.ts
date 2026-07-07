@@ -1,12 +1,19 @@
 import {
   decideEpisodeAction,
+  deriveDownloadedSelection,
+  episodeChoiceFor,
   resolveSeriesDownload,
   summarizeResolution,
   toResolverVariants,
+  type EpisodeChoice,
   type SeriesEpisodeResolution,
   type SeriesResolveDeps,
 } from "../seriesDownloadResolver"
-import type { OfflineDownloadState } from "../offlineManifest"
+import type {
+  OfflineDownloadRecord,
+  OfflineDownloadState,
+} from "../offlineManifest"
+import type { TieredDownload } from "../downloadTiers"
 import type {
   VariantMedia,
   WatchDownload,
@@ -325,14 +332,19 @@ describe("summarizeResolution", () => {
 })
 
 describe("decideEpisodeAction", () => {
-  const record = (dubDocumentId: string, state: OfflineDownloadState) => ({
+  const record = (
+    dubDocumentId: string,
+    state: OfflineDownloadState,
+    renditionDocumentId = "r",
+    subtitleLanguageSlug: string | null = null,
+  ) => ({
     version: 1,
     videoSlug: "x",
     dubDocumentId,
-    renditionDocumentId: "r",
+    renditionDocumentId,
     qualityLabel: "high",
     title: "",
-    subtitleLanguageSlug: null,
+    subtitleLanguageSlug,
     state,
     committedPath: null,
     pendingPath: null,
@@ -340,31 +352,131 @@ describe("decideEpisodeAction", () => {
     bytesWritten: 0,
     totalBytes: 0,
   })
+  const choice = (
+    dubDocumentId: string,
+    renditionDocumentId = "r",
+    subtitleLanguageSlug: string | null = null,
+  ): EpisodeChoice => ({
+    dubDocumentId,
+    renditionDocumentId,
+    subtitleLanguageSlug,
+  })
 
   it("starts when there is no record", () => {
-    expect(decideEpisodeAction(null, "d1")).toBe("start")
+    expect(decideEpisodeAction(null, choice("d1"))).toBe("start")
   })
 
-  it("starts a failed or canceled record regardless of language", () => {
-    expect(decideEpisodeAction(record("d1", "failed"), "d1")).toBe("start")
-    expect(decideEpisodeAction(record("d1", "canceled"), "d2")).toBe("start")
+  it("starts a failed or canceled record regardless of choice", () => {
+    expect(decideEpisodeAction(record("d1", "failed"), choice("d1"))).toBe(
+      "start",
+    )
+    expect(decideEpisodeAction(record("d1", "canceled"), choice("d2"))).toBe(
+      "start",
+    )
   })
 
-  it("skips a same-language record in any non-terminal state", () => {
-    expect(decideEpisodeAction(record("d1", "downloaded"), "d1")).toBe("skip")
-    expect(decideEpisodeAction(record("d1", "downloading"), "d1")).toBe("skip")
+  it("skips a record matching dub + rendition + subtitle", () => {
+    expect(decideEpisodeAction(record("d1", "downloaded"), choice("d1"))).toBe(
+      "skip",
+    )
+    expect(decideEpisodeAction(record("d1", "downloading"), choice("d1"))).toBe(
+      "skip",
+    )
   })
 
   it("swaps a downloaded record in a different language", () => {
-    expect(decideEpisodeAction(record("d1", "downloaded"), "d2")).toBe("swap")
+    expect(decideEpisodeAction(record("d1", "downloaded"), choice("d2"))).toBe(
+      "swap",
+    )
   })
 
-  it("switches an in-progress different-language record (cancel + restart)", () => {
-    expect(decideEpisodeAction(record("d1", "downloading"), "d2")).toBe(
+  it("swaps a downloaded record when only the quality (rendition) changed", () => {
+    expect(
+      decideEpisodeAction(record("d1", "downloaded", "r1"), choice("d1", "r2")),
+    ).toBe("swap")
+  })
+
+  it("swaps a downloaded record when only the subtitle changed", () => {
+    expect(
+      decideEpisodeAction(
+        record("d1", "downloaded", "r", null),
+        choice("d1", "r", "es"),
+      ),
+    ).toBe("swap")
+    // ...and dropping a subtitle from a subtitled copy is also a change.
+    expect(
+      decideEpisodeAction(
+        record("d1", "downloaded", "r", "es"),
+        choice("d1", "r", null),
+      ),
+    ).toBe("swap")
+  })
+
+  it("switches an in-progress record differing on dub, quality, or subtitle", () => {
+    expect(decideEpisodeAction(record("d1", "downloading"), choice("d2"))).toBe(
       "switch",
     )
-    expect(decideEpisodeAction(record("d1", "queued"), "d2")).toBe("switch")
-    expect(decideEpisodeAction(record("d1", "paused"), "d2")).toBe("switch")
+    expect(decideEpisodeAction(record("d1", "queued"), choice("d2"))).toBe(
+      "switch",
+    )
+    expect(
+      decideEpisodeAction(record("d1", "paused", "r1"), choice("d1", "r2")),
+    ).toBe("switch")
+  })
+})
+
+describe("episodeChoiceFor (lockstep with buildEpisodeRequest)", () => {
+  const resolved = (
+    subtitleUrl: string | null,
+    overrides: Partial<SeriesEpisodeResolution> = {},
+  ): SeriesEpisodeResolution => ({
+    slug: "a",
+    title: "a",
+    posterUrl: null,
+    status: "resolved",
+    dubDocumentId: "dub-a",
+    rendition: {
+      documentId: "r-hi",
+      quality: "Highest",
+      size: "1000",
+      url: "u",
+    },
+    resolvedTier: "Highest",
+    subtitleUrl,
+    sizeBytes: 1000,
+    sizeUnknown: false,
+    ...overrides,
+  })
+
+  it("carries the chosen subtitle slug when the episode HAS that track", () => {
+    expect(episodeChoiceFor(resolved("https://sub.vtt"), "ja")).toEqual({
+      dubDocumentId: "dub-a",
+      renditionDocumentId: "r-hi",
+      subtitleLanguageSlug: "ja",
+    })
+  })
+
+  it("degrades subtitle to null when the episode lacks that track (subtitleUrl null)", () => {
+    // The degrade rule that MUST stay in lockstep with buildEpisodeRequest — an
+    // absent track saves null so the enqueue/gate treat re-picking it as a no-op.
+    expect(
+      episodeChoiceFor(resolved(null), "ja")?.subtitleLanguageSlug,
+    ).toBeNull()
+  })
+
+  it("returns null for a non-resolved or rendition-less episode", () => {
+    expect(
+      episodeChoiceFor(
+        resolved(null, {
+          status: "skipped-no-rendition",
+          rendition: undefined,
+        }),
+        "ja",
+      ),
+    ).toBeNull()
+    expect(
+      episodeChoiceFor(resolved(null, { dubDocumentId: undefined }), null),
+    ).toBeNull()
   })
 })
 
@@ -388,5 +500,139 @@ describe("toResolverVariants (lean dub-index mapper)", () => {
   it("returns empty for a null/undefined dub list", () => {
     expect(toResolverVariants(null)).toEqual([])
     expect(toResolverVariants(undefined)).toEqual([])
+  })
+})
+
+describe("deriveDownloadedSelection", () => {
+  const tier = (
+    documentId: string,
+    t: TieredDownload["tier"],
+  ): TieredDownload => ({
+    documentId,
+    quality: t,
+    size: "1000",
+    url: `u-${documentId}`,
+    tier: t,
+  })
+  // A resolved episode carrying the full tier set (each tier's rendition id).
+  const ep = (slug: string, dub: string): SeriesEpisodeResolution => ({
+    slug,
+    title: slug,
+    posterUrl: null,
+    status: "resolved",
+    dubDocumentId: dub,
+    tiered: [tier(`${slug}-hi`, "Highest"), tier(`${slug}-lo`, "Low")],
+    rendition: tier(`${slug}-hi`, "Highest"),
+    resolvedTier: "Highest",
+    sizeBytes: 1000,
+    sizeUnknown: false,
+  })
+  const rec = (
+    dub: string,
+    renditionDocumentId: string,
+    subtitleLanguageSlug: string | null,
+    state: OfflineDownloadState = "downloaded",
+  ): OfflineDownloadRecord => ({
+    version: 1,
+    videoSlug: "x",
+    dubDocumentId: dub,
+    renditionDocumentId,
+    qualityLabel: "q",
+    title: "",
+    subtitleLanguageSlug,
+    state,
+    committedPath: null,
+    pendingPath: null,
+    posterPath: null,
+    bytesWritten: 0,
+    totalBytes: 0,
+  })
+  const resolutionOf = (eps: SeriesEpisodeResolution[]) =>
+    summarizeResolution(eps)
+
+  it("returns the shared tier + subtitle when every episode matches", () => {
+    const resolution = resolutionOf([ep("a", "dub"), ep("b", "dub")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub", "a-lo", "ja"),
+      b: rec("dub", "b-lo", "ja"),
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: "Low", subtitleSlug: "ja" })
+  })
+
+  it("has no subtitle to disable when saved without subtitles", () => {
+    const resolution = resolutionOf([ep("a", "dub")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub", "a-hi", null),
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: "Highest", subtitleSlug: undefined })
+  })
+
+  it("detects the subtitle language even when some episodes lack that track", () => {
+    // The user's case: saved with Japanese; 'a' has the track (sub=ja), 'b'
+    // doesn't offer Japanese so it saved as null. Japanese is still the choice.
+    const resolution = resolutionOf([ep("a", "dub"), ep("b", "dub")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub", "a-hi", "ja"),
+      b: rec("dub", "b-hi", null),
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: "Highest", subtitleSlug: "ja" })
+  })
+
+  it("disables nothing for a PARTIAL series (not every episode saved)", () => {
+    // 2 episodes uniformly at Low/no-sub — but only one is actually saved. The
+    // user must still be able to pick Low to finish the missing episode.
+    const resolution = resolutionOf([ep("a", "dub"), ep("b", "dub")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub", "a-lo", null),
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: null, subtitleSlug: undefined })
+  })
+
+  it("disables nothing when the series isn't downloaded", () => {
+    const resolution = resolutionOf([ep("a", "dub")])
+    const sel = deriveDownloadedSelection(resolution, () => null)
+    expect(sel).toEqual({ tier: null, subtitleSlug: undefined })
+  })
+
+  it("returns null tier for a mixed-tier set (don't guess)", () => {
+    const resolution = resolutionOf([ep("a", "dub"), ep("b", "dub")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub", "a-hi", null), // Highest
+      b: rec("dub", "b-lo", null), // Low
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: null, subtitleSlug: undefined })
+  })
+
+  it("returns undefined subtitle when episodes saved with DIFFERENT languages", () => {
+    const resolution = resolutionOf([ep("a", "dub"), ep("b", "dub")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub", "a-hi", "ja"),
+      b: rec("dub", "b-hi", "en"),
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: "Highest", subtitleSlug: undefined })
+  })
+
+  it("ignores a record downloaded in a different audio language", () => {
+    const resolution = resolutionOf([ep("a", "dub-current")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub-OTHER", "a-lo", "ja"),
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: null, subtitleSlug: undefined })
+  })
+
+  it("ignores an in-progress (not yet committed) record", () => {
+    const resolution = resolutionOf([ep("a", "dub")])
+    const records: Record<string, OfflineDownloadRecord> = {
+      a: rec("dub", "a-lo", "ja", "downloading"),
+    }
+    const sel = deriveDownloadedSelection(resolution, (s) => records[s] ?? null)
+    expect(sel).toEqual({ tier: null, subtitleSlug: undefined })
   })
 })

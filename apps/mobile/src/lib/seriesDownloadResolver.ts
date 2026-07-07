@@ -283,18 +283,112 @@ export async function resolveSeriesDownload(
 export type EpisodeAction = "start" | "swap" | "switch" | "skip"
 
 /**
- * Decide how to enqueue a resolved episode against its existing record. State-
- * aware: swapDownload only acts on a `downloaded` record, so an in-progress copy
- * in a different language must be canceled and restarted (`switch`) rather than
- * left to finish in the old language. Same dub (any state) is already satisfied.
+ * The saved-copy identity a re-download compares against: audio dub + rendition
+ * (quality) + subtitle. A difference in ANY of the three is a real change, so
+ * re-selecting a new quality or subtitle re-downloads instead of no-oping.
+ */
+export type EpisodeChoice = {
+  dubDocumentId: string
+  renditionDocumentId: string
+  subtitleLanguageSlug: string | null
+}
+
+/**
+ * Build the compare-choice for a resolved episode, mirroring buildEpisodeRequest's
+ * subtitle-degrade rule (no track on this episode → no subtitle). Null when the
+ * episode didn't resolve to a downloadable rendition. Keep in lockstep with
+ * buildEpisodeRequest so the enqueue decision and storage gate never diverge.
+ */
+export function episodeChoiceFor(
+  episode: SeriesEpisodeResolution,
+  subtitleLanguageSlug: string | null,
+): EpisodeChoice | null {
+  if (
+    episode.status !== "resolved" ||
+    !episode.rendition ||
+    !episode.dubDocumentId
+  ) {
+    return null
+  }
+  return {
+    dubDocumentId: episode.dubDocumentId,
+    renditionDocumentId: episode.rendition.documentId,
+    subtitleLanguageSlug: episode.subtitleUrl ? subtitleLanguageSlug : null,
+  }
+}
+
+/**
+ * Decide how to enqueue a resolved episode against its existing record. A record
+ * matching the chosen dub AND rendition AND subtitle is already satisfied
+ * (`skip`); differing on any of the three is a real change. State-aware:
+ * swapDownload only acts on a `downloaded` record, so a differing in-progress
+ * copy must be canceled and restarted (`switch`) rather than swapped.
  */
 export function decideEpisodeAction(
   record: OfflineDownloadRecord | null | undefined,
-  chosenDubDocumentId: string,
+  chosen: EpisodeChoice,
 ): EpisodeAction {
   if (!record || record.state === "failed" || record.state === "canceled") {
     return "start"
   }
-  if (record.dubDocumentId === chosenDubDocumentId) return "skip"
+  const sameContent =
+    record.dubDocumentId === chosen.dubDocumentId &&
+    record.renditionDocumentId === chosen.renditionDocumentId &&
+    (record.subtitleLanguageSlug ?? null) ===
+      (chosen.subtitleLanguageSlug ?? null)
+  if (sameContent) return "skip"
   return record.state === "downloaded" ? "swap" : "switch"
+}
+
+export type DownloadedSeriesSelection = {
+  /** The quality tier every downloaded episode shares, or null if none/mixed. */
+  tier: QualityTier | null
+  /**
+   * The subtitle LANGUAGE the series was saved with — the one non-null slug in
+   * the records (episodes lacking that track saved as null, which is expected).
+   * undefined when saved without subtitles, not downloaded, or ambiguous.
+   */
+  subtitleSlug: string | undefined
+}
+
+/**
+ * What quality tier + subtitle the series is CURRENTLY saved in for the current
+ * audio language — so the download sheet can disable those picker options
+ * ("already downloaded"). Only committed (`downloaded`) records in the current
+ * dub count; a mixed set returns null/undefined (disable nothing) over a guess.
+ */
+export function deriveDownloadedSelection(
+  resolution: SeriesDownloadResolution,
+  getRecord: (slug: string) => OfflineDownloadRecord | null,
+): DownloadedSeriesSelection {
+  const tiers = new Set<QualityTier>()
+  // NON-NULL slugs only: a subtitle is applied uniformly at download, so episodes
+  // that lack the chosen track save as null. The one language present IS the
+  // choice; the nulls just mean "that episode didn't offer it".
+  const subtitleLangs = new Set<string>()
+  let downloadedCount = 0
+  for (const episode of resolution.resolved) {
+    const record = getRecord(episode.slug)
+    if (!record || record.state !== "downloaded") continue
+    // A different audio language isn't "already downloaded" for this selection.
+    if (record.dubDocumentId !== episode.dubDocumentId) continue
+    downloadedCount += 1
+    const tier = episode.tiered?.find(
+      (t) => t.documentId === record.renditionDocumentId,
+    )?.tier
+    if (tier) tiers.add(tier)
+    if (record.subtitleLanguageSlug)
+      subtitleLangs.add(record.subtitleLanguageSlug)
+  }
+  // Only disable a tier/subtitle when EVERY resolved episode is saved — a partial
+  // series (some episodes missing) must still allow completing at that quality.
+  const fullyDownloaded =
+    resolution.resolvedCount > 0 && downloadedCount === resolution.resolvedCount
+  return {
+    tier: fullyDownloaded && tiers.size === 1 ? [...tiers][0] : null,
+    subtitleSlug:
+      fullyDownloaded && subtitleLangs.size === 1
+        ? [...subtitleLangs][0]
+        : undefined,
+  }
 }

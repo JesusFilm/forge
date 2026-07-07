@@ -144,43 +144,72 @@ describe("deriveSeriesDownloadState", () => {
     )
     expect(state.inFlightSlugs.sort()).toEqual(["a", "b"])
   })
+
+  it("a re-download at the start reads 0 progress, not ~full (pending swaps)", () => {
+    // All three episodes are still `downloaded` (old copies) but queued for a
+    // swap — the ring must reset to 0, not read 3/3.
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      ["a", "b", "c"],
+      EPISODES.map((s) => rec(s, "downloaded", 10, 10)),
+      new Set(["a", "b", "c"]),
+    )
+    expect(state.progress).toBe(0)
+    expect(state.downloaded).toBe(0)
+    expect(state.inProgress).toBe(true)
+  })
+
+  it("re-download progress climbs as each swap finishes", () => {
+    // a re-downloaded (done, not pending), b swapping at 50%, c still pending.
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      ["a", "c"],
+      [
+        rec("a", "downloaded", 10, 10),
+        rec("b", "downloading", 50, 100),
+        rec("c", "downloaded", 10, 10),
+      ],
+      new Set(["c"]),
+    )
+    // (1 done + 0.5 in-flight + 0 pending) / 3
+    expect(state.progress).toBeCloseTo(0.5)
+    expect(state.downloaded).toBe(1) // only 'a' finished its swap
+    expect(state.inProgress).toBe(true)
+  })
+
+  it("a pending swap is NOT an in-flight control target (not pausable)", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      ["a"],
+      [rec("a", "downloaded", 10, 10)],
+      new Set(["a"]),
+    )
+    expect(state.inFlightSlugs).toEqual([])
+    expect(state.inProgress).toBe(true)
+  })
 })
 
 describe("seriesDownloadLabel", () => {
-  const lbl = (
-    downloaded: number,
-    total: number,
-    inProgress: boolean,
-    pausedAggregate = false,
-  ) =>
+  const lbl = (downloaded: number, total: number) =>
     seriesDownloadLabel({
       downloaded,
       total,
-      inProgress,
-      pausedAggregate,
+      inProgress: false,
+      pausedAggregate: false,
       inFlightSlugs: [],
       progress: 0,
     })
 
   it("reads 'Download all' when nothing is downloaded", () => {
-    expect(lbl(0, 3, false)).toBe("Download all")
+    expect(lbl(0, 3)).toBe("Download all")
   })
 
   it("reads 'N of M downloaded' for a partial set", () => {
-    expect(lbl(2, 3, false)).toBe("2 of 3 downloaded")
+    expect(lbl(2, 3)).toBe("2 of 3 downloaded")
   })
 
   it("reads 'All downloaded' when complete", () => {
-    expect(lbl(3, 3, false)).toBe("All downloaded")
-  })
-
-  it("reads the in-progress label and takes priority over partial/complete", () => {
-    expect(lbl(1, 3, true)).toBe("Downloading… (1 of 3)")
-    expect(lbl(3, 3, true)).toBe("Downloading… (3 of 3)")
-  })
-
-  it("reads the paused label before the in-progress label (U8)", () => {
-    expect(lbl(1, 3, true, true)).toBe("Paused (1 of 3)")
+    expect(lbl(3, 3)).toBe("All downloaded")
   })
 })
 

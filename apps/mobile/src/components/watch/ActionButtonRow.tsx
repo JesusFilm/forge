@@ -50,6 +50,24 @@ export function ActionButtonRow({
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   const dl = downloadGlyphInfo(downloadState, downloadProgress)
+  // The in-progress ring IS the control (mirrors the series button): pause while
+  // transferring (tap→pause), play while paused (tap→resume/remove), neutral
+  // download glyph while queued (no live transfer to pause yet).
+  const inProgressIcon =
+    downloadState === "paused"
+      ? "play"
+      : downloadState === "queued"
+        ? "arrow-down"
+        : "pause"
+  const downloadA11y = !dl.inProgress
+    ? dl.a11yLabel
+    : downloadState === "paused"
+      ? "Download paused. Tap to resume or remove"
+      : downloadState === "queued"
+        ? "Download queued. Tap to remove"
+        : "Pause download"
+  // The completed tick reads a touch larger than the idle/failed glyphs.
+  const staticIconSize = downloadState === "downloaded" ? 28 : 24
 
   return (
     <View style={styles.row}>
@@ -101,7 +119,7 @@ export function ActionButtonRow({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel={dl.a11yLabel}
+          accessibilityLabel={downloadA11y}
         >
           {dl.inProgress ? (
             <DownloadProgressRing
@@ -112,10 +130,10 @@ export function ActionButtonRow({
               trackColor="rgba(255, 255, 255, 0.18)"
               cutoutColor={BG_COLOR}
             >
-              <Ionicons name={dl.icon} size={12} color={dl.color} />
+              <Ionicons name={inProgressIcon} size={12} color={dl.color} />
             </DownloadProgressRing>
           ) : (
-            <Ionicons name={dl.icon} size={24} color={dl.color} />
+            <Ionicons name={dl.icon} size={staticIconSize} color={dl.color} />
           )}
         </Pressable>
         <Pressable

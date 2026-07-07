@@ -1,13 +1,12 @@
 import {
   isBatchPlaceholderRecord,
-  isLiveDownloadRecord,
   type OfflineDownloadRecord,
 } from "./offlineManifest"
 import type { StartDownloadRequest } from "../contexts/DownloadsProvider"
 
-// Sequential batch pump (R14): series batch downloads start ONE at a time in
-// episode order — the next begins only at the previous one's terminal state.
-// Pure decision core; the provider owns the queue ref and applies actions.
+// Sequential batch pump (R14): series batch downloads (incl. RE-downloads, which
+// swap a still-saved episode) run ONE at a time in episode order — the next begins
+// only at the previous one's terminal state. Pure core; the provider applies it.
 
 export const BATCH_DOWNLOAD_CONCURRENCY = 1
 
@@ -41,24 +40,25 @@ export function nextBatchAction(
 
   const head = queue[0]
   const record = records[head.videoSlug]
-  if (!isBatchPlaceholderRecord(record)) {
-    return { kind: "drop", videoSlug: head.videoSlug }
+  // A processable head is a fresh `queued` placeholder (→ start) or a completed
+  // copy to replace (→ swap). Anything else (gone/canceled/claimed) is dropped.
+  if (isBatchPlaceholderRecord(record) || record?.state === "downloaded") {
+    return { kind: "start", request: head }
   }
-  return { kind: "start", request: head }
+  return { kind: "drop", videoSlug: head.videoSlug }
 }
 
 /**
- * Gate for accepting an episode into the batch queue: a live record another
- * flow owns (non-placeholder) or an already-queued slug rejects as `exists`.
+ * Gate for accepting an episode into the batch queue. Reject a slug already
+ * queued, or one an in-flight transfer owns (downloading/paused). A downloaded
+ * copy IS queueable — the pump swaps it to the new choice at its turn.
  */
 export function canQueueBatchDownload(
   records: Readonly<Record<string, OfflineDownloadRecord>>,
   queue: readonly StartDownloadRequest[],
   videoSlug: string,
 ): boolean {
+  if (queue.some((request) => request.videoSlug === videoSlug)) return false
   const existing = records[videoSlug]
-  if (isLiveDownloadRecord(existing) && !isBatchPlaceholderRecord(existing)) {
-    return false
-  }
-  return !queue.some((request) => request.videoSlug === videoSlug)
+  return existing?.state !== "downloading" && existing?.state !== "paused"
 }

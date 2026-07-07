@@ -88,14 +88,18 @@ const record = (
   dubDocumentId: string,
   state: OfflineDownloadRecord["state"],
   totalBytes = 0,
+  // Defaults to the rendition resolvedEpisode() produces (`${slug}-r`) so a
+  // same-dub record reads as "already present" unless a test opts into a change.
+  renditionDocumentId = `${videoSlug}-r`,
+  subtitleLanguageSlug: string | null = null,
 ): OfflineDownloadRecord => ({
   version: 1,
   videoSlug,
   dubDocumentId,
-  renditionDocumentId: "r",
+  renditionDocumentId,
   qualityLabel: "high",
   title: "",
-  subtitleLanguageSlug: null,
+  subtitleLanguageSlug,
   state,
   committedPath: state === "downloaded" ? `/committed/${videoSlug}` : null,
   pendingPath: null,
@@ -191,6 +195,7 @@ describe("AE3 — storage gate (KTD6)", () => {
       getRecord: noRecord,
       freeBytes: RESERVE, // exactly the reserve — 1000 over budget
       reserveBytes: RESERVE,
+      subtitleLanguageSlug: null,
     })
     expect(gate.kind).toBe("insufficient")
   })
@@ -207,6 +212,7 @@ describe("AE3 — storage gate (KTD6)", () => {
       getRecord,
       freeBytes: free,
       reserveBytes: RESERVE,
+      subtitleLanguageSlug: null,
     })
     expect(gate.kind).toBe("insufficient")
     if (gate.kind === "insufficient") {
@@ -227,6 +233,7 @@ describe("AE3 — storage gate (KTD6)", () => {
       getRecord,
       freeBytes: free,
       reserveBytes: RESERVE,
+      subtitleLanguageSlug: null,
     })
     expect(gate.kind).toBe("ok")
     if (gate.kind === "ok") {
@@ -244,6 +251,7 @@ describe("AE3 — storage gate (KTD6)", () => {
       getRecord: noRecord,
       freeBytes: Number.MAX_SAFE_INTEGER,
       reserveBytes: RESERVE,
+      subtitleLanguageSlug: null,
     })
     expect(gate.kind).toBe("ok")
     if (gate.kind === "ok") expect(gate.lowerBound).toBe(true)
@@ -259,6 +267,7 @@ describe("AE3 — storage gate (KTD6)", () => {
       getRecord: noRecord,
       freeBytes: RESERVE, // 1000 over budget
       reserveBytes: RESERVE,
+      subtitleLanguageSlug: null,
     })
     expect(gate.kind).toBe("insufficient")
   })
@@ -270,6 +279,7 @@ describe("AE3 — storage gate (KTD6)", () => {
       getRecord: noRecord,
       freeBytes: 0,
       reserveBytes: RESERVE,
+      subtitleLanguageSlug: null,
     })
     expect(gate.kind).toBe("unreadable-free")
   })
@@ -281,6 +291,7 @@ describe("AE3 — storage gate (KTD6)", () => {
       getRecord: noRecord,
       freeBytes: RESERVE + 1_000_000,
       reserveBytes: RESERVE,
+      subtitleLanguageSlug: null,
     })
     expect(gate.kind).toBe("ok")
   })
@@ -290,7 +301,6 @@ describe("AE3 — storage gate (KTD6)", () => {
 
 type Calls = {
   start: string[]
-  swap: string[]
   supersede: string[]
   delete: string[]
   queue: string[]
@@ -302,28 +312,23 @@ function makeDeps(
   records: Record<string, OfflineDownloadRecord>,
   results: {
     start?: (req: StartDownloadRequest) => StartDownloadResult
-    swap?: (req: StartDownloadRequest) => StartDownloadResult
   } = {},
 ) {
   const calls: Calls = {
     start: [],
-    swap: [],
     supersede: [],
     delete: [],
     queue: [],
     order: [],
   }
+  // start AND swap both flow through startDownload (the sequential queue); the
+  // pump decides start-vs-swap at run time, so tests assert via the summary.
   const deps = {
     getRecord: (slug: string) => records[slug] ?? null,
     startDownload: async (req: StartDownloadRequest) => {
       calls.start.push(req.videoSlug)
       calls.order.push(`start:${req.videoSlug}`)
       return results.start?.(req) ?? ({ ok: true } as StartDownloadResult)
-    },
-    swapDownload: async (req: StartDownloadRequest) => {
-      calls.swap.push(req.videoSlug)
-      calls.order.push(`swap:${req.videoSlug}`)
-      return results.swap?.(req) ?? ({ ok: true } as StartDownloadResult)
     },
     supersedeDownload: async (slug: string) => {
       calls.supersede.push(slug)
@@ -358,19 +363,32 @@ describe("AE4 — start vs swap vs cancel+start routing", () => {
     })
     const summary = await enqueueResolvedEpisodes(resolved, ctx, deps)
 
-    expect(calls.start.sort()).toEqual(["new", "prog"]) // start + switch both start
-    expect(calls.swap).toEqual(["dl"])
+    // start, swap AND switch all flow through the sequential queue (startDownload).
+    expect(calls.start.sort()).toEqual(["dl", "new", "prog"])
     expect(calls.delete).toEqual(["prog"]) // switch cancels the in-flight first
     expect(summary.started).toBe(1) // "new"
     expect(summary.switched).toBe(2) // "dl" swap + "prog" switch
     expect(summary.alreadyPresent).toBe(1) // "same"
   })
 
-  it("a swap whose new download fails is reported couldn't-start, not switched", async () => {
+  it("swaps a same-language episode when only the quality (rendition) changed", async () => {
+    // Downloaded in the SAME dub but a DIFFERENT rendition → re-download at the
+    // new quality (swap → queue), not a skip. This is the "Change quality" case.
+    const resolved = [resolvedEpisode("q", "dub-x", 1000)] // rendition "q-r"
+    const { deps, calls } = makeDeps({
+      q: record("q", "dub-x", "downloaded", 2000, "q-OLD"),
+    })
+    const summary = await enqueueResolvedEpisodes(resolved, ctx, deps)
+    expect(calls.start).toEqual(["q"]) // queued for a sequential swap
+    expect(summary.switched).toBe(1)
+    expect(summary.alreadyPresent).toBe(0)
+  })
+
+  it("a swap whose queue accept fails is reported couldn't-start, not switched", async () => {
     const resolved = [resolvedEpisode("dl", "dub-new", 1000)]
     const { deps } = makeDeps(
       { dl: record("dl", "dub-old", "downloaded", 2000) },
-      { swap: () => ({ ok: false, reason: "insufficient-storage" }) },
+      { start: () => ({ ok: false, reason: "insufficient-storage" }) },
     )
     const summary = await enqueueResolvedEpisodes(resolved, ctx, deps)
     expect(summary.switched).toBe(0)
@@ -421,7 +439,6 @@ describe("AE5 — in-progress same-language counts already-present", () => {
     })
     const summary = await enqueueResolvedEpisodes(resolved, ctx, deps)
     expect(calls.start).toEqual([])
-    expect(calls.swap).toEqual([])
     expect(summary.alreadyPresent).toBe(1)
     expect(summary.allOk).toBe(false) // a skip is not an "all enqueued" batch
   })
@@ -432,7 +449,7 @@ describe("AE6 — summary buckets from results, not the decision", () => {
     const resolved = [resolvedEpisode("dl", "dub-new", 1000)]
     const { deps } = makeDeps(
       { dl: record("dl", "dub-old", "downloaded", 2000) },
-      { swap: () => ({ ok: false, reason: "exists" }) },
+      { start: () => ({ ok: false, reason: "exists" }) },
     )
     const summary = await enqueueResolvedEpisodes(resolved, ctx, deps)
     expect(summary.switched).toBe(0)
@@ -504,7 +521,6 @@ describe("R10 — runSeriesBatchEnqueue snapshots before writing placeholders", 
         started.push(req.videoSlug)
         return { ok: true } as StartDownloadResult
       },
-      swapDownload: async () => ({ ok: true }) as StartDownloadResult,
       supersedeDownload: async () => {},
       deleteDownload: async (slug: string) => {
         delete store[slug]

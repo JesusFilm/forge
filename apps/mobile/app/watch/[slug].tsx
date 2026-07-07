@@ -86,6 +86,8 @@ export default function WatchVideoPage() {
   const {
     getRecord,
     deleteDownload,
+    pauseDownload,
+    resumeDownload,
     committedFor,
     isReady: downloadsReady,
   } = useDownloads()
@@ -495,23 +497,40 @@ export default function WatchVideoPage() {
                       { text: "Cancel", style: "cancel" },
                     ],
                   )
-                } else if (state && state !== "canceled") {
-                  // A transfer is in flight (one copy per video). Offer to remove.
-                  Alert.alert(
-                    "Offline download",
-                    "This video is downloading.",
-                    [
-                      {
-                        text: "Remove download",
-                        style: "destructive",
-                        onPress: () => {
-                          void deleteDownload(video.slug)
-                        },
+                } else if (state === "paused") {
+                  // Paused (mirrors the series ring): resume, or remove entirely.
+                  Alert.alert("Offline download", "This download is paused.", [
+                    {
+                      text: "Remove download",
+                      style: "destructive",
+                      onPress: () => {
+                        void deleteDownload(video.slug)
                       },
-                      { text: "Keep", style: "cancel" },
-                    ],
-                  )
+                    },
+                    {
+                      text: "Resume",
+                      onPress: () => void resumeDownload(video.slug),
+                    },
+                    { text: "Cancel", style: "cancel" },
+                  ])
+                } else if (state === "downloading") {
+                  // In flight → the ring's pause glyph pauses it immediately.
+                  void pauseDownload(video.slug)
+                } else if (state === "queued") {
+                  // Queued in a series batch — no live transfer to pause yet, so
+                  // offer to remove it from the download (matches controlsForState).
+                  Alert.alert("Offline download", "This download is queued.", [
+                    {
+                      text: "Remove download",
+                      style: "destructive",
+                      onPress: () => {
+                        void deleteDownload(video.slug)
+                      },
+                    },
+                    { text: "Cancel", style: "cancel" },
+                  ])
                 } else {
+                  // Idle / failed / canceled → the download picker (retry included).
                   router.push("/watch/download")
                 }
               }}
@@ -592,7 +611,7 @@ export default function WatchVideoPage() {
       )}
 
       <Snackbar
-        message={snackbarMessage ?? "Download complete"}
+        message={snackbarMessage ?? ""}
         visible={snackbarMessage != null}
         onDismiss={() => setSnackbarMessage(null)}
       />

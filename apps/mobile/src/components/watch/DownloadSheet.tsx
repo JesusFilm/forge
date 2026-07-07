@@ -120,6 +120,10 @@ export type DropdownOption = {
   label: string
   /** Optional trailing text shown on the right (e.g. a file size). */
   trailing?: string
+  /** Grayed out and non-selectable (e.g. already downloaded in this option). */
+  disabled?: boolean
+  /** Short note shown on a disabled row in place of `trailing` (e.g. "Already downloaded"). */
+  note?: string
 }
 
 /** Cap the open panel at ~5 rows so long lists scroll inside the dropdown, not grow the sheet. */
@@ -192,44 +196,71 @@ export function Dropdown({
           >
             <View accessibilityRole="radiogroup">
               {options.map((opt) => {
-                const isSelected = opt.key === selectedKey
+                const disabled = opt.disabled === true
+                // A disabled row (e.g. already downloaded) never reads as the
+                // active choice, even if it's still the current selectedKey.
+                const isSelected = !disabled && opt.key === selectedKey
                 return (
                   <Pressable
                     key={opt.key}
                     style={({ pressed }) => [
                       styles.dropdownOption,
                       isSelected && styles.dropdownOptionSelected,
-                      pressed && feedback.pressed,
+                      !disabled && pressed && feedback.pressed,
                     ]}
-                    onPress={() => onSelect(opt.key)}
+                    onPress={disabled ? undefined : () => onSelect(opt.key)}
+                    disabled={disabled}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={opt.label}
+                    accessibilityState={{ selected: isSelected, disabled }}
+                    accessibilityLabel={
+                      disabled && opt.note != null
+                        ? `${opt.label}, ${opt.note}`
+                        : opt.label
+                    }
                   >
                     <Text
                       style={[
                         styles.dropdownOptionLabel,
                         typography.body,
                         isSelected && styles.dropdownOptionLabelSelected,
+                        disabled && styles.dropdownOptionLabelDisabled,
                       ]}
                       numberOfLines={1}
                     >
                       {opt.label}
                     </Text>
                     <View style={styles.dropdownRight}>
-                      {opt.trailing != null && (
+                      {disabled && opt.note != null ? (
                         <Text
                           style={[
-                            styles.dropdownOptionTrailing,
+                            styles.dropdownOptionNote,
                             typography.bodySmall,
-                            isSelected && styles.dropdownOptionLabelSelected,
                           ]}
                         >
-                          {opt.trailing}
+                          {opt.note}
                         </Text>
-                      )}
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={18} color="#ffffff" />
+                      ) : (
+                        <>
+                          {opt.trailing != null && (
+                            <Text
+                              style={[
+                                styles.dropdownOptionTrailing,
+                                typography.bodySmall,
+                                isSelected &&
+                                  styles.dropdownOptionLabelSelected,
+                              ]}
+                            >
+                              {opt.trailing}
+                            </Text>
+                          )}
+                          {isSelected && (
+                            <Ionicons
+                              name="checkmark"
+                              size={18}
+                              color="#ffffff"
+                            />
+                          )}
+                        </>
                       )}
                     </View>
                   </Pressable>
@@ -577,6 +608,16 @@ const styles = StyleSheet.create({
   dropdownOptionTrailing: {
     color: TEXT_BODY,
     fontFamily: "System",
+  },
+  dropdownOptionLabelDisabled: {
+    color: TEXT_SECONDARY,
+    opacity: 0.55,
+  },
+  dropdownOptionNote: {
+    color: TEXT_SECONDARY,
+    opacity: 0.75,
+    fontFamily: "System",
+    fontStyle: "italic",
   },
   touRow: {
     flexDirection: "row",

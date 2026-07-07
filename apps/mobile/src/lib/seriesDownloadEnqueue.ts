@@ -1,6 +1,7 @@
 import { mapWithConcurrency } from "./concurrentMap"
 import {
   decideEpisodeAction,
+  episodeChoiceFor,
   type SeriesDownloadResolution,
   type SeriesEpisodeResolution,
 } from "./seriesDownloadResolver"
@@ -38,6 +39,8 @@ export type StorageGateInput = {
   getRecord: (slug: string) => OfflineDownloadRecord | null
   freeBytes: number
   reserveBytes: number
+  /** Chosen subtitle language — drives the per-episode swap decision. */
+  subtitleLanguageSlug: string | null
 }
 
 /**
@@ -53,15 +56,22 @@ export type StorageGateInput = {
  * nothing can be sized against it.
  */
 export function evaluateStorageGate(input: StorageGateInput): StorageGate {
-  const { resolution, getRecord, freeBytes, reserveBytes } = input
+  const {
+    resolution,
+    getRecord,
+    freeBytes,
+    reserveBytes,
+    subtitleLanguageSlug,
+  } = input
 
   if (freeBytes <= 0) return { kind: "unreadable-free" }
 
   let swapOnDiskBytes = 0
   for (const episode of resolution.resolved) {
-    if (!episode.dubDocumentId) continue
+    const choice = episodeChoiceFor(episode, subtitleLanguageSlug)
+    if (!choice) continue
     const record = getRecord(episode.slug)
-    const action = decideEpisodeAction(record, episode.dubDocumentId)
+    const action = decideEpisodeAction(record, choice)
     // Only a swap retains the old copy; a switch reclaims it before starting.
     if (action === "swap" && record) {
       swapOnDiskBytes += record.totalBytes || 0
@@ -145,8 +155,12 @@ export type EnqueueSummary = {
 
 export type EnqueueDeps = {
   getRecord: (slug: string) => OfflineDownloadRecord | null
+  /**
+   * Accept an episode into the sequential batch queue (queueBatchDownload). Fresh
+   * episodes start; a still-`downloaded` episode is SWAPPED at its turn by the
+   * pump — so a re-download runs one-at-a-time, not in parallel.
+   */
   startDownload: (req: StartDownloadRequest) => Promise<StartDownloadResult>
-  swapDownload: (req: StartDownloadRequest) => Promise<StartDownloadResult>
   /**
    * Stop an in-flight task WITHOUT deleting its record, neutralizing its terminal
    * callbacks so the switch replacement can reclaim the slug (U4/KTD3).
@@ -182,16 +196,22 @@ async function enqueueOne(
     return { ...base, action: "skip", outcome: "couldnt-start" }
   }
 
-  const action = decideEpisodeAction(
-    deps.getRecord(episode.slug),
-    episode.dubDocumentId,
-  )
+  // Decide from the built request's identity (dub + rendition + subtitle) so the
+  // enqueue matches exactly what would be written — a new quality or subtitle on
+  // the same dub is a real change (swap), not a skip.
+  const action = decideEpisodeAction(deps.getRecord(episode.slug), {
+    dubDocumentId: request.dubDocumentId,
+    renditionDocumentId: request.rendition.documentId,
+    subtitleLanguageSlug: request.subtitleLanguageSlug,
+  })
 
   if (action === "skip") {
     return { ...base, action, outcome: "already-present" }
   }
   if (action === "swap") {
-    const result = await deps.swapDownload(request)
+    // Queue it — the sequential pump swaps this downloaded episode at its turn
+    // (one re-download at a time), instead of firing swaps in parallel.
+    const result = await deps.startDownload(request)
     return { ...base, action, outcome: bucketResult(action, result) }
   }
   if (action === "switch") {
