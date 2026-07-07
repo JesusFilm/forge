@@ -46,13 +46,17 @@ visual source attribution:
 - Visual-only source matches keep public confidence conservative until
   variant-specific audio/text evidence is present.
 - No-match uploads remain terminal `complete` jobs with `candidates: []`.
+- Production is live on `MEDIA_SIGNATURE_ALGORITHM_VERSION=official-media-signature-v2`.
+  The first v2 backfill is running beside v1 rows, and live raw plus multipart
+  smoke tests returned the expected visual candidate from an indexed no-audio
+  resized clip.
 
 Remaining follow-up work in this roadmap item is audio landmarks, temporal
 offset consistency, HLS/DASH playlist segment validation, the labeled
 evaluation corpus, streaming large uploads without buffering duplicate 100MB
 payloads in memory, production-scale `EXPLAIN` verification for the visual
-pHash band indexes, and post-deploy smoke with known muted/transcoded
-middle-clip fixtures.
+pHash band indexes, and broader production smoke with known muted/transcoded
+middle-clip fixtures beyond the first indexed no-audio clip.
 
 ## Entry Points - Read These First
 

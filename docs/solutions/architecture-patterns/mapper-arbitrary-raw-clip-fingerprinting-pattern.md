@@ -167,8 +167,19 @@ As of the 2026-07-07 visual slice, the mapper has a concrete
   or text evidence supports the specific variant.
 - Production smoke on v1 indexed byte samples succeeded for both raw and
   multipart uploads, proving the endpoint contract and durable job lifecycle
-  while v2 reindex remains the next production step for arbitrary transformed
-  clip attribution.
+  before the v2 flip.
+- Production was then switched to `official-media-signature-v2` after v2 rows
+  existed. A live v2 smoke with a resized, no-audio MP4 clip from an indexed
+  source returned the expected visual candidate through both raw and multipart
+  upload paths, with the visual-only public confidence cap applied.
+- V2 backfill runs as a normal media index run, but normal reruns are
+  resumable/idempotent rather than forced refreshes. The write path uses a
+  Prisma upsert keyed by source `coreId`, `videoVariantId`, `signatureType`,
+  `algorithmVersion`, and `offsetMilliseconds`; before writing, the catalog loop
+  skips variants that already have any signature for the same algorithm. To
+  recompute already-indexed v2 rows after extractor changes, delete the scoped
+  v2 rows or add an explicit forced-refresh path instead of assuming
+  `index:media` will rewrite them.
 
 Rollout keeps v1 useful while v2 is backfilled:
 
@@ -178,7 +189,11 @@ MEDIA_SIGNATURE_ALGORITHM_VERSION=official-media-signature-v2 pnpm --filter @for
 ```
 
 The v2 reindex creates new rows beside v1 rows. It does not require discarding
-the mapper catalog projection that was synced from Admin.
+the mapper catalog projection that was synced from Admin. Flip production to
+`MEDIA_SIGNATURE_ALGORITHM_VERSION=official-media-signature-v2` only after at
+least enough v2 signatures exist for a known-match smoke; the backend reads the
+algorithm version at process start, so changing the Railway variable requires a
+restart or redeploy before the API uses v2.
 
 ## Why This Matters
 
@@ -269,6 +284,8 @@ Avoid these shortcuts:
 - Loading every production signature into Node for every match request.
 - Taking the first page of signatures as candidates without similarity-ranked
   retrieval.
+- Assuming a normal rerun of `index:media` refreshes already-indexed v2
+  variants; it skips existing algorithm-scoped signatures for resumability.
 - Returning a high-confidence `videoVariantId` from visual-only evidence alone.
 - Treating a zero-candidate result as an incomplete job.
 
