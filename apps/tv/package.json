@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "build": "echo 'Expo TV app has no production bundle step; use EAS when needed.'"
+    "build": "echo 'Expo TV app has no production bundle step; use EAS when needed.'",
+    "eas-build-pre-install": "bash scripts/eas-build-pre-install.sh",
+    "eas-build-on-success": "bash scripts/eas-build-on-success.sh"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",

@@ -192,6 +192,10 @@ EXPO_PUBLIC_DATADOG_VERSION=
 Unprovisioned builds boot with telemetry disabled; dev builds log a
 `[datadog] RUM disabled` warning so the gate is visible from Metro logs.
 
+### TV symbol upload (feat-227)
+
+`apps/tv/scripts/eas-build-on-success.sh` (wired via the `eas-build-on-success` package script) uploads iOS/tvOS dSYMs to Datadog after a successful EAS build so native crash stacks symbolicate. It runs on the build worker and is key-gated: no `DATADOG_API_KEY` means `exit 0` (keyless builds pass through), and every upload error is swallowed — a hook failure would fail the whole build. Provision the key as an EAS **secret** (`eas env:create ... --visibility secret`) for preview + production; it is a write credential, unlike the plaintext client token. The `eas-build-pre-install` hook stamps `EXPO_PUBLIC_DATADOG_VERSION` from the build's git SHA so sessions, crashes, and uploads share one build identity. The RN/Hermes source-map upload is staged (KTD-4): confirm the composed-map path on the first real keyed build, then wire `datadog-ci react-native upload`.
+
 ### TV activation runbook (feat-225 operational tail)
 
 Credential values come from the "Forge TV" RUM application page (Digital
@@ -237,6 +241,34 @@ scoped in `docs/roadmap/platform/feat-228-tv-perf-tooling-mcp-and-profiler.md`.
 Playback note: the video player overlay is not a route, so playback telemetry
 attributes to the underlying series/watch view. A dedicated player view is a
 deliberate deferral, not an omission.
+
+### TV ↔ web data parity (feat-228)
+
+TV mirrors web's **non-sensitive** signals and deliberately skips the sensitive or inapplicable ones.
+
+**Matched** (joinable with web dashboards): route/screen views, GraphQL resources, errors + native crashes, content-selection actions (stable `dd-action-name` on home/series/search cards), the per-search `watch_search` structured Log (web's canonical `@watch_search.*` shape), and the `watch_search.result_clicked` custom action.
+
+**Deliberately unmatched** — three web signals TV does not collect:
+
+- **Session Replay** — unsupported on tvOS (the SDK's WebView refs are patched out); never add it.
+- **Server-side APM spans** — web has a server tier; TV is a client-only app with no server component to trace.
+- **User-identity / PII** — web attaches `setUser` (email/name); TV has no accounts and stays anonymous (no `setUserInfo`).
+
+**TV-only** (no web counterpart): video playback QoE (`video_playback.*` — TTFF, rebuffering, errors, completion) and Home focus-restore health (`focus.restore_failed`).
+
+**Sampling normalization:** TV runs 100% session sampling (`TrackingConsent.GRANTED`); web samples RUM sessions at 50% (Session Replay at 10%). Absolute-count comparisons across the two apps must normalize for this — roughly web ×2 on session-derived counts.
+
+## Datadog MCP for agents (feat-228)
+
+Agents query `service:forge-tv` telemetry read-only via Datadog's hosted MCP, registered in the repo `.mcp.json` (`datadog` entry). OAuth on first connect; no API keys in the repo. Toolsets are `core` (RUM events, spans, traces) plus `error-tracking`, with every known write tool omitted so the grant is read-only — from error-tracking: `update_datadog_error_tracking_issue`, `manage_datadog_error_tracking_issue_comments`; from core: `create_datadog_notebook`, `edit_datadog_notebook`, `upsert_datadog_dashboard`. The endpoint is `/api/unstable/`, so re-verify the write-tool set against Datadog's `/mcp_server/tools/` reference whenever the query string changes.
+
+Regression-hunt loop against `service:forge-tv`:
+
+- `search_datadog_rum_events` — sessions, views, resources sliced by `version` (the per-build git SHA).
+- `search_datadog_spans` / `get_datadog_trace` — the client-vs-server split via the RUM→admin-APM tracecontext link.
+- `search_datadog_error_tracking_issues` — native crashes and reported errors.
+
+"Did telemetry arrive in the last N minutes?" — query `search_datadog_rum_events` for `service:forge-tv` over the window, or `curl` the RUM search API with a read-scoped key. Provisioning (RUM app, tokens, monitors) stays in the Datadog UI; the MCP is read-only.
 
 ## Future app pattern
 
