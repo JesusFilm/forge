@@ -15,8 +15,10 @@ if [ -z "${DATADOG_API_KEY:-}" ]; then
 fi
 
 # datadog-ci reads DD_API_KEY or DATADOG_API_KEY depending on version; export both.
+# DD_SITE for datadog-ci is the intake DOMAIN, not the mobile SDK enum: US1 =
+# datadoghq.com (the enum "US1" resolves to sourcemap-intake.us1 -> ENOTFOUND).
 export DD_API_KEY="$DATADOG_API_KEY"
-export DD_SITE="${DD_SITE:-US1}"
+export DD_SITE="${DD_SITE:-datadoghq.com}"
 redact() { sed "s|$DATADOG_API_KEY|[REDACTED]|g"; }
 
 case "${EAS_BUILD_PLATFORM:-ios}" in
@@ -30,8 +32,10 @@ ios)
 
   # RN/Hermes JS source map (KTD-4). No metro debug_id, so RUM matches on
   # service+version+bundle_name+platform: --release-version MUST equal the SDK's
-  # version tag (the git SHA in EXPO_PUBLIC_DATADOG_VERSION), not MARKETING_VERSION.
-  if [ -n "${EXPO_PUBLIC_DATADOG_VERSION:-}" ]; then
+  # version tag. The on-success shell doesn't inherit .env.local, so derive the
+  # SAME short SHA the pre-install hook stamped (not the env var, which is unset).
+  dd_version="${EAS_BUILD_GIT_COMMIT_HASH:0:7}"
+  if [ -n "$dd_version" ]; then
     sm="$(mktemp -d)"
     if npx expo export:embed --platform ios --dev false \
         --bundle-output "$sm/main.jsbundle" \
@@ -39,9 +43,9 @@ ios)
       if pnpm dlx @datadog/datadog-ci@5.8.0 react-native upload \
           --platform ios --service forge-tv \
           --bundle "$sm/main.jsbundle" --sourcemap "$sm/main.jsbundle.map" \
-          --release-version "$EXPO_PUBLIC_DATADOG_VERSION" \
-          --build-version "${EAS_BUILD_ID:-$EXPO_PUBLIC_DATADOG_VERSION}" 2>&1 | redact; then
-        echo "[datadog] RN source map uploaded (version=$EXPO_PUBLIC_DATADOG_VERSION)"
+          --release-version "$dd_version" \
+          --build-version "${EAS_BUILD_ID:-$dd_version}" 2>&1 | redact; then
+        echo "[datadog] RN source map uploaded (version=$dd_version)"
       else
         echo "[datadog] RN source map upload failed (non-fatal)"
       fi
@@ -50,7 +54,7 @@ ios)
     fi
     rm -rf "$sm"
   else
-    echo "[datadog] no EXPO_PUBLIC_DATADOG_VERSION - skipping RN source map"
+    echo "[datadog] no git SHA - skipping RN source map"
   fi
   ;;
 android)
