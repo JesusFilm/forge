@@ -10,6 +10,11 @@
  * client has exactly ONE parse path (the only non-SSE response is a 400 for a
  * malformed request body).
  *
+ * feat-208 adds server-resolved memory keying: every send carries a
+ * `resourceId` (`user:<sub>` / `anon:<uuid>` — see src/auth/anon-id.ts) so
+ * Seeker threads persist per user, and the upstream `thread_forbidden` /
+ * `thread_limit` gate reasons pass through to distinct client notices.
+ *
  * ACCEPTED RISK (v1, do NOT "fix" here): this endpoint has NO inbound auth gate
  * and NO rate limit. The chat origin is world-reachable HTTPS (an unadvertised
  * Railway-generated domain — no jesusfilm.org DNS, no Cloudflare, no auth), so
@@ -30,6 +35,16 @@
 import { env, isSeekerChatEnabled, seekerTimeoutMs } from "@/config/env"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
 import type { ReplyFailureReason } from "@/lib/conversations"
+import {
+  CHAT_ANON_ID_COOKIE,
+  getCookieValue,
+  resolveSeekerResource,
+  serializeAnonIdCookie,
+} from "@/auth/anon-id"
+import {
+  CHAT_SESSION_COOKIE,
+  readChatSessionCookie,
+} from "@/auth/session-cookie"
 
 export const dynamic = "force-dynamic"
 
@@ -50,10 +65,20 @@ export type SeekerProxyConfig = {
 }
 
 /** Inputs to the testable proxy core — the request-body reader, resolved config,
- * an injectable fetch, and the inbound abort signal. */
+ * the server-resolved memory resource, an injectable fetch, and the inbound
+ * abort signal. */
 export type SeekerProxyHandlerInput = {
   readJson: () => Promise<unknown>
   config: SeekerProxyConfig
+  /**
+   * Server-resolved memory resource (feat-208): `user:<sub>` or `anon:<uuid>`,
+   * never client-supplied. ALWAYS sent upstream — the proxy never falls back
+   * to Mastra's shared dogfood resource.
+   */
+  resourceId: string
+  /** Serialized anon-id Set-Cookie to attach to the SSE response (rolling
+   * 30-day lifetime — re-issued on every anonymous send). */
+  anonSetCookie?: string
   fetchImpl?: typeof fetch
   /** Inbound request signal — aborts the upstream fetch when the caller disconnects. */
   requestSignal?: AbortSignal
@@ -84,12 +109,31 @@ function isProxyBody(
 // cleartext concern doesn't apply, and this is what local Mastra dev serves.
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
 
+// Railway private-network hosts may also use http: — Mastra has no public
+// domain, the WireGuard mesh encrypts transport, and Railway issues no TLS
+// cert for *.railway.internal.
+const RAILWAY_INTERNAL_SUFFIX = ".railway.internal"
+
+// True full-label suffix match: a bare endsWith would also admit empty-label
+// hosts (".railway.internal", "a..railway.internal"), which parse fine in the
+// WHATWG URL parser and would otherwise slip past the scheme floor.
+function isRailwayInternalHost(host: string): boolean {
+  return (
+    host.endsWith(RAILWAY_INTERNAL_SUFFIX) &&
+    !host.startsWith(".") &&
+    !host.includes("..")
+  )
+}
+
 /**
  * SSRF guard. The base URL must be `https:` — the bearer rides this request, so
- * an `http:` base would egress it in cleartext — EXCEPT for loopback hosts
- * (local dev). When an allowlist is set the host must be in it. An unset
- * allowlist trusts the operator-set host (admin parity; `redirect:"error"` still
- * blocks off-host hops) but the scheme floor applies regardless.
+ * an `http:` base would egress it in cleartext — EXCEPT loopback hosts (local
+ * dev) and `*.railway.internal` hosts (the prod transport: Railway private
+ * networking is plain HTTP at the app layer over a WireGuard-encrypted mesh,
+ * and Mastra deliberately has no public https domain). When an allowlist is set
+ * the host must be in it. An unset allowlist trusts the operator-set host
+ * (admin parity; `redirect:"error"` still blocks off-host hops) but the scheme
+ * floor applies regardless.
  */
 function hostAllowed(
   baseUrl: string,
@@ -102,8 +146,10 @@ function hostAllowed(
     return false
   }
   const host = url.hostname.toLowerCase()
-  const loopbackHttp = url.protocol === "http:" && LOOPBACK_HOSTS.has(host)
-  if (url.protocol !== "https:" && !loopbackHttp) return false
+  const privateHttp =
+    url.protocol === "http:" &&
+    (LOOPBACK_HOSTS.has(host) || isRailwayInternalHost(host))
+  if (url.protocol !== "https:" && !privateHttp) return false
   if (!allowedHostsCsv) return true
   const allowed = new Set(
     allowedHostsCsv
@@ -121,6 +167,8 @@ function hostAllowed(
 export async function handleSeekerProxyRequest({
   readJson,
   config,
+  resourceId,
+  anonSetCookie,
   fetchImpl = fetch,
   requestSignal,
 }: SeekerProxyHandlerInput): Promise<Response> {
@@ -191,7 +239,11 @@ export async function handleSeekerProxyRequest({
               "content-type": "application/json",
               accept: "text/event-stream",
             },
-            body: JSON.stringify({ prompt: text, threadId: conversationId }),
+            body: JSON.stringify({
+              prompt: text,
+              threadId: conversationId,
+              resourceId,
+            }),
             redirect: "error",
             signal,
           })
@@ -255,7 +307,16 @@ export async function handleSeekerProxyRequest({
             if (event === "error") {
               terminalEmitted = true
               const reason = (data as { reason?: unknown })?.reason
-              fail(reason === "timeout" ? "timeout" : "generation_failed")
+              // Pass through the reasons the client maps to distinct notices
+              // (feat-208 adds the thread gate pair); everything else stays
+              // generation_failed so unknown upstream tokens never reach the UI.
+              fail(
+                reason === "timeout" ||
+                  reason === "thread_forbidden" ||
+                  reason === "thread_limit"
+                  ? reason
+                  : "generation_failed",
+              )
               upstreamAbort.abort()
             }
           })
@@ -285,19 +346,32 @@ export async function handleSeekerProxyRequest({
     },
   })
 
-  return new Response(stream, {
-    status: 200,
-    headers: {
-      // `connection` is a forbidden hop-by-hop response header (Fetch spec) — the
-      // platform manages keep-alive; setting it here is dead at best.
-      "content-type": "text/event-stream; charset=utf-8",
-      "cache-control": "no-cache, no-transform, no-store",
-    },
+  // Set-Cookie MUST be attached when the Response is constructed — headers
+  // cannot be added once body streaming begins (feat-208 rolling anon id).
+  const headers = new Headers({
+    // `connection` is a forbidden hop-by-hop response header (Fetch spec) — the
+    // platform manages keep-alive; setting it here is dead at best.
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform, no-store",
   })
+  if (anonSetCookie) headers.set("set-cookie", anonSetCookie)
+
+  return new Response(stream, { status: 200, headers })
 }
 
-/** Next.js App Router entry point. Builds config from server env. */
+/** Next.js App Router entry point. Builds config from server env and resolves
+ * the memory resource from the request's cookies (feat-208): the verified
+ * session `sub` when signed in, else the rolling anonymous id. The subject is
+ * used as a memory PARTITION KEY only — never for authorization (R7). */
 export async function POST(request: Request): Promise<Response> {
+  const cookieHeader = request.headers.get("cookie")
+  const identity = await readChatSessionCookie(
+    getCookieValue(cookieHeader, CHAT_SESSION_COOKIE),
+  )
+  const resolution = resolveSeekerResource({
+    identity,
+    anonCookieValue: getCookieValue(cookieHeader, CHAT_ANON_ID_COOKIE),
+  })
   return handleSeekerProxyRequest({
     readJson: () => request.json(),
     config: {
@@ -307,6 +381,10 @@ export async function POST(request: Request): Promise<Response> {
       allowedHosts: env.SEEKER_MASTRA_ALLOWED_HOSTS,
       timeoutMs: seekerTimeoutMs(),
     },
+    resourceId: resolution.resourceId,
+    anonSetCookie: resolution.anonIdToSet
+      ? serializeAnonIdCookie(resolution.anonIdToSet)
+      : undefined,
     requestSignal: request.signal,
   })
 }

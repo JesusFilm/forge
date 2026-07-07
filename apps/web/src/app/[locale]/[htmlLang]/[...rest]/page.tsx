@@ -5,7 +5,7 @@ import { setRequestLocale } from "next-intl/server"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
-import { WatchHomePage } from "@/components/home/WatchHomePage"
+import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
@@ -32,7 +32,6 @@ import {
   isWatchCtaTextCopyEnabled,
   isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
-  isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
 import {
   isLocale,
@@ -52,9 +51,13 @@ import {
   SAFE_SLUG_PATTERN,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
-import { watchVideoStructuredDataJson } from "@/lib/watch-structured-data"
+import {
+  watchBreadcrumbStructuredDataJson,
+  watchVideoStructuredDataJson,
+  watchRelatedItemListStructuredDataJson,
+} from "@/lib/watch-structured-data"
 import { logWatchServerEvent } from "@/lib/watch-observability"
-import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
+import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -236,17 +239,6 @@ async function getDownloadButtonLabel(
   return messages.DownloadButton?.saveVideo ?? "Save Video"
 }
 
-async function getYouVersionBibleQuotePassages(
-  route: string,
-  bibleCitations: Parameters<typeof fetchYouVersionBibleQuotePassages>[0],
-) {
-  const enabled = await isWatchYouVersionBibleQuotesEnabled({
-    custom: { route },
-  })
-  if (!enabled) return []
-  return fetchYouVersionBibleQuotePassages(bibleCitations)
-}
-
 async function getQuestionPanelEnabled(route: string): Promise<boolean> {
   return isWatchQuestionPanelEnabled({
     custom: { route },
@@ -256,6 +248,18 @@ async function getQuestionPanelEnabled(route: string): Promise<boolean> {
 async function getHideBibleQuotesEnabled(route: string): Promise<boolean> {
   return isWatchHideBibleQuotesEnabled({
     custom: { route },
+  })
+}
+
+async function getInitialTranscriptForWatchVideo(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): ReturnType<typeof getInitialSubtitleTranscript> {
+  if (video.subtitles.length === 0) return null
+  return getInitialSubtitleTranscript({
+    subtitles: video.subtitles,
+    audioSlug: selectedVariant.language?.slug ?? null,
+    durationSeconds: selectedVariant.duration ?? null,
   })
 }
 
@@ -369,6 +373,16 @@ function WatchVideoStructuredData({
   )
 }
 
+function WatchStructuredData({ json }: { json: string | null | undefined }) {
+  if (!json) return null
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: json }}
+    />
+  )
+}
+
 export default async function SlugRestPage({ params }: PageProps) {
   const { locale: rawInternalLocale, rest } = await params
   const { locale: internalLocale } =
@@ -398,14 +412,38 @@ async function renderOneSegment(shape: {
 }) {
   const { slug, locale, isLanguageHome } = shape
   if (isLanguageHome) {
-    const home = await resolveWatchHome(locale)
-    if (home.error) {
-      return <ExperienceError message={home.error.message} />
+    const [heroResult, pageResult] = await Promise.all([
+      resolveWatchHome(locale),
+      resolveWatchPage(locale),
+    ])
+    if (heroResult.error) {
+      return <ExperienceError message={heroResult.error.message} />
     }
-    if (!home.data.heroSlides.length && !home.data.sections.length) {
+
+    const builderBlocks =
+      pageResult.data?.kind === "experience"
+        ? (pageResult.data.experience.blocks ?? [])
+        : []
+
+    if (
+      pageResult.error &&
+      !isWatchPageMissingError(pageResult.error) &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.warn("[watch-home] Unable to load builder-authored body.", {
+        error: pageResult.error.message,
+      })
+    }
+
+    if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
       return <ExperienceEmpty />
     }
-    return <WatchHomePage model={home.data} />
+    return (
+      <WatchHomeExperiencePage
+        heroModel={heroResult.data}
+        blocks={builderBlocks}
+      />
+    )
   }
 
   const result = await resolveWatchExperiencePage(locale, slug)
@@ -489,14 +527,10 @@ async function renderEpisode(shape: {
       getQuestionPanelEnabled(route),
       getHideBibleQuotesEnabled(route),
     ])
-  const youVersionPassages = await (hideBibleQuotes
-    ? Promise.resolve([])
-    : getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations))
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
-    youVersionPassages,
   })
   const clientVariant = pruneWatchVariantForClient(resolved.selectedVariant)
   const clientMergedBlocks = pruneMergedWatchBlocksForClient(
@@ -515,20 +549,41 @@ async function renderEpisode(shape: {
     pathLocale: rawLocale,
     seriesSlug,
   })
+  const initialTranscript = await getInitialTranscriptForWatchVideo(
+    resolved.video,
+    resolved.selectedVariant,
+  )
+  const languageSlug = resolved.selectedVariant.language?.slug ?? rawLocale
+  const breadcrumbJson = watchBreadcrumbStructuredDataJson({
+    videoTitle: metadataModel.videoTitle,
+    canonicalUrl: metadataModel.canonicalUrl,
+    languageSlug,
+    series: {
+      slug: resolved.series.slug,
+      title: resolved.series.title,
+    },
+  })
+  const relatedItemsJson = watchRelatedItemListStructuredDataJson({
+    blocks: mergedBlocks,
+    languageSlug,
+  })
 
   return (
     <>
       <WatchVideoStructuredData model={metadataModel} />
+      <WatchStructuredData json={breadcrumbJson} />
+      <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
         mergedBlocks={clientMergedBlocks}
         variant={clientVariant}
         video={clientVideo}
-        languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
+        languageSlug={languageSlug}
         collectionSlug={seriesSlug}
         locale={locale}
         hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
+        initialTranscript={initialTranscript}
       />
     </>
   )
@@ -569,14 +624,10 @@ async function renderVideo(shape: {
         getQuestionPanelEnabled(route),
         getHideBibleQuotesEnabled(route),
       ])
-    const youVersionPassages = await (hideBibleQuotes
-      ? Promise.resolve([])
-      : getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations))
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
-      youVersionPassages,
     })
     const clientVariant = pruneWatchVariantForClient(watchVideo.selectedVariant)
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
@@ -593,18 +644,35 @@ async function renderVideo(shape: {
       routeSlug: slug,
       pathLocale: rawLocale,
     })
+    const initialTranscript = await getInitialTranscriptForWatchVideo(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
+    const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
+    const breadcrumbJson = watchBreadcrumbStructuredDataJson({
+      videoTitle: metadataModel.videoTitle,
+      canonicalUrl: metadataModel.canonicalUrl,
+      languageSlug,
+    })
+    const relatedItemsJson = watchRelatedItemListStructuredDataJson({
+      blocks: mergedBlocks,
+      languageSlug,
+    })
     return (
       <>
         <WatchVideoStructuredData model={metadataModel} />
+        <WatchStructuredData json={breadcrumbJson} />
+        <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
           mergedBlocks={clientMergedBlocks}
           variant={clientVariant}
           video={clientVideo}
-          languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
+          languageSlug={languageSlug}
           locale={locale}
           hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
+          initialTranscript={initialTranscript}
         />
       </>
     )

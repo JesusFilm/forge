@@ -43,14 +43,16 @@ Checklist for whoever wires the service:
 4. Deploy, then **verify the deployment record's `configFile` field is
    non-null and reads `/apps/chat/railway.toml`** — this is the proof the
    config file was actually loaded. Build logs are a secondary signal only.
-5. Confirm the app responds on the Railway-generated domain and a sent
-   message gets a visibly-stubbed reply.
+5. Confirm the app responds on its public hostname and a sent message gets
+   a visibly-stubbed reply.
 
-**Stay on the Railway-generated domain.** Do not assign a `jesusfilm.org`
-DNS entry — Cloudflare fronting is expected to land alongside auth, later.
+The public hostname is `chat.jesusfilm.ai`, fronted by Cloudflare (feat-235).
 
 ## What is intentionally absent
 
-No auth, no database, no API routes, no real agent connection, no env vars.
-See `CLAUDE.md` for the full list and the eventual `apps/mastra` connection
-plan (integration path undecided).
+No **authorization** (auth changes identity only, gates nothing), no database or
+persistence, no real agent connection. Optional OAuth sign-in against `apps/auth`
+(feat-207) and the Seeker proxy (feat-205) are present but **default off** —
+the app boots and is fully usable with no env vars set. See `CLAUDE.md` for the
+full list, the auth env vars + out-of-codebase client-registration prerequisite,
+and the eventual `apps/mastra` connection plan.

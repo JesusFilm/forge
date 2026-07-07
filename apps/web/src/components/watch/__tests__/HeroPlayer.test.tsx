@@ -35,6 +35,7 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
     muted: boolean
     currentTime: number
     paused: boolean
+    ended: boolean
     duration: number
     volume: number
     loop: boolean
@@ -52,6 +53,7 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
       muted: true,
       currentTime: 0,
       paused: false,
+      ended: false,
       duration: 60,
       volume: 1,
       loop: true,
@@ -137,11 +139,13 @@ vi.mock("@/env", () => ({
 // Configurable URLSearchParams stand-in so individual tests can drive the
 // useSearchParams hook to specific values (e.g. ?autoplay=1) without
 // shadowing the module-scope mock.
-const { mockSearchParams } = vi.hoisted(() => ({
+const { mockRouterPush, mockSearchParams } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
   mockSearchParams: { current: new URLSearchParams() },
 }))
 
 vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockRouterPush }),
   useSearchParams: () => mockSearchParams.current,
 }))
 
@@ -180,6 +184,7 @@ function makeTestPlayer(
     muted: true,
     currentTime: 0,
     paused: false,
+    ended: false,
     duration: 60,
     volume: 1,
     loop: true,
@@ -207,6 +212,7 @@ let root: Root
 beforeEach(() => {
   muxVideoMock.mockClear()
   mockPlayerRef.current = null
+  mockRouterPush.mockClear()
   mockSearchParams.current = new URLSearchParams()
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -223,9 +229,11 @@ afterEach(() => {
 function makeBlock({
   muxHeroPosterBlurDataUrl = null,
   playbackId = "playback-id-123",
+  nextWatchItem = null,
 }: {
   muxHeroPosterBlurDataUrl?: string | null
   playbackId?: string | null
+  nextWatchItem?: WatchHeroPlayerBlock["nextWatchItem"]
 } = {}): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
@@ -234,6 +242,8 @@ function makeBlock({
       label: "EPISODE",
       slug: "jesus",
       title: "Jesus",
+      children: [],
+      parents: [],
     } as never,
     variant: {
       documentId: "variant-1",
@@ -249,7 +259,44 @@ function makeBlock({
         name: "English",
       },
     } as never,
+    nextWatchItem,
   }
+}
+
+async function revealAutoplayPlayer() {
+  await act(async () => {
+    lastMuxProps().onCanPlay?.(new Event("canplay"))
+    await Promise.resolve()
+  })
+}
+
+function callPlayerListener(eventName: string) {
+  const player = mockPlayerRef.current
+  const listeners =
+    player?.addEventListener.mock.calls.flatMap((call, index) => {
+      const [event, listener] = call
+      if (event !== eventName || typeof listener !== "function") return []
+      const addOrder = player.addEventListener.mock.invocationCallOrder[index]
+      const removed = player.removeEventListener.mock.calls.some(
+        (removeCall, removeIndex) => {
+          const [removedEvent, removedListener] = removeCall
+          const removeOrder =
+            player.removeEventListener.mock.invocationCallOrder[removeIndex]
+          return (
+            removedEvent === eventName &&
+            removedListener === listener &&
+            removeOrder != null &&
+            addOrder != null &&
+            removeOrder > addOrder
+          )
+        },
+      )
+      return removed ? [] : [listener as () => void]
+    }) ?? []
+  expect(listeners.length).toBeGreaterThan(0)
+  act(() => {
+    for (const listener of listeners) listener()
+  })
 }
 
 function lastMuxProps(): MuxVideoCapturedProps {
@@ -762,7 +809,9 @@ describe("HeroPlayer — initial mount", () => {
       maxBufferLength: 10,
       maxBufferSize: 5_000_000,
       backBufferLength: 5,
+      enableWebVTT: false,
     })
+    expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
   })
 
@@ -1154,10 +1203,9 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-overlay"]',
     )
     expect(pill).not.toBeNull()
-    expect(pill?.tagName.toLowerCase()).toBe("a")
-    expect(pill?.getAttribute("href")).toBe(
-      "https://stream.mux.com/playback-id-123.m3u8",
-    )
+    expect(pill?.tagName.toLowerCase()).toBe("button")
+    expect(pill?.getAttribute("type")).toBe("button")
+    expect(pill?.hasAttribute("href")).toBe(false)
     expect(pill?.getAttribute("aria-controls")).toBe("watch-hero-player-media")
     expect(overlay?.getAttribute("class")).toContain("bottom-0")
     expect(overlay?.getAttribute("class")).toContain("gap-3")
@@ -1234,7 +1282,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
-    ) as HTMLAnchorElement
+    ) as HTMLButtonElement
     expect(pill).not.toBeNull()
 
     // Order check: capture the order in which mutations & play() happen
@@ -1367,6 +1415,32 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(props.style).toEqual({ objectFit: "contain" })
   })
 
+  it("reveals custom chrome immediately when play() stays pending", async () => {
+    mockPlayerRef.current = makeTestPlayer({
+      play: vi.fn(() => new Promise<void>(() => undefined)),
+    })
+
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      pill.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLElement
+    expect(mockPlayerRef.current?.play).toHaveBeenCalled()
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("true")
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+  })
   it("on play() rejection (iOS NotAllowedError): pill switches to 'Tap to Unmute' (visually distinct)", async () => {
     // Override the mocked play() to reject, simulating iOS unmute-with-no-gesture.
     mockPlayerRef.current = makeTestPlayer({
@@ -3378,5 +3452,353 @@ describe("HeroPlayer — MuxVideo backend events", () => {
       '[data-testid="hero-player-wrapper"]',
     )
     expect(wrapper?.getAttribute("data-autoplay-blocked")).toBe("false")
+  })
+})
+
+describe("HeroPlayer — Watch Next countdown", () => {
+  const nextWatchItem = {
+    parentSlug: "jesus",
+    slug: "chapter-two",
+    title: "Chapter Two",
+    documentId: "video-2",
+    kind: "chapter" as const,
+  }
+
+  it("shows the Watch Next button in the final five seconds with timed progress", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 20,
+      duration: 60,
+      paused: false,
+      ended: false,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ nextWatchItem })}
+          languageSlug="english"
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+
+    expect(
+      container.querySelector('[data-testid="hero-player-watch-next"]'),
+    ).toBeNull()
+
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("timeupdate")
+
+    const button = container.querySelector(
+      '[data-testid="hero-player-watch-next"]',
+    )
+    expect(button?.textContent).toContain("Next Episode")
+    expect(button?.getAttribute("aria-label")).toBe("Next Episode")
+    expect(button?.getAttribute("data-auto-armed")).toBe("true")
+    expect(button?.querySelector("svg")).not.toBeNull()
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="hero-player-watch-next-progress"]',
+        ) as HTMLElement | null
+      )?.style.width,
+    ).toBe("40%")
+  })
+
+  it("keeps the button visible as a white manual action after surface interaction", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 54,
+      duration: 60,
+      paused: false,
+      ended: false,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ nextWatchItem })}
+          languageSlug="english"
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("timeupdate")
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    act(() => {
+      wrapper?.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+    })
+    mockPlayerRef.current.paused = true
+    callPlayerListener("pause")
+
+    const button = container.querySelector(
+      '[data-testid="hero-player-watch-next"]',
+    )
+    expect(button?.textContent).toContain("Next Episode")
+    expect(button?.getAttribute("data-manual")).toBe("true")
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-watch-next-progress"]',
+      ),
+    ).toBeNull()
+
+    mockPlayerRef.current.currentTime = 60
+    mockPlayerRef.current.ended = true
+    callPlayerListener("ended")
+
+    expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+
+  it("auto-advances at the end after natural playback crosses the countdown threshold", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 54,
+      duration: 60,
+      paused: false,
+      ended: false,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            nextWatchItem: { ...nextWatchItem, kind: "episode" },
+          })}
+          languageSlug="english"
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("timeupdate")
+
+    expect(
+      container
+        .querySelector('[data-testid="hero-player-watch-next"]')
+        ?.getAttribute("data-auto-armed"),
+    ).toBe("true")
+
+    mockPlayerRef.current.currentTime = 60
+    mockPlayerRef.current.ended = true
+    callPlayerListener("ended")
+
+    const button = container.querySelector(
+      '[data-testid="hero-player-watch-next"]',
+    ) as HTMLButtonElement | null
+    expect(button?.textContent).toContain("Next Episode")
+    expect(mockRouterPush).toHaveBeenCalledTimes(1)
+    expect(mockRouterPush).toHaveBeenCalledWith(
+      "/jesus.html/chapter-two/english.html?autoplay=1",
+    )
+  })
+
+  it("navigates when the armed Watch Next button is clicked", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 54,
+      duration: 60,
+      paused: false,
+      ended: false,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            nextWatchItem: { ...nextWatchItem, kind: "episode" },
+          })}
+          languageSlug="english"
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("timeupdate")
+
+    const button = container.querySelector(
+      '[data-testid="hero-player-watch-next"]',
+    ) as HTMLButtonElement | null
+    expect(button?.getAttribute("data-auto-armed")).toBe("true")
+
+    act(() => {
+      button?.click()
+    })
+
+    expect(mockRouterPush).toHaveBeenCalledTimes(1)
+    expect(mockRouterPush).toHaveBeenCalledWith(
+      "/jesus.html/chapter-two/english.html?autoplay=1",
+    )
+  })
+
+  it("cancels auto-advance when portaled chrome is used in the countdown window", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 54,
+      duration: 60,
+      paused: false,
+      ended: false,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            nextWatchItem: { ...nextWatchItem, kind: "episode" },
+          })}
+          languageSlug="english"
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("timeupdate")
+
+    const playButton = container.querySelector(
+      '[data-testid="hero-chrome-play"]',
+    )
+    act(() => {
+      playButton?.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="hero-player-watch-next"]')
+        ?.getAttribute("data-manual"),
+    ).toBe("true")
+
+    mockPlayerRef.current.currentTime = 60
+    mockPlayerRef.current.ended = true
+    callPlayerListener("ended")
+
+    expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+
+  it("does not auto-advance when the user seeks into the countdown window", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 20,
+      duration: 60,
+      paused: false,
+      ended: false,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            nextWatchItem: { ...nextWatchItem, kind: "episode" },
+          })}
+          languageSlug="english"
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+
+    callPlayerListener("seeking")
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("seeked")
+    callPlayerListener("timeupdate")
+
+    const button = container.querySelector(
+      '[data-testid="hero-player-watch-next"]',
+    ) as HTMLButtonElement | null
+    expect(button?.textContent).toContain("Next Episode")
+    expect(button?.getAttribute("data-manual")).toBe("true")
+    expect(button?.getAttribute("data-auto-armed")).toBe("false")
+
+    mockPlayerRef.current.currentTime = 60
+    mockPlayerRef.current.ended = true
+    callPlayerListener("ended")
+
+    expect(mockRouterPush).not.toHaveBeenCalled()
+
+    act(() => {
+      button?.click()
+    })
+
+    expect(mockRouterPush).toHaveBeenCalledTimes(1)
+    expect(mockRouterPush).toHaveBeenCalledWith(
+      "/jesus.html/chapter-two/english.html?autoplay=1",
+    )
+  })
+
+  it("re-arms auto-advance on a later natural threshold crossing after cancellation", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 54,
+      duration: 60,
+      paused: false,
+      ended: false,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            nextWatchItem: { ...nextWatchItem, kind: "episode" },
+          })}
+          languageSlug="english"
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("timeupdate")
+
+    expect(
+      container
+        .querySelector('[data-testid="hero-player-watch-next"]')
+        ?.getAttribute("data-auto-armed"),
+    ).toBe("true")
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    act(() => {
+      wrapper?.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="hero-player-watch-next"]')
+        ?.getAttribute("data-manual"),
+    ).toBe("true")
+
+    callPlayerListener("seeking")
+    mockPlayerRef.current.currentTime = 52
+    callPlayerListener("seeked")
+    callPlayerListener("timeupdate")
+
+    expect(
+      container.querySelector('[data-testid="hero-player-watch-next"]'),
+    ).toBeNull()
+
+    mockPlayerRef.current.currentTime = 57
+    callPlayerListener("timeupdate")
+
+    expect(
+      container
+        .querySelector('[data-testid="hero-player-watch-next"]')
+        ?.getAttribute("data-auto-armed"),
+    ).toBe("true")
+
+    mockPlayerRef.current.currentTime = 60
+    mockPlayerRef.current.ended = true
+    callPlayerListener("ended")
+
+    expect(mockRouterPush).toHaveBeenCalledTimes(1)
+    expect(mockRouterPush).toHaveBeenCalledWith(
+      "/jesus.html/chapter-two/english.html?autoplay=1",
+    )
   })
 })

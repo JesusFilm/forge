@@ -22,6 +22,13 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { TVFocusGuideView } from "./TVFocusGuideView"
 import { scale } from "../lib/scale"
+import { datadogLog, reportDatadogError } from "../lib/datadog"
+import { extractMuxPlaybackId } from "../lib/muxUrl"
+import {
+  createVideoQoeSession,
+  sanitizeVideoErrorMessage,
+  shouldCountRebuffer,
+} from "../lib/videoQoe"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
@@ -684,6 +691,9 @@ export function VideoPlayer({
   const statusRef = useRef<VideoPlayerStatus>("idle")
   const hasErrorRef = useRef(false)
   const hideAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+  // Ground-truth "playback has started" for the QoE rebuffer gate, read from the
+  // ref-stable statusChange callback (state would be stale in that closure).
+  const hasStartedRef = useRef(false)
 
   // isMountedRef guards external-emission handlers (native events, setTimeout)
   // from setState after unmount — Fix #24's try/catch only catches thrown
@@ -707,6 +717,9 @@ export function VideoPlayer({
   useEffect(() => {
     hasErrorRef.current = hasError
   }, [hasError])
+  useEffect(() => {
+    hasStartedRef.current = hasStarted
+  }, [hasStarted])
 
   // ── Screen-reader transition side-effects (U7) ──────────────────────
   // SR toggled mid-session: on → reveal-if-hidden + audible confirm; off →
@@ -901,6 +914,27 @@ export function VideoPlayer({
     }
   })
 
+  // ── Playback QoE session (U13) ──────────────────────────────────────
+  // Pure accumulator created once per session (mount = ttff origin). content_id
+  // is the Mux playback id, never the title (PII); emits fire from the existing
+  // listeners below via safeDatadogCall-guarded wrappers, so they never throw.
+  const contentIdRef = useRef<string | null>(null)
+  const qoeRef = useRef<ReturnType<typeof createVideoQoeSession> | null>(null)
+  if (qoeRef.current == null) {
+    contentIdRef.current = extractMuxPlaybackId(creationSource)
+    qoeRef.current = createVideoQoeSession({ contentId: contentIdRef.current })
+  }
+
+  // QoE completion summary — emitted on whichever of playToEnd OR unmount fires
+  // first (finalize is guarded to emit once). Most sessions end via Back/unmount,
+  // so this cleanup is what captures abandonment QoE.
+  useEffect(() => {
+    return () => {
+      const summary = qoeRef.current?.finalize("abandoned")
+      if (summary != null) datadogLog.info("video_playback.summary", summary)
+    }
+  }, [])
+
   // Fix #15: Stable onDismiss via ref so the playToEnd listener isn't
   // re-registered every parent render (which would open a window where
   // playToEnd events are dropped).
@@ -926,6 +960,7 @@ export function VideoPlayer({
     activeVttSrc,
     audioLabel,
     subtitleLabel,
+    sourceSwappingRef,
   } = useSessionPlayback({
     player,
     streamingUrl,
@@ -977,6 +1012,10 @@ export function VideoPlayer({
       }
     }
     const subscription = player.addListener("playToEnd", () => {
+      // QoE: natural completion. finalize is idempotent — if unmount already
+      // fired ("abandoned"), this is a no-op; else it emits the "ended" summary.
+      const summary = qoeRef.current?.finalize("ended")
+      if (summary != null) datadogLog.info("video_playback.summary", summary)
       if (!isMountedRef.current) return
       if (!controlsVisibleRef.current) {
         setControlsVisible(true)
@@ -1013,6 +1052,16 @@ export function VideoPlayer({
         if (isPlaying) {
           // First confirmed playback drops the loading veil permanently (U8).
           setHasStarted(true)
+          hasStartedRef.current = true
+          // QoE: record + emit time-to-first-frame once (mount → first play).
+          // onFirstPlaying returns null on later calls, so this fires exactly once.
+          const ttffMs = qoeRef.current?.onFirstPlaying()
+          if (ttffMs != null) {
+            datadogLog.info("video_playback.ttff", {
+              content_id: contentIdRef.current,
+              ttff_ms: ttffMs,
+            })
+          }
           scheduleHideRef.current()
         } else if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
@@ -1047,6 +1096,9 @@ export function VideoPlayer({
       // P2.3: ignore late-arriving native events after unmount (same guard
       // as playingChange/statusChange).
       if (!isMountedRef.current) return
+      // QoE: track the playhead for the summary's watched_ms (approximate; the
+      // module keeps only the last value). Pure side-effect, no control flow.
+      qoeRef.current?.onTimeUpdate(payload.currentTime)
       // Buffer head feeds the scrubber's buffer hint regardless of the seek
       // guard — it's not a playhead value, so stale emissions can't lie.
       if (
@@ -1111,6 +1163,16 @@ export function VideoPlayer({
       // Terminal error — force chrome visible permanently, focus the
       // back pill. hasError gates all subsequent scheduleHide calls.
       if (next === "error") {
+        // QoE: count + report a tracked RUM error. Sanitize first — the native
+        // message can embed the failing (signed) Mux URL, so cap + strip query.
+        const errorMessage = payload.error?.message
+        qoeRef.current?.onError(errorMessage)
+        reportDatadogError(
+          errorMessage != null
+            ? sanitizeVideoErrorMessage(errorMessage)
+            : "video playback error",
+          { content_id: contentIdRef.current, origin: "video_playback" },
+        )
         hasErrorRef.current = true
         setHasError(true)
         if (inactivityTimerRef.current != null) {
@@ -1140,6 +1202,14 @@ export function VideoPlayer({
         // side and the stall is expected. Without this guard the timer
         // would suspend (and force-reveal) on every 10 s skip press.
         if (seekTargetRef.current !== null) return
+        // QoE rebuffer (rule 3): reached only with seekTargetRef null (guarded
+        // above). A "loading" after playback started that is NOT a dub/source
+        // swap is a genuine rebuffer; seeks and swaps must never count.
+        if (
+          shouldCountRebuffer(hasStartedRef.current, sourceSwappingRef.current)
+        ) {
+          qoeRef.current?.onRebuffer()
+        }
         // Genuine network buffering: suspend the timer and force controls visible
         // if hidden so the user isn't staring at an invisible stall.
         // revealControlsRef's early-return makes it a no-op if already visible.

@@ -65,6 +65,10 @@ vi.mock("@/components/watch/SubtitleTranscript", () => ({
   SubtitleTranscript: () => null,
 }))
 
+vi.mock("@/components/watch/WatchEventRecorder", () => ({
+  WatchEventRecorder: () => null,
+}))
+
 vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     downloadError,
@@ -73,6 +77,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     languageSlug,
     modalCallbacks,
     shareHref,
+    subtitleVttSrc,
   }: {
     downloadError?: string | null
     downloadHref?: string
@@ -80,12 +85,14 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
     shareHref?: string
+    subtitleVttSrc?: string | null
   }) => (
     <div
       data-testid="watch-section-renderer"
       data-download-href={downloadHref ?? ""}
       data-language-slug={languageSlug ?? ""}
       data-share-href={shareHref ?? ""}
+      data-subtitle-vtt-src={subtitleVttSrc ?? ""}
     >
       <button
         data-testid="watch-download-button"
@@ -112,6 +119,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
 }))
 
 vi.mock("@/components/watch/download-session-client", () => ({
+  DOWNLOAD_RETURN_INTENT_PARAM: "download",
   checkDownloadSession: checkDownloadSessionMock,
   redirectToAuth: redirectToAuthMock,
 }))
@@ -241,8 +249,7 @@ describe("WatchPageClient download boundary", () => {
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
-      authenticated: false,
-      gateEnabled: false,
+      authenticated: true,
     })
     renderWatchPage()
 
@@ -281,6 +288,82 @@ describe("WatchPageClient download boundary", () => {
         .querySelector('[data-testid="watch-section-renderer"]')
         ?.getAttribute("data-language-slug"),
     ).toBe("english")
+    expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
+  })
+
+  it("opens the download modal with a sign-in prompt instead of redirecting immediately", async () => {
+    const loginUrl =
+      "http://localhost:3000/watch/api/auth/login?returnTo=%2Fwatch%2Fjesus"
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      authenticated: false,
+      loginUrl,
+    })
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("download")
+    expect(redirectToAuthMock).not.toHaveBeenCalled()
+    expect(downloadModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        authRequiredLoginUrl: loginUrl,
+      }),
+    )
+
+    const latestProps = downloadModalProps.at(-1) as {
+      onClose: () => void
+    }
+    act(() => {
+      latestProps.onClose()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("none")
+    expect(downloadModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: false,
+        authRequiredLoginUrl: loginUrl,
+      }),
+    )
+  })
+
+  it("reopens the download modal after returning from sign-in", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/jesus-is-brought-to-pilate.html/english.html?download=1&t=12",
+    )
+    renderWatchPage()
+
+    await vi.waitFor(() => {
+      expect(
+        document
+          .querySelector('[data-testid="watch-page-client"]')
+          ?.getAttribute("data-modal-state"),
+      ).toBe("download")
+    })
+    expect(downloadModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        authRequiredLoginUrl: null,
+      }),
+    )
+    expect(window.location.search).toBe("?t=12")
     expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
   })
 
@@ -412,6 +495,36 @@ describe("WatchPageClient download boundary", () => {
     expect(latestProps.currentSubtitleSlug).toBe("spanish")
   })
 
+  it("passes selected subtitle VTTs through the same-origin media proxy", () => {
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+    renderWatchPage({
+      languageSlug: "english",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-subtitle-vtt-src")).toBe(
+      "/watch/api/download?url=https%3A%2F%2Fcdn.test%2Fspanish.vtt&disposition=inline",
+    )
+  })
+
   it("shows an inline error when the first session check cannot complete", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: false,
@@ -444,8 +557,7 @@ describe("WatchPageClient download boundary", () => {
       .mockResolvedValueOnce({ ok: false, reason: "session-unavailable" })
       .mockResolvedValueOnce({
         ok: true,
-        authenticated: false,
-        gateEnabled: false,
+        authenticated: true,
       })
     renderWatchPage()
     const button = document.querySelector<HTMLButtonElement>(

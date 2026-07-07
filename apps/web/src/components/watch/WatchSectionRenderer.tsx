@@ -38,7 +38,6 @@ export function WatchSectionRenderer({
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
-  locale,
   languageSlug,
   shareHref,
   subtitleVttSrc,
@@ -56,7 +55,6 @@ export function WatchSectionRenderer({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
-  locale?: string
   languageSlug?: string
   shareHref?: string
   subtitleVttSrc?: string | null
@@ -99,7 +97,6 @@ export function WatchSectionRenderer({
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
-          locale={locale}
           languageSlug={languageSlug}
           shareHref={shareHref}
           subtitleVttSrc={subtitleVttSrc}
@@ -144,7 +141,6 @@ export function WatchSectionRenderer({
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
                   onPlayerActivated={onPlayerActivated}
-                  locale={locale}
                   languageSlug={languageSlug}
                   shareHref={shareHref}
                   hideBibleQuotes={hideBibleQuotes}
@@ -173,7 +169,6 @@ function WatchBlockEntry({
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
-  locale,
   languageSlug,
   shareHref,
   subtitleVttSrc,
@@ -193,7 +188,6 @@ function WatchBlockEntry({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
-  locale?: string
   languageSlug?: string
   shareHref?: string
   subtitleVttSrc?: string | null
@@ -215,7 +209,6 @@ function WatchBlockEntry({
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         onPlayerActivated={onPlayerActivated}
-        locale={locale}
         languageSlug={languageSlug}
         shareHref={shareHref}
         subtitleVttSrc={subtitleVttSrc}
@@ -240,7 +233,6 @@ function SyntheticBlock({
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
-  locale,
   languageSlug,
   shareHref,
   subtitleVttSrc,
@@ -259,7 +251,6 @@ function SyntheticBlock({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
-  locale?: string
   languageSlug?: string
   shareHref?: string
   subtitleVttSrc?: string | null
@@ -292,6 +283,7 @@ function SyntheticBlock({
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
           onLanguageClick={modalCallbacks?.openLanguage}
+          languageSlug={languageSlug ?? null}
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
@@ -343,8 +335,7 @@ function SyntheticBlock({
           bibleCitations={block.bibleCitations}
           href={shareHref}
           onShareClick={modalCallbacks?.openShare ?? noop}
-          locale={locale}
-          youVersionPassages={block.youVersionPassages}
+          passages={block.passages}
         />
       )
     case "Share":

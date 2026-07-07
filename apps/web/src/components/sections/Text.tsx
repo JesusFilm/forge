@@ -16,18 +16,6 @@ const HEADING_TAG = {
   h6: "h6",
 } as const
 
-function BoldLeadParagraph({ text }: { text: string }) {
-  const words = text.split(" ")
-  const boldPart = words.slice(0, 3).join(" ")
-  const rest = text.slice(boldPart.length)
-  return (
-    <p className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
-      <span className="font-bold text-white">{boldPart}</span>
-      {rest}
-    </p>
-  )
-}
-
 export function Text({ data }: TextProps) {
   const {
     id,
@@ -61,7 +49,7 @@ export function Text({ data }: TextProps) {
           )}
           {heading && (
             <div className="mb-3 flex items-center justify-between">
-              <Tag className="mb-0 text-2xl font-bold xl:text-3xl 2xl:text-4xl">
+              <Tag className="mb-0 text-xl font-bold xl:text-2xl 2xl:text-3xl">
                 {heading}
               </Tag>
             </div>
@@ -71,7 +59,12 @@ export function Text({ data }: TextProps) {
         {paragraphs.length > 0 && (
           <div>
             {paragraphs.map((text, i) => (
-              <BoldLeadParagraph key={i} text={text} />
+              <p
+                key={i}
+                className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl"
+              >
+                {text}
+              </p>
             ))}
           </div>
         )}
@@ -85,7 +78,17 @@ export function Text({ data }: TextProps) {
       className="space-y-6 text-stone-100"
       data-testid="Text"
     >
-      {heading && <Tag className="mb-0 text-4xl font-bold">{heading}</Tag>}
+      {heading && (
+        <Tag
+          className={
+            variant === "small"
+              ? "mb-0 text-xl font-bold xl:text-2xl"
+              : "mb-0 text-4xl font-bold"
+          }
+        >
+          {heading}
+        </Tag>
+      )}
       {subtitle && <p className="text-xl opacity-50">{subtitle}</p>}
       {paragraphs.length > 0 && (
         <div

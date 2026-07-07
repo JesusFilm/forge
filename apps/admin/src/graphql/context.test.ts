@@ -5,6 +5,7 @@ const isValidWorkflowBearer = vi.fn()
 const isValidManagerBearer = vi.fn()
 const isValidVideoMapperBearer = vi.fn()
 const isValidConsumerBearer = vi.fn()
+const resolveWebUserPrincipalFromToken = vi.fn()
 
 vi.mock("@/auth/session", () => ({
   resolvePrincipalFromRequest,
@@ -26,6 +27,10 @@ vi.mock("@/auth/consumer-bearer", () => ({
   isValidConsumerBearer,
 }))
 
+vi.mock("@/auth/web-user-token", () => ({
+  resolveWebUserPrincipalFromToken,
+}))
+
 describe("createContext", () => {
   beforeEach(() => {
     resolvePrincipalFromRequest.mockReset()
@@ -33,10 +38,12 @@ describe("createContext", () => {
     isValidManagerBearer.mockReset()
     isValidVideoMapperBearer.mockReset()
     isValidConsumerBearer.mockReset()
+    resolveWebUserPrincipalFromToken.mockReset()
     isValidWorkflowBearer.mockReturnValue(false)
     isValidManagerBearer.mockReturnValue(false)
     isValidVideoMapperBearer.mockReturnValue(false)
     isValidConsumerBearer.mockReturnValue({ valid: false, bucketKey: null })
+    resolveWebUserPrincipalFromToken.mockResolvedValue(null)
   })
 
   it("returns PUBLIC when no session resolves", async () => {
@@ -177,6 +184,39 @@ describe("createContext", () => {
     expect(isValidConsumerBearer).not.toHaveBeenCalled()
   })
 
+  it("mints WEB_USER before falling through to consumer-bearer", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidWorkflowBearer.mockReturnValue(false)
+    isValidManagerBearer.mockReturnValue(false)
+    isValidVideoMapperBearer.mockReturnValue(false)
+    resolveWebUserPrincipalFromToken.mockResolvedValueOnce({
+      id: "auth-user-123",
+      role: "WEB_USER",
+      rateLimitBucketKey: "auth-user-123",
+    })
+    isValidConsumerBearer.mockReturnValue({
+      valid: true,
+      bucketKey: "consumer-key-aaa",
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer user-token" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({
+      id: "auth-user-123",
+      role: "WEB_USER",
+      rateLimitBucketKey: "auth-user-123",
+    })
+    expect(resolveWebUserPrincipalFromToken).toHaveBeenCalledWith(
+      "Bearer user-token",
+    )
+    expect(isValidConsumerBearer).not.toHaveBeenCalled()
+  })
+
   it("session principal wins over consumer-bearer (no accidental downgrade)", async () => {
     // Editor with a session cookie who ALSO forwards a consumer-app
     // bearer keeps their editorial role. The bearer is not consulted
@@ -297,6 +337,19 @@ describe("createContext", () => {
       isValidWorkflowBearer.mockReturnValueOnce(false)
       isValidManagerBearer.mockReturnValueOnce(false)
       isValidVideoMapperBearer.mockReturnValueOnce(false)
+      resolveWebUserPrincipalFromToken.mockResolvedValueOnce({
+        id: "web-secret-fff",
+        role: "WEB_USER",
+      })
+      await createContext({
+        request: new Request("http://localhost/api/graphql", {
+          headers: { authorization: "Bearer web-secret-fff" },
+        }),
+      })
+      resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+      isValidWorkflowBearer.mockReturnValueOnce(false)
+      isValidManagerBearer.mockReturnValueOnce(false)
+      isValidVideoMapperBearer.mockReturnValueOnce(false)
       isValidConsumerBearer.mockReturnValueOnce({
         valid: false,
         bucketKey: null,
@@ -319,6 +372,7 @@ describe("createContext", () => {
       expect(combined).not.toContain("wrong-key-ccc")
       expect(combined).not.toContain("manager-secret-ddd")
       expect(combined).not.toContain("mapper-secret-eee")
+      expect(combined).not.toContain("web-secret-fff")
       expect(combined).not.toContain("Bearer ")
     } finally {
       logSpy.mockRestore()

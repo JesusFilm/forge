@@ -46,6 +46,7 @@ import type {
   VideoCarouselItemSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeHeroBlockSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
@@ -78,6 +79,7 @@ type VideoCarouselBlock = z.infer<typeof VideoCarouselBlockSchema>
 type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
+type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
 
 /** Surfaces unknown stored `t` discriminators as GraphQL errors instead of silently dropping. */
 export class UnknownBlockKindError extends Error {
@@ -227,6 +229,7 @@ MediaCollectionItemRef.implement({
   description: "Single entry in MediaCollectionBlock.items.",
   fields: (t) => ({
     videoId: t.exposeString("videoId", { nullable: true }),
+    videoSlug: t.exposeString("videoSlug", { nullable: true }),
     imageOverrideUrl: t.exposeString("imageOverrideUrl", { nullable: true }),
     imageOverrideAssetId: t.exposeString("imageOverrideAssetId", {
       nullable: true,
@@ -681,6 +684,17 @@ VideoHeroBlockRef.implement({
   }),
 })
 
+const WatchHomeHeroBlockRef =
+  builder.objectRef<WatchHomeHeroBlock>("WatchHomeHeroBlock")
+WatchHomeHeroBlockRef.implement({
+  description:
+    "Top-level placeholder that renders the Web-owned Watch Home hero.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+  }),
+})
+
 const ContainerSlotBlockRef =
   builder.objectRef<ContainerSlotBlock>("ContainerSlotBlock")
 ContainerSlotBlockRef.implement({
@@ -784,6 +798,7 @@ export const T_TO_TYPENAME = {
   videoCarousel: "VideoCarouselBlock",
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
+  watchHomeHero: "WatchHomeHeroBlock",
 } as const satisfies Record<
   Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
   string
@@ -833,6 +848,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoCarouselBlockRef,
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
+    WatchHomeHeroBlockRef,
   ],
   resolveType: (value: Block) => resolveBlockTypename(value),
 })

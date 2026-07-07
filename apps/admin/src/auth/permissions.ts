@@ -54,6 +54,7 @@ export type PermissionKey =
   | "write:media-assets"
   | "write:transcript-embeddings"
   | "write:experience-embeddings"
+  | "write:watch-events"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
@@ -117,6 +118,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // a WORKFLOW_TRIGGER principal without standing up admin's full
   // session-cookie auth flow).
   "write:experience-embeddings": "ADMIN",
+  "write:watch-events": "ADMIN",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
@@ -182,6 +184,7 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // checks. The bearer's sole purpose is rate-limit bucketing, not
   // permission granting.
   if (role === "CONSUMER_BEARER") return false
+  if (role === "WEB_USER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
@@ -264,6 +267,10 @@ const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:video-mapper-catalog",
 ])
 
+const WEB_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "write:watch-events",
+])
+
 const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "access:manager",
 ])
@@ -294,6 +301,9 @@ export function hasPermission(
   }
   if (role === "VIDEO_MAPPER") {
     return VIDEO_MAPPER_PERMISSIONS.has(key)
+  }
+  if (role === "WEB_USER") {
+    return WEB_USER_PERMISSIONS.has(key)
   }
   // CONSUMER_BEARER's permission set is intentionally empty; this
   // early-return makes the contract explicit at the call site so a

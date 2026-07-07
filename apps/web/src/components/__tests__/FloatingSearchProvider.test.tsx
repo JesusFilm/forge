@@ -35,7 +35,12 @@ const navigationMocks = vi.hoisted(() => ({
   pathname: "/",
   replace: vi.fn(),
 }))
-const reportDatadogRumAction = vi.hoisted(() => vi.fn())
+const { clearDatadogRumUser, identifyDatadogRumUser, reportDatadogRumAction } =
+  vi.hoisted(() => ({
+    clearDatadogRumUser: vi.fn(),
+    identifyDatadogRumUser: vi.fn(),
+    reportDatadogRumAction: vi.fn(),
+  }))
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationMocks.pathname,
@@ -61,7 +66,9 @@ vi.mock("@/lib/search-language-actions", () => ({
 }))
 
 vi.mock("@/components/DatadogRum", () => ({
+  clearDatadogRumUser,
   default: () => null,
+  identifyDatadogRumUser,
   reportDatadogRumAction,
 }))
 

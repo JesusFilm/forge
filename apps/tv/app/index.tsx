@@ -40,6 +40,7 @@ import {
   createFocusMemory,
   type FocusMemory,
 } from "../src/components/home/focusMemory"
+import { datadogLog } from "../src/lib/datadog"
 import {
   createShowcaseFocusDebouncer,
   INITIAL_SHOWCASE_STATE,
@@ -91,7 +92,12 @@ export default function HomeScreen() {
     useCallback(() => {
       let raf: number | null = null
       if (hasBlurredRef.current) {
-        raf = requestAnimationFrame(() => focusMemoryRef.current?.restore())
+        raf = requestAnimationFrame(() => {
+          // A false restore on genuine re-entry (hasBlurredRef) means the
+          // remembered node was lost — a real focus fault, not first-mount.
+          const restored = focusMemoryRef.current?.restore()
+          if (restored === false) datadogLog.warn("focus.restore_failed")
+        })
       }
       return () => {
         if (raf != null) cancelAnimationFrame(raf)

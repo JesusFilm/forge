@@ -19,10 +19,6 @@ const webFeatureFlagClient = createFeatureFlagClient({
       env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT ??
       String(env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
-    FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
-      env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
-      env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
@@ -31,8 +27,6 @@ const webFeatureFlagClient = createFeatureFlagClient({
   defaultValues: {
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     "forge.watch.ctaTextCopy": false,
-    "forge.watch.downloadAccountGate": false,
-    "forge.watch.youVersionBibleQuotes": false,
     "forge.watch.hideBibleQuotes": false,
     "forge.watch.questionPanel": false,
     "forge.watch.algoliaSearch": false,
@@ -72,24 +66,6 @@ export async function isWatchCtaTextCopyEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchCtaTextCopy,
-    createWebFeatureFlagContext(context),
-  )
-}
-
-export async function isWatchDownloadAccountGateEnabled(
-  context: WebFeatureFlagContextInput = {},
-): Promise<boolean> {
-  return webFeatureFlagClient.booleanVariation(
-    featureFlags.watchDownloadAccountGate,
-    createWebFeatureFlagContext(context),
-  )
-}
-
-export async function isWatchYouVersionBibleQuotesEnabled(
-  context: WebFeatureFlagContextInput = {},
-): Promise<boolean> {
-  return webFeatureFlagClient.booleanVariation(
-    featureFlags.watchYouVersionBibleQuotes,
     createWebFeatureFlagContext(context),
   )
 }

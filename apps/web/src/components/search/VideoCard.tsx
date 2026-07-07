@@ -3,6 +3,7 @@ import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
 import {
   asLocaleSlug,
@@ -202,6 +203,9 @@ export function VideoCard({
 
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+        {result.type === "video" ? (
+          <WatchProgressBar videoId={result.id} />
+        ) : null}
 
         {/* Top-right slot.
             - Experience: amber pill labeled "Experience" (the only place
@@ -232,7 +236,7 @@ export function VideoCard({
         {/* Bottom-left content: type badge (videos only) + title +
             snippet. Experience cards skip the badge — the amber chip in
             the top-right is the sole type signal. */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-4 pt-4 pb-5">
           {typeBadge ? (
             <span
               data-testid="search-card-type-badge"

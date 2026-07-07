@@ -32,6 +32,10 @@ function failureNotice(reason: ReplyFailureReason): string {
       return "Couldn't reach Seeker. Check your connection and try again."
     case "cancelled":
       return "The response was cancelled."
+    case "thread_forbidden":
+      return "This conversation can't be continued from here. Please start a new conversation."
+    case "thread_limit":
+      return "You've reached the conversation limit for now. Please continue in an existing conversation, or try again later."
     default:
       // Exhaustiveness guard: a new ReplyFailureReason without a case here is a
       // compile error, not a silent `undefined` notice at runtime.

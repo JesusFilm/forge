@@ -1,7 +1,7 @@
 import { Agent } from "@mastra/core/agent"
 
 import { STEP_CAPS } from "../budgets"
-import { getSeekerMemory } from "../memory"
+import { getAiChatMemory } from "../memory"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
 
 /**
@@ -9,7 +9,8 @@ import { retrieveAnswerTool } from "../tools/retrieve-answer"
  * planned headless multi-agent "Jesus Film AI Chat" system, here as a
  * Studio-only agent. It proves the chat -> tool-call -> remembered-context
  * shape: citation-disciplined instructions, the `retrieveAnswer` tool backed by
- * live RAG retrieval (feat-199), and per-agent in-memory `Memory`.
+ * live RAG retrieval (feat-199), and the shared ai-chat lane `Memory`
+ * (feat-208 — Postgres-persisted in the `ai_chat` schema).
  *
  * Containment is the network/gateway boundary, NOT this code: once registered,
  * Mastra's built-in `/api/agents/*` surface exposes the agent to anyone who can
@@ -64,12 +65,22 @@ export const seekerAgent = new Agent({
   // on `openai/...` (OPENAI_API_KEY), so both keys are present in this app today.
   // If `OPENROUTER_API_KEY` is unset, the agent errors at generate time in
   // Studio (a runtime error, not a boot crash).
-  model: "openrouter/google/gemma-4-31b-it:free",
+  //
+  // Fallback chain: the free-tier primary errors intermittently (feat-198
+  // residual), so retry it once, then fall through to OpenRouter's other free
+  // Gemma 4 model.
+  model: [
+    { model: "openrouter/google/gemma-4-31b-it:free", maxRetries: 1 },
+    { model: "openrouter/google/gemma-4-26b-a4b-it:free", maxRetries: 1 },
+  ],
 
   tools: {
     retrieveAnswer: retrieveAnswerTool,
   },
-  memory: getSeekerMemory(),
+  // ai-chat lane memory (feat-208): Postgres-persisted in the `ai_chat`
+  // schema (or in-memory under the memory backend). Shared with future
+  // ai-chat agents; thread access is gated in seeker-route.ts, not here.
+  memory: getAiChatMemory(),
   // Step-budget floor (feat-202). The bearer-gated `/forge-seeker` route sets
   // `maxSteps: STEP_CAPS.toolCallingTurn` at its call site, but the built-in,
   // code-unauthenticated `/api/agents/seekerAgent` surface (reachable by any

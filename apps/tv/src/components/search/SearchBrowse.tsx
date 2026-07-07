@@ -120,6 +120,9 @@ function RecentRow({
             onPress={() => onRunQuery(q)}
             accessibilityLabel={`Recent search: ${q}`}
             accessibilityHint="Re-runs this search"
+            // Generic action name keeps the user's typed query out of telemetry
+            // (same privacy rule as KeyButton's keyboard-key).
+            ddActionName="recent-search"
             focusRing="white"
             style={styles.chip}
           >

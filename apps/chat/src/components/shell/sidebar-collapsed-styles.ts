@@ -22,6 +22,12 @@ export type CollapsedStyles = {
   newButtonLabel: string | false
   /** Conversation nav: hidden entirely in the icon rail. */
   nav: string | false
+  /** Account row wrapper: drop padding to center the avatar/sign-in target. */
+  account: string | false
+  /** Account text (name/email/labels): hidden in the icon rail. */
+  accountLabel: string | false
+  /** Sign-out control: reachable only on expand (not a collapsed icon target). */
+  signOut: string | false
 }
 
 /** Build the collapsed-style slot map for the current collapsed flag. */
@@ -39,5 +45,8 @@ export function collapsedStyles(collapsed: boolean): CollapsedStyles {
       "md:mx-auto md:w-10 md:justify-center md:gap-0 md:border-transparent md:p-0 md:py-2.5 md:hover:border-transparent",
     newButtonLabel: collapsed && "md:hidden",
     nav: collapsed && "md:hidden",
+    account: collapsed && "md:px-0",
+    accountLabel: collapsed && "md:hidden",
+    signOut: collapsed && "md:hidden",
   }
 }

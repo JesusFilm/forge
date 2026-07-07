@@ -44,6 +44,7 @@ const MANY_OPTIONS = Array.from({ length: 200 }, (_, index) => ({
   slug: `language-${index}`,
   name: `Language ${String(index).padStart(3, "0")}`,
 }))
+const OPTION_SCROLL_TOP_FOR_TEST = 7200
 
 function makeRect({
   bottom = 0,
@@ -257,9 +258,9 @@ describe("LanguageCombobox", () => {
 
       const popover = $('[data-testid="language-combobox-popover"]')
       const listbox = $('[role="listbox"]') as HTMLUListElement
-      expect(popover?.className).toContain("bottom-full")
-      expect(popover?.className).toContain("mb-2")
-      expect(popover?.className).not.toContain("top-full")
+      expect(popover?.getAttribute("data-placement")).toBe("above")
+      expect(popover?.className).toContain("fixed")
+      expect(popover?.className).toContain("z-[1000]")
       expect(listbox.style.maxHeight).toBe("288px")
     } finally {
       Object.defineProperty(window, "innerHeight", {
@@ -311,8 +312,8 @@ describe("LanguageCombobox", () => {
 
       const popover = $('[data-testid="language-combobox-popover"]')
       const listbox = $('[role="listbox"]') as HTMLUListElement
-      expect(popover?.className).toContain("top-full")
-      expect(popover?.className).toContain("mt-2")
+      expect(popover?.getAttribute("data-placement")).toBe("below")
+      expect(popover?.className).toContain("fixed")
       expect(listbox.style.maxHeight).toBe("49px")
       expect(listbox.className).toContain("overflow-y-auto")
     } finally {
@@ -412,6 +413,45 @@ describe("LanguageCombobox", () => {
     expect(
       items.some((item) => item.textContent?.includes("Language 199")),
     ).toBe(false)
+  })
+
+  it("renders the first window after scrolling back to the top even if a lower option was active", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={MANY_OPTIONS}
+          value="language-0"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const listbox = $('[role="listbox"]') as HTMLUListElement
+    act(() => {
+      listbox.scrollTop = OPTION_SCROLL_TOP_FOR_TEST
+      listbox.dispatchEvent(new Event("scroll", { bubbles: true }))
+    })
+
+    const lowerItems = $$('[data-testid="language-combobox-option"]')
+    expect(lowerItems[0]?.getAttribute("aria-posinset")).not.toBe("1")
+
+    act(() => {
+      lowerItems[0]?.dispatchEvent(
+        new MouseEvent("mouseenter", { bubbles: true }),
+      )
+    })
+    act(() => {
+      listbox.scrollTop = 0
+      listbox.dispatchEvent(new Event("scroll", { bubbles: true }))
+    })
+
+    const topItems = $$('[data-testid="language-combobox-option"]')
+    expect(topItems[0]?.getAttribute("aria-posinset")).toBe("1")
+    expect(topItems[0]?.getAttribute("data-language-slug")).toBe("language-0")
   })
 
   it("searches the full large option set even when only the first window is mounted", () => {

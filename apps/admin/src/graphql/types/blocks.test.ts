@@ -2,7 +2,7 @@
 // surface. Each test constructs a fixture POJO matching the Zod schema for
 // one block kind, runs the GraphQL union's `resolveType` callback, and
 // asserts the returned typename matches `T_TO_TYPENAME[t]`. The exhaustive
-// 19-kind sweep proves Pothos's union dispatch contract for every block we
+// 20-kind sweep proves Pothos's union dispatch contract for every block we
 // can persist; the union-dispatch happy path mixes kinds in one array to
 // catch any cross-block side effects in resolveType; edge cases cover the
 // "no blocks" and "unknown discriminator" boundaries.
@@ -170,6 +170,9 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "videoRecommendations",
     limit: 10,
   },
+  watchHomeHero: {
+    t: "watchHomeHero",
+  },
 }
 
 // Sanity guard so the fixture set stays in lockstep with the typed map.
@@ -312,6 +315,13 @@ describe("Mixed-kind round-trip across nested unions", () => {
 // -----------------------------------------------------------------------------
 
 describe("Edge cases", () => {
+  it("exposes videoSlug on MediaCollectionItem for authored card links", () => {
+    const type = schema.getType("MediaCollectionItem")
+    expect(
+      type && "getFields" in type ? type.getFields().videoSlug : null,
+    ).toBeDefined()
+  })
+
   it("unknown discriminator throws UnknownBlockKindError", () => {
     expect(() =>
       resolveTypeName("ExperienceBlock", { t: "totallyUnknownKind" }),

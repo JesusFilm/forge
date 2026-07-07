@@ -11,8 +11,29 @@ const SEEKER_KEYS = [
   "SEEKER_TIMEOUT_MS",
 ] as const
 
+const AUTH_KEYS = [
+  "AUTH_ISSUER_URL",
+  "AUTH_CHAT_CLIENT_ID",
+  "AUTH_CHAT_CLIENT_SECRET",
+  "CHAT_BASE_URL",
+  "CHAT_SESSION_SECRET",
+  "AUTH_COOKIE_PREFIX",
+] as const
+
+// A real (≥32-char, non-placeholder) signing secret for the "configured" cases.
+const REAL_SECRET = "a".repeat(40)
+
 function clearSeekerEnv() {
   for (const key of SEEKER_KEYS) delete process.env[key]
+  for (const key of AUTH_KEYS) delete process.env[key]
+}
+
+// Sets the full happy-path auth env; individual cases delete/override from here.
+function setConfiguredAuthEnv() {
+  process.env.AUTH_ISSUER_URL = "https://auth.jesusfilm.org/api/auth"
+  process.env.AUTH_CHAT_CLIENT_ID = "chat-client"
+  process.env.CHAT_BASE_URL = "https://chat.jesusfilm.org"
+  process.env.CHAT_SESSION_SECRET = REAL_SECRET
 }
 
 async function importEnv() {
@@ -89,6 +110,97 @@ describe("seekerTimeoutMs", () => {
       expect(seekerTimeoutMs()).toBe(95000)
     },
   )
+})
+
+describe("chatAuthConfigured (KTD6 / R11 fail-closed)", () => {
+  it("is false when all auth vars are unset (parse succeeds, app boots)", async () => {
+    const { chatAuthConfigured, env } = await importEnv()
+    expect(chatAuthConfigured()).toBe(false)
+    expect(env.AUTH_ISSUER_URL).toBeUndefined()
+  })
+
+  it("is false when issuer/client-id/base-URL present but signing secret absent", async () => {
+    setConfiguredAuthEnv()
+    delete process.env.CHAT_SESSION_SECRET
+    const { chatAuthConfigured } = await importEnv()
+    expect(chatAuthConfigured()).toBe(false)
+  })
+
+  it("is false when the secret equals the shipped .env.example placeholder", async () => {
+    setConfiguredAuthEnv()
+    const { CHAT_SESSION_SECRET_PLACEHOLDER } = await importEnv()
+    process.env.CHAT_SESSION_SECRET = CHAT_SESSION_SECRET_PLACEHOLDER
+    const { chatAuthConfigured } = await importEnv()
+    expect(chatAuthConfigured()).toBe(false)
+  })
+
+  it("is false when the secret is empty", async () => {
+    setConfiguredAuthEnv()
+    process.env.CHAT_SESSION_SECRET = ""
+    const { chatAuthConfigured } = await importEnv()
+    expect(chatAuthConfigured()).toBe(false)
+  })
+
+  it("is false when the secret is shorter than 32 chars", async () => {
+    setConfiguredAuthEnv()
+    process.env.CHAT_SESSION_SECRET = "a".repeat(31)
+    const { chatAuthConfigured } = await importEnv()
+    expect(chatAuthConfigured()).toBe(false)
+  })
+
+  it.each(["AUTH_ISSUER_URL", "AUTH_CHAT_CLIENT_ID", "CHAT_BASE_URL"])(
+    "is false when %s is missing (secret alone is not enough)",
+    async (missing) => {
+      setConfiguredAuthEnv()
+      delete process.env[missing]
+      const { chatAuthConfigured } = await importEnv()
+      expect(chatAuthConfigured()).toBe(false)
+    },
+  )
+
+  it("is false when CHAT_BASE_URL is scheme-less (malformed → fail closed, not a 500)", async () => {
+    setConfiguredAuthEnv()
+    process.env.CHAT_BASE_URL = "chat.jesusfilm.org" // no scheme
+    const { chatAuthConfigured } = await importEnv()
+    expect(chatAuthConfigured()).toBe(false)
+  })
+
+  it("is true only when issuer, client id, base URL, and a real secret are all set", async () => {
+    setConfiguredAuthEnv()
+    const { chatAuthConfigured } = await importEnv()
+    expect(chatAuthConfigured()).toBe(true)
+  })
+
+  it("does not require a client secret (public-client / secret optional)", async () => {
+    setConfiguredAuthEnv()
+    delete process.env.AUTH_CHAT_CLIENT_SECRET
+    const { chatAuthConfigured } = await importEnv()
+    expect(chatAuthConfigured()).toBe(true)
+  })
+
+  it("the shipped .env.example placeholder is the exact single-sourced sentinel", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { join } = await import("node:path")
+    // vitest runs from the package root (apps/chat).
+    const example = readFileSync(join(process.cwd(), ".env.example"), "utf8")
+    const { CHAT_SESSION_SECRET_PLACEHOLDER } = await importEnv()
+    expect(example).toContain(
+      `CHAT_SESSION_SECRET=${CHAT_SESSION_SECRET_PLACEHOLDER}`,
+    )
+  })
+})
+
+describe("chatAuthCookiePrefix", () => {
+  it("defaults to forge_chat when unset", async () => {
+    const { chatAuthCookiePrefix } = await importEnv()
+    expect(chatAuthCookiePrefix()).toBe("forge_chat")
+  })
+
+  it("uses AUTH_COOKIE_PREFIX when set", async () => {
+    process.env.AUTH_COOKIE_PREFIX = "custom_chat"
+    const { chatAuthCookiePrefix } = await importEnv()
+    expect(chatAuthCookiePrefix()).toBe("custom_chat")
+  })
 })
 
 describe("sub-ceiling timeout warning (KTD4)", () => {

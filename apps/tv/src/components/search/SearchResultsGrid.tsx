@@ -13,9 +13,11 @@ import {
 
 import type { View as ViewType } from "react-native"
 
+import { reportDatadogAction } from "../../lib/datadog"
 import { type SearchResult } from "../../lib/queries"
 import { type SearchState } from "../../lib/search"
 import { scale } from "../../lib/scale"
+import { buildWatchSearchResultClickContext } from "../../lib/watchSearchRum"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { ResultCard } from "./ResultCard"
@@ -26,6 +28,9 @@ type Props = {
   state: SearchState
   results: SearchResult[]
   query: string
+  /** Correlation id of the search behind these results; threaded into the
+   *  result-click RUM action so a click links back to its per-search log. */
+  searchRequestId: string
   /**
    * Fixed column count override; the narrower two-pane results pane
    * uses fewer columns than the full-width default.
@@ -52,16 +57,25 @@ export function SearchResultsGrid({
   state,
   results,
   query,
+  searchRequestId,
   columns,
   onRetry,
   topRowFocusUp,
 }: Props) {
   const router = useRouter()
   const openResult = useCallback(
-    (result: SearchResult) => {
+    (result: SearchResult, position: number) => {
+      // Supplemental result-click RUM action (never throws into navigation).
+      reportDatadogAction(
+        "watch_search.result_clicked",
+        buildWatchSearchResultClickContext(result, {
+          position,
+          searchRequestId,
+        }),
+      )
       router.push(searchResultPath(result))
     },
-    [router],
+    [router, searchRequestId],
   )
 
   // "loading" = a search is in flight. "idle" while the grid is mounted means a
@@ -116,7 +130,7 @@ function ResultsList({
   topRowFocusUp,
 }: {
   results: SearchResult[]
-  onPress: (result: SearchResult) => void
+  onPress: (result: SearchResult, position: number) => void
   columns?: number
   topRowFocusUp?: ViewType | null
 }) {
@@ -171,7 +185,8 @@ function ResultsList({
           >
             <ResultCard
               result={item}
-              onPress={onPress}
+              // 1-based rank for analytics (mirrors web's position: index + 1).
+              onPress={(result) => onPress(result, index + 1)}
               // Claim focus only on the FIRST render of this results set;
               // later renders (debounced refresh, virtualization re-mount)
               // pass false to preserve the user's focus position.

@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { Play } from "lucide-react"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { cn } from "@/lib/utils"
 import type { WatchHomeCard as WatchHomeCardModel } from "@/lib/watch-home"
 
@@ -71,7 +72,7 @@ export function WatchHomeCard({
 }: WatchHomeCardProps) {
   const isVertical = orientation === "vertical"
   const frameClassName = cn(
-    "beveled group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-xl shadow-stone-950/70 transition duration-300 hover:scale-[1.02] focus-visible:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+    "group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
     className,
   )
 
@@ -80,9 +81,7 @@ export function WatchHomeCard({
       card={card}
       className={frameClassName}
       onPointerEnter={() => onHoverImageChange?.(card.imageUrl)}
-      onPointerLeave={() => onHoverImageChange?.(null)}
       onFocus={() => onHoverImageChange?.(card.imageUrl)}
-      onBlur={() => onHoverImageChange?.(null)}
     >
       <div
         className={cn(
@@ -121,6 +120,7 @@ export function WatchHomeCard({
             {index + 1}
           </span>
         ) : null}
+        <WatchProgressBar videoId={card.id} />
         {card.metaLabel ? (
           <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 px-2 py-1 text-sm font-semibold text-white backdrop-blur-sm">
             {card.childCount === 0 && card.href ? (
@@ -129,8 +129,22 @@ export function WatchHomeCard({
             {card.metaLabel}
           </div>
         ) : null}
-        <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 group-hover:opacity-50" />
-        <div className="absolute inset-0 flex flex-col justify-end p-4">
+        <div
+          aria-hidden
+          data-testid="watch-home-card-bevel"
+          className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
+        />
+        <div
+          aria-hidden
+          data-testid="watch-home-card-hover-outline"
+          className={cn(
+            "watch-home-gradient-outline pointer-events-none absolute z-50 opacity-0 shadow-[0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-visible:opacity-100",
+            isVertical
+              ? "watch-home-gradient-outline-portrait"
+              : "watch-home-gradient-outline-landscape",
+          )}
+        />
+        <div className="absolute inset-0 flex flex-col justify-end px-4 pt-4 pb-5">
           <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
             {card.label}
           </div>

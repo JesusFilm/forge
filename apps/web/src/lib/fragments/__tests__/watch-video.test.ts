@@ -97,6 +97,7 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(
       /watchVideoRouteSnapshotBySlug\(\s*slug:\s*\$videoSlug\s*locale:\s*\$locale\s*languageSlug:\s*\$languageSlug\s*\)/,
     )
+    expect(printed).toMatch(/\bpublishedAt\b/)
     expect(printed).toMatch(/\bexactLocales\b/)
     expect(printed).toMatch(/\bbroadLocales\b/)
     expect(printed).toMatch(/\benglishLocales\b/)

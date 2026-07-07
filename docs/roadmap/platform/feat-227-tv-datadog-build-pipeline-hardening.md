@@ -3,7 +3,7 @@ id: "feat-227"
 title: "TV Datadog build pipeline: symbol upload CI and patch maintenance guards"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-08"
 duration: 2
 depends_on: []
@@ -14,6 +14,8 @@ tags:
   - "infrastructure"
   - "observability"
 ---
+
+> **Scope note (2026-07-03):** the secret-gated symbol upload and the patch-pin CI guard proceed now; upstreaming the tvOS patch to `DataDog/dd-sdk-reactnative` is deferred by user decision. The patch stays a local carry, protected by the new guard.
 
 ## Problem
 

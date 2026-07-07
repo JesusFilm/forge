@@ -10,7 +10,7 @@ export type DownloadSessionAccess =
 export async function resolveDownloadSessionAccess(): Promise<DownloadSessionAccess> {
   const session = await checkDownloadSession()
   if (!session.ok) return { ok: false, reason: "session-unavailable" }
-  if (session.gateEnabled && !session.authenticated) {
+  if (!session.authenticated) {
     if (!session.loginUrl) return { ok: false, reason: "session-unavailable" }
     return { ok: false, reason: "auth-required", loginUrl: session.loginUrl }
   }

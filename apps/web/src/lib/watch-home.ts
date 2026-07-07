@@ -68,6 +68,8 @@ export type WatchHomeCard = {
   imageAlt: string
   hls: string | null
   playbackId: string | null
+  subtitleVttSrc?: string | null
+  subtitleLanguageBcp47?: string | null
   durationSeconds: number | null
   childCount: number
   parentCoreId: string | null
@@ -206,6 +208,32 @@ function buildHref(args: {
     : watchVideoPath(slug, lang)
 }
 
+function selectSubtitleTrack(
+  variant: AdminHomeVariant | null,
+  languageSlug: string,
+): { vttSrc: string; bcp47: string | null } | null {
+  const subtitles =
+    variant?.videoEdition?.subtitles?.filter((subtitle) =>
+      Boolean(subtitle.vttSrc),
+    ) ?? []
+  if (!subtitles.length) return null
+
+  const selected =
+    subtitles.find(
+      (subtitle) => subtitle.language?.slug === variant?.language?.slug,
+    ) ??
+    subtitles.find((subtitle) => subtitle.language?.slug === languageSlug) ??
+    subtitles.find((subtitle) => subtitle.primary === true) ??
+    subtitles[0]
+
+  return selected?.vttSrc
+    ? {
+        vttSrc: selected.vttSrc,
+        bcp47: selected.language?.bcp47 ?? null,
+      }
+    : null
+}
+
 function missingEntry(args: WatchHomeMissingData): WatchHomeMissingData {
   return args
 }
@@ -230,6 +258,7 @@ function normalizeCard(args: {
       ? (args.video.primaryLanguage?.coreId ?? null)
       : null,
   )
+  const subtitleTrack = selectSubtitleTrack(selectedVariant, args.languageSlug)
   const playbackId = selectedVariant?.muxVideo?.playbackId ?? null
   const adminImageUrl = pickAdminImage(args.video.images ?? [])
   const imageUrl = adminImageUrl ?? muxThumbnail(playbackId)
@@ -303,6 +332,8 @@ function normalizeCard(args: {
     imageAlt: locale?.imageAlt ?? title,
     hls: selectedVariant?.hls ?? null,
     playbackId,
+    subtitleVttSrc: subtitleTrack?.vttSrc ?? null,
+    subtitleLanguageBcp47: subtitleTrack?.bcp47 ?? null,
     durationSeconds:
       selectedVariant?.duration ?? args.video.durationSeconds ?? null,
     childCount,
@@ -456,6 +487,8 @@ function cardToCarouselSlide(
     imageAlt: card.imageAlt,
     src: card.hls,
     playbackId: card.playbackId,
+    subtitleVttSrc: card.subtitleVttSrc,
+    subtitleLanguageBcp47: card.subtitleLanguageBcp47,
     durationSeconds: card.durationSeconds,
   }
 }

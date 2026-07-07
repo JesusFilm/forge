@@ -72,6 +72,8 @@ export function ResultCard({
       nextFocusUp={nextFocusUp}
       accessibilityRole="button"
       accessibilityLabel={result.title}
+      // Stable, low-cardinality RUM action name (auto-tracker would use the title).
+      {...{ "dd-action-name": "search-result" }}
       accessibilityHint="Opens this experience"
       testID={`search-result-${result.type}-${result.id}`}
     >

@@ -11,6 +11,7 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   webCanonicalOriginEnvSchema,
+  youVersionPassageCacheTtlSecondsEnvSchema,
 } from "@/config/env"
 
 describe("env", () => {
@@ -137,11 +138,33 @@ describe("env", () => {
     })
   })
 
+  describe("youVersionPassageCacheTtlSecondsEnvSchema", () => {
+    it("defaults to a two-week cache ttl", () => {
+      expect(youVersionPassageCacheTtlSecondsEnvSchema.parse(undefined)).toBe(
+        60 * 60 * 24 * 14,
+      )
+    })
+
+    it("coerces positive integer ttl seconds", () => {
+      expect(youVersionPassageCacheTtlSecondsEnvSchema.parse("60")).toBe(60)
+    })
+
+    it("rejects invalid ttl values", () => {
+      expect(() =>
+        youVersionPassageCacheTtlSecondsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        youVersionPassageCacheTtlSecondsEnvSchema.parse("abc"),
+      ).toThrow()
+    })
+  })
+
   // Bearer-CSV disjointness invariant. The bearer CSVs
   // (WORKFLOW_API_KEYS, VIDEO_MAPPER_ADMIN_API_KEYS,
   // MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   // MASTRA_EXPERIENCE_INGEST_API_KEYS,
   // WEB_ADMIN_API_KEYS,
+  // WATCH_PROGRESS_ADMIN_API_KEYS,
   // BACKUP_DOWNLOAD_API_KEYS, SEARCH_TRACE_SAMPLING_API_KEYS)
   // MUST NOT share any value; the auth chains mint distinct
   // principals / passports, so a duplicated key silently widens
@@ -156,6 +179,11 @@ describe("env", () => {
     it("passes when only one CSV is set", () => {
       expect(() =>
         assertBearerCsvsDisjoint({ WEB_ADMIN_API_KEYS: "key-a,key-b" }),
+      ).not.toThrow()
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WATCH_PROGRESS_ADMIN_API_KEYS: "watch-progress-a",
+        }),
       ).not.toThrow()
       expect(() =>
         assertBearerCsvsDisjoint({ WORKFLOW_API_KEYS: "wf-a" }),
@@ -193,6 +221,7 @@ describe("env", () => {
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a,mastra-b",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a,experience-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
+          WATCH_PROGRESS_ADMIN_API_KEYS: "watch-progress-a,watch-progress-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
           SEARCH_TRACE_SAMPLING_API_KEYS: "trace-sampling-a,trace-sampling-b",
         }),
@@ -276,6 +305,15 @@ describe("env", () => {
       ).toThrow(/WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
     })
 
+    it("throws when WATCH_PROGRESS_ADMIN_API_KEYS overlaps another bearer capability", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-key",
+          WATCH_PROGRESS_ADMIN_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and WATCH_PROGRESS_ADMIN_API_KEYS/)
+    })
+
     it("throws when SEARCH_TRACE_SAMPLING overlaps another bearer capability", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
@@ -299,6 +337,7 @@ describe("env", () => {
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a",
           WEB_ADMIN_API_KEYS: "shared-1,shared-2",
+          WATCH_PROGRESS_ADMIN_API_KEYS: "watch-progress-a",
           BACKUP_DOWNLOAD_API_KEYS: "shared-2",
           SEARCH_TRACE_SAMPLING_API_KEYS: "shared-1",
         })
@@ -354,6 +393,9 @@ describe("env", () => {
         /MASTRA_EXPERIENCE_INGEST_API_KEYS:\s*env\.MASTRA_EXPERIENCE_INGEST_API_KEYS/,
       )
       expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
+      expect(source).toMatch(
+        /WATCH_PROGRESS_ADMIN_API_KEYS:\s*env\.WATCH_PROGRESS_ADMIN_API_KEYS/,
+      )
       expect(source).toMatch(
         /BACKUP_DOWNLOAD_API_KEYS:\s*env\.BACKUP_DOWNLOAD_API_KEYS/,
       )

@@ -190,6 +190,10 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false"),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
+  // Optional per-surface override for the ai-chat lane's Memory backend
+  // (feat-208). Unset → follows MASTRA_STORAGE_BACKEND. `.optional()` so the
+  // kill-switch adds zero required-at-boot env vars.
+  AI_CHAT_MEMORY_BACKEND: z.enum(["postgres", "memory"]).optional(),
   MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
   OPENAI_EMBEDDINGS_BASE_URL: z
@@ -443,6 +447,7 @@ export const env = envSchema.parse({
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,
   ),
+  AI_CHAT_MEMORY_BACKEND: emptyToUndefined(process.env.AI_CHAT_MEMORY_BACKEND),
   MASTRA_STORAGE_BACKEND: emptyToUndefined(process.env.MASTRA_STORAGE_BACKEND),
   MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
   OPENAI_EMBEDDINGS_BASE_URL: emptyToUndefined(
@@ -702,6 +707,31 @@ export function getOpenRouterApiKey(): string | undefined {
  */
 export function isSeekerRouteEnabled(): boolean {
   return env.SEEKER_ROUTE_ENABLED === "true"
+}
+
+/**
+ * Backend for the ai-chat lane's Memory (feat-208): the per-surface override
+ * when set, else the runtime storage backend. `memory` is the local/test path;
+ * `postgres` (the production default) persists to the `ai_chat` schema. Unlike
+ * MASTRA_STORAGE_BACKEND, `memory` here is allowed in production — it is the
+ * documented kill-switch to revert seeker persistence without a code deploy.
+ */
+export function resolveAiChatMemoryBackend(): "postgres" | "memory" {
+  return env.AI_CHAT_MEMORY_BACKEND ?? env.MASTRA_STORAGE_BACKEND
+}
+
+/**
+ * Whether persisted ai-chat rows can exist in Postgres: true when EITHER the
+ * runtime storage backend or the ai-chat override is postgres. Gates the
+ * retention purge — deliberately NOT `resolveAiChatMemoryBackend()`: the
+ * kill-switch (`AI_CHAT_MEMORY_BACKEND=memory`) reverts WRITES only and must
+ * never pause retention on conversations already stored in `ai_chat`.
+ */
+export function canAiChatDataPersist(): boolean {
+  return (
+    env.MASTRA_STORAGE_BACKEND === "postgres" ||
+    env.AI_CHAT_MEMORY_BACKEND === "postgres"
+  )
 }
 
 export function getFirecrawlConfig(): FirecrawlConfig {

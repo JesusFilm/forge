@@ -39,6 +39,7 @@ export const watchVideoShellFragment = adminGraphql(`
   fragment WatchVideoShell on Video @_unmask {
     documentId: id
     slug
+    publishedAt
     noIndex
     label
     images {
@@ -109,6 +110,17 @@ export const watchVideoShellFragment = adminGraphql(`
       verseEnd
       order
       osisId
+      passage {
+        content
+        copyright
+        humanReference
+        provider
+        publisherUrl
+        reference
+        versionAbbreviation
+        versionId
+        versionTitle
+      }
       bibleBook {
         documentId: id
         name
@@ -238,6 +250,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
       ) {
         documentId
         slug
+        publishedAt
         noIndex
         label
         images {
@@ -354,6 +367,17 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           verseEnd
           order
           osisId
+          passage(languageSlug: $languageSlug) {
+            content
+            copyright
+            humanReference
+            provider
+            publisherUrl
+            reference
+            versionAbbreviation
+            versionId
+            versionTitle
+          }
           bibleBook {
             documentId
             name

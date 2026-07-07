@@ -9,7 +9,6 @@ import {
 import client from "@/lib/admin-client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
-import type { YouVersionBibleQuotePassage } from "@/lib/youversion-passage"
 import {
   getVideoChildDubLanguagesBySlugOperation,
   getWatchLanguagePickerVariantsBySlugOperation,
@@ -233,6 +232,19 @@ export type WatchStudyQuestion = {
   order: number | null
 }
 
+export type WatchBibleCitationPassage = {
+  citationDocumentId: string
+  content: string
+  copyright: string
+  humanReference: string
+  provider: string
+  publisherUrl: string | null
+  reference: string
+  versionAbbreviation: string | null
+  versionId: number
+  versionTitle: string | null
+}
+
 export type WatchBibleCitation = {
   documentId: string
   chapterStart: number | null
@@ -242,6 +254,7 @@ export type WatchBibleCitation = {
   order: number | null
   osisId: string | null
   bibleBook: { documentId: string; name: string | null } | null
+  passage: WatchBibleCitationPassage | null
 }
 
 export type WatchSubtitle = {
@@ -260,6 +273,7 @@ export type WatchSubtitle = {
 export type WatchVideoRecord = {
   documentId: string
   slug: string | null
+  publishedAt: string | null
   title: string | null
   snippet: string | null
   description: string | null
@@ -516,6 +530,17 @@ type AdminBibleCitationRaw = {
   order?: number | null
   osisId?: string | null
   bibleBook?: { documentId: string | null; name?: unknown } | null
+  passage?: {
+    content?: string | null
+    copyright?: string | null
+    humanReference?: string | null
+    provider?: string | null
+    publisherUrl?: string | null
+    reference?: string | null
+    versionAbbreviation?: string | null
+    versionId?: number | null
+    versionTitle?: string | null
+  } | null
 }
 
 type AdminStudyQuestionRaw = {
@@ -528,6 +553,7 @@ type AdminStudyQuestionRaw = {
 type AdminVideoRaw = {
   documentId: string | null
   slug?: string | null
+  publishedAt?: string | null
   noIndex?: boolean | null
   label?: string | null
   images?: AdminImageRaw[] | null
@@ -844,6 +870,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
   return {
     documentId: raw.documentId,
     slug: raw.slug ?? null,
+    publishedAt: raw.publishedAt ?? null,
     title: localeRow?.title ?? null,
     snippet: localeRow?.snippet ?? null,
     description: localeRow?.description ?? null,
@@ -917,6 +944,27 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
                   // rows admin still emits as a plain string the helper
                   // returns it verbatim.
                   name: pickLocalizedName(c.bibleBook.name),
+                }
+              : null,
+          passage:
+            c.passage &&
+            c.passage.content &&
+            c.passage.copyright &&
+            c.passage.humanReference &&
+            c.passage.provider &&
+            c.passage.reference &&
+            c.passage.versionId
+              ? {
+                  citationDocumentId: c.documentId,
+                  content: c.passage.content,
+                  copyright: c.passage.copyright,
+                  humanReference: c.passage.humanReference,
+                  provider: c.passage.provider,
+                  publisherUrl: c.passage.publisherUrl ?? null,
+                  reference: c.passage.reference,
+                  versionAbbreviation: c.passage.versionAbbreviation ?? null,
+                  versionId: c.passage.versionId,
+                  versionTitle: c.passage.versionTitle ?? null,
                 }
               : null,
         }
@@ -2217,6 +2265,15 @@ export type WatchHeroPlayerBlock = {
   video: WatchVideoRecord
   variant: WatchVariant
   playableLanguageCount?: number
+  nextWatchItem?: WatchNextWatchItem | null
+}
+
+export type WatchNextWatchItem = {
+  parentSlug: string
+  slug: string
+  title: string | null
+  documentId: string
+  kind: "chapter" | "episode"
 }
 
 /**
@@ -2253,7 +2310,7 @@ export type WatchStudyQuestionsBlock = {
 export type WatchBibleQuotesBlock = {
   kind: "BibleQuotes"
   bibleCitations: WatchBibleCitation[]
-  youVersionPassages?: YouVersionBibleQuotePassage[]
+  passages?: WatchBibleCitationPassage[]
 }
 
 export type WatchShareBlock = {
@@ -2295,6 +2352,7 @@ const HERO_PLAYER_REJECTION_MESSAGE =
 export function buildHeroBlock(
   video: WatchVideoRecord,
   variant: WatchVariant,
+  canonicalParent: WatchParent | null = null,
 ): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
@@ -2302,6 +2360,64 @@ export function buildHeroBlock(
     variant,
     playableLanguageCount:
       video.playableLanguageCount ?? countPlayableWatchVariants(video.variants),
+    nextWatchItem: buildNextWatchItem(canonicalParent, video),
+  }
+}
+
+export function buildNextWatchItem(
+  canonicalParent: WatchParent | null,
+  video: WatchVideoRecord,
+): WatchNextWatchItem | null {
+  const ownChildren = video.children.filter(
+    (child): child is WatchChild & { slug: string } =>
+      isPlayableWatchChild(child),
+  )
+  const currentSlug =
+    typeof video.slug === "string" && video.slug.length > 0 ? video.slug : null
+
+  if (ownChildren.length > 0 && currentSlug != null) {
+    return nextWatchItemFromChild(currentSlug, ownChildren[0]!)
+  }
+
+  if (!canonicalParent?.slug) return null
+  const activeIndex = canonicalParent.children.findIndex(
+    (child) => child.documentId === video.documentId,
+  )
+  if (activeIndex < 0 || activeIndex >= canonicalParent.children.length - 1) {
+    return null
+  }
+  const nextChild = canonicalParent.children
+    .slice(activeIndex + 1)
+    .find(isPlayableWatchChild)
+  if (!nextChild) return null
+
+  return nextWatchItemFromChild(canonicalParent.slug, nextChild)
+}
+
+function isPlayableWatchChild(
+  child: WatchChild,
+): child is WatchChild & { slug: string } {
+  return (
+    child.slug != null &&
+    child.slug.length > 0 &&
+    child.muxPlaybackId != null &&
+    child.muxPlaybackId.length > 0
+  )
+}
+
+function nextWatchItemFromChild(
+  parentSlug: string,
+  child: WatchChild & { slug: string },
+): WatchNextWatchItem {
+  return {
+    parentSlug,
+    slug: child.slug,
+    title: child.title,
+    documentId: child.documentId,
+    kind:
+      child.label === "EPISODE" || child.label === "episode"
+        ? "episode"
+        : "chapter",
   }
 }
 
@@ -2382,12 +2498,19 @@ export function buildStudyQuestionsBlock(
  */
 export function buildBibleQuotesBlock(
   bibleCitations: WatchVideoRecord["bibleCitations"] | null | undefined,
-  youVersionPassages: YouVersionBibleQuotePassage[] = [],
 ): WatchBibleQuotesBlock {
   const items = (bibleCitations ?? []).filter(
     (c): c is WatchBibleCitation => c != null,
   )
-  return { kind: "BibleQuotes", bibleCitations: items, youVersionPassages }
+  return {
+    kind: "BibleQuotes",
+    bibleCitations: items,
+    passages: items
+      .map((citation) => citation.passage)
+      .filter(
+        (passage): passage is WatchBibleCitationPassage => passage != null,
+      ),
+  }
 }
 
 /** Always returns a Share block — every video is shareable. */
@@ -2468,8 +2591,6 @@ type MergeWatchExperienceArgs = {
    * the SiblingCarousel slot is omitted from the merged block array.
    */
   canonicalParent: WatchParent | null
-  /** Server-fetched YouVersion passage payloads for the synthetic BibleQuotes slot. */
-  youVersionPassages?: YouVersionBibleQuotePassage[]
   /** Optional Experience override — when omitted, all 6 slots auto-template. */
   experience?: WatchExperience | null
 }
@@ -2498,7 +2619,6 @@ export function mergeWatchExperience({
   video,
   variant,
   canonicalParent,
-  youVersionPassages = [],
   experience,
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
@@ -2537,14 +2657,11 @@ export function mergeWatchExperience({
     if (fallback !== null) result.push(fallback)
   }
 
-  pushSlot("HeroPlayer", buildHeroBlock(video, variant))
+  pushSlot("HeroPlayer", buildHeroBlock(video, variant, canonicalParent))
   pushSlot("SiblingCarousel", buildSiblingCarouselBlock(canonicalParent, video))
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))
-  pushSlot(
-    "BibleQuotes",
-    buildBibleQuotesBlock(video.bibleCitations, youVersionPassages),
-  )
+  pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations))
   pushSlot("Share", buildShareBlock(video))
 
   for (const block of passthrough) result.push(block)

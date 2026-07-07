@@ -122,6 +122,8 @@ export const HomeCard = memo(function HomeCard({
       nextFocusUp={nextFocusUp}
       accessibilityRole="button"
       accessibilityLabel={card.title}
+      // Stable, low-cardinality RUM action name (auto-tracker would use the title).
+      {...{ "dd-action-name": "home-card" }}
       accessibilityHint={
         isSeriesShaped ? "Opens this series" : "Opens this video"
       }

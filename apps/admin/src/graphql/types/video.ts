@@ -11,6 +11,7 @@ import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 import { getOrScheduleWatchHeroPosterMuxBlurDataUrl } from "@/services/mux-image-derivative.service"
+import type { Passage } from "@/services/scripture-passage.service"
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
@@ -301,6 +302,7 @@ builder.prismaObject("VideoDub", {
     "A language-specific audio dub of an Edition, bundled with its encoded playback (HLS/DASH/Mux). lengthInMilliseconds is BigInt — int4 truncates at 596 hours.",
   fields: (t) => ({
     id: t.exposeID("id"),
+    videoId: t.exposeString("videoId"),
     coreId: t.exposeString("coreId"),
     slug: t.exposeString("slug", { nullable: true }),
     duration: t.exposeInt("duration", { nullable: true }),
@@ -350,6 +352,27 @@ builder.prismaObject("VideoDub", {
 })
 
 /** @classification public-shape */
+const PassageRef = builder.objectRef<Passage>("Passage")
+
+PassageRef.implement({
+  description:
+    "Cached Bible passage text for a video citation, fetched server-side from an approved provider.",
+  fields: (t) => ({
+    content: t.exposeString("content"),
+    copyright: t.exposeString("copyright"),
+    humanReference: t.exposeString("humanReference"),
+    provider: t.exposeString("provider"),
+    publisherUrl: t.exposeString("publisherUrl", { nullable: true }),
+    reference: t.exposeString("reference"),
+    versionAbbreviation: t.exposeString("versionAbbreviation", {
+      nullable: true,
+    }),
+    versionId: t.exposeInt("versionId"),
+    versionTitle: t.exposeString("versionTitle", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
 const BibleCitationRef = builder.prismaObject("BibleCitation", {
   description: "A Core-sourced Bible passage cited by a video.",
   fields: (t) => ({
@@ -362,6 +385,22 @@ const BibleCitationRef = builder.prismaObject("BibleCitation", {
     verseStart: t.exposeInt("verseStart", { nullable: true }),
     verseEnd: t.exposeInt("verseEnd", { nullable: true }),
     bibleBook: t.relation("bibleBook"),
+    passage: t.field({
+      type: PassageRef,
+      nullable: true,
+      description:
+        "Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.",
+      args: {
+        languageId: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (citation, args, ctx) =>
+        ctx.services.scripturePassage.getPassageForCitation({
+          citationId: citation.id,
+          languageId: args.languageId ?? null,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
   }),
 })
 
@@ -1161,6 +1200,22 @@ WatchRouteSnapshotBibleCitationRef.implement({
       nullable: true,
       resolve: (row) => row.bibleBook,
     }),
+    passage: t.field({
+      type: PassageRef,
+      nullable: true,
+      description:
+        "Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.",
+      args: {
+        languageId: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (row, args, ctx) =>
+        ctx.services.scripturePassage.getPassageForCitation({
+          citationId: row.documentId,
+          languageId: args.languageId ?? null,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
   }),
 })
 
@@ -1210,6 +1265,7 @@ WatchRouteSnapshotRef.implement({
   fields: (t) => ({
     documentId: t.exposeID("documentId", { nullable: false }),
     slug: t.exposeString("slug", { nullable: true }),
+    publishedAt: t.exposeString("publishedAt", { nullable: true }),
     noIndex: t.exposeBoolean("noIndex", { nullable: true }),
     label: t.field({
       type: VideoLabelEnum,

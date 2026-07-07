@@ -92,6 +92,14 @@ The worker is intentionally bounded: it handles one Match Job at a time in a
 service process, preserving the durable queue semantics without adding an
 external queue service.
 
+### Complete Match Job
+
+A terminal Match Job whose attribution attempt finished, regardless of whether
+it produced any Match Candidates.
+
+A Complete Match Job with no candidates still carries the completed status so
+polling clients can stop waiting and handle the no-match result explicitly.
+
 ### Expired Match Job
 
 A Match Job that remained queued past the yt-video-mapper queue expiry window
@@ -328,6 +336,12 @@ The code-defined content set that fills consumer clients' home screens: a featur
 
 The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
 
+### First Rail Ready
+
+The moment the series detail screen first shows a populated episode rail — the canonical series-load performance signal, recorded once per screen visit as the `series_first_rail_ready` view timing.
+
+Fires only on real content readiness: a partially-cached series that paints its hero before episodes arrive has not reached First Rail Ready, and returning to an already-loaded series never re-fires it — a near-zero re-measure would poison the metric's percentiles.
+
 ## Home hero UI
 
 ### Three-Layer Hero
@@ -412,6 +426,10 @@ Stopping an in-flight download's native task and neutralizing its callbacks — 
 ### Seeker Agent
 
 The first conversational agent of the planned headless Jesus Film AI Chat system, for people exploring Christianity and who Jesus is. It grounds factual answers through retrieval rather than answering from model memory: its retrieval tool fetches cited passages and the agent's own LLM synthesizes the answer, attributing sources. Studio-only until the deferred guardrail gate lands.
+
+### Seeker Dogfood Gate
+
+The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse `SEEKER_CHAT_ENABLED` kill switch, then a verified signed-in identity, then a LaunchDarkly boolean flag with individually-targeted emails. Default-deny and fail-closed — anonymous users, untargeted users, identities without a verified email, and LaunchDarkly outages all resolve to the stub (the flag's local override env is inert in deployed environments); delisting a user takes effect on their next message. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
 
 ### JesusFilm RAG
 

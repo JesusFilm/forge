@@ -56,15 +56,23 @@ Optional runtime settings:
 
 ## Matching
 
-`/match-jobs` uses local mapper state only. The default server extracts
-deterministic uploaded-video signals, retrieves against `MediaSignature` rows
-for the configured `MEDIA_SIGNATURE_ALGORITHM_VERSION`, joins active
-`CatalogVariant` metadata, and returns public candidates with:
+`/match-jobs` accepts either raw media bytes or a `multipart/form-data` upload
+with a file/media part. It uses local mapper state only. The default server
+extracts deterministic uploaded-video signals, retrieves against
+`MediaSignature` rows for the configured `MEDIA_SIGNATURE_ALGORITHM_VERSION`,
+joins active `CatalogVariant` metadata, and returns public candidates with:
 
 - `coreId`
 - `videoVariantId`
 - `confidence`
 - `matchStrength`
+
+Completed jobs are terminal even when no candidates match. Polling returns an
+explicit envelope:
+
+```json
+{ "jobId": "job-id", "status": "complete", "candidates": [] }
+```
 
 The first matcher uses deterministic structural byte-sample evidence as the
 source-video anchor, plus duration and optional text/audio evidence when real

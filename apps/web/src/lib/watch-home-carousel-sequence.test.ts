@@ -233,6 +233,15 @@ describe("watch home carousel sequence helpers", () => {
       kind: "mux",
       title: "Jun 4: Today's Video Picks",
       playbackId: "playback-a",
+      secondaryAction: null,
+    })
+    expect(slides[2]).toMatchObject({
+      kind: "mux",
+      title: "Join Us",
+      secondaryAction: {
+        label: "Watch Short Film",
+        type: "watch-short-film",
+      },
     })
     const stored = JSON.parse(
       window.sessionStorage.getItem(WATCH_HOME_TV_MUX_SELECTIONS_STORAGE_KEY) ??

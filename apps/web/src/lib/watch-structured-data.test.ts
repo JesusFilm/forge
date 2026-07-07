@@ -19,6 +19,9 @@ describe("watchVideoStructuredDataJson", () => {
       noIndex: false,
       inLanguage: "en",
       durationSeconds: 91.4,
+      contentUrl: "https://cdn.example/life.m3u8",
+      embedUrl: "https://www.jesusfilm.org/watch/life.html/english.html",
+      uploadDate: "2026-06-01",
     })
 
     expect(json).not.toContain("<")
@@ -28,9 +31,21 @@ describe("watchVideoStructuredDataJson", () => {
       name: "Life < Jesus",
       description: "A story with <script> content.",
       url: "https://www.jesusfilm.org/watch/life.html/english.html",
+      embedUrl: "https://www.jesusfilm.org/watch/life.html/english.html",
+      contentUrl: "https://cdn.example/life.m3u8",
       thumbnailUrl: ["https://image.mux.com/pb/thumbnail.jpg"],
       inLanguage: "en",
+      uploadDate: "2026-06-01T00:00:00.000Z",
       duration: "PT91S",
+      publisher: {
+        "@type": "Organization",
+        name: "Jesus Film Project",
+        url: "https://www.jesusfilm.org",
+      },
+      potentialAction: {
+        "@type": "WatchAction",
+        target: "https://www.jesusfilm.org/watch/life.html/english.html",
+      },
     })
   })
 })

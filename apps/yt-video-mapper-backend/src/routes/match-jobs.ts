@@ -1,5 +1,12 @@
 import { timingSafeEqual } from "node:crypto"
 import type { IncomingMessage, ServerResponse } from "node:http"
+import { Transform } from "node:stream"
+import { buffer as readStreamBuffer } from "node:stream/consumers"
+import {
+  Busboy,
+  type Busboy as BusboyInstance,
+  type BusboyFileStream,
+} from "@fastify/busboy"
 import { env } from "../config/env.js"
 import { sendJson } from "../http.js"
 import {
@@ -122,10 +129,10 @@ async function createJob(
   },
 ): Promise<void> {
   try {
-    const bytes = await readRequestBody(request, maxUploadBytes)
+    const upload = await readUploadPayload(request, maxUploadBytes)
     const job = await service.createUploadJob({
-      bytes,
-      contentType: contentTypeFrom(request),
+      bytes: upload.bytes,
+      contentType: upload.contentType,
     })
 
     if (autoProcess) {
@@ -151,6 +158,26 @@ async function createJob(
 
     sendJson(response, 500, { error: "internal_error" })
   }
+}
+
+type UploadPayload = {
+  bytes: Buffer
+  contentType: string
+}
+
+async function readUploadPayload(
+  request: IncomingMessage,
+  maxUploadBytes: number,
+): Promise<UploadPayload> {
+  const requestContentType = contentTypeFrom(request)
+  if (mediaTypeFrom(requestContentType) !== "multipart/form-data") {
+    return {
+      bytes: await readRequestBody(request, maxUploadBytes),
+      contentType: requestContentType,
+    }
+  }
+
+  return parseMultipartUpload(request, requestContentType, maxUploadBytes)
 }
 
 async function readRequestBody(
@@ -179,6 +206,126 @@ function contentTypeFrom(request: IncomingMessage): string {
   return Array.isArray(header)
     ? (header[0] ?? "application/octet-stream")
     : (header ?? "application/octet-stream")
+}
+
+function parseMultipartUpload(
+  request: IncomingMessage,
+  requestContentType: string,
+  maxBytes: number,
+): Promise<UploadPayload> {
+  return new Promise((resolve, reject) => {
+    let fileRead: Promise<UploadPayload> | null = null
+    let settled = false
+    let busboy: BusboyInstance
+    const limitStream = createRequestLimitStream(maxBytes)
+
+    const resolveOnce = (payload: UploadPayload) => {
+      if (settled) return
+      settled = true
+      resolve(payload)
+    }
+    const rejectOnce = (
+      error: Error = new SafeMatchJobError("invalid_multipart_upload"),
+    ) => {
+      if (settled) return
+      settled = true
+      reject(error)
+    }
+
+    try {
+      busboy = Busboy({
+        headers: { "content-type": requestContentType },
+        isPartAFile: (
+          _fieldName: string | undefined,
+          contentType: string | undefined,
+          fileName: string | undefined,
+        ) => fileName !== undefined || isUploadMediaType(contentType),
+      })
+    } catch {
+      rejectOnce()
+      return
+    }
+
+    busboy.on("file", (_fieldName, stream, _filename, _encoding, mimeType) => {
+      if (fileRead) {
+        stream.resume()
+        return
+      }
+
+      fileRead = readMultipartFile(stream, mimeType)
+      fileRead.catch(() => {
+        rejectOnce()
+      })
+    })
+
+    busboy.once("error", () => {
+      rejectOnce()
+    })
+    limitStream.once("error", (error) => {
+      request.unpipe(limitStream)
+      busboy.destroy()
+      rejectOnce(error instanceof RequestBodyTooLargeError ? error : undefined)
+    })
+    request.once("error", () => {
+      rejectOnce()
+    })
+    busboy.once("finish", () => {
+      if (!fileRead) {
+        rejectOnce()
+        return
+      }
+
+      fileRead.then(resolveOnce, rejectOnce)
+    })
+
+    request.pipe(limitStream).pipe(busboy)
+  })
+}
+
+function createRequestLimitStream(maxBytes: number): Transform {
+  let totalBytes = 0
+
+  return new Transform({
+    transform(
+      chunk: Buffer | string,
+      _encoding: BufferEncoding,
+      callback: (error?: Error | null, data?: Buffer) => void,
+    ): void {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+      totalBytes += bytes.byteLength
+
+      if (totalBytes > maxBytes) {
+        callback(new RequestBodyTooLargeError())
+        return
+      }
+
+      callback(null, bytes)
+    },
+  })
+}
+
+async function readMultipartFile(
+  stream: BusboyFileStream,
+  mimeType: string,
+): Promise<UploadPayload> {
+  return {
+    bytes: await readStreamBuffer(stream),
+    contentType: mimeType || "application/octet-stream",
+  }
+}
+
+function mediaTypeFrom(contentType: string): string {
+  return contentType.split(";")[0]?.trim().toLowerCase() ?? ""
+}
+
+function isUploadMediaType(contentType: string | undefined): boolean {
+  const mediaType = mediaTypeFrom(contentType ?? "")
+  return (
+    mediaType.startsWith("video/") ||
+    mediaType.startsWith("audio/") ||
+    mediaType === "application/mp4" ||
+    mediaType === "application/octet-stream"
+  )
 }
 
 function matchJobId(pathname: string): string | null {

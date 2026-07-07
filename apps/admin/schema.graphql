@@ -45,6 +45,10 @@ type BibleCitation {
   id: ID
   order: Int
   osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
   verseEnd: Int
   verseStart: Int
 }
@@ -272,7 +276,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -772,6 +776,7 @@ type MediaCollectionItem {
   subtitleOverride: String
   titleOverride: String
   videoId: String
+  videoSlug: String
 }
 
 enum MediaCollectionVariant {
@@ -823,6 +828,7 @@ type Mutation {
   Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
+  recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
@@ -944,6 +950,21 @@ type NavigationCarouselItem {
   imageAssetId: String
   imageUrl: String
   title: String
+}
+
+"""
+Cached Bible passage text for a video citation, fetched server-side from an approved provider.
+"""
+type Passage {
+  content: String
+  copyright: String
+  humanReference: String
+  provider: String
+  publisherUrl: String
+  reference: String
+  versionAbbreviation: String
+  versionId: Int
+  versionTitle: String
 }
 
 """Promotional banner with heading, description, and CTA."""
@@ -1316,6 +1337,7 @@ type VideoDub {
   share: String
   slug: String
   videoEdition: VideoEdition
+  videoId: String
 }
 
 """A downloadable quality tier for a Core-sourced video dub."""
@@ -1667,6 +1689,30 @@ type VideoTranscriptChunk {
   updatedAt: String
 }
 
+type WatchEvent {
+  createdAt: String
+  durationSeconds: Int
+  eventType: String
+  id: ID
+  languageId: String
+  occurredAt: String
+  positionSeconds: Int
+  progress: Float
+  videoDubId: String
+  videoId: String
+}
+
+enum WatchEventType {
+  download
+  meaningful_playback
+}
+
+"""Top-level placeholder that renders the Web-owned Watch Home hero."""
+type WatchHomeHeroBlock {
+  sectionKey: String
+  t: String
+}
+
 """
 Localized Watch inventory grouped for regional leads: audio collections, audio videos, then subtitle-only videos.
 """
@@ -1755,6 +1801,7 @@ type WatchRouteSnapshot {
   playableDubLanguageCount: Int!
   preferredVariant: WatchRouteSnapshotPreferredVariant
   primaryLanguage: WatchRouteSnapshotLanguage
+  publishedAt: String
   slug: String
 }
 
@@ -1770,6 +1817,10 @@ type WatchRouteSnapshotBibleCitation {
   documentId: ID!
   order: Int
   osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
   verseEnd: Int
   verseStart: Int
 }

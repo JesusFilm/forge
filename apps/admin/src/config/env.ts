@@ -124,6 +124,13 @@ export const experienceAiMaxRepairAttemptsEnvSchema = z.coerce
   .optional()
   .default(2)
 
+export const youVersionPassageCacheTtlSecondsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(60 * 60 * 24 * 14)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -148,6 +155,12 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional(),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_WEB_USER_CLIENT_IDS: z.string().min(1).optional(),
+    AUTH_WEB_USER_TOKEN_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
@@ -225,6 +238,15 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Dedicated receiver-side CSV for consumer watch-progress persistence.
+    // This endpoint accepts caller-supplied consumer user ids, so it must stay
+    // narrower than the general web SSR consumer bearer.
+    WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Admin-owned YouVersion integration for Watch Bible passages. Web
+    // reads cached passage data through GraphQL and never receives this key.
+    YOUVERSION_APP_KEY: z.string().min(1).optional(),
+    YOUVERSION_PASSAGE_CACHE_TTL_SECONDS:
+      youVersionPassageCacheTtlSecondsEnvSchema,
     // Video DB backup download signer. Production admin uses this CSV
     // to authorize non-production callers that need a short-lived GET
     // URL for the latest reviewed video backup. Keep separate from
@@ -532,6 +554,18 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
     ),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_ID: emptyToUndefined(
+      process.env.AUTH_WEB_USER_INTROSPECTION_CLIENT_ID,
+    ),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET: emptyToUndefined(
+      process.env.AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET,
+    ),
+    AUTH_WEB_USER_CLIENT_IDS: emptyToUndefined(
+      process.env.AUTH_WEB_USER_CLIENT_IDS,
+    ),
+    AUTH_WEB_USER_TOKEN_ENVIRONMENT: emptyToUndefined(
+      process.env.AUTH_WEB_USER_TOKEN_ENVIRONMENT,
+    ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     WEB_CANONICAL_ORIGIN:
       emptyToUndefined(process.env.WEB_CANONICAL_ORIGIN) ??
@@ -587,6 +621,13 @@ export const env = createEnv({
       process.env.EXPERIENCE_EXEMPLAR_FALLBACK_SLUG,
     ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    WATCH_PROGRESS_ADMIN_API_KEYS: emptyToUndefined(
+      process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
+    ),
+    YOUVERSION_APP_KEY: emptyToUndefined(process.env.YOUVERSION_APP_KEY),
+    YOUVERSION_PASSAGE_CACHE_TTL_SECONDS: emptyToUndefined(
+      process.env.YOUVERSION_PASSAGE_CACHE_TTL_SECONDS,
+    ),
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
@@ -781,6 +822,7 @@ const BEARER_CSV_KEYS = [
   "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
+  "WATCH_PROGRESS_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
   "SEARCH_TRACE_SAMPLING_API_KEYS",
 ] as const
@@ -858,6 +900,7 @@ assertBearerCsvsDisjoint({
   ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
+  WATCH_PROGRESS_ADMIN_API_KEYS: env.WATCH_PROGRESS_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
   SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,
 })
