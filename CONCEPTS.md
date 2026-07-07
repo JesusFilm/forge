@@ -66,6 +66,16 @@ A Media Signature is keyed by the source `coreId`, the variant
 `videoVariantId`, signature type, algorithm version, and time offset. It is
 evidence for matching, not catalog metadata.
 
+### Media Fingerprint
+
+A deterministic, content-derived Media Signature designed to identify source
+footage from raw clip bytes, such as visual frame perceptual hashes or audio
+landmark hashes at source offsets.
+
+Media Fingerprints are not text embeddings or catalog lookups. They are the
+primary proof for arbitrary raw clip matching when uploaded files have no
+metadata, subtitles, timing offsets, or audio.
+
 ### Index Run
 
 A durable record of one pass that turns indexable Mapper Catalog variants into

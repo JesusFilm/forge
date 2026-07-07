@@ -77,6 +77,36 @@ describe("retrievers", () => {
     ])
   })
 
+  it("ranks v2 visual fingerprints by Hamming similarity", () => {
+    expect(
+      retrieveVisualCandidates({
+        uploadFrameHashes: ["ffffffff00000000"],
+        officialFrameSignatures: [
+          signature("core-far", "variant-far", "0000000000000000"),
+          signature("core-near", "variant-near", "f0ffffff00000000"),
+          signature("core-exact", "variant-exact", "ffffffff00000000"),
+        ],
+        minimumScore: 0,
+      }),
+    ).toEqual([
+      {
+        coreId: "core-exact",
+        videoVariantId: "variant-exact",
+        visualScore: 1,
+      },
+      {
+        coreId: "core-near",
+        videoVariantId: "variant-near",
+        visualScore: 0.9375,
+      },
+      {
+        coreId: "core-far",
+        videoVariantId: "variant-far",
+        visualScore: 0.5,
+      },
+    ])
+  })
+
   it("scores audio fingerprint overlap by variant", () => {
     expect(
       retrieveAudioCandidates({

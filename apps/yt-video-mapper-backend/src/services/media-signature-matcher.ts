@@ -1,4 +1,5 @@
 import {
+  Prisma,
   SignatureType as PrismaSignatureType,
   type PrismaClient,
 } from "../generated/prisma/index.js"
@@ -8,6 +9,11 @@ import {
   OFFICIAL_MEDIA_SIGNATURE_ALGORITHM_VERSION,
   type MediaSignatureType,
 } from "./media-signature-extraction.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  isVisualFingerprintHash,
+  visualFingerprintSimilarity,
+} from "./visual-fingerprint.js"
 import type { Matcher } from "./match-job.service.js"
 import { retrieveAudioCandidates } from "./retrieval/audio-retriever.js"
 import { retrieveTextCandidates } from "./retrieval/text-retriever.js"
@@ -21,6 +27,7 @@ import type { UploadSignals } from "./upload-signal-extraction.js"
 
 const MINIMUM_DURATION_SCORE = 0.85
 const VARIANT_EVIDENCE_FALLBACK_THRESHOLD = 0.65
+const VISUAL_HASH_BAND_HEX_LENGTH = 2
 
 export type MatchableCatalogVariant = {
   durationSeconds: number | null
@@ -32,6 +39,7 @@ export type MatchableCatalogVariant = {
 export type MatchableMediaSignature = {
   coreId: string
   videoVariantId: string
+  algorithmVersion?: string
   signatureType: MediaSignatureType
   offsetMilliseconds: number
   durationMilliseconds: number | null
@@ -42,6 +50,11 @@ export type MatchableMediaSignature = {
 export type MediaSignatureMatchRepository = {
   listSignatures(input: {
     algorithmVersion: string
+  }): Promise<MatchableMediaSignature[]>
+  listVisualCandidateSignatures?(input: {
+    algorithmVersion: string
+    uploadVisualHashes: string[]
+    limit: number
   }): Promise<MatchableMediaSignature[]>
 }
 
@@ -59,11 +72,21 @@ export class MediaSignatureMatcher implements Matcher {
     signals: UploadSignals,
     { limit }: { limit: number },
   ): Promise<PublicMatchCandidate[]> {
-    const signatures = await this.repository.listSignatures({
-      algorithmVersion:
-        this.options.algorithmVersion ??
-        signals.algorithmVersion ??
-        OFFICIAL_MEDIA_SIGNATURE_ALGORITHM_VERSION,
+    const algorithmVersion =
+      this.options.algorithmVersion ??
+      signals.algorithmVersion ??
+      OFFICIAL_MEDIA_SIGNATURE_ALGORITHM_VERSION
+    if (
+      algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION &&
+      !hasV2VisualSourceEvidence(signals)
+    ) {
+      return []
+    }
+
+    const signatures = await this.listSignaturesForMatch({
+      algorithmVersion,
+      signals,
+      limit,
     })
 
     const visualSignals = retrieveSourceAnchorSignals(signals, signatures)
@@ -81,8 +104,37 @@ export class MediaSignatureMatcher implements Matcher {
 
     return fuseRankedCandidates(
       [...fallbackVisualSignals, ...anchoredVariantSignals, ...durationSignals],
-      { limit },
+      {
+        limit,
+        capVisualOnlyVariantConfidence:
+          algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      },
     )
+  }
+
+  private async listSignaturesForMatch({
+    algorithmVersion,
+    signals,
+    limit,
+  }: {
+    algorithmVersion: string
+    signals: UploadSignals
+    limit: number
+  }): Promise<MatchableMediaSignature[]> {
+    const uploadVisualHashes = sourceAnchorUploadHashes(signals)
+    if (algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION) {
+      if (uploadVisualHashes.length === 0) return []
+      if (this.repository.listVisualCandidateSignatures) {
+        return await this.repository.listVisualCandidateSignatures({
+          algorithmVersion,
+          uploadVisualHashes,
+          limit: Math.max(50, limit * 50),
+        })
+      }
+      return []
+    }
+
+    return await this.repository.listSignatures({ algorithmVersion })
   }
 }
 
@@ -132,13 +184,94 @@ export class PrismaMediaSignatureMatchRepository implements MediaSignatureMatchR
       catalogVariant: signature.catalogVariant,
     }))
   }
+
+  async listVisualCandidateSignatures({
+    algorithmVersion,
+    uploadVisualHashes,
+    limit,
+  }: {
+    algorithmVersion: string
+    uploadVisualHashes: string[]
+    limit: number
+  }): Promise<MatchableMediaSignature[]> {
+    const bandConditions = visualHashBandConditions(uploadVisualHashes)
+    const bandScoreTerms = visualHashBandScoreTerms(uploadVisualHashes)
+    if (bandConditions.length === 0) return []
+
+    const scanLimit = Math.max(limit, limit * 20)
+    const rows = await this.db.$queryRaw<RawVisualCandidateSignature[]>(
+      Prisma.sql`
+        SELECT
+          ms.core_id AS "coreId",
+          ms.video_variant_id AS "videoVariantId",
+          ms.signature_type::text AS "signatureType",
+          ms.offset_milliseconds AS "offsetMilliseconds",
+          ms.duration_milliseconds AS "durationMilliseconds",
+          ms.signature AS "signature",
+          cv.duration_seconds AS "durationSeconds",
+          cv.length_in_milliseconds AS "lengthInMilliseconds",
+          cv.language_slug AS "languageSlug",
+          cv.locale AS "locale"
+        FROM mapper_media_signature ms
+        INNER JOIN mapper_catalog_variant cv
+          ON cv.core_id = ms.core_id
+         AND cv.video_variant_id = ms.video_variant_id
+        WHERE ms.algorithm_version = ${algorithmVersion}
+          AND ms.signature_type = 'visual_frame'::signature_type
+          AND cv.indexable = true
+          AND cv.deleted_at IS NULL
+          AND ms.signature->>'phash' IS NOT NULL
+          AND (${Prisma.join(bandConditions, " OR ")})
+        ORDER BY
+          (${Prisma.join(bandScoreTerms, " + ")}) DESC,
+          ms.core_id ASC,
+          ms.video_variant_id ASC,
+          ms.offset_milliseconds ASC
+        LIMIT ${scanLimit}
+      `,
+    )
+
+    return rankVisualCandidateSignatures(
+      rows.map(fromRawVisualCandidateSignature),
+      uploadVisualHashes,
+      limit,
+    )
+  }
 }
 
 export class InMemoryMediaSignatureMatchRepository implements MediaSignatureMatchRepository {
   constructor(private readonly signatures: MatchableMediaSignature[] = []) {}
 
-  async listSignatures(): Promise<MatchableMediaSignature[]> {
-    return this.signatures.map((signature) => ({ ...signature }))
+  async listSignatures({
+    algorithmVersion,
+  }: {
+    algorithmVersion: string
+  }): Promise<MatchableMediaSignature[]> {
+    return this.signatures
+      .filter((signature) =>
+        signatureMatchesAlgorithm(signature, algorithmVersion),
+      )
+      .map(cloneMatchableSignature)
+  }
+
+  async listVisualCandidateSignatures({
+    algorithmVersion,
+    uploadVisualHashes,
+    limit,
+  }: {
+    algorithmVersion: string
+    uploadVisualHashes: string[]
+    limit: number
+  }): Promise<MatchableMediaSignature[]> {
+    return rankVisualCandidateSignatures(
+      this.signatures.filter(
+        (signature) =>
+          signature.signatureType === "VISUAL_FRAME" &&
+          signatureMatchesAlgorithm(signature, algorithmVersion),
+      ),
+      uploadVisualHashes,
+      limit,
+    )
   }
 }
 
@@ -166,10 +299,7 @@ function retrieveSourceAnchorSignals(
   uploadSignals: UploadSignals,
   officialSignatures: MatchableMediaSignature[],
 ): RetrievalSignal[] {
-  const uploadHashes = uniqueStrings([
-    ...(uploadSignals.sampledByteHashes ?? []),
-    ...uploadSignals.visualHashes,
-  ])
+  const uploadHashes = sourceAnchorUploadHashes(uploadSignals)
   if (uploadHashes.length === 0) return []
 
   const officialSourceAnchors = officialSignatures.flatMap((signature) =>
@@ -308,6 +438,7 @@ function sourceAnchorSignatureValue(
 
   const byteSample = asRecord(payload.byteSample)
   return (
+    stringField(payload, "phash") ??
     stringField(byteSample, "sha256") ??
     stringField(payload, "sha256") ??
     stringField(payload, "hash") ??
@@ -390,6 +521,174 @@ function stringField(
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.filter((value) => value.length > 0))]
+}
+
+function sourceAnchorUploadHashes(uploadSignals: UploadSignals): string[] {
+  if (
+    uploadSignals.algorithmVersion ===
+    OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
+  ) {
+    return uniqueStrings(uploadSignals.visualHashes)
+  }
+
+  return uniqueStrings([
+    ...(uploadSignals.sampledByteHashes ?? []),
+    ...uploadSignals.visualHashes,
+  ])
+}
+
+function hasV2VisualSourceEvidence(uploadSignals: UploadSignals): boolean {
+  return uploadSignals.visualHashes.some(isVisualFingerprintHash)
+}
+
+function rankVisualCandidateSignatures(
+  signatures: MatchableMediaSignature[],
+  uploadVisualHashes: string[],
+  limit: number,
+): MatchableMediaSignature[] {
+  const uploadHashes = uploadVisualHashes.filter(isVisualFingerprintHash)
+  if (uploadHashes.length === 0) return []
+
+  return signatures
+    .map((signature) => ({
+      signature,
+      score: visualCandidateScore(signature, uploadHashes),
+    }))
+    .filter((candidate) => candidate.score > 0)
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.signature.coreId.localeCompare(right.signature.coreId) ||
+        left.signature.videoVariantId.localeCompare(
+          right.signature.videoVariantId,
+        ),
+    )
+    .slice(0, limit)
+    .map((candidate) => cloneMatchableSignature(candidate.signature))
+}
+
+function visualCandidateScore(
+  signature: MatchableMediaSignature,
+  uploadVisualHashes: string[],
+): number {
+  const value = sourceAnchorSignatureValue(signature)
+  if (!value || !isVisualFingerprintHash(value)) return 0
+
+  return Math.max(
+    ...uploadVisualHashes.map((uploadHash) =>
+      visualFingerprintSimilarity(uploadHash, value),
+    ),
+  )
+}
+
+function visualHashBandConditions(uploadVisualHashes: string[]): Prisma.Sql[] {
+  return visualHashBandsByIndex(uploadVisualHashes).flatMap((values, index) => {
+    if (values.size === 0) return []
+    const start = index * VISUAL_HASH_BAND_HEX_LENGTH + 1
+    const startLiteral = Prisma.raw(String(start))
+    const lengthLiteral = Prisma.raw(String(VISUAL_HASH_BAND_HEX_LENGTH))
+    return [
+      Prisma.sql`substring(ms.signature->>'phash' from ${startLiteral} for ${lengthLiteral}) IN (${Prisma.join([...values])})`,
+    ]
+  })
+}
+
+function visualHashBandScoreTerms(uploadVisualHashes: string[]): Prisma.Sql[] {
+  return visualHashBandsByIndex(uploadVisualHashes).flatMap((values, index) => {
+    if (values.size === 0) return []
+    const start = index * VISUAL_HASH_BAND_HEX_LENGTH + 1
+    const startLiteral = Prisma.raw(String(start))
+    const lengthLiteral = Prisma.raw(String(VISUAL_HASH_BAND_HEX_LENGTH))
+    return [
+      Prisma.sql`CASE WHEN substring(ms.signature->>'phash' from ${startLiteral} for ${lengthLiteral}) IN (${Prisma.join([...values])}) THEN 1 ELSE 0 END`,
+    ]
+  })
+}
+
+function visualHashBandsByIndex(uploadVisualHashes: string[]): Set<string>[] {
+  const bandCount = 16 / VISUAL_HASH_BAND_HEX_LENGTH
+  const bandValuesByIndex = Array.from(
+    { length: bandCount },
+    () => new Set<string>(),
+  )
+
+  for (const hash of uploadVisualHashes) {
+    if (!isVisualFingerprintHash(hash)) continue
+    const normalized = hash.toLowerCase()
+    for (let index = 0; index < bandCount; index += 1) {
+      const start = index * VISUAL_HASH_BAND_HEX_LENGTH
+      bandValuesByIndex[index]?.add(
+        normalized.slice(start, start + VISUAL_HASH_BAND_HEX_LENGTH),
+      )
+    }
+  }
+
+  return bandValuesByIndex
+}
+
+function signatureMatchesAlgorithm(
+  signature: MatchableMediaSignature,
+  algorithmVersion: string,
+): boolean {
+  return (
+    signature.algorithmVersion === undefined ||
+    signature.algorithmVersion === algorithmVersion
+  )
+}
+
+function cloneMatchableSignature(
+  signature: MatchableMediaSignature,
+): MatchableMediaSignature {
+  return {
+    ...signature,
+    catalogVariant: { ...signature.catalogVariant },
+  }
+}
+
+type RawVisualCandidateSignature = {
+  coreId: string
+  videoVariantId: string
+  signatureType: string
+  offsetMilliseconds: number
+  durationMilliseconds: number | null
+  signature: unknown
+  durationSeconds: number | null
+  lengthInMilliseconds: bigint | null
+  languageSlug: string | null
+  locale: string | null
+}
+
+function fromRawVisualCandidateSignature(
+  row: RawVisualCandidateSignature,
+): MatchableMediaSignature {
+  return {
+    coreId: row.coreId,
+    videoVariantId: row.videoVariantId,
+    signatureType: fromDatabaseSignatureType(row.signatureType),
+    offsetMilliseconds: row.offsetMilliseconds,
+    durationMilliseconds: row.durationMilliseconds,
+    signature: row.signature,
+    catalogVariant: {
+      durationSeconds: row.durationSeconds,
+      lengthInMilliseconds: row.lengthInMilliseconds,
+      languageSlug: row.languageSlug,
+      locale: row.locale,
+    },
+  }
+}
+
+function fromDatabaseSignatureType(signatureType: string): MediaSignatureType {
+  const map = {
+    visual_frame: "VISUAL_FRAME",
+    audio_fingerprint: "AUDIO_FINGERPRINT",
+    text_segment: "TEXT_SEGMENT",
+    structural_hint: "STRUCTURAL_HINT",
+  } satisfies Record<string, MediaSignatureType>
+
+  return (
+    map[signatureType as keyof typeof map] ??
+    (signatureType as MediaSignatureType)
+  )
 }
 
 function fromPrismaSignatureType(

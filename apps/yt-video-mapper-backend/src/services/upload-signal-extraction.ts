@@ -1,4 +1,12 @@
 import { createHash } from "node:crypto"
+import {
+  FfmpegVisualFrameExtractor,
+  type VisualFrameExtractor,
+} from "./ffmpeg-visual-frame-extraction.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  type VisualFrameFingerprint,
+} from "./visual-fingerprint.js"
 
 export const UPLOAD_SIGNAL_ALGORITHM_VERSION = "official-media-signature-v1"
 const DEFAULT_SAMPLE_BYTES = 262_144
@@ -16,6 +24,7 @@ export type UploadByteSample = {
 export type UploadSignals = {
   visualHashes: string[]
   audioFingerprints: string[]
+  visualFingerprints?: VisualFrameFingerprint[]
   sampledByteHashes?: string[]
   byteSamples?: UploadByteSample[]
   transcriptText?: string
@@ -34,8 +43,38 @@ export type UploadSignalExtractor = {
   extract(input: UploadSignalExtractionInput): Promise<UploadSignals>
 }
 
+export type DeterministicUploadSignalExtractorOptions = {
+  sampleBytes?: number
+  algorithmVersion?: string
+  visualFrameExtractor?: Pick<VisualFrameExtractor, "extractFromBytes"> | null
+}
+
 export class DeterministicUploadSignalExtractor implements UploadSignalExtractor {
-  constructor(private readonly sampleBytes = DEFAULT_SAMPLE_BYTES) {}
+  private readonly sampleBytes: number
+  private readonly algorithmVersion: string
+  private readonly visualFrameExtractor: Pick<
+    VisualFrameExtractor,
+    "extractFromBytes"
+  > | null
+
+  constructor(
+    options: number | DeterministicUploadSignalExtractorOptions = {},
+  ) {
+    if (typeof options === "number") {
+      this.sampleBytes = options
+      this.algorithmVersion = UPLOAD_SIGNAL_ALGORITHM_VERSION
+      this.visualFrameExtractor = null
+      return
+    }
+
+    this.sampleBytes = options.sampleBytes ?? DEFAULT_SAMPLE_BYTES
+    this.algorithmVersion =
+      options.algorithmVersion ?? UPLOAD_SIGNAL_ALGORITHM_VERSION
+    this.visualFrameExtractor =
+      options.visualFrameExtractor === undefined
+        ? this.defaultVisualFrameExtractor()
+        : options.visualFrameExtractor
+  }
 
   async extract({
     bytes,
@@ -43,17 +82,64 @@ export class DeterministicUploadSignalExtractor implements UploadSignalExtractor
   }: UploadSignalExtractionInput): Promise<UploadSignals> {
     const byteSamples = buildByteSamples(bytes, contentType, this.sampleBytes)
     const sampledByteHashes = byteSamples.map((sample) => sample.sha256)
+    const durationMilliseconds = extractDurationMilliseconds(bytes, contentType)
+    const visualFingerprints = await this.extractVisualFingerprints({
+      bytes,
+      contentType,
+      durationMilliseconds,
+    })
 
     return {
-      visualHashes: sampledByteHashes,
+      visualHashes:
+        this.algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
+          ? visualFingerprints.map((fingerprint) => fingerprint.payload.phash)
+          : sampledByteHashes,
       audioFingerprints: [],
+      visualFingerprints,
       sampledByteHashes,
       byteSamples,
       transcriptText: extractTranscriptText(bytes, contentType),
-      durationMilliseconds: extractDurationMilliseconds(bytes, contentType),
+      durationMilliseconds,
       byteLength: bytes.byteLength,
       contentType,
-      algorithmVersion: UPLOAD_SIGNAL_ALGORITHM_VERSION,
+      algorithmVersion: this.algorithmVersion,
+    }
+  }
+
+  private defaultVisualFrameExtractor(): Pick<
+    VisualFrameExtractor,
+    "extractFromBytes"
+  > | null {
+    return this.algorithmVersion ===
+      OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
+      ? new FfmpegVisualFrameExtractor()
+      : null
+  }
+
+  private async extractVisualFingerprints({
+    bytes,
+    contentType,
+    durationMilliseconds,
+  }: {
+    bytes: Buffer
+    contentType: string
+    durationMilliseconds?: number
+  }): Promise<VisualFrameFingerprint[]> {
+    if (
+      this.algorithmVersion !== OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION ||
+      !this.visualFrameExtractor
+    ) {
+      return []
+    }
+
+    try {
+      return await this.visualFrameExtractor.extractFromBytes({
+        bytes,
+        contentType,
+        durationMilliseconds,
+      })
+    } catch {
+      return []
     }
   }
 }

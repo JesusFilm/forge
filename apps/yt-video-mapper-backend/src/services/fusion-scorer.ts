@@ -9,6 +9,8 @@ export type FusionOptions = {
   limit?: number
   visualAnchorThreshold?: number
   visualCandidateFloor?: number
+  variantEvidenceThreshold?: number
+  capVisualOnlyVariantConfidence?: boolean
 }
 
 const DEFAULT_WEIGHTS = {
@@ -24,6 +26,8 @@ export function fuseRankedCandidates(
     limit = 3,
     visualAnchorThreshold = 0.65,
     visualCandidateFloor = 0.2,
+    variantEvidenceThreshold = 0.65,
+    capVisualOnlyVariantConfidence = false,
   }: FusionOptions = {},
 ): PublicMatchCandidate[] {
   const merged = mergeSignals(signals)
@@ -41,24 +45,38 @@ export function fuseRankedCandidates(
       const weighted = weightedConfidence(signal)
       const lacksStrongVisualAnchor =
         (signal.visualScore ?? 0) < visualAnchorThreshold
+      const lacksVariantSpecificEvidence =
+        capVisualOnlyVariantConfidence &&
+        signal.visualScore !== undefined &&
+        (signal.audioScore ?? 0) < variantEvidenceThreshold &&
+        (signal.textScore ?? 0) < variantEvidenceThreshold
       const confidence = roundConfidence(
-        lacksStrongVisualAnchor ? Math.min(weighted, 0.84) : weighted,
+        lacksStrongVisualAnchor || lacksVariantSpecificEvidence
+          ? Math.min(weighted, 0.84)
+          : weighted,
       )
 
       return {
-        coreId: signal.coreId,
-        videoVariantId: signal.videoVariantId,
-        confidence,
-        matchStrength: classifyMatchStrength(confidence),
+        candidate: {
+          coreId: signal.coreId,
+          videoVariantId: signal.videoVariantId,
+          confidence,
+          matchStrength: classifyMatchStrength(confidence),
+        },
+        sortScore: weighted,
       }
     })
     .sort(
       (left, right) =>
-        right.confidence - left.confidence ||
-        left.coreId.localeCompare(right.coreId) ||
-        left.videoVariantId.localeCompare(right.videoVariantId),
+        right.sortScore - left.sortScore ||
+        right.candidate.confidence - left.candidate.confidence ||
+        left.candidate.coreId.localeCompare(right.candidate.coreId) ||
+        left.candidate.videoVariantId.localeCompare(
+          right.candidate.videoVariantId,
+        ),
     )
     .slice(0, limit)
+    .map((ranked) => ranked.candidate)
 }
 
 function weightedConfidence(signal: RetrievalSignal): number {

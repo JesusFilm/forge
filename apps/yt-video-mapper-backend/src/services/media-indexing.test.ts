@@ -11,6 +11,10 @@ import {
   type OfficialMediaFetcher,
 } from "./media-indexing.js"
 import type { OfficialMediaSignatureExtractor } from "./media-signature-extraction.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  VISUAL_FRAME_FINGERPRINT_KIND,
+} from "./visual-fingerprint.js"
 
 const runStartedAt = new Date("2026-06-10T01:00:00.000Z")
 const runFinishedAt = new Date("2026-06-10T01:01:00.000Z")
@@ -73,10 +77,11 @@ describe("MediaIndexingService", () => {
     })
   })
 
-  it("indexes the same variant again for a new algorithm version", async () => {
+  it("indexes the same variant again for v2 visual signatures", async () => {
     const repository = new InMemoryMediaIndexRepository([
       variant({ id: "variant-a" }),
     ])
+    const v2Extractor = visualExtractor()
 
     await createService({
       repository,
@@ -85,8 +90,11 @@ describe("MediaIndexingService", () => {
     }).indexCatalog()
     await createService({
       repository,
-      fetcher: new StubOfficialMediaFetcher([mediaSample([2])]),
-      algorithmVersion: "official-media-signature-v2",
+      fetcher: new StubOfficialMediaFetcher([
+        new Error("v2 should not fetch bytes"),
+      ]),
+      extractor: v2Extractor,
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
     }).indexCatalog()
 
     expect(
@@ -100,10 +108,106 @@ describe("MediaIndexingService", () => {
         signatureType: "STRUCTURAL_HINT",
       },
       {
-        algorithmVersion: "official-media-signature-v2",
-        signatureType: "STRUCTURAL_HINT",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        signatureType: "VISUAL_FRAME",
       },
     ])
+    expect(v2Extractor.calls).toEqual([
+      {
+        sourceMediaUrl: "https://media.example.com/video.mp4",
+        mediaSample: undefined,
+      },
+    ])
+  })
+
+  it("indexes v2 visual signatures from source URLs without byte-range fetching", async () => {
+    const repository = new InMemoryMediaIndexRepository([
+      variant({ id: "variant-a" }),
+    ])
+    const fetcher = new StubOfficialMediaFetcher([
+      new Error("fetch should not be called"),
+    ])
+    const extractor = visualExtractor()
+
+    const result = await createService({
+      repository,
+      fetcher,
+      extractor,
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    }).indexCatalog()
+
+    expect(fetcher.calls).toEqual([])
+    expect(result).toMatchObject({
+      status: "completed",
+      variantsAttempted: 1,
+      variantsIndexed: 1,
+      variantsFailed: 0,
+    })
+    expect([...repository.signatures.values()]).toEqual([
+      expect.objectContaining({
+        signatureType: "VISUAL_FRAME",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        sourceMediaUrl: "https://media.example.com/video.mp4",
+        sourceMediaHash: null,
+        signature: {
+          kind: VISUAL_FRAME_FINGERPRINT_KIND,
+          phash: "ffffffff00000000",
+          frameWidth: 8,
+          frameHeight: 8,
+        },
+      }),
+    ])
+  })
+
+  it("records v2 extractor failures per variant without stopping the run", async () => {
+    const repository = new InMemoryMediaIndexRepository([
+      variant({
+        id: "variant-a",
+        coreId: "core-a",
+        videoVariantId: "dub-a",
+        mediaSourceUrl: "https://media.example.com/private-a.mp4?token=secret",
+      }),
+      variant({
+        id: "variant-b",
+        coreId: "core-b",
+        videoVariantId: "dub-b",
+        mediaSourceUrl: "https://media.example.com/private-b.mp4",
+      }),
+    ])
+
+    const result = await createService({
+      repository,
+      fetcher: new StubOfficialMediaFetcher([
+        new Error("v2 should not fetch bytes"),
+      ]),
+      extractor: visualExtractor([
+        new Error("ffmpeg failed for https://media.example.com/private-a.mp4"),
+        "ffffffff00000000",
+      ]),
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    }).indexCatalog()
+
+    expect(result).toMatchObject({
+      status: "completed",
+      cursorVariantId: "variant-b",
+      variantsAttempted: 2,
+      variantsIndexed: 1,
+      variantsFailed: 1,
+      failureSummary: {
+        code: "variant_index_failures",
+        failedCount: 1,
+        failures: [
+          {
+            coreId: "core-a",
+            videoVariantId: "dub-a",
+            catalogVariantId: "variant-a",
+            code: "variant_index_failed",
+            message: "ffmpeg failed for [redacted-url]",
+          },
+        ],
+      },
+    })
+    expect(repository.signatures.size).toBe(1)
   })
 
   it("records per-variant failures safely without stopping the run", async () => {
@@ -425,6 +529,22 @@ describe("FetchOfficialMediaFetcher", () => {
     ).rejects.toMatchObject({
       code: "media_url_private_host",
     })
+    await expect(
+      fetcher.fetch({
+        url: "https://[::ffff:127.0.0.1]/video.mp4",
+        maxBytes: 4,
+      }),
+    ).rejects.toMatchObject({
+      code: "media_url_private_host",
+    })
+    await expect(
+      fetcher.fetch({
+        url: "https://[::ffff:10.0.0.1]/video.mp4",
+        maxBytes: 4,
+      }),
+    ).rejects.toMatchObject({
+      code: "media_url_private_host",
+    })
   })
 
   it("enforces the optional official media host allowlist", async () => {
@@ -552,6 +672,53 @@ function mediaSample(bytes: number[]): OfficialMediaFetchResult {
     rangeStart: 0,
     rangeEnd: bytes.length - 1,
     complete: true,
+  }
+}
+
+function visualExtractor(
+  results: Array<string | Error> = ["ffffffff00000000"],
+): OfficialMediaSignatureExtractor & {
+  calls: Array<{
+    sourceMediaUrl: string | undefined
+    mediaSample: unknown
+  }>
+} {
+  const calls: Array<{
+    sourceMediaUrl: string | undefined
+    mediaSample: unknown
+  }> = []
+
+  return {
+    calls,
+    async extract(input) {
+      calls.push({
+        sourceMediaUrl: input.sourceMediaUrl,
+        mediaSample: input.mediaSample,
+      })
+      const result = results.shift()
+      if (!result) throw new Error("No visual extractor result configured")
+      if (result instanceof Error) throw result
+
+      return [
+        {
+          coreId: input.variant.coreId,
+          videoVariantId: input.variant.videoVariantId,
+          signatureType: "VISUAL_FRAME",
+          algorithmVersion:
+            input.algorithmVersion ??
+            OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+          offsetMilliseconds: 0,
+          durationMilliseconds: null,
+          signature: {
+            kind: VISUAL_FRAME_FINGERPRINT_KIND,
+            phash: result,
+            frameWidth: 8,
+            frameHeight: 8,
+          },
+          sourceMediaHash: null,
+        },
+      ]
+    },
   }
 }
 
