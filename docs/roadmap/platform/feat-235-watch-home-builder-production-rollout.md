@@ -3,8 +3,8 @@ id: feat-235
 title: Watch home builder production rollout
 owner: urim
 priority: P1
-status: planned
-start_date: 2026-07-06
+status: "not-started"
+start_date: "2026-07-06"
 duration: 1
 depends_on:
   - feat-160
