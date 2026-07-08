@@ -246,7 +246,7 @@ embeddings.
 
 ### AI Gateway
 
-The project-owned embedding provider surface that produces vectors for Content Embeddings. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
+The project-owned, OpenAI-compatible provider surface fronting self-hosted models. It serves two model families: the embedding model that produces vectors for Content Embeddings, and chat models available as opt-in primaries for conversational agents (the Seeker Agent and the experience-editing agents), each behind its own default-off gate with the free/external provider chain kept as failover. Credentials are model-scoped — a chat key cannot call the embedding model and vice versa. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
 
 ### Embedding Provenance
 
