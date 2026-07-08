@@ -1,12 +1,16 @@
 export {
   createFeatureFlagClient,
   evaluateFlag,
+  evaluateFlagDetail,
   resetFeatureFlagClientCacheForTests,
+  type BooleanVariationDetail,
   type FeatureFlagAttribute,
   type FeatureFlagClient,
   type FeatureFlagClientOptions,
   type FeatureFlagContext,
+  type FeatureFlagVariationSource,
   type LaunchDarklyClientLike,
+  type LaunchDarklyEvaluationDetailLike,
 } from "./launchdarkly"
 export {
   featureFlags,

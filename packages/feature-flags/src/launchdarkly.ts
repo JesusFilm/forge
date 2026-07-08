@@ -8,6 +8,7 @@ import {
   type FeatureFlagDefinition,
   type FeatureFlagEnv,
   type FeatureFlagKey,
+  parseBooleanOverride,
   resolveLocalBooleanFallback,
 } from "./registry"
 
@@ -22,6 +23,11 @@ export type FeatureFlagContext = {
   custom?: Record<string, FeatureFlagAttribute>
 }
 
+export type LaunchDarklyEvaluationDetailLike = {
+  value: unknown
+  reason?: { kind: string; errorKind?: string }
+}
+
 export type LaunchDarklyClientLike = {
   waitForInitialization(options: { timeout: number }): Promise<unknown>
   variation(
@@ -29,6 +35,11 @@ export type LaunchDarklyClientLike = {
     context: LDContext,
     defaultValue: boolean,
   ): Promise<unknown>
+  boolVariationDetail(
+    flagKey: string,
+    context: LDContext,
+    defaultValue: boolean,
+  ): Promise<LaunchDarklyEvaluationDetailLike>
 }
 
 export type FeatureFlagClientOptions = {
@@ -42,11 +53,22 @@ export type FeatureFlagClientOptions = {
   logger?: Pick<Console, "warn">
 }
 
+export type FeatureFlagVariationSource = "launchdarkly" | "override" | "default"
+
+export type BooleanVariationDetail = {
+  value: boolean
+  source: FeatureFlagVariationSource
+}
+
 export type FeatureFlagClient = {
   booleanVariation(
     flag: FeatureFlagDefinition,
     context: FeatureFlagContext,
   ): Promise<boolean>
+  booleanVariationDetail(
+    flag: FeatureFlagDefinition,
+    context: FeatureFlagContext,
+  ): Promise<BooleanVariationDetail>
 }
 
 const DEFAULT_TIMEOUT_SECONDS = 0.25
@@ -131,6 +153,18 @@ function toLaunchDarklyContext(context: FeatureFlagContext): LDContext {
   return ldContext
 }
 
+function resolveFallbackDetail(
+  flag: FeatureFlagDefinition,
+  localEnv: FeatureFlagEnv,
+  defaultValues?: Partial<Record<FeatureFlagKey, boolean>>,
+): BooleanVariationDetail {
+  const parsed = parseBooleanOverride(localEnv[flag.localOverrideEnv])
+  return {
+    value: resolveLocalBooleanFallback(flag, localEnv, defaultValues),
+    source: parsed.ok ? "override" : "default",
+  }
+}
+
 function warn(
   logger: Pick<Console, "warn"> | undefined,
   message: string,
@@ -155,50 +189,92 @@ export function createFeatureFlagClient(
   const localEnv = options.localEnv ?? {}
   const logger = options.logger
 
-  return {
-    async booleanVariation(flag, context) {
-      const fallback = resolveLocalBooleanFallback(
-        flag,
-        localEnv,
-        options.defaultValues,
+  async function booleanVariationDetail(
+    flag: FeatureFlagDefinition,
+    context: FeatureFlagContext,
+  ): Promise<BooleanVariationDetail> {
+    const fallback = resolveFallbackDetail(
+      flag,
+      localEnv,
+      options.defaultValues,
+    )
+
+    if (!sdkKey) return fallback
+
+    // Respect the init-failure cooldown before touching the client at all, so a
+    // persistently-throwing construction backs off like an init timeout rather
+    // than re-attempting every request.
+    const retryAt = initializationFailureRetryAt.get(sdkKey)
+    if (retryAt && Date.now() < retryAt) return fallback
+
+    // Client construction (SDK init) throwing must fail closed — this variant's
+    // contract (KTD4) is that it never throws, and both gate surfaces await it
+    // without a catch of their own.
+    let client: LaunchDarklyClientLike
+    try {
+      client = getClient(sdkKey, options)
+    } catch (error) {
+      initializationFailureRetryAt.set(
+        sdkKey,
+        Date.now() + initializationFailureCooldownMs,
       )
+      warn(
+        logger,
+        `[feature-flags] LaunchDarkly client init failed for ${flag.key}; using fallback.`,
+        error,
+      )
+      return fallback
+    }
 
-      if (!sdkKey) return fallback
+    try {
+      await waitUntilReady(sdkKey, client, timeoutSeconds)
+    } catch (error) {
+      initializationFailureRetryAt.set(
+        sdkKey,
+        Date.now() + initializationFailureCooldownMs,
+      )
+      warn(
+        logger,
+        `[feature-flags] LaunchDarkly initialization failed for ${flag.key}; using fallback.`,
+        error,
+      )
+      return fallback
+    }
 
-      const client = getClient(sdkKey, options)
-      const retryAt = initializationFailureRetryAt.get(sdkKey)
-      if (retryAt && Date.now() < retryAt) return fallback
-
-      try {
-        await waitUntilReady(sdkKey, client, timeoutSeconds)
-      } catch (error) {
-        initializationFailureRetryAt.set(
-          sdkKey,
-          Date.now() + initializationFailureCooldownMs,
-        )
+    try {
+      const detail = await client.boolVariationDetail(
+        flag.key,
+        toLaunchDarklyContext(context),
+        fallback.value,
+      )
+      // The SDK resolves the passed default (never throws) on in-LD errors
+      // such as a missing/archived flag; treat those as fallback, not as a
+      // genuine LaunchDarkly answer.
+      if (detail.reason?.kind === "ERROR") {
         warn(
           logger,
-          `[feature-flags] LaunchDarkly initialization failed for ${flag.key}; using fallback.`,
-          error,
+          `[feature-flags] LaunchDarkly resolved ${flag.key} with an error reason (${detail.reason.errorKind ?? "unknown"}); using fallback.`,
         )
         return fallback
       }
+      return typeof detail.value === "boolean"
+        ? { value: detail.value, source: "launchdarkly" }
+        : fallback
+    } catch (error) {
+      warn(
+        logger,
+        `[feature-flags] LaunchDarkly variation failed for ${flag.key}; using fallback.`,
+        error,
+      )
+      return fallback
+    }
+  }
 
-      try {
-        const variation = await client.variation(
-          flag.key,
-          toLaunchDarklyContext(context),
-          fallback,
-        )
-        return typeof variation === "boolean" ? variation : fallback
-      } catch (error) {
-        warn(
-          logger,
-          `[feature-flags] LaunchDarkly variation failed for ${flag.key}; using fallback.`,
-          error,
-        )
-        return fallback
-      }
+  return {
+    booleanVariationDetail,
+    async booleanVariation(flag, context) {
+      const { value } = await booleanVariationDetail(flag, context)
+      return value
     },
   }
 }
@@ -209,6 +285,14 @@ export async function evaluateFlag(
   options: FeatureFlagClientOptions = {},
 ): Promise<boolean> {
   return createFeatureFlagClient(options).booleanVariation(flag, context)
+}
+
+export async function evaluateFlagDetail(
+  flag: FeatureFlagDefinition,
+  context: FeatureFlagContext,
+  options: FeatureFlagClientOptions = {},
+): Promise<BooleanVariationDetail> {
+  return createFeatureFlagClient(options).booleanVariationDetail(flag, context)
 }
 
 export function resetFeatureFlagClientCacheForTests(): void {

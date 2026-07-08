@@ -23,6 +23,8 @@ function failureNotice(reason: ReplyFailureReason): string {
     case "model_key_missing":
     case "config_missing":
     case "ssrf_blocked":
+    case "gate_denied":
+      // gate_denied is a defensive fallback only — the seam maps it to a stub reply.
       return "Seeker is unavailable right now. Please try again later."
     case "auth_failed":
       return "Seeker rejected the request. Please try again later."

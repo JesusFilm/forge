@@ -190,6 +190,52 @@ describe("verifyChatIdToken — happy path", () => {
   })
 })
 
+describe("verifyChatIdToken — email_verified claim (KTD6, strict boolean)", () => {
+  async function identityWithClaims(claims: Record<string, unknown>) {
+    const key = await makeKey("EdDSA", "k-ed")
+    jwksKeys = [key.jwk]
+    const token = await signIdToken({ key, alg: "EdDSA", claims })
+    return verifyChatIdToken({ config, idToken: token })
+  }
+
+  it("carries emailVerified: true for a boolean true claim", async () => {
+    const identity = await identityWithClaims({
+      sub: "user-123",
+      email: "ada@example.com",
+      email_verified: true,
+    })
+    expect(identity.emailVerified).toBe(true)
+  })
+
+  it("carries emailVerified: false for a boolean false claim (not verified)", async () => {
+    const identity = await identityWithClaims({
+      sub: "user-123",
+      email: "ada@example.com",
+      email_verified: false,
+    })
+    expect(identity.emailVerified).toBe(false)
+  })
+
+  it("leaves emailVerified undefined when the claim is absent", async () => {
+    const identity = await identityWithClaims({
+      sub: "user-123",
+      email: "ada@example.com",
+    })
+    expect(identity.emailVerified).toBeUndefined()
+  })
+
+  it('drops a non-boolean claim value (the string "true") — never coerced to verified', async () => {
+    // Strict boolean check: a truthy string must NOT read as verified — the
+    // seeker gate fails closed on anything but the literal boolean true.
+    const identity = await identityWithClaims({
+      sub: "user-123",
+      email: "ada@example.com",
+      email_verified: "true",
+    })
+    expect(identity.emailVerified).toBeUndefined()
+  })
+})
+
 describe("verifyChatIdToken — R9 rejections (net-new vs admin's verifier)", () => {
   it("throws id_token_missing when no id_token is present (NO access-token fallback)", async () => {
     await expect(
