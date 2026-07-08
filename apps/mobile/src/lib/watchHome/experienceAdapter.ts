@@ -45,9 +45,12 @@ function itemToCard(
   sourceId: string,
   index: number,
 ): WatchHomeCard | null {
-  const slug = item.videoSlug
-  if (!slug) return null // no slug → the card can't navigate; drop it
+  // Match web's enrichment: curated home items carry videoId but a null
+  // videoSlug, so keep the card (image + title) with an empty slug — HomeCard
+  // skips navigation on an empty slug rather than dropping the card.
+  const slug = item.videoSlug ?? ""
   const coreId = item.videoId ?? slug
+  if (!coreId) return null // no id and no slug → nothing to render or key
   // index keeps the render key unique when a video repeats within one collection
   // (coreId alone would collide → dropped FlatList item + wrong recyclingKey).
   const id = `${coreId}-${index}`

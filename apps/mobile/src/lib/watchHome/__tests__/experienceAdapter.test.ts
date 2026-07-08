@@ -116,17 +116,51 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     expect(sparse[0].cards).toHaveLength(2)
   })
 
-  it("drops items missing videoSlug; remaining valid cards still render (R3)", () => {
+  it("keeps a slug-less item that has a videoId (web parity), drops only id-less ones (R3)", () => {
     const [section] = buildWatchHomeSectionsFromExperience([
       mediaCollection({
         items: [
-          { videoSlug: "keep", titleOverride: "Keep" },
-          { videoId: "x", videoSlug: null, titleOverride: "Drop me" },
-          { videoSlug: "", titleOverride: "Drop empty" },
+          { videoId: "a", videoSlug: "keep", titleOverride: "Keep" },
+          { videoId: "b", videoSlug: null, titleOverride: "No slug" },
+          { videoSlug: "", titleOverride: "No id at all" },
         ],
       }),
     ])
-    expect(section.cards.map((c) => c.slug)).toEqual(["keep"])
+    // Slug-less-but-identified item is kept (non-navigable, empty slug); the
+    // item with neither videoId nor slug drops.
+    expect(section.cards.map((c) => c.title)).toEqual(["Keep", "No slug"])
+    expect(section.cards.map((c) => c.slug)).toEqual(["keep", ""])
+  })
+
+  it("renders a full shelf when items carry videoId + image but a null slug (prod shape, R2)", () => {
+    // Regression: the prod watch-home Experience's MediaCollection items all
+    // have videoSlug=null with a real videoId + imageUrl; dropping them mapped
+    // the whole body to zero shelves and fell back to config.
+    const [section] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        items: [
+          {
+            videoId: "v1",
+            videoSlug: null,
+            titleOverride: "JESUS",
+            imageUrl: "https://img/1.jpg",
+            labelOverride: "FEATURE FILM",
+          },
+          {
+            videoId: "v2",
+            videoSlug: null,
+            titleOverride: "LUMO",
+            imageUrl: "https://img/2.jpg",
+            labelOverride: "EPISODE",
+          },
+        ],
+      }),
+    ])
+    expect(section.cards).toHaveLength(2)
+    expect(section.cards.map((c) => c.title)).toEqual(["JESUS", "LUMO"])
+    expect(section.cards.every((c) => c.slug === "")).toBe(true)
+    expect(section.cards[0].imageUrl).toBe("https://img/1.jpg")
+    expect(section.cards[0].metaLabel).toBe("FEATURE FILM")
   })
 
   it("uses collectionSize verbatim as metaLabel; falls to label / null otherwise (KTD5)", () => {
