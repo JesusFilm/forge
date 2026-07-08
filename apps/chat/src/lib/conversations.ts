@@ -39,6 +39,9 @@ export const REPLY_FAILURE_REASONS = [
   // ceiling was hit. Distinct notices — never fold into generation_failed.
   "thread_forbidden",
   "thread_limit",
+  // feat-233: the server-side per-user gate denied seeker; the client seam
+  // maps it to the local stub rather than a failure notice.
+  "gate_denied",
 ] as const
 
 export type ReplyFailureReason = (typeof REPLY_FAILURE_REASONS)[number]

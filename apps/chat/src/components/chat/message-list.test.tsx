@@ -64,6 +64,14 @@ describe("MessageList failure notices", () => {
     expect(forbidden).not.toBe(limit)
   })
 
+  it("maps gate_denied to the grouped unavailable notice (feat-233 defensive fallback)", () => {
+    // In practice the seam turns gate_denied into a stub reply; this asserts
+    // the defensive copy if one ever reaches a rendered failure state.
+    expect(noticeFor("gate_denied")).toBe(
+      "Seeker is unavailable right now. Please try again later.",
+    )
+  })
+
   it("maps every ReplyFailureReason to a non-empty user notice", () => {
     // Exhaustiveness at runtime: no reason renders an empty bubble (a dropped
     // switch case would surface here, complementing the compile-time

@@ -1,4 +1,5 @@
 import { mapWithConcurrency } from "./concurrentMap"
+import { withTimeout } from "./withTimeout"
 import { selectSubtitle } from "./downloadUrlResolution"
 import {
   type QualityTier,
@@ -135,19 +136,6 @@ function selectTierRendition(
       return TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier)
     })[0] ?? null
   )
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Resolution timed out")), ms)
-  })
-  return Promise.race([
-    promise.finally(() => {
-      if (timer) clearTimeout(timer)
-    }),
-    timeout,
-  ])
 }
 
 async function resolveEpisode(

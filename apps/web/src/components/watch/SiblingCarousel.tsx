@@ -30,9 +30,11 @@ import {
 } from "@/lib/routes"
 import {
   resolveMuxFrameThumbnailUrl,
+  resolveMuxAnimatedPreviewUrl,
   resolveMuxHeroPosterUrl,
   resolvePosterUrl,
 } from "@/lib/url"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import {
   WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
   type WatchChapterCarouselPreserveState,
@@ -283,6 +285,7 @@ export function SiblingCarousel({
             // variant path segment) that returns 400, so a "last resort"
             // fallback to it only ever produces broken images.
             const muxThumb = resolveMuxFrameThumbnailUrl(child.muxPlaybackId)
+            const muxPreview = resolveMuxAnimatedPreviewUrl(child.muxPlaybackId)
             const thumb = muxThumb ?? resolvePosterUrl(child.images?.[0])
             const heroPoster = resolveMuxHeroPosterUrl(child.muxPlaybackId)
             const blurDataURL =
@@ -346,6 +349,10 @@ export function SiblingCarousel({
                     {t("noImage")}
                   </div>
                 )}
+                <MuxHoverPreview
+                  previewUrl={muxPreview}
+                  sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                />
 
                 {/* Soften the image into the lower caption zone. */}
                 <div

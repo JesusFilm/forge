@@ -152,13 +152,14 @@ export function ImagePickerBrowser({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-hidden">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
               <MediaAssetDropTarget
                 canUpload={canUpload}
                 uploadAction={uploadAction}
                 selectedFolderId={selectedFolderId}
                 selectedFolderLabel={selectedFolderLabel}
                 acceptedMimePrefix="image/"
+                contentClassName="h-full min-h-0"
               >
                 <div className="h-full overflow-x-hidden overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
                   {visibleImages.length === 0 ? (

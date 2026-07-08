@@ -600,7 +600,8 @@ describe("ExperienceEditor", () => {
     ])
 
     expect(html).toContain("flex min-h-0 min-w-0 flex-1 flex-col")
-    expect(html).toContain("min-h-0 flex-1 overflow-hidden")
+    expect(html).toContain("flex min-h-0 flex-1 overflow-hidden")
+    expect(html).toContain('class="h-full min-h-0"')
     expect(html).toContain("h-full overflow-x-hidden overflow-y-auto")
   })
 

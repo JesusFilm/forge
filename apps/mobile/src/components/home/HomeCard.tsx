@@ -81,6 +81,9 @@ export const HomeCard = memo(function HomeCard({
     label: card.label,
     childCount: card.childCount,
   })
+  // A slug-less item (curated home cards carry a null videoSlug) has nowhere to
+  // navigate; render a passive card, not a button that announces + no-ops a tap.
+  const interactive = !!card.slug
 
   const handlePressIn = () => {
     // Touch-down warm-up: the shared capped/deduped GET_VIDEO_BY_SLUG
@@ -107,14 +110,24 @@ export const HomeCard = memo(function HomeCard({
       style={({ pressed }) => [
         cardStyle.surface,
         { width, aspectRatio: CARD_ASPECT[variant] },
-        pressed && Platform.OS === "ios" && feedback.pressed,
+        interactive && pressed && Platform.OS === "ios" && feedback.pressed,
       ]}
-      android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
-      onPressIn={handlePressIn}
-      onPress={handlePress}
-      accessibilityRole="button"
+      android_ripple={
+        interactive
+          ? { color: "rgba(255, 255, 255, 0.2)", foreground: true }
+          : undefined
+      }
+      onPressIn={interactive ? handlePressIn : undefined}
+      onPress={interactive ? handlePress : undefined}
+      accessibilityRole={interactive ? "button" : "image"}
       accessibilityLabel={card.title}
-      accessibilityHint={isSeries ? "Opens this series" : "Opens this video"}
+      accessibilityHint={
+        interactive
+          ? isSeries
+            ? "Opens this series"
+            : "Opens this video"
+          : undefined
+      }
     >
       {imageUrl != null && (
         <Image

@@ -821,6 +821,67 @@ describe("Mastra env", () => {
     expect(isSeekerRouteEnabled()).toBe(false)
   })
 
+  // --- feat-237: AI_GATEWAY_SEEKER_ENABLED default-off string-boolean gate ---
+
+  it("disables the seeker gateway model when AI_GATEWAY_SEEKER_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('treats AI_GATEWAY_SEEKER_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // The load-bearing guard against JS truthiness inverting the safety default:
+    // a naive `Boolean(env.AI_GATEWAY_SEEKER_ENABLED)` would enable on "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "false")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('treats AI_GATEWAY_SEEKER_ENABLED="TRUE" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "TRUE")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('treats AI_GATEWAY_SEEKER_ENABLED="1" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "1")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('enables the seeker gateway model only when AI_GATEWAY_SEEKER_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "true")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(true)
+  })
+
+  it("keeps AI_GATEWAY_SEEKER_ENABLED out of the production required-var set (optional at boot)", async () => {
+    // The flag must NEVER brick a Railway deploy: a fully-provisioned
+    // production env with AI_GATEWAY_SEEKER_ENABLED unset still boots.
+    stubProductionBaseline()
+    // AI_GATEWAY_SEEKER_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isAiGatewaySeekerEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
   // --- feat-208: AI_CHAT_MEMORY_BACKEND kill-switch precedence ---
 
   it("resolves the ai-chat backend to MASTRA_STORAGE_BACKEND (postgres default) when the override is unset", async () => {

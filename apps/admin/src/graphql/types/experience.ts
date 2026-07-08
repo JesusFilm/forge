@@ -50,7 +50,10 @@ builder.prismaObject("ExperienceLocale", {
       nullable: false,
       description:
         "Array of Experience blocks. Shape mirrors `src/domain/blocks.ts` BlockSchema (Zod). Mutations still accept opaque JSON; only the query output is typed.",
-      resolve: (row) => row.blocks as Block[],
+      resolve: async (row, _args, ctx) =>
+        (await ctx.services.mediaAsset.hydratePublicUrlsInBlocks(
+          row.blocks,
+        )) as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({

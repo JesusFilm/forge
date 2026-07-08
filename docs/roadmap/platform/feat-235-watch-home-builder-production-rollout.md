@@ -3,7 +3,7 @@ id: feat-235
 title: Watch home builder production rollout
 owner: urim
 priority: P1
-status: "not-started"
+status: "complete"
 start_date: "2026-07-06"
 duration: 1
 depends_on:
@@ -16,6 +16,12 @@ tags:
   - watch
   - release
 ---
+
+> **Complete (2026-07-08).** The canonical `watch-home` homepage Experience is
+> published in production Admin for locale `en` and public `/watch` renders the
+> builder-authored body (verified against prod Admin GraphQL, 2026-07-08). Mobile
+> now consumes the same Experience — see feat-172 and
+> `docs/plans/2026-07-08-001-feat-mobile-home-experience-parity-plan.md`.
 
 ## Problem
 

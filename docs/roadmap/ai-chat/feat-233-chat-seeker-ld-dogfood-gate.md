@@ -3,16 +3,32 @@ id: "feat-233"
 title: "Chat seeker LaunchDarkly dogfood gate (per-user allowlist)"
 owner: "jian wei"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-06"
 duration: 3
 depends_on:
   - "feat-231"
 blocks:
+  - "feat-236"
+  - "feat-239"
 tags:
   - "web"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-08 via [PR #1488](https://github.com/JesusFilm/forge/pull/1488) (`feat(ai-chat): gate seeker behind per-user LaunchDarkly dogfood allowlist (feat-233)`).
+
+**What landed.** A per-user LaunchDarkly gate composed on top of the existing `SEEKER_CHAT_ENABLED` kill switch, fail-closed by construction. `@forge/feature-flags` gained the `chatSeekerDogfood` registry entry and an outcome-preserving `booleanVariationDetail` returning `{ value, source }` so `ld_unavailable` is distinguishable from `not_targeted`; `reason.kind === "ERROR"` resolutions route to the fallback before the value check, and client construction is wrapped so the variant never throws — `booleanVariation` delegates through it with no behavior change for web. In `apps/chat`: the verified `email_verified` claim threads through the session cookie; a chat LD client ships with analytics events off (`sendEvents:false` + `diagnosticOptOut`) and the local override withheld from deployed builds (`localEnv` only under `NODE_ENV=development`); `resolveSeekerGate` (kill switch → verified email → LD individual-target flag keyed on the normalized email) emits the R15 `[seeker-gate]` log line carrying the opaque `sub`, never the email; it is enforced identically at `page.tsx` and on every `/api/seeker` request, a deny emitting one terminal `gate_denied` SSE frame the client maps to the stub. Both env vars are `.optional()` (boots clean); the flag's own dashboard configuration (zero targeting rules, restricted write access) is the one grant surface that stays operator-governed, by design.
+
+**Operational tail (pending).** The code merges fail-closed — the dogfood _flip itself_ is operator work, not done here: the LaunchDarkly flag/SDK-key/targeting provisioning and the pre-prod, deployed, and gate-walk verification rows (Verification Contract rows 4–6) run at flip time per the plan's Rollout Runbook. Production serves stub to everyone until then.
+
+> **Superseded (2026-07-08, [feat-239](feat-239-chat-seeker-env-allowlist-gate.md)):** the flip never happened, and the LD provisioning steps above are obsolete — feat-239 replaced the membership source with the `SEEKER_ALLOWED_EMAILS` env CSV and the code no longer reads LaunchDarkly. Do not provision the flag, SDK key, or targeting; the flip-time operator work now lives in feat-239. The rest of this ticket stays as the historical record.
+
+**Compound docs.** `docs/solutions/architecture-patterns/fail-closed-by-construction-feature-flag-gate-20260708.md`, `docs/solutions/workflow-issues/removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md`.
+
+**Residual risk / follow-ups.** Phase-end removal is tracked by [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md) (rate-cap-first ordering + a binding keep-list). A per-caller rate/concurrency cap on `/api/seeker` remains the open prerequisite before the audience widens beyond the hand-picked roster; the 8h no-revocation session riding the gate is the plan's accepted residual (R13).
 
 ## Problem
 

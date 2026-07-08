@@ -1,4 +1,5 @@
 import { mapWithConcurrency } from "./concurrentMap"
+import { withTimeout } from "./withTimeout"
 import type {
   VariantMedia,
   WatchSubtitle,
@@ -24,31 +25,6 @@ export type SubtitleUnionResult = {
   subtitles: WatchSubtitle[]
   /** Episodes whose fetch failed/timed out — the union may be incomplete. */
   failedEpisodes: number
-}
-
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  signal?: AbortSignal,
-): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Resolution timed out")), ms)
-    // Clear the timer the instant the batch aborts, so a cancelled fan-out
-    // doesn't leave one pending per in-flight episode for the whole budget.
-    const onAbort = () => {
-      clearTimeout(timer)
-      reject(new Error("Aborted"))
-    }
-    if (signal?.aborted) onAbort()
-    else signal?.addEventListener("abort", onAbort, { once: true })
-  })
-  return Promise.race([
-    promise.finally(() => {
-      if (timer) clearTimeout(timer)
-    }),
-    timeout,
-  ])
 }
 
 // One episode's subtitle tracks for the chosen audio language; empty when the

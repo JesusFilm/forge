@@ -773,6 +773,10 @@ type MediaCollectionItem {
   imageUrl: String
   labelOverride: String
   linkToSectionKey: String
+  """
+  Best playable Mux playback id for this media collection item when it references a Video row.
+  """
+  muxPlaybackId(languageSlug: String): String
   subtitleOverride: String
   titleOverride: String
   videoId: String
