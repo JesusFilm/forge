@@ -17,7 +17,7 @@ import {
   buildWatchHomeSectionsFromExperience,
   resolveWatchHomeModel,
 } from "../lib/watchHome/experienceAdapter"
-import { withDeadline } from "../lib/watchHome/withDeadline"
+import { withTimeout } from "../lib/withTimeout"
 import {
   logWatchHomeFallback,
   type WatchHomeFallbackReason,
@@ -110,7 +110,7 @@ export function useWatchHome(): WatchHomeState {
           },
           fetchPolicy,
         }),
-        withDeadline(
+        withTimeout(
           client.query({
             query: GET_WATCH_SETTING,
             variables: { locale: HOME_LOCALE },
@@ -198,7 +198,13 @@ export function useWatchHome(): WatchHomeState {
         videosJson === snapshotVideosJsonRef.current &&
         blocksJson === snapshotBlocksJsonRef.current
       if (!snapshotStillCurrent) setModel(nextModel)
-      if (!usedExperience) logWatchHomeFallback({ reason: fallbackReason })
+      if (!usedExperience) {
+        logWatchHomeFallback({ reason: fallbackReason })
+      } else if (experienceOutcome.status === "rejected") {
+        // Reused last-good over a live Experience error — still logged so a
+        // prolonged endpoint outage isn't silent behind a cached body (R11).
+        logWatchHomeFallback({ reason: "error-recovered" })
+      }
       if (videos.length > 0) persistHomeSnapshot(videosJson, blocksJson)
     } catch {
       if (requestIdRef.current !== thisRequest) return

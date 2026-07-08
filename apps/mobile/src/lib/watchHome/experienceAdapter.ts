@@ -49,7 +49,9 @@ function itemToCard(
   // videoSlug, so keep the card (image + title) with an empty slug — HomeCard
   // skips navigation on an empty slug rather than dropping the card.
   const slug = item.videoSlug ?? ""
-  const coreId = item.videoId ?? slug
+  // `||` not `??`: an empty-string videoId must fall through to the slug, so the
+  // `!coreId` drop below stays consistent (a valid slug is never dropped).
+  const coreId = item.videoId || slug
   if (!coreId) return null // no id and no slug → nothing to render or key
   // index keeps the render key unique when a video repeats within one collection
   // (coreId alone would collide → dropped FlatList item + wrong recyclingKey).
@@ -58,8 +60,8 @@ function itemToCard(
   // Never blank: titleOverride, else labelOverride, else the slug.
   const title = item.titleOverride || item.labelOverride || slug
   // collectionSize is a free-text String badge (e.g. "25 items"); blank/whitespace
-  // reads as absent, then falls to the label, else no badge.
-  const size = item.collectionSize?.trim() ? item.collectionSize : null
+  // reads as absent (trimmed), then falls to the label, else no badge.
+  const size = item.collectionSize?.trim() || null
   const metaLabel = size ?? (label !== "" ? label : null)
   return {
     id,
