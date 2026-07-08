@@ -14,8 +14,8 @@ from the main DS Year 1 roadmap.
 ## Status (July 8, 2026)
 
 - **Total tickets:** 17
-- ✅ **Complete:** 14
-- 🟡 **In progress:** 2
+- ✅ **Complete:** 15
+- 🟡 **In progress:** 1
 - 🔵 **Not started:** 1
 - 🔴 **Blocked:** 0
 
@@ -39,4 +39,4 @@ from the main DS Year 1 roadmap.
 | [feat-231](feat-231-chat-auth-prod-oauth-client.md)          | Register chat deployed-environment OAuth clients (prod enablement) | jian wei | P2       | 2026-07-20 | 1    | ✅ complete    | #1465   |
 | [feat-233](feat-233-chat-seeker-ld-dogfood-gate.md)          | Chat seeker LaunchDarkly dogfood gate (per-user allowlist)         | jian wei | P1       | 2026-07-06 | 3    | 🟡 in-progress | —       |
 | [feat-235](feat-235-chat-cloudflare-dns-cutover.md)          | Chat app Cloudflare DNS cutover (retire Railway domain)            | jian wei | P2       | 2026-08-01 | 2    | ✅ complete    | #1475   |
-| [feat-237](feat-237-seeker-gateway-model.md)                 | Seeker agent JesusFilm gateway model (opt-in primary)              | jian wei | P2       | 2026-07-07 | 2    | 🟡 in-progress | —       |
+| [feat-237](feat-237-seeker-gateway-model.md)                 | Seeker agent JesusFilm gateway model (opt-in primary)              | jian wei | P2       | 2026-07-07 | 2    | ✅ complete    | #1491   |

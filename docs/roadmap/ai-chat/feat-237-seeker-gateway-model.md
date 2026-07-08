@@ -3,7 +3,7 @@ id: "feat-237"
 title: "Seeker agent JesusFilm gateway model (opt-in primary)"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-07"
 duration: 2
 depends_on:
@@ -13,6 +13,16 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-08 via [PR #1491](https://github.com/JesusFilm/forge/pull/1491) (`feat(mastra): seeker agent JesusFilm gateway model opt-in (feat-237)`).
+
+**What landed.** The env-gated opt-in as briefed, with two review-driven deviations from the plan: the gateway entry ships `maxRetries: 0` (not R1's `1` — the installed `@mastra/core` retries ANY non-APICallError, including the KTD9 timeout abort, so a hang would have burned two windows; the Gemma chain is the retry), and the per-attempt fetch timeout is `55_000` (not ~30s — the pre-merge live smoke measured healthy gateway turns up to 27.3s on routine questions, too close to a 30s whole-stream cap). The KTD8 cast landed as `as unknown as MastraModelConfig` (no `any`). Live smoke: multi-turn grounding/citations/recall, RAG-unavailable degradation, dead-port and hang failover mechanics (single timeout window verified), and heavy-context all passed on the real gateway; the "Gemma then answers" leg was unverifiable at test time because both free Gemma models were 429 rate-limited upstream at OpenRouter — itself a live demonstration of the fragility this ticket addresses.
+
+**Compound docs.** `docs/solutions/best-practices/mastra-model-entry-timeout-retry-and-stream-abort-pattern.md` (retry-classification + whole-stream-abort facts, mechanism-test pattern, repro recipes) and `docs/solutions/conventions/mastra-inline-gateway-construction-createrequire.md` (the plan's deferred follow-up).
+
+**Residual risk / follow-ups.** Two behaviors confirmed by repro but unverified in production, flagged for dogfood attention (not blockers — the flag is default-off and revert is unsetting it): (1) a mid-stream gateway failure leaks already-streamed partial tokens into the reply before Gemma re-generates into the same turn — watch for concatenated answers; (2) the 55s whole-stream cap would cut a healthy gateway answer still streaming at the deadline — unlikely at ~2x observed headroom, but watch turn durations. Repro recipes for both live in the timeout-envelope solutions doc. Rollout is operator work: chat-scoped `AI_GATEWAY_CHAT_API_KEY` + `AI_GATEWAY_SEEKER_ENABLED=true` on the Railway `apps/mastra` service (the key currently exists only on admin's service); failover frequency observable via the built-in `Error executing model coding` log line.
 
 ## Problem
 
