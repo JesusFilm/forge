@@ -1,10 +1,7 @@
 /**
- * LIVE hero curation — the hero pager is client-owned, not admin-driven, so this
- * is the one slice still mirrored from apps/web/src/lib/watch-home-config.ts:
- * mirror any web change to hero sources, playlist sequence, mux inserts, and the
- * blacklist here until feat-160 moves curation into admin. The body shelves are
- * NOT here — they come from the admin Experience (see experienceAdapter.ts), with
- * fallbackConfig.ts as an emergency-only frozen fallback.
+ * LIVE hero curation — the hero is client-owned, so mirror web hero changes here
+ * (hero sources, playlist sequence, mux inserts, blacklist) until feat-160 moves
+ * curation into admin. Body shelves live in the Experience, not here.
  */
 
 export type WatchHomePlaylistGroup = readonly string[]

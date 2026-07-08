@@ -175,4 +175,39 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     // empty titleOverride falls back to labelOverride, never blank
     expect(section.cards[0].title).toBe("Label wins")
   })
+
+  it("gives sectionKey-less blocks unique ids (FlashList key safety)", () => {
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: null, title: "" }),
+      mediaCollection({ sectionKey: null, title: "" }),
+    ])
+    expect(sections).toHaveLength(2)
+    expect(new Set(sections.map((s) => s.id)).size).toBe(2)
+  })
+
+  it("gives a repeated video in one collection unique card ids (recyclingKey safety)", () => {
+    const [section] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        items: [
+          { videoId: "v1", videoSlug: "a", titleOverride: "A" },
+          { videoId: "v1", videoSlug: "a", titleOverride: "A again" },
+        ],
+      }),
+    ])
+    expect(section.cards).toHaveLength(2)
+    expect(new Set(section.cards.map((c) => c.id)).size).toBe(2)
+  })
+
+  it("treats a blank/whitespace collectionSize as absent, not an empty badge (KTD5)", () => {
+    const [section] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        items: [
+          { videoSlug: "s", labelOverride: "Series", collectionSize: "" },
+          { videoSlug: "t", labelOverride: "Docs", collectionSize: "   " },
+        ],
+      }),
+    ])
+    expect(section.cards[0].metaLabel).toBe("Series")
+    expect(section.cards[1].metaLabel).toBe("Docs")
+  })
 })

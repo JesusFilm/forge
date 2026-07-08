@@ -1,9 +1,7 @@
 /**
- * Never-silent fallback signal (R11). When the Home body reverts to the frozen
- * config (Experience null / fetch error / zero renderable shelves), emit one
- * structured log carrying the reason, so a prolonged prod fallback is observable
- * rather than masked. Mobile has no telemetry sink today, so this is a
- * structured `console.warn` for now; a Datadog/Sentry sink is deferred.
+ * Never-silent fallback signal (R11): when the body reverts to the frozen config
+ * (Experience null / error / zero shelves), emit one structured log so a prolonged
+ * prod fallback is observable. No mobile telemetry sink yet, so `console.warn` for now.
  */
 export type WatchHomeFallbackReason = "null" | "error" | "empty"
 

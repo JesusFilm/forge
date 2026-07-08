@@ -1,10 +1,7 @@
 /**
- * FROZEN emergency body fallback — NOT mirrored from web. The live Home body
- * comes from the admin `watch-home` Experience (see experienceAdapter.ts); this
- * config renders only when that Experience is null, errors, or maps to zero
- * shelves (R6/R7). It reflects last-release curation and is expected to drift
- * from the live Experience over time — do NOT treat it as interchangeable with
- * the live body or sync it against web. feat-160 will retire it.
+ * FROZEN emergency body fallback — NOT mirrored from web. The live body is the
+ * admin `watch-home` Experience (experienceAdapter.ts); this renders only on
+ * Experience null / error / zero shelves (R6/R7) and is expected to drift. feat-160 retires it.
  */
 
 export type WatchHomeSourceConfig = {

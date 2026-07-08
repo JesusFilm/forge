@@ -86,10 +86,9 @@ export function useWatchHome(): WatchHomeState {
       const client = getApolloClient()
       // Initial load reuses the cache; explicit refetch forces the network.
       const fetchPolicy = mode === "initial" ? "cache-first" : "network-only"
-      // Body source (homepage Experience) + hero/fallback source (config
-      // videos) fetch in parallel. The videos fetch feeds the hero carousel and
-      // the config fallback and is required; the Experience fetch is additive —
-      // its failure or absence degrades to the config body, never a hard error.
+      // Body source (Experience) + hero/fallback source (config videos) fetch in
+      // parallel. Videos is required (feeds hero + config fallback); the Experience
+      // is additive — its failure or absence degrades to the config body, never a throw.
       const [videosOutcome, experienceOutcome] = await Promise.allSettled([
         client.query({
           query: GET_WATCH_HOME_VIDEOS,

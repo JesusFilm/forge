@@ -1,11 +1,7 @@
 /**
- * Maps the published `watch-home` homepage Experience's flat MediaCollectionBlock
- * items into the existing WatchHomeSection[] shape so HomeScreen / HomeShelf
- * render unchanged. Lean cards — no per-item video resolution — matching web's
- * home renderer (title from `titleOverride`, `collectionSize` verbatim badge, no
- * duration). Non-collection blocks are skipped: `WatchHomeHeroBlock` is an
- * expected placeholder (silent); anything else logs a dev warning, mirroring
- * `SectionDispatcher`.
+ * Maps the `watch-home` Experience's flat MediaCollectionBlock items into the
+ * existing WatchHomeSection[] shape (lean cards, matching web) so HomeShelf
+ * renders unchanged. Non-collection blocks are skipped (hero is a silent placeholder).
  */
 import type { WatchHomeCard, WatchHomeModel, WatchHomeSection } from "./model"
 
@@ -47,20 +43,25 @@ function mapVariant(variant: string | null | undefined): LayoutShape {
 function itemToCard(
   item: ExperienceItem,
   sourceId: string,
+  index: number,
 ): WatchHomeCard | null {
   const slug = item.videoSlug
   if (!slug) return null // no slug → the card can't navigate; drop it
-  const id = item.videoId ?? slug
+  const coreId = item.videoId ?? slug
+  // index keeps the render key unique when a video repeats within one collection
+  // (coreId alone would collide → dropped FlatList item + wrong recyclingKey).
+  const id = `${coreId}-${index}`
   const label = item.labelOverride ?? ""
   // Never blank: titleOverride, else labelOverride, else the slug.
   const title = item.titleOverride || item.labelOverride || slug
-  // collectionSize is a free-text String badge (e.g. "25 items"), not a count —
-  // render it verbatim, else fall to the label, else show no badge.
-  const metaLabel = item.collectionSize ?? (label !== "" ? label : null)
+  // collectionSize is a free-text String badge (e.g. "25 items"); blank/whitespace
+  // reads as absent, then falls to the label, else no badge.
+  const size = item.collectionSize?.trim() ? item.collectionSize : null
+  const metaLabel = size ?? (label !== "" ? label : null)
   return {
     id,
     sourceId,
-    coreId: id,
+    coreId,
     slug,
     title,
     description: item.subtitleOverride ?? null,
@@ -77,12 +78,15 @@ function itemToCard(
   }
 }
 
-function blockToSection(block: ExperienceBlock): WatchHomeSection | null {
+function blockToSection(
+  block: ExperienceBlock,
+  index: number,
+): WatchHomeSection | null {
   const b = block as Record<string, unknown>
   const sectionKey = (b.sectionKey as string | null) ?? null
   const rawItems = (b.items as ExperienceItem[] | null | undefined) ?? []
   const cards = rawItems
-    .map((item) => itemToCard(item, sectionKey ?? "home-experience"))
+    .map((item, i) => itemToCard(item, sectionKey ?? "home-experience", i))
     .filter((c): c is WatchHomeCard => c != null)
   if (cards.length === 0) return null // empty / all-dropped collection → skip
 
@@ -92,7 +96,9 @@ function blockToSection(block: ExperienceBlock): WatchHomeSection | null {
     b.mediaCollectionVariant as string | null,
   )
   return {
-    id: sectionKey ?? (blockTitle || "home-experience-section"),
+    // index disambiguates the FlashList key when a block omits sectionKey — the
+    // fallback would otherwise collapse to one constant for every such block.
+    id: sectionKey ?? `home-experience-section-${index}`,
     eyebrow: categoryLabel,
     // Empty admin title falls back to the category label so a shelf is never headless.
     title: blockTitle || categoryLabel,
@@ -108,26 +114,24 @@ export function buildWatchHomeSectionsFromExperience(
   blocks: readonly ExperienceBlock[] | null | undefined,
 ): WatchHomeSection[] {
   const sections: WatchHomeSection[] = []
-  for (const block of blocks ?? []) {
+  ;(blocks ?? []).forEach((block, index) => {
     const typename = block.__typename
     if (typename === "MediaCollectionBlock") {
-      const section = blockToSection(block)
+      const section = blockToSection(block, index)
       if (section) sections.push(section)
     } else if (typename === "WatchHomeHeroBlock") {
       // Expected placeholder — the hero stays client-owned; render nothing.
-      continue
     } else if (__DEV__) {
       console.warn(`[WatchHomeAdapter] skipped block type: ${typename}`)
     }
-  }
+  })
   return sections
 }
 
 /**
- * Assemble the Home model: the body's `sections` come from the Experience when
- * it yields ≥1 renderable shelf, else fall back to the config model. The hero
- * `carousel` is always the config-sourced one (spread from `configModel`) — the
- * split is at assembly, the hero fetch is never touched (KTD3, R4).
+ * Body `sections` come from the Experience when it yields ≥1 shelf, else the
+ * config model. The hero `carousel` is always config-sourced (spread from
+ * `configModel`) — the split is at assembly; the hero fetch is untouched (KTD3, R4).
  */
 export function resolveWatchHomeModel(args: {
   configModel: WatchHomeModel

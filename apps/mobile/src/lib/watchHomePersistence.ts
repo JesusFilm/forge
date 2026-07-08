@@ -185,9 +185,8 @@ export function serializeHomeSnapshot(
 
 /**
  * Envelope around an ALREADY-serialized videos array so the hot path stringifies
- * the ~460KB payload once, reusing it for both the equality compare and the
- * persisted blob. `videosJson` must be a JSON array string; `blocksJson` a JSON
- * array string (Experience body) or the literal `"null"` (config body).
+ * the payload once (reused for the equality compare and the blob). `blocksJson` is
+ * a JSON array string (Experience body) or the literal `"null"` (config body).
  */
 export function serializeHomeSnapshotFromVideosJson(
   videosJson: string,
