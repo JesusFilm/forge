@@ -73,6 +73,21 @@ search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
 - Composite React keys: `key={\`${item.kind}-${item.id}-${index}\`}`.
 - Hardcoded English locale: `{ locale: "en" }` for all GraphQL queries.
 
+## Running on a simulator (env setup)
+
+**Before launching apps/tv on a simulator, ALWAYS run
+`bash scripts/setup-sim-env.sh tv` first.** Fresh git worktrees don't inherit
+`.env.local` (gitignored), and this app's `.env.local` historically ships only
+`EXPO_PUBLIC_GRAPHQL_URL` — missing `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`, the
+consumer bearer without which admin's `Query.search` returns `UNAUTHENTICATED`
+and search silently breaks.
+
+The script is idempotent: it seeds `apps/tv/.env.local` from the main checkout
+and guarantees the search token is present (tv and mobile share the same
+consumer-bearer value). Run it BEFORE `expo start` — Expo inlines
+`EXPO_PUBLIC_*` at bundler startup, so a change made after boot needs a Metro
+restart to take effect.
+
 ## Test builds & distribution
 
 - EAS profiles live in `apps/tv/eas.json`; every profile sets `EXPO_TV: "1"` so the
