@@ -3,7 +3,7 @@ id: "feat-239"
 title: "Replace the chat seeker LaunchDarkly gate with an env-var email allowlist"
 owner: "jian wei"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-08"
 duration: 1
 depends_on:
@@ -14,6 +14,18 @@ tags:
   - "web"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-08 via [PR #1498](https://github.com/JesusFilm/forge/pull/1498) (`feat(ai-chat): replace chat seeker LaunchDarkly gate with env-var email allowlist (feat-239)`).
+
+**What landed.** The swap shipped exactly as scoped: membership moved to the `SEEKER_ALLOWED_EMAILS` env CSV (normalized both sides, fail-closed on unset/empty), outcomes collapsed to `granted | kill_switch | not_allowlisted | no_email`, and the feat-236 keep-list held — `booleanVariationDetail` + suite survive in `@forge/feature-flags` re-fixtured onto `watchPlayerMigration`, the `emailVerified` threading and kill switch untouched. An independent fresh-session review passed implementation, docs, and security with no blockers; its four findings (feat-233 supersession note, removal-recipe exemplar note, whitespace-only allowlist test, comment reflow) are in the PR. This ticket's ID coincidentally duplicates the platform lane's `feat-239` hotfix ticket that landed on main in parallel — acceptable per this lane's cross-lane-duplicate rule.
+
+**Compound docs.** None new — the two feat-233 learnings were refreshed in place instead (exemplar-status notes on `docs/solutions/architecture-patterns/fail-closed-by-construction-feature-flag-gate-20260708.md` and `docs/solutions/workflow-issues/removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md`).
+
+**Residual risk / follow-ups.** The flip itself remains operator work (What To Build step 6), including the carried-over `email_verified` trustworthiness blocker. Delist now costs a Railway env edit + redeploy; the 8h session-snapshot residual (R13) and the absent `/api/seeker` rate cap are unchanged pre-existing accepted risks. Phase-end removal stays [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md), re-pointed at this mechanism.
+
+**Unblocked.** [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md)'s `depends_on` edge on this ticket is satisfied (it still awaits the phase-end decision and its step-0 rate cap).
 
 ## Problem
 
