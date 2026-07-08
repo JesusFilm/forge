@@ -15,18 +15,26 @@
 This is a Server-Driven UI (SDUI) app. Admin controls the content
 blocks and their order via the Experience content type. The app renders them.
 
-**Exception — the Home tab is config-curated, not Experience-driven.**
-`watchSetting.homepageExperience` is null in prod and web's `/watch` home is
-likewise config-curated, so Home renders from a local curation config instead
-(feat-172). The config + pure model/queue logic live in `src/lib/watchHome/`
-and are an adapted copy of `apps/web/src/lib/watch-home-config.ts` (+ the two
-sibling web modules) — **any curation change on web must be mirrored here**
-until feat-160 moves curation into admin. Data flows
-`useWatchHome` (lean `watchHomeVideos` fetch — never select `dubs` in the bulk
-fragment; a jest guard enforces this) → `buildWatchHomeModelFromVideos` →
-`HomeScreen` (three-layer hero pager / shelves / overlay). Hero streams
-resolve lazily per slide via `useHeroStream`. Experiences still render via the
-SDUI pipeline below, hosted at `/experience/[slug]`.
+**Home tab — Experience-driven body, client-owned hero.** The Home body renders
+from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`,
+locale `en` — the same Experience web renders), adapted into the existing
+`WatchHomeModel`/`HomeShelf` shape by `src/lib/watchHome/experienceAdapter.ts`
+(lean cards from flat `MediaCollectionBlock` items; NOT the SDUI
+`/experience/[slug]` renderers). The hero pager stays client-owned and is never
+Experience-driven (feat-172). Config split by lifecycle in `src/lib/watchHome/`:
+`heroConfig.ts` is LIVE — **mirror any web hero-curation change here** (hero
+sources, playlist sequence, mux inserts) until feat-160 moves curation into
+admin; `fallbackConfig.ts` is a FROZEN emergency body fallback (null / fetch
+error / zero renderable shelves) — do NOT mirror web there. `useWatchHome`
+fetches the Experience and the lean `watchHomeVideos` payload in parallel
+(**never select `dubs` in the bulk fragment; jest guards enforce it on both the
+videos fetch and the `watchSetting` path**), resolves body-from-Experience-else-
+config via `resolveWatchHomeModel` (fallback emits one structured
+`[WatchHome] fallback reason=…` log — never silent), and snapshots the painted
+source for instant cold launch. `buildWatchHomeModelFromVideos` → `HomeScreen`
+(three-layer hero pager / shelves / overlay); hero streams resolve lazily per
+slide via `useHeroStream`. Experiences still render via the SDUI pipeline below,
+hosted at `/experience/[slug]`.
 
 ### SDUI Pipeline
 
