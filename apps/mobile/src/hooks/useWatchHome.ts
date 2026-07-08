@@ -43,8 +43,12 @@ export type WatchHomeState = {
 }
 
 /** Fire-and-forget; an empty response never overwrites a good snapshot. */
-function persistHomeSnapshot(videosJson: string): void {
-  const blob = serializeHomeSnapshotFromVideosJson(videosJson, new Date())
+function persistHomeSnapshot(videosJson: string, blocksJson: string): void {
+  const blob = serializeHomeSnapshotFromVideosJson(
+    videosJson,
+    new Date(),
+    blocksJson,
+  )
   if (blob.length > WATCH_HOME_SNAPSHOT_MAX_BYTES) return
   AsyncStorage.setItem(WATCH_HOME_SNAPSHOT_STORAGE_KEY, blob).catch(() => {
     // Write failures lose the fast next launch, nothing else.
@@ -68,6 +72,9 @@ export function useWatchHome(): WatchHomeState {
   // snapshot-built model was painted); the live fetch string-compares against
   // it to decide keep-or-swap without re-stringifying the snapshot side.
   const snapshotVideosJsonRef = useRef<string | null>(null)
+  // JSON of the painted snapshot's Experience blocks ("null" for the config
+  // body), paired with snapshotVideosJsonRef for the keep-model compare.
+  const snapshotBlocksJsonRef = useRef<string | null>(null)
 
   const fetchHome = useCallback(async (mode: "initial" | "refresh") => {
     const thisRequest = ++requestIdRef.current
@@ -129,6 +136,9 @@ export function useWatchHome(): WatchHomeState {
 
       // Derive the Experience body and a fallback reason when it isn't usable.
       let experienceSections: WatchHomeSection[] = []
+      let experienceBlocks:
+        | readonly { readonly __typename?: string | null }[]
+        | null = null
       let fallbackReason: WatchHomeFallbackReason = "null"
       if (experienceOutcome.status === "rejected") {
         fallbackReason = "error"
@@ -138,11 +148,11 @@ export function useWatchHome(): WatchHomeState {
         if (homepage == null) {
           fallbackReason = "null"
         } else {
-          experienceSections = buildWatchHomeSectionsFromExperience(
-            homepage.blocks as readonly {
-              readonly __typename?: string | null
-            }[],
-          )
+          experienceBlocks = homepage.blocks as readonly {
+            readonly __typename?: string | null
+          }[]
+          experienceSections =
+            buildWatchHomeSectionsFromExperience(experienceBlocks)
           if (experienceSections.length === 0) fallbackReason = "empty"
         }
       }
@@ -151,15 +161,22 @@ export function useWatchHome(): WatchHomeState {
         configModel,
         experienceSections,
       })
-      // Keep the painted snapshot model when the config body is unchanged AND we
-      // aren't swapping in an Experience body — avoids resetting the hero pager.
+      // The painted body's source, tagged: Experience blocks when it won, else
+      // "null" (config body). Persisted so cold launch repaints the same source.
+      const blocksJson =
+        usedExperience && experienceBlocks != null
+          ? JSON.stringify(experienceBlocks)
+          : "null"
+      // Keep the painted snapshot model when both the config videos and the body
+      // source are unchanged — avoids resetting the hero pager on a no-op
+      // revalidation.
       const snapshotStillCurrent =
         mode === "initial" &&
-        !usedExperience &&
-        videosJson === snapshotVideosJsonRef.current
+        videosJson === snapshotVideosJsonRef.current &&
+        blocksJson === snapshotBlocksJsonRef.current
       if (!snapshotStillCurrent) setModel(nextModel)
       if (!usedExperience) logWatchHomeFallback({ reason: fallbackReason })
-      if (videos.length > 0) persistHomeSnapshot(videosJson)
+      if (videos.length > 0) persistHomeSnapshot(videosJson, blocksJson)
     } catch {
       if (requestIdRef.current !== thisRequest) return
       // Keep any previously-built model (snapshot included) so a failure
@@ -188,12 +205,24 @@ export function useWatchHome(): WatchHomeState {
         if (cancelled || networkLandedRef.current) return
         const snapshot = parseStoredHomeSnapshot(raw, new Date())
         if (snapshot == null) return
-        const snapshotModel = buildWatchHomeModelFromVideos({
+        // Rebuild the exact painted source: the config carousel + fallback body
+        // from videos, and the Experience body from the tagged blocks when present.
+        const snapshotConfig = buildWatchHomeModelFromVideos({
           videos: snapshot.videos,
           languageSlug: ENGLISH_LANGUAGE_SLUG,
         })
+        const snapshotSections = snapshot.blocks
+          ? buildWatchHomeSectionsFromExperience(snapshot.blocks)
+          : []
+        const { model: snapshotModel } = resolveWatchHomeModel({
+          configModel: snapshotConfig,
+          experienceSections: snapshotSections,
+        })
         if (cancelled || networkLandedRef.current) return
         snapshotVideosJsonRef.current = JSON.stringify(snapshot.videos)
+        snapshotBlocksJsonRef.current = snapshot.blocks
+          ? JSON.stringify(snapshot.blocks)
+          : "null"
         setModel(snapshotModel)
         // A painted model ends the spinner phase; the still-running initial
         // fetch is a background revalidation, not a loading state.

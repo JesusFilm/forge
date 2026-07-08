@@ -102,8 +102,12 @@ export function serializeCarouselSession(
 
 export const WATCH_HOME_SNAPSHOT_STORAGE_KEY = "watch-home-videos-snapshot"
 
-/** Bump when the WatchHomeVideo fragment / WatchHomeVideoInput shape changes. */
-export const WATCH_HOME_SNAPSHOT_VERSION = 1
+/**
+ * Bump when the persisted snapshot shape changes — old snapshots then fail the
+ * gate and the launch cleanly re-fetches. v2 source-tags the Experience body
+ * blocks alongside the config videos so cold launch can repaint the Experience.
+ */
+export const WATCH_HOME_SNAPSHOT_VERSION = 2
 
 /**
  * Longer than the session's 24h: a stale snapshot is only the first paint (the
@@ -115,8 +119,17 @@ export const WATCH_HOME_SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 /** Stay clear of Android AsyncStorage's ~2MB per-item limit (payload is ~460KB today). */
 export const WATCH_HOME_SNAPSHOT_MAX_BYTES = 1_500_000
 
+/** Loose block shape — reconstructed via the Experience adapter on rehydrate. */
+export type WatchHomeSnapshotBlock = { readonly __typename?: string | null }
+
 export type WatchHomeSnapshot = {
+  /** Always present — feeds the hero carousel and the config fallback body. */
   videos: readonly WatchHomeVideoInput[]
+  /**
+   * The Experience body blocks when the Experience was the painted source; null
+   * when the config body was painted. One source-tagged snapshot at a time.
+   */
+  blocks: readonly WatchHomeSnapshotBlock[] | null
   persistedAt: number
 }
 
@@ -135,6 +148,7 @@ export function parseStoredHomeSnapshot(
       version?: unknown
       persistedAt?: unknown
       videos?: unknown
+      blocks?: unknown
     } | null
     if (data == null || typeof data !== "object") return null
     if (data.version !== WATCH_HOME_SNAPSHOT_VERSION) return null
@@ -150,7 +164,13 @@ export function parseStoredHomeSnapshot(
     // An empty snapshot must not paint the full-empty "No content available"
     // state over the loading spinner.
     if (videos.length === 0) return null
-    return { videos, persistedAt: data.persistedAt }
+    const blocks = Array.isArray(data.blocks)
+      ? data.blocks.filter(
+          (block): block is WatchHomeSnapshotBlock =>
+            block != null && typeof block === "object",
+        )
+      : null
+    return { videos, blocks, persistedAt: data.persistedAt }
   } catch {
     return null
   }
@@ -166,11 +186,13 @@ export function serializeHomeSnapshot(
 /**
  * Envelope around an ALREADY-serialized videos array so the hot path stringifies
  * the ~460KB payload once, reusing it for both the equality compare and the
- * persisted blob. `videosJson` must be a JSON array string.
+ * persisted blob. `videosJson` must be a JSON array string; `blocksJson` a JSON
+ * array string (Experience body) or the literal `"null"` (config body).
  */
 export function serializeHomeSnapshotFromVideosJson(
   videosJson: string,
   now: Date,
+  blocksJson: string = "null",
 ): string {
-  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"videos":${videosJson}}`
+  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"videos":${videosJson},"blocks":${blocksJson}}`
 }
