@@ -589,6 +589,21 @@ describe("ExperienceEditor", () => {
     expect(html).not.toContain("Media URL")
   })
 
+  it("keeps image library browser results in a bounded scroll area", () => {
+    const html = renderEditor([
+      {
+        t: "card",
+        sectionKey: "card",
+        title: "Card title",
+        mediaUrl: "https://example.com/card.jpg",
+      },
+    ])
+
+    expect(html).toContain("flex min-h-0 min-w-0 flex-1 flex-col")
+    expect(html).toContain("min-h-0 flex-1 overflow-hidden")
+    expect(html).toContain("h-full overflow-x-hidden overflow-y-auto")
+  })
+
   it("searches the full image library and writes selected image fields", () => {
     const view = renderEditorDom(
       [
