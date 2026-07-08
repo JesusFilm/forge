@@ -111,7 +111,7 @@ describe("VideoRecommendations", () => {
     )
     expect(images).toHaveLength(2)
     expect(images[1]?.getAttribute("data-src")).toBe(
-      "https://image.mux.com/mux%20playback%201/animated.gif?start=2&end=6&width=448&fps=8",
+      "https://image.mux.com/mux%20playback%201/animated.webp?start=2&end=6&width=448&fps=8",
     )
     expect(images[1]?.getAttribute("data-unoptimized")).toBe("true")
   })

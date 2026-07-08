@@ -80,7 +80,7 @@ export function resolveMuxAnimatedPreviewUrl(
 ): string | null {
   const playbackId = muxPlaybackId?.trim()
   if (!playbackId) return null
-  return `https://image.mux.com/${encodeURIComponent(playbackId)}/animated.gif?start=2&end=6&width=448&fps=8`
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/animated.webp?start=2&end=6&width=448&fps=8`
 }
 
 export function resolveMuxHeroPosterUrl(

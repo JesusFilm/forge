@@ -1025,6 +1025,7 @@ function normalizeRelatedRouteItems(
         title: child.title,
         slug: child.slug,
         label: child.label,
+        muxPlaybackId: child.muxPlaybackId,
         images: child.images.map((img) => ({ url: img.url })),
       }),
     )

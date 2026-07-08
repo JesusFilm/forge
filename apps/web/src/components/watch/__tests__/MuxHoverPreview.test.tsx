@@ -47,7 +47,7 @@ afterEach(() => {
 })
 
 function renderPreview(
-  previewUrl: string | null = "https://image.mux.com/pb/animated.gif",
+  previewUrl: string | null = "https://image.mux.com/pb/animated.webp",
 ) {
   act(() => {
     root.render(
@@ -60,7 +60,7 @@ function renderPreview(
 
 describe("MuxHoverPreview", () => {
   it("does not request the animated image before hover or focus", () => {
-    renderPreview("https://image.mux.com/playback/animated.gif?width=448")
+    renderPreview("https://image.mux.com/playback/animated.webp?width=448")
 
     expect(
       container.querySelector('[data-testid="mux-hover-preview"]'),
@@ -71,7 +71,7 @@ describe("MuxHoverPreview", () => {
   })
 
   it("loads an unoptimized animated image after card hover", () => {
-    const previewUrl = "https://image.mux.com/playback/animated.gif?width=448"
+    const previewUrl = "https://image.mux.com/playback/animated.webp?width=448"
     renderPreview(previewUrl)
 
     const button = container.querySelector("button")
@@ -86,7 +86,7 @@ describe("MuxHoverPreview", () => {
   })
 
   it("loads the preview after keyboard focus reaches the card", () => {
-    const previewUrl = "https://image.mux.com/playback/animated.gif?width=448"
+    const previewUrl = "https://image.mux.com/playback/animated.webp?width=448"
     renderPreview(previewUrl)
 
     const button = container.querySelector("button")

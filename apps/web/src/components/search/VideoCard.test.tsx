@@ -87,7 +87,7 @@ describe("defaultHrefBuilder", () => {
 describe("resolveMuxAnimatedPreviewUrl", () => {
   it("builds the bounded Mux animated GIF preview URL", () => {
     expect(resolveMuxAnimatedPreviewUrl("mux playback 1")).toBe(
-      "https://image.mux.com/mux%20playback%201/animated.gif?start=2&end=6&width=448&fps=8",
+      "https://image.mux.com/mux%20playback%201/animated.webp?start=2&end=6&width=448&fps=8",
     )
   })
 
