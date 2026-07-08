@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest"
 import {
   InMemoryMediaSignatureMatchRepository,
   MediaSignatureMatcher,
+  PrismaMediaSignatureMatchRepository,
   type MatchableMediaSignature,
 } from "./media-signature-matcher.js"
 import type { UploadSignals } from "./upload-signal-extraction.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  VISUAL_FRAME_FINGERPRINT_KIND,
+} from "./visual-fingerprint.js"
 
 const matchingSampleHash =
   "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a"
@@ -228,11 +233,190 @@ describe("MediaSignatureMatcher", () => {
       },
     ])
   })
+
+  it("uses the bounded v2 visual candidate path before fusion", async () => {
+    const repository = new TrackingMediaSignatureMatchRepository([
+      visualSignature({
+        coreId: "core-v2",
+        videoVariantId: "variant-v2",
+        phash: "ffffffff00000000",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      }),
+    ])
+    const matcher = new MediaSignatureMatcher(repository, {
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    })
+
+    await expect(
+      matcher.match(
+        uploadSignals({
+          algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+          sampledByteHashes: [matchingSampleHash],
+          visualHashes: ["ffffffff00000000"],
+        }),
+        { limit: 3 },
+      ),
+    ).resolves.toEqual([
+      {
+        coreId: "core-v2",
+        videoVariantId: "variant-v2",
+        confidence: 0.84,
+        matchStrength: "medium",
+      },
+    ])
+    expect(repository.listSignaturesCalls).toBe(0)
+    expect(repository.listVisualCandidateSignaturesCalls).toEqual([
+      {
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        uploadVisualHashes: ["ffffffff00000000"],
+        limit: 150,
+      },
+    ])
+  })
+
+  it("keeps v1 and v2 signatures isolated during v2 matching", async () => {
+    const matcher = createMatcher(
+      [
+        visualSignature({
+          coreId: "core-v1-byte-sample",
+          videoVariantId: "variant-v1",
+          phash: matchingSampleHash,
+          algorithmVersion: "official-media-signature-v1",
+        }),
+        visualSignature({
+          coreId: "core-v2-visual",
+          videoVariantId: "variant-v2",
+          phash: "ffffffff00000000",
+          algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        }),
+      ],
+      {
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      },
+    )
+
+    await expect(
+      matcher.match(
+        uploadSignals({
+          algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+          sampledByteHashes: [matchingSampleHash],
+          visualHashes: ["ffffffff00000000"],
+        }),
+        { limit: 3 },
+      ),
+    ).resolves.toEqual([
+      {
+        coreId: "core-v2-visual",
+        videoVariantId: "variant-v2",
+        confidence: 0.84,
+        matchStrength: "medium",
+      },
+    ])
+  })
+
+  it("does not return duration-only candidates when v2 visual extraction produced no hashes", async () => {
+    const matcher = createMatcher(
+      [
+        visualSignature({
+          coreId: "core-v2",
+          videoVariantId: "variant-v2",
+          phash: "ffffffff00000000",
+          algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        }),
+      ],
+      {
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      },
+    )
+
+    await expect(
+      matcher.match(
+        uploadSignals({
+          algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+          visualHashes: [],
+          sampledByteHashes: [],
+          durationMilliseconds: 120_000,
+        }),
+        { limit: 3 },
+      ),
+    ).resolves.toEqual([])
+  })
+
+  it("does not load all v2 signatures for transcript-only uploads", async () => {
+    const repository = new TrackingMediaSignatureMatchRepository([
+      visualSignature({
+        coreId: "core-v2",
+        videoVariantId: "variant-v2",
+        phash: "ffffffff00000000",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      }),
+    ])
+    const matcher = new MediaSignatureMatcher(repository, {
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    })
+
+    await expect(
+      matcher.match(
+        uploadSignals({
+          algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+          visualHashes: [],
+          sampledByteHashes: [],
+          transcriptText: "subtitle text without decoded frames",
+        }),
+        { limit: 3 },
+      ),
+    ).resolves.toEqual([])
+    expect(repository.listSignaturesCalls).toBe(0)
+    expect(repository.listVisualCandidateSignaturesCalls).toEqual([])
+  })
+
+  it("maps DB-backed v2 visual candidates from lowercase enum rows", async () => {
+    const db = new FakePrismaMediaSignatureClient([
+      rawVisualRow({
+        coreId: "core-exact",
+        videoVariantId: "variant-exact",
+        phash: "ffffffff00000000",
+      }),
+      rawVisualRow({
+        coreId: "core-near",
+        videoVariantId: "variant-near",
+        phash: "7fff7fff80008000",
+      }),
+    ])
+    const repository = new PrismaMediaSignatureMatchRepository(db.asClient())
+
+    await expect(
+      repository.listVisualCandidateSignatures({
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        uploadVisualHashes: ["ffffffff00000000"],
+        limit: 2,
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        coreId: "core-exact",
+        videoVariantId: "variant-exact",
+        signatureType: "VISUAL_FRAME",
+      }),
+      expect.objectContaining({
+        coreId: "core-near",
+        videoVariantId: "variant-near",
+        signatureType: "VISUAL_FRAME",
+      }),
+    ])
+    expect(db.queries[0]).toContain(
+      "ms.signature_type = 'visual_frame'::signature_type",
+    )
+    expect(db.queries[0]).toContain("ORDER BY")
+  })
 })
 
-function createMatcher(signatures: MatchableMediaSignature[]) {
+function createMatcher(
+  signatures: MatchableMediaSignature[],
+  options: { algorithmVersion?: string } = {},
+) {
   return new MediaSignatureMatcher(
     new InMemoryMediaSignatureMatchRepository(signatures),
+    options,
   )
 }
 
@@ -320,6 +504,101 @@ function audioSignature({
       fingerprint,
     },
   })
+}
+
+function visualSignature({
+  coreId,
+  videoVariantId,
+  phash,
+  algorithmVersion,
+}: {
+  coreId: string
+  videoVariantId: string
+  phash: string
+  algorithmVersion: string
+}): MatchableMediaSignature {
+  return {
+    ...signature({
+      coreId,
+      videoVariantId,
+      signatureType: "VISUAL_FRAME",
+      signature: {
+        kind: VISUAL_FRAME_FINGERPRINT_KIND,
+        phash,
+        frameWidth: 8,
+        frameHeight: 8,
+      },
+    }),
+    algorithmVersion,
+  } as MatchableMediaSignature & { algorithmVersion: string }
+}
+
+class TrackingMediaSignatureMatchRepository extends InMemoryMediaSignatureMatchRepository {
+  listSignaturesCalls = 0
+  listVisualCandidateSignaturesCalls: Array<{
+    algorithmVersion: string
+    uploadVisualHashes: string[]
+    limit: number
+  }> = []
+
+  override async listSignatures(input: {
+    algorithmVersion: string
+  }): Promise<MatchableMediaSignature[]> {
+    this.listSignaturesCalls += 1
+    return await super.listSignatures(input)
+  }
+
+  override async listVisualCandidateSignatures(input: {
+    algorithmVersion: string
+    uploadVisualHashes: string[]
+    limit: number
+  }): Promise<MatchableMediaSignature[]> {
+    this.listVisualCandidateSignaturesCalls.push(input)
+    return await super.listVisualCandidateSignatures(input)
+  }
+}
+
+class FakePrismaMediaSignatureClient {
+  readonly queries: string[] = []
+
+  constructor(private readonly rows: unknown[]) {}
+
+  asClient() {
+    return {
+      $queryRaw: async (query: { sql?: string; text?: string }) => {
+        this.queries.push(query.sql ?? query.text ?? String(query))
+        return this.rows
+      },
+    } as never
+  }
+}
+
+function rawVisualRow({
+  coreId,
+  videoVariantId,
+  phash,
+}: {
+  coreId: string
+  videoVariantId: string
+  phash: string
+}) {
+  return {
+    coreId,
+    videoVariantId,
+    signatureType: "visual_frame",
+    offsetMilliseconds: 0,
+    durationMilliseconds: null,
+    signature: {
+      kind: VISUAL_FRAME_FINGERPRINT_KIND,
+      phash,
+      frameWidth: 8,
+      frameHeight: 8,
+    },
+    durationSeconds: 120,
+    lengthInMilliseconds: null,
+    languageSlug: "english",
+    locale: "en",
+  }
 }
 
 function signature({

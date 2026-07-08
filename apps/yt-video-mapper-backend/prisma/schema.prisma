@@ -180,6 +180,7 @@ model MediaSignature {
 
   @@unique([coreId, videoVariantId, signatureType, algorithmVersion, offsetMilliseconds], map: "mapper_media_signature_variant_signature_key")
   @@index([coreId, signatureType])
+  @@index([algorithmVersion, signatureType])
   @@index([algorithmVersion, coreId, videoVariantId])
   @@map("mapper_media_signature")
 }

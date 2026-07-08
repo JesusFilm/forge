@@ -38,11 +38,99 @@ const ROADMAP_DIR = process.env.ROADMAP_DIR
   : path.join(process.cwd(), "../../docs/roadmap")
 
 const PRIORITY_ORDER: Record<Priority, number> = { P0: 0, P1: 1, P2: 2 }
+const LEGACY_PRIORITY_MAP: Partial<Record<string, Priority>> = {
+  high: "P0",
+  medium: "P1",
+  low: "P2",
+}
+const LEGACY_STATUS_MAP: Partial<Record<string, FeatureStatus>> = {
+  canceled: "blocked",
+  cancelled: "blocked",
+  completed: "complete",
+  implemented: "complete",
+  planned: "not-started",
+}
+const VALID_STATUSES = new Set<FeatureStatus>([
+  "not-started",
+  "in-progress",
+  "complete",
+  "blocked",
+])
+const DAY_MS = 86400000
+const START_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+function normalizeString(value: unknown): string {
+  if (typeof value === "string") return value.trim()
+  return ""
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean)
+}
+
+function normalizeStartDate(value: unknown): string {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return ""
+    return normalizeDateString(value.toISOString().slice(0, 10))
+  }
+  return typeof value === "string" ? normalizeDateString(value.trim()) : ""
+}
+
+function normalizeDateString(value: string): string {
+  if (!START_DATE_PATTERN.test(value)) return ""
+
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return ""
+
+  return date.toISOString().slice(0, 10) === value ? value : ""
+}
+
+function normalizeDuration(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.floor(value))
+  }
+
+  if (typeof value !== "string") return 0
+
+  const trimmed = value.trim()
+  const numericValue = Number(trimmed)
+  if (Number.isFinite(numericValue)) {
+    return Math.max(0, Math.floor(numericValue))
+  }
+
+  const durationMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*(?:d|days?)$/i)
+  if (!durationMatch) return 0
+
+  return Math.max(0, Math.floor(Number(durationMatch[1])))
+}
+
+function normalizePriority(value: unknown): Priority {
+  const priority = normalizeString(value).toUpperCase()
+  if (Object.prototype.hasOwnProperty.call(PRIORITY_ORDER, priority)) {
+    return priority as Priority
+  }
+
+  return LEGACY_PRIORITY_MAP[normalizeString(value).toLowerCase()] ?? "P2"
+}
+
+function normalizeStatus(value: unknown): FeatureStatus {
+  const status = normalizeString(value)
+  if (VALID_STATUSES.has(status as FeatureStatus)) {
+    return status as FeatureStatus
+  }
+
+  return LEGACY_STATUS_MAP[status.toLowerCase()] ?? "not-started"
+}
 
 function formatTimeline(startDate: string, duration: number): string {
-  if (!startDate) return ""
+  if (!startDate || duration <= 0) return ""
   const start = new Date(startDate + "T00:00:00")
-  const end = new Date(start.getTime() + (duration - 1) * 86400000)
+  if (Number.isNaN(start.getTime())) return ""
+
+  const end = new Date(start.getTime() + (duration - 1) * DAY_MS)
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   if (duration <= 1) return fmt(start)
@@ -63,30 +151,34 @@ function parseFeatureFile(filePath: string, lane: Lane): Feature | null {
     const raw = fs.readFileSync(filePath, "utf-8")
     const { data, content } = matter(raw)
 
-    if (!data.id || !data.title || !data.owner) {
+    const id = normalizeString(data.id)
+    const title = normalizeString(data.title)
+    const owner = normalizeString(data.owner)
+
+    if (!id || !title || !owner) {
       console.warn(`Skipping ${filePath}: missing required frontmatter fields`)
       return null
     }
 
-    const startDate = data.start_date ?? ""
-    const duration = data.duration ?? 0
+    const startDate = normalizeStartDate(data.start_date)
+    const duration = normalizeDuration(data.duration)
 
     return {
-      id: data.id,
-      title: data.title,
-      owner: data.owner,
-      priority: data.priority ?? "P2",
-      status: data.status ?? "not-started",
+      id,
+      title,
+      owner,
+      priority: normalizePriority(data.priority),
+      status: normalizeStatus(data.status),
       start_date: startDate,
       duration,
       timeline: formatTimeline(startDate, duration),
       lane,
-      depends_on: data.depends_on ?? [],
-      blocks: data.blocks ?? [],
-      tags: data.tags ?? [],
+      depends_on: normalizeStringArray(data.depends_on),
+      blocks: normalizeStringArray(data.blocks),
+      tags: normalizeStringArray(data.tags),
       content,
       problemPreview: extractProblemPreview(content),
-      slug: data.id,
+      slug: id,
       filePath: `docs/roadmap/${lane}/${path.basename(filePath)}`,
     }
   } catch (err) {

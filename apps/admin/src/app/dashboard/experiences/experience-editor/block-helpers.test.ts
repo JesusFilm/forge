@@ -54,11 +54,14 @@ describe("experience editor block helpers", () => {
       t: "videoCarousel",
       sectionKey: "",
       title: "Videos",
+      imageAssetId: "",
       items: [
         {
           videoId: "",
           streamingUrl: "",
           imageOverrideUrl: "",
+          imageOverrideAssetId: "",
+          imageAssetId: "",
           titleOverride: "",
           subtitleOverride: "",
         },
@@ -70,6 +73,34 @@ describe("experience editor block helpers", () => {
       title: "Videos",
       items: [{}],
     })
+  })
+
+  it("drops legacy read-only media item fields before save", () => {
+    const result = normalizeEditorBlockPayload({
+      t: "mediaCollection",
+      sectionKey: "videos",
+      variant: "grid",
+      items: [
+        {
+          videoId: "video-1",
+          videoSlug: "legacy-slug",
+          imageUrl: "https://example.com/image.jpg",
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      t: "mediaCollection",
+      sectionKey: "videos",
+      variant: "grid",
+      items: [
+        {
+          videoId: "video-1",
+          imageUrl: "https://example.com/image.jpg",
+        },
+      ],
+    })
+    expect(BlockSchema.safeParse(result).success).toBe(true)
   })
 
   it("drops stale nested slot payloads from containers before save", () => {

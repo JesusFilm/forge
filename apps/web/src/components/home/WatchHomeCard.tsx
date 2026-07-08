@@ -71,6 +71,8 @@ export function WatchHomeCard({
   className,
 }: WatchHomeCardProps) {
   const isVertical = orientation === "vertical"
+  const isCollectionCard = card.label === "Collection" || card.childCount > 0
+  const showMetaLabel = Boolean(card.metaLabel && !isCollectionCard)
   const frameClassName = cn(
     "group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
     className,
@@ -100,13 +102,7 @@ export function WatchHomeCard({
                 : "(max-width: 768px) 100vw, 360px"
             }
             className="poster-hover-zoom object-cover"
-            style={{
-              objectPosition: "left top",
-              maskImage:
-                "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
-              WebkitMaskImage:
-                "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
-            }}
+            style={{ objectPosition: "left top" }}
           />
         ) : (
           <div
@@ -114,16 +110,15 @@ export function WatchHomeCard({
             className="h-full w-full bg-[linear-gradient(135deg,#111827,#4c1d1d_52%,#064e3b)]"
           />
         )}
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-black/78 via-black/18 to-transparent" />
         {showSequenceNumber ? (
           <span className="absolute top-2 left-2 z-10 text-5xl leading-none font-bold text-stone-100/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]">
             {index + 1}
           </span>
         ) : null}
         <WatchProgressBar videoId={card.id} />
-        {card.metaLabel ? (
+        {showMetaLabel ? (
           <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 px-2 py-1 text-sm font-semibold text-white backdrop-blur-sm">
-            {card.childCount === 0 && card.href ? (
+            {card.href ? (
               <Play className="h-4 w-4 fill-current" aria-hidden />
             ) : null}
             {card.metaLabel}
@@ -144,7 +139,10 @@ export function WatchHomeCard({
               : "watch-home-gradient-outline-landscape",
           )}
         />
-        <div className="absolute inset-0 flex flex-col justify-end px-4 pt-4 pb-5">
+        <div
+          data-testid="watch-home-card-text-gradient"
+          className="absolute inset-x-0 bottom-0 flex flex-col justify-end bg-gradient-to-t from-black/78 via-black/44 to-transparent px-4 pt-10 pb-5"
+        >
           <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
             {card.label}
           </div>

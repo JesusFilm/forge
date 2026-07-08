@@ -2,10 +2,19 @@
 
 import { useState } from "react"
 import { Upload, X } from "lucide-react"
+import {
+  MAX_MEDIA_UPLOAD_BYTES,
+  mediaUploadTooLargeMessage,
+} from "@/app/dashboard/media/media-upload-limits"
 
 export type UploadActionResult = {
   ok: boolean
-  error?: "forbidden" | "missing-file" | "unknown"
+  error?:
+    | "forbidden"
+    | "missing-file"
+    | "too-large"
+    | "unsupported-file"
+    | "unknown"
 }
 
 export function MediaActions({
@@ -71,6 +80,14 @@ export function MediaActions({
             <form
               action={async (formData) => {
                 setError("")
+                const file = formData.get("file")
+                if (
+                  file instanceof File &&
+                  file.size > MAX_MEDIA_UPLOAD_BYTES
+                ) {
+                  setError(mediaUploadTooLargeMessage(file.name))
+                  return
+                }
                 const result = await uploadAction(formData)
                 if (result.ok) {
                   setOpen(false)
@@ -82,7 +99,11 @@ export function MediaActions({
                     ? "Your account cannot upload media assets."
                     : result.error === "missing-file"
                       ? "Choose a file before uploading."
-                      : "Upload failed. Check the file and try again.",
+                      : result.error === "too-large"
+                        ? mediaUploadTooLargeMessage()
+                        : result.error === "unsupported-file"
+                          ? "Choose an image file before uploading."
+                          : "Upload failed. Check the file and try again.",
                 )
               }}
               className="grid gap-4 p-4"
