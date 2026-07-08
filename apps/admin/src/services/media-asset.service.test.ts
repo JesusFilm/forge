@@ -434,7 +434,8 @@ describe("MediaAssetService", () => {
           imageUrl: "/api/media-assets/asset-1/preview",
           nested: {
             backgroundImageAssetId: "asset-2",
-            backgroundImageUrl: "/api/media-assets/asset-2/preview",
+            backgroundImageUrl:
+              "http://0.0.0.0:8080/api/media-assets/asset-2/preview",
           },
         },
       ])

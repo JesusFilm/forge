@@ -50,7 +50,7 @@ import type {
 } from "@/domain/blocks"
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
-import { mediaAssetPreviewUrl } from "@/services/media-asset.service"
+import { publicMediaAssetPreviewUrl } from "@/services/media-asset.service"
 
 // Typed value helpers — each block POJO mirrors its Zod schema output.
 
@@ -91,6 +91,8 @@ type MediaPreviewContext = {
       findUnique: (args: { where: { id: string } }) => Promise<{
         id: string
         backend: string
+        status: string
+        visibility: string
         objectKey: string | null
         previewObjectKey: string | null
         muxPlaybackId: string | null
@@ -110,10 +112,7 @@ async function resolveMediaAssetPreviewUrl(
   const id = optionalString(assetId)
   if (!id) return null
   const asset = await ctx.prisma.mediaAsset.findUnique({ where: { id } })
-  const previewUrl = asset ? mediaAssetPreviewUrl(asset) : null
-  return previewUrl?.startsWith("/")
-    ? new URL(previewUrl, ctx.request.url).toString()
-    : previewUrl
+  return asset ? publicMediaAssetPreviewUrl(asset) : null
 }
 
 async function resolveAssetBackedUrl(
@@ -123,9 +122,19 @@ async function resolveAssetBackedUrl(
   assetField: string,
 ) {
   const record = row as Record<string, unknown>
+  if (optionalString(record[assetField])) {
+    return resolveMediaAssetPreviewUrl(ctx, record[assetField])
+  }
+
+  const storedUrl = optionalString(record[urlField])
+  return isPrivateMediaAssetUrl(storedUrl) ? null : storedUrl
+}
+
+function isPrivateMediaAssetUrl(value: unknown) {
   return (
-    optionalString(record[urlField]) ??
-    (await resolveMediaAssetPreviewUrl(ctx, record[assetField]))
+    typeof value === "string" &&
+    (value.startsWith("/api/media-assets/") ||
+      value.includes("/api/media-assets/"))
   )
 }
 
