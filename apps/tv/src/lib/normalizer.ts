@@ -88,18 +88,14 @@ function normalizeBlock(
     } as unknown as NormalizedBlock
   }
 
-  // For container, recursively normalize admin content or legacy slot content.
+  // Admin containers are flat: ContainerSlotBlock markers split content[] into
+  // side-by-side slots (each marker carries the grid span). Reconstruct those
+  // groups so ContainerRenderer lays them out by span instead of one column.
   if (kind === "container" && Array.isArray(block.content)) {
     return {
       ...block,
       kind,
-      slots: [
-        {
-          slotContent: normalizeContentArray(
-            block.content as Record<string, unknown>[],
-          ),
-        },
-      ],
+      slots: groupContainerSlots(block.content as Record<string, unknown>[]),
     } as unknown as NormalizedBlock
   }
 
@@ -128,6 +124,41 @@ function normalizeContentArray(
   return items
     .map((item) => normalizeBlock(item))
     .filter((item): item is NormalizedBlock => item !== null)
+}
+
+type NormalizedSlot = {
+  gridSpan?: unknown
+  spans?: unknown
+  slotContent: NormalizedBlock[]
+}
+
+/**
+ * Split a flat container `content[]` into side-by-side slot groups. Each
+ * ContainerSlotBlock marker opens a slot carrying its span; following blocks
+ * fill it. Content with no markers collapses into one slot (never vanishes).
+ */
+function groupContainerSlots(
+  content: Record<string, unknown>[],
+): NormalizedSlot[] {
+  const slots: NormalizedSlot[] = []
+  let current: NormalizedSlot | null = null
+
+  for (const item of content) {
+    if (item.__typename === "ContainerSlotBlock") {
+      current = { gridSpan: item.gridSpan, spans: item.spans, slotContent: [] }
+      slots.push(current)
+      continue
+    }
+    const normalized = normalizeBlock(item)
+    if (!normalized) continue
+    if (!current) {
+      current = { slotContent: [] }
+      slots.push(current)
+    }
+    current.slotContent.push(normalized)
+  }
+
+  return slots.filter((slot) => slot.slotContent.length > 0)
 }
 
 /**
