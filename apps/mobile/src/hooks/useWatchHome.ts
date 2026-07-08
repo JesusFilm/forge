@@ -17,6 +17,7 @@ import {
   buildWatchHomeSectionsFromExperience,
   resolveWatchHomeModel,
 } from "../lib/watchHome/experienceAdapter"
+import { withDeadline } from "../lib/watchHome/withDeadline"
 import {
   logWatchHomeFallback,
   type WatchHomeFallbackReason,
@@ -31,6 +32,13 @@ import {
 // Errors surface as a retryable message (never a throw) so the screen renders
 // error-with-retry instead of a blank surface (R12).
 const RETRYABLE_ERROR_MESSAGE = "Couldn't load videos. Please try again."
+
+// A slow/hung homepage-Experience query must not hold the required videos load
+// (and the first-launch spinner) hostage — cap the wait well under the HTTP
+// timeout, then degrade to the last-good or config body (#2, R9).
+const EXPERIENCE_FETCH_DEADLINE_MS = 8000
+
+type ExperienceBlockList = readonly { readonly __typename?: string | null }[]
 
 export type WatchHomeState = {
   model: WatchHomeModel | null
@@ -75,6 +83,9 @@ export function useWatchHome(): WatchHomeState {
   // JSON of the painted snapshot's Experience blocks ("null" for the config
   // body), paired with snapshotVideosJsonRef for the keep-model compare.
   const snapshotBlocksJsonRef = useRef<string | null>(null)
+  // Last Experience blocks that yielded >=1 shelf; reused when a transient
+  // Experience fetch error would otherwise downgrade a good body to config (#1).
+  const lastGoodExperienceBlocksRef = useRef<ExperienceBlockList | null>(null)
 
   const fetchHome = useCallback(async (mode: "initial" | "refresh") => {
     const thisRequest = ++requestIdRef.current
@@ -99,11 +110,14 @@ export function useWatchHome(): WatchHomeState {
           },
           fetchPolicy,
         }),
-        client.query({
-          query: GET_WATCH_SETTING,
-          variables: { locale: HOME_LOCALE },
-          fetchPolicy,
-        }),
+        withDeadline(
+          client.query({
+            query: GET_WATCH_SETTING,
+            variables: { locale: HOME_LOCALE },
+            fetchPolicy,
+          }),
+          EXPERIENCE_FETCH_DEADLINE_MS,
+        ),
       ])
       if (requestIdRef.current !== thisRequest) return
 
@@ -133,27 +147,37 @@ export function useWatchHome(): WatchHomeState {
         languageSlug: ENGLISH_LANGUAGE_SLUG,
       })
 
-      // Derive the Experience body and a fallback reason when it isn't usable.
-      let experienceSections: WatchHomeSection[] = []
-      let experienceBlocks:
-        | readonly { readonly __typename?: string | null }[]
-        | null = null
+      // Derive the Experience body. A transient Experience error (incl. the
+      // deadline above) reuses the last-good blocks so a network blip can't
+      // downgrade an already-good body to the config fallback (#1).
+      let experienceBlocks: ExperienceBlockList | null = null
       let fallbackReason: WatchHomeFallbackReason = "null"
       if (experienceOutcome.status === "rejected") {
         fallbackReason = "error"
+        experienceBlocks = lastGoodExperienceBlocksRef.current
       } else {
         const homepage =
           experienceOutcome.value.data?.watchSetting?.homepageExperience
-        if (homepage == null) {
-          fallbackReason = "null"
-        } else {
-          experienceBlocks = homepage.blocks as readonly {
-            readonly __typename?: string | null
-          }[]
-          experienceSections =
-            buildWatchHomeSectionsFromExperience(experienceBlocks)
-          if (experienceSections.length === 0) fallbackReason = "empty"
+        if (homepage != null) {
+          experienceBlocks = homepage.blocks as ExperienceBlockList
         }
+      }
+      const experienceSections: WatchHomeSection[] = experienceBlocks
+        ? buildWatchHomeSectionsFromExperience(experienceBlocks)
+        : []
+      // A resolved Experience mapping to zero shelves is "empty", not an error —
+      // the config fallback still logs a distinct reason (a reused-on-error body
+      // keeps "error").
+      if (
+        experienceOutcome.status === "fulfilled" &&
+        experienceBlocks != null &&
+        experienceSections.length === 0
+      ) {
+        fallbackReason = "empty"
+      }
+      // Remember blocks that produced a real body for the next transient error.
+      if (experienceSections.length >= 1 && experienceBlocks != null) {
+        lastGoodExperienceBlocksRef.current = experienceBlocks
       }
 
       const { model: nextModel, usedExperience } = resolveWatchHomeModel({
@@ -222,6 +246,11 @@ export function useWatchHome(): WatchHomeState {
         snapshotBlocksJsonRef.current = snapshot.blocks
           ? JSON.stringify(snapshot.blocks)
           : "null"
+        // Seed last-good from the snapshot so a transient network Experience
+        // error right after a cold-launch paint keeps the snapshot body (#1).
+        if (snapshotSections.length >= 1 && snapshot.blocks) {
+          lastGoodExperienceBlocksRef.current = snapshot.blocks
+        }
         setModel(snapshotModel)
         // A painted model ends the spinner phase; the still-running initial
         // fetch is a background revalidation, not a loading state.
