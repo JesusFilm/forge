@@ -7,12 +7,11 @@
  * expected placeholder (silent); anything else logs a dev warning, mirroring
  * `SectionDispatcher`.
  */
-import type { WatchHomeCard, WatchHomeSection } from "./model"
+import type { WatchHomeCard, WatchHomeModel, WatchHomeSection } from "./model"
 
-type ExperienceBlock = { readonly __typename?: string | null } & Record<
-  string,
-  unknown
->
+// Structural block shape — the precise gql.tada block unions assign to this;
+// field access happens via a Record cast inside blockToSection.
+type ExperienceBlock = { readonly __typename?: string | null }
 
 type ExperienceItem = {
   videoId?: string | null
@@ -79,27 +78,28 @@ function itemToCard(
 }
 
 function blockToSection(block: ExperienceBlock): WatchHomeSection | null {
-  const sectionKey = (block.sectionKey as string | null) ?? null
-  const rawItems = (block.items as ExperienceItem[] | null | undefined) ?? []
+  const b = block as Record<string, unknown>
+  const sectionKey = (b.sectionKey as string | null) ?? null
+  const rawItems = (b.items as ExperienceItem[] | null | undefined) ?? []
   const cards = rawItems
     .map((item) => itemToCard(item, sectionKey ?? "home-experience"))
     .filter((c): c is WatchHomeCard => c != null)
   if (cards.length === 0) return null // empty / all-dropped collection → skip
 
-  const blockTitle = (block.title as string | null) ?? ""
-  const categoryLabel = (block.categoryLabel as string | null) ?? ""
+  const blockTitle = (b.title as string | null) ?? ""
+  const categoryLabel = (b.categoryLabel as string | null) ?? ""
   const { layout, orientation } = mapVariant(
-    block.mediaCollectionVariant as string | null,
+    b.mediaCollectionVariant as string | null,
   )
   return {
     id: sectionKey ?? (blockTitle || "home-experience-section"),
     eyebrow: categoryLabel,
     // Empty admin title falls back to the category label so a shelf is never headless.
     title: blockTitle || categoryLabel,
-    description: (block.subtitle as string | null) ?? null,
+    description: (b.subtitle as string | null) ?? null,
     layout,
     orientation,
-    showSequenceNumbers: (block.showItemNumbers as boolean | null) ?? false,
+    showSequenceNumbers: (b.showItemNumbers as boolean | null) ?? false,
     cards,
   }
 }
@@ -121,4 +121,23 @@ export function buildWatchHomeSectionsFromExperience(
     }
   }
   return sections
+}
+
+/**
+ * Assemble the Home model: the body's `sections` come from the Experience when
+ * it yields ≥1 renderable shelf, else fall back to the config model. The hero
+ * `carousel` is always the config-sourced one (spread from `configModel`) — the
+ * split is at assembly, the hero fetch is never touched (KTD3, R4).
+ */
+export function resolveWatchHomeModel(args: {
+  configModel: WatchHomeModel
+  experienceSections: WatchHomeSection[]
+}): { model: WatchHomeModel; usedExperience: boolean } {
+  if (args.experienceSections.length >= 1) {
+    return {
+      model: { ...args.configModel, sections: args.experienceSections },
+      usedExperience: true,
+    }
+  }
+  return { model: args.configModel, usedExperience: false }
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import { getApolloClient } from "../lib/apolloClient"
-import { GET_WATCH_HOME_VIDEOS } from "../lib/queries"
+import { GET_WATCH_HOME_VIDEOS, GET_WATCH_SETTING } from "../lib/queries"
 import {
   ENGLISH_LANGUAGE_SLUG,
   HOME_LOCALE,
@@ -11,7 +11,16 @@ import {
 import {
   buildWatchHomeModelFromVideos,
   type WatchHomeModel,
+  type WatchHomeSection,
 } from "../lib/watchHome/model"
+import {
+  buildWatchHomeSectionsFromExperience,
+  resolveWatchHomeModel,
+} from "../lib/watchHome/experienceAdapter"
+import {
+  logWatchHomeFallback,
+  type WatchHomeFallbackReason,
+} from "../lib/watchHome/logWatchHomeFallback"
 import {
   WATCH_HOME_SNAPSHOT_MAX_BYTES,
   WATCH_HOME_SNAPSHOT_STORAGE_KEY,
@@ -67,22 +76,41 @@ export function useWatchHome(): WatchHomeState {
     setError(null)
 
     try {
-      const result = await getApolloClient().query({
-        query: GET_WATCH_HOME_VIDEOS,
-        variables: {
-          coreIds: getWatchHomeCoreIds(),
-          locale: HOME_LOCALE,
-          languageSlug: ENGLISH_LANGUAGE_SLUG,
-        },
-        // Initial load reuses the cache; explicit refetch forces the network.
-        fetchPolicy: mode === "initial" ? "cache-first" : "network-only",
-      })
+      const client = getApolloClient()
+      // Initial load reuses the cache; explicit refetch forces the network.
+      const fetchPolicy = mode === "initial" ? "cache-first" : "network-only"
+      // Body source (homepage Experience) + hero/fallback source (config
+      // videos) fetch in parallel. The videos fetch feeds the hero carousel and
+      // the config fallback and is required; the Experience fetch is additive —
+      // its failure or absence degrades to the config body, never a hard error.
+      const [videosOutcome, experienceOutcome] = await Promise.allSettled([
+        client.query({
+          query: GET_WATCH_HOME_VIDEOS,
+          variables: {
+            coreIds: getWatchHomeCoreIds(),
+            locale: HOME_LOCALE,
+            languageSlug: ENGLISH_LANGUAGE_SLUG,
+          },
+          fetchPolicy,
+        }),
+        client.query({
+          query: GET_WATCH_SETTING,
+          variables: { locale: HOME_LOCALE },
+          fetchPolicy,
+        }),
+      ])
       if (requestIdRef.current !== thisRequest) return
+
+      // The required videos source failed — keep any painted model (snapshot
+      // included) and surface a retry affordance, not a blank screen.
+      if (videosOutcome.status === "rejected") {
+        setError(RETRYABLE_ERROR_MESSAGE)
+        return
+      }
       networkLandedRef.current = true
-      const videos = result.data?.watchHomeVideos ?? []
-      // Empty-but-successful initial response over a painted snapshot degrades
-      // like a failed fetch — never paint full-empty over good content. Same
-      // rule persistHomeSnapshot applies at the storage layer.
+      const videos = videosOutcome.value.data?.watchHomeVideos ?? []
+      // Empty-but-successful videos over a painted snapshot degrades like a
+      // failed fetch — never paint full-empty over good content.
       if (
         mode === "initial" &&
         videos.length === 0 &&
@@ -91,23 +119,50 @@ export function useWatchHome(): WatchHomeState {
         setError(RETRYABLE_ERROR_MESSAGE)
         return
       }
-      // One stringify of the ~460KB payload, reused for both the equality
-      // compare and the persisted blob.
+      // One stringify of the ~460KB payload, reused for the equality compare and
+      // the persisted blob.
       const videosJson = JSON.stringify(videos)
-      const snapshotStillCurrent =
-        mode === "initial" && videosJson === snapshotVideosJsonRef.current
-      if (!snapshotStillCurrent) {
-        setModel(
-          buildWatchHomeModelFromVideos({
-            videos,
-            languageSlug: ENGLISH_LANGUAGE_SLUG,
-          }),
-        )
+      const configModel = buildWatchHomeModelFromVideos({
+        videos,
+        languageSlug: ENGLISH_LANGUAGE_SLUG,
+      })
+
+      // Derive the Experience body and a fallback reason when it isn't usable.
+      let experienceSections: WatchHomeSection[] = []
+      let fallbackReason: WatchHomeFallbackReason = "null"
+      if (experienceOutcome.status === "rejected") {
+        fallbackReason = "error"
+      } else {
+        const homepage =
+          experienceOutcome.value.data?.watchSetting?.homepageExperience
+        if (homepage == null) {
+          fallbackReason = "null"
+        } else {
+          experienceSections = buildWatchHomeSectionsFromExperience(
+            homepage.blocks as readonly {
+              readonly __typename?: string | null
+            }[],
+          )
+          if (experienceSections.length === 0) fallbackReason = "empty"
+        }
       }
+
+      const { model: nextModel, usedExperience } = resolveWatchHomeModel({
+        configModel,
+        experienceSections,
+      })
+      // Keep the painted snapshot model when the config body is unchanged AND we
+      // aren't swapping in an Experience body — avoids resetting the hero pager.
+      const snapshotStillCurrent =
+        mode === "initial" &&
+        !usedExperience &&
+        videosJson === snapshotVideosJsonRef.current
+      if (!snapshotStillCurrent) setModel(nextModel)
+      if (!usedExperience) logWatchHomeFallback({ reason: fallbackReason })
       if (videos.length > 0) persistHomeSnapshot(videosJson)
     } catch {
       if (requestIdRef.current !== thisRequest) return
-      // Keep any previously-built model (snapshot included) so a failed fetch
+      // Keep any previously-built model (snapshot included) so a failure
       // degrades to stale content + a retry affordance, not a blank screen.
       setError(RETRYABLE_ERROR_MESSAGE)
     } finally {
