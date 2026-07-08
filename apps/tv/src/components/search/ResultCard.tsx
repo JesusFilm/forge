@@ -7,6 +7,7 @@ import { type SearchResult } from "../../lib/queries"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { ExperienceFallback } from "./ExperienceFallback"
 import { resultChipLabel, resultKindLabel } from "./searchDisplay"
 import { SEARCH_THEME } from "./searchTheme"
 
@@ -93,6 +94,8 @@ export function ResultCard({
                 contentPosition="top left"
                 recyclingKey={`search-${result.type}-${result.id}`}
               />
+            ) : result.type === "EXPERIENCE" ? (
+              <ExperienceFallback slug={result.slug} title={result.title} />
             ) : (
               <View style={[styles.image, styles.imageFallback]} />
             )}
