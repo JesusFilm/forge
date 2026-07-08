@@ -20,12 +20,18 @@ const AUTH_KEYS = [
   "AUTH_COOKIE_PREFIX",
 ] as const
 
+const FLAG_KEYS = [
+  "LAUNCHDARKLY_SDK_KEY",
+  "FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT",
+] as const
+
 // A real (≥32-char, non-placeholder) signing secret for the "configured" cases.
 const REAL_SECRET = "a".repeat(40)
 
 function clearSeekerEnv() {
   for (const key of SEEKER_KEYS) delete process.env[key]
   for (const key of AUTH_KEYS) delete process.env[key]
+  for (const key of FLAG_KEYS) delete process.env[key]
 }
 
 // Sets the full happy-path auth env; individual cases delete/override from here.
@@ -187,6 +193,31 @@ describe("chatAuthConfigured (KTD6 / R11 fail-closed)", () => {
     expect(example).toContain(
       `CHAT_SESSION_SECRET=${CHAT_SESSION_SECRET_PLACEHOLDER}`,
     )
+  })
+})
+
+describe("LaunchDarkly env (feat-233)", () => {
+  it("boots clean with neither LaunchDarkly var set", async () => {
+    await expect(importEnv()).resolves.toBeDefined()
+    const { env } = await importEnv()
+    expect(env.LAUNCHDARKLY_SDK_KEY).toBeUndefined()
+    expect(env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT).toBeUndefined()
+  })
+
+  it("normalizes empty-string LaunchDarkly vars to undefined", async () => {
+    process.env.LAUNCHDARKLY_SDK_KEY = ""
+    process.env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT = ""
+    const { env } = await importEnv()
+    expect(env.LAUNCHDARKLY_SDK_KEY).toBeUndefined()
+    expect(env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT).toBeUndefined()
+  })
+
+  it("passes set values through the schema", async () => {
+    process.env.LAUNCHDARKLY_SDK_KEY = "sdk-test-key"
+    process.env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT = "true"
+    const { env } = await importEnv()
+    expect(env.LAUNCHDARKLY_SDK_KEY).toBe("sdk-test-key")
+    expect(env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT).toBe("true")
   })
 })
 
