@@ -6,7 +6,7 @@ import { Dimensions, Platform } from "react-native"
  * canvas (1.0 on tvOS, shrunk on Android; fonts rounded to avoid sub-pixel blur).
  */
 
-const REFERENCE_WIDTH = 1920
+export const REFERENCE_WIDTH = 1920
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
 

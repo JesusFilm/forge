@@ -1,8 +1,10 @@
 import { Dimensions, StyleSheet, View } from "react-native"
 
-import { scale } from "../../lib/scale"
+import { REFERENCE_WIDTH, scale } from "../../lib/scale"
 import { HOME_CARD_THUMB_HEIGHT, HOME_CARD_WIDTH } from "./HomeCard"
+import { COLUMN_WIDTH, ITEM_GAP, RAIL_PADDING_LEFT } from "./HomeRail"
 import {
+  HERO_ACTION_HEIGHT,
   HERO_PADDING_BOTTOM,
   HERO_PADDING_LEFT,
   HERO_REGION_HEIGHT,
@@ -15,12 +17,12 @@ const HERO_ART = "rgba(255,255,255,0.08)"
 const BLOCK = "rgba(255,255,255,0.13)"
 const CARD = "rgba(255,255,255,0.08)"
 
-const CARD_GAP = scale(28)
-
-// One more full-size card than fits, so the rail bleeds off the right edge like a
-// real one — mirrors HomeRail's edge-to-edge fill instead of a boxed-in row.
+// Mirror HomeRail's VISIBLE_COLUMNS (shared COLUMN_WIDTH + RAIL_PADDING_LEFT) plus
+// one card so the rail bleeds off the right edge like a real one. Guard a 0-width
+// module-load read (as scale.ts does) so cold launch never collapses to one card.
+const SCREEN_WIDTH = Dimensions.get("window").width || REFERENCE_WIDTH
 const CARD_COUNT =
-  Math.ceil(Dimensions.get("window").width / (HOME_CARD_WIDTH + CARD_GAP)) + 1
+  Math.ceil((SCREEN_WIDTH - RAIL_PADDING_LEFT) / COLUMN_WIDTH) + 1
 
 /**
  * Non-focusable cold-launch placeholder, shown in the home "loading" branch in
@@ -34,24 +36,24 @@ export function HomeSkeleton() {
     <View style={styles.root} pointerEvents="none">
       <View style={styles.hero}>
         <View style={styles.heroCopy}>
-          <View style={styles.kicker} />
-          <View style={styles.titleLineOne} />
-          <View style={styles.titleLineTwo} />
-          <View style={styles.descriptionOne} />
-          <View style={styles.descriptionTwo} />
+          <View style={[styles.bar, styles.kicker]} />
+          <View style={[styles.bar, styles.titleLineOne]} />
+          <View style={[styles.bar, styles.titleLineTwo]} />
+          <View style={[styles.bar, styles.descriptionOne]} />
+          <View style={[styles.bar, styles.descriptionTwo]} />
           <View style={styles.ctaRow}>
-            <View style={styles.cta} />
-            <View style={styles.chevron} />
+            <View style={[styles.bar, styles.cta]} />
+            <View style={[styles.bar, styles.chevron]} />
           </View>
         </View>
       </View>
 
       <View style={styles.rail}>
-        <View style={styles.railEyebrow} />
-        <View style={styles.railTitle} />
+        <View style={[styles.tile, styles.railEyebrow]} />
+        <View style={[styles.tile, styles.railTitle]} />
         <View style={styles.cardRow}>
           {Array.from({ length: CARD_COUNT }, (_, i) => (
-            <View key={i} style={styles.card} />
+            <View key={i} style={[styles.tile, styles.card]} />
           ))}
         </View>
       </View>
@@ -69,68 +71,62 @@ const styles = StyleSheet.create({
     backgroundColor: HERO_ART,
   },
   heroCopy: { maxWidth: scale(1060) },
+  // Shared fills so a tone change edits one place: hero copy bars vs rail tiles.
+  bar: { backgroundColor: BLOCK },
+  tile: { backgroundColor: CARD },
   kicker: {
     width: scale(150),
     height: scale(18),
     borderRadius: scale(4),
-    backgroundColor: BLOCK,
     marginBottom: scale(18),
   },
   titleLineOne: {
     width: scale(760),
     height: scale(66),
     borderRadius: scale(10),
-    backgroundColor: BLOCK,
     marginBottom: scale(14),
   },
   titleLineTwo: {
     width: scale(520),
     height: scale(66),
     borderRadius: scale(10),
-    backgroundColor: BLOCK,
     marginBottom: scale(26),
   },
   descriptionOne: {
     width: scale(900),
     height: scale(20),
     borderRadius: scale(4),
-    backgroundColor: BLOCK,
     marginBottom: scale(12),
   },
   descriptionTwo: {
     width: scale(720),
     height: scale(20),
     borderRadius: scale(4),
-    backgroundColor: BLOCK,
     marginBottom: scale(30),
   },
   ctaRow: { flexDirection: "row", alignItems: "center" },
   cta: {
     width: scale(210),
-    height: scale(62),
-    borderRadius: scale(31),
-    backgroundColor: BLOCK,
+    height: HERO_ACTION_HEIGHT,
+    borderRadius: HERO_ACTION_HEIGHT / 2,
     marginRight: scale(20),
   },
   chevron: {
-    width: scale(62),
-    height: scale(62),
-    borderRadius: scale(31),
-    backgroundColor: BLOCK,
+    width: HERO_ACTION_HEIGHT,
+    height: HERO_ACTION_HEIGHT,
+    borderRadius: HERO_ACTION_HEIGHT / 2,
   },
-  rail: { flex: 1, paddingLeft: scale(80), paddingTop: scale(22) },
+  rail: { flex: 1, paddingLeft: RAIL_PADDING_LEFT, paddingTop: scale(22) },
   railEyebrow: {
     width: scale(140),
     height: scale(16),
     borderRadius: scale(4),
-    backgroundColor: CARD,
     marginBottom: scale(10),
   },
   railTitle: {
     width: scale(320),
     height: scale(30),
     borderRadius: scale(6),
-    backgroundColor: CARD,
     marginBottom: scale(22),
   },
   cardRow: { flexDirection: "row" },
@@ -138,7 +134,6 @@ const styles = StyleSheet.create({
     width: HOME_CARD_WIDTH,
     height: HOME_CARD_THUMB_HEIGHT,
     borderRadius: scale(12),
-    backgroundColor: CARD,
-    marginRight: CARD_GAP,
+    marginRight: ITEM_GAP,
   },
 })
