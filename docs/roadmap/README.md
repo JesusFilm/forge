@@ -4,13 +4,13 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 8, 2026)
+## Status (July 9, 2026)
 
-- **Total tickets:** 295
-- **Complete:** 208
+- **Total tickets:** 302
+- **Complete:** 214
 - **In progress:** 19
 - **Not started:** 24
-- **Blocked:** 44
+- **Blocked:** 45
 - **Overdue and not complete:** 0
 
 ## Feature Index
@@ -168,6 +168,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-229](platform/feat-229-web-production-readiness.md)                            | Web production readiness gates                                                   | urim      | P0       | —     | 5    | —   | in-progress |
 | [feat-230](platform/feat-230-watch-route-snapshot-published-at-contract.md)          | Restore Watch route snapshot publishedAt contract                                | tataihono | P0       | —     | 1    | —   | complete    |
 | [feat-236](platform/feat-236-roadmap-frontmatter-normalization.md)                   | Roadmap frontmatter normalization for deploy builds                              | nisal     | P0       | —     | 1    | —   | complete    |
+| [feat-239](platform/feat-239-watch-public-media-url-hotfix.md)                       | Watch Public Media URL Hotfix                                                    | codex     | P0       | —     | 1    | —   | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                            | Scaffolding Support for Urim                                                     | tataihono | P1       | —     | 21   | —   | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)     | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono | P1       | —     | 1    | —   | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                          | Partner Activation Network                                                       | urim      | P1       | —     | 28   | —   | blocked     |
@@ -263,6 +264,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-232](platform/feat-232-watch-next-countdown.md)                                | Watch next countdown                                                             | vlad      | P1       | —     | 1    | —   | complete    |
 | [feat-235](platform/feat-235-watch-home-builder-production-rollout.md)               | Watch home builder production rollout                                            | urim      | P1       | —     | 1    | —   | complete    |
 | [feat-236](platform/feat-236-admin-image-picker-media-library-browser.md)            | Admin image picker media library browser                                         | tataihono | P1       | —     | 4    | —   | complete    |
+| [feat-236](platform/feat-236-admin-public-media-asset-resolution.md)                 | Admin Public Media Asset Resolution                                              | codex     | P1       | —     | 1    | —   | complete    |
+| [feat-240](platform/feat-240-admin-fleet-search-key-provisioning.md)                 | Admin fleet search key provisioning + rollout preconditions                      | urim      | P1       | —     | 3    | —   | not-started |
+| [feat-241](platform/feat-241-tv-mobile-fleet-search-token-rollout.md)                | TV/mobile fleet search token provisioning + rebuild                              | urim      | P1       | —     | 2    | —   | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)               | Optimize Through Data-Driven Insights                                            | tataihono | P2       | —     | 46   | —   | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)              | LLM Steering System (RAG + Guardrails)                                           | tataihono | P2       | —     | 78   | —   | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                         | Doctrinal Validation Engine                                                      | vlad      | P2       | —     | 31   | —   | blocked     |
@@ -285,6 +289,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-228](platform/feat-228-tv-perf-tooling-mcp-and-profiler.md)                    | TV perf tooling: Datadog MCP for agents and Hermes profiler pairing              | urim      | P2       | —     | 2    | —   | not-started |
 | [feat-233](platform/feat-233-watch-home-card-hover-backdrop-polish.md)               | Watch home card hover backdrop polish                                            | vlad      | P2       | —     | 1    | —   | complete    |
 | [feat-234](platform/feat-234-watch-home-short-film-player.md)                        | Watch home short film inline player                                              | urim      | P2       | —     | 1    | —   | complete    |
+| [feat-235](platform/feat-235-watch-card-mux-hover-previews.md)                       | Watch card Mux hover previews                                                    | urim      | P2       | —     | 1    | —   | complete    |
+| [feat-237](platform/feat-237-admin-image-library-picker-scroll.md)                   | Admin Image Library Picker Scroll                                                | codex     | P2       | —     | 1    | —   | complete    |
+| [feat-238](platform/feat-238-admin-image-picker-scroll-frame.md)                     | Admin Image Picker Scroll Frame                                                  | codex     | P2       | —     | 1    | —   | complete    |
 
 ### Topic Experiences
 
