@@ -84,6 +84,7 @@ export async function uploadMediaAssetFromFormData({
         kind,
         backend,
         status: "UPLOADING",
+        visibility: "PUBLIC",
         mimeType: file.type || "application/octet-stream",
         byteSize: file.size.toString(),
         originalFilename: file.name,

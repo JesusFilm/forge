@@ -8,6 +8,7 @@ start_date: "2026-09-01"
 duration: 2
 depends_on:
   - "feat-233"
+  - "feat-239"
 blocks:
 tags:
   - "web"
@@ -16,7 +17,23 @@ tags:
 
 ## Problem
 
-feat-233 gates the real seeker agent behind a per-user LaunchDarkly allowlist
+> **Mechanism update (2026-07-08, feat-239):** the gate's membership source is
+> no longer LaunchDarkly — feat-239 swapped it to the `SEEKER_ALLOWED_EMAILS`
+> Railway env CSV and already deleted chat's LD client
+> (`lib/feature-flags.ts`), the `chatSeekerDogfood` registry entry, the
+> `LAUNCHDARKLY_SDK_KEY`/`FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT` env vars, and
+> chat's `@forge/feature-flags` dependency. Every LD-specific line item below
+> is therefore ALREADY DONE; what this ticket still removes at public release
+> is the remaining gate layer — `seeker-gate.ts` (+ tests, now
+> allowlist-shaped), `SEEKER_ALLOWED_EMAILS` + `isSeekerEmailAllowed()` in
+> `config/env.ts`, the `not_allowlisted` outcome, the `gate_denied` union
+> member and its client sites, and the Railway `SEEKER_ALLOWED_EMAILS` value.
+> The keep-list (step 3) and the rate-cap-first precondition (step 0) are
+> unchanged and still binding. The greps below remain the source of truth;
+> read the LD-flavored file lists through this note.
+
+feat-233 gates the real seeker agent behind a per-user allowlist (originally a
+LaunchDarkly flag; an env-var CSV since feat-239)
 for the dogfood phase. That gate is deliberately phase-scoped scaffolding: the
 feat-233 plan's Scope Boundaries say widening beyond a named-person list
 requires a different mechanism entirely, so whichever way the dogfood phase
@@ -66,6 +83,9 @@ seeker for everyone, anonymous included. The other arms are NOT this ticket:
 
 ## Grep These
 
+- `SEEKER_ALLOWED_EMAILS|isSeekerEmailAllowed|not_allowlisted` — the feat-239
+  env-allowlist mechanism's footprint (env schema, helper, gate outcome,
+  tests, `.env.example`, docs); all go.
 - `resolveSeekerGate|seeker-gate` — the gate's two call sites (page.tsx,
   seeker route) plus docs references; all must be gone or rewritten.
 - `grep -rn "createChatFeatureFlagClient\|chatFeatureFlagClient" apps/chat/src`

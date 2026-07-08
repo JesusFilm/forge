@@ -20,10 +20,7 @@ const AUTH_KEYS = [
   "AUTH_COOKIE_PREFIX",
 ] as const
 
-const FLAG_KEYS = [
-  "LAUNCHDARKLY_SDK_KEY",
-  "FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT",
-] as const
+const FLAG_KEYS = ["SEEKER_ALLOWED_EMAILS"] as const
 
 // A real (≥32-char, non-placeholder) signing secret for the "configured" cases.
 const REAL_SECRET = "a".repeat(40)
@@ -196,28 +193,52 @@ describe("chatAuthConfigured (KTD6 / R11 fail-closed)", () => {
   })
 })
 
-describe("LaunchDarkly env (feat-233)", () => {
-  it("boots clean with neither LaunchDarkly var set", async () => {
+describe("isSeekerEmailAllowed (seeker allowlist, fail-closed)", () => {
+  it("boots clean with the allowlist unset and admits no one", async () => {
     await expect(importEnv()).resolves.toBeDefined()
-    const { env } = await importEnv()
-    expect(env.LAUNCHDARKLY_SDK_KEY).toBeUndefined()
-    expect(env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT).toBeUndefined()
+    const { env, isSeekerEmailAllowed } = await importEnv()
+    expect(env.SEEKER_ALLOWED_EMAILS).toBeUndefined()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(false)
   })
 
-  it("normalizes empty-string LaunchDarkly vars to undefined", async () => {
-    process.env.LAUNCHDARKLY_SDK_KEY = ""
-    process.env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT = ""
-    const { env } = await importEnv()
-    expect(env.LAUNCHDARKLY_SDK_KEY).toBeUndefined()
-    expect(env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT).toBeUndefined()
+  it("normalizes an empty-string allowlist to undefined and admits no one", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = ""
+    const { env, isSeekerEmailAllowed } = await importEnv()
+    expect(env.SEEKER_ALLOWED_EMAILS).toBeUndefined()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(false)
   })
 
-  it("passes set values through the schema", async () => {
-    process.env.LAUNCHDARKLY_SDK_KEY = "sdk-test-key"
-    process.env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT = "true"
-    const { env } = await importEnv()
-    expect(env.LAUNCHDARKLY_SDK_KEY).toBe("sdk-test-key")
-    expect(env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT).toBe("true")
+  it("denies on a whitespace-only allowlist (survives emptyToUndefined; exercises the CSV path)", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = "   "
+    const { env, isSeekerEmailAllowed } = await importEnv()
+    // NOT undefined — only the literal "" maps to absent, so this value takes
+    // the split→trim→filter path, which must still admit no one.
+    expect(env.SEEKER_ALLOWED_EMAILS).toBe("   ")
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(false)
+  })
+
+  it("admits a listed email and denies an unlisted one", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = "person@example.com,other@example.com"
+    const { isSeekerEmailAllowed } = await importEnv()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("other@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("stranger@example.com")).toBe(false)
+  })
+
+  it("normalizes casing and whitespace on BOTH the entries and the input", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS =
+      " Person@Example.COM , other@example.com "
+    const { isSeekerEmailAllowed } = await importEnv()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("  OTHER@example.com ")).toBe(true)
+  })
+
+  it("ignores empty CSV entries and never matches a whitespace-only input", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = ",, person@example.com ,"
+    const { isSeekerEmailAllowed } = await importEnv()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("   ")).toBe(false)
+    expect(isSeekerEmailAllowed("")).toBe(false)
   })
 })
 

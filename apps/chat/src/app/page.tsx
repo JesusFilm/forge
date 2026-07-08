@@ -7,11 +7,11 @@ import { resolveSeekerGate } from "@/lib/seeker-gate"
 /**
  * `force-dynamic` is load-bearing (feat-205, KTD1): without it Next.js folds
  * the chatAuthConfigured() env read, the session-cookie read, AND the seeker
- * gate resolution (env kill switch + per-user LaunchDarkly evaluation,
- * feat-233) into the build-time prerender, so flipping env on Railway wouldn't
- * take effect and the signed-in identity would never render. feat-207 adds the
- * auth reads here (server-side); feat-233 replaces the bare env-flag read with
- * the shared gate.
+ * gate resolution (env kill switch + per-user email allowlist, feat-233) into
+ * the build-time prerender, so flipping env on Railway wouldn't take effect
+ * and the signed-in identity would never render. feat-207 adds the auth reads
+ * here (server-side); feat-233 replaces the bare env-flag read with the
+ * shared gate.
  */
 export const dynamic = "force-dynamic"
 

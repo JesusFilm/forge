@@ -131,13 +131,7 @@ describe("handleSeekerProxyRequest — seeker gate (feat-233)", () => {
 
   // AE2/AE4: EVERY deny cause surfaces as the single non-probing gate_denied
   // frame (KTD2) and the upstream fetch is never issued.
-  it.each([
-    "kill_switch",
-    "anonymous",
-    "no_email",
-    "not_targeted",
-    "ld_unavailable",
-  ] as const)(
+  it.each(["kill_switch", "anonymous", "no_email", "not_allowlisted"] as const)(
     "deny (%s) → terminal gate_denied frame, upstream never fetched",
     async (outcome) => {
       const fetchImpl = vi.fn()

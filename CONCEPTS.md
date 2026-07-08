@@ -246,7 +246,7 @@ embeddings.
 
 ### AI Gateway
 
-The project-owned embedding provider surface that produces vectors for Content Embeddings. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
+The project-owned, OpenAI-compatible provider surface fronting self-hosted models. It serves two model families: the embedding model that produces vectors for Content Embeddings, and chat models available as opt-in primaries for conversational agents (the Seeker Agent and the experience-editing agents), each behind its own default-off gate with the free/external provider chain kept as failover. Credentials are model-scoped — a chat key cannot call the embedding model and vice versa. AI Gateway health proves provider availability, not that Admin can launch or store a specific embedding backfill through Mastra.
 
 ### Embedding Provenance
 
@@ -441,7 +441,7 @@ The first conversational agent of the planned headless Jesus Film AI Chat system
 
 ### Seeker Dogfood Gate
 
-The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse `SEEKER_CHAT_ENABLED` kill switch, then a verified signed-in identity, then a LaunchDarkly boolean flag with individually-targeted emails. Default-deny and fail-closed — anonymous users, untargeted users, identities without a verified email, and LaunchDarkly outages all resolve to the stub (the flag's local override env is inert in deployed environments); delisting a user takes effect on their next message. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
+The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse `SEEKER_CHAT_ENABLED` kill switch, then a verified signed-in identity, then membership in the `SEEKER_ALLOWED_EMAILS` env allowlist (an operator-maintained CSV of dogfooder emails on the chat service). Default-deny and fail-closed by construction — anonymous users, unlisted users, identities without a verified email, and an unset or empty allowlist all resolve to the stub; delisting a user is an env edit that takes effect once the service restarts with the new value. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
 
 ### JesusFilm RAG
 

@@ -71,7 +71,6 @@ function RecommendationCard({
         <MuxHoverPreview
           previewUrl={muxPreviewUrl}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="z-[5]"
         />
         <div className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white/80">
           {formatTimestamp(rec.startSeconds)}

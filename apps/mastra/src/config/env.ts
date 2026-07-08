@@ -152,6 +152,14 @@ const envSchema = z.object({
   AI_GATEWAY_CHAT_BASE_URL: z.string().url().optional(),
   AI_GATEWAY_CHAT_ENABLED: z.string().optional(),
   AI_GATEWAY_CHAT_MODEL: z.string().min(1).optional(),
+  // Default-off gate prepending the JesusFilm gateway chat model to the seeker
+  // agent's fallback chain (feat-237). Deliberately SEPARATE from
+  // AI_GATEWAY_CHAT_ENABLED (which routes the experience chat/draft agents):
+  // the two surfaces have different risk profiles and must roll back
+  // independently. Optional + no default — unset keeps today's Gemma-only
+  // chain. Read via the repo's string-boolean convention (`=== "true"`), NOT
+  // JS truthiness, so `"false"` stays disabled. No new required-at-boot var.
+  AI_GATEWAY_SEEKER_ENABLED: z.string().optional(),
   AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED: z
     .enum(["true", "false"])
     .optional()
@@ -415,6 +423,9 @@ export const env = envSchema.parse({
     process.env.AI_GATEWAY_CHAT_ENABLED,
   ),
   AI_GATEWAY_CHAT_MODEL: emptyToUndefined(process.env.AI_GATEWAY_CHAT_MODEL),
+  AI_GATEWAY_SEEKER_ENABLED: emptyToUndefined(
+    process.env.AI_GATEWAY_SEEKER_ENABLED,
+  ),
   AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED: emptyToUndefined(
     process.env.AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED,
   ),
@@ -707,6 +718,20 @@ export function getOpenRouterApiKey(): string | undefined {
  */
 export function isSeekerRouteEnabled(): boolean {
   return env.SEEKER_ROUTE_ENABLED === "true"
+}
+
+/**
+ * Whether the seeker agent prepends the JesusFilm gateway chat model to its
+ * fallback chain (feat-237). Default-off: the seeker stays on today's
+ * free-Gemma OpenRouter chain unless this is explicitly set to the string
+ * `"true"`. Uses the repo's string-boolean convention (matching
+ * `SEEKER_ROUTE_ENABLED`), NOT JS truthiness — `"false"` (or any other value)
+ * keeps the gateway model out of the chain, preserving the safety default.
+ * The flag alone is not sufficient — the model-list gate also requires
+ * `AI_GATEWAY_CHAT_API_KEY` (shared with the experience opt-in) to be set.
+ */
+export function isAiGatewaySeekerEnabled(): boolean {
+  return env.AI_GATEWAY_SEEKER_ENABLED === "true"
 }
 
 /**

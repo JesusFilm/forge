@@ -249,14 +249,6 @@ describe("createFeatureFlagClient", () => {
   })
 
   describe("booleanVariationDetail", () => {
-    it("registers the chatSeekerDogfood flag with key, override env, and default", () => {
-      expect(featureFlags.chatSeekerDogfood).toMatchObject({
-        key: "forge.chat.seekerDogfood",
-        defaultValue: false,
-        localOverrideEnv: "FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT",
-      })
-    })
-
     it("returns source launchdarkly when LaunchDarkly evaluates true", async () => {
       const ldClient: LaunchDarklyClientLike = {
         waitForInitialization: vi.fn(async () => undefined),
@@ -273,10 +265,13 @@ describe("createFeatureFlagClient", () => {
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "launchdarkly" })
       expect(ldClient.boolVariationDetail).toHaveBeenCalledWith(
-        "forge.chat.seekerDogfood",
+        "forge.watch.playerMigration",
         expect.objectContaining({ kind: "user", key: "test-user" }),
         false,
       )
@@ -296,12 +291,15 @@ describe("createFeatureFlagClient", () => {
         sdkKey: "sdk-test",
         initClient: () => ldClient,
         localEnv: {
-          FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: "true",
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
         },
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: false, source: "launchdarkly" })
     })
 
@@ -310,7 +308,10 @@ describe("createFeatureFlagClient", () => {
       const client = createFeatureFlagClient({ initClient })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: false, source: "default" })
       expect(initClient).not.toHaveBeenCalled()
     })
@@ -318,12 +319,15 @@ describe("createFeatureFlagClient", () => {
     it("returns source override when the local override env is set and sdk key is absent", async () => {
       const client = createFeatureFlagClient({
         localEnv: {
-          FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: "yes",
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "yes",
         },
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
     })
 
@@ -344,13 +348,16 @@ describe("createFeatureFlagClient", () => {
         sdkKey: "sdk-test",
         initClient: () => ldClient,
         localEnv: {
-          FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: "true",
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
         },
         logger: { warn },
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
       expect(ldClient.boolVariationDetail).not.toHaveBeenCalled()
       expect(warn).toHaveBeenCalledOnce()
@@ -370,13 +377,16 @@ describe("createFeatureFlagClient", () => {
         sdkKey: "sdk-test",
         initClient: () => ldClient,
         defaultValues: {
-          "forge.chat.seekerDogfood": true,
+          "forge.watch.playerMigration": true,
         },
         logger: { warn },
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "default" })
       expect(warn).toHaveBeenCalledOnce()
     })
@@ -395,12 +405,15 @@ describe("createFeatureFlagClient", () => {
         sdkKey: "sdk-test",
         initClient: () => ldClient,
         localEnv: {
-          FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: "true",
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
         },
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
     })
 
@@ -420,7 +433,10 @@ describe("createFeatureFlagClient", () => {
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: false, source: "default" })
     })
 
@@ -438,12 +454,15 @@ describe("createFeatureFlagClient", () => {
         sdkKey: "sdk-test",
         initClient: () => ldClient,
         localEnv: {
-          FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: "true",
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
         },
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
     })
 
@@ -464,16 +483,22 @@ describe("createFeatureFlagClient", () => {
         sdkKey: "sdk-test",
         initClient: () => ldClient,
         localEnv: {
-          FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: "true",
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
         },
         logger: { warn },
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
       expect(ldClient.waitForInitialization).toHaveBeenCalledOnce()
       expect(ldClient.boolVariationDetail).not.toHaveBeenCalled()
@@ -499,7 +524,10 @@ describe("createFeatureFlagClient", () => {
       })
 
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: false, source: "default" })
     })
 
@@ -513,20 +541,26 @@ describe("createFeatureFlagClient", () => {
         sdkKey: "sdk-test",
         initClient,
         localEnv: {
-          FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: "true",
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
         },
         logger: { warn },
       })
 
-      // Must resolve, never throw: both gate surfaces await this without a catch
-      // of their own, so a construction throw here would 500 the page / error
-      // the SSE stream instead of failing closed.
+      // Must resolve, never throw: consumers await this without a catch of
+      // their own, so a construction throw here would surface as a 500 / an
+      // errored stream instead of failing closed.
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
       // Cooldown armed → a second call inside the window doesn't re-attempt init.
       await expect(
-        client.booleanVariationDetail(featureFlags.chatSeekerDogfood, context),
+        client.booleanVariationDetail(
+          featureFlags.watchPlayerMigration,
+          context,
+        ),
       ).resolves.toEqual({ value: true, source: "override" })
       expect(initClient).toHaveBeenCalledOnce()
       expect(warn).toHaveBeenCalledOnce()
