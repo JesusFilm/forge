@@ -2218,6 +2218,12 @@ mint the normal `CONSUMER_BEARER` principal (zero permissions) but flagged
 - **Observable.** A fleet key logs `source=fleet` in the per-request search log
   (vs web SSR's `source=consumer`); a rising `consumer:*:unknown` share signals a
   `cf-connecting-ip` drop / AOP regression collapsing the fleet.
+- **Carrier-NAT residual.** Per-IP means devices behind one carrier-grade NAT
+  egress share a single `consumer:<key>:<ip>` 60/min bucket — the multi-user-per-IP
+  collapse the flat `consumer:<key>` bucket exists to escape, re-scoped to
+  per-carrier-egress; the mobile cellular fleet is most exposed. The limit is
+  server-side tunable — raise the fleet key's cap if honest co-egress users hit
+  429s (no client rebuild), or lean on the F1 global per-fleet-key ceiling.
 
 **Deploy ordering (receiver-first).** Land the fleet keys in admin's
 `FLEET_ADMIN_API_KEYS` BEFORE provisioning the client

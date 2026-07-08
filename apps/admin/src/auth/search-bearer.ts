@@ -74,7 +74,7 @@ export type BearerCheckResult =
  * narrow file-download surface, not active-API requests.
  *
  * Defense-in-depth: each composed validator is wrapped in
- * try/catch via `safeCheck` / `safeCheckAsync`. None of the three
+ * try/catch via `safeCheck` / `safeCheckAsync` / `safeConsumer`. None of the three
  * are expected to throw, but a future logging side-effect or
  * refactor introducing any throw path would otherwise convert a
  * single buggy validator into a 500 on EVERY search request.

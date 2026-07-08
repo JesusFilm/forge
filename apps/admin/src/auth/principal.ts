@@ -124,10 +124,10 @@ export const VIDEO_MAPPER_PRINCIPAL = {
  */
 export function CONSUMER_BEARER_PRINCIPAL({
   rateLimitBucketKey,
-  fleet,
+  fleet = false,
 }: {
   rateLimitBucketKey: string
-  fleet: boolean
+  fleet?: boolean
 }): Principal {
   return {
     id: null,
