@@ -167,15 +167,26 @@ export const QuizButtonFragment = graphql(`
 
 // ── Composite fragments (nested content) ────────────────────────────
 
-// ContainerSlotContentDynamicZone members: AdventCountdown, BibleQuotesCarousel,
-// Card, Cta, EasterDates, MediaCollection, RelatedQuestions, Text, Video.
-// NOT in this union: Container, NavigationCarousel, VideoCarousel, QuizButton.
+// content[] is flat: ContainerSlotBlock markers divide it into side-by-side
+// slots (each marker carries the grid span), then content blocks follow.
+// Members: AdventCountdown, BibleQuotesCarousel, Card, Cta, EasterDates,
+// MediaCollection, RelatedQuestions, Text, Video (+ the ContainerSlot marker).
 export const ContainerFragment = graphql(
   `
     fragment ContainerFields on ContainerBlock @_unmask {
       sectionKey
       content {
         __typename
+        ... on ContainerSlotBlock {
+          gridSpan
+          spans {
+            xs
+            sm
+            md
+            lg
+            xl
+          }
+        }
         ... on TextBlock {
           ...TextSectionFields
         }
