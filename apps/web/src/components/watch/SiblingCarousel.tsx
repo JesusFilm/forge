@@ -352,7 +352,6 @@ export function SiblingCarousel({
                 <MuxHoverPreview
                   previewUrl={muxPreview}
                   sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
-                  className="z-[5]"
                 />
 
                 {/* Soften the image into the lower caption zone. */}

@@ -12,11 +12,13 @@ vi.mock("next/image", () => ({
     alt,
     className,
     unoptimized,
+    onLoad,
   }: {
     src: string
     alt: string
     className?: string
     unoptimized?: boolean
+    onLoad?: () => void
   }) => (
     <div
       data-testid="next-image-mock"
@@ -24,6 +26,7 @@ vi.mock("next/image", () => ({
       data-alt={alt}
       data-unoptimized={String(Boolean(unoptimized))}
       className={className}
+      onClick={onLoad}
     />
   ),
 }))
@@ -66,6 +69,9 @@ describe("MuxHoverPreview", () => {
       container.querySelector('[data-testid="mux-hover-preview"]'),
     ).not.toBeNull()
     expect(
+      container.querySelector('[data-testid="mux-hover-preview"]')?.className,
+    ).toContain("pointer-events-none")
+    expect(
       container.querySelector('[data-testid="next-image-mock"]'),
     ).toBeNull()
   })
@@ -83,6 +89,28 @@ describe("MuxHoverPreview", () => {
     expect(image?.getAttribute("data-src")).toBe(previewUrl)
     expect(image?.getAttribute("data-alt")).toBe("")
     expect(image?.getAttribute("data-unoptimized")).toBe("true")
+  })
+
+  it("fades in the animated image after the image finishes loading", () => {
+    const previewUrl = "https://image.mux.com/playback/animated.webp?width=448"
+    renderPreview(previewUrl)
+
+    const button = container.querySelector("button")
+    act(() => {
+      button?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    const image = container.querySelector('[data-testid="next-image-mock"]')
+    expect(image?.className).toContain("opacity-0")
+    expect(image?.className).not.toContain("opacity-100")
+
+    act(() => {
+      image?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(
+      container.querySelector('[data-testid="next-image-mock"]')?.className,
+    ).toContain("opacity-100")
   })
 
   it("loads the preview after keyboard focus reaches the card", () => {
