@@ -646,6 +646,8 @@ describe("Hybrid search — R4 query + response types", () => {
         "slug",
         "title",
         "imageUrl",
+        "imageBlurDataUrl",
+        "muxThumbnailBlurDataUrl",
         "snippet",
         "startSeconds",
         "playbackId",
@@ -655,6 +657,8 @@ describe("Hybrid search — R4 query + response types", () => {
     expect(fields.score.type.toString()).toBe("Float!")
     expect(fields.startSeconds.type.toString()).toBe("Float")
     expect(fields.playbackId.type.toString()).toBe("String")
+    expect(fields.imageBlurDataUrl.type.toString()).toBe("String")
+    expect(fields.muxThumbnailBlurDataUrl.type.toString()).toBe("String")
   })
 
   it("HybridSearchResult exposes no embedding/vector/similarity-shaped field", () => {

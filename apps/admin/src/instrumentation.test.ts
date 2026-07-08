@@ -17,6 +17,18 @@ const startWorkflowWorkerHeartbeat = vi.hoisted(() => vi.fn())
 const ensureVideoDbBackupSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureSearchTraceRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 
+function clearWorkflowStartupState() {
+  const workflowGlobal = globalThis as typeof globalThis & {
+    __forgeAdminWorkflowStartup?: {
+      retryTimer?: ReturnType<typeof setTimeout>
+    }
+  }
+  if (workflowGlobal.__forgeAdminWorkflowStartup?.retryTimer) {
+    clearTimeout(workflowGlobal.__forgeAdminWorkflowStartup.retryTimer)
+  }
+  delete workflowGlobal.__forgeAdminWorkflowStartup
+}
+
 vi.mock("@/config/env", () => mockEnv)
 vi.mock("workflow/runtime", () => ({ getWorld }))
 vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
@@ -39,11 +51,7 @@ describe("workflow instrumentation", () => {
     startWorkflowWorkerHeartbeat.mockReset()
     ensureVideoDbBackupSchedulerStarted.mockReset()
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
-    delete (
-      globalThis as typeof globalThis & {
-        __forgeAdminWorkflowStartup?: unknown
-      }
-    ).__forgeAdminWorkflowStartup
+    clearWorkflowStartupState()
     process.env.NEXT_RUNTIME = "nodejs"
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "false"
     mockEnv.env.WORKFLOW_TARGET_WORLD = undefined
@@ -53,6 +61,7 @@ describe("workflow instrumentation", () => {
 
   afterEach(() => {
     vi.clearAllTimers()
+    clearWorkflowStartupState()
     vi.useRealTimers()
   })
 
@@ -137,7 +146,7 @@ describe("workflow instrumentation", () => {
     await expect(register()).resolves.toBeUndefined()
     expect(worldStart).toHaveBeenCalledTimes(1)
 
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 25))
 
     expect(worldStart).toHaveBeenCalledTimes(2)
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)

@@ -1064,7 +1064,7 @@ model MuxVideo {
 }
 
 /// Generated image metadata for a specific Mux thumbnail recipe. Unlike
-/// VideoImage.blurhash, these rows describe derived Mux images such as the
+/// VideoImage.blurDataUrl, these rows describe derived Mux images such as the
 /// Watch chapter carousel smart-crop thumbnail.
 model MuxImageDerivative {
   id          String   @id @default(cuid())
@@ -1455,8 +1455,8 @@ model VideoImage {
   mobileCinematicVeryLow String?    @map("mobile_cinematic_very_low")
   thumbnail              String?
   videoStill             String?    @map("video_still")
-  /// Blurhash for low-quality image placeholders. Computed in a post-sync hook.
-  blurhash               String?
+  /// Forge-generated low-quality image placeholder for the selected video image.
+  blurDataUrl            String?    @map("blur_data_url")
   /// "poster" | "still" | "mobileCinematicHigh" | etc.
   kind                   String?
   syncedAt               DateTime?  @map("synced_at")

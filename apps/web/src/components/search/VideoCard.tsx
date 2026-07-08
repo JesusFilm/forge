@@ -136,15 +136,21 @@ export function VideoCard({
 }: VideoCardProps) {
   const t = useTranslations("SearchResultCard")
   const videoLabels = useTranslations("VideoLabels")
-  const thumbnailSrc =
-    result.imageUrl ??
-    (result.type === "video" && result.playbackId
+  const muxThumbnailSrc =
+    result.type === "video" && result.playbackId
       ? muxSearchThumbnail(result.playbackId, result.startSeconds)
-      : null)
+      : null
   const muxPreviewUrl =
     result.type === "video"
       ? resolveMuxAnimatedPreviewUrl(result.playbackId)
       : null
+  const thumbnailSrc = result.imageUrl ?? muxThumbnailSrc
+  const thumbnailBlurDataURL =
+    result.imageUrl != null
+      ? result.imageBlurDataUrl
+      : muxThumbnailSrc != null
+        ? result.muxThumbnailBlurDataUrl
+        : null
 
   const isExperience = result.type === "experience"
   // Experience cards reuse the legacy amber chip (now top-right, was
@@ -165,23 +171,36 @@ export function VideoCard({
     <Link
       href={hrefBuilder(result)}
       onClick={() => onResultClick?.(result)}
-      className="group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-2xl transition hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
+      className="group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
       style={{ animationDelay: `${index * 50}ms` }}
     >
       {/* Full-bleed thumbnail */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-800">
+      <div
+        className="relative aspect-video w-full overflow-hidden bg-stone-800 bg-cover bg-center"
+        style={
+          thumbnailBlurDataURL
+            ? { backgroundImage: `url("${thumbnailBlurDataURL}")` }
+            : undefined
+        }
+      >
         {thumbnailSrc ? (
           <Image
             src={thumbnailSrc}
             alt={result.title ?? t("thumbnailAlt")}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
+            className="search-card-hover-zoom object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            {...(thumbnailBlurDataURL
+              ? {
+                  placeholder: "blur" as const,
+                  blurDataURL: thumbnailBlurDataURL,
+                }
+              : {})}
           />
         ) : result.type === "experience" ? (
           <div
             aria-hidden
-            className={`relative h-full w-full overflow-hidden bg-gradient-to-br ${gradientForSlug(result.slug)}`}
+            className={`search-card-hover-zoom relative h-full w-full overflow-hidden bg-gradient-to-br transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${gradientForSlug(result.slug)}`}
           >
             {/* Decorative soft radial glow + diagonal stripes so the
                 placeholder reads as intentional branded artwork rather
@@ -265,6 +284,11 @@ export function VideoCard({
           )}
         </div>
       </div>
+      <div
+        aria-hidden
+        data-testid="search-card-hover-outline"
+        className="search-card-hover-outline search-card-red-outline pointer-events-none absolute z-50 opacity-0 transition-opacity duration-200"
+      />
     </Link>
   )
 }
