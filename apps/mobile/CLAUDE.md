@@ -67,6 +67,19 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
 
+## Running on a simulator (env setup)
+
+**Before launching apps/mobile on a simulator, ALWAYS run
+`bash scripts/setup-sim-env.sh mobile` first.** Fresh git worktrees don't
+inherit `.env.local` (gitignored), so `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (the
+`Search`-scoped consumer bearer) is absent and search fails with
+`UNAUTHENTICATED` until it's seeded.
+
+The script is idempotent: it seeds `apps/mobile/.env.local` from the main
+checkout with the search token. Run it BEFORE `expo start` — Expo inlines
+`EXPO_PUBLIC_*` at bundler startup, so a change made after boot needs a Metro
+restart to take effect.
+
 ## Common Pitfalls
 
 - Android VideoView z-order: renders on top of all RN Views. Place video BEHIND scroll content.
