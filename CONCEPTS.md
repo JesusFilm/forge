@@ -437,7 +437,7 @@ Stopping an in-flight download's native task and neutralizing its callbacks — 
 
 ### Seeker Agent
 
-The first conversational agent of the planned headless Jesus Film AI Chat system, for people exploring Christianity and who Jesus is. It grounds factual answers through retrieval rather than answering from model memory: its retrieval tool fetches cited passages and the agent's own LLM synthesizes the answer, attributing sources. Studio-only until the deferred guardrail gate lands.
+The first conversational agent of the planned headless Jesus Film AI Chat system, for people exploring Christianity and who Jesus is. It grounds factual answers through retrieval rather than answering from model memory: its retrieval tool fetches cited passages and the agent's own LLM synthesizes the answer, attributing sources. Studio-only in production until the seeker dogfood gate (feat-233) opens access to individually-targeted internal staff; the deferred guardrail gate remains the precondition for wider audiences.
 
 ### Seeker Dogfood Gate
 

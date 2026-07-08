@@ -13,7 +13,10 @@ import { chatAuthCookiePrefix } from "@/config/env"
  * and RE-SET with a fresh Max-Age on every send so its lifetime rolls with the
  * 30-day anonymous retention window — an anonymous user active past day 30
  * keeps both threads and cookie. NOTE: this identity is a memory partition
- * key only; like the session's claims it must never gate authorization (R7).
+ * key only and must never gate authorization (R7). Unlike the session's
+ * claims — which since feat-233 carry ONE bounded carve-out (the seeker
+ * dogfood gate, R13; see src/lib/seeker-gate.ts) — the anon id has no
+ * gating carve-out of any kind.
  */
 
 const prefix = chatAuthCookiePrefix()

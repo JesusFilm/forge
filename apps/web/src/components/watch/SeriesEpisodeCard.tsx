@@ -4,9 +4,11 @@ import Image from "next/image"
 import Link from "next/link"
 import { Play } from "lucide-react"
 
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
@@ -54,6 +56,7 @@ export function SeriesEpisodeCard({
   const href =
     parent && slug && lang ? watchEpisodePath(parent, slug, lang) : undefined
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
+  const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
   // Per-chapter runtime now arrives precomputed as a single Int
   // (admin's Video.durationSeconds — the primary playable dub's runtime)
   // rather than being derived from a per-child dub list.
@@ -79,6 +82,12 @@ export function SeriesEpisodeCard({
       ) : (
         <div className="absolute inset-0 bg-stone-800" aria-hidden="true" />
       )}
+      <MuxHoverPreview
+        previewUrl={muxPreviewUrl}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
+        className="z-[5]"
+        imageClassName="object-left-top"
+      />
 
       {/* Bottom-anchored scrim. Stronger at the bottom so the EPISODE
           label and title stay legible regardless of thumbnail luminance. */}

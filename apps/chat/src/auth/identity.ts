@@ -11,11 +11,14 @@ import {
  * or null when anonymous (F1 read-side, R5). NEVER redirects — anonymous is a
  * valid, first-class state (R3), deliberately unlike admin's `requireSession()`.
  *
- * DISPLAY-ONLY: the returned claims exist to render the account row (R4). They
- * MUST NEVER gate authorization or a per-user decision — chat performs no
- * authorization (R7), the session is a display-only snapshot with an 8h TTL and
- * no revocation (KTD5). The first feature that needs the subject as a trusted
- * principal must add revocation + a membership gate FIRST.
+ * DISPLAY-ONLY, with ONE bounded carve-out (R13, feat-233): the claims render
+ * the account row (R4), and the seeker dogfood gate may consume them for
+ * named-person feature gating via LaunchDarkly INDIVIDUAL targets — internal
+ * staff dogfooders only (see src/lib/seeker-gate.ts). Beyond that they MUST
+ * NEVER gate authorization or a per-user decision — the session is a snapshot
+ * with an 8h TTL and no revocation (KTD5), so rule-based targeting, targets
+ * outside the org, or reuse beyond seeker dogfooding requires revocation + a
+ * membership gate FIRST.
  */
 export async function getChatIdentity(): Promise<ChatIdentity | null> {
   const cookieStore = await cookies()
