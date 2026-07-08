@@ -136,6 +136,96 @@ describe("identifyForRateLimit", () => {
     expect(b).toBe("consumer:key-bbb")
   })
 
+  // ---------------------------------------------------------------------------
+  // Fleet consumer bearer → consumer:<key>:<ip> (per client IP)
+  // ---------------------------------------------------------------------------
+
+  it("buckets a fleet consumer bearer per client IP (two IPs → two buckets)", () => {
+    // AE1 fleet half — the whole point: installs sharing one baked-in fleet
+    // key must NOT collapse into a single bucket.
+    const k = "fleet-key"
+    const a = identifyForRateLimit(
+      makeCtx({
+        user: {
+          id: null,
+          role: "CONSUMER_BEARER",
+          rateLimitBucketKey: k,
+          fleet: true,
+        },
+        request: makeRequest({ "cf-connecting-ip": "1.1.1.1" }),
+      }),
+    )
+    const b = identifyForRateLimit(
+      makeCtx({
+        user: {
+          id: null,
+          role: "CONSUMER_BEARER",
+          rateLimitBucketKey: k,
+          fleet: true,
+        },
+        request: makeRequest({ "cf-connecting-ip": "2.2.2.2" }),
+      }),
+    )
+    expect(a).toBe("consumer:fleet-key:1.1.1.1")
+    expect(b).toBe("consumer:fleet-key:2.2.2.2")
+    expect(a).not.toBe(b)
+  })
+
+  it("keeps a non-fleet consumer bearer per-key even with a client IP present (R2)", () => {
+    // Web SSR stays flat consumer:<key>, preserving the :91 CGNAT-isolation
+    // contract — the fleet dimension is opt-in via the fleet flag.
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "CONSUMER_BEARER",
+            rateLimitBucketKey: "web-key",
+            fleet: false,
+          },
+          request: makeRequest({ "cf-connecting-ip": "9.9.9.9" }),
+        }),
+      ),
+    ).toBe("consumer:web-key")
+  })
+
+  it("buckets a fleet key with no trusted IP as consumer:<key>:unknown (R7)", () => {
+    // AE3: absent cf-connecting-ip stays inside the fleet namespace, never
+    // the anonymous public:unknown bucket.
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "CONSUMER_BEARER",
+            rateLimitBucketKey: "fleet-key",
+            fleet: true,
+          },
+          request: makeRequest(),
+        }),
+      ),
+    ).toBe("consumer:fleet-key:unknown")
+  })
+
+  it("ignores a spoofed x-forwarded-for for the fleet bucket (R8)", () => {
+    // AE4: a spoofed xff with no cf-connecting-ip must NOT create a distinct
+    // consumer:<key>:<spoofed> bucket — it falls to :unknown, so rotating xff
+    // cannot mint fresh buckets.
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "CONSUMER_BEARER",
+            rateLimitBucketKey: "fleet-key",
+            fleet: true,
+          },
+          request: makeRequest({ "x-forwarded-for": "6.6.6.6, 7.7.7.7" }),
+        }),
+      ),
+    ).toBe("consumer:fleet-key:unknown")
+  })
+
   it("falls back to public:<ip> when CONSUMER_BEARER lacks a bucket key (defensive)", () => {
     // Should not happen in practice — `createContext` mints the
     // principal via `CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey })`

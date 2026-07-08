@@ -41,6 +41,13 @@ function getClientIp(request: Request): string {
   )
 }
 
+// Fleet buckets use ONLY the Cloudflare-authoritative `cf-connecting-ip`, never
+// the client-supplied `x-forwarded-for`: a spoofable IP would let a holder of
+// the bundle-extractable fleet key mint buckets or pin a victim's. (R8)
+function getTrustedClientIp(request: Request): string {
+  return request.headers.get("cf-connecting-ip") ?? "unknown"
+}
+
 /**
  * Identity formation for the rate-limit bucket. Exported for direct
  * unit testing so the bucket-key logic doesn't have to be exercised
@@ -65,6 +72,12 @@ export function identifyForRateLimit(ctx: ContextShape): string {
     ctx.user?.role === "CONSUMER_BEARER" &&
     ctx.user.rateLimitBucketKey != null
   ) {
+    if (ctx.user.fleet) {
+      // Per client IP: a fleet of installs shipping one baked-in key would
+      // otherwise collapse into a single `consumer:<key>` bucket (self-DoS).
+      const ip = getTrustedClientIp(ctx.request)
+      return `consumer:${ctx.user.rateLimitBucketKey}:${ip}`
+    }
     return `consumer:${ctx.user.rateLimitBucketKey}`
   }
   if (ctx.user?.role === "VIDEO_MAPPER") {
