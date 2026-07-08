@@ -76,9 +76,11 @@ inherit `.env.local` (gitignored), so `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (the
 `UNAUTHENTICATED` until it's seeded.
 
 The script is idempotent: it seeds `apps/mobile/.env.local` from the main
-checkout with the search token. Run it BEFORE `expo start` — Expo inlines
-`EXPO_PUBLIC_*` at bundler startup, so a change made after boot needs a Metro
-restart to take effect.
+checkout with the search token. It's a shortcut — the canonical way to populate
+the full env (and the fallback on a fresh solo clone with no other checkout) is
+`pnpm --filter @forge/mobile fetch-secrets` (Doppler `forge-mobile`). Run either
+BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
+change made after boot needs a Metro restart to take effect.
 
 ## Common Pitfalls
 

@@ -25,7 +25,7 @@ case "$app" in
 esac
 
 key="EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN"
-main="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+main="$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd)")"
 here="$(git rev-parse --show-toplevel)"
 src="$main/apps/$app/.env.local"
 dst="$here/apps/$app/.env.local"
@@ -40,16 +40,25 @@ if [ "$src" != "$dst" ] && [ ! -f "$dst" ]; then
   fi
 fi
 
-if [ -f "$dst" ] && grep -qE "^$key=" "$dst"; then
+# Require a non-empty value — a blank `KEY=` is not "present".
+if [ -f "$dst" ] && grep -qE "^$key=.+" "$dst"; then
   echo "[setup-sim-env] $key present — search will work."
   exit 0
 fi
 
-# Token missing: borrow it from the main checkout (either app's env has it).
-tok_line="$(grep -hE "^$key=" "$main/apps/mobile/.env.local" "$main/apps/tv/.env.local" 2>/dev/null | head -1 || true)"
+# A blank `$key=` is broken, not absent: warn instead of appending a duplicate
+# line or falsely reporting success.
+if [ -f "$dst" ] && grep -qE "^$key=[[:space:]]*$" "$dst"; then
+  echo "[setup-sim-env] WARN: $key is present but blank in $dst — set it manually or re-seed." >&2
+  exit 1
+fi
+
+# Token absent: borrow a non-empty value, this app's own main env first.
+tok_line="$(grep -hE "^$key=.+" "$src" "$main/apps/mobile/.env.local" "$main/apps/tv/.env.local" 2>/dev/null | head -1 || true)"
 if [ -z "$tok_line" ]; then
   echo "[setup-sim-env] WARN: $key not found in the main checkout — search will 401." >&2
   echo "[setup-sim-env] Add it to $main/apps/$app/.env.local (a WEB_ADMIN_API_KEYS consumer bearer)." >&2
+  [ "$app" = mobile ] && echo "[setup-sim-env] Or populate mobile's env from Doppler: pnpm --filter @forge/mobile fetch-secrets" >&2
   exit 1
 fi
 
