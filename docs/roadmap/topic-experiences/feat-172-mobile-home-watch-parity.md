@@ -23,13 +23,19 @@ curated content with a phone-native layout.
 
 1. `docs/plans/2026-06-10-001-feat-mobile-home-watch-parity-plan.md` — the
    implementation plan (8 units, KTDs, acceptance examples).
-2. `apps/mobile/src/lib/watchHome/config.ts` — the ported curation config
-   (sync obligation with `apps/web/src/lib/watch-home-config.ts` until
-   feat-160 moves curation into admin).
-3. `apps/mobile/src/components/home/HomeScreen.tsx` — the three-layer Home
+2. `apps/mobile/src/lib/watchHome/heroConfig.ts` — the LIVE hero curation
+   (sync obligation with `apps/web/src/lib/watch-home-config.ts` for hero
+   sources / playlist / mux inserts until feat-160 moves curation into admin).
+   `fallbackConfig.ts` is the FROZEN emergency body fallback — not mirrored;
+   the live body now comes from the admin Experience (see next entry).
+3. `apps/mobile/src/lib/watchHome/experienceAdapter.ts` — maps the prod
+   `watch-home` homepage Experience's `MediaCollectionBlock`s into the home
+   shelves (content parity with web; see
+   `docs/plans/2026-07-08-001-feat-mobile-home-experience-parity-plan.md`).
+4. `apps/mobile/src/components/home/HomeScreen.tsx` — the three-layer Home
    composition.
-4. `apps/mobile/src/lib/watchHome/pagerReducer.ts` — hero pager state machine.
-5. `apps/mobile/src/hooks/useWatchHome.ts` + `useHeroStream.ts` — lean bulk
+5. `apps/mobile/src/lib/watchHome/pagerReducer.ts` — hero pager state machine.
+6. `apps/mobile/src/hooks/useWatchHome.ts` + `useHeroStream.ts` — lean bulk
    fetch + lazy per-slide stream resolution.
 
 ## Grep These
@@ -49,7 +55,9 @@ Experiences re-homed to `/experience/[slug]`.
 - The bulk home fragment must stay card-lean — no `dubs` selections (jest
   guard in `watchHomeQueries.test.ts` enforces it; the 9.5MB payload trap).
 - No react-native-gesture-handler; single hero player via `replaceAsync`.
-- Curation edits must mirror web's config until feat-160 lands.
+- Hero curation edits must mirror web's config (`heroConfig.ts`) until feat-160
+  lands; the body is Experience-driven and `fallbackConfig.ts` is frozen — do
+  not mirror the body against web.
 
 ## Verification
 

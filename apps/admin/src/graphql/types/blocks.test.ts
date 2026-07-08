@@ -9,7 +9,7 @@
 //
 // Structural drift between Zod and Pothos lives in `blocks.drift.test.ts`.
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   T_TO_TYPENAME,
   UnknownBlockKindError,
@@ -20,6 +20,7 @@ import {
   type GraphQLUnionType,
   type GraphQLObjectType,
   type GraphQLResolveInfo,
+  type GraphQLFieldResolver,
 } from "graphql"
 
 // -----------------------------------------------------------------------------
@@ -67,6 +68,21 @@ function resolveTypeName(unionName: string, value: unknown): string {
   throw new Error(
     `resolveType returned a non-typename value: ${String(resolved)}`,
   )
+}
+
+function fieldResolver(
+  typeName: string,
+  fieldName: string,
+): GraphQLFieldResolver<unknown, unknown> {
+  const type = schema.getType(typeName) as GraphQLObjectType | undefined
+  if (type == null) {
+    throw new Error(`Object type ${typeName} not registered on schema`)
+  }
+  const resolve = type.getFields()[fieldName]?.resolve
+  if (resolve == null) {
+    throw new Error(`${typeName}.${fieldName} has no resolver`)
+  }
+  return resolve as GraphQLFieldResolver<unknown, unknown>
 }
 
 // -----------------------------------------------------------------------------
@@ -257,6 +273,86 @@ describe("ContainerContentBlock union resolveType — per-kind dispatch", () => 
   }
 })
 
+describe("asset-backed block URL field resolvers", () => {
+  it("resolves public asset IDs before stale stored Admin preview URLs", async () => {
+    const findUnique = vi.fn().mockResolvedValue({
+      id: "asset-1",
+      backend: "S3",
+      status: "READY",
+      visibility: "PUBLIC",
+      objectKey: "media-assets/asset-1/original/hero.webp",
+      previewObjectKey: null,
+      muxPlaybackId: null,
+    })
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "imageOverrideUrl",
+    )(
+      {
+        imageOverrideAssetId: "asset-1",
+        imageOverrideUrl:
+          "http://0.0.0.0:8080/api/media-assets/asset-1/preview",
+      },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe(
+      "http://localhost:3003/api/public/media-assets/asset-1/preview",
+    )
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: "asset-1" } })
+  })
+
+  it("does not fall back to stale Admin preview URLs for private asset IDs", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "imageUrl")(
+      {
+        imageAssetId: "asset-1",
+        imageUrl:
+          "https://admin.jesusfilm.org/api/media-assets/asset-1/preview",
+      },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: {
+          mediaAsset: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: "asset-1",
+              backend: "S3",
+              status: "READY",
+              visibility: "PRIVATE",
+              objectKey: "media-assets/asset-1/original/hero.webp",
+              previewObjectKey: null,
+              muxPlaybackId: null,
+            }),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("preserves external URL fallbacks when no asset ID is stored", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "imageUrl")(
+      { imageUrl: "https://image.example.test/poster.jpg" },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique: vi.fn() } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("https://image.example.test/poster.jpg")
+  })
+})
+
 // -----------------------------------------------------------------------------
 // Union dispatch happy path — mixed-kind array (mimics what a real
 // ExperienceLocale.blocks JSON column holds). A SectionBlock inside the array
@@ -315,11 +411,11 @@ describe("Mixed-kind round-trip across nested unions", () => {
 // -----------------------------------------------------------------------------
 
 describe("Edge cases", () => {
-  it("exposes videoSlug on MediaCollectionItem for authored card links", () => {
+  it("exposes videoSlug and muxPlaybackId on MediaCollectionItem for authored card links and previews", () => {
     const type = schema.getType("MediaCollectionItem")
-    expect(
-      type && "getFields" in type ? type.getFields().videoSlug : null,
-    ).toBeDefined()
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.videoSlug).toBeDefined()
+    expect(fields?.muxPlaybackId).toBeDefined()
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

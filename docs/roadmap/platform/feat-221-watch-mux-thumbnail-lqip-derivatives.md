@@ -8,7 +8,8 @@ start_date: "2026-06-29"
 duration: 2
 depends_on:
   - "feat-220"
-blocks: []
+blocks:
+  - "feat-235"
 tags:
   - "web"
   - "graphql"

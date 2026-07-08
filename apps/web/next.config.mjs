@@ -100,6 +100,11 @@ const nextConfig = {
       },
       ...adminMediaImageHost,
       { protocol: "https", hostname: "images.unsplash.com" },
+      {
+        protocol: "https",
+        hostname: "admin.jesusfilm.org",
+        pathname: "/api/public/media-assets/**",
+      },
       { protocol: "https", hostname: "imagedelivery.net" },
       { protocol: "https", hostname: "image.mux.com" },
       ...additionalImageHosts,

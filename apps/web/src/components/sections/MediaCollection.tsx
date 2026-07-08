@@ -12,6 +12,7 @@ import { enrichMediaItem } from "@/lib/enrichment"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import {
   WATCH_BASE_PATH,
   asLocaleSlug,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/routes"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { resolveMediaImageUrl } from "@/lib/media-image-url"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 
 // Collections carry no per-item language today, so card deep links default
@@ -457,6 +459,7 @@ function VideoCard({
     : undefined
   const Wrapper = href ? "a" : "div"
   const imageSrc = resolveMediaImageUrl(item.imageUrl)
+  const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
   const isVertical = orientation === "vertical"
 
   return (
@@ -501,6 +504,15 @@ function VideoCard({
             className="h-full w-full bg-[linear-gradient(135deg,#111827,#4c1d1d_52%,#064e3b)]"
           />
         )}
+        <MuxHoverPreview
+          previewUrl={muxPreviewUrl}
+          sizes={
+            isVertical
+              ? "(max-width: 768px) 46vw, 220px"
+              : "(max-width: 768px) 100vw, 360px"
+          }
+          imageClassName={isVertical ? undefined : "object-left-top"}
+        />
         <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-black/78 via-black/18 to-transparent" />
         {showItemNumbers ? (
           <span className="absolute top-2 left-2 z-10 text-5xl leading-none font-bold text-stone-100/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]">

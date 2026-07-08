@@ -73,6 +73,7 @@ export async function GET(request: Request) {
         name: identity.name,
         email: identity.email,
         picture: identity.picture,
+        emailVerified: identity.emailVerified,
       }),
       chatSessionCookieOptions(),
     )

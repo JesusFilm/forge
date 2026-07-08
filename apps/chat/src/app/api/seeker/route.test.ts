@@ -5,22 +5,28 @@ import {
   type SeekerProxyConfig,
   type SeekerProxyHandlerInput,
 } from "./route"
+import type { SeekerGateDecision } from "@/lib/seeker-gate"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
 
-// Wrapper injecting the (now-required, feat-208) server-resolved resourceId so
-// the pre-existing suites stay focused on their own concern. resourceId
-// behavior has its own describe block below.
+const GRANTED: SeekerGateDecision = { seekerEnabled: true, outcome: "granted" }
+
+// Wrapper injecting the required resourceId (feat-208) and a granting gate
+// resolver (feat-233) so the pre-existing suites stay focused on their own
+// concern. Each has its own describe block below.
 function runProxy(
-  input: Omit<SeekerProxyHandlerInput, "resourceId"> & { resourceId?: string },
+  input: Omit<SeekerProxyHandlerInput, "resourceId" | "resolveGate"> & {
+    resourceId?: string
+    resolveGate?: SeekerProxyHandlerInput["resolveGate"]
+  },
 ): Promise<Response> {
   return handleSeekerProxyRequest({
     resourceId: "anon:00000000-0000-4000-8000-000000000000",
+    resolveGate: () => Promise.resolve(GRANTED),
     ...input,
   })
 }
 
 const BASE_CONFIG: SeekerProxyConfig = {
-  enabled: true,
   baseUrl: "https://mastra.internal",
   apiKey: "svc-key",
   allowedHosts: undefined,
@@ -99,15 +105,90 @@ describe("handleSeekerProxyRequest — body validation", () => {
   })
 })
 
+describe("handleSeekerProxyRequest — seeker gate (feat-233)", () => {
+  it("AE1: a granting gate lets the request proxy upstream", async () => {
+    const resolveGate = vi.fn(async (): Promise<SeekerGateDecision> => GRANTED)
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        {
+          event: "result",
+          data: { text: "ok", sources: [], grounded: false },
+        },
+      ]),
+    )
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      resolveGate,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "result", data: { text: "ok", sources: [], grounded: false } },
+    ])
+    expect(resolveGate).toHaveBeenCalledOnce()
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  // AE2/AE4: EVERY deny cause surfaces as the single non-probing gate_denied
+  // frame (KTD2) and the upstream fetch is never issued.
+  it.each(["kill_switch", "anonymous", "no_email", "not_allowlisted"] as const)(
+    "deny (%s) → terminal gate_denied frame, upstream never fetched",
+    async (outcome) => {
+      const fetchImpl = vi.fn()
+      const res = await runProxy({
+        readJson: readJson({ text: "hi", conversationId: "c1" }),
+        config: BASE_CONFIG,
+        resolveGate: () => Promise.resolve({ seekerEnabled: false, outcome }),
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      })
+      expect(res.status).toBe(200)
+      expect(await proxyFrames(res)).toEqual([
+        { event: "error", data: { reason: "gate_denied" } },
+      ])
+      expect(fetchImpl).not.toHaveBeenCalled()
+    },
+  )
+
+  it("runs AFTER body validation: malformed body → 400 JSON, gate never consulted", async () => {
+    const resolveGate = vi.fn(async (): Promise<SeekerGateDecision> => GRANTED)
+    const fetchImpl = vi.fn()
+    const res = await runProxy({
+      readJson: readJson({ text: "" }),
+      config: BASE_CONFIG,
+      resolveGate,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(res.status).toBe(400)
+    expect(res.headers.get("content-type")).toContain("application/json")
+    expect(resolveGate).not.toHaveBeenCalled()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+})
+
 describe("handleSeekerProxyRequest — gates", () => {
-  it("flag off → config_missing error frame, no fetch", async () => {
+  // Migrated from the retired config.enabled arm (feat-233): the kill switch
+  // now denies via the gate resolver; config_missing only guards baseUrl/apiKey.
+  it("missing baseUrl → config_missing error frame, no fetch", async () => {
     const fetchImpl = vi.fn()
     const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: { ...BASE_CONFIG, enabled: false },
+      config: { ...BASE_CONFIG, baseUrl: undefined },
       fetchImpl: fetchImpl as unknown as typeof fetch,
     })
     expect(res.status).toBe(200)
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "config_missing" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("missing apiKey → config_missing error frame, no fetch", async () => {
+    const fetchImpl = vi.fn()
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: { ...BASE_CONFIG, apiKey: undefined },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
     expect(await proxyFrames(res)).toEqual([
       { event: "error", data: { reason: "config_missing" } },
     ])
@@ -848,7 +929,7 @@ describe("handleSeekerProxyRequest — resource keying (feat-208)", () => {
         },
       ]),
     )
-    await handleSeekerProxyRequest({
+    await runProxy({
       readJson: readJson({ text: "hello", conversationId: "conv-9" }),
       config: BASE_CONFIG,
       resourceId: "user:auth0|abc123",

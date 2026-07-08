@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      // server-only throws at import time; stub it out so vitest can load
+      // server-helper modules (the guard is only meaningful at Next.js
+      // build time, not inside the test runner). Mirrors apps/web.
+      "server-only": resolve(__dirname, "src/__mocks__/server-only.ts"),
     },
   },
   test: {

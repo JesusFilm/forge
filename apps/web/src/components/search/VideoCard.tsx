@@ -3,6 +3,7 @@ import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
 import {
@@ -13,6 +14,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 
 type VideoCardProps = {
@@ -139,6 +141,10 @@ export function VideoCard({
     (result.type === "video" && result.playbackId
       ? muxSearchThumbnail(result.playbackId, result.startSeconds)
       : null)
+  const muxPreviewUrl =
+    result.type === "video"
+      ? resolveMuxAnimatedPreviewUrl(result.playbackId)
+      : null
 
   const isExperience = result.type === "experience"
   // Experience cards reuse the legacy amber chip (now top-right, was
@@ -200,6 +206,10 @@ export function VideoCard({
             </svg>
           </div>
         )}
+        <MuxHoverPreview
+          previewUrl={muxPreviewUrl}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+        />
 
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />

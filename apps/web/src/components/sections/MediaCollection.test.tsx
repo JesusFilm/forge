@@ -60,6 +60,7 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
       collectionSize: "",
       imageUrl: null,
       videoSlug,
+      muxPlaybackId: "mux-route-child",
     },
   ]
   return {
@@ -77,6 +78,71 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
 }
 
 describe("MediaCollection VideoCard href", () => {
+  it("lazy-loads a Mux animated preview for route video child cards", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData()}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const preview = container.querySelector('[data-testid="mux-hover-preview"]')
+    expect(preview).not.toBeNull()
+    expect(preview?.getAttribute("data-active")).toBe("false")
+
+    const card = container.querySelector('a[aria-label="VideoCard"]')
+    act(() => {
+      card?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    const previewImage = Array.from(container.querySelectorAll("img")).find(
+      (image) =>
+        image.getAttribute("src")?.includes("/mux-route-child/animated.webp"),
+    )
+    expect(previewImage?.getAttribute("src")).toContain(
+      "https://image.mux.com/mux-route-child/animated.webp?start=2&end=6&width=448&fps=8",
+    )
+  })
+
+  it("lazy-loads a Mux animated preview for authored media collection items", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "the-gospel-of-luke",
+                muxPlaybackId: "mux-authored-item",
+                titleOverride: "The Gospel of Luke",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const card = container.querySelector('a[aria-label="VideoCard"]')
+    act(() => {
+      card?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    const previewImage = Array.from(container.querySelectorAll("img")).find(
+      (image) =>
+        image.getAttribute("src")?.includes("/mux-authored-item/animated.webp"),
+    )
+    expect(previewImage?.getAttribute("src")).toContain(
+      "https://image.mux.com/mux-authored-item/animated.webp?start=2&end=6&width=448&fps=8",
+    )
+  })
+
   it("emits the canonical /watch/{slug}.html/{lang}.html path via the routes builder", () => {
     act(() => {
       root.render(

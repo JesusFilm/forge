@@ -20,12 +20,15 @@ const AUTH_KEYS = [
   "AUTH_COOKIE_PREFIX",
 ] as const
 
+const FLAG_KEYS = ["SEEKER_ALLOWED_EMAILS"] as const
+
 // A real (≥32-char, non-placeholder) signing secret for the "configured" cases.
 const REAL_SECRET = "a".repeat(40)
 
 function clearSeekerEnv() {
   for (const key of SEEKER_KEYS) delete process.env[key]
   for (const key of AUTH_KEYS) delete process.env[key]
+  for (const key of FLAG_KEYS) delete process.env[key]
 }
 
 // Sets the full happy-path auth env; individual cases delete/override from here.
@@ -187,6 +190,55 @@ describe("chatAuthConfigured (KTD6 / R11 fail-closed)", () => {
     expect(example).toContain(
       `CHAT_SESSION_SECRET=${CHAT_SESSION_SECRET_PLACEHOLDER}`,
     )
+  })
+})
+
+describe("isSeekerEmailAllowed (seeker allowlist, fail-closed)", () => {
+  it("boots clean with the allowlist unset and admits no one", async () => {
+    await expect(importEnv()).resolves.toBeDefined()
+    const { env, isSeekerEmailAllowed } = await importEnv()
+    expect(env.SEEKER_ALLOWED_EMAILS).toBeUndefined()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(false)
+  })
+
+  it("normalizes an empty-string allowlist to undefined and admits no one", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = ""
+    const { env, isSeekerEmailAllowed } = await importEnv()
+    expect(env.SEEKER_ALLOWED_EMAILS).toBeUndefined()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(false)
+  })
+
+  it("denies on a whitespace-only allowlist (survives emptyToUndefined; exercises the CSV path)", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = "   "
+    const { env, isSeekerEmailAllowed } = await importEnv()
+    // NOT undefined — only the literal "" maps to absent, so this value takes
+    // the split→trim→filter path, which must still admit no one.
+    expect(env.SEEKER_ALLOWED_EMAILS).toBe("   ")
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(false)
+  })
+
+  it("admits a listed email and denies an unlisted one", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = "person@example.com,other@example.com"
+    const { isSeekerEmailAllowed } = await importEnv()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("other@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("stranger@example.com")).toBe(false)
+  })
+
+  it("normalizes casing and whitespace on BOTH the entries and the input", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS =
+      " Person@Example.COM , other@example.com "
+    const { isSeekerEmailAllowed } = await importEnv()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("  OTHER@example.com ")).toBe(true)
+  })
+
+  it("ignores empty CSV entries and never matches a whitespace-only input", async () => {
+    process.env.SEEKER_ALLOWED_EMAILS = ",, person@example.com ,"
+    const { isSeekerEmailAllowed } = await importEnv()
+    expect(isSeekerEmailAllowed("person@example.com")).toBe(true)
+    expect(isSeekerEmailAllowed("   ")).toBe(false)
+    expect(isSeekerEmailAllowed("")).toBe(false)
   })
 })
 
