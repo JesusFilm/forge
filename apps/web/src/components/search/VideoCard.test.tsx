@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { formatDuration } from "@/lib/format-duration"
 import type { SearchResult } from "@/lib/search"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 
 import { defaultHrefBuilder, formatVideoLabel, pickCardPill } from "./VideoCard"
@@ -80,6 +81,19 @@ describe("defaultHrefBuilder", () => {
 
   it("falls back to / on a malformed slug rather than a broken deep link", () => {
     expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe("/")
+  })
+})
+
+describe("resolveMuxAnimatedPreviewUrl", () => {
+  it("builds the bounded Mux animated GIF preview URL", () => {
+    expect(resolveMuxAnimatedPreviewUrl("mux playback 1")).toBe(
+      "https://image.mux.com/mux%20playback%201/animated.gif?start=2&end=6&width=448&fps=8",
+    )
+  })
+
+  it("returns null when the playback id is absent", () => {
+    expect(resolveMuxAnimatedPreviewUrl(null)).toBeNull()
+    expect(resolveMuxAnimatedPreviewUrl("   ")).toBeNull()
   })
 })
 
