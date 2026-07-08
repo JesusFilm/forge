@@ -2,7 +2,7 @@
 title: "Fail-closed-by-construction feature-flag gating for a paid or sensitive path"
 date: "2026-07-08"
 category: "architecture-patterns"
-module: "apps/chat seeker gate + @forge/feature-flags"
+module: "@forge/feature-flags (original exemplar: apps/chat seeker gate, retired by feat-239)"
 problem_type: "architecture_pattern"
 component: "authentication"
 severity: "high"
@@ -28,7 +28,17 @@ tags:
 
 ## Context
 
-feat-233 gates a real AI agent ("seeker") behind a per-user LaunchDarkly
+> **Exemplar status (2026-07-08, feat-239):** the feat-233 chat gate this
+> learning was written from has since moved off LaunchDarkly — chat's
+> membership source is now the `SEEKER_ALLOWED_EMAILS` env CSV, and chat's LD
+> client was deleted. The pattern below remains the recipe for any future
+> LD-gated paid/sensitive path: pieces 1, 2, and 4 live on in
+> `@forge/feature-flags` (`booleanVariationDetail`, ERROR-before-value
+> routing, the wrapped construction path — their tests now fixtured on
+> `watchPlayerMigration`); pieces 3 and 5 (override withholding, events-off)
+> currently have no live consumer instance and stand here as pattern guidance.
+
+feat-233 gated a real AI agent ("seeker") behind a per-user LaunchDarkly
 allowlist: allowlisted dogfooders get the agent, everyone else gets a stub.
 Each granted turn is a ~90s paid LLM generation on a world-reachable endpoint,
 so the gate's one non-negotiable property is **fail closed** — an unreachable

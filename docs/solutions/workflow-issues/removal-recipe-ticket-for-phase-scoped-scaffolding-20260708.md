@@ -26,6 +26,16 @@ tags:
 
 ## Context
 
+> **Exemplar status (2026-07-08, feat-239):** the feat-233 gate this learning
+> uses as its worked example has since moved off LaunchDarkly — chat's
+> membership source is now the `SEEKER_ALLOWED_EMAILS` env CSV. The LD-era
+> symbols in the examples below (`chatSeekerDogfood`,
+> `FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT`, the `lib/feature-flags.ts` conditional)
+> are the worked example as written at the time. The pattern itself —
+> keep-list, drift-resistant greps + rename covenant, precondition-first
+> step 0, operator-teardown category — is unchanged, and feat-239 honored it:
+> feat-236's grep patterns were updated in the same PR that moved the symbols.
+
 feat-233 shipped a LaunchDarkly dogfood gate that is **deliberately temporary**:
 the plan's own scope boundaries say widening past the named-person list needs a
 different mechanism, so the gate does not survive the dogfood phase whichever way
