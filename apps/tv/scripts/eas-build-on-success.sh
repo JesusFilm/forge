@@ -30,11 +30,11 @@ ios)
     echo "[datadog] dSYM upload failed (non-fatal)"
   fi
 
-  # RN/Hermes JS source map (KTD-4). No metro debug_id, so RUM matches on
-  # service+version+bundle_name+platform: --release-version MUST equal the SDK's
-  # version tag. The on-success shell doesn't inherit .env.local, so derive the
-  # SAME short SHA the pre-install hook stamped (not the env var, which is unset).
-  dd_version="${EAS_BUILD_GIT_COMMIT_HASH:0:7}"
+  # RN/Hermes JS source map (KTD-4): no metro debug_id, so RUM matches by
+  # service+version+bundle_name+platform -- release-version MUST equal the SDK's
+  # version tag (the short SHA the pre-install hook stamps; unset in this shell).
+  dd_version="${EAS_BUILD_GIT_COMMIT_HASH:-}" # :- avoids a set -u exit (bare ${VAR:0:7} on unset) that fails the build
+  dd_version="${dd_version:0:7}"
   if [ -n "$dd_version" ]; then
     sm="$(mktemp -d)"
     if npx expo export:embed --platform ios --dev false \
