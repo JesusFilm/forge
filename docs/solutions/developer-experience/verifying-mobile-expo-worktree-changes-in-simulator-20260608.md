@@ -1,7 +1,7 @@
 ---
 title: Verifying mobile (Expo) worktree changes in the iOS simulator
 date: 2026-06-08
-last_updated: 2026-06-24
+last_updated: 2026-07-08
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -12,6 +12,7 @@ applies_when:
   - "A worktree's mobile app shows 'Search failed' or renders no data despite correct code"
   - "Another Metro is already running for the main checkout or another app"
   - "A worktree's own Metro crashes the main checkout's Metro or red-boxes the dev-client (watchman recrawl contention)"
+  - "Verifying an apps/tv change that touches a platform-branched value (scale(IS_ANDROID ? 48 : 28), Platform.select) on only the Apple TV simulator"
 related_components:
   - apps/tv
   - packages/admin-graphql
@@ -23,7 +24,7 @@ tags:
   - env
   - admin-graphql
   - idb
-  - expo-go
+  - android-tv
 ---
 
 # Verifying mobile (Expo) worktree changes in the iOS simulator
@@ -174,6 +175,30 @@ idb ui describe-all --udid <udid>   # → AXLabel + frame for each element
 #   "Videos" h=17 (body) -> h=32 (titleLarge), matching the page title
 ```
 
+### 5. For apps/tv, the Apple TV simulator is only one of two platform targets
+
+`apps/tv` runs on Apple TV (tvOS) and Android TV, and its layout values are often
+**platform-branched** — `scale(IS_ANDROID ? 48 : 28)`, `Platform.select`,
+`Platform.OS`. (`scale()` is a no-op on tvOS but shrinks on Android.) A change
+verified only on the **Apple TV simulator** exercises one branch; the Android
+branch can be wrong from day one with nothing to flag it, so tvOS-only sim
+verification hands out false confidence for exactly these values.
+
+Two ways to cover the Android branch, preferred order:
+
+1. **Make divergence structurally impossible** — when a skeleton/placeholder
+   mirrors a real component, import that component's exported geometry constant
+   rather than hand-copying it; the two surfaces then read the same branch and
+   can't desync on any platform. See
+   `docs/solutions/design-patterns/mirror-ui-derive-geometry-from-shared-constants.md`.
+2. **Check the divergent branch on an Android TV target** — when a value must be
+   independently branched, run it on an Android TV emulator too.
+
+Motivating catch: a Home loading skeleton hardcoded `scale(28)` for the card gap
+while the real rail used `scale(IS_ANDROID ? 48 : 28)`; the placeholder reflowed
+at the loading→content handoff on **Android TV only**, and Apple-TV-sim
+verification never surfaced it — tvOS was the branch that happened to match.
+
 ## Why This Matters
 
 Three of these are invisible to typecheck/lint/jest and to a casual screenshot:
@@ -190,6 +215,8 @@ here makes the whole verification loop reproducible for the next person.
   standing "verify in the simulator" rule, executed from a worktree.
 - Whenever a worktree's app shows no data / "Search failed" despite correct code.
 - Whenever an on-disk change refuses to appear in the running Expo Go app.
+- Before reporting an `apps/tv` change that touches a platform-branched value
+  (`IS_ANDROID ? …`, `Platform.select`) — the Apple TV sim covers only one branch.
 
 ## Examples
 
@@ -234,3 +261,6 @@ invisible without the running backend.
   — the diagnosis-side companion: this doc reads the live a11y tree to _verify_
   UI; that one reads the on-disk app container (AsyncStorage / `documentDirectory`)
   to _diagnose_ persisted state and native events when `console.log` is dead.
+- `docs/solutions/design-patterns/mirror-ui-derive-geometry-from-shared-constants.md`
+  — the structural fix for §5's platform-branch trap: a mirror/placeholder derives
+  geometry from the real component's shared constant so it can't diverge on Android TV.

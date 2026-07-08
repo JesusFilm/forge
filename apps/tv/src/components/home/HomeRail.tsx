@@ -26,9 +26,9 @@ const IS_ANDROID = Platform.OS === "android"
 
 // Android uses a wider gap (same card size) so the rail shows slightly fewer
 // cards with more spacing — the user-tuned density. tvOS keeps main's 28.
-const ITEM_GAP = scale(IS_ANDROID ? 48 : 28)
-const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
-const RAIL_PADDING_LEFT = scale(80)
+export const ITEM_GAP = scale(IS_ANDROID ? 48 : 28)
+export const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
+export const RAIL_PADDING_LEFT = scale(80)
 
 // Card columns spanning the visible width. tvOS treats empty right-hand
 // columns as "nothing there", so a vertical move from an over-hanging column
