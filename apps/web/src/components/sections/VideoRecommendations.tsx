@@ -1,7 +1,9 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import type { SceneRecommendation } from "@/lib/recommendations"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 
 type VideoRecommendationsProps = {
   recommendations: SceneRecommendation[]
@@ -45,6 +47,7 @@ function RecommendationCard({
   hrefBuilder: (rec: SceneRecommendation, locale: string) => Route
 }) {
   const themes = rec.themes.slice(0, 3)
+  const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(rec.playbackId)
 
   return (
     <Link
@@ -65,6 +68,11 @@ function RecommendationCard({
             No image
           </div>
         )}
+        <MuxHoverPreview
+          previewUrl={muxPreviewUrl}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="z-[5]"
+        />
         <div className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white/80">
           {formatTimestamp(rec.startSeconds)}
         </div>
