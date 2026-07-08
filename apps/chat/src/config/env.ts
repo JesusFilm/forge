@@ -57,6 +57,13 @@ const envSchema = z.object({
   // the cookie helpers fail closed to anonymous (U4).
   CHAT_SESSION_SECRET: z.string().optional(),
   AUTH_COOKIE_PREFIX: z.string().optional(),
+
+  // LaunchDarkly (feat-233) — optional so the default-off deploy boots clean.
+  // Absent SDK key → no LD connection; flags resolve from the fallback chain.
+  LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+  // Local-dev-only override for forge.chat.seekerDogfood. Deployed builds
+  // never feed it to the flag client (KTD5) — see src/lib/feature-flags.ts.
+  FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: z.string().optional(),
 })
 
 export const env = envSchema.parse({
@@ -76,6 +83,10 @@ export const env = envSchema.parse({
   CHAT_BASE_URL: emptyToUndefined(process.env.CHAT_BASE_URL),
   CHAT_SESSION_SECRET: emptyToUndefined(process.env.CHAT_SESSION_SECRET),
   AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
+  LAUNCHDARKLY_SDK_KEY: emptyToUndefined(process.env.LAUNCHDARKLY_SDK_KEY),
+  FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: emptyToUndefined(
+    process.env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT,
+  ),
 })
 
 // Surface a sub-ceiling timeout at module load — silent misconfig would make the

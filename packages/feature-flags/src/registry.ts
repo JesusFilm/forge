@@ -41,6 +41,13 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for Algolia-backed video results in the Forge watch search modal.",
   },
+  chatSeekerDogfood: {
+    key: "forge.chat.seekerDogfood",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT",
+    description:
+      "Dogfood gate for the chat seeker agent. Individual targets only — the LD flag must carry zero targeting rules; widening the audience requires session revocation plus a membership gate first. The override env is a local-dev-only affordance: chat's deployed wiring deliberately withholds localOverrideEnv from its client (a deliberate divergence from web's unconditional prior art — future flag consumers should not rediscover this by accident).",
+  },
 } as const
 
 export type FeatureFlagName = keyof typeof featureFlags

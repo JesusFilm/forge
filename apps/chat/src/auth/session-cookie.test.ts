@@ -75,6 +75,48 @@ describe("createChatSessionCookie / readChatSessionCookie round-trip", () => {
     const value = await createChatSessionCookie({ sub: "u1" })
     expect(await readChatSessionCookie(value)).toEqual({ sub: "u1" })
   })
+
+  it("round-trips emailVerified: true (KTD6)", async () => {
+    const { createChatSessionCookie, readChatSessionCookie } = await loadModule(
+      {
+        secret: REAL_SECRET,
+      },
+    )
+    const value = await createChatSessionCookie({
+      sub: "user-123",
+      email: "ada@example.com",
+      emailVerified: true,
+    })
+    expect(await readChatSessionCookie(value)).toEqual({
+      sub: "user-123",
+      email: "ada@example.com",
+      emailVerified: true,
+    })
+  })
+})
+
+describe("readChatSessionCookie — emailVerified claim (KTD6)", () => {
+  it("reads undefined from a legacy cookie minted without the claim (pre-deploy sessions)", async () => {
+    // Legacy sessions predate the claim; the gate treats undefined as
+    // unverified (fail-closed), so the read must not invent a value.
+    const { readChatSessionCookie } = await loadModule({ secret: REAL_SECRET })
+    const legacy = await signWith(REAL_SECRET, {
+      sub: "u1",
+      email: "a@example.com",
+    })
+    const identity = await readChatSessionCookie(legacy)
+    expect(identity).not.toBeNull()
+    expect(identity?.emailVerified).toBeUndefined()
+  })
+
+  it('drops a non-boolean claim value (the string "true") on read — strict boolean symmetry', async () => {
+    const { readChatSessionCookie } = await loadModule({ secret: REAL_SECRET })
+    const forged = await signWith(REAL_SECRET, {
+      sub: "u1",
+      emailVerified: "true",
+    })
+    expect((await readChatSessionCookie(forged))?.emailVerified).toBeUndefined()
+  })
 })
 
 describe("readChatSessionCookie — anonymous on any failure (R11)", () => {

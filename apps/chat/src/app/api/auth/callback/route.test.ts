@@ -119,6 +119,42 @@ describe("GET /api/auth/callback — happy path (F1)", () => {
   })
 })
 
+describe("GET /api/auth/callback — email_verified pass-through (KTD6)", () => {
+  it("a verified-email identity mints a session cookie that reads back emailVerified: true", async () => {
+    vi.mocked(oauth.exchangeChatAuthorizationCode).mockResolvedValue({
+      access_token: "at",
+      id_token: "idt",
+    })
+    vi.mocked(oauth.verifyChatIdToken).mockResolvedValue({
+      subject: "user-123",
+      email: "ada@example.com",
+      emailVerified: true,
+    })
+
+    const { GET } = await loadRoute()
+    const res = await GET(callbackRequest())
+
+    const sessionValue = res.headers
+      .getSetCookie()
+      .find((cookie) => cookie.startsWith("forge_chat_session="))
+      ?.split(";")[0]
+      ?.slice("forge_chat_session=".length)
+    expect(sessionValue).toBeTruthy()
+
+    // The route's pass-through is a one-line optional field that compiles clean
+    // if forgotten — only reading the REAL cookie back proves it was threaded.
+    const { readChatSessionCookie } = await import("@/auth/session-cookie")
+    const identity = await readChatSessionCookie(
+      decodeURIComponent(sessionValue ?? ""),
+    )
+    expect(identity).toMatchObject({
+      sub: "user-123",
+      email: "ada@example.com",
+      emailVerified: true,
+    })
+  })
+})
+
 describe("GET /api/auth/callback — failures (R8/R9/R12, all one catch)", () => {
   it("rejects a state mismatch: no session, home + R12 marker", async () => {
     const { GET } = await loadRoute()

@@ -20,6 +20,7 @@ export type ChatIdentity = {
   name?: string
   email?: string
   picture?: string
+  emailVerified?: boolean
 }
 
 /**
@@ -52,6 +53,7 @@ export async function createChatSessionCookie(
     name: identity.name,
     email: identity.email,
     picture: identity.picture,
+    emailVerified: identity.emailVerified,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
@@ -86,6 +88,12 @@ export async function readChatSessionCookie(
       email: typeof payload.email === "string" ? payload.email : undefined,
       picture:
         typeof payload.picture === "string" ? payload.picture : undefined,
+      // Absent on legacy cookies (minted pre-KTD6) → undefined; the seeker
+      // gate treats that as unverified (fail-closed). Strict boolean only.
+      emailVerified:
+        typeof payload.emailVerified === "boolean"
+          ? payload.emailVerified
+          : undefined,
     }
   } catch {
     return null
