@@ -6,8 +6,8 @@ A chat UI for the Forge Mastra agents (jesusfilm.ai). The initial styling
 follows the "Vigil" design direction (see below) — a starting point handed to
 us to get going, not a locked-in convention; expect it to evolve. Replies come
 from the client stub by default, or stream from Seeker behind the
-`SEEKER_CHAT_ENABLED` kill switch composed with the per-user LaunchDarkly
-seeker dogfood gate (feat-205, feat-233). Conversation state in the UI is still
+`SEEKER_CHAT_ENABLED` kill switch composed with the per-user seeker dogfood
+email allowlist (`SEEKER_ALLOWED_EMAILS`, feat-205, feat-233). Conversation state in the UI is still
 client-only and resets on refresh, but on the Seeker path the SERVER side now
 persists (feat-208): Mastra stores threads/messages in its `ai_chat` Postgres
 schema, keyed by a proxy-resolved per-user resource. UI restore/deep-linking
@@ -36,7 +36,7 @@ src/
     errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
-    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205) AND the feat-207 auth vars. isSeekerChatEnabled() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
+    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
@@ -60,8 +60,7 @@ src/
     chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins)
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
-    feature-flags.ts     feat-233: chat's LaunchDarkly client — events OFF (sendEvents:false + diagnosticOptOut), seeker override honored ONLY under NODE_ENV=development (fail-closed by construction, KTD5)
-    seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + LD individual-target flag → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
+    seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types + createConversation / deriveTitle
     use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
@@ -127,8 +126,9 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
 - **Gated, default off — two composed layers since feat-233.**
   `SEEKER_CHAT_ENABLED` is the service-wide kill switch, no longer the sole
   reply-source selector: the decision is `resolveSeekerGate()`
-  (`src/lib/seeker-gate.ts`) = kill switch AND signed-in verified email AND the
-  `forge.chat.seekerDogfood` LaunchDarkly individual-target flag. `page.tsx`
+  (`src/lib/seeker-gate.ts`) = kill switch AND signed-in verified email AND
+  membership in the `SEEKER_ALLOWED_EMAILS` env allowlist (CSV of emails,
+  normalized both sides; unset/empty admits no one). `page.tsx`
   resolves it server-side (`force-dynamic`, surface `page`) into the
   `seekerEnabled` prop; the route re-resolves it on every request (surface
   `route`) and denies with a terminal `gate_denied` frame the client maps to
@@ -186,8 +186,8 @@ the user is and gates almost nothing** (R7, amended by feat-233/R13): chat
 stays fully usable anonymously and there are no role/permission checks, but
 the seeker reply source is per-user since feat-233 — the page and the
 `/api/seeker` route resolve the seeker dogfood gate from the session's
-verified-email claims, so signed-in targeted dogfooders get Seeker and
-everyone else (untargeted, unverified, anonymous, direct callers) gets the
+verified-email claims, so signed-in allowlisted dogfooders get Seeker and
+everyone else (unlisted, unverified, anonymous, direct callers) gets the
 stub.
 
 - **Cookie-only session, no database.** The session IS a signed, app-local cookie
@@ -222,10 +222,10 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   redirects (anonymous is valid) and is **display-only, with ONE bounded
   carve-out (R13, feat-233)**: the seeker dogfood gate
   (`src/lib/seeker-gate.ts`) may consume the claims for named-person feature
-  gating via LaunchDarkly INDIVIDUAL targets — internal staff dogfooders only.
-  Anything broader (rule-based targeting, targets outside the org, or reuse
-  beyond seeker dogfooding) still requires revocation + a membership gate
-  first (see the code comment).
+  gating via the `SEEKER_ALLOWED_EMAILS` env allowlist — internal staff
+  dogfooders only. Anything broader (rule-based gating, allowlist entries
+  outside the org, or reuse beyond seeker dogfooding) still requires
+  revocation + a membership gate first (see the code comment).
 - **R9 divergence from admin's verifier (net-new, so it carries its own tests):**
   `verifyChatIdToken` verifies the **id_token only** (no `idToken ?? accessToken`
   fallback — admin is safe without this only because it also gates on
@@ -261,10 +261,10 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
 
 - No **authorization** beyond ONE bounded carve-out (feat-233/R13): the seeker
   dogfood gate (`src/lib/seeker-gate.ts`) — named-person feature gating via
-  LaunchDarkly individual targets, internal staff dogfooders only. No other
-  role/permission checks and no gating of any other surface; rule-based
-  targeting, non-org targets, or reuse beyond seeker dogfooding requires
-  revocation + a membership gate first. Sign-in itself stays optional
+  the `SEEKER_ALLOWED_EMAILS` env allowlist, internal staff dogfooders only.
+  No other role/permission checks and no gating of any other surface;
+  rule-based gating, non-org entries, or reuse beyond seeker dogfooding
+  requires revocation + a membership gate first. Sign-in itself stays optional
   (feat-207) and default-off.
 - No rate/concurrency cap on `/api/seeker` or the auth routes (lands later,
   alongside Cloudflare fronting — see the access-posture notes above). Inbound
@@ -284,9 +284,9 @@ Now present (feat-205, behind the default-off flag): a validated `env.ts`, the
 behind `chatAuthConfigured()`, default off): optional OAuth sign-in/out against
 `apps/auth` — `src/auth/*`, the `/api/auth/*` routes, and the sidebar account
 control. Now present (feat-233, default deny): the per-user seeker dogfood
-gate — `src/lib/feature-flags.ts` + `src/lib/seeker-gate.ts`, enforced at the
-page and on every `/api/seeker` request. Authentication now feeds that one
-gate; everything else stays ungated.
+gate — `src/lib/seeker-gate.ts` (`SEEKER_ALLOWED_EMAILS` membership), enforced
+at the page and on every `/api/seeker` request. Authentication now feeds that
+one gate; everything else stays ungated.
 
 ## Key Conventions
 
@@ -301,7 +301,7 @@ gate; everything else stays ungated.
   (a pure class-map function), `brand/*`, `lib/cn.ts`, `lib/sse.ts`, the `app/`
   entry files, and the server-only modules (`config/env.ts`, `app/api/seeker/route.ts`,
   `app/api/auth/*`, `auth/*` — note `auth/identity.ts` uses `next/headers` — and the
-  feat-233 `lib/feature-flags.ts` + `lib/seeker-gate.ts`, both `import "server-only"`)
+  feat-233 `lib/seeker-gate.ts`, `import "server-only"`)
   stay server / framework-agnostic.
 - Strict TypeScript, `src/` layout, `@/*` path alias — config mirrors
   `apps/web` (the CI-proven template).
@@ -317,9 +317,8 @@ gate; everything else stays ungated.
   directive because `jose`'s WebCrypto path throws a cross-realm `payload must be an
 instance of Uint8Array` under jsdom (jsdom's `TextEncoder` produces a
   different-realm `Uint8Array` than jose's `instanceof` check). The feat-233
-  `lib/feature-flags.test.ts` and `lib/seeker-gate.test.ts` carry the same `node`
-  directive for an unrelated reason — they transitively import the LaunchDarkly
-  node SDK, which doesn't run under jsdom. Component/hook tests stay on jsdom. This is a **deliberate divergence** from the `apps/admin` /
+  `lib/seeker-gate.test.ts` carries the same `node` directive — the module
+  under test is server-only and needs no DOM. Component/hook tests stay on jsdom. This is a **deliberate divergence** from the `apps/admin` /
   `apps/web` no-testing-library convention (plain `react-dom/client` + `act`),
   scoped to chat by design — it does not change those apps. Pure-function tests
   (`lib/conversations.test.ts`, `lib/chat-stub.test.ts`,
@@ -360,11 +359,11 @@ pnpm --filter @forge/chat test
 Env is optional: the app runs against the stub with no config. To dogfood
 Seeker locally (the gate keeps production's shape locally — R12, feat-233):
 copy `.env.example` → `.env.local`, set `SEEKER_CHAT_ENABLED=true` plus the
-Mastra base URL + bearer, configure chat auth against a local `apps/auth` and
-sign in with a session whose email is verified (`emailVerified === true`), set
-`FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT=true`, and run `next dev` — only it sets
-`NODE_ENV=development`, so a local production build correctly takes the deny
-arm. Anonymous, unverified email, or override unset → stub.
+Mastra base URL + bearer, configure chat auth against a local `apps/auth`,
+sign in with a session whose email is verified (`emailVerified === true`), and
+put that email in `SEEKER_ALLOWED_EMAILS`. The mechanism is identical locally
+and deployed — no dev-only override exists. Anonymous, unverified email, or an
+email not on the allowlist → stub.
 
 ## Deployment
 

@@ -379,9 +379,6 @@ importers:
 
   apps/chat:
     dependencies:
-      '@forge/feature-flags':
-        specifier: workspace:*
-        version: link:../../packages/feature-flags
       jose:
         specifier: ^6.1.3
         version: 6.2.1

@@ -58,12 +58,10 @@ const envSchema = z.object({
   CHAT_SESSION_SECRET: z.string().optional(),
   AUTH_COOKIE_PREFIX: z.string().optional(),
 
-  // LaunchDarkly (feat-233) — optional so the default-off deploy boots clean.
-  // Absent SDK key → no LD connection; flags resolve from the fallback chain.
-  LAUNCHDARKLY_SDK_KEY: z.string().optional(),
-  // Local-dev-only override for forge.chat.seekerDogfood. Deployed builds
-  // never feed it to the flag client (KTD5) — see src/lib/feature-flags.ts.
-  FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: z.string().optional(),
+  // Seeker dogfood allowlist (feat-233 gate, env-var mechanism) — CSV of the
+  // emails allowed through the per-user seeker gate. Optional and fail-closed:
+  // unset or empty admits no one (the kill switch still composes on top).
+  SEEKER_ALLOWED_EMAILS: z.string().optional(),
 })
 
 export const env = envSchema.parse({
@@ -83,10 +81,7 @@ export const env = envSchema.parse({
   CHAT_BASE_URL: emptyToUndefined(process.env.CHAT_BASE_URL),
   CHAT_SESSION_SECRET: emptyToUndefined(process.env.CHAT_SESSION_SECRET),
   AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
-  LAUNCHDARKLY_SDK_KEY: emptyToUndefined(process.env.LAUNCHDARKLY_SDK_KEY),
-  FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT: emptyToUndefined(
-    process.env.FORGE_CHAT_SEEKER_DOGFOOD_DEFAULT,
-  ),
+  SEEKER_ALLOWED_EMAILS: emptyToUndefined(process.env.SEEKER_ALLOWED_EMAILS),
 })
 
 // Surface a sub-ceiling timeout at module load — silent misconfig would make the
@@ -109,6 +104,23 @@ export const env = envSchema.parse({
 /** Whether the chat app should route messages to Seeker (vs the local stub). */
 export function isSeekerChatEnabled(): boolean {
   return env.SEEKER_CHAT_ENABLED === "true"
+}
+
+/**
+ * Whether an email is on the seeker dogfood allowlist. SEEKER_ALLOWED_EMAILS
+ * is a CSV of emails; both the entries and the input are normalized (trim,
+ * lowercase) so casing or stray whitespace in the Railway value can't silently
+ * deny a dogfooder. Fail-closed: unset or empty admits no one, and a
+ * whitespace-only input never matches (entries are filtered non-empty).
+ */
+export function isSeekerEmailAllowed(email: string): boolean {
+  if (!env.SEEKER_ALLOWED_EMAILS) return false
+  const normalized = email.trim().toLowerCase()
+  if (!normalized) return false
+  return env.SEEKER_ALLOWED_EMAILS.split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(normalized)
 }
 
 /**

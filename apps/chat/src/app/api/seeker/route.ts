@@ -16,14 +16,15 @@
  * `thread_limit` gate reasons pass through to distinct client notices.
  *
  * ACCESS POSTURE (feat-233): an inbound per-user auth gate NOW EXISTS — the
- * LaunchDarkly dogfood gate (kill switch + signed-in verified email +
- * individual targeting), enforced on EVERY request via the injected gate
- * resolver before config checks or any upstream fetch. The chat origin remains
- * world-reachable HTTPS and each granted turn is still a ~90s paid generation,
- * so the cost-amplification surface is now bounded by the targeted dogfood
- * roster + the prompt-length cap rather than URL obscurity. A per-caller
- * rate/concurrency cap REMAINS an open prerequisite before the audience widens
- * at all — the R15 grant log is the interim volume signal. See
+ * seeker dogfood gate (kill switch + signed-in verified email + the
+ * SEEKER_ALLOWED_EMAILS env allowlist), enforced on EVERY request via the
+ * injected gate resolver before config checks or any upstream fetch. The chat
+ * origin remains world-reachable HTTPS and each granted turn is still a ~90s
+ * paid generation, so the cost-amplification surface is now bounded by the
+ * allowlisted dogfood roster + the prompt-length cap rather than URL
+ * obscurity. A per-caller rate/concurrency cap REMAINS an open prerequisite
+ * before the audience widens at all — the R15 grant log is the interim
+ * volume signal. See
  * docs/brainstorms/2026-06-25-chat-wire-seeker-route-requirements.md
  * (Dependencies / R5) and the feat-205 + feat-233 plans.
  *
@@ -74,8 +75,8 @@ export type SeekerProxyHandlerInput = {
   config: SeekerProxyConfig
   /**
    * Resolves the feat-233 seeker gate (kill switch + signed-in verified email
-   * + per-user LD targeting), closed over the caller's identity + surface by
-   * `POST`; injectable fake in tests. Any deny emits one `gate_denied` frame.
+   * + env-allowlist membership), closed over the caller's identity + surface
+   * by `POST`; injectable fake in tests. Any deny emits one `gate_denied` frame.
    */
   resolveGate: () => Promise<SeekerGateDecision>
   /**
