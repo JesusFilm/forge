@@ -125,6 +125,10 @@ export type AdminCatalogSyncEnv = {
   adminServiceBearerToken: string
 }
 
+export type MediaIndexEnv = {
+  allowedHosts: string
+}
+
 export function assertAdminCatalogSyncEnv(): AdminCatalogSyncEnv {
   const missing = [
     ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
@@ -144,5 +148,17 @@ export function assertAdminCatalogSyncEnv(): AdminCatalogSyncEnv {
   return {
     adminGraphqlUrl: env.ADMIN_GRAPHQL_URL!,
     adminServiceBearerToken: env.ADMIN_SERVICE_BEARER_TOKEN!,
+  }
+}
+
+export function assertMediaIndexEnv(): MediaIndexEnv {
+  if (env.NODE_ENV === "production" && !env.MEDIA_INDEX_ALLOWED_HOSTS) {
+    throw new RuntimeEnvError(
+      "MEDIA_INDEX_ALLOWED_HOSTS is required to index yt-video-mapper official media in production",
+    )
+  }
+
+  return {
+    allowedHosts: env.MEDIA_INDEX_ALLOWED_HOSTS ?? "",
   }
 }

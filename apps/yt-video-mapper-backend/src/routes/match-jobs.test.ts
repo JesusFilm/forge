@@ -18,6 +18,10 @@ import type {
   UploadSignals,
 } from "../services/upload-signal-extraction.js"
 import { InMemoryUploadStorage } from "../services/upload-storage.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  VISUAL_FRAME_FINGERPRINT_KIND,
+} from "../services/visual-fingerprint.js"
 
 const candidate: PublicMatchCandidate = {
   coreId: "core-jesus-film",
@@ -31,6 +35,13 @@ const structuralCandidate: PublicMatchCandidate = {
   videoVariantId: "variant-en",
   confidence: 1,
   matchStrength: "high",
+}
+
+const visualCandidate: PublicMatchCandidate = {
+  coreId: "core-jesus-film",
+  videoVariantId: "variant-en",
+  confidence: 0.84,
+  matchStrength: "medium",
 }
 
 class TestResponse extends Writable {
@@ -278,6 +289,62 @@ describe("match jobs route", () => {
     })
   })
 
+  it("processes a raw video upload through v2 visual extraction and matching", async () => {
+    const { request } = createHarness({
+      service: createV2VisualMatcherService(),
+    })
+    const created = await request(
+      "POST",
+      "/match-jobs",
+      Buffer.from([1, 2, 3, 4]),
+    )
+    const jobId = String(created.body.jobId)
+
+    const response = await request("POST", `/match-jobs/${jobId}/process`)
+
+    expect(response).toEqual({
+      statusCode: 200,
+      body: {
+        jobId,
+        status: "complete",
+        candidates: [visualCandidate],
+      },
+    })
+  })
+
+  it("processes a multipart video upload through v2 visual extraction and matching", async () => {
+    const { request } = createHarness({
+      service: createV2VisualMatcherService(),
+    })
+    const boundary = "match-job-test-boundary"
+    const created = await request(
+      "POST",
+      "/match-jobs",
+      createMultipartBody({
+        boundary,
+        bytes: Buffer.from([1, 2, 3, 4]),
+        contentType: "video/mp4",
+        filename: "sample.mp4",
+        name: "file",
+      }),
+      {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+    )
+    const jobId = String(created.body.jobId)
+
+    const response = await request("POST", `/match-jobs/${jobId}/process`)
+
+    expect(response).toEqual({
+      statusCode: 200,
+      body: {
+        jobId,
+        status: "complete",
+        candidates: [visualCandidate],
+      },
+    })
+  })
+
   it("processes a multipart media part without a filename", async () => {
     const { request } = createHarness({
       service: createRealMatcherService(),
@@ -516,6 +583,45 @@ function createRealMatcherService(): MatchJobService {
   )
 }
 
+function createV2VisualMatcherService(): MatchJobService {
+  return new MatchJobService(
+    new InMemoryMatchJobRepository(),
+    new InMemoryUploadStorage(),
+    new DeterministicUploadSignalExtractor({
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      visualFrameExtractor: {
+        async extractFromBytes() {
+          return [
+            {
+              offsetMilliseconds: 0,
+              durationMilliseconds: null,
+              payload: {
+                kind: VISUAL_FRAME_FINGERPRINT_KIND,
+                phash: "ffffffff00000000",
+                frameWidth: 8,
+                frameHeight: 8,
+              },
+            },
+          ]
+        },
+      },
+    }),
+    new MediaSignatureMatcher(
+      new InMemoryMediaSignatureMatchRepository([
+        visualSignature({
+          coreId: "core-jesus-film",
+          videoVariantId: "variant-en",
+          phash: "ffffffff00000000",
+        }),
+      ]),
+      {
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      },
+    ),
+    () => new Date("2026-06-08T00:00:00.000Z"),
+  )
+}
+
 class StubExtractor implements UploadSignalExtractor {
   constructor(private readonly signals: UploadSignals) {}
 
@@ -587,6 +693,37 @@ function structuralSignature({
         rangeEnd: 3,
         complete: true,
       },
+    },
+    catalogVariant: {
+      durationSeconds: 120,
+      lengthInMilliseconds: null,
+      languageSlug: "english",
+      locale: "en",
+    },
+  }
+}
+
+function visualSignature({
+  coreId,
+  videoVariantId,
+  phash,
+}: {
+  coreId: string
+  videoVariantId: string
+  phash: string
+}): MatchableMediaSignature {
+  return {
+    coreId,
+    videoVariantId,
+    algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    signatureType: "VISUAL_FRAME",
+    offsetMilliseconds: 0,
+    durationMilliseconds: null,
+    signature: {
+      kind: VISUAL_FRAME_FINGERPRINT_KIND,
+      phash,
+      frameWidth: 8,
+      frameHeight: 8,
     },
     catalogVariant: {
       durationSeconds: 120,

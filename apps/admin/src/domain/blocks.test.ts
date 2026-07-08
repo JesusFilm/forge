@@ -277,6 +277,15 @@ describe("strictness", () => {
     const result = BlockSchema.safeParse({ t: "marquee", value: "go" })
     expect(result.success).toBe(false)
   })
+
+  it("accepts the watch home hero discriminator stored on watch home locales", () => {
+    const result = BlockSchema.safeParse({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero",
+    })
+
+    expect(result.success).toBe(true)
+  })
 })
 
 // -----------------------------------------------------------------------------
@@ -525,6 +534,26 @@ describe("BlocksSchema", () => {
                 imageOverrideAssetId: "asset-item",
               },
             ],
+          },
+        ],
+      },
+    ]
+
+    expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
+  it("accepts root-relative admin media preview URLs", () => {
+    const input = [
+      {
+        t: "mediaCollection",
+        variant: "collection",
+        itemsSource: "manual",
+        showItemNumbers: false,
+        items: [
+          {
+            videoId: "video-1",
+            imageOverrideUrl: "/api/media-assets/asset-1/preview",
+            imageOverrideAssetId: "asset-1",
           },
         ],
       },

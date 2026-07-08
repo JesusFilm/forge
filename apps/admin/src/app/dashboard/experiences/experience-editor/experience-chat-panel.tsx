@@ -30,6 +30,7 @@ import {
   useRef,
   useState,
   type Dispatch,
+  type ReactNode,
   type SetStateAction,
 } from "react"
 
@@ -161,6 +162,7 @@ export type ExperienceChatPanelProps = {
       }
     | { ok: false; code: string; error: string }
   >
+  utilitySlot?: ReactNode
   /**
    * Test seam — defaults to the real `openChatStream`. Tests inject a
    * deterministic async iterable.
@@ -219,6 +221,7 @@ export function ExperienceChatPanel({
   videoLibrary = [],
   generateDraftAction,
   generateSectionAction,
+  utilitySlot,
   streamFactory = openChatStream,
 }: ExperienceChatPanelProps) {
   const [draftWorkflowStatus, setDraftWorkflowStatus] = useState<
@@ -868,6 +871,12 @@ export function ExperienceChatPanel({
           New
         </button>
       </div>
+
+      {utilitySlot ? (
+        <div className="shrink-0 border-b border-[var(--color-hairline)] px-3 py-3">
+          {utilitySlot}
+        </div>
+      ) : null}
 
       {/* Thread list */}
       {threads.length > 0 ? (

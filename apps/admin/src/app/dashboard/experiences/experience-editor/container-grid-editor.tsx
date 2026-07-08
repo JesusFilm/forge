@@ -74,6 +74,10 @@ const VIEWPORT_LABELS: Record<GridBreakpoint, string> = {
   lg: "LG",
   xl: "XL",
 }
+const selectedMediaButtonClassName =
+  "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
+const idleMediaButtonClassName =
+  "border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
 
 export function ContainerGridEditor({
   blockIndex,
@@ -219,7 +223,13 @@ export function ContainerGridEditor({
                         onActivate()
                         chooseSlotBackgroundImage(slotIndex, item)
                       }}
-                      className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
+                      className={cx(
+                        "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border transition-colors duration-[120ms] ease-out",
+                        item.backgroundImageAssetId
+                          ? selectedMediaButtonClassName
+                          : idleMediaButtonClassName,
+                      )}
+                      aria-pressed={Boolean(item.backgroundImageAssetId)}
                       aria-label={`Choose slot ${slotIndex + 1} background image`}
                     >
                       <ImageIcon className="h-4 w-4" strokeWidth={1.5} />

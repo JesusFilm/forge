@@ -2,10 +2,10 @@
 id: feat-160
 title: Watch home carousel admin data parity
 owner: urim
-priority: medium
+priority: "P1"
 status: "complete"
 start_date: "2026-06-05"
-duration: "3d"
+duration: 3
 depends_on:
   - feat-159
 blocks:

@@ -333,6 +333,10 @@ describe("WatchHomePage", () => {
       container.querySelector("a[href='/jesus.html/english.html?autoplay=1']")
         ?.textContent,
     ).toContain("Watch Now")
+    expect(
+      container.querySelector('[data-testid="watch-home-card-text-gradient"]'),
+    ).not.toBeNull()
+    expect(container.textContent).toContain("2:03")
     const textureClassNames = Array.from(
       container.querySelectorAll("[class*='overlay.svg']"),
     ).map((element) => element.getAttribute("class") ?? "")
@@ -375,6 +379,46 @@ describe("WatchHomePage", () => {
       container.querySelector("a[href='/jesus.html/english.html']"),
     ).toBeNull()
     expect(container.textContent).toContain("Fallback Cards")
+  })
+
+  it("hides the top-right meta label for collection cards", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            sections: [
+              {
+                id: "collection-cards",
+                eyebrow: "Collection",
+                title: "Collection Cards",
+                description: null,
+                layout: "grid",
+                orientation: "horizontal",
+                showSequenceNumbers: false,
+                cards: [
+                  makeCard({
+                    id: "collection-card",
+                    title: "Scripture Spoken Exactly as Written",
+                    label: "Collection",
+                    metaLabel: "61 episodes",
+                    childCount: 0,
+                  }),
+                ],
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector(
+      '[data-section-id="collection-cards"]',
+    )
+    expect(section?.textContent).toContain(
+      "Scripture Spoken Exactly as Written",
+    )
+    expect(section?.textContent).toContain("Collection")
+    expect(section?.textContent).not.toContain("61 episodes")
   })
 
   it("softens section card hover by crossfading the backdrop without clearing between cards", async () => {

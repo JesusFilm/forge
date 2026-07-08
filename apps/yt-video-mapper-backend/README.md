@@ -42,6 +42,20 @@ projection rows where Admin marked the variant indexable. It records an
 indexed for the same algorithm version, and captures per-variant failures
 without stopping the whole run.
 
+The default `official-media-signature-v1` algorithm writes structural
+byte-sample hints. It is useful as a safe deterministic baseline and can run
+while v2 is being prepared.
+
+Set `MEDIA_SIGNATURE_ALGORITHM_VERSION=official-media-signature-v2` to build
+the visual fingerprint index. V2 decodes official media through FFmpeg, samples
+grayscale frames, stores `VISUAL_FRAME` signatures with
+`visual_frame_phash_v2` payloads, and uses those signatures for arbitrary raw
+clip matching. For the first v2 slice, official indexing only accepts direct
+download media sources; HLS/DASH playlist URLs are rejected until playlist
+segment URL validation is available. The repository root `nixpacks.toml`
+includes `ffmpeg` for deployed Nixpacks services; local unit tests inject the
+command runner and do not require the binary.
+
 Optional runtime settings:
 
 - `MEDIA_SIGNATURE_ALGORITHM_VERSION` defaults to
@@ -49,8 +63,8 @@ Optional runtime settings:
 - `MEDIA_INDEX_PAGE_SIZE` defaults to `100`
 - `MEDIA_INDEX_MAX_FETCH_BYTES` defaults to `262144`
 - `MEDIA_INDEX_FETCH_TIMEOUT_MS` defaults to `15000`
-- `MEDIA_INDEX_ALLOWED_HOSTS` optionally restricts official media fetches to
-  comma-separated exact hostnames
+- `MEDIA_INDEX_ALLOWED_HOSTS` restricts official media fetches to
+  comma-separated exact hostnames. It is required for production indexing.
 - `MEDIA_INDEX_RESUME_AFTER_VARIANT_ID` resumes after a stored
   `CatalogVariant.id` cursor
 
@@ -78,6 +92,15 @@ The first matcher uses deterministic structural byte-sample evidence as the
 source-video anchor, plus duration and optional text/audio evidence when real
 source data exists. It does not synthesize audio fingerprints.
 
+When `MEDIA_SIGNATURE_ALGORITHM_VERSION=official-media-signature-v2`, uploaded
+video bytes are decoded through the same FFmpeg visual frame adapter and
+matched against v2 `VISUAL_FRAME` rows. The matcher asks the repository for a
+bounded visual candidate shortlist, then re-ranks by perceptual-hash similarity
+before fusion. Visual-only matches can identify the source video, but public
+confidence stays conservative unless audio or text evidence supports the
+specific variant. If frame extraction fails or no close candidate exists, the
+job still completes with an empty candidate list.
+
 The server starts a bounded Match Job worker by default. The worker claims the
 oldest queued or stale-running job, processes one job at a time, then polls for
 more work. Set `MATCH_JOB_WORKER_ENABLED=false` to disable the loop for an
@@ -103,6 +126,15 @@ pnpm --filter @forge/yt-video-mapper-backend db:migrate:deploy
 pnpm --filter @forge/yt-video-mapper-backend sync:catalog
 pnpm --filter @forge/yt-video-mapper-backend index:media
 ```
+
+For v2 smoke after deploy, rerun indexing with:
+
+```sh
+MEDIA_SIGNATURE_ALGORITHM_VERSION=official-media-signature-v2 pnpm --filter @forge/yt-video-mapper-backend index:media
+```
+
+Then submit a known JFP middle clip, including a muted/no-audio example when a
+fixture is available, and verify the API returns the expected source `coreId`.
 
 ## Current Artifacts
 
