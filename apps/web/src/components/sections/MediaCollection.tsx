@@ -511,7 +511,6 @@ function VideoCard({
               ? "(max-width: 768px) 46vw, 220px"
               : "(max-width: 768px) 100vw, 360px"
           }
-          className="z-[5]"
           imageClassName={isVertical ? undefined : "object-left-top"}
         />
         <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-black/78 via-black/18 to-transparent" />

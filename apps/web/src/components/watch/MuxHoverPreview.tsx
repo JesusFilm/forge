@@ -22,6 +22,8 @@ export function MuxHoverPreview({
 }: MuxHoverPreviewProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [activated, setActivated] = useState(false)
+  const [loadedPreviewUrl, setLoadedPreviewUrl] = useState<string | null>(null)
+  const loaded = loadedPreviewUrl === previewUrl
 
   useEffect(() => {
     if (!previewUrl || activated) return
@@ -48,7 +50,7 @@ export function MuxHoverPreview({
       data-testid={testId}
       data-active={activated ? "true" : "false"}
       className={cn(
-        "absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100",
+        "pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100",
         className,
       )}
       onPointerEnter={() => setActivated(true)}
@@ -61,7 +63,12 @@ export function MuxHoverPreview({
           sizes={sizes}
           unoptimized
           aria-hidden="true"
-          className={cn("object-cover", imageClassName)}
+          className={cn(
+            "object-cover opacity-0 transition-opacity duration-300",
+            loaded && "opacity-100",
+            imageClassName,
+          )}
+          onLoad={() => setLoadedPreviewUrl(previewUrl)}
         />
       ) : null}
     </div>
