@@ -66,6 +66,12 @@ export type Principal = {
    * Never logged.
    */
   rateLimitBucketKey?: string
+  /**
+   * True on a fleet consumer bearer (`FLEET_ADMIN_API_KEYS`). The rate-limit
+   * identifyFn buckets a fleet principal per-IP (`consumer:<key>:<ip>`) instead
+   * of the flat per-key `consumer:<key>`. Bucketing-only; never a permission.
+   */
+  fleet?: boolean
 }
 
 export type ManagerRole = "OPERATOR"
@@ -118,13 +124,16 @@ export const VIDEO_MAPPER_PRINCIPAL = {
  */
 export function CONSUMER_BEARER_PRINCIPAL({
   rateLimitBucketKey,
+  fleet,
 }: {
   rateLimitBucketKey: string
+  fleet: boolean
 }): Principal {
   return {
     id: null,
     role: "CONSUMER_BEARER",
     rateLimitBucketKey,
+    fleet,
   }
 }
 
