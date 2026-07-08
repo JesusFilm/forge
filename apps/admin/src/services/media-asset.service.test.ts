@@ -4,6 +4,7 @@ import {
   MediaAssetService,
   mediaAssetDownloadUrl,
   mediaAssetPreviewUrl,
+  publicMediaAssetPreviewUrl,
 } from "./media-asset.service"
 
 function mockPrisma() {
@@ -375,6 +376,89 @@ describe("MediaAssetService", () => {
           muxPlaybackId: "playback-1",
         }),
       ).toBe("https://image.mux.com/playback-1/thumbnail.jpg")
+    })
+
+    it("returns absolute public app routes for public ready assets", () => {
+      expect(
+        publicMediaAssetPreviewUrl(
+          {
+            id: "asset-1",
+            backend: "S3",
+            status: "READY",
+            visibility: "PUBLIC",
+            objectKey: "media-assets/asset-1/original/hero.webp",
+            previewObjectKey: null,
+            muxPlaybackId: null,
+          },
+          "https://admin.example.test/dashboard",
+        ),
+      ).toBe(
+        "https://admin.example.test/api/public/media-assets/asset-1/preview",
+      )
+    })
+
+    it("does not return public routes for private or missing assets", () => {
+      expect(
+        publicMediaAssetPreviewUrl(
+          {
+            id: "asset-1",
+            backend: "S3",
+            status: "READY",
+            visibility: "PRIVATE",
+            objectKey: "media-assets/asset-1/original/hero.webp",
+            previewObjectKey: null,
+            muxPlaybackId: null,
+          },
+          "https://admin.example.test",
+        ),
+      ).toBeNull()
+    })
+
+    it("hydrates block asset IDs into public URLs", async () => {
+      prisma.mediaAsset.findMany.mockResolvedValueOnce([
+        {
+          id: "asset-1",
+          backend: "S3",
+          status: "READY",
+          visibility: "PUBLIC",
+          objectKey: "media-assets/asset-1/original/hero.webp",
+          previewObjectKey: null,
+          muxPlaybackId: null,
+        },
+      ])
+
+      const result = await service.hydratePublicUrlsInBlocks([
+        {
+          t: "hero",
+          imageAssetId: "asset-1",
+          imageUrl: "/api/media-assets/asset-1/preview",
+          nested: {
+            backgroundImageAssetId: "asset-2",
+            backgroundImageUrl: "/api/media-assets/asset-2/preview",
+          },
+        },
+      ])
+
+      expect(prisma.mediaAsset.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: { in: ["asset-1", "asset-2"] },
+            status: "READY",
+            visibility: "PUBLIC",
+          },
+        }),
+      )
+      expect(result).toEqual([
+        {
+          t: "hero",
+          imageAssetId: "asset-1",
+          imageUrl:
+            "http://localhost:3003/api/public/media-assets/asset-1/preview",
+          nested: {
+            backgroundImageAssetId: "asset-2",
+          },
+        },
+      ])
     })
   })
 
