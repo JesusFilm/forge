@@ -289,6 +289,22 @@ MediaCollectionItemRef.implement({
   fields: (t) => ({
     videoId: t.exposeString("videoId", { nullable: true }),
     videoSlug: t.exposeString("videoSlug", { nullable: true }),
+    muxPlaybackId: t.string({
+      nullable: true,
+      description:
+        "Best playable Mux playback id for this media collection item when it references a Video row.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (row, args, ctx) => {
+        const videoId = optionalString(row.videoId)
+        if (!videoId) return null
+        return ctx.loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
+          videoId,
+          languageSlug: args.languageSlug ?? null,
+        })
+      },
+    }),
     imageOverrideUrl: t.string({
       nullable: true,
       resolve: (row, _args, ctx) =>

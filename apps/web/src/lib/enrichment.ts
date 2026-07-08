@@ -10,6 +10,7 @@
 type MediaItem = {
   videoId?: string | null
   videoSlug?: string | null
+  muxPlaybackId?: string | null
   titleOverride: string | null
   subtitleOverride: string | null
   labelOverride: string | null
@@ -28,6 +29,7 @@ type RouteRelatedVideo = {
   title: string | null
   slug: string | null
   label: string | null
+  muxPlaybackId: string | null
   images: ({ url: string | null } | null)[] | null
 }
 
@@ -39,6 +41,7 @@ export type EnrichedMediaItem = {
   collectionSize: string
   imageUrl: string | null
   videoSlug: string
+  muxPlaybackId: string | null
 }
 
 export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
@@ -79,6 +82,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     collectionSize,
     imageUrl,
     videoSlug,
+    muxPlaybackId: item.muxPlaybackId ?? null,
   }
 }
 
@@ -96,5 +100,6 @@ export function enrichRouteRelatedVideo(
     collectionSize: "",
     imageUrl: video.images?.[0]?.url ?? null,
     videoSlug,
+    muxPlaybackId: video.muxPlaybackId ?? null,
   }
 }
