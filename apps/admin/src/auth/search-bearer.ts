@@ -17,7 +17,10 @@
 // partner matches) `keyId=…` from the token prefix — never plaintext
 // or the stored hash.
 
-import { isValidConsumerBearer } from "@/auth/consumer-bearer"
+import {
+  isValidConsumerBearer,
+  type ConsumerBearerResult,
+} from "@/auth/consumer-bearer"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 import {
   sanitizeLogValue,
@@ -29,7 +32,7 @@ import {
  * structured per-request log so operators can grep
  * `auth=bearer source=partner` to see partner traffic, etc.
  */
-export type BearerSource = "partner" | "consumer" | "workflow"
+export type BearerSource = "partner" | "consumer" | "fleet" | "workflow"
 
 /**
  * Enriched return type from the composer. `keyId` is populated ONLY for
@@ -93,8 +96,11 @@ export async function isAnyKnownBearer(
     return { valid: true, source: "partner", keyId: partner.keyId }
   }
 
-  if (safeCheck("consumer", () => isValidConsumerBearer(authHeader).valid)) {
-    return { valid: true, source: "consumer" }
+  const consumer = safeConsumer(authHeader)
+  if (consumer.valid) {
+    // Fleet keys log as source=fleet (vs web SSR's source=consumer) so the
+    // existing per-request search log lets F1 confirm fleet traffic in prod.
+    return { valid: true, source: consumer.fleet ? "fleet" : "consumer" }
   }
   if (safeCheck("workflow", () => isValidWorkflowBearer(authHeader))) {
     return { valid: true, source: "workflow" }
@@ -131,5 +137,22 @@ async function safeCheckAsync(
       `[search] event=search_bearer.validator_threw validator=${validatorName} error=${sanitizeLogValue(message)}`,
     )
     return { valid: false }
+  }
+}
+
+/**
+ * Consumer-bearer check that returns the full result (including the `fleet`
+ * discriminant) instead of a bare boolean, wrapped in the same try/catch guard
+ * as `safeCheck` so a validator throw can't 500 every search request.
+ */
+function safeConsumer(authHeader: string | null): ConsumerBearerResult {
+  try {
+    return isValidConsumerBearer(authHeader)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn(
+      `[search] event=search_bearer.validator_threw validator=consumer error=${sanitizeLogValue(message)}`,
+    )
+    return { valid: false, bucketKey: null }
   }
 }
