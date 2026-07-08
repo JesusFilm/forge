@@ -26,6 +26,7 @@ export const adminMediaCollectionFragment = adminGraphql(`
     items {
       videoId
       videoSlug
+      muxPlaybackId
       titleOverride
       subtitleOverride
       labelOverride

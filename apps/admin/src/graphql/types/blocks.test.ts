@@ -315,11 +315,11 @@ describe("Mixed-kind round-trip across nested unions", () => {
 // -----------------------------------------------------------------------------
 
 describe("Edge cases", () => {
-  it("exposes videoSlug on MediaCollectionItem for authored card links", () => {
+  it("exposes videoSlug and muxPlaybackId on MediaCollectionItem for authored card links and previews", () => {
     const type = schema.getType("MediaCollectionItem")
-    expect(
-      type && "getFields" in type ? type.getFields().videoSlug : null,
-    ).toBeDefined()
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.videoSlug).toBeDefined()
+    expect(fields?.muxPlaybackId).toBeDefined()
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

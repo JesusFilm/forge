@@ -26,6 +26,7 @@ export type VerifiedChatIdentity = {
   name?: string
   email?: string
   picture?: string
+  emailVerified?: boolean
 }
 
 /**
@@ -366,6 +367,12 @@ export async function verifyChatIdToken({
     name: typeof payload.name === "string" ? payload.name : undefined,
     email: typeof payload.email === "string" ? payload.email : undefined,
     picture: typeof payload.picture === "string" ? payload.picture : undefined,
+    // Strict boolean (KTD6): a non-boolean value (e.g. the string "true") must
+    // never read as verified — the seeker gate fails closed on anything else.
+    emailVerified:
+      typeof payload.email_verified === "boolean"
+        ? payload.email_verified
+        : undefined,
   }
 }
 

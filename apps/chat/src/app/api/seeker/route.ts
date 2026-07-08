@@ -15,16 +15,17 @@
  * Seeker threads persist per user, and the upstream `thread_forbidden` /
  * `thread_limit` gate reasons pass through to distinct client notices.
  *
- * ACCEPTED RISK (v1, do NOT "fix" here): this endpoint has NO inbound auth gate
- * and NO rate limit. The chat origin is world-reachable HTTPS (an unadvertised
- * Railway-generated domain — no jesusfilm.org DNS, no Cloudflare, no auth), so
- * URL obscurity + a small trusted audience is the ONLY thing limiting reach —
- * that is the absence of a gate, not a gate. Each turn is a ~90s paid
- * generation, so an open proxy is a cost-amplification surface; the one lever
- * applied here is a prompt-length cap. A real inbound auth gate AND a per-caller
- * rate/concurrency cap are HARD PREREQUISITES before the audience widens at all.
- * See docs/brainstorms/2026-06-25-chat-wire-seeker-route-requirements.md
- * (Dependencies / R5) and the feat-205 plan.
+ * ACCESS POSTURE (feat-233): an inbound per-user auth gate NOW EXISTS — the
+ * LaunchDarkly dogfood gate (kill switch + signed-in verified email +
+ * individual targeting), enforced on EVERY request via the injected gate
+ * resolver before config checks or any upstream fetch. The chat origin remains
+ * world-reachable HTTPS and each granted turn is still a ~90s paid generation,
+ * so the cost-amplification surface is now bounded by the targeted dogfood
+ * roster + the prompt-length cap rather than URL obscurity. A per-caller
+ * rate/concurrency cap REMAINS an open prerequisite before the audience widens
+ * at all — the R15 grant log is the interim volume signal. See
+ * docs/brainstorms/2026-06-25-chat-wire-seeker-route-requirements.md
+ * (Dependencies / R5) and the feat-205 + feat-233 plans.
  *
  * Logging is plain-string `[seeker-proxy] event=… reason=…` (Railway logsV2
  * silences JSON-stringified payloads from Next.js runtime route handlers). No
@@ -32,7 +33,8 @@
  * into logs (log-injection + thread-id confidentiality).
  */
 
-import { env, isSeekerChatEnabled, seekerTimeoutMs } from "@/config/env"
+import { env, seekerTimeoutMs } from "@/config/env"
+import { resolveSeekerGate, type SeekerGateDecision } from "@/lib/seeker-gate"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
 import type { ReplyFailureReason } from "@/lib/conversations"
 import {
@@ -48,16 +50,16 @@ import {
 
 export const dynamic = "force-dynamic"
 
-// Cost-amplification bound under the accepted unauth posture (R5 defers the
-// rate/concurrency cap, not input bounds). A single caller must not be able to
-// POST a multi-megabyte prompt into a ~90s paid generation.
+// Cost-amplification bound (R5 defers the rate/concurrency cap, not input
+// bounds). A single caller must not be able to POST a multi-megabyte prompt
+// into a ~90s paid generation.
 const MAX_PROMPT_CHARS = 8000
 const MAX_CONVERSATION_ID_CHARS = 200
 
 /** Server-resolved Seeker proxy configuration (the bearer + base URL never
- * leave the server). Built from env in `POST`; injected directly in tests. */
+ * leave the server). Built from env in `POST`; injected directly in tests.
+ * The kill switch is no longer here — the gate resolver owns it (feat-233). */
 export type SeekerProxyConfig = {
-  enabled: boolean
   baseUrl?: string
   apiKey?: string
   allowedHosts?: string
@@ -65,11 +67,17 @@ export type SeekerProxyConfig = {
 }
 
 /** Inputs to the testable proxy core — the request-body reader, resolved config,
- * the server-resolved memory resource, an injectable fetch, and the inbound
- * abort signal. */
+ * the gate resolver, the server-resolved memory resource, an injectable fetch,
+ * and the inbound abort signal. */
 export type SeekerProxyHandlerInput = {
   readJson: () => Promise<unknown>
   config: SeekerProxyConfig
+  /**
+   * Resolves the feat-233 seeker gate (kill switch + signed-in verified email
+   * + per-user LD targeting), closed over the caller's identity + surface by
+   * `POST`; injectable fake in tests. Any deny emits one `gate_denied` frame.
+   */
+  resolveGate: () => Promise<SeekerGateDecision>
   /**
    * Server-resolved memory resource (feat-208): `user:<sub>` or `anon:<uuid>`,
    * never client-supplied. ALWAYS sent upstream — the proxy never falls back
@@ -167,6 +175,7 @@ function hostAllowed(
 export async function handleSeekerProxyRequest({
   readJson,
   config,
+  resolveGate,
   resourceId,
   anonSetCookie,
   fetchImpl = fetch,
@@ -211,8 +220,16 @@ export async function handleSeekerProxyRequest({
       }
 
       try {
-        // Gate order (defense in depth): enable flag → config present → SSRF.
-        if (!config.enabled || !config.baseUrl || !config.apiKey) {
+        // Gate order (defense in depth): kill switch + per-user gate → config
+        // present → SSRF.
+        const gate = await resolveGate()
+        if (!gate.seekerEnabled) {
+          // One reason for EVERY deny cause (KTD2) — the frame stays
+          // non-probing; the [seeker-gate] R15 log codes carry the detail.
+          fail("gate_denied")
+          return
+        }
+        if (!config.baseUrl || !config.apiKey) {
           fail("config_missing")
           return
         }
@@ -361,8 +378,9 @@ export async function handleSeekerProxyRequest({
 
 /** Next.js App Router entry point. Builds config from server env and resolves
  * the memory resource from the request's cookies (feat-208): the verified
- * session `sub` when signed in, else the rolling anonymous id. The subject is
- * used as a memory PARTITION KEY only — never for authorization (R7). */
+ * session `sub` when signed in, else the rolling anonymous id. The sub stays a
+ * memory PARTITION KEY (R7), but the same identity now ALSO feeds the seeker
+ * gate — the authorized feat-233/R13 carve-out, closed over in resolveGate. */
 export async function POST(request: Request): Promise<Response> {
   const cookieHeader = request.headers.get("cookie")
   const identity = await readChatSessionCookie(
@@ -375,12 +393,12 @@ export async function POST(request: Request): Promise<Response> {
   return handleSeekerProxyRequest({
     readJson: () => request.json(),
     config: {
-      enabled: isSeekerChatEnabled(),
       baseUrl: env.SEEKER_MASTRA_BASE_URL,
       apiKey: env.SEEKER_MASTRA_API_KEY,
       allowedHosts: env.SEEKER_MASTRA_ALLOWED_HOSTS,
       timeoutMs: seekerTimeoutMs(),
     },
+    resolveGate: () => resolveSeekerGate(identity, { surface: "route" }),
     resourceId: resolution.resourceId,
     anonSetCookie: resolution.anonIdToSet
       ? serializeAnonIdCookie(resolution.anonIdToSet)

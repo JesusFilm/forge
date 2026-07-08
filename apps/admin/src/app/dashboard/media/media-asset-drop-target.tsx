@@ -18,6 +18,7 @@ type MediaAssetDropTargetProps = {
   selectedFolderId: string | null
   selectedFolderLabel: string
   acceptedMimePrefix?: string
+  contentClassName?: string
   children: ReactNode
 }
 
@@ -35,6 +36,7 @@ export function MediaAssetDropTarget({
   selectedFolderId,
   selectedFolderLabel,
   acceptedMimePrefix,
+  contentClassName,
   children,
 }: MediaAssetDropTargetProps) {
   const router = useRouter()
@@ -173,7 +175,7 @@ export function MediaAssetDropTarget({
       }}
       className="relative min-h-0 flex-1"
     >
-      <div className="min-h-full">{children}</div>
+      <div className={contentClassName ?? "min-h-full"}>{children}</div>
 
       {(dragActive || uploadingCount > 0) && (
         <div className="pointer-events-none absolute inset-0 z-10 rounded-sm">

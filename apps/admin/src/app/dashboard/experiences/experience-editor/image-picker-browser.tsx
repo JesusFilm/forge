@@ -131,7 +131,7 @@ export function ImagePickerBrowser({
             onSelectFolder={onSelectFolder}
           />
 
-          <section className="flex min-w-0 flex-1 flex-col">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="grid gap-3 border-b border-[var(--color-hairline)] p-4">
               <label className="grid gap-1.5">
                 <span className="label-text">Search</span>
@@ -152,70 +152,73 @@ export function ImagePickerBrowser({
               </div>
             </div>
 
-            <MediaAssetDropTarget
-              canUpload={canUpload}
-              uploadAction={uploadAction}
-              selectedFolderId={selectedFolderId}
-              selectedFolderLabel={selectedFolderLabel}
-              acceptedMimePrefix="image/"
-            >
-              <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-                {visibleImages.length === 0 ? (
-                  <ImagePickerEmptyState
-                    title={emptyState.title}
-                    description={emptyState.description}
-                  />
-                ) : (
-                  <div className="grid gap-3 p-4 pb-6 md:grid-cols-2 xl:grid-cols-3">
-                    {visibleImages.map((asset) => (
-                      <button
-                        key={asset.id}
-                        type="button"
-                        disabled={!asset.previewUrl}
-                        onClick={() => setDraftSelectedAssetId(asset.id)}
-                        className={cx(
-                          "group grid cursor-pointer overflow-hidden rounded-sm border bg-[var(--color-surface-raised)] text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] disabled:cursor-not-allowed disabled:opacity-50",
-                          draftSelectedAssetId === asset.id
-                            ? "border-[var(--color-brand)] ring-2 ring-[color-mix(in_oklab,var(--color-brand)_42%,transparent)]"
-                            : "border-[var(--color-hairline)]",
-                        )}
-                        aria-pressed={draftSelectedAssetId === asset.id}
-                      >
-                        <div className="aspect-video bg-[var(--color-bg)]">
-                          {asset.previewUrl ? (
-                            <div
-                              className="h-full w-full bg-cover bg-center transition-transform duration-[180ms] ease-out group-hover:scale-[1.02]"
-                              style={{
-                                backgroundImage: `url("${asset.previewUrl}")`,
-                              }}
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <ImageIcon
-                                className="h-8 w-8 text-[var(--color-text-muted)]"
-                                strokeWidth={1.5}
-                              />
-                            </div>
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <MediaAssetDropTarget
+                canUpload={canUpload}
+                uploadAction={uploadAction}
+                selectedFolderId={selectedFolderId}
+                selectedFolderLabel={selectedFolderLabel}
+                acceptedMimePrefix="image/"
+                contentClassName="h-full min-h-0"
+              >
+                <div className="h-full overflow-x-hidden overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+                  {visibleImages.length === 0 ? (
+                    <ImagePickerEmptyState
+                      title={emptyState.title}
+                      description={emptyState.description}
+                    />
+                  ) : (
+                    <div className="grid gap-3 p-4 pb-6 md:grid-cols-2 xl:grid-cols-3">
+                      {visibleImages.map((asset) => (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          disabled={!asset.previewUrl}
+                          onClick={() => setDraftSelectedAssetId(asset.id)}
+                          className={cx(
+                            "group grid cursor-pointer overflow-hidden rounded-sm border bg-[var(--color-surface-raised)] text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] disabled:cursor-not-allowed disabled:opacity-50",
+                            draftSelectedAssetId === asset.id
+                              ? "border-[var(--color-brand)] ring-2 ring-[color-mix(in_oklab,var(--color-brand)_42%,transparent)]"
+                              : "border-[var(--color-hairline)]",
                           )}
-                        </div>
-                        <div className="grid gap-1 p-3">
-                          <div className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
-                            {asset.displayName}
+                          aria-pressed={draftSelectedAssetId === asset.id}
+                        >
+                          <div className="aspect-video bg-[var(--color-bg)]">
+                            {asset.previewUrl ? (
+                              <div
+                                className="h-full w-full bg-cover bg-center transition-transform duration-[180ms] ease-out group-hover:scale-[1.02]"
+                                style={{
+                                  backgroundImage: `url("${asset.previewUrl}")`,
+                                }}
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <ImageIcon
+                                  className="h-8 w-8 text-[var(--color-text-muted)]"
+                                  strokeWidth={1.5}
+                                />
+                              </div>
+                            )}
                           </div>
-                          <div className="truncate font-mono text-[11px] text-[var(--color-text-muted)]">
-                            {isSearching ? asset.pathLabel : asset.mimeType}
+                          <div className="grid gap-1 p-3">
+                            <div className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
+                              {asset.displayName}
+                            </div>
+                            <div className="truncate font-mono text-[11px] text-[var(--color-text-muted)]">
+                              {isSearching ? asset.pathLabel : asset.mimeType}
+                            </div>
+                            <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)]">
+                              <span>{asset.byteSize}</span>
+                              <span>{asset.updated}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)]">
-                            <span>{asset.byteSize}</span>
-                            <span>{asset.updated}</span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </MediaAssetDropTarget>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </MediaAssetDropTarget>
+            </div>
           </section>
         </div>
         <div className="flex shrink-0 flex-col gap-3 border-t border-[var(--color-hairline)] p-4 sm:flex-row sm:items-center sm:justify-between">

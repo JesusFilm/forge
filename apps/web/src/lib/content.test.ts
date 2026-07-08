@@ -312,6 +312,7 @@ describe("resolveWatchPage", () => {
                   documentId: "child-1",
                   slug: "the-beginning",
                   label: "SEGMENT",
+                  muxPlaybackId: "mux-child-1",
                   images: [
                     {
                       documentId: "img-c",
@@ -358,6 +359,7 @@ describe("resolveWatchPage", () => {
             title: "The Beginning",
             label: "SEGMENT",
             videoSlug: "the-beginning",
+            muxPlaybackId: "mux-child-1",
           },
         ],
       },

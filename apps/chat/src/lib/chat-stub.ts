@@ -173,11 +173,20 @@ async function streamSeekerReply(
         return
       }
       if (event === "error") {
-        terminal = {
-          ok: false,
-          reason: toReason((data as { reason?: unknown }).reason),
-          partialText: full,
-        }
+        const reason = toReason((data as { reason?: unknown }).reason)
+        // feat-233 (F3/AE5): a gate denial degrades to a SUCCESSFUL local stub
+        // reply — the gate fires before any upstream call, so no meaningful
+        // partial text exists. No artificial STUB_REPLY_DELAY on this path.
+        terminal =
+          reason === "gate_denied"
+            ? {
+                ok: true,
+                text: buildStubReply(input.text),
+                sources: [],
+                grounded: false,
+                engine: "stub",
+              }
+            : { ok: false, reason, partialText: full }
       }
     })
   } catch {

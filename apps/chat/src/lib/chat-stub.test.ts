@@ -272,6 +272,56 @@ describe("streamReply — seeker path (flag on)", () => {
     })
   })
 
+  // AE5 (feat-233): a server-side gate denial degrades to the LOCAL stub reply
+  // — a successful turn, not a failure notice. Fake timers (never advanced)
+  // pin the no-STUB_REPLY_DELAY contract: a delayed resolve would hang here.
+  it("maps a terminal gate_denied frame to a successful stub reply, with no delay", async () => {
+    vi.useFakeTimers()
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        sseResponse([{ event: "error", data: { reason: "gate_denied" } }]),
+      )
+    const result = await streamReply({
+      text: "hi there",
+      conversationId: "c1",
+      seekerEnabled: true,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(result).toEqual({
+      ok: true,
+      text: buildStubReply("hi there"),
+      sources: [],
+      grounded: false,
+      engine: "stub",
+    })
+  })
+
+  it("gate_denied is terminal — a later result frame is ignored (first-terminal-wins)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      sseResponse([
+        { event: "error", data: { reason: "gate_denied" } },
+        {
+          event: "result",
+          data: { text: "late", grounded: true, sources: [] },
+        },
+      ]),
+    )
+    const result = await streamReply({
+      text: "hi",
+      conversationId: "c1",
+      seekerEnabled: true,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(result).toEqual({
+      ok: true,
+      text: buildStubReply("hi"),
+      sources: [],
+      grounded: false,
+      engine: "stub",
+    })
+  })
+
   it("surfaces parse_error when the stream ends with no terminal frame", async () => {
     const fetchImpl = vi
       .fn()
