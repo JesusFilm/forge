@@ -1,6 +1,6 @@
 import { print } from "graphql"
 
-import { GET_WATCH_HOME_VIDEOS } from "../queries"
+import { GET_WATCH_SETTING, GET_WATCH_HOME_VIDEOS } from "../queries"
 import {
   selectHeroStreamUrl,
   type HeroStreamVariantInput,
@@ -50,6 +50,30 @@ describe("GET_WATCH_HOME_VIDEOS — lean payload guard", () => {
       /locales\(locale: \$locale, languageSlug: \$languageSlug\)/g,
     )
     expect(localeSelections).toHaveLength(2)
+  })
+})
+
+// The Home Experience body rides the SAME public, no-bearer surface as TV: only
+// watchSetting / experienceBySlug (never the editor-gated `experiences` list),
+// and never a dubs/variants selection (the bulk-payload trap the hero fetch also
+// guards). A regression that pulls the gated list or a heavy media join here
+// would 401 the anonymous fleet or reinflate the payload — this fails first.
+describe("GET_WATCH_SETTING — home Experience public-query guard", () => {
+  const printed = print(GET_WATCH_SETTING)
+
+  it("reads the homepage Experience via the public watchSetting query", () => {
+    expect(printed).toContain("query GetWatchSetting")
+    expect(printed).toContain("watchSetting(locale: $locale)")
+    expect(printed).toContain("homepageExperience")
+  })
+
+  it("never touches the editor-gated experiences list", () => {
+    expect(printed).not.toMatch(/\bexperiences\s*\(/)
+  })
+
+  it("selects no dubs/variants (the heavy-media-join trap stays out)", () => {
+    expect(printed).not.toMatch(/\bdubs\b/)
+    expect(printed).not.toMatch(/\bvariants\b/)
   })
 })
 
