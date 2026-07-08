@@ -3,7 +3,7 @@ id: "feat-227"
 title: "TV Datadog build pipeline: symbol upload CI and patch maintenance guards"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-08"
 duration: 2
 depends_on: []

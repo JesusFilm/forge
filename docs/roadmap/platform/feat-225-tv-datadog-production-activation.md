@@ -3,7 +3,7 @@ id: "feat-225"
 title: "TV Datadog production activation and fleet verification"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-03"
 duration: 2
 depends_on: []
