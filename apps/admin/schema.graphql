@@ -347,11 +347,19 @@ type HybridSearchResult {
   """
   durationSeconds: Int
   id: String!
+  """
+  Base64 blur data URL generated from the selected VideoImage. Null for experiences or video images without generated placeholder metadata yet.
+  """
+  imageBlurDataUrl: String
   imageUrl: String
   """
   Admin VideoLabel for video-type results (`EPISODE`, `SERIES`, `SHORT_FILM`, …). Always null for `type=EXPERIENCE`. Drives the type badge on the search result card.
   """
   label: VideoLabel
+  """
+  Base64 blur data URL for the Watch-card Mux thumbnail recipe. Null for experiences or when no playable Mux-backed dub is available.
+  """
+  muxThumbnailBlurDataUrl: String
   playbackId: String
   score: Float!
   slug: String!
@@ -1237,7 +1245,7 @@ type Video {
   locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
   """
-  Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
   """
   muxHeroPosterBlurDataUrl(languageSlug: String): String
   """
@@ -1245,7 +1253,7 @@ type Video {
   """
   muxPlaybackId(languageSlug: String): String
   """
-  Base64 LQIP data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  Base64 blur data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
   """
   muxThumbnailBlurDataUrl(languageSlug: String): String
   noIndex: Boolean
@@ -1333,7 +1341,7 @@ type VideoDub {
   language: Language
   lengthInMilliseconds: String
   """
-  Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
   """
   muxHeroPosterBlurDataUrl: String
   muxVideo: MuxVideo
@@ -1433,7 +1441,7 @@ enum VideoHeroSubheadingSource {
 
 type VideoImage {
   aspectRatio: String
-  blurhash: String
+  blurDataUrl: String
   height: Int
   id: ID
   kind: String

@@ -157,10 +157,10 @@ export type WatchChild = {
   // back server-side to a primary/longest playable Mux dub. Lets the carousel
   // render frame thumbnails without projecting every child's dubs.
   muxPlaybackId: string | null
-  // Base64 LQIP for the exact Watch carousel Mux thumbnail recipe, generated
-  // and stored admin-side. Only applies when muxPlaybackId is present.
+  // Base64 blur data URL for the exact Watch carousel Mux thumbnail recipe,
+  // generated and stored admin-side. Only applies when muxPlaybackId is present.
   muxThumbnailBlurDataUrl: string | null
-  // Base64 LQIP for the exact Watch hero poster Mux thumbnail recipe.
+  // Base64 blur data URL for the exact Watch hero poster Mux thumbnail recipe.
   muxHeroPosterBlurDataUrl?: string | null
 }
 

@@ -5,9 +5,11 @@ import type { SearchLanguageOption } from "./search-language"
 export const MIN_QUERY_LANGUAGE_LETTERS = 3
 export const MIN_QUERY_LANGUAGE_TOKENS = 1
 export const MIN_DISTINCTIVE_QUERY_LANGUAGE_LETTERS = 1
-export const MIN_QUERY_LANGUAGE_SCORE = 0.001
+export const MIN_QUERY_LANGUAGE_SCORE = 0.25
+export const MIN_CLEAR_QUERY_LANGUAGE_SCORE = 0.08
 export const MIN_QUERY_LANGUAGE_MARGIN = 0
-export const MIN_QUERY_LANGUAGE_MARGIN_RATIO = 0
+export const MIN_QUERY_LANGUAGE_MARGIN_RATIO = 0.35
+export const MIN_CLEAR_QUERY_LANGUAGE_MARGIN_RATIO = 0.5
 
 export type SearchLanguageOptionWithPublicSlug = SearchLanguageOption & {
   publicSlug: string
@@ -112,9 +114,9 @@ export function detectQueryLanguageSuggestion({
   const margin = confidence - secondScore
   const marginRatio = margin / confidence
 
-  if (confidence < MIN_QUERY_LANGUAGE_SCORE) return null
-  if (margin < MIN_QUERY_LANGUAGE_MARGIN) return null
-  if (marginRatio < MIN_QUERY_LANGUAGE_MARGIN_RATIO) return null
+  if (!hasReliableTinyLdSignal({ confidence, margin, marginRatio })) {
+    return null
+  }
 
   return {
     option: topOptionWithSlug,
@@ -122,6 +124,29 @@ export function detectQueryLanguageSuggestion({
     margin,
     source: "tinyld",
   }
+}
+
+function hasReliableTinyLdSignal({
+  confidence,
+  margin,
+  marginRatio,
+}: {
+  confidence: number
+  margin: number
+  marginRatio: number
+}): boolean {
+  if (confidence >= MIN_QUERY_LANGUAGE_SCORE) {
+    return (
+      margin >= MIN_QUERY_LANGUAGE_MARGIN &&
+      marginRatio >= MIN_QUERY_LANGUAGE_MARGIN_RATIO
+    )
+  }
+
+  return (
+    confidence >= MIN_CLEAR_QUERY_LANGUAGE_SCORE &&
+    margin >= MIN_QUERY_LANGUAGE_MARGIN &&
+    marginRatio >= MIN_CLEAR_QUERY_LANGUAGE_MARGIN_RATIO
+  )
 }
 
 export function findSearchLanguageOptionForDetectorCode(

@@ -159,6 +159,47 @@
   .animate-mesh-gradient-fast {
     animation: mesh-gradient 2s ease infinite;
   }
+
+  .poster-hover-zoom {
+    transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .group:hover .poster-hover-zoom,
+  .group:focus-visible .poster-hover-zoom {
+    transform: scale(1.06);
+  }
+
+  .group:hover .search-card-hover-zoom,
+  .group:focus-visible .search-card-hover-zoom {
+    transform: scale(1.05) !important;
+  }
+
+  .group:hover .search-card-hover-outline,
+  .group:focus-visible .search-card-hover-outline {
+    opacity: 1 !important;
+  }
+
+  .search-card-red-outline {
+    inset: 0;
+    padding: 3px;
+    border-radius: inherit;
+    background: linear-gradient(
+      to bottom,
+      rgba(239, 68, 68, 0.98) 0%,
+      rgba(239, 68, 68, 0.94) 42%,
+      rgba(239, 68, 68, 0.38) 72%,
+      rgba(239, 68, 68, 0) 100%
+    );
+    box-shadow: 0 -4px 22px rgba(239, 68, 68, 0.26);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
 }
 
 .beveled {
@@ -173,15 +214,6 @@
   pointer-events: none;
   mix-blend-mode: soft-light;
   border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.poster-hover-zoom {
-  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.group:hover .poster-hover-zoom,
-.group:focus-visible .poster-hover-zoom {
-  transform: scale(1.06);
 }
 
 .watch-home-gradient-outline {
