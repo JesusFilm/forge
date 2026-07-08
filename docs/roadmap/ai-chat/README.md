@@ -13,10 +13,10 @@ from the main DS Year 1 roadmap.
 
 ## Status (July 8, 2026)
 
-- **Total tickets:** 19
+- **Total tickets:** 21
 - ✅ **Complete:** 17
 - 🟡 **In progress:** 0
-- 🔵 **Not started:** 2
+- 🔵 **Not started:** 4
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -34,7 +34,7 @@ from the main DS Year 1 roadmap.
 | [feat-206](feat-206-chat-introduce-react-testing-library.md) | Introduce React Testing Library to the chat app                           | jian wei | P2       | 2026-07-03 | 2    | ✅ complete    | #1372   |
 | [feat-207](feat-207-chat-auth.md)                            | Chat app authentication                                                   | jian wei | P1       | 2026-07-07 | 5    | ✅ complete    | #1438   |
 | [feat-208](feat-208-seeker-postgres-memory.md)               | Postgres-persisted Seeker memory + conversation persistence               | jian wei | P2       | 2026-07-10 | 5    | ✅ complete    | #1462   |
-| [feat-209](feat-209-chat-per-conversation-urls.md)           | Per-conversation URLs + sidebar history                                   | jian wei | P2       | 2026-07-15 | 3    | 🔵 not-started | —       |
+| [feat-209](feat-209-chat-per-conversation-urls.md)           | Per-conversation URLs                                                     | jian wei | P2       | 2026-07-23 | 2    | 🔵 not-started | —       |
 | [feat-229](feat-229-chat-auth-register-oauth-client.md)      | Register chat OAuth client in apps/auth (chat auth enablement)            | jian wei | P1       | 2026-07-09 | 2    | ✅ complete    | #1453   |
 | [feat-231](feat-231-chat-auth-prod-oauth-client.md)          | Register chat deployed-environment OAuth clients (prod enablement)        | jian wei | P2       | 2026-07-20 | 1    | ✅ complete    | #1465   |
 | [feat-233](feat-233-chat-seeker-ld-dogfood-gate.md)          | Chat seeker LaunchDarkly dogfood gate (per-user allowlist)                | jian wei | P1       | 2026-07-06 | 3    | ✅ complete    | #1488   |
@@ -42,3 +42,5 @@ from the main DS Year 1 roadmap.
 | [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md)      | Remove the chat seeker dogfood gate (public seeker release)               | jian wei | P2       | 2026-09-01 | 2    | 🔵 not-started | —       |
 | [feat-237](feat-237-seeker-gateway-model.md)                 | Seeker agent JesusFilm gateway model (opt-in primary)                     | jian wei | P2       | 2026-07-07 | 2    | ✅ complete    | #1491   |
 | [feat-239](feat-239-chat-seeker-env-allowlist-gate.md)       | Replace the chat seeker LaunchDarkly gate with an env-var email allowlist | jian wei | P1       | 2026-07-08 | 1    | ✅ complete    | #1498   |
+| [feat-240](feat-240-chat-sign-out-session-lease.md)          | Chat real sign-out + session lease (revocation)                           | jian wei | P2       | 2026-07-15 | 3    | 🔵 not-started | —       |
+| [feat-241](feat-241-chat-server-history-sidebar.md)          | Chat server-side conversation history + sidebar hydration                 | jian wei | P2       | 2026-07-20 | 3    | 🔵 not-started | —       |
