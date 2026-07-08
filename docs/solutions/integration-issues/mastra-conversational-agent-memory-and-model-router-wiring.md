@@ -195,7 +195,13 @@ provider response is the PRODUCTION CONTRACT.
   absorbs this within a conversation, so it is a production-promotion concern,
   not a skeleton defect. For production (sustained, reliable tool-calling),
   prefer a paid/stable model with documented tool support (e.g.
-  `openrouter/openai/gpt-4.1-mini`).
+  `openrouter/openai/gpt-4.1-mini`). **Executed as an opt-in (feat-237,
+  2026-07-08):** the deferred model swap now exists — `buildSeekerModelList()`
+  in `seeker-agent.ts` prepends the self-hosted JesusFilm gateway chat model
+  (`AI_GATEWAY_CHAT_MODEL ?? "coding"`) when `AI_GATEWAY_CHAT_API_KEY` is set
+  AND `AI_GATEWAY_SEEKER_ENABLED="true"`, keeping this free-Gemma chain as the
+  failover; unsetting the flag restores Gemma-only behavior with no code
+  change.
 - **When changing providers, change the prefix AND the model id together**, and
   confirm the matching `<PROVIDER>_API_KEY` is present. Adding an opt-in
   provider key as `.optional()` keeps it from becoming a boot precondition.
