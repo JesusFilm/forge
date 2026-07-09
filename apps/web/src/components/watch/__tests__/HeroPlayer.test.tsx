@@ -863,6 +863,57 @@ describe("HeroPlayer — initial mount", () => {
     }
   })
 
+  it("rechecks the mobile fast path when load fires", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    const originalReadyState = document.readyState
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1024,
+    })
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      get: () => "loading",
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      expect(muxVideoMock).not.toHaveBeenCalled()
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(0)
+
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: 390,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => "complete",
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(1)
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => originalReadyState,
+      })
+      idle.restore()
+    }
+  })
+
   it("defers the fast mobile muted preview while the document is hidden", async () => {
     const idle = installIdleCallbackStub()
     const originalInnerWidth = window.innerWidth

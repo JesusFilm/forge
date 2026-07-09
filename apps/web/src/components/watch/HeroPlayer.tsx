@@ -703,6 +703,11 @@ export function HeroPlayer({
       }, MOBILE_VISIBLE_PREVIEW_DELAY_MS)
     }
 
+    const handleLoad = () => {
+      loadListenerInstalled = false
+      scheduleActivation()
+    }
+
     const scheduleActivation = () => {
       if (shouldUseFastMobilePreview(window)) {
         scheduleFastMobileActivation()
@@ -712,10 +717,9 @@ export function HeroPlayer({
         scheduleConservativeActivation()
         return
       }
+      if (loadListenerInstalled) return
       loadListenerInstalled = true
-      window.addEventListener("load", scheduleConservativeActivation, {
-        once: true,
-      })
+      window.addEventListener("load", handleLoad, { once: true })
     }
 
     const retryIfEligible = () => {
@@ -737,7 +741,7 @@ export function HeroPlayer({
       cancelled = true
       clearScheduledWork()
       if (loadListenerInstalled) {
-        window.removeEventListener("load", scheduleConservativeActivation)
+        window.removeEventListener("load", handleLoad)
       }
       document.removeEventListener("visibilitychange", retryIfEligible)
       window.removeEventListener("scroll", retryIfEligible)
