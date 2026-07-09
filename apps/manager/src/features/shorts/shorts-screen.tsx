@@ -5,10 +5,11 @@
 
 import React, { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Download, Plus } from "lucide-react"
+import { Download, ExternalLink, Plus } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
 import type { JobRecord } from "@/types/job"
 import {
+  buildSourceWatchHref,
   buildShortsMediaHref,
   canDownloadShortsOutput,
   getShortsJobSummary,
@@ -20,18 +21,34 @@ type ShortsScreenProps = {
   initialJobs: JobRecord[]
 }
 
-function formatCreatedAt(iso: string): string {
-  if (!iso) return "n/a"
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso))
+type OutputPreviewState = {
+  href: string
+  title: string
+} | null
+
+const CREATED_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+})
+
+const CREATED_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+})
+
+function formatCreatedAt(iso: string): { date: string; time: string | null } {
+  if (!iso) return { date: "n/a", time: null }
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return { date: "n/a", time: null }
+  return {
+    date: CREATED_DATE_FORMATTER.format(date),
+    time: CREATED_TIME_FORMATTER.format(date),
+  }
 }
 
 export function ShortsScreen({ initialJobs }: ShortsScreenProps) {
   const [jobs, setJobs] = useState<JobRecord[]>(initialJobs)
+  const [outputPreview, setOutputPreview] = useState<OutputPreviewState>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -76,7 +93,12 @@ export function ShortsScreen({ initialJobs }: ShortsScreenProps) {
 
       <section className="collection-card jobs-card">
         <div className="jobs-card-header">
-          <h2 className="jobs-card-title">Shorts</h2>
+          <div>
+            <h2 className="jobs-card-title">Shorts</h2>
+            <p className="shorts-table-summary">
+              {jobs.length} {jobs.length === 1 ? "short" : "shorts"}
+            </p>
+          </div>
         </div>
         {jobs.length === 0 ? (
           <p className="small jobs-empty-state">
@@ -86,52 +108,128 @@ export function ShortsScreen({ initialJobs }: ShortsScreenProps) {
           </p>
         ) : (
           <div className="jobs-table-wrap">
-            <table className="table jobs-table">
+            <table className="table jobs-table shorts-jobs-table">
               <thead>
                 <tr>
-                  <th>Short</th>
-                  <th>Source asset</th>
-                  <th>Clip</th>
-                  <th>Phase</th>
-                  <th>Draft</th>
-                  <th>Created</th>
-                  <th>Output</th>
+                  <th className="shorts-jobs-col-short">Short</th>
+                  <th className="shorts-jobs-col-source">Source video</th>
+                  <th className="shorts-jobs-col-language">Languages</th>
+                  <th className="shorts-jobs-col-clip">Clip</th>
+                  <th className="shorts-jobs-col-phase">Phase</th>
+                  <th className="shorts-jobs-col-draft">Draft</th>
+                  <th className="shorts-jobs-col-created">Created</th>
+                  <th className="shorts-jobs-col-output">Output</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => {
                   const summary = getShortsJobSummary(job)
                   if (!summary) return null
+                  const createdAt = formatCreatedAt(job.createdAt)
+                  const sourceSlugLabel =
+                    summary.sourceSlug ?? summary.sourceCoreId ?? "No slug"
+                  const sourceWatchHref = buildSourceWatchHref(summary)
+                  const outputHref = buildShortsMediaHref(job.id, "output")
                   return (
                     <tr key={job.id}>
-                      <td>
-                        <Link href={`/dashboard/shorts/${job.id}`}>
+                      <td className="shorts-jobs-col-short">
+                        <Link
+                          href={`/dashboard/shorts/${job.id}`}
+                          className="shorts-job-title"
+                          title={summary.title}
+                        >
                           {summary.title}
                         </Link>
                       </td>
-                      <td>{summary.sourceMuxAssetId}</td>
-                      <td>{summary.clipRangeLabel}</td>
-                      <td>
+                      <td className="shorts-jobs-col-source">
+                        <div className="shorts-source-cell">
+                          <div className="shorts-source-title-row">
+                            {summary.sourceVideoTitle ? (
+                              <span
+                                className="shorts-source-title"
+                                title={summary.sourceVideoTitle}
+                              >
+                                {summary.sourceVideoTitle}
+                              </span>
+                            ) : null}
+                            {sourceWatchHref ? (
+                              <a
+                                href={sourceWatchHref}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="shorts-source-watch-link"
+                                title="Open source video on Watch"
+                              >
+                                <ExternalLink size={14} aria-hidden="true" />
+                                <span className="sr-only">
+                                  Open source video on Watch
+                                </span>
+                              </a>
+                            ) : null}
+                          </div>
+                          <code
+                            className="shorts-source-slug"
+                            title={
+                              summary.sourceSlug ??
+                              summary.sourceCoreId ??
+                              summary.sourceMuxAssetId
+                            }
+                          >
+                            {sourceSlugLabel}
+                          </code>
+                        </div>
+                      </td>
+                      <td className="shorts-jobs-col-language">
                         <span
-                          className={`jobs-progress-summary jobs-progress-summary-${summary.phaseTone}`}
+                          className="shorts-language-chip"
+                          title={summary.languageLabel}
+                          aria-label={summary.languageLabel}
                         >
-                          {summary.phaseLabel}
-                        </span>
-                        {summary.annotationLabel ? (
-                          <>
-                            {" "}
+                          {summary.languageFlagUrl ? (
                             <span
-                              className="jobs-language-badge jobs-language-badge-muted"
+                              className="shorts-language-flag"
+                              style={{
+                                backgroundImage: `url(${summary.languageFlagUrl})`,
+                              }}
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <span
+                              className="shorts-language-flag shorts-language-flag-empty"
+                              aria-hidden="true"
+                            />
+                          )}
+                          <span className="shorts-language-code">
+                            {summary.languageShortLabel}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="shorts-jobs-col-clip">
+                        <span className="shorts-clip-range">
+                          {summary.clipRangeLabel}
+                        </span>
+                      </td>
+                      <td className="shorts-jobs-col-phase">
+                        <div className="shorts-phase-stack">
+                          <span
+                            className={`shorts-status-pill shorts-status-pill-${summary.phaseTone}`}
+                          >
+                            {summary.phaseLabel}
+                          </span>
+                          {summary.annotationLabel ? (
+                            <span
+                              className="shorts-status-pill shorts-status-pill-muted"
                               title={summary.annotationLabel}
                             >
-                              no captions
+                              No captions
                             </span>
-                          </>
-                        ) : null}
+                          ) : null}
+                        </div>
                       </td>
-                      <td>
+                      <td className="shorts-jobs-col-draft">
                         {summary.report ? (
                           <span
+                            className="shorts-draft-state"
                             title={
                               summary.isStale
                                 ? "The draft changed after the last render — re-render to update the output."
@@ -140,25 +238,44 @@ export function ShortsScreen({ initialJobs }: ShortsScreenProps) {
                           >
                             v{summary.report.draftVersion}
                             {summary.isStale ? (
-                              <>
-                                {" "}
-                                <span className="jobs-language-badge">
-                                  stale output
-                                </span>
-                              </>
+                              <span className="shorts-inline-badge">Stale</span>
                             ) : null}
                           </span>
                         ) : (
-                          "–"
+                          <span className="shorts-muted-dash">–</span>
                         )}
                       </td>
-                      <td>{formatCreatedAt(job.createdAt)}</td>
-                      <td>
+                      <td className="shorts-jobs-col-created">
+                        <time
+                          className="shorts-created-at"
+                          dateTime={job.createdAt || undefined}
+                        >
+                          <span>{createdAt.date}</span>
+                          {createdAt.time ? (
+                            <span>{createdAt.time}</span>
+                          ) : null}
+                        </time>
+                      </td>
+                      <td className="shorts-jobs-col-output">
                         {canDownloadShortsOutput(summary) ? (
                           <a
-                            href={buildShortsMediaHref(job.id, "output")}
+                            href={outputHref}
                             download
-                            className="jobs-step-artifact-link"
+                            className="jobs-step-artifact-link shorts-output-link"
+                            onMouseEnter={() =>
+                              setOutputPreview({
+                                href: outputHref,
+                                title: summary.title,
+                              })
+                            }
+                            onMouseLeave={() => setOutputPreview(null)}
+                            onFocus={() =>
+                              setOutputPreview({
+                                href: outputHref,
+                                title: summary.title,
+                              })
+                            }
+                            onBlur={() => setOutputPreview(null)}
                           >
                             <Download
                               className="jobs-step-artifact-icon"
@@ -170,7 +287,7 @@ export function ShortsScreen({ initialJobs }: ShortsScreenProps) {
                             </span>
                           </a>
                         ) : (
-                          "–"
+                          <span className="shorts-muted-dash">–</span>
                         )}
                       </td>
                     </tr>
@@ -180,6 +297,31 @@ export function ShortsScreen({ initialJobs }: ShortsScreenProps) {
             </table>
           </div>
         )}
+        {outputPreview ? (
+          <div
+            className="shorts-output-preview-modal"
+            role="dialog"
+            aria-label={`Output preview for ${outputPreview.title}`}
+          >
+            <div className="shorts-output-preview-panel">
+              <div className="shorts-output-preview-header">
+                <span>Output preview</span>
+                <strong>{outputPreview.title}</strong>
+              </div>
+              <div className="shorts-output-preview-video-frame">
+                <video
+                  key={outputPreview.href}
+                  src={outputPreview.href}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
     </>
   )
