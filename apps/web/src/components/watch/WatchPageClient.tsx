@@ -82,6 +82,7 @@ import {
   getCachedWatchLanguageOptions,
   loadWatchInteraction,
   loadWatchLanguageOptionsForVideo,
+  shouldRefreshCachedWatchLanguageOptions,
 } from "@/lib/watch-interaction-loader"
 
 function resolveSubtitleSlug(
@@ -518,6 +519,7 @@ export function WatchPageClient({
       variants: [],
     })
   const languageOptionsPendingRef = useRef(false)
+  const languageOptionsVideoSlugRef = useRef(videoSlug)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -534,6 +536,7 @@ export function WatchPageClient({
   }, [])
 
   useEffect(() => {
+    languageOptionsVideoSlugRef.current = videoSlug
     languageOptionsPendingRef.current = false
     const cached = videoSlug ? getCachedWatchLanguageOptions(videoSlug) : null
     setLanguageOptionsState(
@@ -546,23 +549,42 @@ export function WatchPageClient({
   const loadLanguageOptions = useCallback(async () => {
     if (!videoSlug) return
     if (languageOptionsPendingRef.current) return
-    if (languageOptionsState.status === "ready") return
 
     const cached = getCachedWatchLanguageOptions(videoSlug)
+    const refreshCached = cached
+      ? shouldRefreshCachedWatchLanguageOptions(videoSlug)
+      : false
+
+    if (languageOptionsState.status === "ready" && !refreshCached) return
+
     if (cached) {
       setLanguageOptionsState({ status: "ready", variants: cached })
-      return
     }
 
     languageOptionsPendingRef.current = true
-    setLanguageOptionsState({ status: "loading", variants: [] })
+    const requestVideoSlug = videoSlug
+    if (!cached) {
+      setLanguageOptionsState({ status: "loading", variants: [] })
+    }
     try {
-      const variants = await loadWatchLanguageOptionsForVideo(videoSlug)
+      const variants = refreshCached
+        ? await loadWatchLanguageOptionsForVideo(videoSlug, {
+            forceRefresh: true,
+          })
+        : await loadWatchLanguageOptionsForVideo(videoSlug)
+      if (languageOptionsVideoSlugRef.current !== requestVideoSlug) return
       setLanguageOptionsState({ status: "ready", variants })
     } catch {
-      setLanguageOptionsState({ status: "error", variants: [] })
+      if (languageOptionsVideoSlugRef.current !== requestVideoSlug) return
+      setLanguageOptionsState(
+        cached
+          ? { status: "ready", variants: cached }
+          : { status: "error", variants: [] },
+      )
     } finally {
-      languageOptionsPendingRef.current = false
+      if (languageOptionsVideoSlugRef.current === requestVideoSlug) {
+        languageOptionsPendingRef.current = false
+      }
     }
   }, [languageOptionsState.status, videoSlug])
 
