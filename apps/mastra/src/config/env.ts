@@ -73,6 +73,11 @@ export type FirecrawlConfig = {
   maxMarkdownCharacters: number
 }
 
+export type InstagramSiteIngestConfig = {
+  url: string
+  token: string
+}
+
 export type JesusfilmRagConfig = {
   baseUrl?: string
   apiKey?: string
@@ -251,6 +256,8 @@ const envSchema = z.object({
     .default(DEFAULT_FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: z.string().min(1).default(DEFAULT_FIRECRAWL_USER_AGENT),
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: z.string().url().optional(),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: z.string().min(1).optional(),
   RAILWAY_S3_ENDPOINT: z.string().url().optional(),
   RAILWAY_S3_REGION: z.string().min(1).default("auto"),
   RAILWAY_S3_BUCKET: z.string().min(1).optional(),
@@ -499,6 +506,12 @@ export const env = envSchema.parse({
   FIRECRAWL_USER_AGENT: emptyToUndefined(process.env.FIRECRAWL_USER_AGENT),
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: emptyToUndefined(
     process.env.INSTAGRAM_DISCOVERY_ARTIFACT_DIR,
+  ),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: emptyToUndefined(
+    process.env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL,
+  ),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: emptyToUndefined(
+    process.env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN,
   ),
   RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
   RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),
@@ -768,6 +781,13 @@ export function getFirecrawlConfig(): FirecrawlConfig {
     maxSearchResults: env.FIRECRAWL_MAX_SEARCH_RESULTS,
     maxMarkdownCharacters: env.FIRECRAWL_MAX_MARKDOWN_CHARS,
   }
+}
+
+export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null {
+  const url = env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL
+  const token = env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN
+  if (!url || !token) return null
+  return { url, token }
 }
 
 export function getJesusfilmRagConfig(): JesusfilmRagConfig {

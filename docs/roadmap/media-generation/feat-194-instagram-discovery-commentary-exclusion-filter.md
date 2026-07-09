@@ -8,7 +8,8 @@ start_date: "2026-06-16"
 duration: 1
 depends_on:
   - "feat-175"
-blocks: []
+blocks:
+  - "feat-240"
 tags:
   - "mastra"
   - "instagram"
