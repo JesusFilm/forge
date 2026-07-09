@@ -200,7 +200,10 @@ function resolvedChildren(
   return children
 }
 
-function normalizeCard(args: {
+// Exported for the Experience adapter (experienceAdapter.ts): it hydrates each
+// curated item by coreId and builds its card through this same normalizer, so
+// rawLabel/childCount/metaLabel/title stay identical to the config path.
+export function normalizeCard(args: {
   sectionId: string
   sourceId: string
   video: WatchHomeVideoInput | WatchHomeChildVideoInput
