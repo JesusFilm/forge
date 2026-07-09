@@ -104,6 +104,7 @@ describe("mux-image-derivative.service", () => {
           lqipUrl:
             "https://image.mux.com/playback-1/thumbnail.jpg?width=24&height=14&fit_mode=smartcrop&time=2",
           blurDataUrl: "data:image/jpeg;base64,AQIDBA==",
+          dominantColor: "#111827",
         }),
       }),
     )
@@ -135,6 +136,7 @@ describe("mux-image-derivative.service", () => {
           create: expect.objectContaining({
             muxVideoId: "mux-video-1",
             blurDataUrl: "data:image/jpeg;base64,CQoLDA==",
+            dominantColor: "#111827",
           }),
         }),
       )
@@ -212,6 +214,7 @@ describe("mux-image-derivative.service", () => {
           lqipUrl:
             "https://image.mux.com/playback-1/thumbnail.webp?width=32&time=2",
           blurDataUrl: "data:image/webp;base64,BQYHCA==",
+          dominantColor: "#111827",
         }),
       }),
     )

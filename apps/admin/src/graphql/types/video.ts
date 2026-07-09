@@ -424,6 +424,7 @@ const VideoImageRef = builder.prismaObject("VideoImage", {
     thumbnail: t.exposeString("thumbnail", { nullable: true }),
     videoStill: t.exposeString("videoStill", { nullable: true }),
     blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
     kind: t.exposeString("kind", { nullable: true }),
   }),
 })

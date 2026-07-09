@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer"
+import sharp from "sharp"
 
 export type GeneratedImageMetadata = {
   width: number | null
@@ -14,8 +15,8 @@ export class ImageMetadataError extends Error {
   }
 }
 
-const SVG_BLUR_SIZE = 8
 const DEFAULT_DOMINANT_COLOR = "#111827"
+const BLUR_IMAGE_WIDTH = 24
 
 function readPngDimensions(bytes: Uint8Array) {
   const buffer = Buffer.from(bytes)
@@ -105,7 +106,7 @@ function readWebpDimensions(bytes: Uint8Array) {
   return null
 }
 
-function imageDimensions(bytes: Uint8Array) {
+function headerImageDimensions(bytes: Uint8Array) {
   return (
     readPngDimensions(bytes) ??
     readJpegDimensions(bytes) ??
@@ -113,22 +114,89 @@ function imageDimensions(bytes: Uint8Array) {
   )
 }
 
-function svgBlurPlaceholder(color: string) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_BLUR_SIZE}" height="${SVG_BLUR_SIZE}" viewBox="0 0 ${SVG_BLUR_SIZE} ${SVG_BLUR_SIZE}"><rect width="${SVG_BLUR_SIZE}" height="${SVG_BLUR_SIZE}" fill="${color}"/></svg>`
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
+async function imageDimensions(bytes: Uint8Array) {
+  const metadata = await sharp(Buffer.from(bytes), {
+    animated: false,
+  }).metadata()
+  return {
+    width: metadata.width ?? headerImageDimensions(bytes).width,
+    height: metadata.height ?? headerImageDimensions(bytes).height,
+  }
 }
 
-export function generateImageMetadata(
+function hexByte(value: number) {
+  return Math.max(0, Math.min(255, Math.round(value)))
+    .toString(16)
+    .padStart(2, "0")
+}
+
+function rgbHex(red: number, green: number, blue: number) {
+  return `#${hexByte(red)}${hexByte(green)}${hexByte(blue)}`
+}
+
+export async function generateDominantColor(
   bytes: Uint8Array,
-): GeneratedImageMetadata {
+): Promise<string> {
+  try {
+    const { data } = await sharp(Buffer.from(bytes), { animated: false })
+      .rotate()
+      .flatten({ background: DEFAULT_DOMINANT_COLOR })
+      .resize(1, 1, { fit: "fill" })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+
+    if (data.length >= 3) {
+      return rgbHex(data[0] ?? 0, data[1] ?? 0, data[2] ?? 0)
+    }
+  } catch {
+    // Dimension extraction below reports the real decode failure. Dominant
+    // color is enhancement metadata, so keep a stable UI fallback.
+  }
+
+  return DEFAULT_DOMINANT_COLOR
+}
+
+async function blurDataUrl(bytes: Uint8Array) {
+  const output = await sharp(Buffer.from(bytes), { animated: false })
+    .rotate()
+    .flatten({ background: DEFAULT_DOMINANT_COLOR })
+    .resize({
+      width: BLUR_IMAGE_WIDTH,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 35, chromaSubsampling: "4:2:0", mozjpeg: true })
+    .toBuffer()
+
+  return `data:image/jpeg;base64,${output.toString("base64")}`
+}
+
+export async function generateImageMetadata(
+  bytes: Uint8Array,
+): Promise<GeneratedImageMetadata> {
   if (bytes.byteLength === 0) {
     throw new ImageMetadataError("Image bytes are empty")
   }
 
-  const dimensions = imageDimensions(bytes)
-  return {
-    ...dimensions,
-    blurDataUrl: svgBlurPlaceholder(DEFAULT_DOMINANT_COLOR),
-    dominantColor: DEFAULT_DOMINANT_COLOR,
+  try {
+    const dimensions = await imageDimensions(bytes)
+    const [generatedBlurDataUrl, generatedDominantColor] = await Promise.all([
+      blurDataUrl(bytes),
+      generateDominantColor(bytes),
+    ])
+
+    return {
+      ...dimensions,
+      blurDataUrl: generatedBlurDataUrl,
+      dominantColor: generatedDominantColor,
+    }
+  } catch (error) {
+    if (error instanceof ImageMetadataError) throw error
+    throw new ImageMetadataError(
+      `Unable to generate image metadata: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
   }
 }

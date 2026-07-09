@@ -1,5 +1,6 @@
 import { after } from "next/server"
 import type { PrismaClient } from "@prisma/client"
+import { generateDominantColor } from "./image-metadata.service"
 
 const FETCH_TIMEOUT_MS = 3000
 const MAX_BLUR_BYTES = 64 * 1024
@@ -9,6 +10,11 @@ const PRIVATE_IPV4_PATTERN =
   /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/
 
 const pendingGenerations = new Map<string, Promise<void>>()
+
+type FetchedImageMetadata = {
+  dataUrl: string
+  dominantColor: string
+}
 
 export async function getOrScheduleVideoImageBlurDataUrl({
   imageId,
@@ -87,14 +93,17 @@ async function generateAndStoreVideoImageBlurDataUrl({
   prisma: PrismaClient
 }): Promise<string | null> {
   const blurUrl = buildVideoImageBlurUrl(imageUrl)
-  const blurDataUrl = await fetchImageAsDataUrl(blurUrl)
-  if (!blurDataUrl) return null
+  const metadata = await fetchImageMetadata(blurUrl)
+  if (!metadata) return null
 
   await prisma.videoImage.update({
     where: { id: imageId },
-    data: { blurDataUrl },
+    data: {
+      blurDataUrl: metadata.dataUrl,
+      dominantColor: metadata.dominantColor,
+    },
   })
-  return blurDataUrl
+  return metadata.dataUrl
 }
 
 export function buildVideoImageBlurUrl(imageUrl: string): string {
@@ -130,7 +139,9 @@ export function buildVideoImageBlurUrl(imageUrl: string): string {
   }
 }
 
-async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+async function fetchImageMetadata(
+  url: string,
+): Promise<FetchedImageMetadata | null> {
   if (!isPublicHttpsImageUrl(url)) return null
 
   const controller = new AbortController()
@@ -149,7 +160,10 @@ async function fetchImageAsDataUrl(url: string): Promise<string | null> {
     if (buffer.byteLength === 0 || buffer.byteLength > MAX_BLUR_BYTES) {
       return null
     }
-    return `data:${contentType};base64,${buffer.toString("base64")}`
+    return {
+      dataUrl: `data:${contentType};base64,${buffer.toString("base64")}`,
+      dominantColor: await generateDominantColor(buffer),
+    }
   } catch {
     return null
   } finally {

@@ -139,7 +139,10 @@ describe("getOrCreateVideoImageBlurDataUrl", () => {
 
     expect(prisma.videoImage.update).toHaveBeenCalledWith({
       where: { id: "image-1" },
-      data: { blurDataUrl: "data:image/jpeg;base64,AQID" },
+      data: {
+        blurDataUrl: "data:image/jpeg;base64,AQID",
+        dominantColor: "#111827",
+      },
     })
   })
 })

@@ -1449,6 +1449,7 @@ enum VideoHeroSubheadingSource {
 type VideoImage {
   aspectRatio: String
   blurDataUrl: String
+  dominantColor: String
   height: Int
   id: ID
   kind: String

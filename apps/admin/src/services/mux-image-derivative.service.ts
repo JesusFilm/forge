@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { after } from "next/server"
 import type { PrismaClient } from "@prisma/client"
+import { generateDominantColor } from "./image-metadata.service"
 
 const FETCH_TIMEOUT_MS = 3000
 const MAX_LQIP_BYTES = 64 * 1024
@@ -29,6 +30,11 @@ type MuxImageRecipe = {
     time: number
     format: "jpg" | "webp"
   }
+}
+
+type FetchedImageMetadata = {
+  dataUrl: string
+  dominantColor: string
 }
 
 const WATCH_CHAPTER_CAROUSEL_RECIPE = {
@@ -199,8 +205,8 @@ async function getOrCreateMuxBlurDataUrl({
   const paramsHash = muxImageDerivativeParamsHash(recipe)
   const sourceUrl = buildMuxThumbnailUrl(playbackId, recipe.source)
   const lqipUrl = buildMuxThumbnailUrl(playbackId, recipe.lqip)
-  const blurDataUrl = await fetchImageAsDataUrl(lqipUrl)
-  if (!blurDataUrl) return null
+  const metadata = await fetchImageMetadata(lqipUrl)
+  if (!metadata) return null
 
   const row = await prisma.muxImageDerivative.upsert({
     where: {
@@ -217,12 +223,14 @@ async function getOrCreateMuxBlurDataUrl({
       params: recipe,
       sourceUrl,
       lqipUrl,
-      blurDataUrl,
+      blurDataUrl: metadata.dataUrl,
+      dominantColor: metadata.dominantColor,
     },
     update: {
       sourceUrl,
       lqipUrl,
-      blurDataUrl,
+      blurDataUrl: metadata.dataUrl,
+      dominantColor: metadata.dominantColor,
       generatedAt: new Date(),
     },
     select: { blurDataUrl: true },
@@ -336,7 +344,9 @@ function buildMuxThumbnailUrl(
   return url.toString()
 }
 
-async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+async function fetchImageMetadata(
+  url: string,
+): Promise<FetchedImageMetadata | null> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
@@ -355,7 +365,10 @@ async function fetchImageAsDataUrl(url: string): Promise<string | null> {
       return null
     }
 
-    return `data:${contentType};base64,${bytes.toString("base64")}`
+    return {
+      dataUrl: `data:${contentType};base64,${bytes.toString("base64")}`,
+      dominantColor: await generateDominantColor(bytes),
+    }
   } catch {
     return null
   } finally {
