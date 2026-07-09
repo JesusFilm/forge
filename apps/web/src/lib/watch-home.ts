@@ -263,8 +263,8 @@ function applyMediaOverride(
       return {
         ...card,
         imageUrl: override.imageUrl,
-        blurDataUrl: override.blurDataUrl ?? card.blurDataUrl,
-        dominantColor: override.dominantColor ?? card.dominantColor,
+        blurDataUrl: override.blurDataUrl,
+        dominantColor: override.dominantColor,
       }
     }
   }
