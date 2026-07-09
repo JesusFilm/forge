@@ -109,9 +109,19 @@ describe("generateExperienceEmbedding", () => {
     const body = JSON.parse((init as RequestInit).body as string) as {
       model: string
       dimensions: number
+      provider: {
+        only: string[]
+        allow_fallbacks: boolean
+        require_parameters: boolean
+      }
     }
     expect(body.model).toBe("qwen/qwen3-embedding-8b")
     expect(body.dimensions).toBe(1536)
+    expect(body.provider).toEqual({
+      only: ["SiliconFlow"],
+      allow_fallbacks: false,
+      require_parameters: true,
+    })
   })
 
   it("prefers OPENROUTER_API_PAID_KEY over the legacy OpenRouter key", async () => {
@@ -194,16 +204,66 @@ describe("generateExperienceEmbeddings (batched)", () => {
       model: string
       encoding_format: string
       dimensions: number
+      provider: {
+        only: string[]
+        allow_fallbacks: boolean
+        require_parameters: boolean
+      }
     }
     expect(body.input).toEqual(["first input", "second input", "third input"])
     expect(body.model).toBe(OPENROUTER_EMBEDDING_MODEL)
     expect(body.encoding_format).toBe("float")
     expect(body.dimensions).toBe(1536)
+    expect(body.provider).toEqual({
+      only: ["SiliconFlow"],
+      allow_fallbacks: false,
+      require_parameters: true,
+    })
 
     // Position-stable: embeddings[i] aligns with inputs[i].
     expect(result.embeddings).toEqual([v0, v1, v2])
     expect(result.model).toBe(OPENROUTER_EMBEDDING_MODEL)
     expect(result.dimensions).toBe(1536)
+  })
+
+  it("retries a timed-out single-input request once", async () => {
+    vi.useFakeTimers()
+    const vector = vectorOf(0.1)
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => {
+              const error = new Error("aborted")
+              error.name = "AbortError"
+              reject(error)
+            })
+          }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    try {
+      const { generateExperienceEmbeddings } =
+        await import("./embeddings.service")
+
+      const resultPromise = generateExperienceEmbeddings(["single input"])
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(2_500)
+
+      const result = await resultPromise
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(result.embeddings).toEqual([vector])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("rejects an empty input list with EmbeddingsBatchError(empty_input)", async () => {
