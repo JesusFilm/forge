@@ -296,6 +296,7 @@ export function WatchPageClient({
       .find(Boolean) ?? null
   const videoSlug = video.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
+  const downloadSessionErrorMessage = tDownloadButton("sessionError")
   const routeWarmPromisesRef = useRef(new Map<string, Promise<void>>())
   const pendingChapterHrefRef = useRef<string | null>(null)
   const [chapterAutoplayEnabled, setChapterAutoplayEnabled] = useState(false)
@@ -506,7 +507,10 @@ export function WatchPageClient({
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
+  const [downloadAccountGateEnabled, setDownloadAccountGateEnabled] =
+    useState(false)
   const downloadPendingRef = useRef(false)
+  const downloadSessionRequestVersionRef = useRef(0)
   const [enabledModalChunks, setEnabledModalChunks] = useState({
     download: false,
     language: false,
@@ -518,6 +522,18 @@ export function WatchPageClient({
       variants: [],
     })
   const languageOptionsPendingRef = useRef(false)
+  const beginDownloadSessionRequest = useCallback(() => {
+    downloadSessionRequestVersionRef.current += 1
+    return downloadSessionRequestVersionRef.current
+  }, [])
+  const isCurrentDownloadSessionRequest = useCallback((version: number) => {
+    return downloadSessionRequestVersionRef.current === version
+  }, [])
+  const cancelDownloadSessionRequest = useCallback(() => {
+    downloadSessionRequestVersionRef.current += 1
+    downloadPendingRef.current = false
+    setDownloadPending(false)
+  }, [])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -528,10 +544,42 @@ export function WatchPageClient({
     window.history.replaceState(window.history.state, "", url.toString())
     setDownloadError(null)
     setDownloadLoginUrl(null)
+    setDownloadAccountGateEnabled(false)
     setEnabledModalChunks((prev) => ({ ...prev, download: true }))
     void loadWatchInteraction("download").catch(() => {})
-    setModalState("download")
-  }, [])
+    const requestVersion = beginDownloadSessionRequest()
+    void resolveDownloadSessionAccess()
+      .then((session) => {
+        if (!isCurrentDownloadSessionRequest(requestVersion)) return
+        if (session.ok) {
+          setDownloadAccountGateEnabled(session.accountGateEnabled)
+          setModalState("download")
+          return
+        }
+        if (session.reason === "auth-required") {
+          setDownloadAccountGateEnabled(true)
+          setDownloadLoginUrl(session.loginUrl)
+          setModalState("download")
+          return
+        }
+        setDownloadError(downloadSessionErrorMessage)
+      })
+      .catch(() => {
+        if (isCurrentDownloadSessionRequest(requestVersion)) {
+          setDownloadError(downloadSessionErrorMessage)
+        }
+      })
+    return () => {
+      if (isCurrentDownloadSessionRequest(requestVersion)) {
+        cancelDownloadSessionRequest()
+      }
+    }
+  }, [
+    beginDownloadSessionRequest,
+    cancelDownloadSessionRequest,
+    downloadSessionErrorMessage,
+    isCurrentDownloadSessionRequest,
+  ])
 
   useEffect(() => {
     languageOptionsPendingRef.current = false
@@ -572,40 +620,53 @@ export function WatchPageClient({
     void loadWatchInteraction("download").catch(() => {})
     downloadPendingRef.current = true
     setDownloadPending(true)
+    const requestVersion = beginDownloadSessionRequest()
 
     try {
       const session = await resolveDownloadSessionAccess()
+      if (!isCurrentDownloadSessionRequest(requestVersion)) return
       if (!session.ok && session.reason === "session-unavailable") {
-        setDownloadError(tDownloadButton("sessionError"))
+        setDownloadError(downloadSessionErrorMessage)
         return
       }
       setDownloadError(null)
       if (session.ok) {
+        setDownloadAccountGateEnabled(session.accountGateEnabled)
         setDownloadLoginUrl(null)
         setModalState("download")
         return
       }
+      setDownloadAccountGateEnabled(true)
       setDownloadLoginUrl(session.loginUrl)
       setModalState("download")
     } finally {
-      downloadPendingRef.current = false
-      setDownloadPending(false)
+      if (isCurrentDownloadSessionRequest(requestVersion)) {
+        downloadPendingRef.current = false
+        setDownloadPending(false)
+      }
     }
-  }, [tDownloadButton])
+  }, [
+    beginDownloadSessionRequest,
+    downloadSessionErrorMessage,
+    isCurrentDownloadSessionRequest,
+  ])
   const openLanguage = useCallback(() => {
+    cancelDownloadSessionRequest()
     setEnabledModalChunks((prev) => ({ ...prev, language: true }))
     void loadWatchInteraction("language").catch(() => {})
     setModalState("language")
     void loadLanguageOptions()
-  }, [loadLanguageOptions])
+  }, [cancelDownloadSessionRequest, loadLanguageOptions])
   const openShare = useCallback(() => {
+    cancelDownloadSessionRequest()
     setEnabledModalChunks((prev) => ({ ...prev, share: true }))
     void loadWatchInteraction("share").catch(() => {})
     setModalState("share")
-  }, [])
+  }, [cancelDownloadSessionRequest])
   const closeModal = useCallback(() => {
+    cancelDownloadSessionRequest()
     setModalState("none")
-  }, [])
+  }, [cancelDownloadSessionRequest])
 
   // Pause the video whenever any modal (search / language / download / share)
   // opens, and restore the prior playing state on close. Captures the snapshot
@@ -698,6 +759,7 @@ export function WatchPageClient({
           languageSlug={variant.language?.slug ?? null}
           variantId={variant.documentId}
           videoSlug={videoSlug}
+          accountGateEnabled={downloadAccountGateEnabled}
           authRequiredLoginUrl={downloadLoginUrl}
           onClose={closeModal}
         />

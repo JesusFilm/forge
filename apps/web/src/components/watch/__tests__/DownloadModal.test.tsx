@@ -7,8 +7,8 @@
  *  - Header metadata (title, poster, duration, language) renders when provided.
  *  - Quality bucketing — the 8 raw quality keys collapse into Highest/High/Low.
  *  - Default selection is Highest, surfaced in the dropdown trigger.
- *  - Account gating: signed-in viewers can download immediately; stale
- *    sessions are rechecked before the proxy request.
+ *  - Account gating: anonymous mode downloads immediately; flagged signed-in
+ *    viewers re-check sessions before the proxy request.
  *  - Allowlist enforcement: blocked URLs surface an inline error and never
  *    create the `<a>` element that triggers the browser download.
  *  - Allowed URLs trigger a programmatic anchor with the correct attributes.
@@ -424,7 +424,7 @@ describe("DownloadModal — quality bucketing", () => {
 })
 
 describe("DownloadModal — account-authenticated downloads", () => {
-  it("renders Download enabled by default for signed-in viewers", () => {
+  it("renders Download enabled by default for anonymous viewers", () => {
     act(() => {
       root.render(
         <TestDownloadModal
@@ -469,6 +469,10 @@ describe("DownloadModal — account-authenticated downloads", () => {
       confirm.click()
     })
 
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/watch/api/auth/session"),
+      expect.anything(),
+    )
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -537,6 +541,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
       "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
     const fetchMock = vi.fn(async () =>
       Response.json({
+        accountGateEnabled: true,
         authenticated: false,
         loginUrl,
       }),
@@ -553,6 +558,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
       root.render(
         <TestDownloadModal
           open
+          accountGateEnabled
           downloads={[
             makeDownload({
               documentId: "dl-1",
@@ -601,6 +607,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
       root.render(
         <TestDownloadModal
           open
+          accountGateEnabled
           authRequiredLoginUrl={loginUrl}
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           videoTitle="JESUS"
@@ -625,6 +632,37 @@ describe("DownloadModal — account-authenticated downloads", () => {
     })
   })
 
+  it("does not probe sizes while flagged signed-out viewers see sign-in state", () => {
+    const fetchMock = vi.fn(async () => Response.json({ authenticated: true }))
+    vi.stubGlobal("fetch", fetchMock)
+    const loginUrl =
+      "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
+
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          accountGateEnabled
+          authRequiredLoginUrl={loginUrl}
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              quality: "fhd",
+              size: 0,
+            }),
+          ]}
+          videoTitle="JESUS"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect(
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent,
+    ).toContain("Sign in to download")
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("shows a visible error instead of no-oping when the session check fails", async () => {
     const fetchMock = vi.fn(
       async () => new Response("unavailable", { status: 500 }),
@@ -641,6 +679,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
       root.render(
         <TestDownloadModal
           open
+          accountGateEnabled
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           videoTitle="JESUS"
           onClose={vi.fn()}

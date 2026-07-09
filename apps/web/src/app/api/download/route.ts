@@ -18,6 +18,10 @@ import {
   isAllowedDownloadOrigin,
 } from "@/lib/download-allowlist"
 import { resolveWatchDownloadTarget } from "@/lib/download-target"
+import {
+  isWatchDownloadAccountGateEnabled,
+  watchDownloadAccountGateFlagContext,
+} from "@/lib/feature-flags"
 import { verifyAuthSession } from "@/lib/auth-session"
 import { recordWatchEventWithAccessToken } from "@/lib/watch-event-actions"
 
@@ -73,18 +77,26 @@ function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
 }
 
-async function requireDownloadAccount(request: Request): Promise<
+async function resolveDownloadAccountGate(request: Request): Promise<
   | {
       ok: true
-      session: Awaited<ReturnType<typeof verifyAuthSession>> & {
+      accountGateEnabled: boolean
+      session?: Awaited<ReturnType<typeof verifyAuthSession>> & {
         authenticated: true
       }
     }
   | { ok: false; response: Response }
 > {
+  const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
+    watchDownloadAccountGateFlagContext,
+  )
+  if (!accountGateEnabled) {
+    return { ok: true, accountGateEnabled: false }
+  }
+
   const session = await verifyAuthSession(request.headers)
   if (session.authenticated) {
-    return { ok: true, session }
+    return { ok: true, accountGateEnabled: true, session }
   }
 
   return {
@@ -222,9 +234,16 @@ type ResolveTargetResult =
 
 async function resolveRequestedTarget(
   searchParams: URLSearchParams,
+  options: { allowLegacyTarget: boolean } = { allowLegacyTarget: true },
 ): Promise<ResolveTargetResult> {
   const legacyTarget = searchParams.get("url")
-  if (legacyTarget) return { ok: true, target: legacyTarget }
+  if (legacyTarget) {
+    if (options.allowLegacyTarget) return { ok: true, target: legacyTarget }
+    return {
+      ok: false,
+      errorResponse: jsonError("Download identifiers required", 400),
+    }
+  }
 
   const resolved = await resolveWatchDownloadTarget({
     downloadId: searchParams.get("downloadId"),
@@ -321,15 +340,19 @@ function buildUpstreamSignal(
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const authGate = await requireDownloadAccount(request)
+  const authGate = await resolveDownloadAccountGate(request)
   if (!authGate.ok) return authGate.response
 
   const { searchParams } = new URL(request.url)
   const rawFilename = searchParams.get("filename")
   const contentDisposition =
     searchParams.get("disposition") === "inline" ? "inline" : "attachment"
+  const allowLegacyTarget =
+    contentDisposition === "inline" || authGate.accountGateEnabled
 
-  const resolvedTarget = await resolveRequestedTarget(searchParams)
+  const resolvedTarget = await resolveRequestedTarget(searchParams, {
+    allowLegacyTarget,
+  })
   if (!resolvedTarget.ok) {
     return resolvedTarget.errorResponse
   }
@@ -427,7 +450,7 @@ export async function GET(request: Request): Promise<Response> {
     return jsonError("Upstream had no body", 502)
   }
 
-  if (authGate.session.accessToken && resolvedTarget.event) {
+  if (authGate.session?.accessToken && resolvedTarget.event) {
     void recordWatchEventWithAccessToken(authGate.session.accessToken, {
       eventType: "download",
       videoId: resolvedTarget.event.videoId,

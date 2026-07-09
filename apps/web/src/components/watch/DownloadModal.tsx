@@ -48,6 +48,7 @@ export type DownloadModalProps = {
   languageSlug?: string | null
   variantId: string
   videoSlug: string
+  accountGateEnabled?: boolean
   authRequiredLoginUrl?: string | null
   onClose: () => void
 }
@@ -114,6 +115,7 @@ export function DownloadModal({
   languageSlug,
   variantId,
   videoSlug,
+  accountGateEnabled = false,
   authRequiredLoginUrl = null,
   onClose,
 }: DownloadModalProps) {
@@ -191,7 +193,7 @@ export function DownloadModal({
       : defaultTier
   const selected = tiers.find((t) => t.tier === effectiveTier) ?? null
   const effectiveAuthLoginUrl = authRequiredLoginUrl ?? localAuthLoginUrl
-  const authRequired = effectiveAuthLoginUrl != null
+  const authRequired = accountGateEnabled && effectiveAuthLoginUrl != null
   const canDownload = selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
 
@@ -343,20 +345,22 @@ export function DownloadModal({
     downloadInFlight.current = true
     setAuthChecking(true)
 
-    const session = await resolveDownloadSessionAccess()
-    if (requestVersionRef.current !== requestVersion) return
-    if (!session.ok && session.reason === "session-unavailable") {
-      downloadInFlight.current = false
-      setAuthChecking(false)
-      setError(t("errorSessionUnavailable"))
-      return
-    }
-    if (!session.ok) {
-      downloadInFlight.current = false
-      setAuthChecking(false)
-      setError(null)
-      setLocalAuthLoginUrl(session.loginUrl)
-      return
+    if (accountGateEnabled) {
+      const session = await resolveDownloadSessionAccess()
+      if (requestVersionRef.current !== requestVersion) return
+      if (!session.ok && session.reason === "session-unavailable") {
+        downloadInFlight.current = false
+        setAuthChecking(false)
+        setError(t("errorSessionUnavailable"))
+        return
+      }
+      if (!session.ok) {
+        downloadInFlight.current = false
+        setAuthChecking(false)
+        setError(null)
+        setLocalAuthLoginUrl(session.loginUrl)
+        return
+      }
     }
     setAuthChecking(false)
 
