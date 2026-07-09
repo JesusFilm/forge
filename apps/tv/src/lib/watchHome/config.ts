@@ -1,7 +1,15 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile's config.ts) — mirror
- * any web curation change here until feat-160 moves it to admin. TV cuts WATCH_HOME_PLAYLIST_SEQUENCE
- * + WATCH_HOME_MUX_INSERTS (scarce decode slots); WATCH_HOME_FEATURED_RAIL is TV-only (titleVariants carry web's Mux conditionalOverlays greetings).
+ * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile). Two halves
+ * with DIFFERENT sync obligations (mirrors mobile's heroConfig / fallbackConfig split):
+ *
+ * - LIVE — WATCH_HOME_HERO_SOURCE_IDS + WATCH_HOME_FEATURED_RAIL are client-owned;
+ *   mirror web hero curation here until feat-160 moves the hero into admin.
+ * - FROZEN — WATCH_HOME_SECTIONS is an emergency body fallback, NOT mirrored. The
+ *   live body is the admin `watch-home` Experience (see experienceAdapter.ts); these
+ *   rows render only on Experience null / error / zero rails and are expected to drift.
+ *
+ * TV cuts WATCH_HOME_PLAYLIST_SEQUENCE + WATCH_HOME_MUX_INSERTS (scarce decode slots);
+ * WATCH_HOME_FEATURED_RAIL is TV-only (titleVariants carry web's Mux greetings).
  */
 
 // The hardcoded home locale pair: query locale + language identity, keyed on
@@ -89,6 +97,7 @@ export const newBelieverCourse = [
   { id: "8_NBC", limitChildren: 10 },
 ] as const satisfies readonly WatchHomeSourceConfig[]
 
+// LIVE (client-owned): mirror web hero curation here until feat-160 moves it to admin.
 export const WATCH_HOME_HERO_SOURCE_IDS = [
   "1_jf-0-0",
   "2_GOJ-0-0",
@@ -98,6 +107,7 @@ export const WATCH_HOME_HERO_SOURCE_IDS = [
 
 export const WATCH_HOME_COLLECTION_BLACKLIST = new Set(["7_Origins4Connect"])
 
+// FROZEN emergency fallback: the live body is the admin Experience; may drift.
 export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
   {
     id: "home-video-gospels",
