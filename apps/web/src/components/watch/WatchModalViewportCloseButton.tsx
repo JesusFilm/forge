@@ -31,7 +31,7 @@ export function WatchModalViewportCloseButton({
       data-testid={testId}
       onClick={onClose}
       className={cn(
-        "fixed z-[60] flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full bg-transparent text-stone-300 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none",
+        "fixed z-[60] flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full bg-transparent text-stone-300 transition hover:text-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50 focus-visible:outline-none",
         positionClassName,
         className,
       )}
