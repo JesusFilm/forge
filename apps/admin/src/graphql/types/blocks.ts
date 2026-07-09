@@ -297,7 +297,19 @@ MediaCollectionItemRef.implement({
   description: "Single entry in MediaCollectionBlock.items.",
   fields: (t) => ({
     videoId: t.exposeString("videoId", { nullable: true }),
-    videoSlug: t.exposeString("videoSlug", { nullable: true }),
+    videoSlug: t.string({
+      nullable: true,
+      description:
+        "Canonical public Watch slug for the linked video. Falls back to the stored snapshot when no videoId is present.",
+      resolve: async (row, _args, ctx) => {
+        const videoId = optionalString(row.videoId)
+        if (!videoId) return optionalString(row.videoSlug)
+
+        const video = await ctx.loaders.videoById.load(videoId)
+        if (video?.deletedAt) return null
+        return video?.slug ?? optionalString(row.videoSlug)
+      },
+    }),
     coreId: t.string({
       nullable: true,
       description:

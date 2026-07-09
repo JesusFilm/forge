@@ -62,6 +62,16 @@ SearchResultRef.implement({
     slug: t.exposeString("slug", { nullable: false }),
     title: t.exposeString("title", { nullable: false }),
     imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageBlurDataUrl: t.exposeString("imageBlurDataUrl", {
+      nullable: true,
+      description:
+        "Base64 blur data URL generated from the selected VideoImage. Null for experiences or video images without generated placeholder metadata yet.",
+    }),
+    muxThumbnailBlurDataUrl: t.exposeString("muxThumbnailBlurDataUrl", {
+      nullable: true,
+      description:
+        "Base64 blur data URL for the Watch-card Mux thumbnail recipe. Null for experiences or when no playable Mux-backed dub is available.",
+    }),
     snippet: t.exposeString("snippet", { nullable: false }),
     startSeconds: t.exposeFloat("startSeconds", { nullable: true }),
     playbackId: t.exposeString("playbackId", { nullable: true }),

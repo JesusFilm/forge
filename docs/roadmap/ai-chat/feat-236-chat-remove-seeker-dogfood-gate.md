@@ -32,6 +32,19 @@ tags:
 > unchanged and still binding. The greps below remain the source of truth;
 > read the LD-flavored file lists through this note.
 
+> **Scope expansion (2026-07-09, feat-241 — planned):** feat-241 will gate its
+> new history proxy routes behind `resolveSeekerGate` for the dogfood phase
+> (decision context in that ticket), growing the gate's call sites beyond the
+> original two (KTD1's "page.tsx + seeker route"), and DEFERS the sidebar
+> "Sign in to save your conversations" nudge to this ticket (it only becomes
+> truthful once public users' conversations persist). Two consequences here:
+> (1) the removal in step 2 also un-gates the history routes — their permanent
+> gating is signed-in + fresh session lease (feat-240) + server-side resource
+> scoping, which all STAY; (2) step 2 gains one addition-not-revert item, the
+> nudge. feat-241's implementation PR must refresh this recipe's specifics
+> (exact files/tests it adds) — the `resolveSeekerGate|seeker-gate` grep
+> remains the source of truth for call sites.
+
 feat-233 gates the real seeker agent behind a per-user allowlist (originally a
 LaunchDarkly flag; an env-var CSV since feat-239)
 for the dogfood phase. That gate is deliberately phase-scoped scaffolding: the
@@ -86,8 +99,9 @@ seeker for everyone, anonymous included. The other arms are NOT this ticket:
 - `SEEKER_ALLOWED_EMAILS|isSeekerEmailAllowed|not_allowlisted` — the feat-239
   env-allowlist mechanism's footprint (env schema, helper, gate outcome,
   tests, `.env.example`, docs); all go.
-- `resolveSeekerGate|seeker-gate` — the gate's two call sites (page.tsx,
-  seeker route) plus docs references; all must be gone or rewritten.
+- `resolveSeekerGate|seeker-gate` — the gate's call sites (page.tsx, seeker
+  route; plus the feat-241 history proxy routes once that ships) and docs
+  references; all must be gone or rewritten.
 - `grep -rn "createChatFeatureFlagClient\|chatFeatureFlagClient" apps/chat/src`
   — if anything besides `seeker-gate.ts` consumes the LD client by execution
   time, `lib/feature-flags.ts` and the SDK key STAY; only the gate goes.
@@ -142,6 +156,13 @@ isSeekerChatEnabled()` on `SeekerProxyConfig`, checked ahead of
 - Client: remove `"gate_denied"` from `REPLY_FAILURE_REASONS`, then follow the
   compiler — the exhaustive switch in `message-list.tsx` and the stub mapping
   in `chat-stub.ts` (`streamSeekerReply`) fail typecheck until cleaned.
+- History routes (feat-241): drop their `resolveSeekerGate` deny layer; their
+  permanent gating — signed-in + fresh lease (feat-240) + server-side
+  resource scoping — stays untouched. Also drop the gate condition on the
+  client's history hydration so every signed-in user's sidebar hydrates.
+- One ADDITION (not a revert), deferred here from feat-241: the signed-out
+  sidebar's "Sign in to save your conversations" nudge — truthful only now
+  that any signed-in user's conversations persist.
 
 **3. Keep — do NOT revert (the pieces a naive full-revert gets wrong):**
 

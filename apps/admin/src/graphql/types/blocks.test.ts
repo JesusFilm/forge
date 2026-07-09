@@ -353,6 +353,73 @@ describe("asset-backed block URL field resolvers", () => {
   })
 })
 
+describe("MediaCollectionItem videoSlug resolver", () => {
+  it("resolves the canonical video slug from videoId", async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: "video-1",
+      slug: "the-gospel-of-luke",
+      deletedAt: null,
+    })
+
+    const result = await fieldResolver("MediaCollectionItem", "videoSlug")(
+      {
+        videoId: "video-1",
+        videoSlug: null,
+      },
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("the-gospel-of-luke")
+    expect(load).toHaveBeenCalledWith("video-1")
+  })
+
+  it("does not expose a slug for deleted linked videos", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "videoSlug")(
+      {
+        videoId: "video-1",
+        videoSlug: "stale-slug",
+      },
+      {},
+      {
+        loaders: {
+          videoById: {
+            load: vi.fn().mockResolvedValue({
+              id: "video-1",
+              slug: "stale-slug",
+              deletedAt: new Date("2026-07-08T00:00:00.000Z"),
+            }),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("preserves stored videoSlug for legacy items without videoId", async () => {
+    const load = vi.fn()
+
+    const result = await fieldResolver("MediaCollectionItem", "videoSlug")(
+      {
+        videoSlug: "snapshot-slug",
+      },
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("snapshot-slug")
+    expect(load).not.toHaveBeenCalled()
+  })
+})
+
 // -----------------------------------------------------------------------------
 // Union dispatch happy path — mixed-kind array (mimics what a real
 // ExperienceLocale.blocks JSON column holds). A SectionBlock inside the array

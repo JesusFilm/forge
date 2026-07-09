@@ -669,7 +669,7 @@ function videoSearchWhere(rawSearch: string | null | undefined) {
               { mobileCinematicVeryLow: text },
               { thumbnail: text },
               { videoStill: text },
-              { blurhash: text },
+              { blurDataUrl: text },
               { kind: text },
               ...(sourceMatches ? [{ source: sourceMatches }] : []),
               ...(integer === null

@@ -327,7 +327,7 @@ builder.prismaObject("VideoDub", {
     muxHeroPosterBlurDataUrl: t.string({
       nullable: true,
       description:
-        "Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+        "Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
       resolve: async (dub, _args, ctx) => {
         const muxVideo = await ctx.prisma.muxVideo.findFirst({
           where: {
@@ -423,7 +423,7 @@ const VideoImageRef = builder.prismaObject("VideoImage", {
     }),
     thumbnail: t.exposeString("thumbnail", { nullable: true }),
     videoStill: t.exposeString("videoStill", { nullable: true }),
-    blurhash: t.exposeString("blurhash", { nullable: true }),
+    blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
     kind: t.exposeString("kind", { nullable: true }),
   }),
 })
@@ -559,7 +559,7 @@ builder.prismaObject("Video", {
     muxThumbnailBlurDataUrl: t.string({
       nullable: true,
       description:
-        "Base64 LQIP data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+        "Base64 blur data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
       args: {
         languageSlug: t.arg.string({ required: false }),
       },
@@ -572,7 +572,7 @@ builder.prismaObject("Video", {
     muxHeroPosterBlurDataUrl: t.string({
       nullable: true,
       description:
-        "Base64 LQIP data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+        "Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
       args: {
         languageSlug: t.arg.string({ required: false }),
       },

@@ -65,6 +65,8 @@ const semanticResult: SearchResult = {
   slug: "jesus",
   title: "JESUS",
   imageUrl: null,
+  imageBlurDataUrl: null,
+  muxThumbnailBlurDataUrl: null,
   snippet: "",
   startSeconds: null,
   playbackId: null,
