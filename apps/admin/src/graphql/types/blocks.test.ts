@@ -354,6 +354,67 @@ describe("asset-backed block URL field resolvers", () => {
 })
 
 describe("MediaCollectionItem videoSlug resolver", () => {
+  it("resolves compatibility coreId from the linked video", async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: "video-1",
+      coreId: "1_jf-0-0",
+      deletedAt: null,
+    })
+
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {
+        videoId: "video-1",
+      },
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("1_jf-0-0")
+    expect(load).toHaveBeenCalledWith("video-1")
+  })
+
+  it("does not expose compatibility coreId for deleted linked videos", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {
+        videoId: "video-1",
+      },
+      {},
+      {
+        loaders: {
+          videoById: {
+            load: vi.fn().mockResolvedValue({
+              id: "video-1",
+              coreId: "1_jf-0-0",
+              deletedAt: new Date("2026-07-08T00:00:00.000Z"),
+            }),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("returns null compatibility coreId for legacy items without videoId", async () => {
+    const load = vi.fn()
+
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {},
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(load).not.toHaveBeenCalled()
+  })
+
   it("resolves the canonical video slug from videoId", async () => {
     const load = vi.fn().mockResolvedValue({
       id: "video-1",
