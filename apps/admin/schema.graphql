@@ -1256,6 +1256,10 @@ type Video {
   """
   muxHeroPosterBlurDataUrl(languageSlug: String): String
   """
+  Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxHeroPosterDominantColor(languageSlug: String): String
+  """
   Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.
   """
   muxPlaybackId(languageSlug: String): String
@@ -1263,6 +1267,10 @@ type Video {
   Base64 blur data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
   """
   muxThumbnailBlurDataUrl(languageSlug: String): String
+  """
+  Dominant color for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxThumbnailDominantColor(languageSlug: String): String
   noIndex: Boolean
   origin: VideoOrigin
   """
@@ -1351,6 +1359,10 @@ type VideoDub {
   Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
   """
   muxHeroPosterBlurDataUrl: String
+  """
+  Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxHeroPosterDominantColor: String
   muxVideo: MuxVideo
   published: Boolean
   share: String
@@ -1449,6 +1461,7 @@ enum VideoHeroSubheadingSource {
 type VideoImage {
   aspectRatio: String
   blurDataUrl: String
+  dominantColor: String
   height: Int
   id: ID
   kind: String
@@ -1853,8 +1866,10 @@ type WatchRouteSnapshotChild {
   images: [WatchRouteSnapshotImage!]!
   label: VideoLabel
   muxHeroPosterBlurDataUrl: String
+  muxHeroPosterDominantColor: String
   muxPlaybackId: String
   muxThumbnailBlurDataUrl: String
+  muxThumbnailDominantColor: String
   slug: String
 }
 
@@ -1864,6 +1879,7 @@ type WatchRouteSnapshotChildRelation {
 
 type WatchRouteSnapshotImage {
   documentId: ID!
+  dominantColor: String
   mobileCinematicHigh: String
   mobileCinematicLow: String
   thumbnail: String
@@ -1908,6 +1924,7 @@ type WatchRouteSnapshotPreferredVariant {
   hls: String
   language: WatchRouteSnapshotLanguage
   muxHeroPosterBlurDataUrl: String
+  muxHeroPosterDominantColor: String
   published: Boolean
   slug: String
 }

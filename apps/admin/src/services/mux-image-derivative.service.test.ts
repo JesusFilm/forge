@@ -21,7 +21,9 @@ function makePrisma({
   existingBlurDataUrl?: string | null
 } = {}): PrismaClient {
   const findUnique = vi.fn(async () =>
-    existingBlurDataUrl ? { blurDataUrl: existingBlurDataUrl } : null,
+    existingBlurDataUrl
+      ? { blurDataUrl: existingBlurDataUrl, dominantColor: "#123456" }
+      : null,
   )
   const upsert = vi.fn(async (input: { create: { blurDataUrl: string } }) => ({
     blurDataUrl: input.create.blurDataUrl,
@@ -34,6 +36,11 @@ function makePrisma({
     },
   } as unknown as PrismaClient
 }
+
+const svgBytes = new TextEncoder().encode(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#336699"/></svg>',
+)
+const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svgBytes).toString("base64")}`
 
 describe("mux-image-derivative.service", () => {
   afterEach(() => {
@@ -76,15 +83,12 @@ describe("mux-image-derivative.service", () => {
   })
 
   it("fetches the tiny Mux image, stores it as a Base64 data URL, and returns it", async () => {
-    const bytes = new Uint8Array([1, 2, 3, 4])
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        headers: new Headers({ "content-type": "image/jpeg" }),
-        arrayBuffer: async () => bytes.buffer,
-      })),
-    )
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      headers: new Headers({ "content-type": "image/svg+xml" }),
+      arrayBuffer: async () => svgBytes.buffer,
+    }))
+    vi.stubGlobal("fetch", fetchMock)
     const prisma = makePrisma()
 
     await expect(
@@ -93,7 +97,12 @@ describe("mux-image-derivative.service", () => {
         muxVideoId: "mux-video-1",
         playbackId: "playback-1",
       }),
-    ).resolves.toBe("data:image/jpeg;base64,AQIDBA==")
+    ).resolves.toBe(svgDataUrl)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://image.mux.com/playback-1/thumbnail.jpg?width=24&height=14&fit_mode=smartcrop&time=2",
+      expect.objectContaining({ redirect: "error" }),
+    )
 
     expect(prisma.muxImageDerivative.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -103,20 +112,20 @@ describe("mux-image-derivative.service", () => {
             "https://image.mux.com/playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
           lqipUrl:
             "https://image.mux.com/playback-1/thumbnail.jpg?width=24&height=14&fit_mode=smartcrop&time=2",
-          blurDataUrl: "data:image/jpeg;base64,AQIDBA==",
+          blurDataUrl: svgDataUrl,
+          dominantColor: expect.stringMatching(/^#[0-9a-f]{6}$/i),
         }),
       }),
     )
   })
 
   it("returns null for a missing derivative and schedules generation in the background", async () => {
-    const bytes = new Uint8Array([9, 10, 11, 12])
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
         ok: true,
-        headers: new Headers({ "content-type": "image/jpeg" }),
-        arrayBuffer: async () => bytes.buffer,
+        headers: new Headers({ "content-type": "image/svg+xml" }),
+        arrayBuffer: async () => svgBytes.buffer,
       })),
     )
     const prisma = makePrisma()
@@ -134,7 +143,8 @@ describe("mux-image-derivative.service", () => {
         expect.objectContaining({
           create: expect.objectContaining({
             muxVideoId: "mux-video-1",
-            blurDataUrl: "data:image/jpeg;base64,CQoLDA==",
+            blurDataUrl: svgDataUrl,
+            dominantColor: expect.stringMatching(/^#[0-9a-f]{6}$/i),
           }),
         }),
       )
@@ -174,8 +184,8 @@ describe("mux-image-derivative.service", () => {
 
     resolveFetch({
       ok: true,
-      headers: new Headers({ "content-type": "image/jpeg" }),
-      arrayBuffer: async () => new Uint8Array([1]).buffer,
+      headers: new Headers({ "content-type": "image/svg+xml" }),
+      arrayBuffer: async () => svgBytes.buffer,
     })
     await vi.waitFor(() => {
       expect(prisma.muxImageDerivative.upsert).toHaveBeenCalledTimes(1)
@@ -183,13 +193,12 @@ describe("mux-image-derivative.service", () => {
   })
 
   it("stores the hero poster blur under the hero recipe", async () => {
-    const bytes = new Uint8Array([5, 6, 7, 8])
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
         ok: true,
-        headers: new Headers({ "content-type": "image/webp" }),
-        arrayBuffer: async () => bytes.buffer,
+        headers: new Headers({ "content-type": "image/svg+xml" }),
+        arrayBuffer: async () => svgBytes.buffer,
       })),
     )
     const prisma = makePrisma()
@@ -200,7 +209,7 @@ describe("mux-image-derivative.service", () => {
         muxVideoId: "mux-video-1",
         playbackId: "playback-1",
       }),
-    ).resolves.toBe("data:image/webp;base64,BQYHCA==")
+    ).resolves.toBe(svgDataUrl)
 
     expect(prisma.muxImageDerivative.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -211,9 +220,32 @@ describe("mux-image-derivative.service", () => {
             "https://image.mux.com/playback-1/thumbnail.webp?width=1280&time=2",
           lqipUrl:
             "https://image.mux.com/playback-1/thumbnail.webp?width=32&time=2",
-          blurDataUrl: "data:image/webp;base64,BQYHCA==",
+          blurDataUrl: svgDataUrl,
+          dominantColor: expect.stringMatching(/^#[0-9a-f]{6}$/i),
         }),
       }),
     )
+  })
+
+  it("does not store corrupt image responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        headers: new Headers({ "content-type": "image/jpeg" }),
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      })),
+    )
+    const prisma = makePrisma()
+
+    await expect(
+      getOrCreateWatchChapterCarouselMuxBlurDataUrl({
+        prisma,
+        muxVideoId: "mux-video-1",
+        playbackId: "playback-1",
+      }),
+    ).resolves.toBeNull()
+
+    expect(prisma.muxImageDerivative.upsert).not.toHaveBeenCalled()
   })
 })
