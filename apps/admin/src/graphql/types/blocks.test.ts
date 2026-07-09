@@ -351,6 +351,35 @@ describe("asset-backed block URL field resolvers", () => {
 
     expect(result).toBe("https://image.example.test/poster.jpg")
   })
+
+  it("exposes media asset blur data for collection item overrides", async () => {
+    const findUnique = vi.fn().mockResolvedValue({
+      id: "asset-1",
+      backend: "S3",
+      status: "READY",
+      visibility: "PUBLIC",
+      objectKey: "media-assets/asset-1/original/hero.webp",
+      previewObjectKey: null,
+      muxPlaybackId: null,
+      blurDataUrl: "data:image/jpeg;base64,LQIP",
+    })
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "imageOverrideBlurDataUrl",
+    )(
+      { imageOverrideAssetId: "asset-1" },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("data:image/jpeg;base64,LQIP")
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: "asset-1" } })
+  })
 })
 
 describe("MediaCollectionItem videoSlug resolver", () => {
@@ -587,6 +616,8 @@ describe("Edge cases", () => {
     expect(fields?.videoSlug).toBeDefined()
     expect(fields?.muxPlaybackId).toBeDefined()
     expect(fields?.coreId).toBeDefined()
+    expect(fields?.imageBlurDataUrl).toBeDefined()
+    expect(fields?.imageOverrideBlurDataUrl).toBeDefined()
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

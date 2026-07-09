@@ -780,7 +780,11 @@ type MediaCollectionItem {
   """
   coreId: String
   imageAssetId: String
+  imageBlurDataUrl: String
+  imageDominantColor: String
   imageOverrideAssetId: String
+  imageOverrideBlurDataUrl: String
+  imageOverrideDominantColor: String
   imageOverrideUrl: String
   imageUrl: String
   labelOverride: String
@@ -792,6 +796,12 @@ type MediaCollectionItem {
   subtitleOverride: String
   titleOverride: String
   videoId: String
+  """
+  Best generated LQIP for the linked Video image. Falls back to null when the item is not linked to a Video or no video image has blur metadata.
+  """
+  videoImageBlurDataUrl: String
+  """Dominant color for the linked Video image used by this item."""
+  videoImageDominantColor: String
   """
   Canonical public Watch slug for the linked video. Falls back to the stored snapshot when no videoId is present.
   """
