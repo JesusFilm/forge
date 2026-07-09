@@ -512,13 +512,13 @@ export function ShortsCreateScreen({
             </p>
           ) : (
             <div className="jobs-table-wrap">
-              <table className="table jobs-table">
+              <table className="table jobs-table shorts-picker-table">
                 <thead>
                   <tr>
-                    <th>Video</th>
-                    <th>Type</th>
-                    <th>Core ID</th>
-                    <th aria-label="Eligibility" />
+                    <th className="shorts-picker-col-video">Video</th>
+                    <th className="shorts-picker-col-type">Type</th>
+                    <th className="shorts-picker-col-core">Core ID</th>
+                    <th className="shorts-picker-col-status">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -532,7 +532,7 @@ export function ShortsCreateScreen({
                           issue ? "shorts-picker-row-ineligible" : undefined
                         }
                       >
-                        <td>
+                        <td className="shorts-picker-col-video">
                           <button
                             type="button"
                             className="jobs-step-artifact-link shorts-picker-video-button"
@@ -542,37 +542,48 @@ export function ShortsCreateScreen({
                             }
                             title={issue ?? `Select ${video.title}`}
                           >
-                            {video.imageUrl ? (
-                              // An <img> keeps the admin-sourced URL out of
-                              // CSS string interpolation (no url() injection
-                              // surface). Raw <img> matches the coverage
-                              // screen's thumbnail precedent.
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                className="shorts-picker-thumb"
-                                src={video.imageUrl}
-                                alt=""
-                                aria-hidden="true"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <span
-                                className="shorts-picker-thumb"
-                                aria-hidden="true"
-                              />
-                            )}
-                            <span className="jobs-step-artifact-label">
-                              {video.title}
+                            <span
+                              className="shorts-picker-thumb"
+                              aria-hidden="true"
+                            >
+                              {video.imageUrl ? (
+                                // An <img> keeps the admin-sourced URL out of
+                                // CSS string interpolation (no url() injection
+                                // surface). Raw <img> matches the coverage
+                                // screen's thumbnail precedent.
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  className="shorts-picker-thumb-image"
+                                  src={video.imageUrl}
+                                  alt=""
+                                  loading="lazy"
+                                  onError={(event) => {
+                                    event.currentTarget.hidden = true
+                                  }}
+                                />
+                              ) : null}
+                            </span>
+                            <span className="shorts-picker-video-copy">
+                              <span className="shorts-picker-video-title">
+                                {video.title}
+                              </span>
+                              <span className="shorts-picker-video-slug">
+                                {video.slug ?? video.id}
+                              </span>
                             </span>
                           </button>
                         </td>
-                        <td>
-                          <span className="jobs-language-badge">
+                        <td className="shorts-picker-col-type">
+                          <span className="shorts-picker-type-chip">
                             {video.label}
                           </span>
                         </td>
-                        <td>{video.id}</td>
-                        <td>
+                        <td className="shorts-picker-col-core">
+                          <code className="shorts-picker-core-id">
+                            {video.id}
+                          </code>
+                        </td>
+                        <td className="shorts-picker-col-status">
                           {isResolving ? (
                             <RefreshCw
                               className="icon is-spinning"
@@ -583,7 +594,11 @@ export function ShortsCreateScreen({
                             <span className="jobs-error-text small">
                               {issue}
                             </span>
-                          ) : null}
+                          ) : (
+                            <span className="shorts-picker-status-chip">
+                              Ready
+                            </span>
+                          )}
                         </td>
                       </tr>
                     )

@@ -13528,26 +13528,132 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   max-width: 420px;
 }
 
+.shorts-picker-search .jobs-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .shorts-picker-search-icon {
-  vertical-align: -1px;
+  flex: 0 0 auto;
 }
 
 .shorts-picker-row-ineligible {
   opacity: 0.55;
 }
 
+.jobs-table.shorts-picker-table {
+  table-layout: fixed;
+  min-width: 840px;
+}
+
+.jobs-table.shorts-picker-table th,
+.jobs-table.shorts-picker-table td {
+  padding: 14px 16px;
+  vertical-align: middle;
+}
+
+.shorts-picker-table th.shorts-picker-col-video,
+.shorts-picker-table td.shorts-picker-col-video {
+  width: 45%;
+}
+
+.shorts-picker-table th.shorts-picker-col-type,
+.shorts-picker-table td.shorts-picker-col-type {
+  width: 16%;
+}
+
+.shorts-picker-table th.shorts-picker-col-core,
+.shorts-picker-table td.shorts-picker-col-core {
+  width: 23%;
+}
+
+.shorts-picker-table th.shorts-picker-col-status,
+.shorts-picker-table td.shorts-picker-col-status {
+  width: 16%;
+}
+
 .shorts-picker-video-button {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+  text-align: left;
 }
 
 .shorts-picker-thumb {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 48px;
-  height: 27px;
-  border-radius: 4px;
-  object-fit: cover;
+  display: block;
+  width: 72px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--ds-line);
+  border-radius: 6px;
   background: var(--ds-line, #e7dfd2);
+}
+
+.shorts-picker-thumb-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shorts-picker-video-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.shorts-picker-video-title {
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shorts-picker-video-slug,
+.shorts-picker-core-id {
+  overflow: hidden;
+  color: var(--ds-muted);
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shorts-picker-core-id {
+  display: block;
+  max-width: 100%;
+}
+
+.shorts-picker-type-chip,
+.shorts-picker-status-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid var(--ds-line);
+  border-radius: 999px;
+  background: var(--ds-panel);
+  color: var(--ds-ink);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.shorts-picker-status-chip {
+  background: var(--ds-panel-muted);
+  color: var(--ds-muted);
 }
 
 .shorts-table-summary {
