@@ -209,6 +209,16 @@ type EmbeddingProvider = {
   }
 }
 
+type EmbeddingProviderResult =
+  | {
+      ok: true
+      body: unknown
+    }
+  | {
+      ok: false
+      status: number
+    }
+
 function selectProvider(): EmbeddingProvider {
   const openRouterApiKey = env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
   if (openRouterApiKey) {
@@ -244,8 +254,8 @@ async function fetchEmbeddingResponse(
   provider: EmbeddingProvider,
   body: string,
   signal: AbortSignal,
-): Promise<Response> {
-  return fetch(provider.url, {
+): Promise<EmbeddingProviderResult> {
+  const response = await fetch(provider.url, {
     method: "POST",
     headers: {
       authorization: `Bearer ${provider.apiKey}`,
@@ -254,20 +264,32 @@ async function fetchEmbeddingResponse(
     body,
     signal,
   })
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+    }
+  }
+
+  return {
+    ok: true,
+    body: await response.json(),
+  }
 }
 
 async function fetchEmbeddingResponseWithDeadline(
   provider: EmbeddingProvider,
   body: string,
   timeoutMs: number,
-): Promise<Response> {
+): Promise<EmbeddingProviderResult> {
   const controller = new AbortController()
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined
 
   try {
     return await Promise.race([
       fetchEmbeddingResponse(provider, body, controller.signal),
-      new Promise<Response>((_resolve, reject) => {
+      new Promise<EmbeddingProviderResult>((_resolve, reject) => {
         timeoutHandle = setTimeout(() => {
           controller.abort()
           reject(embeddingTimeoutError())
@@ -284,7 +306,7 @@ async function fetchEmbeddingResponseWithDeadline(
 async function fetchSingleEmbeddingResponseWithRetry(
   provider: EmbeddingProvider,
   body: string,
-): Promise<Response> {
+): Promise<EmbeddingProviderResult> {
   let lastError: unknown
 
   for (
@@ -313,7 +335,7 @@ async function fetchEmbeddingResponseWithTimeout(
   provider: EmbeddingProvider,
   body: string,
   inputCount: number,
-): Promise<Response> {
+): Promise<EmbeddingProviderResult> {
   if (inputCount === 1) {
     return fetchSingleEmbeddingResponseWithRetry(provider, body)
   }
@@ -363,7 +385,7 @@ export async function generateExperienceEmbeddings(
 
   const provider = selectProvider()
 
-  let response: Response
+  let response: EmbeddingProviderResult
   const requestBody = JSON.stringify({
     model: provider.model,
     input: normalized,
@@ -401,7 +423,7 @@ export async function generateExperienceEmbeddings(
     )
   }
 
-  const parsed = EmbeddingResponseSchema.safeParse(await response.json())
+  const parsed = EmbeddingResponseSchema.safeParse(response.body)
   if (!parsed.success) {
     throw new EmbeddingsBatchError(
       "validation_failed",

@@ -266,6 +266,50 @@ describe("generateExperienceEmbeddings (batched)", () => {
     }
   })
 
+  it("retries when a single-input response body stalls after headers", async () => {
+    vi.useFakeTimers()
+    const vector = vectorOf(0.1)
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce((_url: string, init: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            new Promise<unknown>((_resolve, reject) => {
+              init.signal?.addEventListener("abort", () => {
+                const error = new Error("aborted")
+                error.name = "AbortError"
+                reject(error)
+              })
+            }),
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    try {
+      const { generateExperienceEmbeddings } =
+        await import("./embeddings.service")
+
+      const resultPromise = generateExperienceEmbeddings(["single input"])
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(2_500)
+
+      const result = await resultPromise
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(result.embeddings).toEqual([vector])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("rejects an empty input list with EmbeddingsBatchError(empty_input)", async () => {
     const { generateExperienceEmbeddings, EmbeddingsBatchError } =
       await import("./embeddings.service")

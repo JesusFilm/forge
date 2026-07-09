@@ -40,6 +40,10 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.
 - If the admin Pothos schema changes, regenerate `apps/admin/schema.graphql` AND `packages/admin-graphql` types in the same PR.
+- Production deploys must go through the normal PR-to-main flow. Do not run
+  `railway up`, trigger Railway redeploys, or otherwise publish local worktree
+  code directly to production unless the user explicitly declares a break-glass
+  emergency and names the target service/environment in that same request.
 
 ## Package guidance
 
