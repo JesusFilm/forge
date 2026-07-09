@@ -127,6 +127,8 @@ export type WatchImage = {
   thumbnail: string | null
   mobileCinematicHigh: string | null
   mobileCinematicLow: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 // One distinct playable dub language available across a series' children,
@@ -456,6 +458,8 @@ type AdminImageRaw = {
   thumbnail?: string | null
   mobileCinematicHigh?: string | null
   mobileCinematicLow?: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 type AdminLanguageRaw = {
@@ -614,6 +618,8 @@ function normalizeImage(img: AdminImageRaw): WatchImage | null {
     thumbnail: img.thumbnail ?? null,
     mobileCinematicHigh: img.mobileCinematicHigh ?? null,
     mobileCinematicLow: img.mobileCinematicLow ?? null,
+    blurDataUrl: img.blurDataUrl ?? null,
+    dominantColor: img.dominantColor ?? null,
   }
 }
 
@@ -1026,7 +1032,11 @@ function normalizeRelatedRouteItems(
         slug: child.slug,
         label: child.label,
         muxPlaybackId: child.muxPlaybackId,
-        images: child.images.map((img) => ({ url: img.url })),
+        images: child.images.map((img) => ({
+          url: img.url,
+          blurDataUrl: img.blurDataUrl,
+          dominantColor: img.dominantColor,
+        })),
       }),
     )
     .filter((item): item is EnrichedMediaItem => item != null)
@@ -1131,7 +1141,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page"],
+  ["watch-page", "v3-media-dominant-colors"],
   {
     revalidate: 60,
     tags: [

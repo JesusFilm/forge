@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest"
-import { enrichMediaItem } from "./enrichment"
+import { enrichMediaItem, enrichRouteRelatedVideo } from "./enrichment"
 
 const ADMIN_FALLBACK =
   "https://imagedelivery.net/account/abc/mobileCinematicHigh"
 const ADMIN_OVERRIDE = "https://example.org/images/override.png"
+const ADMIN_FALLBACK_BLUR = "data:image/jpeg;base64,FALLBACK"
+const ADMIN_OVERRIDE_BLUR = "data:image/jpeg;base64,OVERRIDE"
+const ADMIN_VIDEO_BLUR = "data:image/jpeg;base64,VIDEO"
+const ADMIN_FALLBACK_COLOR = "#112233"
+const ADMIN_OVERRIDE_COLOR = "#445566"
+const ADMIN_VIDEO_COLOR = "#778899"
+const GENERIC_ASSET_BLUR =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIHZpZXdCb3g9IjAgMCA4IDgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiMxMTE4MjciLz48L3N2Zz4="
 
 const base = {
   videoId: "v-1",
@@ -68,6 +76,108 @@ describe("enrichMediaItem image resolution", () => {
       imageOverrideUrl: ADMIN_OVERRIDE,
     })
     expect(result.imageUrl).toBe(ADMIN_OVERRIDE)
+  })
+
+  it("falls back to known local watch-home thumbnails by coreId", () => {
+    const result = enrichMediaItem({
+      ...base,
+      coreId: "GOMattCollection",
+      imageUrl: null,
+      imageOverrideUrl: null,
+    })
+    expect(result.imageUrl).toBe(
+      "/watch/images/thumbnails/GOMattCollection-vertical.png",
+    )
+  })
+
+  it("adds local watch-home blur data by coreId for demo rendering", () => {
+    const result = enrichMediaItem({
+      ...base,
+      coreId: "GOMattCollection",
+      imageUrl: null,
+      imageOverrideUrl: null,
+    })
+    expect(result.blurDataUrl).toMatch(/^data:image\/jpeg;base64,/)
+  })
+
+  it("prefers override asset blur data over linked video blur data", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: ADMIN_FALLBACK,
+      videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
+      imageBlurDataUrl: ADMIN_FALLBACK_BLUR,
+      imageOverrideUrl: ADMIN_OVERRIDE,
+      imageOverrideBlurDataUrl: ADMIN_OVERRIDE_BLUR,
+    })
+    expect(result.blurDataUrl).toBe(ADMIN_OVERRIDE_BLUR)
+  })
+
+  it("prefers override asset dominant color over linked video dominant color", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: ADMIN_FALLBACK,
+      videoImageDominantColor: ADMIN_VIDEO_COLOR,
+      imageDominantColor: ADMIN_FALLBACK_COLOR,
+      imageOverrideUrl: ADMIN_OVERRIDE,
+      imageOverrideDominantColor: ADMIN_OVERRIDE_COLOR,
+    })
+    expect(result.dominantColor).toBe(ADMIN_OVERRIDE_COLOR)
+  })
+
+  it("ignores the generic fallback dominant color", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: ADMIN_FALLBACK,
+      videoImageDominantColor: "#111827",
+    })
+    expect(result.dominantColor).toBeNull()
+  })
+
+  it("carries route related image blur and dominant color metadata", () => {
+    const item = enrichRouteRelatedVideo({
+      documentId: "route-video-1",
+      title: "Route Video",
+      slug: "route-video",
+      label: "Episode",
+      muxPlaybackId: "mux-route",
+      images: [
+        {
+          url: "https://cdn.example/route.jpg",
+          blurDataUrl: ADMIN_VIDEO_BLUR,
+          dominantColor: ADMIN_VIDEO_COLOR,
+        },
+      ],
+    })
+
+    expect(item).toMatchObject({
+      imageUrl: "https://cdn.example/route.jpg",
+      blurDataUrl: ADMIN_VIDEO_BLUR,
+      dominantColor: ADMIN_VIDEO_COLOR,
+    })
+  })
+
+  it("ignores generic asset blur data and falls back to local watch-home blur data", () => {
+    const result = enrichMediaItem({
+      ...base,
+      coreId: "GOMattCollection",
+      imageUrl: ADMIN_FALLBACK,
+      imageOverrideBlurDataUrl: GENERIC_ASSET_BLUR,
+    })
+    expect(result.blurDataUrl).toMatch(/^data:image\/jpeg;base64,/)
+    expect(result.blurDataUrl).not.toBe(GENERIC_ASSET_BLUR)
+  })
+
+  it("falls back to a mux thumbnail when no authored or local thumbnail exists", () => {
+    const result = enrichMediaItem({
+      ...base,
+      coreId: "unknown-core-id",
+      muxPlaybackId: "mux-authored-item",
+      imageUrl: null,
+      imageOverrideUrl: null,
+    })
+    expect(result.imageUrl).toBe(
+      "https://image.mux.com/mux-authored-item/thumbnail.jpg",
+    )
   })
 })
 

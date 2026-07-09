@@ -3,7 +3,7 @@ id: "feat-243"
 title: "Web card dominant-color and LQIP rollout"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-09"
 duration: 1
 depends_on:
