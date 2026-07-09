@@ -4,8 +4,7 @@ import type { NormalizedBlock } from "../../lib/normalizer"
 import { SectionDispatcher } from "./SectionDispatcher"
 
 type Slot = {
-  id: string
-  gridSpan: number
+  gridSpan?: unknown
   spans?: unknown
   slotContent?: NormalizedBlock[]
 }
@@ -39,11 +38,11 @@ export function ContainerRenderer({ section }: ContainerRendererProps) {
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        {slots.map((slot) => {
+        {slots.map((slot, index) => {
           const content = slot.slotContent ?? []
           return (
             <View
-              key={`container-slot-${slot.id}`}
+              key={`container-slot-${index}`}
               style={[styles.slot, { flex: tvSpan(slot) }]}
             >
               {content.map((child, index) => (

@@ -186,6 +186,8 @@ const videoResult = (id: string): SearchResult => ({
   slug: id,
   title: id,
   imageUrl: null,
+  imageBlurDataUrl: null,
+  muxThumbnailBlurDataUrl: null,
   snippet: "",
   startSeconds: null,
   playbackId: null,
@@ -202,6 +204,8 @@ function makeSearchResult(id: string, title: string): SearchResult {
     slug: `${id}-slug`,
     title,
     imageUrl: null,
+    imageBlurDataUrl: null,
+    muxThumbnailBlurDataUrl: null,
     snippet: `${title} snippet`,
     startSeconds: null,
     playbackId: `playback-${id}`,
@@ -607,11 +611,42 @@ describe("FloatingSearchProvider — search mode", () => {
         ]),
       }),
     )
-    expect(
-      document.querySelector(
-        '[data-testid="search-overlay-category-parables"]',
-      ),
-    ).toBeNull()
+    const parablesCategory = document.querySelector(
+      '[data-testid="search-overlay-category-parables"]',
+    )
+    expect(parablesCategory).toBeNull()
+  })
+
+  it("keeps category cards stable while zooming only the background on hover", async () => {
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      algoliaEnabled: false,
+      options: [],
+      countrySuggestion: null,
+      recommendedLanguage: null,
+      countryCode: null,
+      countryName: null,
+    })
+
+    await openSearchOverlay()
+
+    const categoryButton = document.querySelector(
+      '[data-testid="search-overlay-category-parables"]',
+    ) as HTMLButtonElement | null
+    const categoryBackground = document.querySelector(
+      '[data-testid="search-overlay-category-background-parables"]',
+    )
+    const categoryHoverOutline = document.querySelector(
+      '[data-testid="search-overlay-category-hover-outline-parables"]',
+    )
+
+    expect(categoryButton).not.toBeNull()
+    expect(categoryButton?.className).not.toContain("hover:scale")
+    expect(categoryBackground?.className).toContain("search-card-hover-zoom")
+    expect(categoryHoverOutline?.className).toContain("search-card-red-outline")
+    expect(categoryHoverOutline?.className).toContain(
+      "search-card-hover-outline",
+    )
   })
 
   it("uses the manual semantic search language selection for the next search", async () => {
@@ -628,30 +663,33 @@ describe("FloatingSearchProvider — search mode", () => {
     mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
 
     const input = await openSearchOverlay()
-    const languageToggle = document.querySelector(
-      '[aria-controls="search-language-panel"]',
+    const languageComboboxTrigger = document.querySelector(
+      '[data-testid="language-combobox-trigger"]',
     ) as HTMLButtonElement | null
 
-    expect(languageToggle).not.toBeNull()
-    expect(languageToggle?.getAttribute("aria-expanded")).toBe("false")
-    expect(document.querySelector("#search-language-autocomplete")).toBeNull()
+    expect(languageComboboxTrigger).not.toBeNull()
+    expect(languageComboboxTrigger?.getAttribute("aria-expanded")).toBe("false")
+    expect(languageComboboxTrigger?.textContent).toContain("English")
+    expect(
+      document.querySelector('[data-testid="language-combobox-search"]'),
+    ).toBeNull()
     expect(document.body.textContent).not.toContain("Browse by region")
     expect(document.body.textContent).not.toContain("Spanish, Castilian")
 
     await act(async () => {
-      languageToggle?.click()
+      languageComboboxTrigger?.click()
       await Promise.resolve()
     })
 
     const languageSearchInput = document.querySelector(
-      "#search-language-autocomplete",
+      '[data-testid="language-combobox-search"]',
     ) as HTMLInputElement | null
 
     expect(languageSearchInput).not.toBeNull()
-    expect(languageSearchInput?.value).toBe("English")
-    expect(document.body.textContent).toContain("Search language")
+    expect(languageSearchInput?.value).toBe("")
+    expect(document.body.textContent).toContain("English")
     expect(
-      document.querySelector("#search-language-autocomplete-listbox"),
+      document.querySelector('[data-testid="language-combobox-popover"]'),
     ).not.toBeNull()
     expect(document.body.textContent).toContain("Spanish, Castilian")
 
@@ -660,7 +698,7 @@ describe("FloatingSearchProvider — search mode", () => {
     })
 
     const spanishButton = document.querySelector(
-      '[role="option"][aria-label="Spanish, Castilian"]',
+      '[data-testid="language-combobox-option"][data-language-slug="spanish-castilian"]',
     ) as HTMLButtonElement | null
 
     expect(spanishButton).not.toBeNull()
@@ -1691,7 +1729,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(bottomBackdrop?.className).toContain("backdrop-blur-[14px]")
     expect(scrollBody?.className).toContain("z-1")
     expect(scrollBody?.className).toContain("top-44")
-    expect(scrollBody?.className).toContain("sm:top-32")
+    expect(scrollBody?.className).toContain("md:top-32")
     expect(scrollBody?.className).toContain("bottom-0")
     expect(overlayField).not.toBeNull()
     expect(overlayField?.className).toContain("rounded-[35px]")
@@ -1703,8 +1741,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(close?.className).toContain("fixed")
     expect(close?.className).toContain("top-6")
     expect(close?.className).toContain("right-4")
-    expect(close?.className).toContain("sm:top-12")
-    expect(close?.className).toContain("sm:right-10")
+    expect(close?.className).toContain("md:top-12")
+    expect(close?.className).toContain("md:right-10")
     expect(close?.className).toContain("h-[52px]")
     expect(close?.className).toContain("w-12")
     expect(close?.className).toContain("z-[60]")

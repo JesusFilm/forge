@@ -1,6 +1,6 @@
 "use client"
 
-import { Captions, ChevronsUpDown, Languages } from "lucide-react"
+import { Captions, ChevronDown, Languages } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   useCallback,
@@ -41,6 +41,7 @@ export type LanguageComboboxProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   compact?: boolean
+  triggerClassName?: string
   triggerWrapper?: (trigger: ReactNode) => ReactNode
   popoverPortalContainer?: HTMLElement | null
 }
@@ -377,7 +378,13 @@ function capitalizeNativeName(name: string, language: string): string {
 }
 
 function nativeNameForOption(option: LanguageComboboxOption): string | null {
-  if (option.nativeName) return option.nativeName
+  const normalizedName = option.name.trim().toLocaleLowerCase()
+  const explicitNativeName = option.nativeName?.trim()
+  if (explicitNativeName) {
+    return explicitNativeName.toLocaleLowerCase() === normalizedName
+      ? null
+      : explicitNativeName
+  }
   const language = languageCodeFromBcp47(option.bcp47)
   if (!language) return null
   try {
@@ -481,6 +488,7 @@ export function LanguageCombobox({
   open: controlledOpen,
   onOpenChange,
   compact = false,
+  triggerClassName: triggerClassNameOverride,
   triggerWrapper,
   popoverPortalContainer,
 }: LanguageComboboxProps) {
@@ -779,8 +787,8 @@ export function LanguageCombobox({
 
   const selectedNativeName = selected ? nativeNameForOption(selected) : null
   const triggerClassName = compact
-    ? "flex min-h-12 w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-left text-sm font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-    : "flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    ? "flex h-14 min-h-12 w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-left text-sm font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    : "flex h-16 min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
   const triggerButton = (
     <button
       ref={triggerRef}
@@ -794,7 +802,7 @@ export function LanguageCombobox({
       aria-expanded={open}
       aria-haspopup="listbox"
       disabled={disabled}
-      className={triggerClassName}
+      className={`${triggerClassName} ${triggerClassNameOverride ?? ""}`}
     >
       <span
         className={`flex min-w-0 items-center ${compact ? "gap-2.5" : "gap-3"}`}
@@ -812,7 +820,7 @@ export function LanguageCombobox({
             }`}
           />
         )}
-        <span className="min-w-0">
+        <span className="grid min-w-0 content-center">
           <span className="block truncate leading-tight">
             {selected?.name ?? resolvedPlaceholder}
           </span>
@@ -828,9 +836,11 @@ export function LanguageCombobox({
           ) : null}
         </span>
       </span>
-      <ChevronsUpDown
+      <ChevronDown
         aria-hidden
-        className={`text-stone-500 ${compact ? "h-4 w-4" : "h-5 w-5"}`}
+        className={`shrink-0 text-stone-500 transition-transform duration-200 ${
+          open ? "rotate-180" : "rotate-0"
+        } ${compact ? "h-4 w-4" : "h-5 w-5"}`}
       />
     </button>
   )

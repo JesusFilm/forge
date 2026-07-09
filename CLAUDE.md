@@ -87,6 +87,11 @@ Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns
 - Cloudflare handles DNS, WAF rules, and Authenticated Origin Pulls in front of Railway.
 - Railway services configured via `railway.toml` or dashboard.
 - Environment variables managed in Railway service settings.
+- Production deploys happen via PR merge to `main` and the normal Railway
+  autodeploy path. Do not publish local worktree code to production with
+  `railway up`, manual Railway redeploys, or equivalent shortcuts unless the
+  user explicitly declares a break-glass emergency and names the exact
+  service/environment in that same request.
 
 ## Patterns and Preferences
 

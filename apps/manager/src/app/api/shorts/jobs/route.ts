@@ -27,6 +27,7 @@ import { createJob, listJobs, updateJob } from "@/lib/state"
 import type { ShortsJobOptions } from "@/types/job"
 
 const ASSET_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
+const SOURCE_SLUG_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/
 // Mux playback IDs are alphanumeric; the playback id is interpolated into
 // the shorts-worker ffmpeg source URL, so the Mux-resolved value goes
 // through the same shape gate as operator-supplied ids do elsewhere
@@ -42,6 +43,7 @@ const createShortsJobSchema = z
   .object({
     coreId: z.string().regex(ASSET_ID_PATTERN).optional(),
     muxAssetId: z.string().regex(ASSET_ID_PATTERN).optional(),
+    sourceSlug: z.string().trim().regex(SOURCE_SLUG_PATTERN).optional(),
     clip: z.object({
       startSec: z.number().finite().min(0),
       endSec: z.number().finite().positive(),
@@ -109,7 +111,9 @@ export async function POST(request: Request) {
   // ---------------------------------------------------------------------
   let sourceMuxAssetId = body.muxAssetId ?? null
   let sourceCoreId: string | undefined
+  const sourceSlug = body.sourceSlug
   let sourceTitle = body.title
+  let sourceVideoTitle: string | undefined
   let languageBcp47: string | null = null
 
   if (body.coreId) {
@@ -157,6 +161,7 @@ export async function POST(request: Request) {
 
     sourceMuxAssetId = video.muxAssetId
     sourceCoreId = video.coreId
+    sourceVideoTitle = video.label ?? undefined
     sourceTitle = body.title ?? video.label ?? undefined
     languageBcp47 = video.primaryLanguageBcp47
   }
@@ -270,6 +275,7 @@ export async function POST(request: Request) {
     sourceMuxAssetId,
     sourcePlaybackId: publicPlaybackId,
     ...(sourceCoreId ? { sourceCoreId } : {}),
+    ...(sourceSlug ? { sourceSlug } : {}),
     ...(sourceTitle ? { sourceTitle } : {}),
     clip: { startSec: clip.startSec, endSec: clip.endSec },
     language: {
@@ -280,6 +286,7 @@ export async function POST(request: Request) {
   }
 
   const job = await createJob(sourceMuxAssetId, publicPlaybackId, [], {
+    ...(sourceVideoTitle ? { sourceMediaTitle: sourceVideoTitle } : {}),
     jobOptions: { shorts },
     steps: buildShortsInitialSteps("prepare"),
     // Launching intent only ({phase: "queued"}) — the workflows own all

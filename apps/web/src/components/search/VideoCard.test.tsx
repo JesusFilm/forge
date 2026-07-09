@@ -1,10 +1,67 @@
-import { describe, expect, it } from "vitest"
+/**
+ * @vitest-environment jsdom
+ */
+import { act, createElement } from "react"
+import { createRoot, type Root } from "react-dom/client"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { formatDuration } from "@/lib/format-duration"
 import type { SearchResult } from "@/lib/search"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 
-import { defaultHrefBuilder, formatVideoLabel, pickCardPill } from "./VideoCard"
+import {
+  defaultHrefBuilder,
+  formatVideoLabel,
+  pickCardPill,
+  VideoCard,
+} from "./VideoCard"
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string, values?: Record<string, number>) => {
+    if (key === "episodeCount") {
+      const count = values?.count ?? 0
+      return `${count} ${count === 1 ? "episode" : "episodes"}`
+    }
+    if (key === "experience") return "Experience"
+    if (key === "thumbnailAlt") return "Video thumbnail"
+    return key
+  },
+}))
+
+vi.mock("next/image", () => ({
+  default: ({
+    alt,
+    blurDataURL,
+    className,
+    placeholder,
+    src,
+  }: {
+    alt?: string
+    blurDataURL?: string
+    className?: string
+    placeholder?: string
+    src: string
+  }) =>
+    createElement("img", {
+      alt,
+      className,
+      "data-blur-data-url": blurDataURL ?? "",
+      "data-placeholder": placeholder ?? "",
+      src,
+    }),
+}))
+
+let container: HTMLDivElement | null = null
+let root: Root | null = null
+
+afterEach(() => {
+  act(() => {
+    root?.unmount()
+  })
+  container?.remove()
+  root = null
+  container = null
+})
 
 function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
   return {
@@ -13,6 +70,8 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
     slug: "x",
     title: "X",
     imageUrl: null,
+    imageBlurDataUrl: null,
+    muxThumbnailBlurDataUrl: null,
     snippet: "",
     startSeconds: null,
     playbackId: null,
@@ -177,6 +236,99 @@ describe("pickCardPill", () => {
         }),
       ),
     ).toBeNull()
+  })
+})
+
+describe("VideoCard", () => {
+  it("keeps the result card stable while zooming the media layer on hover", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            imageUrl: "https://example.com/thumb.jpg",
+            slug: "jesus",
+            title: "Jesus",
+          })}
+        />,
+      )
+    })
+
+    const card = container.querySelector("a")
+    const thumbnail = container.querySelector("img")
+    const hoverOutline = container.querySelector(
+      '[data-testid="search-card-hover-outline"]',
+    )
+
+    expect(card?.className).not.toContain("hover:scale")
+    expect(thumbnail?.className).toContain("search-card-hover-zoom")
+    expect(hoverOutline?.className).toContain("search-card-red-outline")
+    expect(hoverOutline?.className).toContain("search-card-hover-outline")
+  })
+
+  it("passes Admin image blur data URLs through to Next Image", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            imageUrl: "https://example.com/thumb.jpg",
+            imageBlurDataUrl: "data:image/svg+xml;base64,ADMIN==",
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,MUX==",
+            slug: "jesus",
+            title: "Jesus",
+          })}
+        />,
+      )
+    })
+
+    const thumbnail = container.querySelector("img")
+    const thumbnailFrame = thumbnail?.parentElement
+
+    expect(thumbnail?.getAttribute("data-placeholder")).toBe("blur")
+    expect(thumbnail?.getAttribute("data-blur-data-url")).toBe(
+      "data:image/svg+xml;base64,ADMIN==",
+    )
+    expect(thumbnailFrame?.style.backgroundImage).toContain(
+      "data:image/svg+xml;base64,ADMIN==",
+    )
+  })
+
+  it("passes mux thumbnail blur data URLs through to Next Image for mux fallbacks", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            imageUrl: null,
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,AQIDBA==",
+            playbackId: "playback-id",
+            slug: "jesus",
+            title: "Jesus",
+          })}
+        />,
+      )
+    })
+
+    const thumbnail = container.querySelector("img")
+    const thumbnailFrame = thumbnail?.parentElement
+
+    expect(thumbnail?.getAttribute("data-placeholder")).toBe("blur")
+    expect(thumbnail?.getAttribute("data-blur-data-url")).toBe(
+      "data:image/jpeg;base64,AQIDBA==",
+    )
+    expect(thumbnailFrame?.style.backgroundImage).toContain(
+      "data:image/jpeg;base64,AQIDBA==",
+    )
   })
 })
 

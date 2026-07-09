@@ -52,6 +52,8 @@ import {
   type SearchRetrieverTiming,
   type SearchTimingSummary,
 } from "./hybrid-search-timing"
+import { getOrScheduleWatchChapterCarouselMuxBlurDataUrl } from "./mux-image-derivative.service"
+import { getOrScheduleVideoImageBlurDataUrl } from "./video-image-blur-data-url.service"
 
 export {
   formatSearchTimingLogLine,
@@ -222,6 +224,10 @@ export type SearchResult = {
   startSeconds: number | null
   /** null when no playable Mux-backed dub was found or for non-video results. */
   playbackId: string | null
+  /** Base64 blur data URL for the Watch-card Mux thumbnail recipe. */
+  muxThumbnailBlurDataUrl: string | null
+  /** Forge-generated low-quality image placeholder for the selected VideoImage. */
+  imageBlurDataUrl: string | null
   score: number
   /**
    * Card-pill hydration fields. Populated for video results via a single
@@ -415,6 +421,8 @@ function mapToSearchResult(result: FusedResult): SearchResult {
       snippet: (result.experienceMetaDescription as string | null) ?? "",
       startSeconds: null,
       playbackId: null,
+      muxThumbnailBlurDataUrl: null,
+      imageBlurDataUrl: null,
       score,
       label: null,
       durationSeconds: null,
@@ -439,6 +447,8 @@ function mapToSearchResult(result: FusedResult): SearchResult {
       "",
     startSeconds: typeof startSeconds === "number" ? startSeconds : null,
     playbackId: typeof playbackId === "string" ? playbackId : null,
+    muxThumbnailBlurDataUrl: null,
+    imageBlurDataUrl: null,
     score,
     // Card-pill fields populated by the post-fusion hydration pass.
     // Defaults here keep the mapper pure (no DB IO) and let the service
@@ -473,12 +483,14 @@ type HydrationLocaleRow = {
 }
 
 type HydrationImageRow = {
+  id: string
   videoId: string
   mobileCinematicHigh: string | null
   mobileCinematicLow: string | null
   videoStill: string | null
   thumbnail: string | null
   url: string | null
+  blurDataUrl: string | null
 }
 
 type HydrationDubRow = {
@@ -486,6 +498,7 @@ type HydrationDubRow = {
   languageId: string | null
   duration: number | null
   playbackId: string | null
+  muxVideoId: string | null
 }
 
 type HydrationChildCountRow = {
@@ -566,20 +579,24 @@ async function loadHydrationDataRows(
         () =>
           prisma.$queryRaw<HydrationImageRow[]>`
         SELECT
+          ranked.id,
           ranked."videoId",
           ranked."mobileCinematicHigh",
           ranked."mobileCinematicLow",
           ranked."videoStill",
           ranked.thumbnail,
-          ranked.url
+          ranked.url,
+          ranked."blurDataUrl"
         FROM (
           SELECT
+            vi.id,
             vi.video_id AS "videoId",
             vi.mobile_cinematic_high AS "mobileCinematicHigh",
             vi.mobile_cinematic_low AS "mobileCinematicLow",
             vi.video_still AS "videoStill",
             vi.thumbnail,
             vi.url,
+            vi.blur_data_url AS "blurDataUrl",
             row_number() OVER (
               PARTITION BY vi.video_id
               ORDER BY vi.created_at ASC
@@ -601,12 +618,14 @@ async function loadHydrationDataRows(
           ranked."videoId",
           ranked."languageId",
           ranked.duration,
-          ranked."playbackId"
+          ranked."playbackId",
+          ranked."muxVideoId"
         FROM (
           SELECT
             vd.video_id AS "videoId",
             vd.language_id AS "languageId",
             vd.duration,
+            mv.id AS "muxVideoId",
             mv.playback_id AS "playbackId",
             row_number() OVER (
               PARTITION BY vd.video_id
@@ -721,38 +740,64 @@ async function hydrateCardDisplayFields(
     {
       snippet: string | null
       imageUrl: string | null
+      imageBlurDataUrl: string | null
       playbackId: string | null
+      muxThumbnailBlurDataUrl: string | null
       label: VideoLabel | null
       durationSeconds: number | null
       childCount: number
     }
   >()
-  for (const row of rows) {
-    // Pick the primary-language dub when available; otherwise the
-    // longest-duration playable dub. The hydration query sorts dubs by
-    // duration descending with a stable ID tie-breaker. `duration` is
-    // already in seconds (Int?); the millisecond column on VideoDub uses
-    // BigInt and isn't needed for pill display where second precision is
-    // the right fidelity.
-    const primaryDub = row.primaryLanguageId
-      ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
-      : undefined
-    const durationDub = primaryDub ?? row.dubs[0] ?? null
-    const playbackDub =
-      (nonEmptyString(primaryDub?.playbackId) != null
-        ? primaryDub
-        : undefined) ??
-      row.dubs.find((d) => nonEmptyString(d.playbackId) != null) ??
-      durationDub
-    hydration.set(row.id, {
-      snippet: pickLocalizedSnippet(row.locales),
-      imageUrl: pickImageUrl(row.images),
-      playbackId: nonEmptyString(playbackDub?.playbackId),
-      label: row.label,
-      durationSeconds: durationDub?.duration ?? null,
-      childCount: row.childCount,
-    })
-  }
+  await Promise.all(
+    rows.map(async (row) => {
+      // Pick the primary-language dub when available; otherwise the
+      // longest-duration playable dub. The hydration query sorts dubs by
+      // duration descending with a stable ID tie-breaker. `duration` is
+      // already in seconds (Int?); the millisecond column on VideoDub uses
+      // BigInt and isn't needed for pill display where second precision is
+      // the right fidelity.
+      const primaryDub = row.primaryLanguageId
+        ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
+        : undefined
+      const durationDub = primaryDub ?? row.dubs[0] ?? null
+      const playbackDub =
+        (nonEmptyString(primaryDub?.playbackId) != null
+          ? primaryDub
+          : undefined) ??
+        row.dubs.find((d) => nonEmptyString(d.playbackId) != null) ??
+        durationDub
+      const playbackId = nonEmptyString(playbackDub?.playbackId)
+      const muxVideoId = nonEmptyString(playbackDub?.muxVideoId)
+      const muxThumbnailBlurDataUrl =
+        muxVideoId != null && playbackId != null
+          ? await getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+              prisma,
+              muxVideoId,
+              playbackId,
+            })
+          : null
+      const imageMetadata = pickImageMetadata(row.images)
+      const imageBlurDataUrl =
+        imageMetadata.imageBlurDataUrl ??
+        (imageMetadata.imageId != null && imageMetadata.imageUrl != null
+          ? await getOrScheduleVideoImageBlurDataUrl({
+              prisma,
+              imageId: imageMetadata.imageId,
+              imageUrl: imageMetadata.imageUrl,
+            })
+          : null)
+      hydration.set(row.id, {
+        snippet: pickLocalizedSnippet(row.locales),
+        imageUrl: imageMetadata.imageUrl,
+        imageBlurDataUrl,
+        playbackId,
+        muxThumbnailBlurDataUrl,
+        label: row.label,
+        durationSeconds: durationDub?.duration ?? null,
+        childCount: row.childCount,
+      })
+    }),
+  )
 
   return results.map((r) => {
     if (r.type !== "video") return r
@@ -762,7 +807,11 @@ async function hydrateCardDisplayFields(
       ...r,
       snippet: h.snippet ?? r.snippet,
       imageUrl: nonEmptyString(r.imageUrl) ?? h.imageUrl,
+      imageBlurDataUrl:
+        nonEmptyString(r.imageBlurDataUrl) ?? h.imageBlurDataUrl,
       playbackId: nonEmptyString(r.playbackId) ?? h.playbackId,
+      muxThumbnailBlurDataUrl:
+        nonEmptyString(r.muxThumbnailBlurDataUrl) ?? h.muxThumbnailBlurDataUrl,
       label: h.label,
       durationSeconds: h.durationSeconds,
       childCount: h.childCount,
@@ -782,17 +831,23 @@ function pickLocalizedSnippet(
   return nonEmptyString(locale?.description) ?? nonEmptyString(locale?.snippet)
 }
 
-function pickImageUrl(
+function pickImageMetadata(
   images:
     | readonly ({
+        id?: string | null
         mobileCinematicHigh?: string | null
         mobileCinematicLow?: string | null
         videoStill?: string | null
         thumbnail?: string | null
         url?: string | null
+        blurDataUrl?: string | null
       } | null)[]
     | undefined,
-): string | null {
+): {
+  imageId: string | null
+  imageUrl: string | null
+  imageBlurDataUrl: string | null
+} {
   const priorities = [
     "mobileCinematicHigh",
     "mobileCinematicLow",
@@ -804,10 +859,16 @@ function pickImageUrl(
   for (const field of priorities) {
     for (const image of images ?? []) {
       const value = nonEmptyString(image?.[field])
-      if (value != null) return value
+      if (value != null) {
+        return {
+          imageId: nonEmptyString(image?.id),
+          imageUrl: value,
+          imageBlurDataUrl: nonEmptyString(image?.blurDataUrl),
+        }
+      }
     }
   }
-  return null
+  return { imageId: null, imageUrl: null, imageBlurDataUrl: null }
 }
 
 function nonEmptyString(value: unknown): string | null {

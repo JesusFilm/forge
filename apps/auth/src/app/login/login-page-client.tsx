@@ -125,6 +125,15 @@ export function LoginPageClient({
     setError(null)
     setIsSubmitting(true)
 
+    if (flow === "signup") {
+      setStep("password")
+      window.requestAnimationFrame(() => {
+        formRef.current?.querySelector<HTMLInputElement>("#password")?.focus()
+      })
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       const res = await fetch("/api/auth/login-method", {
         method: "POST",
@@ -318,7 +327,11 @@ export function LoginPageClient({
 
             <form
               ref={formRef}
-              action="/api/auth/sign-in/email"
+              action={
+                flow === "signup"
+                  ? "/api/auth/sign-up/email"
+                  : "/api/auth/sign-in/email"
+              }
               method="post"
               onSubmit={handleSubmit}
             >
@@ -361,7 +374,9 @@ export function LoginPageClient({
                     id="password"
                     name="password"
                     type="password"
-                    autoComplete="current-password"
+                    autoComplete={
+                      flow === "signup" ? "new-password" : "current-password"
+                    }
                     className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
                     required
                   />
@@ -388,7 +403,11 @@ export function LoginPageClient({
                 type="submit"
               >
                 <span className="min-w-0">
-                  {step === "password" ? "Log in" : "Continue"}
+                  {step === "password"
+                    ? flow === "signup"
+                      ? "Sign up"
+                      : "Log in"
+                    : "Continue"}
                 </span>
                 {isBusy ? (
                   <span

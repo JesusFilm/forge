@@ -41,6 +41,7 @@ import {
 // only; the type for the action shape itself lives in search.ts.
 
 const DEFAULT_SEARCH_MODE = "hybrid"
+const DEFAULT_SEMANTIC_CONTENT_TYPE: SearchContentType = "video"
 
 export async function runSearch(input: {
   analytics?: WatchSearchAnalyticsInput
@@ -94,11 +95,12 @@ export async function runSearch(input: {
     if (!flagEnabled || type != null) {
       attemptedResultSource = "semantic"
       try {
+        const contentType = type ?? DEFAULT_SEMANTIC_CONTENT_TYPE
         const response = await searchVideos(
           truncatedQuery,
           limit,
           offset,
-          type,
+          contentType,
           resolvedLanguage.locale,
         )
         const result: SearchActionResult = {

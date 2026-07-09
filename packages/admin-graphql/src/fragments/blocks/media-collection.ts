@@ -25,16 +25,23 @@ export const adminMediaCollectionFragment = adminGraphql(`
     backgroundColor
     items {
       videoId
+      coreId
       videoSlug
       muxPlaybackId
+      videoImageBlurDataUrl
+      videoImageDominantColor
       titleOverride
       subtitleOverride
       labelOverride
       collectionSize
       imageUrl
       imageAssetId
+      imageBlurDataUrl
+      imageDominantColor
       imageOverrideUrl
       imageOverrideAssetId
+      imageOverrideBlurDataUrl
+      imageOverrideDominantColor
       linkToSectionKey
     }
   }

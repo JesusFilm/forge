@@ -22,7 +22,9 @@ import { isEditorOrAdmin } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import {
   getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxDominantColor,
   getOrScheduleWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
 import { ForbiddenError } from "./errors"
 
@@ -193,6 +195,7 @@ export type WatchRouteSnapshotImage = {
   thumbnail: string | null
   mobileCinematicHigh: string | null
   mobileCinematicLow: string | null
+  dominantColor: string | null
 }
 
 export type WatchRouteSnapshotLanguage = {
@@ -222,7 +225,9 @@ export type WatchRouteSnapshotChild = {
   durationSeconds: number | null
   muxPlaybackId: string | null
   muxThumbnailBlurDataUrl: string | null
+  muxThumbnailDominantColor: string | null
   muxHeroPosterBlurDataUrl: string | null
+  muxHeroPosterDominantColor: string | null
 }
 
 export type WatchRouteSnapshotChildRelation = {
@@ -276,6 +281,7 @@ export type WatchRouteSnapshotPreferredVariant = {
   duration: number | null
   language: WatchRouteSnapshotLanguage | null
   muxHeroPosterBlurDataUrl: string | null
+  muxHeroPosterDominantColor: string | null
 }
 
 export type WatchRouteSnapshot = {
@@ -669,7 +675,7 @@ function videoSearchWhere(rawSearch: string | null | undefined) {
               { mobileCinematicVeryLow: text },
               { thumbnail: text },
               { videoStill: text },
-              { blurhash: text },
+              { blurDataUrl: text },
               { kind: text },
               ...(sourceMatches ? [{ source: sourceMatches }] : []),
               ...(integer === null
@@ -869,6 +875,7 @@ function imageRowsForSnapshot(
     thumbnail: string | null
     mobileCinematicHigh: string | null
     mobileCinematicLow: string | null
+    dominantColor: string | null
   }>,
   videoId: string,
 ): WatchRouteSnapshotImage[] {
@@ -880,6 +887,7 @@ function imageRowsForSnapshot(
       thumbnail: row.thumbnail,
       mobileCinematicHigh: row.mobileCinematicHigh,
       mobileCinematicLow: row.mobileCinematicLow,
+      dominantColor: row.dominantColor,
     }))
 }
 
@@ -1392,6 +1400,7 @@ export class VideoService {
           thumbnail: true,
           mobileCinematicHigh: true,
           mobileCinematicLow: true,
+          dominantColor: true,
         },
       }),
       this.prisma.videoLocale.findMany({
@@ -1515,13 +1524,25 @@ export class VideoService {
       }
     }
     const blurDataUrlByVideoId = new Map<string, string | null>()
+    const dominantColorByVideoId = new Map<string, string | null>()
     const heroBlurDataUrlByVideoId = new Map<string, string | null>()
+    const heroDominantColorByVideoId = new Map<string, string | null>()
     await Promise.all(
       Array.from(muxByVideoId.entries()).map(([videoId, muxRow]) =>
         (async () => {
           if (!muxRow.muxVideoId || !muxRow.playbackId) return
-          const [blurDataUrl, heroBlurDataUrl] = await Promise.all([
+          const [
+            blurDataUrl,
+            dominantColor,
+            heroBlurDataUrl,
+            heroDominantColor,
+          ] = await Promise.all([
             getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
+            getOrScheduleWatchChapterCarouselMuxDominantColor({
               prisma: this.prisma,
               muxVideoId: muxRow.muxVideoId,
               playbackId: muxRow.playbackId,
@@ -1531,9 +1552,16 @@ export class VideoService {
               muxVideoId: muxRow.muxVideoId,
               playbackId: muxRow.playbackId,
             }),
+            getOrScheduleWatchHeroPosterMuxDominantColor({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
           ])
           blurDataUrlByVideoId.set(videoId, blurDataUrl)
+          dominantColorByVideoId.set(videoId, dominantColor)
           heroBlurDataUrlByVideoId.set(videoId, heroBlurDataUrl)
+          heroDominantColorByVideoId.set(videoId, heroDominantColor)
         })(),
       ),
     )
@@ -1560,8 +1588,11 @@ export class VideoService {
           : null,
         muxPlaybackId: playbackId,
         muxThumbnailBlurDataUrl: blurDataUrlByVideoId.get(child.id) ?? null,
+        muxThumbnailDominantColor: dominantColorByVideoId.get(child.id) ?? null,
         muxHeroPosterBlurDataUrl:
           heroBlurDataUrlByVideoId.get(child.id) ?? null,
+        muxHeroPosterDominantColor:
+          heroDominantColorByVideoId.get(child.id) ?? null,
       }
     }
 
@@ -1619,6 +1650,14 @@ export class VideoService {
     const preferredVariantHeroBlurDataUrl =
       preferredVariantMux?.muxVideoId && preferredVariantMux.playbackId
         ? await getOrScheduleWatchHeroPosterMuxBlurDataUrl({
+            prisma: this.prisma,
+            muxVideoId: preferredVariantMux.muxVideoId,
+            playbackId: preferredVariantMux.playbackId,
+          })
+        : null
+    const preferredVariantHeroDominantColor =
+      preferredVariantMux?.muxVideoId && preferredVariantMux.playbackId
+        ? await getOrScheduleWatchHeroPosterMuxDominantColor({
             prisma: this.prisma,
             muxVideoId: preferredVariantMux.muxVideoId,
             playbackId: preferredVariantMux.playbackId,
@@ -1685,6 +1724,7 @@ export class VideoService {
             duration: preferredVariant.duration,
             language: preferredVariantLanguage,
             muxHeroPosterBlurDataUrl: preferredVariantHeroBlurDataUrl,
+            muxHeroPosterDominantColor: preferredVariantHeroDominantColor,
           }
         : null,
     }

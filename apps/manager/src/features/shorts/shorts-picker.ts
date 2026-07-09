@@ -1,6 +1,7 @@
 export type PickerVideo = {
   id: string
   title: string
+  slug: string | null
   imageUrl: string | null
   label: string
 }
@@ -8,6 +9,7 @@ export type PickerVideo = {
 export type VideosApiItem = {
   id: string
   title: string
+  slug?: string | null
   imageUrl: string | null
   label: string
 }
@@ -29,6 +31,7 @@ export function flattenPickerVideos(payload: VideosApiResponse): PickerVideo[] {
     byId.set(item.id, {
       id: item.id,
       title: item.title,
+      slug: item.slug ?? null,
       imageUrl: item.imageUrl,
       label: item.label,
     })

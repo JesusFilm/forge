@@ -41,6 +41,8 @@ describe("transformAlgoliaVideoHits", () => {
         title: "Jesús",
         snippet: "A feature film about Jesus.",
         imageUrl: "https://example.com/image.jpg",
+        imageBlurDataUrl: null,
+        muxThumbnailBlurDataUrl: null,
         startSeconds: null,
         playbackId: null,
         score: 0,

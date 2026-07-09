@@ -138,6 +138,8 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     metaLabel: "2:03",
     href: "/jesus.html/english.html",
     imageUrl: "https://cdn.example/jesus.jpg",
+    blurDataUrl: null,
+    dominantColor: null,
     imageAlt: "Jesus still",
     hls: "https://stream.example/jesus.m3u8",
     playbackId: "mux-1",
@@ -336,6 +338,33 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-card-text-gradient"]'),
     ).not.toBeNull()
+    act(() => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            sections: [
+              {
+                id: "dominant-color-section",
+                eyebrow: "Featured",
+                title: "Dominant Color",
+                description: null,
+                layout: "grid",
+                orientation: "horizontal",
+                showSequenceNumbers: false,
+                cards: [makeCard({ dominantColor: "#123456" })],
+              },
+            ],
+          })}
+        />,
+      )
+    })
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          '[data-testid="watch-home-card-text-gradient"]',
+        ),
+      ).some((element) => element.style.background.includes("rgb(18,52,86)")),
+    ).toBe(true)
     expect(container.textContent).toContain("2:03")
     const textureClassNames = Array.from(
       container.querySelectorAll("[class*='overlay.svg']"),
@@ -494,7 +523,6 @@ describe("WatchHomePage", () => {
         new MouseEvent("pointerover", { bubbles: true }),
       )
     })
-
     const johnBackdrop = findHoverBackdrop()
     expect(johnBackdrop?.getAttribute("class")).toContain(
       "watch-home-section-backdrop-enter",
@@ -509,7 +537,6 @@ describe("WatchHomePage", () => {
     await act(async () => {
       firstCard?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
     })
-
     const jesusBackdrop = findHoverBackdrop()
     expect(jesusBackdrop).not.toBe(johnBackdrop)
     expect(jesusBackdrop?.style.backgroundImage).toContain(
@@ -526,7 +553,6 @@ describe("WatchHomePage", () => {
     await act(async () => {
       thirdCard?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }))
     })
-
     const lukeBackdrop = findHoverBackdrop()
     expect(lukeBackdrop).not.toBe(jesusBackdrop)
     expect(lukeBackdrop?.style.backgroundImage).toContain(

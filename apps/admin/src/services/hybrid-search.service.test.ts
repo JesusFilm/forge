@@ -770,12 +770,14 @@ describe("HybridSearchService", () => {
       ])
       hydrationRawRows.images = [
         {
+          id: "image-transcript",
           videoId: "vid-transcript",
           mobileCinematicHigh: "https://cdn.example/cover-high.jpg",
           mobileCinematicLow: null,
           videoStill: null,
           url: null,
           thumbnail: null,
+          blurDataUrl: "data:image/jpeg;base64,LQIP==",
         },
       ]
       hydrationRawRows.dubs = [
@@ -802,6 +804,7 @@ describe("HybridSearchService", () => {
         id: "vid-transcript",
         snippet: "A concise public description of the video.",
         imageUrl: "https://cdn.example/cover-high.jpg",
+        imageBlurDataUrl: "data:image/jpeg;base64,LQIP==",
         playbackId: "mux-hydrated",
         label: "EPISODE",
         durationSeconds: 70,

@@ -19,6 +19,8 @@ export const watchHomeVideoFragment = adminGraphql(`
       mobileCinematicHigh
       mobileCinematicLow
       videoStill
+      blurDataUrl
+      dominantColor
     }
     locales(locale: $locale, languageSlug: $languageSlug) {
       documentId: id
@@ -68,6 +70,8 @@ export const watchHomeVideoFragment = adminGraphql(`
           mobileCinematicHigh
           mobileCinematicLow
           videoStill
+          blurDataUrl
+          dominantColor
         }
         locales(locale: $locale, languageSlug: $languageSlug) {
           documentId: id
