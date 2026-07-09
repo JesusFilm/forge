@@ -193,6 +193,8 @@ function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
 // window. The poster is already the intentional LCP surface, and user intent
 // still activates the player synchronously through the click/pointer handlers.
 const IDLE_PREVIEW_FALLBACK_DELAY_MS = 8000
+const MOBILE_VISIBLE_PREVIEW_DELAY_MS = 700
+const MOBILE_PREVIEW_MAX_WIDTH_PX = 767
 const IDLE_PREVIEW_VIEWPORT_MARGIN_PX = 200
 
 type IdleWindow = Window & {
@@ -210,6 +212,10 @@ function isHeroNearViewport(wrapper: HTMLElement, windowRef: Window): boolean {
     rect.bottom >= -IDLE_PREVIEW_VIEWPORT_MARGIN_PX &&
     rect.top <= viewportHeight + IDLE_PREVIEW_VIEWPORT_MARGIN_PX
   )
+}
+
+function shouldUseFastMobilePreview(windowRef: Window): boolean {
+  return windowRef.innerWidth <= MOBILE_PREVIEW_MAX_WIDTH_PX
 }
 
 // Fraction of the visible video that must be obscured by the body section
@@ -674,7 +680,7 @@ export function HeroPlayer({
       setPlayerActivated(true)
     }
 
-    const scheduleIdleActivation = () => {
+    const scheduleConservativeActivation = () => {
       if (cancelled || idleHandle != null || timeoutHandle != null) return
       timeoutHandle = window.setTimeout(() => {
         timeoutHandle = null
@@ -689,21 +695,40 @@ export function HeroPlayer({
       }, IDLE_PREVIEW_FALLBACK_DELAY_MS)
     }
 
-    const scheduleAfterLoad = () => {
+    const scheduleFastMobileActivation = () => {
+      if (cancelled || idleHandle != null || timeoutHandle != null) return
+      timeoutHandle = window.setTimeout(() => {
+        timeoutHandle = null
+        tryActivatePreview()
+      }, MOBILE_VISIBLE_PREVIEW_DELAY_MS)
+    }
+
+    const scheduleActivation = () => {
+      if (shouldUseFastMobilePreview(window)) {
+        scheduleFastMobileActivation()
+        return
+      }
       if (document.readyState === "complete") {
-        scheduleIdleActivation()
+        scheduleConservativeActivation()
         return
       }
       loadListenerInstalled = true
-      window.addEventListener("load", scheduleIdleActivation, { once: true })
+      window.addEventListener("load", scheduleConservativeActivation, {
+        once: true,
+      })
     }
 
     const retryIfEligible = () => {
-      if (document.readyState !== "complete") return
-      scheduleIdleActivation()
+      if (
+        !shouldUseFastMobilePreview(window) &&
+        document.readyState !== "complete"
+      ) {
+        return
+      }
+      scheduleActivation()
     }
 
-    scheduleAfterLoad()
+    scheduleActivation()
     document.addEventListener("visibilitychange", retryIfEligible)
     window.addEventListener("scroll", retryIfEligible, { passive: true })
     window.addEventListener("resize", retryIfEligible, { passive: true })
@@ -712,7 +737,7 @@ export function HeroPlayer({
       cancelled = true
       clearScheduledWork()
       if (loadListenerInstalled) {
-        window.removeEventListener("load", scheduleIdleActivation)
+        window.removeEventListener("load", scheduleConservativeActivation)
       }
       document.removeEventListener("visibilitychange", retryIfEligible)
       window.removeEventListener("scroll", retryIfEligible)

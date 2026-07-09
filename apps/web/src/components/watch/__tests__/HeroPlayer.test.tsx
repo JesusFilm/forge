@@ -322,7 +322,9 @@ function installIdleCallbackStub() {
   const originalSetTimeout = window.setTimeout
   const originalClearTimeout = window.clearTimeout
   const previewDelayTimers = new Map<number, () => void>()
+  const fastPreviewTimers = new Map<number, () => void>()
   let previewDelayTimerId = 0
+  let fastPreviewTimerId = 10_000
 
   Object.defineProperty(windowWithIdle, "requestIdleCallback", {
     configurable: true,
@@ -347,6 +349,11 @@ function installIdleCallbackStub() {
           callback(...args)
           return handle
         }
+        if (timeout === 700 && typeof callback === "function") {
+          const handle = ++fastPreviewTimerId
+          fastPreviewTimers.set(handle, () => callback(...args))
+          return handle
+        }
         return originalSetTimeout(callback, timeout, ...args)
       },
     ) as unknown as typeof window.setTimeout,
@@ -357,6 +364,9 @@ function installIdleCallbackStub() {
       if (typeof handle === "number" && previewDelayTimers.delete(handle)) {
         return
       }
+      if (typeof handle === "number" && fastPreviewTimers.delete(handle)) {
+        return
+      }
       return originalClearTimeout(handle)
     }) as typeof window.clearTimeout,
   })
@@ -364,6 +374,16 @@ function installIdleCallbackStub() {
   return {
     get pending() {
       return idleCallbacks.length
+    },
+    get pendingFastTimers() {
+      return fastPreviewTimers.size
+    },
+    runNextFastTimer: async () => {
+      const [handle, callback] = fastPreviewTimers.entries().next().value ?? []
+      if (handle != null) fastPreviewTimers.delete(handle)
+      await act(async () => {
+        callback?.()
+      })
     },
     runNext: async () => {
       const callback = idleCallbacks.shift()
@@ -813,6 +833,78 @@ describe("HeroPlayer — initial mount", () => {
     })
     expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
+  })
+
+  it("mounts the visible mobile muted preview after the short mobile timer", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      expect(muxVideoMock).not.toHaveBeenCalled()
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(1)
+
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      idle.restore()
+    }
+  })
+
+  it("defers the fast mobile muted preview while the document is hidden", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    const originalVisibility = document.visibilityState
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).not.toHaveBeenCalled()
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "visible",
+      })
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      expect(idle.pendingFastTimers).toBe(1)
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => originalVisibility,
+      })
+      idle.restore()
+    }
   })
 
   it("defers idle muted activation while the document is hidden", async () => {
