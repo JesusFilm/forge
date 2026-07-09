@@ -46,6 +46,9 @@ export function parseArgs(
   }
 
   const rawLimit = valueFor("limit")
+  if (rawLimit != null && !/^\d+$/.test(rawLimit)) {
+    throw new Error("--limit must be a positive integer")
+  }
   const limit = rawLimit == null ? DEFAULT_LIMIT : Number.parseInt(rawLimit, 10)
   if (!Number.isFinite(limit) || limit <= 0) {
     throw new Error("--limit must be a positive integer")
@@ -147,16 +150,32 @@ export async function runBackfill(
         continue
       }
 
+      let count: number
       if (target.source === "video-image") {
-        await prisma.videoImage.update({
-          where: { id: target.id },
+        const update = await prisma.videoImage.updateMany({
+          where: {
+            id: target.id,
+            dominantColor: null,
+            blurDataUrl: target.blurDataUrl,
+          },
           data: { dominantColor },
         })
+        count = update.count
       } else {
-        await prisma.muxImageDerivative.update({
-          where: { id: target.id },
+        const update = await prisma.muxImageDerivative.updateMany({
+          where: {
+            id: target.id,
+            dominantColor: null,
+            blurDataUrl: target.blurDataUrl,
+          },
           data: { dominantColor },
         })
+        count = update.count
+      }
+
+      if (count === 0) {
+        result.skipped += 1
+        continue
       }
       result.updated += 1
     } catch (error) {

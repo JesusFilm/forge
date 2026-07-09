@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import type { PrismaClient } from "@prisma/client"
-import { generateDominantColor } from "./image-metadata.service"
+import { generateDominantColorStrict } from "./image-metadata.service"
 
 const FETCH_TIMEOUT_MS = 3000
 const MAX_BLUR_BYTES = 64 * 1024
@@ -27,9 +27,14 @@ export async function getOrScheduleVideoImageBlurDataUrl({
 }): Promise<string | null> {
   const existing = await prisma.videoImage.findUnique({
     where: { id: imageId },
-    select: { blurDataUrl: true },
+    select: { blurDataUrl: true, dominantColor: true },
   })
-  if (existing?.blurDataUrl) return existing.blurDataUrl
+  if (existing?.blurDataUrl) {
+    if (!existing.dominantColor) {
+      scheduleVideoImageBlurDataUrlGeneration({ imageId, imageUrl, prisma })
+    }
+    return existing.blurDataUrl
+  }
 
   scheduleVideoImageBlurDataUrlGeneration({ imageId, imageUrl, prisma })
   return null
@@ -46,9 +51,11 @@ export async function getOrCreateVideoImageBlurDataUrl({
 }): Promise<string | null> {
   const existing = await prisma.videoImage.findUnique({
     where: { id: imageId },
-    select: { blurDataUrl: true },
+    select: { blurDataUrl: true, dominantColor: true },
   })
-  if (existing?.blurDataUrl) return existing.blurDataUrl
+  if (existing?.blurDataUrl && existing.dominantColor) {
+    return existing.blurDataUrl
+  }
 
   return generateAndStoreVideoImageBlurDataUrl({ imageId, imageUrl, prisma })
 }
@@ -147,7 +154,10 @@ async function fetchImageMetadata(
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const response = await fetch(url, { signal: controller.signal })
+    const response = await fetch(url, {
+      signal: controller.signal,
+      redirect: "error",
+    })
     if (!response.ok) return null
 
     const contentType = response.headers.get("content-type") ?? "image/jpeg"
@@ -156,19 +166,53 @@ async function fetchImageMetadata(
     const contentLength = Number(response.headers.get("content-length") ?? 0)
     if (contentLength > MAX_BLUR_BYTES) return null
 
-    const buffer = Buffer.from(await response.arrayBuffer())
-    if (buffer.byteLength === 0 || buffer.byteLength > MAX_BLUR_BYTES) {
-      return null
-    }
+    const buffer = await readCappedResponseBytes(response, MAX_BLUR_BYTES)
+    if (!buffer) return null
+
     return {
       dataUrl: `data:${contentType};base64,${buffer.toString("base64")}`,
-      dominantColor: await generateDominantColor(buffer),
+      dominantColor: await generateDominantColorStrict(buffer),
     }
   } catch {
     return null
   } finally {
     clearTimeout(timeout)
   }
+}
+
+async function readCappedResponseBytes(
+  response: Response,
+  maxBytes: number,
+): Promise<Buffer | null> {
+  if (!response.body) {
+    const buffer = Buffer.from(await response.arrayBuffer())
+    if (buffer.byteLength === 0 || buffer.byteLength > maxBytes) return null
+    return buffer
+  }
+
+  const reader = response.body.getReader()
+  const chunks: Buffer[] = []
+  let totalBytes = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+
+      totalBytes += value.byteLength
+      if (totalBytes > maxBytes) {
+        await reader.cancel()
+        return null
+      }
+      chunks.push(Buffer.from(value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  if (totalBytes === 0) return null
+  return Buffer.concat(chunks, totalBytes)
 }
 
 export function isPublicHttpsImageUrl(value: string): boolean {

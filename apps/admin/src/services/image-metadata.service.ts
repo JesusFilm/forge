@@ -134,27 +134,36 @@ function rgbHex(red: number, green: number, blue: number) {
   return `#${hexByte(red)}${hexByte(green)}${hexByte(blue)}`
 }
 
+async function decodeDominantColor(bytes: Uint8Array): Promise<string> {
+  const { data } = await sharp(Buffer.from(bytes), { animated: false })
+    .rotate()
+    .flatten({ background: DEFAULT_DOMINANT_COLOR })
+    .resize(1, 1, { fit: "fill" })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+
+  if (data.length >= 3) {
+    return rgbHex(data[0] ?? 0, data[1] ?? 0, data[2] ?? 0)
+  }
+
+  return DEFAULT_DOMINANT_COLOR
+}
+
 export async function generateDominantColor(
   bytes: Uint8Array,
 ): Promise<string> {
   try {
-    const { data } = await sharp(Buffer.from(bytes), { animated: false })
-      .rotate()
-      .flatten({ background: DEFAULT_DOMINANT_COLOR })
-      .resize(1, 1, { fit: "fill" })
-      .removeAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true })
-
-    if (data.length >= 3) {
-      return rgbHex(data[0] ?? 0, data[1] ?? 0, data[2] ?? 0)
-    }
+    return await decodeDominantColor(bytes)
   } catch {
-    // Dimension extraction below reports the real decode failure. Dominant
-    // color is enhancement metadata, so keep a stable UI fallback.
+    return DEFAULT_DOMINANT_COLOR
   }
+}
 
-  return DEFAULT_DOMINANT_COLOR
+export async function generateDominantColorStrict(
+  bytes: Uint8Array,
+): Promise<string> {
+  return decodeDominantColor(bytes)
 }
 
 async function blurDataUrl(bytes: Uint8Array) {
