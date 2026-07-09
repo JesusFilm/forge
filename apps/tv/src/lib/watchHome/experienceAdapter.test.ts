@@ -1,6 +1,7 @@
 import { isSeriesSearchResult } from "../isSeriesRecord"
 import {
   buildWatchHomeSectionsFromExperience,
+  experienceItemCoreIds,
   mapVariant,
   resolveWatchHomeModel,
 } from "./experienceAdapter"
@@ -247,6 +248,28 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
   it("returns no sections for null / empty blocks", () => {
     expect(buildWatchHomeSectionsFromExperience(null, HYDRATED)).toEqual([])
     expect(buildWatchHomeSectionsFromExperience([], HYDRATED)).toEqual([])
+  })
+})
+
+describe("experienceItemCoreIds (KTD3 divergence input, KTD10)", () => {
+  it("collects unique, valid coreIds across MediaCollection blocks only", () => {
+    const ids = experienceItemCoreIds([
+      mediaBlock({
+        items: [{ coreId: "a" }, { coreId: "b" }, { coreId: "a" }],
+      }),
+      mediaBlock({ items: [{ coreId: "b" }, { coreId: "c" }] }),
+      { __typename: "SectionBlock", items: [{ coreId: "ignored" }] },
+    ])
+    expect(ids.sort()).toEqual(["a", "b", "c"])
+  })
+
+  it("drops KTD10-unsafe ids before they reach the top-up union", () => {
+    const ids = experienceItemCoreIds([
+      mediaBlock({
+        items: [{ coreId: "ok_id" }, { coreId: "bad/id" }, { coreId: null }],
+      }),
+    ])
+    expect(ids).toEqual(["ok_id"])
   })
 })
 

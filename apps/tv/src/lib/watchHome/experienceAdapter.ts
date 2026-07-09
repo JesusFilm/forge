@@ -8,6 +8,7 @@
 // ("N episodes" / duration) and series-vs-single routing is precise (R3, R5).
 
 import { ENGLISH_LANGUAGE_SLUG } from "./config"
+import type { WatchHomeFallbackReason } from "./logWatchHomeFallback"
 import {
   normalizeCard,
   type WatchHomeCard,
@@ -141,6 +142,24 @@ export function buildWatchHomeSectionsFromExperience(
 }
 
 /**
+ * The unique, validated coreIds referenced by the Experience's MediaCollection
+ * items — the input to KTD3's divergence check (`these − the hydration index`).
+ * Dedupes and drops KTD10-unsafe ids before they reach the top-up union.
+ */
+export function experienceItemCoreIds(
+  blocks: readonly ExperienceBlock[] | null | undefined,
+): string[] {
+  const ids: string[] = []
+  ;(blocks ?? []).forEach((block) => {
+    if (block.__typename !== "MediaCollectionBlock") return
+    for (const item of (block as MediaCollectionBlockLike).items ?? []) {
+      if (isValidCoreId(item.coreId)) ids.push(item.coreId)
+    }
+  })
+  return [...new Set(ids)]
+}
+
+/**
  * Choose the Home body: the Experience wins when it yields >=1 renderable rail,
  * overriding ONLY `sections` so the featured banner stays config-sourced (R7).
  * Zero rails → the config model unchanged, so the code-curated rows render (R8).
@@ -156,4 +175,78 @@ export function resolveWatchHomeModel(args: {
     }
   }
   return { model: args.configModel, usedExperience: false }
+}
+
+// How the primary config-pool videos fetch resolved. A non-ok primary can't
+// hydrate anything (hero or fallback rows), so it routes to the retry state.
+export type PrimaryVideosState =
+  | { kind: "ok"; configModel: WatchHomeModel }
+  | { kind: "rejected" } // fetch threw → retry-with-focus (R10/AE10)
+  | { kind: "empty-over-snapshot" } // empty-but-successful over good content → retry
+
+// How the watchSetting Experience fetch resolved: live blocks, fulfilled-but-absent
+// (null homepage), or rejected (threw / timed out).
+export type ExperienceOutcomeKind = "present" | "absent" | "error"
+
+export type WatchHomeReconcileInput = {
+  primary: PrimaryVideosState
+  experienceSections: WatchHomeSection[]
+  experienceOutcome: ExperienceOutcomeKind
+  // The blocks that produced experienceSections (live, or the reused last-good) —
+  // stored as the next last-good when the Experience is used.
+  experienceBlocks: readonly ExperienceBlock[] | null
+  topUpFailed: boolean
+}
+
+export type WatchHomeReconcileOutput =
+  | { kind: "error" }
+  | {
+      kind: "model"
+      model: WatchHomeModel
+      usedExperience: boolean
+      // The fallback reasons to emit (0..2): a config fallback OR error-recovered,
+      // plus topup-error when a divergent top-up was dropped.
+      logs: WatchHomeFallbackReason[]
+      // The blocks to remember as last-good, or undefined to leave it unchanged.
+      nextLastGoodBlocks: readonly ExperienceBlock[] | null | undefined
+    }
+
+/**
+ * The R8/R9/R10 resilience state machine as a pure function (the hook owns only the
+ * impure fetch + setState around it). Decides the Home body and which fallback
+ * reasons to log:
+ *  - primary not ok → retry-error (nothing can hydrate).
+ *  - Experience yields >=1 rail → use it; if that came from a reused last-good over
+ *    a live error, log `error-recovered`.
+ *  - zero rails → config rows, log `error` (rejected) / `null` (absent) / `empty`
+ *    (present-but-empty).
+ *  - a dropped top-up additionally logs `topup-error` (config-pool rows still render).
+ */
+export function reconcileWatchHome(
+  input: WatchHomeReconcileInput,
+): WatchHomeReconcileOutput {
+  if (input.primary.kind !== "ok") return { kind: "error" }
+
+  const { model, usedExperience } = resolveWatchHomeModel({
+    configModel: input.primary.configModel,
+    experienceSections: input.experienceSections,
+  })
+
+  const logs: WatchHomeFallbackReason[] = []
+  let nextLastGoodBlocks: readonly ExperienceBlock[] | null | undefined
+  if (usedExperience) {
+    nextLastGoodBlocks = input.experienceBlocks
+    if (input.experienceOutcome === "error") logs.push("error-recovered")
+  } else {
+    logs.push(
+      input.experienceOutcome === "error"
+        ? "error"
+        : input.experienceOutcome === "absent"
+          ? "null"
+          : "empty",
+    )
+  }
+  if (input.topUpFailed) logs.push("topup-error")
+
+  return { kind: "model", model, usedExperience, logs, nextLastGoodBlocks }
 }
