@@ -205,7 +205,11 @@ describe("POST /api/shorts/jobs", () => {
     lookupVideosMock.mockResolvedValue({ ok: true, data: new Map() })
 
     const response = await POST(
-      postRequest({ coreId: "1_jf-0-0", clip: validClip }),
+      postRequest({
+        coreId: "1_jf-0-0",
+        sourceSlug: "jesus-film",
+        clip: validClip,
+      }),
     )
     expect(response.status).toBe(404)
     await expect(response.json()).resolves.toMatchObject({
@@ -343,7 +347,11 @@ describe("POST /api/shorts/jobs", () => {
 
   it("creates a coreId job with resolved language, title, and minted assetId", async () => {
     const response = await POST(
-      postRequest({ coreId: "1_jf-0-0", clip: validClip }),
+      postRequest({
+        coreId: "1_jf-0-0",
+        sourceSlug: "jesus-film",
+        clip: validClip,
+      }),
     )
     expect(response.status).toBe(201)
     await expect(response.json()).resolves.toMatchObject({
@@ -355,12 +363,14 @@ describe("POST /api/shorts/jobs", () => {
       "pbpublic",
       [],
       expect.objectContaining({
+        sourceMediaTitle: "JESUS",
         jobOptions: {
           shorts: expect.objectContaining({
             assetId: expect.stringMatching(/^mux-1-short-[0-9a-f]{8}$/),
             sourceMuxAssetId: "mux-1",
             sourcePlaybackId: "pbpublic",
             sourceCoreId: "1_jf-0-0",
+            sourceSlug: "jesus-film",
             sourceTitle: "JESUS",
             clip: { startSec: 10, endSec: 40 },
             language: { bcp47: "pt-BR", whisper: "pt" },
