@@ -16,18 +16,6 @@ const nextConfig: NextConfig = {
   // (its `exports` point at `./src/index.ts`); Next must transpile it as
   // first-party code rather than treat it as a prebuilt node_modules dep.
   transpilePackages: ["@forge/experience-schema"],
-  webpack(config, { nextRuntime, webpack }) {
-    if (nextRuntime === "edge") {
-      config.plugins.push(
-        new webpack.NormalModuleReplacementPlugin(
-          /^\.\/instrumentation-workflow$/,
-          require.resolve("./src/instrumentation-workflow-edge-stub.ts"),
-        ),
-      )
-    }
-
-    return config
-  },
 }
 
 // withWorkflow enables `"use workflow"` / `"use step"` directives.
