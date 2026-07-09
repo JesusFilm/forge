@@ -28,7 +28,20 @@ replay routes, a chat-side proxy, and sidebar hydration.
 continuity cookie is a long-lived bearer token that must never become a
 history-reading credential; anonymous conversations stay ephemeral (lost on
 refresh) deliberately — that ephemerality is a privacy feature for this
-product, and the sidebar's signed-out state becomes the sign-in incentive.
+product.
+
+**And for the dogfood phase, history additionally rides the seeker gate**
+(decided 2026-07-09): the history proxy routes deny unless
+`resolveSeekerGate` returns a full grant — the same `SEEKER_ALLOWED_EMAILS`
+layer that fronts `/api/seeker`. Rationale: server-side threads are only ever
+created by the Seeker path, which only allowlisted users reach, so the gate
+excludes zero legitimate users while shrinking the audience of this new
+surface from "any signed-in account" back to the dogfood roster — which
+matters since apps/auth enabled public signup (PR #1504, 2026-07-09: anyone
+can now create an account, though the seeker gate still stands in front of
+the paid path). The gate layer is phase-scoped scaffolding and comes off in
+feat-236 with the rest of the dogfood gate; signed-in + fresh lease +
+server-side resource scoping are the permanent design.
 
 ## Entry Points — Read These First
 
@@ -44,11 +57,14 @@ product, and the sidebar's signed-out state becomes the sign-in incentive.
 4. `apps/chat/src/app/api/seeker/route.ts` — the existing proxy shape (bearer
    held server-side, SSRF/https guard, timeout-bounded, plain-string logs);
    the history proxy routes follow it.
-5. `apps/chat/src/lib/use-conversations.ts` — the client hook to hydrate
+5. `apps/chat/src/lib/seeker-gate.ts` + `apps/chat/src/app/api/seeker/route.gate-wiring.test.ts`
+   — the gate helper the history routes must call, and the test pattern for
+   proving the deny path is wired.
+6. `apps/chat/src/lib/use-conversations.ts` — the client hook to hydrate
    (list on load, lazy replay on select, merge with in-session sends).
-6. `apps/chat/src/components/shell/sidebar-conversation-list.tsx` — the
+7. `apps/chat/src/components/shell/sidebar-conversation-list.tsx` — the
    sidebar surface to feed from server history.
-7. `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md` — §C/§D/§G
+8. `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md` — §C/§D/§G
    (ownership gate, resource keying, recorded preconditions).
 
 ## Grep These
@@ -75,7 +91,9 @@ product, and the sidebar's signed-out state becomes the sign-in incentive.
    never silent adoption.
 3. **Chat proxy routes**: resolve the resource server-side from the session
    (the client never names a resource), require a fresh feat-240 lease before
-   forwarding any history read, hold the Mastra bearer server-side.
+   forwarding any history read, hold the Mastra bearer server-side — and deny
+   unless `resolveSeekerGate` returns a full grant (the dogfood-phase layer;
+   same helper and deny pattern as `/api/seeker`, re-resolved per request).
 4. **Hook hydration** in `use-conversations.ts`: fetch the thread list on load
    when signed in; lazy-load messages on select; merge in-session sends with
    server history without breaking the per-conversation pending/abort
@@ -84,9 +102,11 @@ product, and the sidebar's signed-out state becomes the sign-in incentive.
    (mirroring `deriveTitle`) at thread creation, or enable Mastra's title
    generation. Decide in the plan; either way the listing route returns a
    displayable title.
-6. **Sidebar states**: loading / empty / error for the server list; the
-   signed-out sidebar gains a "Sign in to save your conversations" nudge;
-   anonymous in-session behavior is otherwise unchanged.
+6. **Sidebar states**: loading / empty / error for the server list, shown only
+   when the gate grants; gate-denied and signed-out users keep exactly today's
+   client-only sidebar. The "Sign in to save your conversations" nudge is
+   DEFERRED to feat-236 — until seeker (and so persistence) is public, the
+   nudge would be a false promise for non-allowlisted users.
 
 ## Constraints
 
@@ -101,11 +121,23 @@ product, and the sidebar's signed-out state becomes the sign-in incentive.
 - Anonymous→account thread migration stays out of scope (feat-208 accepted
   limitation).
 - No changes to `apps/auth`.
+- **The seeker-gate layer on history routes is scaffolding, not the design.**
+  It sits IN ADDITION to (never instead of) signed-in + fresh lease +
+  server-side resource scoping, and it comes off in feat-236. The
+  implementation PR must update feat-236's removal recipe with the new
+  `resolveSeekerGate` call sites it adds (the recipe's greps are its source
+  of truth — keep them true).
+- No day-one rate cap on the history routes: with the gate in front, the
+  audience is the dogfood roster. The cap is feat-236's step-0 precondition
+  and lands before the gate comes off.
 
 ## Verification
 
-- A signed-in user sees only threads whose resource is their own
+- A signed-in allowlisted user sees only threads whose resource is their own
   `user:<sub>`; the dogfood fallback resource never appears.
+- A signed-in but non-allowlisted user receives no history (gate denied
+  server-side in the proxy routes; the sidebar falls back to client-only
+  behavior).
 - An anonymous session receives no history (listing refused server-side, not
   just unrendered).
 - A replay request for another identity's thread returns `thread_forbidden`.
