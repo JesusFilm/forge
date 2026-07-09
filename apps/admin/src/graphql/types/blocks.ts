@@ -296,6 +296,19 @@ const MediaCollectionItemRef = builder.objectRef<MediaCollectionItem>(
 MediaCollectionItemRef.implement({
   description: "Single entry in MediaCollectionBlock.items.",
   fields: (t) => ({
+    coreId: t.string({
+      nullable: true,
+      description:
+        "The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.",
+      resolve: async (row, _args, ctx) => {
+        const videoId = optionalString(row.videoId)
+        if (!videoId) return null
+
+        const video = await ctx.loaders.videoById.load(videoId)
+        if (video?.deletedAt) return null
+        return video?.coreId ?? null
+      },
+    }),
     videoId: t.exposeString("videoId", { nullable: true }),
     videoSlug: t.string({
       nullable: true,
@@ -308,17 +321,6 @@ MediaCollectionItemRef.implement({
         const video = await ctx.loaders.videoById.load(videoId)
         if (video?.deletedAt) return null
         return video?.slug ?? optionalString(row.videoSlug)
-      },
-    }),
-    coreId: t.string({
-      nullable: true,
-      description:
-        "The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.",
-      resolve: async (row, _args, ctx) => {
-        const videoId = optionalString(row.videoId)
-        if (!videoId) return null
-        const video = await ctx.loaders.videoById.load(videoId)
-        return video?.coreId ?? null
       },
     }),
     muxPlaybackId: t.string({
