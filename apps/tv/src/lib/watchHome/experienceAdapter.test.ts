@@ -251,6 +251,31 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
   })
 })
 
+describe("AE1/AE3 — prod-shaped Experience → 8 rails with exact meta chips", () => {
+  it("renders 8 MediaCollection rails, skipping the hero placeholder and SectionBlock", () => {
+    const blocks = [
+      { __typename: "WatchHomeHeroBlock" },
+      ...Array.from({ length: 8 }, (_, i) =>
+        mediaBlock({
+          sectionKey: `row-${i}`,
+          // Alternate a series and a single so we can assert both chip shapes.
+          items: [{ coreId: i % 2 === 0 ? "core-series" : "core-single" }],
+          mediaCollectionVariant: i === 0 ? "carousel" : "grid",
+        }),
+      ),
+      { __typename: "SectionBlock" },
+    ]
+    const sections = buildWatchHomeSectionsFromExperience(blocks, HYDRATED)
+    expect(sections).toHaveLength(8)
+    // First block is a carousel rail; the rest are grids.
+    expect(sections[0].layout).toBe("rail")
+    expect(sections[1].layout).toBe("grid")
+    // Exact meta chips: series → "N episodes", single → duration (AE3).
+    expect(sections[0].cards[0].metaLabel).toBe("2 episodes")
+    expect(sections[1].cards[0].metaLabel).toBe("1:00:00")
+  })
+})
+
 describe("experienceItemCoreIds (KTD3 divergence input, KTD10)", () => {
   it("collects unique, valid coreIds across MediaCollection blocks only", () => {
     const ids = experienceItemCoreIds([
