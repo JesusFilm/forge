@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 8, 2026)
+## Status (July 9, 2026)
 
-- **Total tickets:** 295
-- **Complete:** 208
+- **Total tickets:** 296
+- **Complete:** 209
 - **In progress:** 19
 - **Not started:** 24
 - **Blocked:** 44
@@ -81,6 +81,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-196](content-discovery/feat-196-watch-multilingual-search-behavior.md)                                   | Watch multilingual search behavior                                                              | nisal     | P1       | —     | 5    | —   | complete    |
 | [feat-198](content-discovery/feat-198-keyword-first-brand-entity-search.md)                                    | Keyword-first transcript relevance and entity search ranking                                    | nisal     | P1       | —     | 4    | —   | in-progress |
 | [feat-232](content-discovery/feat-232-yt-video-mapper-arbitrary-raw-clip-matching.md)                          | YouTube mapper arbitrary raw clip matching                                                      | nisal     | P1       | —     | 10   | —   | in-progress |
+| [feat-244](content-discovery/feat-244-search-modal-instant-shell.md)                                           | Search modal instant input shell                                                                | urim      | P1       | —     | 1    | —   | complete    |
 | [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)                                         | Video Vectorization — Visual Shot Detection Fusion                                              | nisal     | P2       | —     | 10   | —   | blocked     |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono | P2       | —     | 45   | —   | blocked     |
 | [feat-071](content-discovery/feat-071-recommendation-content-deduplication.md)                                 | Recommendation Content Deduplication                                                            | nisal     | P2       | —     | 5    | —   | complete    |

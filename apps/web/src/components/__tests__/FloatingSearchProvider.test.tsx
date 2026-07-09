@@ -5,7 +5,10 @@ import { act, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { FloatingSearchController } from "@/components/FloatingSearchController"
+import {
+  FloatingSearchController,
+  resetSearchLanguageOptionsCacheForTest,
+} from "@/components/FloatingSearchController"
 import {
   FloatingSearchProvider,
   useFloatingSearch,
@@ -77,6 +80,7 @@ let root: Root
 
 beforeEach(() => {
   vi.clearAllMocks()
+  resetSearchLanguageOptionsCacheForTest()
   navigationMocks.pathname = "/"
   setScrollY(0)
   window.history.replaceState(null, "", "/")
@@ -1640,6 +1644,108 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       document.querySelector('[aria-label="Search and browse videos"]'),
     ).toBeNull()
     expect(getSearchLanguageOptions).not.toHaveBeenCalled()
+  })
+
+  it("renders the search input shell immediately while the full controller loads", async () => {
+    type LanguageOptionsResponse = Awaited<
+      ReturnType<typeof getSearchLanguageOptions>
+    >
+    const delayedLanguageOptions = deferred<LanguageOptionsResponse>()
+    mockedGetSearchLanguageOptions.mockReturnValueOnce(
+      delayedLanguageOptions.promise,
+    )
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      searchButton.click()
+    })
+
+    expect(
+      document.querySelector('input[aria-label="Search videos by keyword"]'),
+    ).not.toBeNull()
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      delayedLanguageOptions.resolve({
+        ok: true,
+        algoliaEnabled: false,
+        options: [],
+        countrySuggestion: null,
+        recommendedLanguage: null,
+        countryCode: null,
+        countryName: null,
+      })
+      await delayedLanguageOptions.promise
+      await Promise.resolve()
+    })
+  })
+
+  it("reuses language metadata when reopening the search modal", async () => {
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      algoliaEnabled: false,
+      options: [englishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flushSearchControllerMount()
+
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
+
+    const close = document.querySelector(
+      '[data-testid="search-overlay-close"]',
+    ) as HTMLButtonElement | null
+    await act(async () => {
+      close?.click()
+      await new Promise((resolve) => setTimeout(resolve, 220))
+    })
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('input[aria-label="Search videos by keyword"]'),
+    ).not.toBeNull()
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
   })
 
   it("ignores direct query URLs on initial render", async () => {

@@ -19,6 +19,7 @@ import { useTranslations } from "next-intl"
 
 import type { FloatingSearchControllerProps } from "./FloatingSearchController"
 import { FloatingSearchBar } from "./FloatingSearchBar"
+import { SearchOverlayInstantShell } from "./SearchOverlayInstantShell"
 import {
   FloatingSearchPinnedContext,
   type FloatingSearchPinnedContextValue,
@@ -71,6 +72,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const [closing, setClosing] = useState<boolean>(false)
   const [query, setQuery] = useState<string>("")
   const [searchControllerEnabled, setSearchControllerEnabled] = useState(false)
+  const [searchControllerReady, setSearchControllerReady] = useState(false)
   const [searchResetToken, setSearchResetToken] = useState(0)
   const [pinned, setPinned] = useState<boolean>(false)
   const [playerChromeVisible, setPlayerChromeVisible] = useState(true)
@@ -126,10 +128,22 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     setOpen(true)
   }, [enableSearchController, setOpen])
 
+  const markSearchControllerReady = useCallback(() => {
+    setSearchControllerReady(true)
+  }, [])
+
   useEffect(() => {
     if (!searchControllerEnabled) return
     void loadWatchInteraction("search").catch(() => {})
   }, [searchControllerEnabled])
+
+  useEffect(() => {
+    if (!open) return
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [open])
 
   // Scroll-driven pinned state. Shared between the floating searchbar and
   // the floating logo so they track together. Listener registers only while
@@ -481,6 +495,16 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setOpen={setOpen}
           setQuery={setQuery}
           resetToken={searchResetToken}
+          onReady={markSearchControllerReady}
+        />
+      ) : null}
+      {modalChromeHidden && !searchControllerReady ? (
+        <SearchOverlayInstantShell
+          open={open}
+          closing={closing}
+          query={query}
+          setOpen={setOpen}
+          setQuery={setQuery}
         />
       ) : null}
     </FloatingSearchPinnedContext.Provider>
