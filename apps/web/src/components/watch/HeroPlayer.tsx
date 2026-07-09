@@ -87,9 +87,11 @@ const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
 const HERO_FRAME_TRANSITION_CLASS =
   "transition-[height,margin-bottom,top] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 const MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]"
+  "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto"
+const MOBILE_PORTRAIT_PREVIEW_BAND_CLASS =
+  "hidden h-24 shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block"
 const MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
+  "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
 const MOBILE_PORTRAIT_PREVIEW_PLAYER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100"
 
@@ -1418,6 +1420,12 @@ export function HeroPlayer({
               : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
+        {mobilePortraitPreviewEnabled ? (
+          <div
+            data-testid="hero-player-mobile-header-band"
+            className={MOBILE_PORTRAIT_PREVIEW_BAND_CLASS}
+          />
+        ) : null}
         <div
           id={HERO_PLAYER_MEDIA_ID}
           data-testid="hero-player-media-frame"
