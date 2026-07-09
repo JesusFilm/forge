@@ -11,6 +11,7 @@ import { ENGLISH_LANGUAGE_SLUG } from "./config"
 import {
   normalizeCard,
   type WatchHomeCard,
+  type WatchHomeModel,
   type WatchHomeSection,
   type WatchHomeVideoInput,
 } from "./model"
@@ -137,4 +138,22 @@ export function buildWatchHomeSectionsFromExperience(
     }
   })
   return sections
+}
+
+/**
+ * Choose the Home body: the Experience wins when it yields >=1 renderable rail,
+ * overriding ONLY `sections` so the featured banner stays config-sourced (R7).
+ * Zero rails → the config model unchanged, so the code-curated rows render (R8).
+ */
+export function resolveWatchHomeModel(args: {
+  configModel: WatchHomeModel
+  experienceSections: WatchHomeSection[]
+}): { model: WatchHomeModel; usedExperience: boolean } {
+  if (args.experienceSections.length >= 1) {
+    return {
+      model: { ...args.configModel, sections: args.experienceSections },
+      usedExperience: true,
+    }
+  }
+  return { model: args.configModel, usedExperience: false }
 }

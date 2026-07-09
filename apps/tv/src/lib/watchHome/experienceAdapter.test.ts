@@ -2,8 +2,13 @@ import { isSeriesSearchResult } from "../isSeriesRecord"
 import {
   buildWatchHomeSectionsFromExperience,
   mapVariant,
+  resolveWatchHomeModel,
 } from "./experienceAdapter"
-import type { WatchHomeVideoInput } from "./model"
+import type {
+  WatchHomeModel,
+  WatchHomeSection,
+  WatchHomeVideoInput,
+} from "./model"
 
 // A hydrated top-level series record (two distinct child episodes) — routes to
 // the series screen (rawLabel SERIES / childCount > 0), meta chip "2 episodes".
@@ -242,5 +247,34 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
   it("returns no sections for null / empty blocks", () => {
     expect(buildWatchHomeSectionsFromExperience(null, HYDRATED)).toEqual([])
     expect(buildWatchHomeSectionsFromExperience([], HYDRATED)).toEqual([])
+  })
+})
+
+describe("resolveWatchHomeModel (R7, R8)", () => {
+  const configModel: WatchHomeModel = {
+    featured: [{ id: "hero-1" } as WatchHomeModel["featured"][number]],
+    sections: [{ id: "config-row" } as WatchHomeSection],
+    missingData: [],
+  }
+  const experienceSections = [{ id: "exp-row" } as WatchHomeSection]
+
+  it("uses the Experience rails when there is >=1, keeping config-sourced featured", () => {
+    const { model, usedExperience } = resolveWatchHomeModel({
+      configModel,
+      experienceSections,
+    })
+    expect(usedExperience).toBe(true)
+    expect(model.sections).toBe(experienceSections)
+    // Featured stays config-sourced (banner is client-owned, R7).
+    expect(model.featured).toBe(configModel.featured)
+  })
+
+  it("falls back to the whole config model when zero Experience rails (R8)", () => {
+    const { model, usedExperience } = resolveWatchHomeModel({
+      configModel,
+      experienceSections: [],
+    })
+    expect(usedExperience).toBe(false)
+    expect(model).toBe(configModel)
   })
 })
