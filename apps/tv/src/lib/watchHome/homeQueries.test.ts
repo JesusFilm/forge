@@ -1,7 +1,7 @@
 import { print } from "graphql"
 import type { DocumentNode } from "graphql"
 
-import { GET_WATCH_HOME_VIDEOS } from "./homeQueries"
+import { GET_WATCH_HOME_VIDEOS, GET_WATCH_SETTING } from "./homeQueries"
 
 // gql.tada documents are parsed DocumentNode ASTs (no raw source string is
 // retained), so we serialize them back with graphql's `print` to make
@@ -11,6 +11,7 @@ function asSdl(doc: unknown): string {
 }
 
 const printed = asSdl(GET_WATCH_HOME_VIDEOS)
+const printedSetting = asSdl(GET_WATCH_SETTING)
 
 describe("GET_WATCH_HOME_VIDEOS — lean payload guard", () => {
   // Regression guard for the 2,259-dub / 9.5MB payload incident: the bulk
@@ -49,5 +50,25 @@ describe("GET_WATCH_HOME_VIDEOS — lean payload guard", () => {
   it("fetches exactly one level of children (no grandchildren)", () => {
     expect(printed.match(/\bchildren\b/g)).toHaveLength(1)
     expect(printed).toContain("child {")
+  })
+})
+
+describe("GET_WATCH_SETTING — public home Experience query + doc guard (AE12)", () => {
+  it("resolves the home body via the PUBLIC watchSetting field", () => {
+    expect(printedSetting).toContain("query GetWatchSetting")
+    expect(printedSetting).toContain("watchSetting(locale: $locale)")
+    expect(printedSetting).toContain("homepageExperience")
+  })
+
+  // R13: TV Home uses only public admin queries. The editor-gated `experiences`
+  // list field must never appear, or the home query fails auth in prod.
+  it("does NOT reference the editor-gated experiences list field", () => {
+    expect(printedSetting).not.toMatch(/\bexperiences\b/)
+  })
+
+  // R17/R3: hydration keys on the item's coreId. A missing coreId selection
+  // silently strands every Experience item (nothing hydrates) — guard it.
+  it("selects coreId on the MediaCollection items (the hydration key)", () => {
+    expect(printedSetting).toMatch(/items\s*\{[^}]*\bcoreId\b/)
   })
 })
