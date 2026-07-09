@@ -8,6 +8,8 @@ const mockEnv = vi.hoisted(() => ({
       | "local"
       | "@workflow/world-postgres"
       | undefined,
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: 12,
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: 10_000,
   },
 }))
 
@@ -55,8 +57,8 @@ describe("workflow instrumentation", () => {
     process.env.NEXT_RUNTIME = "nodejs"
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "false"
     mockEnv.env.WORKFLOW_TARGET_WORLD = undefined
-    delete process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS
-    delete process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS
+    mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS = 12
+    mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = 10_000
   })
 
   afterEach(() => {
@@ -129,7 +131,7 @@ describe("workflow instrumentation", () => {
   })
 
   it("schedules a retry instead of throwing on transient startup saturation", async () => {
-    process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = "1"
+    mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = 1
     const saturationError = Object.assign(
       new Error("sorry, too many clients already"),
       { code: "53300" },
