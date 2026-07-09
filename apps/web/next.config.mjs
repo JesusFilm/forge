@@ -33,6 +33,12 @@ const adminMediaImageHost = (() => {
         port: url.port,
         pathname: "/api/media-assets/**",
       },
+      {
+        protocol: url.protocol.replace(":", ""),
+        hostname: url.hostname,
+        port: url.port,
+        pathname: "/api/public/media-assets/**",
+      },
     ]
   } catch {
     return []
@@ -91,12 +97,24 @@ const nextConfig = {
         port: "3003",
         pathname: "/api/media-assets/**",
       },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3003",
+        pathname: "/api/public/media-assets/**",
+      },
       { protocol: "http", hostname: "127.0.0.1", pathname: "/uploads/**" },
       {
         protocol: "http",
         hostname: "127.0.0.1",
         port: "3003",
         pathname: "/api/media-assets/**",
+      },
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "3003",
+        pathname: "/api/public/media-assets/**",
       },
       ...adminMediaImageHost,
       { protocol: "https", hostname: "images.unsplash.com" },

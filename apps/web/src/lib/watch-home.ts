@@ -5,6 +5,7 @@ import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 import client from "@/lib/admin-client"
 import { formatDuration } from "@/lib/format-duration"
+import { localWatchHomeBlurDataUrl } from "@/lib/enrichment"
 import { publicWatchHomeLanguageSlugForLocale } from "@/lib/locale"
 import {
   asLocaleSlug,
@@ -81,6 +82,8 @@ export type WatchHomeCard = {
   metaLabel: string | null
   href: string | null
   imageUrl: string | null
+  blurDataUrl: string | null
+  dominantColor: string | null
   imageAlt: string
   hls: string | null
   playbackId: string | null
@@ -127,7 +130,12 @@ type WatchHomeExperienceBlock = NonNullable<
   >["blocks"]
 >[number]
 
-type MediaOverrideMap = Map<string, string>
+type MediaOverride = {
+  imageUrl: string
+  blurDataUrl: string | null
+  dominantColor: string | null
+}
+type MediaOverrideMap = Map<string, MediaOverride>
 type VideoOverrideRef = {
   documentId?: string | null
   coreId?: string | null
@@ -203,8 +211,18 @@ function collectMediaOverrides(
         const imageUrl =
           stringValue(recordValue(item, "imageOverrideUrl")) ??
           stringValue(recordValue(item, "imageUrl"))
+        const blurDataUrl =
+          stringValue(recordValue(item, "imageOverrideBlurDataUrl")) ??
+          stringValue(recordValue(item, "imageBlurDataUrl"))
+        const dominantColor =
+          stringValue(recordValue(item, "imageOverrideDominantColor")) ??
+          stringValue(recordValue(item, "imageDominantColor"))
         if (videoId && imageUrl) {
-          overrides.set(overrideKey(sectionId, videoId), imageUrl)
+          overrides.set(overrideKey(sectionId, videoId), {
+            imageUrl,
+            blurDataUrl,
+            dominantColor,
+          })
         }
       }
     }
@@ -238,10 +256,17 @@ function applyMediaOverride(
   ]
   for (const candidate of candidates) {
     if (!candidate) continue
-    const imageUrl = args.mediaOverrides.get(
+    const override = args.mediaOverrides.get(
       overrideKey(args.sectionId, candidate),
     )
-    if (imageUrl) return { ...card, imageUrl }
+    if (override) {
+      return {
+        ...card,
+        imageUrl: override.imageUrl,
+        blurDataUrl: override.blurDataUrl ?? card.blurDataUrl,
+        dominantColor: override.dominantColor ?? card.dominantColor,
+      }
+    }
   }
   return card
 }
@@ -274,17 +299,18 @@ function selectPlayableVariant(
   return localeMatch ?? primaryMatch ?? playable[0] ?? null
 }
 
-function pickAdminImage(images: readonly AdminHomeImage[]): string | null {
-  for (const image of images) {
-    const candidate =
-      image.mobileCinematicHigh ??
-      image.mobileCinematicLow ??
-      image.videoStill ??
-      image.url ??
-      image.thumbnail
-    if (candidate) return candidate
-  }
-  return null
+function adminImageUrl(image: AdminHomeImage) {
+  return (
+    image.mobileCinematicHigh ??
+    image.mobileCinematicLow ??
+    image.videoStill ??
+    image.url ??
+    image.thumbnail
+  )
+}
+
+function pickAdminImage(images: readonly AdminHomeImage[]) {
+  return images.find((image) => adminImageUrl(image)) ?? null
 }
 
 function buildMetaLabel(args: {
@@ -369,8 +395,15 @@ function normalizeCard(args: {
   )
   const subtitleTrack = selectSubtitleTrack(selectedVariant, args.languageSlug)
   const playbackId = selectedVariant?.muxVideo?.playbackId ?? null
-  const adminImageUrl = pickAdminImage(args.video.images ?? [])
-  const imageUrl = adminImageUrl ?? muxThumbnail(playbackId)
+  const adminImage = pickAdminImage(args.video.images ?? [])
+  const sourceImageUrl = adminImage
+    ? adminImageUrl(adminImage)
+    : muxThumbnail(playbackId)
+  const imageBlurDataUrl = adminImage?.blurDataUrl ?? null
+  const dominantColor = adminImage?.dominantColor ?? null
+  const imageUrl = sourceImageUrl
+  const blurDataUrl =
+    imageBlurDataUrl ?? localWatchHomeBlurDataUrl(args.video.coreId)
   const label = labelText(args.video.label)
   const childCount =
     "children" in args.video && Array.isArray(args.video.children)
@@ -397,14 +430,14 @@ function normalizeCard(args: {
       }),
     )
   }
-  if (!adminImageUrl) {
+  if (!adminImage) {
     missingData.push(
       missingEntry({
         sectionId: args.sectionId,
         sourceId: args.sourceId,
         field: "image",
         detail: `Admin returned ${args.video.coreId} without a usable cinematic/still image.`,
-        fallback: imageUrl ? "Mux thumbnail" : "Styled placeholder",
+        fallback: sourceImageUrl ? "Mux thumbnail" : "Styled placeholder",
         followUp:
           "Ingest the source app local thumbnail override or enrich admin/Core image fields.",
       }),
@@ -438,6 +471,8 @@ function normalizeCard(args: {
     }),
     href,
     imageUrl,
+    blurDataUrl,
+    dominantColor,
     imageAlt: locale?.imageAlt ?? title,
     hls: selectedVariant?.hls ?? null,
     playbackId,

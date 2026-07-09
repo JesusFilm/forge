@@ -28,14 +28,20 @@ export const adminMediaCollectionFragment = adminGraphql(`
       coreId
       videoSlug
       muxPlaybackId
+      videoImageBlurDataUrl
+      videoImageDominantColor
       titleOverride
       subtitleOverride
       labelOverride
       collectionSize
       imageUrl
       imageAssetId
+      imageBlurDataUrl
+      imageDominantColor
       imageOverrideUrl
       imageOverrideAssetId
+      imageOverrideBlurDataUrl
+      imageOverrideDominantColor
       linkToSectionKey
     }
   }

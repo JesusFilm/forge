@@ -48,6 +48,8 @@ export const watchVideoShellFragment = adminGraphql(`
       thumbnail
       mobileCinematicHigh
       mobileCinematicLow
+      blurDataUrl
+      dominantColor
     }
     primaryLanguage {
       coreId
@@ -65,6 +67,8 @@ export const watchVideoShellFragment = adminGraphql(`
           thumbnail
           mobileCinematicHigh
           mobileCinematicLow
+          blurDataUrl
+          dominantColor
         }
         children {
           child {
@@ -77,6 +81,8 @@ export const watchVideoShellFragment = adminGraphql(`
               thumbnail
               mobileCinematicHigh
               mobileCinematicLow
+              blurDataUrl
+              dominantColor
             }
           }
         }
@@ -93,6 +99,8 @@ export const watchVideoShellFragment = adminGraphql(`
           thumbnail
           mobileCinematicHigh
           mobileCinematicLow
+          blurDataUrl
+          dominantColor
         }
         # child.dubs is deliberately NOT projected — a 61-chapter ×
         # ~2,200-language fan-out (~45 MB) blows past Next's unstable_cache

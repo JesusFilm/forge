@@ -41,6 +41,8 @@ function makeImage(overrides: Record<string, unknown> = {}) {
     mobileCinematicHigh: "https://cdn.example/jesus-cinematic.jpg",
     mobileCinematicLow: null,
     videoStill: null,
+    blurDataUrl: null,
+    dominantColor: null,
     ...overrides,
   }
 }
@@ -138,7 +140,7 @@ describe("buildWatchHomeModelFromVideos", () => {
     await import("../watch-home")
 
     expect(unstableCacheCalls).toContainEqual({
-      keyParts: ["watch-home", "v3-carousel-sequence"],
+      keyParts: ["watch-home", "v6-real-images-with-dominant-colors"],
       options: {
         revalidate: 60,
         tags: ["watch:home", "watch:video"],
@@ -259,6 +261,9 @@ describe("buildWatchHomeModelFromVideos", () => {
               videoId: "lumo-admin-id",
               imageOverrideUrl:
                 "http://localhost:3003/api/media-assets/asset-1/preview",
+              imageOverrideBlurDataUrl:
+                "data:image/jpeg;base64,override-placeholder",
+              imageOverrideDominantColor: "#787e16",
             },
           ],
         },
@@ -271,6 +276,45 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(vertical?.cards[0]?.imageUrl).toBe(
       "http://localhost:3003/api/media-assets/asset-1/preview",
     )
+    expect(vertical?.cards[0]?.blurDataUrl).toBe(
+      "data:image/jpeg;base64,override-placeholder",
+    )
+    expect(vertical?.cards[0]?.dominantColor).toBe("#787e16")
+  })
+
+  it("selects watch-home image URL, blur, and dominant color from the same image row", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          images: [
+            makeImage({
+              documentId: "img-without-render-url",
+              url: null,
+              thumbnail: null,
+              mobileCinematicHigh: null,
+              blurDataUrl: "data:image/jpeg;base64,wrong-row",
+              dominantColor: "#ffffff",
+            }),
+            makeImage({
+              documentId: "img-rendered",
+              mobileCinematicHigh: "https://cdn.example/rendered.jpg",
+              blurDataUrl: "data:image/jpeg;base64,right-row",
+              dominantColor: "#123456",
+            }),
+          ],
+        }),
+      ] as never,
+    })
+
+    expect(model.heroSlides[0]).toMatchObject({
+      imageUrl: "https://cdn.example/rendered.jpg",
+      blurDataUrl: "data:image/jpeg;base64,right-row",
+      dominantColor: "#123456",
+    })
   })
 
   it("expands the Journey with Jesus course into child episode cards", async () => {

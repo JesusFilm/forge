@@ -59,6 +59,8 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
       label: "",
       collectionSize: "",
       imageUrl: null,
+      blurDataUrl: null,
+      dominantColor: null,
       videoSlug,
       muxPlaybackId: "mux-route-child",
     },
@@ -288,5 +290,68 @@ describe("MediaCollection VideoCard href", () => {
       '[data-testid="media-collection-section"]',
     )
     expect(section?.style.backgroundColor).toBe("rgb(18, 52, 86)")
+  })
+
+  it("uses dominant color for the vertical card text scrim, not the whole card", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "collection",
+            itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "episode-one",
+                titleOverride: "Episode One",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: "https://example.com/poster.jpg",
+                imageOverrideDominantColor: "#787e16",
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const scrim = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-card-text-scrim"]',
+    )
+    expect(scrim?.style.background).toContain("rgb(114,120,21)")
+    expect(scrim?.style.background).toContain("transparent 100%")
+    expect(scrim?.className).toContain("h-[40%]")
+    expect(scrim?.parentElement?.style.backgroundColor).toBe("")
+  })
+
+  it("uses dominant color for horizontal card text scrims too", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "episode-one",
+                titleOverride: "Episode One",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: "https://example.com/still.jpg",
+                videoImageDominantColor: "#123456",
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const scrim = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-card-text-scrim"]',
+    )
+    expect(scrim?.style.background).toContain("rgb(18,52,86)")
   })
 })

@@ -3,10 +3,7 @@
 import Image from "next/image"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
-import type {
-  FragmentOf,
-  LegacyFragmentValue,
-} from "@/lib/legacy-fragment-types"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
@@ -22,6 +19,7 @@ import {
 } from "@/lib/routes"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { resolveMediaImageUrl } from "@/lib/media-image-url"
+import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 
@@ -71,23 +69,34 @@ function normalizeTintColor(value: unknown): string | null {
   return MEDIA_COLLECTION_TINTS[trimmed] ?? trimmed
 }
 
-function hexToRgb(value: string): { r: number; g: number; b: number } | null {
-  const match = /^#([0-9a-fA-F]{6})$/.exec(value.trim())
-  if (!match) return null
-
-  const hex = match[1]
-  return {
-    r: Number.parseInt(hex.slice(0, 2), 16),
-    g: Number.parseInt(hex.slice(2, 4), 16),
-    b: Number.parseInt(hex.slice(4, 6), 16),
-  }
-}
-
 function alphaColor(color: string, opacity: number): string {
   const rgb = hexToRgb(color)
   if (!rgb) return color
 
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
+}
+
+function textScrimStyle(
+  item: EnrichedMediaItem,
+  orientation: "horizontal" | "vertical",
+): CSSProperties {
+  const rgb = readableScrimRgb(item.dominantColor)
+  if (!rgb) {
+    return {
+      background:
+        "linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,.18), transparent)",
+    }
+  }
+
+  if (orientation === "vertical") {
+    return {
+      background: `linear-gradient(to top, rgb(${rgb.r},${rgb.g},${rgb.b}), rgba(${rgb.r},${rgb.g},${rgb.b},.78) 36%, rgba(${rgb.r},${rgb.g},${rgb.b},.22) 68%, transparent 100%)`,
+    }
+  }
+
+  return {
+    background: `linear-gradient(to top, rgb(${rgb.r},${rgb.g},${rgb.b}), rgba(${rgb.r},${rgb.g},${rgb.b},.86) 24%, rgba(${rgb.r},${rgb.g},${rgb.b},.28) 42%, transparent 62%)`,
+  }
 }
 
 function tintOverlayStyle(
@@ -137,14 +146,13 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
   const selectedSource = itemsSource ?? "manual"
-  const enrichedItems =
+  const rawEnrichedItems: Array<EnrichedMediaItem | null | undefined> =
     selectedSource === "routeVideoChildren"
       ? (routeVideo?.relatedItems ?? [])
-      : (items ?? [])
-          .filter(
-            (i: LegacyFragmentValue): i is NonNullable<typeof i> => i != null,
-          )
-          .map(enrichMediaItem)
+      : (items ?? []).map(enrichMediaItem)
+  const enrichedItems = rawEnrichedItems.filter(
+    (item): item is EnrichedMediaItem => item != null,
+  )
 
   if (
     process.env.NODE_ENV === "development" &&
@@ -224,7 +232,7 @@ function WatchHomeMediaCollection({
   const isVerticalGrid = variant === "collection"
   const isVertical = isRail || isVerticalGrid
   const defaultBackgroundUrl =
-    items.find((item) => resolveMediaImageUrl(item.imageUrl))?.imageUrl ?? null
+    items.map(mediaItemBackdropImageUrl).find((imageUrl) => imageUrl) ?? null
   const latestHoveredBackgroundUrlRef = useRef<string | null>(null)
   const hoverLayerIdRef = useRef(0)
   const [isSectionActive, setIsSectionActive] = useState(false)
@@ -419,7 +427,9 @@ function WatchHomeMediaCollection({
               index={index}
               orientation={isVertical ? "vertical" : "horizontal"}
               showItemNumbers={showItemNumbers}
-              onHover={() => updateHoverBackground(item.imageUrl)}
+              onHover={() =>
+                updateHoverBackground(mediaItemBackdropImageUrl(item))
+              }
             />
           ))}
         </div>
@@ -435,6 +445,14 @@ function WatchHomeMediaCollection({
       ) : null}
     </section>
   )
+}
+
+function mediaItemDisplayImageUrl(item: EnrichedMediaItem) {
+  return item.imageUrl
+}
+
+function mediaItemBackdropImageUrl(item: EnrichedMediaItem) {
+  return item.blurDataUrl ?? item.imageUrl
 }
 
 function VideoCard({
@@ -458,9 +476,11 @@ function VideoCard({
     ? `${WATCH_BASE_PATH}${watchVideoPath(slug, DEFAULT_COLLECTION_LOCALE)}`
     : undefined
   const Wrapper = href ? "a" : "div"
-  const imageSrc = resolveMediaImageUrl(item.imageUrl)
+  const imageSrc = resolveMediaImageUrl(mediaItemDisplayImageUrl(item))
+  const blurDataUrl = item.blurDataUrl ?? undefined
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
   const isVertical = orientation === "vertical"
+  const [isMuxPreviewLoaded, setIsMuxPreviewLoaded] = useState(false)
 
   return (
     <Wrapper
@@ -475,7 +495,9 @@ function VideoCard({
       <div
         className={cn(
           "relative w-full overflow-hidden rounded-lg bg-black/50",
-          isVertical ? "aspect-[2/3]" : "aspect-video",
+          isVertical
+            ? "aspect-[2/3] min-h-[13rem] sm:min-h-[16rem]"
+            : "aspect-video min-h-[10rem]",
         )}
       >
         {imageSrc ? (
@@ -483,20 +505,25 @@ function VideoCard({
             src={imageSrc}
             alt={item.title}
             fill
-            unoptimized
             sizes={
               isVertical
                 ? "(max-width: 768px) 46vw, 220px"
                 : "(max-width: 768px) 100vw, 360px"
             }
+            placeholder={blurDataUrl ? "blur" : "empty"}
+            blurDataURL={blurDataUrl}
             className="poster-hover-zoom object-cover"
-            style={{
-              objectPosition: isVertical ? "center" : "left top",
-              maskImage:
-                "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
-              WebkitMaskImage:
-                "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
-            }}
+            style={
+              isVertical || item.dominantColor
+                ? { objectPosition: isVertical ? "center" : "left top" }
+                : {
+                    objectPosition: "left top",
+                    maskImage:
+                      "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
+                    WebkitMaskImage:
+                      "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
+                  }
+            }
           />
         ) : (
           <div
@@ -512,8 +539,19 @@ function VideoCard({
               : "(max-width: 768px) 100vw, 360px"
           }
           imageClassName={isVertical ? undefined : "object-left-top"}
+          onPreviewLoadedChange={setIsMuxPreviewLoaded}
         />
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-black/78 via-black/18 to-transparent" />
+        <div
+          aria-hidden
+          data-testid="media-collection-card-text-scrim"
+          className={cn(
+            "pointer-events-none absolute z-20 rounded-lg opacity-100 transition-opacity duration-300 ease-out",
+            isMuxPreviewLoaded &&
+              "group-hover:opacity-65 group-focus-visible:opacity-65 group-focus-within:opacity-65",
+            isVertical ? "inset-x-0 bottom-0 h-[40%]" : "inset-0",
+          )}
+          style={textScrimStyle(item, orientation)}
+        />
         {showItemNumbers ? (
           <span className="absolute top-2 left-2 z-10 text-5xl leading-none font-bold text-stone-100/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]">
             {index + 1}
@@ -540,7 +578,7 @@ function VideoCard({
               : "watch-home-gradient-outline-landscape",
           )}
         />
-        <div className="absolute inset-0 flex flex-col justify-end px-4 pt-4 pb-5">
+        <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 pt-4 pb-5">
           {item.label ? (
             <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
               {formatLabel(item.label)}
