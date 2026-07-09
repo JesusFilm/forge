@@ -775,6 +775,10 @@ type MediaCollectionBlock {
 """Single entry in MediaCollectionBlock.items."""
 type MediaCollectionItem {
   collectionSize: String
+  """
+  The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.
+  """
+  coreId: String
   imageAssetId: String
   imageOverrideAssetId: String
   imageOverrideUrl: String

@@ -477,12 +477,55 @@ describe("Mixed-kind round-trip across nested unions", () => {
 // Edge cases
 // -----------------------------------------------------------------------------
 
+describe("MediaCollectionItem.coreId resolver", () => {
+  const resolveCoreId = fieldResolver("MediaCollectionItem", "coreId")
+
+  it("resolves the referenced Video's coreId via the batched videoById loader", async () => {
+    // The batched loader (not a per-item findUnique) is what keeps the whole
+    // Experience resolve to one video lookup — AE13's "single batched lookup".
+    const load = vi.fn().mockResolvedValue({ id: "vid-1", coreId: "1_jf-0-0" })
+    const result = await resolveCoreId(
+      { videoId: "vid-1" },
+      {},
+      { loaders: { videoById: { load } } },
+      fakeInfo,
+    )
+    expect(result).toBe("1_jf-0-0")
+    expect(load).toHaveBeenCalledWith("vid-1")
+    expect(load).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns null without touching the loader when the item has no videoId", async () => {
+    const load = vi.fn()
+    const result = await resolveCoreId(
+      { videoId: null },
+      {},
+      { loaders: { videoById: { load } } },
+      fakeInfo,
+    )
+    expect(result).toBeNull()
+    expect(load).not.toHaveBeenCalled()
+  })
+
+  it("returns null when the referenced Video is not found", async () => {
+    const load = vi.fn().mockResolvedValue(null)
+    const result = await resolveCoreId(
+      { videoId: "missing" },
+      {},
+      { loaders: { videoById: { load } } },
+      fakeInfo,
+    )
+    expect(result).toBeNull()
+  })
+})
+
 describe("Edge cases", () => {
   it("exposes videoSlug and muxPlaybackId on MediaCollectionItem for authored card links and previews", () => {
     const type = schema.getType("MediaCollectionItem")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.videoSlug).toBeDefined()
     expect(fields?.muxPlaybackId).toBeDefined()
+    expect(fields?.coreId).toBeDefined()
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {
