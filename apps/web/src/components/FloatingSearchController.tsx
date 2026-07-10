@@ -37,6 +37,25 @@ import { SearchOverlay } from "./SearchOverlay"
 
 const SEARCH_PAGE_SIZE = 10
 const SEARCH_LANGUAGE_OPTIONS_FALLBACK_MS = 1200
+const DEFAULT_LANGUAGE_OPTIONS_CACHE_KEY = "__default__"
+
+type SearchLanguageOptionsResponse = Awaited<
+  ReturnType<typeof getSearchLanguageOptions>
+>
+
+const searchLanguageOptionsCache = new Map<
+  string,
+  SearchLanguageOptionsResponse
+>()
+const searchLanguageOptionsPromiseCache = new Map<
+  string,
+  Promise<SearchLanguageOptionsResponse>
+>()
+
+export function resetSearchLanguageOptionsCacheForTest(): void {
+  searchLanguageOptionsCache.clear()
+  searchLanguageOptionsPromiseCache.clear()
+}
 
 type ActiveSearchSignature = {
   query: string
@@ -61,6 +80,7 @@ export type FloatingSearchControllerProps = {
   headerLanguageCode?: string | null
   headerPinned?: boolean
   resetToken?: number
+  onReady?: () => void
   children?: ReactNode
 }
 
@@ -74,6 +94,7 @@ export function FloatingSearchController({
   headerLanguageCode = null,
   headerPinned = false,
   resetToken = 0,
+  onReady,
   children,
 }: FloatingSearchControllerProps) {
   const tSearchOverlay = useTranslations("SearchOverlay")
@@ -165,6 +186,10 @@ export function FloatingSearchController({
   useEffect(() => {
     setPortalReady(true)
   }, [])
+  useEffect(() => {
+    if (!portalReady) return
+    onReady?.()
+  }, [onReady, portalReady])
 
   const languageGroups = useMemo(
     () => groupSearchLanguagesByRegion(languageOptions),
@@ -191,63 +216,87 @@ export function FloatingSearchController({
     [languageOptions, recommendedLanguage, routeLanguageSlug],
   )
 
+  const applyLanguageOptionsResponse = useCallback(
+    (response: SearchLanguageOptionsResponse): SearchLanguageOption[] => {
+      setAlgoliaSearchEnabled(response.algoliaEnabled)
+
+      if (response.ok) {
+        setLanguageOptions(response.options)
+        setLanguageCountrySuggestion(response.countrySuggestion)
+        setRecommendedLanguage(response.recommendedLanguage)
+        if (!searchLanguageSelectionUserSetRef.current) {
+          const defaultOption = defaultSearchLanguageOption({
+            options: response.options,
+            routeLanguageSlug,
+            recommendedLanguage: response.recommendedLanguage,
+          })
+          const nextLanguages = defaultOption ? [defaultOption.englishName] : []
+          selectedSearchLanguageOptionRef.current = defaultOption
+          selectedLanguageEnglishNamesRef.current = nextLanguages
+          setSelectedSearchLanguageOption(defaultOption)
+          setSelectedLanguageEnglishNames(nextLanguages)
+          setSelectedLanguageRegionByName(
+            defaultOption?.regionNames[0]
+              ? { [defaultOption.englishName]: defaultOption.regionNames[0] }
+              : {},
+          )
+        }
+        return response.options
+      }
+
+      setLanguageOptions([])
+      setLanguageCountrySuggestion(null)
+      setRecommendedLanguage(null)
+      if (!searchLanguageSelectionUserSetRef.current) {
+        selectedSearchLanguageOptionRef.current = null
+        selectedLanguageEnglishNamesRef.current = []
+        setSelectedSearchLanguageOption(null)
+        setSelectedLanguageEnglishNames([])
+        setSelectedLanguageRegionByName({})
+      }
+      setLanguageOptionsError(response.error.message)
+      return []
+    },
+    [routeLanguageSlug],
+  )
+
   const refreshLanguageOptions = useCallback(
     async (
       availableLanguageFacets?: Record<string, number>,
     ): Promise<SearchLanguageOption[]> => {
+      const cacheKey = searchLanguageOptionsCacheKey(availableLanguageFacets)
       const thisRequest = ++languageOptionsRequestIdRef.current
+      const cachedResponse = searchLanguageOptionsCache.get(cacheKey)
+
+      if (cachedResponse != null) {
+        languageOptionsLoadedRef.current = true
+        setLanguageOptionsLoaded(true)
+        setLanguageOptionsLoading(false)
+        setLanguageOptionsError(null)
+        return applyLanguageOptionsResponse(cachedResponse)
+      }
+
       languageOptionsLoadedRef.current = false
       setLanguageOptionsLoaded(false)
       setLanguageOptionsLoading(true)
       setLanguageOptionsError(null)
 
       try {
-        const response = await getSearchLanguageOptions({
-          availableLanguageFacets,
-        })
+        let responsePromise = searchLanguageOptionsPromiseCache.get(cacheKey)
+        if (responsePromise == null) {
+          responsePromise = getSearchLanguageOptions({
+            availableLanguageFacets,
+          })
+          searchLanguageOptionsPromiseCache.set(cacheKey, responsePromise)
+        }
+        const response = await responsePromise
+        if (response.ok) {
+          searchLanguageOptionsCache.set(cacheKey, response)
+        }
         if (languageOptionsRequestIdRef.current !== thisRequest) {
           return response.ok ? response.options : []
         }
-        setAlgoliaSearchEnabled(response.algoliaEnabled)
-
-        if (response.ok) {
-          setLanguageOptions(response.options)
-          setLanguageCountrySuggestion(response.countrySuggestion)
-          setRecommendedLanguage(response.recommendedLanguage)
-          if (!searchLanguageSelectionUserSetRef.current) {
-            const defaultOption = defaultSearchLanguageOption({
-              options: response.options,
-              routeLanguageSlug,
-              recommendedLanguage: response.recommendedLanguage,
-            })
-            const nextLanguages = defaultOption
-              ? [defaultOption.englishName]
-              : []
-            selectedSearchLanguageOptionRef.current = defaultOption
-            selectedLanguageEnglishNamesRef.current = nextLanguages
-            setSelectedSearchLanguageOption(defaultOption)
-            setSelectedLanguageEnglishNames(nextLanguages)
-            setSelectedLanguageRegionByName(
-              defaultOption?.regionNames[0]
-                ? { [defaultOption.englishName]: defaultOption.regionNames[0] }
-                : {},
-            )
-          }
-          return response.options
-        }
-
-        setLanguageOptions([])
-        setLanguageCountrySuggestion(null)
-        setRecommendedLanguage(null)
-        if (!searchLanguageSelectionUserSetRef.current) {
-          selectedSearchLanguageOptionRef.current = null
-          selectedLanguageEnglishNamesRef.current = []
-          setSelectedSearchLanguageOption(null)
-          setSelectedLanguageEnglishNames([])
-          setSelectedLanguageRegionByName({})
-        }
-        setLanguageOptionsError(response.error.message)
-        return []
+        return applyLanguageOptionsResponse(response)
       } catch {
         if (languageOptionsRequestIdRef.current !== thisRequest) return []
         setLanguageOptions([])
@@ -263,6 +312,7 @@ export function FloatingSearchController({
         setLanguageOptionsError("Language options are unavailable.")
         return []
       } finally {
+        searchLanguageOptionsPromiseCache.delete(cacheKey)
         if (languageOptionsRequestIdRef.current === thisRequest) {
           languageOptionsLoadedRef.current = true
           setLanguageOptionsLoaded(true)
@@ -270,7 +320,7 @@ export function FloatingSearchController({
         }
       }
     },
-    [routeLanguageSlug],
+    [applyLanguageOptionsResponse],
   )
 
   useEffect(() => {
@@ -683,6 +733,16 @@ export function FloatingSearchController({
     setOpen(false)
   }, [setOpen])
 
+  const initialShellQueryRef = useRef(query)
+  const initialShellQueryConsumedRef = useRef(false)
+  useEffect(() => {
+    if (initialShellQueryConsumedRef.current) return
+    const initialShellQuery = initialShellQueryRef.current
+    if (!open || searched || initialShellQuery.trim().length === 0) return
+    initialShellQueryConsumedRef.current = true
+    void search(initialShellQuery)
+  }, [open, search, searched])
+
   const resetTokenRef = useRef(resetToken)
   useEffect(() => {
     if (resetToken === 0 || resetTokenRef.current === resetToken) return
@@ -876,4 +936,20 @@ function defaultSearchLanguageOption({
   if (recommendedLanguage?.publicSlug) return recommendedLanguage
 
   return findSearchLanguageOptionByPublicSlug("english", options)
+}
+
+function searchLanguageOptionsCacheKey(
+  availableLanguageFacets?: Record<string, number>,
+): string {
+  if (
+    availableLanguageFacets == null ||
+    Object.keys(availableLanguageFacets).length === 0
+  ) {
+    return DEFAULT_LANGUAGE_OPTIONS_CACHE_KEY
+  }
+
+  return Object.entries(availableLanguageFacets)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([language, count]) => `${language}:${count}`)
+    .join("|")
 }
