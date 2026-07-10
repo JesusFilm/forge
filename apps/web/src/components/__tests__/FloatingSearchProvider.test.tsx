@@ -392,6 +392,8 @@ function SearchControllerTestShell({
       query={query}
       setOpen={setOpen}
       setQuery={setQuery}
+      headerTopClass="top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
+      headerLanguageControlVisible={false}
     >
       {children}
     </FloatingSearchController>
@@ -1676,6 +1678,23 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(
       document.querySelector('input[aria-label="Search videos by keyword"]'),
     ).not.toBeNull()
+    const overlayTopBar = document.querySelector(
+      '[data-testid="search-overlay-instant-top-bar"], [data-testid="search-overlay-top-bar"]',
+    )
+    expect(overlayTopBar?.className).toContain("left-5")
+    expect(overlayTopBar?.className).toContain("right-5")
+    expect(overlayTopBar?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
+    )
+    expect(
+      document.querySelector('[data-testid="floating-header"]')?.className,
+    ).toContain("translate-y-0")
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('[data-testid="search-overlay-instant-close"]'),
+    ).toBeNull()
     expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
 
     await act(async () => {
@@ -1730,7 +1749,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
 
     const close = document.querySelector(
-      '[data-testid="search-overlay-close"]',
+      '[data-testid="floating-header-search-close"]',
     ) as HTMLButtonElement | null
     await act(async () => {
       close?.click()
@@ -1768,7 +1787,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
-  it("aligns the search overlay close button with the watch modal close control", async () => {
+  it("keeps the floating header stable while rendering search overlay controls below it", async () => {
+    const onLanguageClick = vi.fn()
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -1779,10 +1799,25 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     await act(async () => {
       await Promise.resolve()
     })
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: onLanguageClick })
+    })
 
     const searchButton = document.querySelector(
       '[aria-label="Search videos"]',
     ) as HTMLButtonElement
+    const headerBeforeOpen = document.querySelector(
+      '[data-testid="floating-header"]',
+    )
+    const searchButtonBeforeOpen = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    expect(headerBeforeOpen?.className).toContain("translate-y-0")
+    expect(headerBeforeOpen?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
+    )
+    expect(searchButtonBeforeOpen?.className).toContain("opacity-100")
+
     await act(async () => {
       searchButton.click()
       await Promise.resolve()
@@ -1792,42 +1827,72 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     await flushSearchControllerMount()
 
     const close = document.querySelector(
-      '[data-testid="search-overlay-close"]',
+      '[data-testid="floating-header-search-close"]',
     ) as HTMLButtonElement | null
     const pageWrapper = document.querySelector("[inert]")
     const topBar = document.querySelector(
       '[data-testid="search-overlay-top-bar"]',
     )
+    const header = document.querySelector('[data-testid="floating-header"]')
+    const hiddenSearchButton = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
     const overlay = document.querySelector(
       '[aria-label="Search and browse videos"]',
-    )
+    ) as HTMLElement | null
     const overlayField = document.querySelector('[role="search"]')
-    const mobileLogo = document.querySelector(
-      '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
-    )
-    const mobileLogoImage = mobileLogo?.querySelector("img")
     const bottomBackdrop = document.querySelector(
       '[data-testid="search-overlay-bottom-backdrop"]',
     )
     const scrollBody = document.querySelector(".search-overlay-scroll")
     expect(close).not.toBeNull()
+    expect(languageButton).not.toBeNull()
+    expect(
+      document.querySelector('[data-testid="watch-account-control"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="search-overlay-close"]'),
+    ).toBeNull()
     expect(pageWrapper?.className).toContain("blur-[12px]")
     expect(pageWrapper?.className).not.toContain("brightness-50")
-    expect(overlay?.contains(close)).toBe(true)
+    expect(overlay?.contains(close)).toBe(false)
     expect(overlay?.className).toContain("h-dvh")
     expect(overlay?.className).toContain("min-h-dvh")
+    expect(overlay?.style.zIndex).toBe("45")
+    expect(header?.className).toContain("z-50")
+    expect(header?.className).toContain("translate-y-0")
+    expect(header?.className).toContain("opacity-100")
+    expect(header?.className).not.toContain("-translate-y-[calc(100%+2rem)]")
+    expect(hiddenSearchButton?.className).toContain("opacity-0")
+    expect(hiddenSearchButton?.className).toContain("pointer-events-none")
+    expect(topBar?.className).toContain("left-5")
+    expect(topBar?.className).toContain("right-5")
     expect(topBar?.className).toContain(
+      "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(topBar?.className).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(topBar?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
+    )
+    expect(topBar?.className).toContain(
+      "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
+    )
+    expect(topBar?.className).toContain("gap-3")
+    expect(topBar?.className).toContain("md:gap-5")
+    expect(topBar?.className).not.toContain(
       "pt-[calc(env(safe-area-inset-top,0px)+2rem)]",
     )
-    expect(topBar?.className).toContain(
-      "md:pt-[calc(env(safe-area-inset-top,0px)+3rem)]",
-    )
     expect(topBar?.className).not.toContain("sm:pt-12")
-    expect(mobileLogo?.className).toContain("mb-6")
-    expect(mobileLogo?.className).not.toContain("absolute")
-    expect(mobileLogoImage?.getAttribute("src")).toBe(
-      "/watch/images/jesusfilm-sign.svg",
-    )
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
+      ),
+    ).toBeNull()
     expect(bottomBackdrop).not.toBeNull()
     expect(bottomBackdrop?.className).toContain("absolute")
     expect(bottomBackdrop?.className).toContain("bottom-[-14rem]")
@@ -1840,18 +1905,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayField).not.toBeNull()
     expect(overlayField?.className).toContain("rounded-[35px]")
     expect(overlayField?.className).toContain("bg-white")
-    expect(overlayField?.parentElement?.className).toContain("max-w-[810px]")
     expect(
       document.querySelector('[data-testid="search-overlay-input-icon"]'),
     ).not.toBeNull()
-    expect(close?.className).toContain("fixed")
-    expect(close?.className).toContain("top-6")
-    expect(close?.className).toContain("right-4")
-    expect(close?.className).toContain("md:top-12")
-    expect(close?.className).toContain("md:right-10")
-    expect(close?.className).toContain("h-[52px]")
-    expect(close?.className).toContain("w-12")
-    expect(close?.className).toContain("z-[60]")
+    expect(close?.className).toContain("h-11")
+    expect(close?.className).toContain("w-11")
+    expect(close?.className).toContain("md:h-[52px]")
+    expect(close?.className).toContain("md:w-12")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("h-6")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("w-6")
   })

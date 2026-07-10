@@ -6,11 +6,13 @@ import {
   type ChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
-import { X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { FloatingSearchFieldInput } from "./FloatingSearchField"
-import { SEARCH_OVERLAY_FIELD_WIDTH_CLASSES } from "@/lib/content-width"
+import {
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
+} from "@/lib/content-width"
 
 type SearchOverlayInstantShellProps = {
   open: boolean
@@ -18,6 +20,8 @@ type SearchOverlayInstantShellProps = {
   query: string
   setQuery: (query: string) => void
   setOpen: (open: boolean) => void
+  headerTopClass: string
+  headerLanguageControlVisible: boolean
 }
 
 export function SearchOverlayInstantShell({
@@ -26,6 +30,8 @@ export function SearchOverlayInstantShell({
   query,
   setQuery,
   setOpen,
+  headerTopClass,
+  headerLanguageControlVisible,
 }: SearchOverlayInstantShellProps) {
   const t = useTranslations("SearchOverlay")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -68,16 +74,21 @@ export function SearchOverlayInstantShell({
         closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"
       }`}
       style={{
-        zIndex: 9999,
+        zIndex: 45,
         backgroundColor: "rgba(0, 0, 0, 0.75)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:px-6 md:pt-[calc(env(safe-area-inset-top,0px)+3rem)]">
+      <div
+        data-testid="search-overlay-instant-top-bar"
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex h-[52px] items-start gap-3 md:gap-5`}
+      >
         <div
-          className={`pointer-events-auto md:mx-0 md:max-w-[calc(100vw-11rem)] xl:mx-auto xl:max-w-[810px] ${SEARCH_OVERLAY_FIELD_WIDTH_CLASSES}`}
-        >
+          aria-hidden="true"
+          className="h-11 w-11 shrink-0 md:h-[52px] md:w-12"
+        />
+        <div className="pointer-events-auto min-w-0 flex-1">
           <FloatingSearchFieldInput
             ref={inputRef}
             value={query}
@@ -90,17 +101,16 @@ export function SearchOverlayInstantShell({
             wrapperClassName="w-full"
           />
         </div>
+        <div
+          aria-hidden="true"
+          className="flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2"
+        >
+          {headerLanguageControlVisible ? (
+            <span className="block h-11 w-11 md:h-[52px] md:w-12" />
+          ) : null}
+          <span className="block h-11 w-11 md:h-[52px] md:w-12" />
+        </div>
       </div>
-
-      <button
-        type="button"
-        aria-label="Close search"
-        data-testid="search-overlay-instant-close"
-        onClick={() => setOpen(false)}
-        className="fixed right-4 top-[calc(env(safe-area-inset-top,0px)+2rem)] z-20 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white/12 text-white ring-1 ring-white/15 backdrop-blur-md transition hover:bg-white/18 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 md:right-10 md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
-      >
-        <X size={20} aria-hidden />
-      </button>
 
       <div
         aria-hidden="true"

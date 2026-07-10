@@ -77,6 +77,8 @@ export type FloatingSearchControllerProps = {
   setOpen: (open: boolean) => void
   setQuery: (query: string) => void
   resetToken?: number
+  headerTopClass: string
+  headerLanguageControlVisible: boolean
   onReady?: () => void
   children?: ReactNode
 }
@@ -88,6 +90,8 @@ export function FloatingSearchController({
   setOpen,
   setQuery: setQueryState,
   resetToken = 0,
+  headerTopClass,
+  headerLanguageControlVisible,
   onReady,
   children,
 }: FloatingSearchControllerProps) {
@@ -829,7 +833,13 @@ export function FloatingSearchController({
     <FloatingSearchContext.Provider value={value}>
       {children}
       {portalReady && modalChromeHidden
-        ? createPortal(<SearchOverlay />, document.body)
+        ? createPortal(
+            <SearchOverlay
+              headerTopClass={headerTopClass}
+              headerLanguageControlVisible={headerLanguageControlVisible}
+            />,
+            document.body,
+          )
         : null}
     </FloatingSearchContext.Provider>
   )

@@ -14,7 +14,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"
-import { Globe } from "lucide-react"
+import { Globe, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { FloatingSearchControllerProps } from "./FloatingSearchController"
@@ -318,31 +318,37 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
-  const headerBackdropHidden = modalChromeHidden
+  const headerLanguageClick = headerLanguageSwitcher.onClick ?? undefined
+  const headerLanguageControlVisible =
+    headerLanguageSwitcher.visible && headerLanguageClick != null
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
   const effectiveHeaderHovered = headerHoverZoneActive && headerHovered
   const headerChromeOpacity =
     effectiveHeaderHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
-  const headerChromeUnavailable = modalChromeHidden || headerChromeOpacity <= 0
-  const headerChromeHidden = headerChromeUnavailable || !headerScrollVisible
-  const headerChromeDimmed = !headerChromeHidden && headerChromeOpacity < 1
+  const headerChromeUnavailable = !modalChromeHidden && headerChromeOpacity <= 0
+  const headerChromeHidden =
+    headerChromeUnavailable || (!modalChromeHidden && !headerScrollVisible)
+  const headerChromeDimmed =
+    !modalChromeHidden && !headerChromeHidden && headerChromeOpacity < 1
   const searchChromeVisible = !headerChromeUnavailable
   const searchChromeDimmed = headerChromeDimmed
   const headerCanBrightenLocally = playerChromeOpacity <= 0
   const headerPointerRevealAllowed = playerChromeOpacity < 1
-  const headerSurfaceSolid = !headerOverHero || pinned
+  const headerSurfaceSolid = modalChromeHidden || !headerOverHero || pinned
   const headerTopClass = pinned
     ? "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+1rem)]"
     : "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
-  const headerMotionClass = headerChromeUnavailable
-    ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
-    : !headerScrollVisible
-      ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-100"
-      : headerChromeDimmed
-        ? "pointer-events-auto translate-y-0 opacity-30"
-        : "pointer-events-auto translate-y-0 opacity-100"
+  const headerMotionClass = modalChromeHidden
+    ? "pointer-events-none translate-y-0 opacity-100"
+    : headerChromeUnavailable
+      ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
+      : !headerScrollVisible
+        ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-100"
+        : headerChromeDimmed
+          ? "pointer-events-auto translate-y-0 opacity-30"
+          : "pointer-events-auto translate-y-0 opacity-100"
   const headerBackdropMotionClass = headerChromeUnavailable
     ? "-translate-y-[calc(100%+2rem)] opacity-0"
     : !headerScrollVisible
@@ -425,7 +431,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           headerSurfaceSolid
             ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
             : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
-        } ${headerBackdropHidden ? "opacity-0" : headerBackdropMotionClass}`}
+        } ${headerBackdropMotionClass}`}
       />
       <div
         aria-hidden="true"
@@ -449,7 +455,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             setQuery("")
             setSearchResetToken((token) => token + 1)
           }}
-          className="flex h-11 w-11 shrink-0 items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 md:h-[52px] md:w-12"
+          className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 md:h-[52px] md:w-12"
         >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
@@ -468,12 +474,12 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             onOpen={openSearch}
           />
         </div>
-        <div className="flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2">
-          {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
+        <div className="pointer-events-auto flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2">
+          {headerLanguageControlVisible ? (
             <button
               type="button"
               data-testid="floating-header-language-button"
-              onClick={headerLanguageSwitcher.onClick}
+              onClick={headerLanguageClick}
               aria-label={t("changeAudioLanguage")}
               title={t("changeAudioLanguage")}
               className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:h-[52px] md:w-12"
@@ -484,7 +490,22 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
               />
             </button>
           ) : null}
-          <AccountControl />
+          {modalChromeHidden ? (
+            <button
+              type="button"
+              aria-label="Close search"
+              data-testid="floating-header-search-close"
+              onClick={() => setOpen(false)}
+              className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:h-[52px] md:w-12"
+            >
+              <X
+                aria-hidden
+                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+              />
+            </button>
+          ) : (
+            <AccountControl />
+          )}
         </div>
       </header>
       {searchControllerEnabled ? (
@@ -495,6 +516,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setOpen={setOpen}
           setQuery={setQuery}
           resetToken={searchResetToken}
+          headerTopClass={headerTopClass}
+          headerLanguageControlVisible={headerLanguageControlVisible}
           onReady={markSearchControllerReady}
         />
       ) : null}
@@ -505,6 +528,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           query={query}
           setOpen={setOpen}
           setQuery={setQuery}
+          headerTopClass={headerTopClass}
+          headerLanguageControlVisible={headerLanguageControlVisible}
         />
       ) : null}
     </FloatingSearchPinnedContext.Provider>
