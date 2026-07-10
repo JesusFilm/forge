@@ -10,6 +10,16 @@ import {
   FloatingSearchProvider,
   useFloatingSearch,
 } from "@/components/FloatingSearchProvider"
+import {
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_PINNED_TOP_CLASS,
+  FLOATING_HEADER_TOP_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
+} from "@/lib/content-width"
 import { runSearch } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
 import type {
@@ -1662,6 +1672,48 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 
+  it("focuses the modal search input when the floating field opens", async () => {
+    vi.useFakeTimers()
+
+    const input = await openSearchOverlay()
+
+    expect(document.activeElement).toBe(input)
+
+    await act(async () => {
+      vi.advanceTimersByTime(100)
+      await Promise.resolve()
+    })
+
+    expect(document.activeElement).toBe(input)
+  })
+
+  it("keeps focus on the modal search input after language controls render", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      algoliaEnabled: false,
+      options: [englishSearchLanguage, spanishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+
+    const input = await openSearchOverlay()
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      vi.advanceTimersByTime(100)
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="language-combobox-trigger"]'),
+    ).not.toBeNull()
+    expect(document.activeElement).toBe(input)
+  })
+
   it("aligns the search overlay close button with the watch modal close control", async () => {
     act(() => {
       root.render(
@@ -1696,6 +1748,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       '[aria-label="Search and browse videos"]',
     )
     const overlayField = document.querySelector('[role="search"]')
+    const overlayFieldShell = document.querySelector(
+      '[data-testid="search-overlay-field-shell"]',
+    )
     const mobileLogo = document.querySelector(
       '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
     )
@@ -1710,15 +1765,17 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlay?.contains(close)).toBe(true)
     expect(overlay?.className).toContain("h-dvh")
     expect(overlay?.className).toContain("min-h-dvh")
-    expect(topBar?.className).toContain(
-      "pt-[calc(env(safe-area-inset-top,0px)+2rem)]",
-    )
-    expect(topBar?.className).toContain(
-      "md:pt-[calc(env(safe-area-inset-top,0px)+3rem)]",
-    )
+    expect(topBar?.className).toContain("left-5")
+    expect(topBar?.className).toContain("right-5")
+    expect(topBar?.className).toContain("md:left-16")
+    expect(topBar?.className).toContain("md:right-16")
+    expect(topBar?.className).toContain(FLOATING_HEADER_TOP_CLASS)
+    expect(topBar?.className).toContain(FLOATING_HEADER_HEIGHT_CLASS)
+    expect(topBar?.className).toContain(FLOATING_HEADER_GAP_CLASS)
+    expect(topBar?.className).toContain("items-start")
+    expect(topBar?.className).not.toContain("items-center")
     expect(topBar?.className).not.toContain("sm:pt-12")
-    expect(mobileLogo?.className).toContain("mb-6")
-    expect(mobileLogo?.className).not.toContain("absolute")
+    expect(mobileLogo?.className).toContain(FLOATING_HEADER_LOGO_SLOT_CLASS)
     expect(mobileLogoImage?.getAttribute("src")).toBe(
       "/watch/images/jesusfilm-sign.svg",
     )
@@ -1732,9 +1789,12 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(scrollBody?.className).toContain("md:top-32")
     expect(scrollBody?.className).toContain("bottom-0")
     expect(overlayField).not.toBeNull()
+    expect(overlayFieldShell?.className).toContain("min-w-0")
+    expect(overlayFieldShell?.className).toContain("flex-1")
     expect(overlayField?.className).toContain("rounded-[35px]")
     expect(overlayField?.className).toContain("bg-white")
-    expect(overlayField?.parentElement?.className).toContain("max-w-[810px]")
+    expect(overlayField?.className).toContain("w-full")
+    expect(overlayField?.className).not.toContain("md:rounded-r-none")
     expect(
       document.querySelector('[data-testid="search-overlay-input-icon"]'),
     ).not.toBeNull()
@@ -1748,6 +1808,85 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(close?.className).toContain("z-[60]")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("h-6")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("w-6")
+  })
+
+  it("uses the pinned header top offset when opened from scrolled desktop chrome", async () => {
+    setScrollY(100)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await dispatchScrollAndFlush()
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flushSearchControllerMount()
+
+    const topBar = document.querySelector(
+      '[data-testid="search-overlay-top-bar"]',
+    )
+
+    expect(topBar?.className).toContain(FLOATING_HEADER_PINNED_TOP_CLASS)
+  })
+
+  it("mirrors the optional header language switcher trailing slot", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: vi.fn() })
+    })
+
+    const headerTrailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flushSearchControllerMount()
+
+    const overlayTrailingSpacer = document.querySelector(
+      '[data-testid="search-overlay-trailing-controls-spacer"]',
+    )
+
+    expect(headerTrailingControls?.className).toContain(
+      FLOATING_HEADER_TRAILING_GROUP_CLASS,
+    )
+    expect(overlayTrailingSpacer?.className).toContain(
+      FLOATING_HEADER_TRAILING_GROUP_CLASS,
+    )
+    expect(overlayTrailingSpacer?.children).toHaveLength(2)
+    expect(overlayTrailingSpacer?.children[0]?.className).toContain(
+      FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+    )
+    expect(overlayTrailingSpacer?.children[1]?.className).toContain(
+      FLOATING_HEADER_TRAILING_SLOT_CLASS,
+    )
   })
 })
 

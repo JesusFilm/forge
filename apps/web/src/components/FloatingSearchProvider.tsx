@@ -25,6 +25,13 @@ import {
 } from "./FloatingSearchContext"
 import { AccountControl } from "@/components/watch/AccountControl"
 import {
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_PINNED_TOP_CLASS,
+  FLOATING_HEADER_TOP_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -320,8 +327,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const headerPointerRevealAllowed = playerChromeOpacity < 1
   const headerSurfaceSolid = !headerOverHero || pinned
   const headerTopClass = pinned
-    ? "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+1rem)]"
-    : "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
+    ? FLOATING_HEADER_PINNED_TOP_CLASS
+    : FLOATING_HEADER_TOP_CLASS
   const headerMotionClass = headerChromeUnavailable
     ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
     : !headerScrollVisible
@@ -425,7 +432,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         data-testid="floating-header"
         inert={headerChromeHidden || undefined}
         aria-hidden={headerChromeHidden || undefined}
-        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 flex h-[52px] items-center gap-3 transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:gap-5 ${headerMotionClass}`}
+        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS} transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
       >
         <Link
           href={"/" as Route}
@@ -435,7 +442,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             setQuery("")
             setSearchResetToken((token) => token + 1)
           }}
-          className="flex h-11 w-11 shrink-0 items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 md:h-[52px] md:w-12"
+          className={`flex ${FLOATING_HEADER_LOGO_SLOT_CLASS} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
         >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
@@ -454,7 +461,10 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             onOpen={openSearch}
           />
         </div>
-        <div className="flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2">
+        <div
+          data-testid="floating-header-trailing-controls"
+          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
+        >
           {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
             <button
               type="button"
@@ -462,7 +472,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
               onClick={headerLanguageSwitcher.onClick}
               aria-label={t("changeAudioLanguage")}
               title={t("changeAudioLanguage")}
-              className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:h-[52px] md:w-12"
+              className={`inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}
             >
               <Globe
                 aria-hidden
@@ -480,6 +490,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           query={query}
           setOpen={setOpen}
           setQuery={setQuery}
+          headerLanguageSwitcherVisible={headerLanguageSwitcher.visible}
+          headerPinned={pinned}
           resetToken={searchResetToken}
         />
       ) : null}
