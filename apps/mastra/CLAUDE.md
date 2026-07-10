@@ -303,8 +303,11 @@ Two source modes (like YouTube), both via Firecrawl search:
   commentary). Trusted handle hits are ordered first so they win dedup ties.
 
 Input is Studio-friendly with defaults (runs with no hand-written JSON):
-`handles` (default `[]`), `queries` (defaults to two Instagram-targeted
-AI/Christian queries), `limitPerQuery` (10), `scrapeMetadata` (false — set true to
+`handles` (default `[]`), `queries` (default `[]` — open web-search queries on
+Instagram return mostly news/commentary ABOUT AI + Christianity, e.g. Trump/Pope
+AI-image stories, not actual creations, so the daily run relies on the saved
+trusted `handles`; pass explicit `queries` for a one-off keyword sweep),
+`limitPerQuery` (10), `scrapeMetadata` (false — set true to
 scrape each hit for richer metadata, slower), `maxResults` (50), `persistArtifact`
 (true). The workflow searches each source (tolerant to per-source failures),
 parses Instagram

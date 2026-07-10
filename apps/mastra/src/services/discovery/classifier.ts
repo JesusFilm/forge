@@ -130,6 +130,28 @@ export const COMMENTARY_KEYWORDS: Keyword[] = [
   "music charts",
   "hits no",
   "no. 1",
+  // News reporting ABOUT someone's AI post (headline/coverage style, not a
+  // creation). Targeted at the political/news items Firecrawl surfaces for
+  // "AI + Christian" searches (Trump/Pope AI-image stories, viral-video
+  // coverage). Kept phrase-specific to avoid dropping genuine devotionals:
+  // "warns about ai" (news) but not bare "warns about" (a sermon can warn).
+  "breaking:",
+  "the president",
+  "u.s. president",
+  "us president",
+  "shared an ai",
+  "shares ai",
+  "depicting himself",
+  "depicting themselves",
+  "warns about ai",
+  "warns of ai",
+  "what do we lose",
+  "diplomatic accounts",
+  "goes viral",
+  "beware of ai",
+  "i personally feel",
+  "popping up",
+  "itunes",
   // NOTE: keep this list conservative. Terms that collide with genuine creation
   // captions were deliberately excluded: "according to" (Gospel attributions),
   // "mocking" (Passion narrative + "mockingbird"), "explains"/"explained"

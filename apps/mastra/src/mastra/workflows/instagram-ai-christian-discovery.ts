@@ -47,10 +47,13 @@ import { isValidServiceBearer } from "../../server/service-bearer"
 
 const WORKFLOW_FAILURE_ERROR_PREFIX = "INSTAGRAM_DISCOVERY_WORKFLOW_FAILED:"
 
-const DEFAULT_QUERIES = [
-  "AI generated Jesus video site:instagram.com",
-  "AI generated Christian reel site:instagram.com",
-]
+// No default keyword queries: on Instagram, open web-search queries return
+// mostly news/commentary ABOUT AI + Christianity (Trump/Pope AI-image stories),
+// not actual creations. The daily run relies on the saved trusted `handles`
+// instead, which stay clean. An operator can still pass explicit `queries` for
+// a one-off keyword sweep (those get the full AI + Christian + not-commentary
+// filter).
+const DEFAULT_QUERIES: string[] = []
 
 export const InstagramDiscoveryWorkflowInputSchema = z
   .object({
