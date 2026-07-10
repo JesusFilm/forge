@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -32,6 +33,14 @@ import {
 } from "@/components/watch/LanguageCombobox"
 import { CATEGORIES } from "@/lib/search-categories"
 import {
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_PINNED_TOP_CLASS,
+  FLOATING_HEADER_TOP_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -84,15 +93,7 @@ const ALGOLIA_REGION_ORDER = [
 type AlgoliaBrowseTab = "suggestions" | "languages"
 const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
 
-type SearchOverlayProps = {
-  headerTopClass: string
-  headerLanguageControlVisible: boolean
-}
-
-export function SearchOverlay({
-  headerTopClass,
-  headerLanguageControlVisible,
-}: SearchOverlayProps) {
+export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
   const {
     open,
@@ -120,6 +121,8 @@ export function SearchOverlay({
     selectedSearchLanguageOption,
     searchResultAnalytics,
     defaultSearchLanguageOption,
+    headerLanguageSwitcherVisible,
+    headerPinned,
     setQuery,
     search,
     loadMore,
@@ -170,11 +173,23 @@ export function SearchOverlay({
     setClosePortalContainer(node)
   }, [])
 
-  // Autofocus the input shortly after user-open.
-  useEffect(() => {
+  // Keep the modal ready for immediate typing even when portal/lazy mount work
+  // races the opening click.
+  useLayoutEffect(() => {
     if (!open) return
-    const t = setTimeout(() => inputRef.current?.focus(), 100)
-    return () => clearTimeout(t)
+    let cancelled = false
+    const focusInput = () => {
+      if (cancelled) return
+      inputRef.current?.focus({ preventScroll: true })
+    }
+    focusInput()
+    const frame = window.requestAnimationFrame(focusInput)
+    const timer = window.setTimeout(focusInput, 100)
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
   }, [open])
 
   // Escape closes the modal while preserving the in-memory query state.
@@ -498,7 +513,7 @@ export function SearchOverlay({
     (selectedSearchLanguageOption?.publicSlug ?? null) !==
       (defaultSearchLanguageOption?.publicSlug ?? null)
   const semanticLanguageTriggerClassName = [
-    "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20 md:!rounded-l-none md:!rounded-r-[35px] md:!border-y-0 md:!border-r-0 md:!border-l md:!border-stone-200 md:!shadow-none",
+    "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20",
     semanticLanguageOverrideActive ? "pr-14" : null,
   ]
     .filter(Boolean)
@@ -552,6 +567,9 @@ export function SearchOverlay({
     },
     [handleSemanticLanguageClick, semanticLanguageOptionBySlug],
   )
+  const headerTopClass = headerPinned
+    ? FLOATING_HEADER_PINNED_TOP_CLASS
+    : FLOATING_HEADER_TOP_CLASS
 
   return (
     <div
@@ -572,55 +590,52 @@ export function SearchOverlay({
           this overlay and owns the logo, language icon, and close button. */}
       <div
         data-testid="search-overlay-top-bar"
-        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex h-[52px] items-start gap-3 md:gap-5`}
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
       >
+        <div aria-hidden="true" className={FLOATING_HEADER_LOGO_SLOT_CLASS} />
         <div
-          aria-hidden="true"
-          className="h-11 w-11 shrink-0 md:h-[52px] md:w-12"
-        />
-        <div
+          data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-auto min-w-0 flex-1"
         >
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-0 md:overflow-hidden md:rounded-[35px] md:bg-white md:shadow-xl md:outline-1 md:outline-white/15">
-            <FloatingSearchFieldInput
-              ref={inputRef}
-              value={query}
-              onChange={handleInputChange}
-              onKeyDown={handleInputKeyDown}
-              onClear={handleClearInput}
-              placeholder={t("placeholder")}
-              aria-label={t("inputLabel")}
-              iconTestId="search-overlay-input-icon"
-              wrapperClassName="w-full md:flex-1 md:rounded-r-none md:shadow-none md:outline-0"
-            />
-            {!algoliaSearchEnabled && searchLanguageControlVisible && (
-              <div className="relative w-full md:w-72 md:shrink-0 lg:w-80">
-                <LanguageCombobox
-                  options={semanticLanguageComboboxOptions}
-                  value={semanticLanguageComboboxValue}
-                  onChange={handleSemanticLanguageSlugChange}
-                  compact
-                  open={languageAutocompleteOpen}
-                  onOpenChange={setLanguageAutocompleteOpen}
-                  disabled={languageOptionsLoading}
-                  placeholder={t("searchLanguageLabel")}
-                  popoverPortalContainer={closePortalContainer}
-                  triggerClassName={semanticLanguageTriggerClassName}
-                />
-                {semanticLanguageOverrideActive && (
-                  <button
-                    type="button"
-                    aria-label="Use website default search language"
-                    onClick={handleResetSearchLanguage}
-                    className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
-                  >
-                    <X size={16} aria-hidden />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          <FloatingSearchFieldInput
+            ref={inputRef}
+            value={query}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            onClear={handleClearInput}
+            placeholder={t("placeholder")}
+            aria-label={t("inputLabel")}
+            iconTestId="search-overlay-input-icon"
+            autoFocus
+            wrapperClassName="w-full"
+          />
+          {!algoliaSearchEnabled && searchLanguageControlVisible && (
+            <div className="relative mt-3 w-full md:w-72 lg:w-80">
+              <LanguageCombobox
+                options={semanticLanguageComboboxOptions}
+                value={semanticLanguageComboboxValue}
+                onChange={handleSemanticLanguageSlugChange}
+                compact
+                open={languageAutocompleteOpen}
+                onOpenChange={setLanguageAutocompleteOpen}
+                disabled={languageOptionsLoading}
+                placeholder={t("searchLanguageLabel")}
+                popoverPortalContainer={closePortalContainer}
+                triggerClassName={semanticLanguageTriggerClassName}
+              />
+              {semanticLanguageOverrideActive && (
+                <button
+                  type="button"
+                  aria-label="Use website default search language"
+                  onClick={handleResetSearchLanguage}
+                  className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
+                >
+                  <X size={16} aria-hidden />
+                </button>
+              )}
+            </div>
+          )}
           {queryLanguageSuggestion && suggestedLanguageName && (
             <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full bg-stone-950/70 px-3 py-2 text-sm text-stone-200 ring-1 ring-white/12 backdrop-blur-md">
               <span className="font-medium">
@@ -695,12 +710,13 @@ export function SearchOverlay({
         </div>
         <div
           aria-hidden="true"
-          className="flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2"
+          data-testid="search-overlay-trailing-controls-spacer"
+          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
         >
-          {headerLanguageControlVisible ? (
-            <span className="block h-11 w-11 md:h-[52px] md:w-12" />
+          {headerLanguageSwitcherVisible ? (
+            <div className={FLOATING_HEADER_LANGUAGE_SLOT_CLASS} />
           ) : null}
-          <span className="block h-11 w-11 md:h-[52px] md:w-12" />
+          <div className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
         </div>
       </div>
 

@@ -317,6 +317,62 @@ describe("buildWatchHomeModelFromVideos", () => {
     })
   })
 
+  it("does not reuse child video color when an authored override image has no color", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          documentId: "lumo-collection",
+          coreId: "LUMOCollection",
+          slug: "lumo",
+          label: "COLLECTION",
+          children: [
+            {
+              child: makeChild({
+                documentId: "lumo-child",
+                coreId: "lumo-child-core",
+                images: [
+                  makeImage({
+                    mobileCinematicHigh: "https://cdn.example/lumo-child.jpg",
+                    blurDataUrl: "data:image/jpeg;base64,VIDEO",
+                    dominantColor: "#778899",
+                  }),
+                ],
+              }),
+            },
+          ],
+        }),
+      ] as never,
+      experienceBlocks: [
+        {
+          sectionKey: "home-collection-showcase-grid-vertical",
+          items: [
+            {
+              videoId: "lumo-child",
+              imageOverrideUrl: "https://cdn.example/uploaded-scripture.jpg",
+              imageOverrideBlurDataUrl: null,
+              imageOverrideDominantColor: null,
+            },
+          ],
+        },
+      ] as never,
+    })
+
+    const scripture = model.sections.find(
+      (section) => section.id === "home-collection-showcase-grid-vertical",
+    )
+    const card = scripture?.cards.find((item) => item.id === "lumo-child")
+
+    expect(card).toMatchObject({
+      imageUrl: "https://cdn.example/uploaded-scripture.jpg",
+      blurDataUrl: null,
+      dominantColor: null,
+    })
+  })
+
   it("expands the Journey with Jesus course into child episode cards", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 

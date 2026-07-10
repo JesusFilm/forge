@@ -10,6 +10,12 @@ import { useTranslations } from "next-intl"
 
 import { FloatingSearchFieldInput } from "./FloatingSearchField"
 import {
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -82,12 +88,9 @@ export function SearchOverlayInstantShell({
     >
       <div
         data-testid="search-overlay-instant-top-bar"
-        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex h-[52px] items-start gap-3 md:gap-5`}
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
       >
-        <div
-          aria-hidden="true"
-          className="h-11 w-11 shrink-0 md:h-[52px] md:w-12"
-        />
+        <div aria-hidden="true" className={FLOATING_HEADER_LOGO_SLOT_CLASS} />
         <div className="pointer-events-auto min-w-0 flex-1">
           <FloatingSearchFieldInput
             ref={inputRef}
@@ -103,12 +106,13 @@ export function SearchOverlayInstantShell({
         </div>
         <div
           aria-hidden="true"
-          className="flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2"
+          data-testid="search-overlay-instant-trailing-controls-spacer"
+          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
         >
           {headerLanguageControlVisible ? (
-            <span className="block h-11 w-11 md:h-[52px] md:w-12" />
+            <span className={FLOATING_HEADER_LANGUAGE_SLOT_CLASS} />
           ) : null}
-          <span className="block h-11 w-11 md:h-[52px] md:w-12" />
+          <span className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
         </div>
       </div>
 

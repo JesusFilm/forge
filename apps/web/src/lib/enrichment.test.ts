@@ -112,6 +112,18 @@ describe("enrichMediaItem image resolution", () => {
     expect(result.blurDataUrl).toBe(ADMIN_OVERRIDE_BLUR)
   })
 
+  it("does not use linked video blur data for override images without override blur data", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: ADMIN_FALLBACK,
+      videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
+      imageBlurDataUrl: ADMIN_FALLBACK_BLUR,
+      imageOverrideUrl: ADMIN_OVERRIDE,
+      imageOverrideBlurDataUrl: null,
+    })
+    expect(result.blurDataUrl).toBeNull()
+  })
+
   it("prefers override asset dominant color over linked video dominant color", () => {
     const result = enrichMediaItem({
       ...base,
@@ -122,6 +134,18 @@ describe("enrichMediaItem image resolution", () => {
       imageOverrideDominantColor: ADMIN_OVERRIDE_COLOR,
     })
     expect(result.dominantColor).toBe(ADMIN_OVERRIDE_COLOR)
+  })
+
+  it("does not use linked video dominant color for override images without override color", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: ADMIN_FALLBACK,
+      videoImageDominantColor: ADMIN_VIDEO_COLOR,
+      imageDominantColor: ADMIN_FALLBACK_COLOR,
+      imageOverrideUrl: ADMIN_OVERRIDE,
+      imageOverrideDominantColor: null,
+    })
+    expect(result.dominantColor).toBeNull()
   })
 
   it("ignores the generic fallback dominant color", () => {
