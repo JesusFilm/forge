@@ -835,12 +835,17 @@ describe("HeroPlayer — initial mount", () => {
     expect(props.style).toEqual({ objectFit: "cover" })
   })
 
-  it("mounts the visible mobile muted preview after the short mobile timer", async () => {
+  it("mounts the visible mobile muted preview after load and the short mobile timer", async () => {
     const idle = installIdleCallbackStub()
     const originalInnerWidth = window.innerWidth
+    const originalReadyState = document.readyState
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       value: 390,
+    })
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      get: () => "complete",
     })
 
     try {
@@ -858,6 +863,57 @@ describe("HeroPlayer — initial mount", () => {
       Object.defineProperty(window, "innerWidth", {
         configurable: true,
         value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => originalReadyState,
+      })
+      idle.restore()
+    }
+  })
+
+  it("waits for page load before scheduling the fast mobile muted preview", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    const originalReadyState = document.readyState
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      get: () => "loading",
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      expect(muxVideoMock).not.toHaveBeenCalled()
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(0)
+
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => "complete",
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(1)
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => originalReadyState,
       })
       idle.restore()
     }

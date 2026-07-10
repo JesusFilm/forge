@@ -709,11 +709,11 @@ export function HeroPlayer({
     }
 
     const scheduleActivation = () => {
-      if (shouldUseFastMobilePreview(window)) {
-        scheduleFastMobileActivation()
-        return
-      }
       if (document.readyState === "complete") {
+        if (shouldUseFastMobilePreview(window)) {
+          scheduleFastMobileActivation()
+          return
+        }
         scheduleConservativeActivation()
         return
       }
@@ -723,12 +723,6 @@ export function HeroPlayer({
     }
 
     const retryIfEligible = () => {
-      if (
-        !shouldUseFastMobilePreview(window) &&
-        document.readyState !== "complete"
-      ) {
-        return
-      }
       scheduleActivation()
     }
 
