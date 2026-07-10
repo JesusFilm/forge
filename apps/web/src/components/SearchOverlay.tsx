@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -10,8 +11,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import Image from "next/image"
-import Link from "next/link"
-import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import {
   ChevronDown,
@@ -32,9 +31,19 @@ import {
   LanguageCombobox,
   type LanguageComboboxOption,
 } from "@/components/watch/LanguageCombobox"
-import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { CATEGORIES } from "@/lib/search-categories"
-import { SEARCH_OVERLAY_FIELD_WIDTH_CLASSES } from "@/lib/content-width"
+import {
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_PINNED_TOP_CLASS,
+  FLOATING_HEADER_TOP_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
+} from "@/lib/content-width"
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import {
   MAX_SEARCH_LANGUAGE_FILTERS,
@@ -112,6 +121,9 @@ export function SearchOverlay() {
     selectedSearchLanguageOption,
     searchResultAnalytics,
     defaultSearchLanguageOption,
+    headerLanguageSwitcherVisible,
+    headerLanguageCode,
+    headerPinned,
     setQuery,
     search,
     loadMore,
@@ -162,11 +174,23 @@ export function SearchOverlay() {
     setClosePortalContainer(node)
   }, [])
 
-  // Autofocus the input shortly after user-open.
-  useEffect(() => {
+  // Keep the modal ready for immediate typing even when portal/lazy mount work
+  // races the opening click.
+  useLayoutEffect(() => {
     if (!open) return
-    const t = setTimeout(() => inputRef.current?.focus(), 100)
-    return () => clearTimeout(t)
+    let cancelled = false
+    const focusInput = () => {
+      if (cancelled) return
+      inputRef.current?.focus({ preventScroll: true })
+    }
+    focusInput()
+    const frame = window.requestAnimationFrame(focusInput)
+    const timer = window.setTimeout(focusInput, 100)
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
   }, [open])
 
   // Escape closes the modal while preserving the in-memory query state.
@@ -195,19 +219,39 @@ export function SearchOverlay() {
       if (e.key !== "Tab") return
       const overlay = overlayRef.current
       if (!overlay) return
-      const focusable = overlay.querySelectorAll<HTMLElement>(
-        'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+      const overlayFocusable = Array.from(
+        overlay.querySelectorAll<HTMLElement>(
+          'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+        ),
       )
+      const headerLogo = document.querySelector<HTMLElement>(
+        '[data-testid="floating-header-logo"]',
+      )
+      const headerLanguage = document.querySelector<HTMLElement>(
+        '[data-testid="floating-header-language-button"]',
+      )
+      const headerClose = document.querySelector<HTMLElement>(
+        '[data-testid="floating-header-search-close"]',
+      )
+      const focusable = [
+        headerLogo,
+        ...overlayFocusable,
+        headerLanguage,
+        headerClose,
+      ].filter((element): element is HTMLElement => element != null)
       if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
+      const activeIndex = focusable.indexOf(
+        document.activeElement as HTMLElement,
+      )
+      const nextIndex = e.shiftKey
+        ? activeIndex <= 0
+          ? focusable.length - 1
+          : activeIndex - 1
+        : activeIndex === -1 || activeIndex >= focusable.length - 1
+          ? 0
+          : activeIndex + 1
+      e.preventDefault()
+      focusable[nextIndex]?.focus()
     }
     document.addEventListener("keydown", handleTab)
     return () => document.removeEventListener("keydown", handleTab)
@@ -470,7 +514,7 @@ export function SearchOverlay() {
     (selectedSearchLanguageOption?.publicSlug ?? null) !==
       (defaultSearchLanguageOption?.publicSlug ?? null)
   const semanticLanguageTriggerClassName = [
-    "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20 md:!rounded-l-none md:!rounded-r-[35px] md:!border-y-0 md:!border-r-0 md:!border-l md:!border-stone-200 md:!shadow-none",
+    "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20",
     semanticLanguageOverrideActive ? "pr-14" : null,
   ]
     .filter(Boolean)
@@ -524,6 +568,9 @@ export function SearchOverlay() {
     },
     [handleSemanticLanguageClick, semanticLanguageOptionBySlug],
   )
+  const headerTopClass = headerPinned
+    ? FLOATING_HEADER_PINNED_TOP_CLASS
+    : FLOATING_HEADER_TOP_CLASS
 
   return (
     <div
@@ -533,93 +580,63 @@ export function SearchOverlay() {
       aria-label={t("dialogLabel")}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
-        zIndex: 9999,
+        zIndex: 45,
         backgroundColor: "rgba(0, 0, 0, 0.75)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      {/* Floating top bar: input is viewport-centered via mx-auto. On mobile
-          the logo is in normal flow above the field so it cannot overlap the
-          input. Outer padding (px-4 sm:px-6) matches the
-          floating searchbar's side margin (w-[calc(100%-2rem)]
-          sm:w-[calc(100%-3rem)]) so the input's position and size on open
-          match the bar's exactly. The padding-top mirrors the header bar's
-          unpinned top offset, including safe-area inset and the md breakpoint,
-          so the modal input does not drift vertically when opened. The wrapper
-          is `pointer-events-none` so scroll wheel events over the empty edges
-          pass through to the body; the pill + logo + close button re-enable
-          pointer events on themselves. */}
+      {/* Mirror the floating header grid so the active input lands exactly
+          where the closed search pill was. The persistent header stays above
+          this overlay and owns the logo, language icon, and close button. */}
       <div
         data-testid="search-overlay-top-bar"
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:px-6 md:pt-[calc(env(safe-area-inset-top,0px)+3rem)]"
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
       >
-        <Link
-          href={"/" as Route}
-          aria-label={t("home")}
-          // stopPropagation keeps the overlay from intercepting the click as
-          // a backdrop dismiss; search("") clears the query and cached results
-          // so home navigation lands on a fresh search bar.
-          onClick={(e) => {
-            e.stopPropagation()
-            void search("")
-          }}
-          className="pointer-events-auto mb-6 flex w-fit items-center rounded-full p-1 md:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
-        >
-          <Image
-            src="/watch/images/jesusfilm-sign.svg"
-            alt="JesusFilm"
-            width={70}
-            height={70}
-            unoptimized
-            className="h-auto max-w-[50px]"
-          />
-        </Link>
+        <div aria-hidden="true" className={FLOATING_HEADER_LOGO_SLOT_CLASS} />
         <div
+          data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
-          className={`pointer-events-auto md:mx-0 md:max-w-[calc(100vw-11rem)] xl:mx-auto xl:max-w-[810px] ${SEARCH_OVERLAY_FIELD_WIDTH_CLASSES}`}
+          className="pointer-events-auto min-w-0 flex-1"
         >
-          <div
-            className={`flex flex-col gap-3 md:mx-0 md:max-w-[calc(100vw-11rem)] md:flex-row md:items-start md:gap-0 md:overflow-hidden md:rounded-[35px] md:bg-white md:shadow-xl md:outline-1 md:outline-white/15 xl:mx-auto xl:max-w-[810px] ${SEARCH_OVERLAY_FIELD_WIDTH_CLASSES}`}
-          >
-            <FloatingSearchFieldInput
-              ref={inputRef}
-              value={query}
-              onChange={handleInputChange}
-              onKeyDown={handleInputKeyDown}
-              onClear={handleClearInput}
-              placeholder={t("placeholder")}
-              aria-label={t("inputLabel")}
-              iconTestId="search-overlay-input-icon"
-              wrapperClassName="w-full md:flex-1 md:rounded-r-none md:shadow-none md:outline-0"
-            />
-            {!algoliaSearchEnabled && searchLanguageControlVisible && (
-              <div className="relative w-full md:w-72 md:shrink-0 lg:w-80">
-                <LanguageCombobox
-                  options={semanticLanguageComboboxOptions}
-                  value={semanticLanguageComboboxValue}
-                  onChange={handleSemanticLanguageSlugChange}
-                  compact
-                  open={languageAutocompleteOpen}
-                  onOpenChange={setLanguageAutocompleteOpen}
-                  disabled={languageOptionsLoading}
-                  placeholder={t("searchLanguageLabel")}
-                  popoverPortalContainer={closePortalContainer}
-                  triggerClassName={semanticLanguageTriggerClassName}
-                />
-                {semanticLanguageOverrideActive && (
-                  <button
-                    type="button"
-                    aria-label="Use website default search language"
-                    onClick={handleResetSearchLanguage}
-                    className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
-                  >
-                    <X size={16} aria-hidden />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          <FloatingSearchFieldInput
+            ref={inputRef}
+            value={query}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            onClear={handleClearInput}
+            placeholder={t("placeholder")}
+            aria-label={t("inputLabel")}
+            iconTestId="search-overlay-input-icon"
+            autoFocus
+            wrapperClassName="w-full"
+          />
+          {!algoliaSearchEnabled && searchLanguageControlVisible && (
+            <div className="relative mt-3 w-full md:w-72 lg:w-80">
+              <LanguageCombobox
+                options={semanticLanguageComboboxOptions}
+                value={semanticLanguageComboboxValue}
+                onChange={handleSemanticLanguageSlugChange}
+                compact
+                open={languageAutocompleteOpen}
+                onOpenChange={setLanguageAutocompleteOpen}
+                disabled={languageOptionsLoading}
+                placeholder={t("searchLanguageLabel")}
+                popoverPortalContainer={closePortalContainer}
+                triggerClassName={semanticLanguageTriggerClassName}
+              />
+              {semanticLanguageOverrideActive && (
+                <button
+                  type="button"
+                  aria-label="Use website default search language"
+                  onClick={handleResetSearchLanguage}
+                  className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
+                >
+                  <X size={16} aria-hidden />
+                </button>
+              )}
+            </div>
+          )}
           {queryLanguageSuggestion && suggestedLanguageName && (
             <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full bg-stone-950/70 px-3 py-2 text-sm text-stone-200 ring-1 ring-white/12 backdrop-blur-md">
               <span className="font-medium">
@@ -692,14 +709,23 @@ export function SearchOverlay() {
             </div>
           )}
         </div>
+        <div
+          aria-hidden="true"
+          data-testid="search-overlay-trailing-controls-spacer"
+          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
+        >
+          {headerLanguageSwitcherVisible ? (
+            <div
+              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+                headerLanguageCode
+                  ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
+                  : ""
+              }`}
+            />
+          ) : null}
+          <div className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
+        </div>
       </div>
-      <WatchModalViewportCloseButton
-        open={open || closing}
-        onClose={closeAndKeepQuery}
-        testId="search-overlay-close"
-        portalContainer={closePortalContainer}
-        positionClassName="top-6 right-4 translate-y-2 md:top-12 md:right-10 md:translate-y-0"
-      />
 
       <div
         aria-hidden="true"

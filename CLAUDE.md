@@ -105,6 +105,7 @@ Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns
 - Colocate tests: `Component.test.tsx` next to `Component.tsx`.
 - Use `vitest` for unit tests, Playwright for e2e.
 - Test behaviour, not implementation.
+- For frontend changes, verify the change did not degrade page-loading performance. Visual browser smoke proves behavior, not load impact; add timing, trace, Web Vitals/Lighthouse, network/resource timing, or equivalent evidence when rendering, hydration, media, routing, or client-side initialization changed. See `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`.
 
 ### Git
 

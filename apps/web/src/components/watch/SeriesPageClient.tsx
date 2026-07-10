@@ -20,6 +20,7 @@ import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
@@ -167,6 +168,9 @@ export function SeriesPageClient({
     slugByBcp47.get(locale.toLowerCase()) ??
     languageOptions[0]?.slug ??
     ""
+  const currentLanguageCode = languageCodeFor(
+    languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
+  )
 
   const handleLanguageChange = useCallback(
     (nextSlug: string) => {
@@ -206,12 +210,22 @@ export function SeriesPageClient({
           onClick={openLanguage}
           aria-label={t("changeAudioLanguage")}
           title={t("changeAudioLanguage")}
-          className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
+          className={`fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+            currentLanguageCode ? "w-auto min-w-12 gap-1.5 px-2" : ""
+          }`}
         >
           <Globe
             aria-hidden
             className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
           />
+          {currentLanguageCode ? (
+            <span
+              data-testid="series-page-language-code"
+              className="text-[10px] font-bold tracking-[0.14em]"
+            >
+              {currentLanguageCode}
+            </span>
+          ) : null}
         </button>
       ) : null}
 

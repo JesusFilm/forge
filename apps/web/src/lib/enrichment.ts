@@ -165,6 +165,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     fallbackUrl ??
     localWatchHomeThumbnailUrl(item.coreId) ??
     muxThumbnailUrl(item.muxPlaybackId)
+  const hasOverrideImage = overrideUrl != null
   const videoImageBlurDataUrl = meaningfulBlurDataUrl(
     item.videoImageBlurDataUrl,
   )
@@ -192,19 +193,22 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     imageUrl,
     blurDataUrl:
       overrideBlurDataUrl ??
-      videoImageBlurDataUrl ??
-      fallbackBlurDataUrl ??
-      localWatchHomeBlurDataUrl(item.coreId) ??
-      demoBlurDataUrl(
-        item.coreId ??
-          item.muxPlaybackId ??
-          item.videoId ??
-          item.titleOverride ??
-          imageUrl ??
-          "media-collection",
-      ),
+      (hasOverrideImage
+        ? null
+        : (videoImageBlurDataUrl ??
+          fallbackBlurDataUrl ??
+          localWatchHomeBlurDataUrl(item.coreId) ??
+          demoBlurDataUrl(
+            item.coreId ??
+              item.muxPlaybackId ??
+              item.videoId ??
+              item.titleOverride ??
+              imageUrl ??
+              "media-collection",
+          ))),
     dominantColor:
-      overrideDominantColor ?? videoDominantColor ?? fallbackDominantColor,
+      overrideDominantColor ??
+      (hasOverrideImage ? null : (videoDominantColor ?? fallbackDominantColor)),
     videoSlug,
     muxPlaybackId: item.muxPlaybackId ?? null,
   }
