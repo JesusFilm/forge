@@ -36,6 +36,7 @@ import {
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { languageCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import {
@@ -1312,6 +1313,11 @@ export function HeroPlayer({
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
+  const languageCode = languageCodeFor({
+    bcp47: variant.language?.bcp47,
+    iso3: variant.language?.iso3,
+    slug: variant.language?.slug ?? languageSlug,
+  })
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1384,19 +1390,24 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            languageCode: showTopLanguageSwitch ? languageCode : null,
           },
         },
       ),
     )
+  }, [languageCode, onLanguageClick, showTopLanguageSwitch])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
     return () => {
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null } },
+          { detail: { visible: false, onClick: null, languageCode: null } },
         ),
       )
     }
-  }, [onLanguageClick, showTopLanguageSwitch])
+  }, [])
 
   return (
     <>
@@ -1627,6 +1638,7 @@ export function HeroPlayer({
             overlayAnchor={overlayAnchor}
             playbackId={playbackId}
             onLanguageClick={onLanguageClick}
+            languageCode={languageCode}
             // In-chrome globe intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}

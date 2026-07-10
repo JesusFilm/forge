@@ -58,6 +58,7 @@ export type FloatingSearchControllerProps = {
   setOpen: (open: boolean) => void
   setQuery: (query: string) => void
   headerLanguageSwitcherVisible?: boolean
+  headerLanguageCode?: string | null
   headerPinned?: boolean
   resetToken?: number
   children?: ReactNode
@@ -70,6 +71,7 @@ export function FloatingSearchController({
   setOpen,
   setQuery: setQueryState,
   headerLanguageSwitcherVisible = false,
+  headerLanguageCode = null,
   headerPinned = false,
   resetToken = 0,
   children,
@@ -718,6 +720,7 @@ export function FloatingSearchController({
       searchResultAnalytics,
       defaultSearchLanguageOption: defaultSearchLanguage,
       headerLanguageSwitcherVisible,
+      headerLanguageCode,
       headerPinned,
       setOpen,
       setQuery,
@@ -758,6 +761,7 @@ export function FloatingSearchController({
       searchResultAnalytics,
       defaultSearchLanguage,
       headerLanguageSwitcherVisible,
+      headerLanguageCode,
       headerPinned,
       setOpen,
       setQuery,

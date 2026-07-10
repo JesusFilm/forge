@@ -3368,6 +3368,7 @@ describe("HeroPlayer — language switch button", () => {
     const latest = listener.updates.at(-1)
     expect(latest?.visible).toBe(true)
     expect(latest?.onClick).toBe(onLanguageClick)
+    expect(latest?.languageCode).toBe("EN")
     latest?.onClick?.()
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
     listener.cleanup()
